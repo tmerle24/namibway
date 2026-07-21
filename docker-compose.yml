@@ -1,0 +1,22 @@
+services:
+    pgsql:
+        image: postgres:16-alpine
+        container_name: namibway-pgsql
+        restart: unless-stopped
+        ports:
+            - '5432:5432'
+        environment:
+            POSTGRES_DB: '${DB_DATABASE:-namibway}'
+            POSTGRES_USER: '${DB_USERNAME:-namibway}'
+            POSTGRES_PASSWORD: '${DB_PASSWORD:-namibway}'
+        volumes:
+            - namibway-pgsql-data:/var/lib/postgresql/data
+        healthcheck:
+            test: ['CMD', 'pg_isready', '-U', '${DB_USERNAME:-namibway}', '-d', '${DB_DATABASE:-namibway}']
+            interval: 5s
+            timeout: 5s
+            retries: 5
+
+volumes:
+    namibway-pgsql-data:
+        driver: local

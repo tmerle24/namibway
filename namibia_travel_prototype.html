@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Namibia Travel &amp; Life Portal — Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+<style>
+  :root{
+    --ink:#241C15; --sand:#EDE6D6; --sand-dark:#DED2B8;
+    --rust:#B5651D; --rust-dark:#8C4A15; --rust-light:#F3D9BE;
+    --night:#1B2A4A; --night-deep:#101A30;
+    --sage:#4C5D46; --sage-light:#DCE4D6;
+    --gold:#E3A857;
+    --paper:#FBF8F1;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;}
+  h1,h2,h3{font-family:'Fraunces',serif;font-weight:500;margin:0;}
+  p{margin:0;line-height:1.6;}
+  button{font-family:'Inter',sans-serif;cursor:pointer;border:none;}
+  .eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:11px;font-weight:600;color:var(--rust-dark);}
+
+  /* ---------- HERO ---------- */
+  .hero{position:relative;min-height:560px;overflow:hidden;background:linear-gradient(180deg,var(--night) 0%, var(--night) 38%, var(--gold) 78%, var(--rust) 100%);}
+  .hero svg{position:absolute;bottom:0;left:0;width:100%;height:60%;display:block;}
+  .hero-content{position:relative;z-index:2;max-width:1040px;margin:0 auto;padding:56px 24px 40px;}
+  .brand{display:flex;align-items:center;gap:10px;color:var(--paper);font-family:'Fraunces',serif;font-size:19px;letter-spacing:.02em;margin-bottom:44px;}
+  .brand span{width:8px;height:8px;border-radius:50%;background:var(--gold);display:inline-block;}
+  .hero-head{max-width:640px;margin-bottom:36px;}
+  .hero-head h1{color:var(--paper);font-size:44px;line-height:1.08;margin-bottom:14px;}
+  .hero-head p{color:var(--sand);font-size:17px;max-width:480px;}
+
+  /* ---------- CHAT PANEL ---------- */
+  .chat-panel{background:var(--paper);border-radius:16px;box-shadow:0 24px 60px rgba(16,26,48,.35);max-width:640px;overflow:hidden;}
+  .chat-log{max-height:340px;overflow-y:auto;padding:22px 22px 4px;display:flex;flex-direction:column;gap:14px;}
+  .msg{max-width:82%;padding:11px 15px;border-radius:14px;font-size:14.5px;line-height:1.55;}
+  .msg.ai{background:var(--sand);color:var(--ink);border-bottom-left-radius:4px;align-self:flex-start;white-space:pre-wrap;}
+  .msg.user{background:var(--night);color:var(--paper);border-bottom-right-radius:4px;align-self:flex-end;}
+  .msg.typing{background:var(--sand);color:var(--rust-dark);align-self:flex-start;font-style:italic;font-size:13px;}
+  .chat-input-row{display:flex;gap:8px;padding:16px 18px 18px;border-top:1px solid var(--sand-dark);}
+  .chat-input-row input{flex:1;border:1px solid var(--sand-dark);border-radius:10px;padding:12px 14px;font-size:14.5px;font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);}
+  .chat-input-row input:focus{outline:2px solid var(--rust);outline-offset:1px;}
+  .chat-input-row button{background:var(--rust);color:var(--paper);padding:0 20px;border-radius:10px;font-weight:600;font-size:14px;white-space:nowrap;}
+  .chat-input-row button:disabled{opacity:.5;cursor:default;}
+  .chat-input-row button:hover:not(:disabled){background:var(--rust-dark);}
+
+  /* ---------- SECTIONS ---------- */
+  section{max-width:1040px;margin:0 auto;padding:56px 24px;}
+  .section-head{margin-bottom:28px;max-width:600px;}
+  .section-head h2{font-size:28px;margin-bottom:8px;}
+  .section-head p{color:#5b5346;font-size:15px;}
+  #itinerary-section, #booking-section{display:none;}
+
+  /* ---------- ITINERARY VARIANTS ---------- */
+  .variants{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;}
+  .variant-card{background:var(--paper);border:1px solid var(--sand-dark);border-radius:14px;padding:22px;}
+  .variant-card h3{font-size:19px;margin-bottom:4px;}
+  .variant-price{color:var(--rust-dark);font-weight:600;font-size:14px;margin-bottom:16px;}
+  .day-row{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--sand-dark);font-size:13.5px;}
+  .day-row:first-of-type{border-top:none;}
+  .day-num{font-family:'Fraunces',serif;color:var(--rust);font-size:15px;min-width:26px;}
+  .day-detail div{margin-bottom:2px;color:#4a4438;}
+  .day-detail b{color:var(--ink);}
+  .variant-card .cta{margin-top:16px;width:100%;background:var(--night);color:var(--paper);padding:11px;border-radius:9px;font-weight:600;font-size:13.5px;}
+  .variant-card .cta:hover{background:var(--night-deep);}
+  .variant-card .cta:disabled{opacity:.45;cursor:default;}
+
+  /* ---------- BOOKING ASSISTANT ---------- */
+  .queue{display:flex;flex-direction:column;gap:10px;max-width:560px;}
+  .queue-item{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border:1px solid var(--sand-dark);border-radius:10px;background:var(--paper);font-size:14px;}
+  .status-pill{font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:99px;white-space:nowrap;}
+  .status-waiting{background:var(--sand);color:#8a7f68;}
+  .status-sending{background:var(--rust-light);color:var(--rust-dark);}
+  .status-confirmed{background:var(--sage-light);color:var(--sage);}
+  .governance-note{margin-top:16px;font-size:13px;color:#5b5346;background:var(--sand);border-radius:10px;padding:12px 16px;max-width:560px;}
+
+  /* ---------- AFTER-SALES ---------- */
+  .aftersales-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;}
+  .as-card{background:var(--paper);border:1px solid var(--sand-dark);border-radius:14px;padding:22px;}
+  .as-card h3{font-size:16px;margin-bottom:8px;}
+  .as-card p{font-size:13.5px;color:#5b5346;margin-bottom:14px;}
+  .checklist label{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;margin-bottom:8px;color:#3d372c;}
+  .checklist input{margin-top:2px;}
+  .as-card textarea{width:100%;border:1px solid var(--sand-dark);border-radius:8px;padding:9px 10px;font-family:'Inter',sans-serif;font-size:13px;resize:vertical;min-height:64px;margin-bottom:10px;background:var(--paper);color:var(--ink);}
+  .as-card button.small{background:var(--sage);color:var(--paper);padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;}
+  .as-card button.small:hover{background:#3c4a37;}
+  .stars{display:flex;gap:4px;margin-bottom:12px;font-size:20px;color:var(--sand-dark);}
+  .stars span{cursor:pointer;}
+  .stars span.active{color:var(--gold);}
+  .confirm-note{font-size:12.5px;color:var(--sage);font-weight:600;margin-top:8px;display:none;}
+
+  /* ---------- FILTER BAR ---------- */
+  .filter-bar{background:var(--sand);border-radius:12px;padding:14px 16px;margin-bottom:32px;}
+  .filter-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+  .filter-bar select, .filter-bar input[type="text"], .filter-bar input[type="date"]{border:1px solid var(--sand-dark);border-radius:8px;padding:9px 12px;font-family:'Inter',sans-serif;font-size:13.5px;background:var(--paper);color:var(--ink);}
+  .filter-bar input[type="text"]{flex:1;min-width:160px;}
+  .filter-bar button.search-btn{background:var(--night);color:var(--paper);padding:9px 18px;border-radius:8px;font-weight:600;font-size:13.5px;}
+  .filter-bar button.search-btn:hover{background:var(--night-deep);}
+  .filter-toggle{background:none;border:none;color:var(--rust-dark);font-size:13px;font-weight:600;text-decoration:underline;padding:9px 2px;white-space:nowrap;}
+  .filter-more{display:none;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--sand-dark);}
+  .filter-more.open{display:flex;}
+  .filter-more label{font-size:12.5px;color:#5b5346;display:flex;align-items:center;gap:6px;}
+  .filter-note{width:100%;font-size:12px;color:#8a7f68;margin-top:2px;}
+  .filter-empty{font-size:13px;color:#8a7f68;padding:6px 2px 0;display:none;}
+  .idea-card.hidden{display:none;}
+  .inspire-row.hidden{display:none;}
+  .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange{background:var(--rust) !important;border-color:var(--rust) !important;}
+  .flatpickr-day.inRange{background:var(--rust-light) !important;border-color:var(--rust-light) !important;box-shadow:none !important;}
+  .flatpickr-day.today{border-color:var(--rust) !important;}
+
+  /* ---------- INSPIRATION ROWS ---------- */
+  .inspire-row{margin-bottom:40px;}
+  .inspire-row-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;}
+  .inspire-row-head h3{font-size:19px;}
+  .inspire-row-head span{font-size:12.5px;color:#8a7f68;}
+  .idea-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;}
+  .idea-card{border:1px solid var(--sand-dark);border-radius:14px;overflow:hidden;background:var(--paper);transition:transform .15s ease;}
+  .idea-card:hover{transform:translateY(-3px);}
+  .idea-thumb{position:relative;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;}
+  .idea-thumb svg{width:44%;height:44%;opacity:.92;}
+  .idea-tag{position:absolute;top:10px;left:10px;font-size:10.5px;font-weight:600;letter-spacing:.04em;padding:3px 9px;border-radius:99px;background:rgba(251,248,241,.9);color:var(--ink);text-transform:uppercase;}
+  .idea-body{padding:14px 16px 16px;}
+  .idea-body h4{font-family:'Fraunces',serif;font-weight:500;font-size:15.5px;margin-bottom:4px;}
+  .idea-body p{font-size:12.5px;color:#5b5346;}
+
+  footer{max-width:1040px;margin:0 auto;padding:20px 24px 48px;font-size:12px;color:#8a7f68;border-top:1px solid var(--sand-dark);padding-top:20px;}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <svg viewBox="0 0 1040 340" preserveAspectRatio="none" aria-hidden="true">
+    <circle cx="520" cy="140" r="60" fill="var(--gold)" opacity="0.9"/>
+    <path d="M0 260 Q140 190 300 250 T620 240 T1040 255 V340 H0 Z" fill="#C97A3E" opacity="0.55"/>
+    <path d="M0 300 Q180 230 400 290 T780 280 T1040 300 V340 H0 Z" fill="#B5651D" opacity="0.85"/>
+    <path d="M0 330 Q220 280 480 320 T1040 325 V340 H0 Z" fill="#8C4A15"/>
+    <g opacity="0.8" transform="translate(120,232)">
+      <line x1="0" y1="0" x2="0" y2="46" stroke="#241C15" stroke-width="4" stroke-linecap="round"/>
+      <path d="M0 6 C -26 -4, -38 -22, -30 -30 C -22 -22, -8 -14, 0 6 Z" fill="#241C15"/>
+      <path d="M0 10 C 26 0, 40 -16, 32 -26 C 22 -18, 8 -10, 0 10 Z" fill="#241C15"/>
+    </g>
+  </svg>
+  <div class="hero-content">
+    <div class="brand"><span></span>Namibia Travel &amp; Life</div>
+    <div class="hero-head">
+      <div class="eyebrow" style="color:var(--gold)">Concept prototype</div>
+      <h1>The smartest way to experience Namibia.</h1>
+      <p>Tell your travel companion what you're after. It builds a real, bookable plan — no forms.</p>
+    </div>
+
+    <div class="chat-panel">
+      <div class="chat-log" id="chatLog"></div>
+      <div class="chat-input-row">
+        <input id="chatInput" type="text" placeholder="What do you want to do in Namibia?" autocomplete="off">
+        <button id="sendBtn">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section id="itinerary-section">
+  <div class="section-head">
+    <div class="eyebrow">Your plan</div>
+    <h2>A few ways to do this trip</h2>
+    <p>Generated from the conversation above — accommodation, activities and dining together, not separate silos.</p>
+  </div>
+  <div class="variants" id="variantsContainer"></div>
+</section>
+
+<section id="booking-section">
+  <div class="section-head">
+    <div class="eyebrow">Booking assistant</div>
+    <h2>Turning the plan into confirmed reality</h2>
+    <p>Requests go out one at a time — never a flood to every partner at once.</p>
+  </div>
+  <div class="queue" id="queueContainer"></div>
+  <div class="governance-note" id="governanceNote"></div>
+</section>
+
+<section>
+  <div class="section-head">
+    <div class="eyebrow">After your trip</div>
+    <h2>The companion doesn't stop at check-in</h2>
+    <p>Preparation, support on the road, and a feedback loop that improves every future traveler's plan.</p>
+  </div>
+  <div class="aftersales-grid">
+    <div class="as-card">
+      <h3>Prep checklist</h3>
+      <p>Route-specific, generated with the plan.</p>
+      <div class="checklist">
+        <label><input type="checkbox">Confirm 4x4 rental &amp; spare tyre</label>
+        <label><input type="checkbox">Cash for park entry fees</label>
+        <label><input type="checkbox">Download offline maps for Damaraland</label>
+        <label><input type="checkbox">Fuel up before Sesriem — next station is 2h out</label>
+      </div>
+      <button class="small" onclick="window.print()">Print checklist</button>
+    </div>
+    <div class="as-card">
+      <h3>Something went wrong on the road</h3>
+      <p>Flat tyre, closed route, a booking that fell through — get help without hunting for a phone number.</p>
+      <textarea placeholder="Describe what happened..."></textarea>
+      <button class="small" onclick="mockSubmit(this,'Support notified. Someone will reach out shortly.')">Send</button>
+      <div class="confirm-note"></div>
+    </div>
+    <div class="as-card">
+      <h3>Share your trip</h3>
+      <p>Feeds better suggestions to the next traveler planning a similar route.</p>
+      <div class="stars" id="starRow">
+        <span data-v="1">&#9733;</span><span data-v="2">&#9733;</span><span data-v="3">&#9733;</span><span data-v="4">&#9733;</span><span data-v="5">&#9733;</span>
+      </div>
+      <textarea placeholder="What was the highlight?"></textarea>
+      <button class="small" onclick="mockSubmit(this,'Thanks — published to the community.')">Publish</button>
+      <div class="confirm-note"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <div class="eyebrow">Explore</div>
+    <h2>Get inspired, browse anytime</h2>
+    <p>No interview needed — the same magazine-style catalog is browsable directly, for travelers who'd rather look than chat.</p>
+  </div>
+  <div class="filter-bar">
+    <div class="filter-row">
+      <select id="filterCategory">
+        <option value="">All categories</option>
+        <option value="Places to stay">Accommodation</option>
+        <option value="Things to do">Activities</option>
+        <option value="Where to eat">Restaurants</option>
+        <option value="Regions to explore">Regions</option>
+      </select>
+      <label>Date <input type="text" id="filterDate" placeholder="Select date(s)" readonly style="width:170px;cursor:pointer"></label>
+      <input type="text" id="filterKeyword" placeholder="Search by keyword…">
+      <button class="search-btn" id="filterBtn">Search</button>
+      <button class="filter-toggle" id="filterToggle">More filters ▾</button>
+      <span class="filter-note">Dates are captured for when live partner availability is connected — this demo catalog isn't date-checked yet.</span>
+    </div>
+    <div class="filter-more" id="filterMore">
+      <select id="filterRegion">
+        <option value="">All regions</option>
+        <option value="Etosha">Etosha</option>
+        <option value="Damaraland">Damaraland</option>
+        <option value="Sossusvlei">Sossusvlei</option>
+        <option value="Swakopmund">Swakopmund</option>
+        <option value="Fish River Canyon">Fish River Canyon</option>
+        <option value="Windhoek">Windhoek</option>
+      </select>
+      <select id="filterBudget">
+        <option value="">Any budget</option>
+        <option value="budget">Budget</option>
+        <option value="mid-range">Mid-range</option>
+        <option value="premium">Premium</option>
+      </select>
+    </div>
+  </div>
+  <p class="filter-empty" id="filterEmpty">No matches — try clearing a filter.</p>
+  <div id="inspireRows"></div>
+</section>
+
+<footer>
+  Interactive concept prototype for internal and partner presentations. The traveler chat and itinerary are generated live by Claude; partner catalog, availability and the booking queue are illustrative demo data, not live inventory.
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+<script>
+// ---------- sample partner catalog (demo data, grounds the AI's plan instead of letting it invent names) ----------
+const CATALOG = `
+Windhoek: Olive Grove Guesthouse (boutique, mid-range) — city base, 1 night typical.
+Etosha (Okaukuejo area): Ongava Tented Camp (premium, waterhole views) / Etosha Safari Lodge (mid-range) — game drives, night hide.
+Damaraland: Doro Nawas Camp (premium, desert-adapted elephants, rock art at Twyfelfontein) — 2 nights typical.
+Swakopmund (coast): The Delight Hotel (mid-range) — activities: quad biking, dune adventure, seal colony tour, seafood restaurants (The Tug, Ocean Cellar).
+Sossusvlei: Sossus Dune Lodge (mid-range, inside the park gate) / Little Kulala (premium) — sunrise dune climb at Deadvlei.
+Fish River Canyon: Canyon Roadhouse (mid-range, quirky vintage-car theme) — canyon viewpoint, sundowner drives.
+Approx. drive times (no driving after dark, factor in fuel stops): Windhoek-Etosha 4.5h, Etosha-Damaraland 4h, Damaraland-Swakopmund 3.5h, Swakopmund-Sossusvlei 5.5h, Sossusvlei-Fish River Canyon 5h.
+`;
+
+const SYSTEM_PROMPT = `You are Kaia, the AI travel companion for a Namibia travel platform. Slogan: "The smartest way to experience Namibia."
+
+Conduct a short, warm, conversational interview to learn: trip length (nights), interests/style (wildlife, adventure, relaxation, culture), budget tier (budget/mid-range/premium), and who's travelling (solo, couple, family, friends). Ask ONE short question at a time. Keep replies to 1-3 sentences, no bullet lists during the interview. Do not exceed 4 questions total — this is a live demo, converge fast.
+
+Once you have enough information, STOP asking questions. Reply with one short sentence introducing the plan, then output ONLY a fenced code block starting with \`\`\`json containing an object with this exact shape:
+{"trip_summary":"one sentence","variants":[{"name":"string","estimated_total_usd":number,"days":[{"day":1,"location":"string","accommodation":"string","activity":"string","restaurant":"string"}]}]}
+Provide exactly 2 variants. Base every accommodation/activity choice ONLY on this partner catalog — never invent other named properties, and respect the drive-time/no-night-driving facts when sequencing days:
+
+${CATALOG}
+
+After the JSON block, do not add more text.`;
+
+let history = [];
+let itineraryShown = false;
+
+const chatLog = document.getElementById('chatLog');
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+
+function addMsg(role, text){
+  const el = document.createElement('div');
+  el.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
+  el.textContent = text;
+  chatLog.appendChild(el);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return el;
+}
+
+function addTyping(){
+  const el = document.createElement('div');
+  el.className = 'msg typing';
+  el.textContent = 'Kaia is thinking…';
+  chatLog.appendChild(el);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return el;
+}
+
+async function sendMessage(){
+  const text = chatInput.value.trim();
+  if(!text) return;
+  addMsg('user', text);
+  history.push({role:'user', content:text});
+  chatInput.value = '';
+  chatInput.disabled = true;
+  sendBtn.disabled = true;
+  const typingEl = addTyping();
+
+  try{
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: history
+      })
+    });
+    const data = await response.json();
+    const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+    typingEl.remove();
+
+    const jsonMatch = textBlocks.match(/```json\s*([\s\S]*?)```/);
+    if(jsonMatch){
+      const introText = textBlocks.slice(0, jsonMatch.index).trim();
+      if(introText) addMsg('ai', introText);
+      history.push({role:'assistant', content:textBlocks});
+      try{
+        const plan = JSON.parse(jsonMatch[1]);
+        renderItinerary(plan);
+      }catch(e){
+        addMsg('ai', "I put together a plan but had trouble formatting it — let's try refining what you're looking for.");
+      }
+    } else {
+      addMsg('ai', textBlocks || "Sorry, I didn't catch that — could you say more?");
+      history.push({role:'assistant', content:textBlocks});
+    }
+  }catch(err){
+    typingEl.remove();
+    addMsg('ai', "Something went wrong reaching the travel companion. Please try again.");
+  }
+  chatInput.disabled = false;
+  sendBtn.disabled = false;
+  chatInput.focus();
+}
+
+sendBtn.addEventListener('click', sendMessage);
+chatInput.addEventListener('keydown', e => { if(e.key === 'Enter') sendMessage(); });
+
+// ---------- itinerary rendering ----------
+function renderItinerary(plan){
+  const container = document.getElementById('variantsContainer');
+  container.innerHTML = '';
+  (plan.variants || []).forEach((variant, idx) => {
+    const card = document.createElement('div');
+    card.className = 'variant-card';
+    let daysHtml = '';
+    (variant.days || []).forEach(d => {
+      daysHtml += `<div class="day-row"><div class="day-num">${d.day}</div><div class="day-detail">
+        <div><b>${d.location || ''}</b></div>
+        <div>Stay: ${d.accommodation || '—'}</div>
+        <div>Activity: ${d.activity || '—'}</div>
+        <div>Dinner: ${d.restaurant || '—'}</div>
+      </div></div>`;
+    });
+    card.innerHTML = `<h3>${variant.name || 'Variant'}</h3>
+      <div class="variant-price">~$${(variant.estimated_total_usd || 0).toLocaleString()} estimated</div>
+      ${daysHtml}
+      <button class="cta" onclick="startBooking(${idx})">Request availability &amp; book</button>`;
+    container.appendChild(card);
+  });
+  document.getElementById('itinerary-section').style.display = 'block';
+  document.getElementById('itinerary-section').scrollIntoView({behavior:'smooth', block:'start'});
+  window.currentPlan = plan;
+}
+
+// ---------- booking assistant demo (mocked, illustrates request-governance) ----------
+function startBooking(variantIdx){
+  const variant = window.currentPlan.variants[variantIdx];
+  const props = [...new Set(variant.days.map(d => d.accommodation).filter(Boolean))];
+  const queueEl = document.getElementById('queueContainer');
+  queueEl.innerHTML = '';
+  const note = document.getElementById('governanceNote');
+  note.textContent = 'Only one request is active at a time — this protects partners from being flooded with speculative enquiries, and mirrors how a good travel agency would work a booking.';
+
+  const rows = props.map(p => {
+    const row = document.createElement('div');
+    row.className = 'queue-item';
+    row.innerHTML = `<span>${p}</span><span class="status-pill status-waiting">Waiting</span>`;
+    queueEl.appendChild(row);
+    return row;
+  });
+
+  document.getElementById('booking-section').style.display = 'block';
+  document.getElementById('booking-section').scrollIntoView({behavior:'smooth', block:'start'});
+
+  let i = 0;
+  function processNext(){
+    if(i >= rows.length) return;
+    const pill = rows[i].querySelector('.status-pill');
+    pill.className = 'status-pill status-sending';
+    pill.textContent = 'Sending request…';
+    setTimeout(() => {
+      pill.className = 'status-pill status-confirmed';
+      pill.textContent = 'Confirmed';
+      i++;
+      processNext();
+    }, 1400);
+  }
+  processNext();
+}
+
+// ---------- after-sales mock interactions ----------
+function mockSubmit(btn, message){
+  const note = btn.parentElement.querySelector('.confirm-note');
+  note.textContent = message;
+  note.style.display = 'block';
+}
+document.querySelectorAll('#starRow span').forEach(star => {
+  star.addEventListener('click', () => {
+    const v = parseInt(star.dataset.v);
+    document.querySelectorAll('#starRow span').forEach(s => {
+      s.classList.toggle('active', parseInt(s.dataset.v) <= v);
+    });
+  });
+});
+
+// ---------- inspiration rows (browsable magazine catalog, demo data) ----------
+const ICONS = {
+  lodge: '<path d="M4 42 L24 14 L44 42 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><line x1="4" y1="42" x2="44" y2="42" stroke="currentColor" stroke-width="3"/><line x1="24" y1="26" x2="24" y2="42" stroke="currentColor" stroke-width="3"/>',
+  activity: '<circle cx="24" cy="24" r="10" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="24" cy="24" r="3" fill="currentColor"/><line x1="4" y1="24" x2="14" y2="24" stroke="currentColor" stroke-width="3"/><line x1="34" y1="24" x2="44" y2="24" stroke="currentColor" stroke-width="3"/>',
+  dining: '<line x1="14" y1="6" x2="14" y2="42" stroke="currentColor" stroke-width="3"/><line x1="10" y1="6" x2="10" y2="18" stroke="currentColor" stroke-width="3"/><line x1="14" y1="6" x2="14" y2="18" stroke="currentColor" stroke-width="3"/><line x1="18" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="3"/><path d="M34 6 C28 6 28 18 34 20 L34 42" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>',
+  region: '<path d="M4 36 L16 16 L24 28 L32 12 L44 36 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>'
+};
+
+const IDEAS = [
+  { title:'Places to stay', icon:'lodge', color:'var(--rust)', bg:'rust-light', items:[
+    {t:'Ongava Tented Camp', d:'Private reserve on Etosha\u2019s southern boundary, waterhole views.', region:'Etosha', budget:'premium'},
+    {t:'Doro Nawas Camp', d:'Desert-adapted elephants and Damaraland rock art nearby.', region:'Damaraland', budget:'premium'},
+    {t:'Little Kulala', d:'Dune-side luxury at the gates of Sossusvlei.', region:'Sossusvlei', budget:'premium'},
+    {t:'Canyon Roadhouse', d:'Vintage-car themed stop above Fish River Canyon.', region:'Fish River Canyon', budget:'mid-range'}
+  ]},
+  { title:'Things to do', icon:'activity', color:'var(--sage)', bg:'sage-light', items:[
+    {t:'Sunrise dune climb', d:'Deadvlei at first light, before the heat sets in.', region:'Sossusvlei', budget:'budget'},
+    {t:'Etosha night hide', d:'Watch the waterhole after dark from a lit viewing deck.', region:'Etosha', budget:'budget'},
+    {t:'Dune quad biking', d:'Coastal dunes just outside Swakopmund.', region:'Swakopmund', budget:'mid-range'},
+    {t:'Twyfelfontein rock art', d:'Guided walk through 6,000-year-old engravings.', region:'Damaraland', budget:'budget'}
+  ]},
+  { title:'Where to eat', icon:'dining', color:'var(--gold)', bg:'sand', items:[
+    {t:'The Tug', d:'Seafood on a restored jetty in Swakopmund.', region:'Swakopmund', budget:'mid-range'},
+    {t:'Ocean Cellar', d:'Fresh catch, oceanfront, Swakopmund.', region:'Swakopmund', budget:'premium'},
+    {t:'Xwama Cultural Village', d:'Traditional Namibian dishes in Windhoek.', region:'Windhoek', budget:'budget'}
+  ]},
+  { title:'Regions to explore', icon:'region', color:'var(--night)', bg:'sand-dark', items:[
+    {t:'Etosha National Park', d:'Namibia\u2019s premier wildlife-viewing destination.', region:'Etosha', budget:'mid-range'},
+    {t:'Damaraland', d:'Rugged desert, ancient rock art, rare wildlife.', region:'Damaraland', budget:'mid-range'},
+    {t:'Sossusvlei', d:'The towering red dunes of the Namib.', region:'Sossusvlei', budget:'mid-range'},
+    {t:'Fish River Canyon', d:'One of the largest canyons in the world.', region:'Fish River Canyon', budget:'mid-range'}
+  ]}
+];
+
+function renderIdeas(){
+  const root = document.getElementById('inspireRows');
+  IDEAS.forEach(row => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'inspire-row';
+    rowEl.dataset.rowTitle = row.title;
+    const cardsHtml = row.items.map(item => `
+      <div class="idea-card" data-region="${item.region}" data-budget="${item.budget}" data-keyword="${(item.t+' '+item.d).toLowerCase()}">
+        <div class="idea-thumb" style="background:var(--${row.bg})">
+          <span class="idea-tag">${row.title}</span>
+          <svg viewBox="0 0 48 48" style="color:${row.color}">${ICONS[row.icon]}</svg>
+        </div>
+        <div class="idea-body">
+          <h4>${item.t}</h4>
+          <p>${item.d}</p>
+        </div>
+      </div>`).join('');
+    rowEl.innerHTML = `<div class="inspire-row-head"><h3>${row.title}</h3><span>${row.items.length} examples</span></div>
+      <div class="idea-cards">${cardsHtml}</div>`;
+    root.appendChild(rowEl);
+  });
+}
+renderIdeas();
+
+// ---------- classic filter bar (secondary path for travelers who'd rather not chat) ----------
+function applyFilters(){
+  const category = document.getElementById('filterCategory').value;
+  const region = document.getElementById('filterRegion').value;
+  const budget = document.getElementById('filterBudget').value;
+  const keyword = document.getElementById('filterKeyword').value.trim().toLowerCase();
+  let anyVisible = false;
+
+  document.querySelectorAll('.inspire-row').forEach(rowEl => {
+    if(category && rowEl.dataset.rowTitle !== category){
+      rowEl.classList.add('hidden');
+      return;
+    }
+    let rowHasVisible = false;
+    rowEl.querySelectorAll('.idea-card').forEach(card => {
+      const matchesRegion = !region || card.dataset.region === region;
+      const matchesBudget = !budget || card.dataset.budget === budget;
+      const matchesKeyword = !keyword || card.dataset.keyword.includes(keyword);
+      const visible = matchesRegion && matchesBudget && matchesKeyword;
+      card.classList.toggle('hidden', !visible);
+      if(visible){ rowHasVisible = true; anyVisible = true; }
+    });
+    rowEl.classList.toggle('hidden', !rowHasVisible);
+  });
+  document.getElementById('filterEmpty').style.display = anyVisible ? 'none' : 'block';
+}
+document.getElementById('filterBtn').addEventListener('click', applyFilters);
+document.getElementById('filterCategory').addEventListener('change', applyFilters);
+document.getElementById('filterRegion').addEventListener('change', applyFilters);
+document.getElementById('filterBudget').addEventListener('change', applyFilters);
+document.getElementById('filterKeyword').addEventListener('keydown', e => { if(e.key === 'Enter') applyFilters(); });
+
+const filterMore = document.getElementById('filterMore');
+const filterToggle = document.getElementById('filterToggle');
+filterToggle.addEventListener('click', () => {
+  const open = filterMore.classList.toggle('open');
+  filterToggle.textContent = open ? 'Hide filters ▲' : 'More filters ▾';
+});
+
+flatpickr('#filterDate', {
+  mode: 'range',
+  dateFormat: 'd M',
+  minDate: 'today',
+  allowInput: false,
+  onChange: applyFilters
+});
+
+// initial greeting
+addMsg('ai', "Hi, I'm Kaia. Tell me a bit about the trip you're dreaming of — how many days do you have?");
+</script>
+</body>
+</html>
