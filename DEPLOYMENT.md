@@ -21,11 +21,12 @@ Diese Doku beschreibt, wie man NamibWay lokal zum Laufen bringt und auf einem Pr
 | Node.js | ≥ 18 | Frontend-Build (Vite) |
 | npm | ≥ 9 | JS-Abhängigkeiten |
 | PostgreSQL | ≥ 15 | Datenbank |
+| Redis | ≥ 6 | Queue-Backend (Horizon) |
 
 Optional für Produktion:
-- **Docker** — lokal für Postgres (siehe `docker-compose.yml`), auf dem Server nicht nötig falls Postgres direkt installiert ist
+- **Docker** — lokal für Postgres + Redis (siehe `docker-compose.yml`), auf dem Server nicht nötig falls beide direkt installiert sind
 - **nginx** — Webserver vor Laravel
-- **Supervisor** oder systemd — für den Laravel Queue-Worker
+- **Supervisor** oder systemd — für den Horizon-Prozess (Queue-Worker)
 
 ---
 
@@ -48,13 +49,13 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-### 3. Postgres lokal starten (Docker)
+### 3. Postgres + Redis lokal starten (Docker)
 
 ```bash
 docker-compose up -d
 ```
 
-Das startet einen Postgres-Container mit den Zugangsdaten aus `.env` (`namibway` / `namibway`).
+Das startet einen Postgres-Container mit den Zugangsdaten aus `.env` (`namibway` / `namibway`) sowie einen Redis-Container auf Port 6379 (Queue-Backend für Horizon).
 
 ### 4. Migrieren + seeden
 
@@ -69,15 +70,26 @@ php artisan db:seed   # optional, legt Demo-Listings + Test-User an
 php artisan make:filament-user
 ```
 
+`make:filament-user` legt nur den Login an — Panel-Zugriff wird separat über `users.is_admin`
+gesteuert (`App\Models\User::canAccessPanel()`, siehe auch Horizons `viewHorizon`-Gate).
+Danach also:
+
+```bash
+php artisan tinker --execute="App\Models\User::where('email', 'DEINE-EMAIL')->update(['is_admin' => true]);"
+```
+
 ### 6. Alles starten
 
 ```bash
 composer run dev
 ```
 
-Das startet parallel: Laravel-Server, Vite-Dev-Server, Queue-Listener, Log-Tail.
+Das startet parallel: Laravel-Server, Vite-Dev-Server, Queue-Listener, Log-Tail. Für Horizon
+statt des einfachen Queue-Listeners separat `php artisan horizon` laufen lassen.
 
-App läuft dann unter **http://localhost:8000**, Admin unter **http://localhost:8000/admin**.
+App läuft dann unter **http://localhost:8000**, Admin unter **http://localhost:8000/admin**,
+Horizon-Dashboard unter **http://localhost:8000/horizon** (lokal ohne Login-Zwang, siehe
+`app/Providers/HorizonServiceProvider.php`).
 
 ---
 
@@ -85,12 +97,14 @@ App läuft dann unter **http://localhost:8000**, Admin unter **http://localhost:
 
 Nginx, DNS und SSL-Zertifikat werden hier als bereits eingerichtet vorausgesetzt.
 
-### 1. PostgreSQL installieren (falls noch nicht vorhanden)
+### 1. PostgreSQL + Redis installieren (falls noch nicht vorhanden)
 
 ```bash
 sudo apt update
-sudo apt install postgresql postgresql-contrib
+sudo apt install postgresql postgresql-contrib redis-server php-redis
 sudo systemctl enable --now postgresql
+sudo systemctl enable --now redis-server
+redis-cli ping   # sollte PONG zurückgeben
 ```
 
 ### 2. Datenbank + Benutzer anlegen
@@ -154,8 +168,13 @@ DB_USERNAME=namibway
 DB_PASSWORD=ein-sicheres-passwort
 
 SESSION_DRIVER=database
-QUEUE_CONNECTION=database
+QUEUE_CONNECTION=redis
 CACHE_STORE=database
+
+REDIS_CLIENT=phpredis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
 
 MAIL_MAILER=smtp
 MAIL_HOST=...
@@ -198,35 +217,45 @@ cd /var/www/namibway
 php artisan make:filament-user
 ```
 
-### 7. Queue-Worker dauerhaft laufen lassen (Supervisor)
+`make:filament-user` legt nur den Login an — Panel- **und** Horizon-Zugriff hängen zusätzlich
+an `users.is_admin` (siehe `App\Models\User::canAccessPanel()` und
+`app/Providers/HorizonServiceProvider.php`). Danach also:
 
-`/etc/supervisor/conf.d/namibway-worker.conf`:
+```bash
+php artisan tinker --execute="App\Models\User::where('email', 'DEINE-EMAIL')->update(['is_admin' => true]);"
+```
+
+Ohne diesen Schritt bekommt man beim Login "These credentials do not match our records." —
+das Passwort ist korrekt, nur `is_admin` fehlt noch.
+
+### 7. Horizon dauerhaft laufen lassen (Supervisor)
+
+`/etc/supervisor/conf.d/namibway-horizon.conf`:
 
 ```ini
-[program:namibway-worker]
-process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/namibway/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+[program:namibway-horizon]
+process_name=%(program_name)s
+command=php /var/www/namibway/artisan horizon
 autostart=true
 autorestart=true
 stopasgroup=true
 killasgroup=true
 user=www-data
-numprocs=1
 redirect_stderr=true
-stdout_logfile=/var/www/namibway/storage/logs/worker.log
+stdout_logfile=/var/www/namibway/storage/logs/horizon.log
 stopwaitsecs=3600
 ```
 
 ```bash
 sudo supervisorctl reread
 sudo supervisorctl update
-sudo supervisorctl start namibway-worker:*
+sudo supervisorctl start namibway-horizon:*
 ```
 
-> Hinweis: Aktuell läuft die Queue über den `database`-Treiber. Laut Konzept ist für die
-> Request-Governance (siehe `CLAUDE.md`) später Redis + Horizon vorgesehen — sobald das
-> gebaut ist, hier `queue:work` durch `horizon` ersetzen (`composer require laravel/horizon`,
-> Panel installieren, Supervisor-Command auf `php artisan horizon` ändern).
+Dashboard danach unter `https://www.namibway.com/horizon` (nur für Nutzer mit `is_admin = true`).
+
+`deploy_namibway.sh` startet den Supervisor-Prozess `namibway-horizon` bei jedem Deploy automatisch neu
+(`QUEUE_WORKER_NAME` im Skript-Kopf) — passt zum obigen Supervisor-Programmnamen.
 
 ### 8. Cronjob für den Laravel Scheduler
 
@@ -255,7 +284,8 @@ bash deploy_namibway.sh --no-npm       # Deploy ohne npm-Build
 bash deploy_namibway.sh --no-migrate   # Deploy ohne Migrationen
 php artisan make:filament-user         # neuen Admin-User anlegen
 php artisan migrate:status             # Migrationsstatus prüfen
-docker-compose up -d                   # lokal: Postgres starten
+docker-compose up -d                   # lokal: Postgres + Redis starten
+php artisan horizon                    # lokal: Horizon im Vordergrund starten
 ```
 
 ---
@@ -282,8 +312,16 @@ php artisan view:clear
 php artisan filament:optimize-clear
 ```
 
-**Queue-Worker verarbeitet keine Jobs:**
+**Horizon verarbeitet keine Jobs:**
 ```bash
-sudo supervisorctl status namibway-worker:*
-tail -f /var/www/namibway/storage/logs/worker.log
+sudo supervisorctl status namibway-horizon:*
+tail -f /var/www/namibway/storage/logs/horizon.log
+redis-cli ping                          # Redis erreichbar?
+php artisan horizon:status              # sollte "active" sein
+```
+
+**"These credentials do not match our records." beim Admin-Login (Passwort ist aber richtig):**
+`is_admin` fehlt für diesen User — siehe Schritt 6 oben (`canAccessPanel()` verweigert sonst den Zugriff).
+```bash
+php artisan tinker --execute="App\Models\User::where('email', 'DEINE-EMAIL')->update(['is_admin' => true]);"
 ```

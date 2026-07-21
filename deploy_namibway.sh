@@ -17,7 +17,7 @@ set -e
 APP_DIR="/var/www/namibway"
 REPO_URL="git@github.com:tmerle24/namibway.git"
 BRANCH="main"
-QUEUE_WORKER_NAME="namibway-worker"                   # Supervisor-Programmname
+QUEUE_WORKER_NAME="namibway-horizon"                  # Supervisor-Programmname (php artisan horizon)
 
 SKIP_NPM=false
 SKIP_MIGRATE=false
@@ -104,7 +104,7 @@ php artisan view:clear
 php artisan view:cache
 php artisan event:cache
 
-echo "═══ 8/8 Verzeichnis-Rechte, Queue-Worker neu starten, Maintenance-Mode AUS ═══"
+echo "═══ 8/8 Verzeichnis-Rechte, Horizon neu starten, Maintenance-Mode AUS ═══"
 sudo chown -R "$(whoami):www-data" "$APP_DIR"
 sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
@@ -117,9 +117,9 @@ php artisan up
 echo ""
 if [ "$FIRST_INSTALL" = true ]; then
     echo "✅ Erstinstallation abgeschlossen."
-    echo "   Nächste Schritte: Supervisor für den Queue-Worker konfigurieren,"
+    echo "   Nächste Schritte: Redis installieren, Supervisor für Horizon konfigurieren,"
     echo "   R2-Bucket + Anthropic-API-Key in .env prüfen,"
-    echo "   ersten Admin-User anlegen:"
+    echo "   ersten Admin-User anlegen (danach is_admin=true setzen, siehe DEPLOYMENT.md):"
     echo "   php artisan make:filament-user"
 else
     echo "✅ Deploy fertig."
