@@ -1,0 +1,582 @@
+/*
+  Design language for the NamibWay homepage, ported from namibia_travel_prototype.html.
+  Scoped under .kaia-page so it never leaks into the shadcn-themed dashboard/admin/auth pages,
+  which use a different token system (see resources/css/app.css).
+*/
+
+.kaia-page {
+    --ink: #241c15;
+    --sand: #ede6d6;
+    --sand-dark: #ded2b8;
+    --rust: #b5651d;
+    --rust-dark: #8c4a15;
+    --rust-light: #f3d9be;
+    --night: #1b2a4a;
+    --night-deep: #101a30;
+    --sage: #4c5d46;
+    --sage-light: #dce4d6;
+    --gold: #e3a857;
+    --paper: #fbf8f1;
+
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+}
+.kaia-page * {
+    box-sizing: border-box;
+}
+.kaia-page h1,
+.kaia-page h2,
+.kaia-page h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    margin: 0;
+}
+.kaia-page p {
+    margin: 0;
+    line-height: 1.6;
+}
+.kaia-page button {
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    border: none;
+}
+.kaia-page .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--rust-dark);
+}
+
+/* ---------- HERO ---------- */
+.kaia-page .hero {
+    position: relative;
+    min-height: 560px;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--night) 0%, var(--night) 38%, var(--gold) 78%, var(--rust) 100%);
+}
+.kaia-page .hero svg.hero-bg {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 60%;
+    display: block;
+}
+.kaia-page .hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 56px 24px 40px;
+}
+.kaia-page .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--paper);
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    letter-spacing: 0.02em;
+    margin-bottom: 20px;
+}
+.kaia-page .brand span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    display: inline-block;
+}
+.kaia-page .hero-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+.kaia-page .hero-nav a {
+    color: var(--sand);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid rgba(251, 248, 241, 0.35);
+    border-radius: 8px;
+    padding: 7px 14px;
+}
+.kaia-page .hero-nav a:hover {
+    border-color: var(--paper);
+}
+.kaia-page .hero-head {
+    max-width: 640px;
+    margin-bottom: 36px;
+}
+.kaia-page .hero-head h1 {
+    color: var(--paper);
+    font-size: 44px;
+    line-height: 1.08;
+    margin-bottom: 14px;
+}
+.kaia-page .hero-head p {
+    color: var(--sand);
+    font-size: 17px;
+    max-width: 480px;
+}
+
+/* ---------- CHAT PANEL ---------- */
+.kaia-page .chat-panel {
+    background: var(--paper);
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(16, 26, 48, 0.35);
+    max-width: 640px;
+    overflow: hidden;
+}
+.kaia-page .chat-log {
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 22px 22px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.kaia-page .msg {
+    max-width: 82%;
+    padding: 11px 15px;
+    border-radius: 14px;
+    font-size: 14.5px;
+    line-height: 1.55;
+}
+.kaia-page .msg.ai {
+    background: var(--sand);
+    color: var(--ink);
+    border-bottom-left-radius: 4px;
+    align-self: flex-start;
+    white-space: pre-wrap;
+}
+.kaia-page .msg.user {
+    background: var(--night);
+    color: var(--paper);
+    border-bottom-right-radius: 4px;
+    align-self: flex-end;
+}
+.kaia-page .msg.typing {
+    background: var(--sand);
+    color: var(--rust-dark);
+    align-self: flex-start;
+    font-style: italic;
+    font-size: 13px;
+}
+.kaia-page .chat-input-row {
+    display: flex;
+    gap: 8px;
+    padding: 16px 18px 18px;
+    border-top: 1px solid var(--sand-dark);
+}
+.kaia-page .chat-input-row input {
+    flex: 1;
+    border: 1px solid var(--sand-dark);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 14.5px;
+    font-family: 'Inter', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+}
+.kaia-page .chat-input-row input:focus {
+    outline: 2px solid var(--rust);
+    outline-offset: 1px;
+}
+.kaia-page .chat-input-row button {
+    background: var(--rust);
+    color: var(--paper);
+    padding: 0 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+}
+.kaia-page .chat-input-row button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+.kaia-page .chat-input-row button:hover:not(:disabled) {
+    background: var(--rust-dark);
+}
+
+/* ---------- SECTIONS ---------- */
+.kaia-page section {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 56px 24px;
+}
+.kaia-page .section-head {
+    margin-bottom: 28px;
+    max-width: 600px;
+}
+.kaia-page .section-head h2 {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+.kaia-page .section-head p {
+    color: #5b5346;
+    font-size: 15px;
+}
+
+/* ---------- ITINERARY VARIANTS ---------- */
+.kaia-page .variants {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+.kaia-page .variant-card {
+    background: var(--paper);
+    border: 1px solid var(--sand-dark);
+    border-radius: 14px;
+    padding: 22px;
+}
+.kaia-page .variant-card h3 {
+    font-size: 19px;
+    margin-bottom: 4px;
+}
+.kaia-page .variant-price {
+    color: var(--rust-dark);
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+.kaia-page .day-row {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--sand-dark);
+    font-size: 13.5px;
+}
+.kaia-page .day-row:first-of-type {
+    border-top: none;
+}
+.kaia-page .day-num {
+    font-family: 'Fraunces', serif;
+    color: var(--rust);
+    font-size: 15px;
+    min-width: 26px;
+}
+.kaia-page .day-detail div {
+    margin-bottom: 2px;
+    color: #4a4438;
+}
+.kaia-page .day-detail b {
+    color: var(--ink);
+}
+.kaia-page .variant-card .cta {
+    margin-top: 16px;
+    width: 100%;
+    background: var(--night);
+    color: var(--paper);
+    padding: 11px;
+    border-radius: 9px;
+    font-weight: 600;
+    font-size: 13.5px;
+}
+.kaia-page .variant-card .cta:hover {
+    background: var(--night-deep);
+}
+.kaia-page .variant-card .cta:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+/* ---------- BOOKING ASSISTANT ---------- */
+.kaia-page .queue {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 560px;
+}
+.kaia-page .queue-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 16px;
+    border: 1px solid var(--sand-dark);
+    border-radius: 10px;
+    background: var(--paper);
+    font-size: 14px;
+}
+.kaia-page .status-pill {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 4px 11px;
+    border-radius: 99px;
+    white-space: nowrap;
+}
+.kaia-page .status-waiting {
+    background: var(--sand);
+    color: #8a7f68;
+}
+.kaia-page .status-sending {
+    background: var(--rust-light);
+    color: var(--rust-dark);
+}
+.kaia-page .status-confirmed {
+    background: var(--sage-light);
+    color: var(--sage);
+}
+.kaia-page .governance-note {
+    margin-top: 16px;
+    font-size: 13px;
+    color: #5b5346;
+    background: var(--sand);
+    border-radius: 10px;
+    padding: 12px 16px;
+    max-width: 560px;
+}
+
+/* ---------- AFTER-SALES ---------- */
+.kaia-page .aftersales-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+.kaia-page .as-card {
+    background: var(--paper);
+    border: 1px solid var(--sand-dark);
+    border-radius: 14px;
+    padding: 22px;
+}
+.kaia-page .as-card h3 {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+.kaia-page .as-card p {
+    font-size: 13.5px;
+    color: #5b5346;
+    margin-bottom: 14px;
+}
+.kaia-page .checklist label {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    font-size: 13.5px;
+    margin-bottom: 8px;
+    color: #3d372c;
+}
+.kaia-page .checklist input {
+    margin-top: 2px;
+}
+.kaia-page .as-card textarea {
+    width: 100%;
+    border: 1px solid var(--sand-dark);
+    border-radius: 8px;
+    padding: 9px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    resize: vertical;
+    min-height: 64px;
+    margin-bottom: 10px;
+    background: var(--paper);
+    color: var(--ink);
+}
+.kaia-page .as-card button.small {
+    background: var(--sage);
+    color: var(--paper);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.kaia-page .as-card button.small:hover {
+    background: #3c4a37;
+}
+.kaia-page .stars {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+    font-size: 20px;
+    color: var(--sand-dark);
+}
+.kaia-page .stars span {
+    cursor: pointer;
+}
+.kaia-page .stars span.active {
+    color: var(--gold);
+}
+.kaia-page .confirm-note {
+    font-size: 12.5px;
+    color: var(--sage);
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+/* ---------- FILTER BAR ---------- */
+.kaia-page .filter-bar {
+    background: var(--sand);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 32px;
+}
+.kaia-page .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+.kaia-page .filter-bar select,
+.kaia-page .filter-bar input[type='text'],
+.kaia-page .filter-bar input[type='date'] {
+    border: 1px solid var(--sand-dark);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    background: var(--paper);
+    color: var(--ink);
+}
+.kaia-page .filter-bar input[type='text'] {
+    flex: 1;
+    min-width: 160px;
+}
+.kaia-page .filter-bar button.search-btn {
+    background: var(--night);
+    color: var(--paper);
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13.5px;
+}
+.kaia-page .filter-bar button.search-btn:hover {
+    background: var(--night-deep);
+}
+.kaia-page .filter-toggle {
+    background: none;
+    border: none;
+    color: var(--rust-dark);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: underline;
+    padding: 9px 2px;
+    white-space: nowrap;
+}
+.kaia-page .filter-more {
+    display: none;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--sand-dark);
+}
+.kaia-page .filter-more.open {
+    display: flex;
+}
+.kaia-page .filter-more label {
+    font-size: 12.5px;
+    color: #5b5346;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.kaia-page .filter-note {
+    width: 100%;
+    font-size: 12px;
+    color: #8a7f68;
+    margin-top: 2px;
+}
+.kaia-page .filter-empty {
+    font-size: 13px;
+    color: #8a7f68;
+    padding: 6px 2px 0;
+}
+.kaia-page .flatpickr-day.selected,
+.kaia-page .flatpickr-day.startRange,
+.kaia-page .flatpickr-day.endRange {
+    background: var(--rust) !important;
+    border-color: var(--rust) !important;
+}
+.kaia-page .flatpickr-day.inRange {
+    background: var(--rust-light) !important;
+    border-color: var(--rust-light) !important;
+    box-shadow: none !important;
+}
+.kaia-page .flatpickr-day.today {
+    border-color: var(--rust) !important;
+}
+
+/* ---------- INSPIRATION ROWS ---------- */
+.kaia-page .inspire-row {
+    margin-bottom: 40px;
+}
+.kaia-page .inspire-row-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+.kaia-page .inspire-row-head h3 {
+    font-size: 19px;
+}
+.kaia-page .inspire-row-head span {
+    font-size: 12.5px;
+    color: #8a7f68;
+}
+.kaia-page .idea-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+}
+.kaia-page .idea-card {
+    border: 1px solid var(--sand-dark);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--paper);
+    transition: transform 0.15s ease;
+}
+.kaia-page .idea-card:hover {
+    transform: translateY(-3px);
+}
+.kaia-page .idea-thumb {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.kaia-page .idea-thumb svg {
+    width: 44%;
+    height: 44%;
+    opacity: 0.92;
+}
+.kaia-page .idea-tag {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 3px 9px;
+    border-radius: 99px;
+    background: rgba(251, 248, 241, 0.9);
+    color: var(--ink);
+    text-transform: uppercase;
+}
+.kaia-page .idea-body {
+    padding: 14px 16px 16px;
+}
+.kaia-page .idea-body h4 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 15.5px;
+    margin-bottom: 4px;
+}
+.kaia-page .idea-body p {
+    font-size: 12.5px;
+    color: #5b5346;
+}
+
+.kaia-page footer {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 20px 24px 48px;
+    font-size: 12px;
+    color: #8a7f68;
+    border-top: 1px solid var(--sand-dark);
+    padding-top: 20px;
+}
