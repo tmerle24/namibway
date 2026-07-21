@@ -59,6 +59,7 @@ const { verify, isLoading, error, isSupported } = usePasskeyVerify({
             </div>
         </div>
 
+        <!--
         <div class="relative my-6">
             <div class="absolute inset-0 flex items-center">
                 <Separator class="w-full" />
@@ -69,5 +70,6 @@ const { verify, isLoading, error, isSupported } = usePasskeyVerify({
                 </span>
             </div>
         </div>
+        -->
     </div>
 </template>

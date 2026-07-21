@@ -16,10 +16,10 @@ export default defineConfig({
                     weights: [400, 500, 600],
                 }),
                 bunny('Fraunces', {
-                    weights: [400, 500, 600],
+                    weights: [500],
                 }),
                 bunny('Inter', {
-                    weights: [400, 500, 600],
+                    weights: [400, 600],
                 }),
             ],
         }),

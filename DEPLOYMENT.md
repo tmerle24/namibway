@@ -167,7 +167,21 @@ AWS_SECRET_ACCESS_KEY=...
 AWS_BUCKET=...
 AWS_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 AWS_USE_PATH_STYLE_ENDPOINT=true
+
+# Social Login — Client-ID/Secret aus der jeweiligen Developer Console
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI="${APP_URL}/auth/google/callback"
+
+FACEBOOK_CLIENT_ID=...
+FACEBOOK_CLIENT_SECRET=...
+FACEBOOK_REDIRECT_URI="${APP_URL}/auth/facebook/callback"
 ```
+
+> Google: OAuth-Client unter [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+> anlegen, Redirect-URI exakt wie oben eintragen.
+> Facebook: App unter [Meta for Developers](https://developers.facebook.com/apps) anlegen,
+> Produkt „Facebook Login" hinzufügen, gleiche Redirect-URI eintragen.
 
 ### 5. Deploy-Skript erneut ausführen
 

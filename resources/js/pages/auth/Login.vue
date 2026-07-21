@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons.vue';
 import InputError from '@/components/InputError.vue';
 import PasskeyVerify from '@/components/PasskeyVerify.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
@@ -35,8 +36,6 @@ defineProps<{
     >
         {{ status }}
     </div>
-
-    <PasskeyVerify />
 
     <Form
         v-bind="store.form()"
@@ -107,4 +106,8 @@ defineProps<{
             <TextLink :href="register()" :tabindex="5">Sign up</TextLink>
         </div>
     </Form>
+
+    <SocialLoginButtons class="mt-6" />
+
+    <PasskeyVerify />
 </template>
