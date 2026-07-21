@@ -1,1 +1,138 @@
-{}
+{
+    "nav": {
+        "dashboard": "Dashboard",
+        "login": "Inloggen",
+        "register": "Registreren"
+    },
+    "hero": {
+        "title": "De slimste manier om Namibië te beleven.",
+        "subtitle": "Vertel je reisgezel wat je zoekt. Hij stelt een echt, boekbaar plan samen — zonder formulieren."
+    },
+    "chat": {
+        "greeting": "Hoi, ik ben Kaia. Vertel me iets over de reis waar je van droomt — hoeveel dagen heb je?",
+        "placeholder": "Wat wil je doen in Namibië?",
+        "send": "Versturen",
+        "thinking": "Kaia denkt na…",
+        "itineraryReady": "Perfect, dat is genoeg om een plan te schetsen. Hier zijn een paar manieren om deze reis te maken:",
+        "error": "Er ging iets mis bij het bereiken van de reisgezel. Probeer het opnieuw."
+    },
+    "itinerary": {
+        "eyebrow": "Jouw plan",
+        "title": "Een paar manieren om deze reis te maken",
+        "subtitle": "Samengesteld op basis van het gesprek hierboven — accommodatie, activiteiten en eten samen bekeken, niet los van elkaar.",
+        "estimated": "~${amount} geschat",
+        "stay": "Verblijf: {value}",
+        "activity": "Activiteit: {value}",
+        "dinner": "Diner: {value}",
+        "bookCta": "Beschikbaarheid aanvragen & boeken"
+    },
+    "booking": {
+        "eyebrow": "Boekingsassistent",
+        "title": "Van plan naar bevestigde boeking",
+        "subtitle": "Aanvragen gaan één voor één de deur uit — nooit een vloed naar alle partners tegelijk.",
+        "waiting": "Wachten",
+        "sending": "Aanvraag wordt verstuurd…",
+        "confirmed": "Bevestigd",
+        "note": "Er staat altijd maar één aanvraag open tegelijk — dit beschermt partners tegen een stroom van vrijblijvende aanvragen en werkt zoals een goed reisbureau dat zou doen."
+    },
+    "afterSales": {
+        "eyebrow": "Na je reis",
+        "title": "De reisgezel stopt niet bij het inchecken",
+        "subtitle": "Voorbereiding, ondersteuning onderweg en feedback die het plan voor elke volgende reiziger verbetert.",
+        "checklist": {
+            "title": "Voorbereidingschecklist",
+            "subtitle": "Routespecifiek, samen met het plan gegenereerd.",
+            "items": [
+                "Bevestig 4x4-huurauto & reservewiel",
+                "Contant geld voor parkentree",
+                "Download offline kaarten voor Damaraland",
+                "Tank bij vóór Sesriem — het volgende tankstation is 2 uur verderop"
+            ],
+            "print": "Checklist afdrukken"
+        },
+        "support": {
+            "title": "Er ging iets mis onderweg",
+            "subtitle": "Lekke band, afgesloten route, een boeking die niet doorging — krijg hulp zonder een telefoonnummer te zoeken.",
+            "placeholder": "Beschrijf wat er is gebeurd…",
+            "send": "Versturen",
+            "confirm": "Support is op de hoogte gebracht. Iemand neemt binnenkort contact op."
+        },
+        "feedback": {
+            "title": "Deel je reis",
+            "subtitle": "Levert betere suggesties op voor de volgende reiziger met een vergelijkbare route.",
+            "placeholder": "Wat was het hoogtepunt?",
+            "publish": "Publiceren",
+            "confirm": "Bedankt — gepubliceerd voor de community."
+        }
+    },
+    "explore": {
+        "eyebrow": "Ontdekken",
+        "title": "Laat je inspireren, blader wanneer je wilt",
+        "subtitle": "Geen interview nodig — dezelfde magazine-achtige catalogus is direct te doorbladeren, voor reizigers die liever kijken dan chatten.",
+        "filters": {
+            "allCategories": "Alle categorieën",
+            "accommodation": "Accommodatie",
+            "activities": "Activiteiten",
+            "restaurants": "Restaurants",
+            "regions": "Regio's",
+            "date": "Datum",
+            "selectDate": "Selecteer datum(s)",
+            "keyword": "Zoek op trefwoord…",
+            "search": "Zoeken",
+            "moreFilters": "Meer filters ▾",
+            "hideFilters": "Filters verbergen ▲",
+            "note": "Data worden vastgelegd voor wanneer live partnerbeschikbaarheid is gekoppeld — deze catalogus is nog niet op datum gecontroleerd.",
+            "allRegions": "Alle regio's",
+            "anyBudget": "Elk budget",
+            "budget": "Budget",
+            "midRange": "Middenklasse",
+            "premium": "Premium",
+            "empty": "Geen resultaten — probeer een filter te wissen."
+        },
+        "rows": {
+            "accommodation": "Plekken om te verblijven",
+            "activity": "Dingen om te doen",
+            "restaurant": "Waar te eten",
+            "region": "Regio's om te ontdekken"
+        },
+        "examples": "{count} voorbeelden"
+    },
+    "footer": {
+        "tagline": "AI-ondersteunde reisplanning voor Namibië. Kaia's interview en reisplan-generatie zijn live; echte partnerboekingen en beschikbaarheid volgen naarmate het platform zich verder ontwikkelt."
+    },
+    "listing": {
+        "backToHome": "← Terug naar overzicht",
+        "types": {
+            "accommodation": "Accommodatie",
+            "activity": "Activiteit",
+            "restaurant": "Restaurant"
+        },
+        "from": "Vanaf",
+        "gallery": "Galerij",
+        "about": "Over",
+        "steckbrief": "In het kort",
+        "contact": {
+            "title": "Contact",
+            "website": "Website",
+            "instagram": "Instagram",
+            "facebook": "Facebook"
+        },
+        "inquiry": {
+            "title": "Beschikbaarheid aanvragen",
+            "subtitle": "Stuur je gegevens rechtstreeks naar {partner} — geen betaling, geen verplichting.",
+            "subtitleGeneric": "Stuur je gegevens rechtstreeks naar de partner — geen betaling, geen verplichting.",
+            "name": "Volledige naam",
+            "email": "E-mail",
+            "phone": "Telefoon (optioneel)",
+            "travelDates": "Reisdata (optioneel)",
+            "message": "Bericht (optioneel)",
+            "send": "Aanvraag versturen",
+            "sending": "Versturen…",
+            "success": "Verstuurd! De partner neemt rechtstreeks contact met je op.",
+            "unavailable": "Dit aanbod accepteert momenteel geen aanvragen — kom later nog eens terug."
+        }
+    },
+    "localeSwitcher": {
+        "label": "Taal"
+    }
+}

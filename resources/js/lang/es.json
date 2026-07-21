@@ -1,1 +1,138 @@
-{}
+{
+    "nav": {
+        "dashboard": "Panel",
+        "login": "Iniciar sesión",
+        "register": "Registrarse"
+    },
+    "hero": {
+        "title": "La forma más inteligente de vivir Namibia.",
+        "subtitle": "Cuéntale a tu compañero de viaje qué buscas. Él elabora un plan real y reservable — sin formularios."
+    },
+    "chat": {
+        "greeting": "Hola, soy Kaia. Cuéntame un poco sobre el viaje que tienes en mente — ¿cuántos días tienes?",
+        "placeholder": "¿Qué quieres hacer en Namibia?",
+        "send": "Enviar",
+        "thinking": "Kaia está pensando…",
+        "itineraryReady": "Perfecto, con eso basta para esbozar un plan. Aquí tienes algunas formas de hacer este viaje:",
+        "error": "Algo salió mal al conectar con el compañero de viaje. Inténtalo de nuevo."
+    },
+    "itinerary": {
+        "eyebrow": "Tu plan",
+        "title": "Algunas formas de hacer este viaje",
+        "subtitle": "Generado a partir de la conversación anterior — alojamiento, actividades y restaurantes pensados juntos, no por separado.",
+        "estimated": "~${amount} estimado",
+        "stay": "Alojamiento: {value}",
+        "activity": "Actividad: {value}",
+        "dinner": "Cena: {value}",
+        "bookCta": "Consultar disponibilidad y reservar"
+    },
+    "booking": {
+        "eyebrow": "Asistente de reservas",
+        "title": "Convirtiendo el plan en una reserva confirmada",
+        "subtitle": "Las solicitudes se envían una a la vez — nunca una avalancha a todos los socios al mismo tiempo.",
+        "waiting": "En espera",
+        "sending": "Enviando solicitud…",
+        "confirmed": "Confirmado",
+        "note": "Solo hay una solicitud activa a la vez — esto protege a los socios de recibir una avalancha de consultas especulativas, e imita el funcionamiento de una buena agencia de viajes."
+    },
+    "afterSales": {
+        "eyebrow": "Después de tu viaje",
+        "title": "El compañero no se detiene en el check-in",
+        "subtitle": "Preparación, apoyo en el camino y un ciclo de comentarios que mejora el plan de cada futuro viajero.",
+        "checklist": {
+            "title": "Lista de preparación",
+            "subtitle": "Específica de la ruta, generada junto con el plan.",
+            "items": [
+                "Confirmar el alquiler del 4x4 y la rueda de repuesto",
+                "Llevar efectivo para las tarifas de entrada a los parques",
+                "Descargar mapas sin conexión para Damaraland",
+                "Repostar antes de Sesriem — la siguiente estación está a 2 horas"
+            ],
+            "print": "Imprimir lista"
+        },
+        "support": {
+            "title": "Algo salió mal en el camino",
+            "subtitle": "Pinchazo, ruta cerrada, una reserva que no se concretó — obtén ayuda sin buscar un número de teléfono.",
+            "placeholder": "Describe lo que pasó…",
+            "send": "Enviar",
+            "confirm": "Se ha notificado al soporte. Alguien se pondrá en contacto pronto."
+        },
+        "feedback": {
+            "title": "Comparte tu viaje",
+            "subtitle": "Aporta mejores sugerencias para el próximo viajero que planee una ruta similar.",
+            "placeholder": "¿Cuál fue el punto destacado?",
+            "publish": "Publicar",
+            "confirm": "Gracias — publicado para la comunidad."
+        }
+    },
+    "explore": {
+        "eyebrow": "Explorar",
+        "title": "Inspírate, explora cuando quieras",
+        "subtitle": "No hace falta entrevista — el mismo catálogo tipo revista se puede explorar directamente, para viajeros que prefieren mirar en vez de chatear.",
+        "filters": {
+            "allCategories": "Todas las categorías",
+            "accommodation": "Alojamiento",
+            "activities": "Actividades",
+            "restaurants": "Restaurantes",
+            "regions": "Regiones",
+            "date": "Fecha",
+            "selectDate": "Seleccionar fecha(s)",
+            "keyword": "Buscar por palabra clave…",
+            "search": "Buscar",
+            "moreFilters": "Más filtros ▾",
+            "hideFilters": "Ocultar filtros ▲",
+            "note": "Las fechas se registran para cuando se conecte la disponibilidad real de los socios — este catálogo aún no verifica fechas.",
+            "allRegions": "Todas las regiones",
+            "anyBudget": "Cualquier presupuesto",
+            "budget": "Económico",
+            "midRange": "Gama media",
+            "premium": "Premium",
+            "empty": "Sin resultados — prueba a quitar un filtro."
+        },
+        "rows": {
+            "accommodation": "Dónde alojarse",
+            "activity": "Qué hacer",
+            "restaurant": "Dónde comer",
+            "region": "Regiones para explorar"
+        },
+        "examples": "{count} ejemplos"
+    },
+    "footer": {
+        "tagline": "Planificación de viajes asistida por IA para Namibia. La entrevista y la generación de itinerarios de Kaia ya están activas; las reservas reales con socios y la disponibilidad llegarán a medida que la plataforma se siga desarrollando."
+    },
+    "listing": {
+        "backToHome": "← Volver a explorar",
+        "types": {
+            "accommodation": "Alojamiento",
+            "activity": "Actividad",
+            "restaurant": "Restaurante"
+        },
+        "from": "Desde",
+        "gallery": "Galería",
+        "about": "Acerca de",
+        "steckbrief": "De un vistazo",
+        "contact": {
+            "title": "Contacto",
+            "website": "Sitio web",
+            "instagram": "Instagram",
+            "facebook": "Facebook"
+        },
+        "inquiry": {
+            "title": "Consultar disponibilidad",
+            "subtitle": "Envía tus datos directamente a {partner} — sin pago, sin compromiso.",
+            "subtitleGeneric": "Envía tus datos directamente al socio — sin pago, sin compromiso.",
+            "name": "Nombre completo",
+            "email": "Correo electrónico",
+            "phone": "Teléfono (opcional)",
+            "travelDates": "Fechas de viaje (opcional)",
+            "message": "Mensaje (opcional)",
+            "send": "Enviar consulta",
+            "sending": "Enviando…",
+            "success": "¡Enviado! El socio se pondrá en contacto contigo directamente.",
+            "unavailable": "Esta oferta no acepta consultas por el momento — vuelve pronto."
+        }
+    },
+    "localeSwitcher": {
+        "label": "Idioma"
+    }
+}

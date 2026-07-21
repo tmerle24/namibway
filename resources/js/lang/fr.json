@@ -1,1 +1,138 @@
-{}
+{
+    "nav": {
+        "dashboard": "Tableau de bord",
+        "login": "Se connecter",
+        "register": "S'inscrire"
+    },
+    "hero": {
+        "title": "La façon la plus intelligente de découvrir la Namibie.",
+        "subtitle": "Dites à votre compagnon de voyage ce que vous recherchez. Il élabore un plan réel et réservable — sans formulaires."
+    },
+    "chat": {
+        "greeting": "Bonjour, je suis Kaia. Parlez-moi un peu du voyage dont vous rêvez — combien de jours avez-vous ?",
+        "placeholder": "Que voulez-vous faire en Namibie ?",
+        "send": "Envoyer",
+        "thinking": "Kaia réfléchit…",
+        "itineraryReady": "Parfait, c'est suffisant pour esquisser un plan. Voici quelques façons d'organiser ce voyage :",
+        "error": "Une erreur s'est produite lors de la connexion au compagnon de voyage. Veuillez réessayer."
+    },
+    "itinerary": {
+        "eyebrow": "Votre plan",
+        "title": "Quelques façons d'organiser ce voyage",
+        "subtitle": "Généré à partir de la conversation ci-dessus — hébergement, activités et restauration pensés ensemble, pas séparément.",
+        "estimated": "~${amount} estimé",
+        "stay": "Hébergement : {value}",
+        "activity": "Activité : {value}",
+        "dinner": "Dîner : {value}",
+        "bookCta": "Demander la disponibilité & réserver"
+    },
+    "booking": {
+        "eyebrow": "Assistant de réservation",
+        "title": "Transformer le plan en réservation confirmée",
+        "subtitle": "Les demandes partent une par une — jamais un déluge à tous les partenaires en même temps.",
+        "waiting": "En attente",
+        "sending": "Envoi de la demande…",
+        "confirmed": "Confirmé",
+        "note": "Une seule demande est active à la fois — cela protège les partenaires d'être submergés de demandes spéculatives, et reflète le fonctionnement d'une bonne agence de voyage."
+    },
+    "afterSales": {
+        "eyebrow": "Après votre voyage",
+        "title": "Le compagnon ne s'arrête pas à l'enregistrement",
+        "subtitle": "Préparation, assistance sur la route et boucle de retour qui améliore le plan de chaque futur voyageur.",
+        "checklist": {
+            "title": "Liste de préparation",
+            "subtitle": "Spécifique à l'itinéraire, générée avec le plan.",
+            "items": [
+                "Confirmer la location du 4x4 & la roue de secours",
+                "Prévoir de l'argent liquide pour les droits d'entrée des parcs",
+                "Télécharger les cartes hors ligne pour le Damaraland",
+                "Faire le plein avant Sesriem — la prochaine station est à 2h"
+            ],
+            "print": "Imprimer la liste"
+        },
+        "support": {
+            "title": "Un problème est survenu sur la route",
+            "subtitle": "Pneu crevé, route fermée, une réservation annulée — obtenez de l'aide sans chercher un numéro de téléphone.",
+            "placeholder": "Décrivez ce qui s'est passé…",
+            "send": "Envoyer",
+            "confirm": "Le support a été prévenu. Quelqu'un vous contactera sous peu."
+        },
+        "feedback": {
+            "title": "Partagez votre voyage",
+            "subtitle": "Alimente de meilleures suggestions pour le prochain voyageur sur un itinéraire similaire.",
+            "placeholder": "Quel a été le point fort ?",
+            "publish": "Publier",
+            "confirm": "Merci — publié auprès de la communauté."
+        }
+    },
+    "explore": {
+        "eyebrow": "Explorer",
+        "title": "Laissez-vous inspirer, parcourez à tout moment",
+        "subtitle": "Aucun entretien nécessaire — le même catalogue façon magazine se parcourt directement, pour les voyageurs qui préfèrent regarder plutôt que discuter.",
+        "filters": {
+            "allCategories": "Toutes les catégories",
+            "accommodation": "Hébergement",
+            "activities": "Activités",
+            "restaurants": "Restaurants",
+            "regions": "Régions",
+            "date": "Date",
+            "selectDate": "Sélectionner la/les date(s)",
+            "keyword": "Rechercher par mot-clé…",
+            "search": "Rechercher",
+            "moreFilters": "Plus de filtres ▾",
+            "hideFilters": "Masquer les filtres ▲",
+            "note": "Les dates sont enregistrées pour quand la disponibilité réelle des partenaires sera connectée — ce catalogue n'est pas encore vérifié par date.",
+            "allRegions": "Toutes les régions",
+            "anyBudget": "Tous budgets",
+            "budget": "Économique",
+            "midRange": "Milieu de gamme",
+            "premium": "Premium",
+            "empty": "Aucun résultat — essayez de retirer un filtre."
+        },
+        "rows": {
+            "accommodation": "Où séjourner",
+            "activity": "Que faire",
+            "restaurant": "Où manger",
+            "region": "Régions à explorer"
+        },
+        "examples": "{count} exemples"
+    },
+    "footer": {
+        "tagline": "Planification de voyage assistée par IA pour la Namibie. L'entretien et la génération d'itinéraires de Kaia sont déjà en ligne ; les réservations réelles auprès des partenaires et la disponibilité arriveront au fur et à mesure du développement de la plateforme."
+    },
+    "listing": {
+        "backToHome": "← Retour à l'exploration",
+        "types": {
+            "accommodation": "Hébergement",
+            "activity": "Activité",
+            "restaurant": "Restaurant"
+        },
+        "from": "À partir de",
+        "gallery": "Galerie",
+        "about": "À propos",
+        "steckbrief": "En un coup d'œil",
+        "contact": {
+            "title": "Contact",
+            "website": "Site web",
+            "instagram": "Instagram",
+            "facebook": "Facebook"
+        },
+        "inquiry": {
+            "title": "Demander la disponibilité",
+            "subtitle": "Envoyez vos coordonnées directement à {partner} — sans paiement, sans engagement.",
+            "subtitleGeneric": "Envoyez vos coordonnées directement au partenaire — sans paiement, sans engagement.",
+            "name": "Nom complet",
+            "email": "E-mail",
+            "phone": "Téléphone (facultatif)",
+            "travelDates": "Dates de voyage (facultatif)",
+            "message": "Message (facultatif)",
+            "send": "Envoyer la demande",
+            "sending": "Envoi en cours…",
+            "success": "Envoyé ! Le partenaire vous recontactera directement.",
+            "unavailable": "Cette offre n'accepte pas de demandes pour le moment — revenez bientôt."
+        }
+    },
+    "localeSwitcher": {
+        "label": "Langue"
+    }
+}

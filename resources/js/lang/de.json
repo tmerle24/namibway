@@ -1,1 +1,138 @@
-{}
+{
+    "nav": {
+        "dashboard": "Dashboard",
+        "login": "Anmelden",
+        "register": "Registrieren"
+    },
+    "hero": {
+        "title": "Der klügste Weg, Namibia zu erleben.",
+        "subtitle": "Erzähl deinem Reisebegleiter, wonach du suchst. Er erstellt einen echten, buchbaren Plan — ganz ohne Formulare."
+    },
+    "chat": {
+        "greeting": "Hallo, ich bin Kaia. Erzähl mir ein bisschen von der Reise, die dir vorschwebt — wie viele Tage hast du?",
+        "placeholder": "Was möchtest du in Namibia erleben?",
+        "send": "Senden",
+        "thinking": "Kaia überlegt…",
+        "itineraryReady": "Perfekt, das reicht, um einen Plan zu skizzieren. Hier sind ein paar Möglichkeiten für diese Reise:",
+        "error": "Bei der Verbindung zum Reisebegleiter ist etwas schiefgelaufen. Bitte versuch es erneut."
+    },
+    "itinerary": {
+        "eyebrow": "Dein Plan",
+        "title": "Ein paar Möglichkeiten für diese Reise",
+        "subtitle": "Erstellt aus dem Gespräch oben — Unterkunft, Aktivitäten und Restaurants gemeinsam gedacht, nicht getrennt.",
+        "estimated": "~${amount} geschätzt",
+        "stay": "Unterkunft: {value}",
+        "activity": "Aktivität: {value}",
+        "dinner": "Abendessen: {value}",
+        "bookCta": "Verfügbarkeit anfragen & buchen"
+    },
+    "booking": {
+        "eyebrow": "Buchungsassistent",
+        "title": "Vom Plan zur bestätigten Buchung",
+        "subtitle": "Anfragen gehen nacheinander raus — nie eine Flut an alle Partner gleichzeitig.",
+        "waiting": "Wartet",
+        "sending": "Anfrage wird gesendet…",
+        "confirmed": "Bestätigt",
+        "note": "Es ist immer nur eine Anfrage aktiv — das schützt Partner davor, mit unverbindlichen Anfragen überflutet zu werden, und funktioniert wie bei einem guten Reisebüro."
+    },
+    "afterSales": {
+        "eyebrow": "Nach deiner Reise",
+        "title": "Der Begleiter hört beim Check-in nicht auf",
+        "subtitle": "Vorbereitung, Unterstützung unterwegs und Feedback, das den Plan für jeden zukünftigen Reisenden verbessert.",
+        "checklist": {
+            "title": "Checkliste zur Vorbereitung",
+            "subtitle": "Routenspezifisch, gemeinsam mit dem Plan erstellt.",
+            "items": [
+                "4x4-Mietwagen & Ersatzreifen bestätigen",
+                "Bargeld für Parkgebühren einplanen",
+                "Offline-Karten für Damaraland herunterladen",
+                "Vor Sesriem auftanken — die nächste Tankstelle ist 2 Std. entfernt"
+            ],
+            "print": "Checkliste drucken"
+        },
+        "support": {
+            "title": "Auf der Reise ist etwas schiefgelaufen",
+            "subtitle": "Platter Reifen, gesperrte Route, eine geplatzte Buchung — Hilfe bekommen, ohne eine Telefonnummer zu suchen.",
+            "placeholder": "Beschreibe, was passiert ist…",
+            "send": "Senden",
+            "confirm": "Support wurde benachrichtigt. Jemand meldet sich in Kürze."
+        },
+        "feedback": {
+            "title": "Teile deine Reise",
+            "subtitle": "Fließt in bessere Vorschläge für den nächsten Reisenden auf einer ähnlichen Route ein.",
+            "placeholder": "Was war das Highlight?",
+            "publish": "Veröffentlichen",
+            "confirm": "Danke — in der Community veröffentlicht."
+        }
+    },
+    "explore": {
+        "eyebrow": "Entdecken",
+        "title": "Lass dich inspirieren, jederzeit stöbern",
+        "subtitle": "Kein Interview nötig — derselbe magazinartige Katalog lässt sich direkt durchstöbern, für Reisende, die lieber schauen als chatten.",
+        "filters": {
+            "allCategories": "Alle Kategorien",
+            "accommodation": "Unterkünfte",
+            "activities": "Aktivitäten",
+            "restaurants": "Restaurants",
+            "regions": "Regionen",
+            "date": "Datum",
+            "selectDate": "Datum(e) wählen",
+            "keyword": "Nach Stichwort suchen…",
+            "search": "Suchen",
+            "moreFilters": "Weitere Filter ▾",
+            "hideFilters": "Filter ausblenden ▲",
+            "note": "Daten werden erfasst, sobald echte Partner-Verfügbarkeit angebunden ist — dieser Katalog ist noch nicht datumsgeprüft.",
+            "allRegions": "Alle Regionen",
+            "anyBudget": "Beliebiges Budget",
+            "budget": "Budget",
+            "midRange": "Mittelklasse",
+            "premium": "Premium",
+            "empty": "Keine Treffer — versuch, einen Filter zu entfernen."
+        },
+        "rows": {
+            "accommodation": "Unterkünfte",
+            "activity": "Unternehmungen",
+            "restaurant": "Essen gehen",
+            "region": "Regionen entdecken"
+        },
+        "examples": "{count} Beispiele"
+    },
+    "footer": {
+        "tagline": "KI-gestützte Reiseplanung für Namibia. Kaias Interview und Reiseplan-Erstellung sind bereits live; echte Partnerbuchungen und Verfügbarkeiten folgen mit der weiteren Entwicklung der Plattform."
+    },
+    "listing": {
+        "backToHome": "← Zurück zur Übersicht",
+        "types": {
+            "accommodation": "Unterkunft",
+            "activity": "Aktivität",
+            "restaurant": "Restaurant"
+        },
+        "from": "Ab",
+        "gallery": "Galerie",
+        "about": "Über",
+        "steckbrief": "Auf einen Blick",
+        "contact": {
+            "title": "Kontakt",
+            "website": "Webseite",
+            "instagram": "Instagram",
+            "facebook": "Facebook"
+        },
+        "inquiry": {
+            "title": "Verfügbarkeit anfragen",
+            "subtitle": "Sende deine Daten direkt an {partner} — ohne Zahlung, ohne Verpflichtung.",
+            "subtitleGeneric": "Sende deine Daten direkt an den Partner — ohne Zahlung, ohne Verpflichtung.",
+            "name": "Vollständiger Name",
+            "email": "E-Mail",
+            "phone": "Telefon (optional)",
+            "travelDates": "Reisedaten (optional)",
+            "message": "Nachricht (optional)",
+            "send": "Anfrage senden",
+            "sending": "Wird gesendet…",
+            "success": "Gesendet! Der Partner meldet sich direkt bei dir.",
+            "unavailable": "Dieses Angebot nimmt derzeit keine Anfragen an — schau bald wieder vorbei."
+        }
+    },
+    "localeSwitcher": {
+        "label": "Sprache"
+    }
+}
