@@ -26,31 +26,44 @@ interface IdeaCard {
     description: string;
     region: string | null;
     budget: Budget;
+    image: string;
 }
 
 interface IdeaRow {
     key: string;
     title: string;
-    icon: 'lodge' | 'activity' | 'dining' | 'region';
-    color: string;
     bg: string;
     items: IdeaCard[];
 }
 
-const ICONS: Record<IdeaRow['icon'], string> = {
-    lodge: '<path d="M4 42 L24 14 L44 42 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><line x1="4" y1="42" x2="44" y2="42" stroke="currentColor" stroke-width="3"/><line x1="24" y1="26" x2="24" y2="42" stroke="currentColor" stroke-width="3"/>',
-    activity: '<circle cx="24" cy="24" r="10" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="24" cy="24" r="3" fill="currentColor"/><line x1="4" y1="24" x2="14" y2="24" stroke="currentColor" stroke-width="3"/><line x1="34" y1="24" x2="44" y2="24" stroke="currentColor" stroke-width="3"/>',
-    dining: '<line x1="14" y1="6" x2="14" y2="42" stroke="currentColor" stroke-width="3"/><line x1="10" y1="6" x2="10" y2="18" stroke="currentColor" stroke-width="3"/><line x1="14" y1="6" x2="14" y2="18" stroke="currentColor" stroke-width="3"/><line x1="18" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="3"/><path d="M34 6 C28 6 28 18 34 20 L34 42" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>',
-    region: '<path d="M4 36 L16 16 L24 28 L32 12 L44 36 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>',
+const CATEGORY_IMAGES: Record<Listing['type'], string[]> = {
+    accommodation: [
+        '/images/explore/accommodation-1.jpg',
+        '/images/explore/accommodation-2.jpg',
+        '/images/explore/accommodation-3.jpg',
+        '/images/explore/accommodation-4.jpg',
+    ],
+    activity: [
+        '/images/explore/activity-1.jpg',
+        '/images/explore/activity-2.jpg',
+        '/images/explore/activity-3.jpg',
+        '/images/explore/activity-4.jpg',
+    ],
+    restaurant: [
+        '/images/explore/restaurant-1.jpg',
+        '/images/explore/restaurant-2.jpg',
+        '/images/explore/restaurant-3.jpg',
+        '/images/explore/restaurant-4.jpg',
+    ],
 };
 
-const REGION_INFO: { name: string; blurb: string }[] = [
-    { name: 'Khomas', blurb: 'Windhoek and the central highlands — most itineraries start here.' },
-    { name: 'Erongo', blurb: 'Coastal dunes, Swakopmund, and the Skeleton Coast approach.' },
-    { name: 'Hardap', blurb: 'Home to the Sossusvlei dune fields and the Namib.' },
-    { name: 'Kunene', blurb: "Damaraland's rugged desert and Etosha's western reaches." },
-    { name: 'Otjozondjupa', blurb: 'Bushveld and the road east toward the Kalahari.' },
-    { name: 'Karas', blurb: 'The far south — Fish River Canyon and the Orange River.' },
+const REGION_INFO: { name: string; blurb: string; image: string }[] = [
+    { name: 'Khomas', blurb: 'Windhoek and the central highlands — most itineraries start here.', image: '/images/explore/region-khomas.jpg' },
+    { name: 'Erongo', blurb: 'Coastal dunes, Swakopmund, and the Skeleton Coast approach.', image: '/images/explore/region-erongo.jpg' },
+    { name: 'Hardap', blurb: 'Home to the Sossusvlei dune fields and the Namib.', image: '/images/explore/region-hardap.jpg' },
+    { name: 'Kunene', blurb: "Damaraland's rugged desert and Etosha's western reaches.", image: '/images/explore/region-kunene.jpg' },
+    { name: 'Otjozondjupa', blurb: 'Bushveld and the road east toward the Kalahari.', image: '/images/explore/region-otjozondjupa.jpg' },
+    { name: 'Karas', blurb: 'The far south — Fish River Canyon and the Orange River.', image: '/images/explore/region-karas.jpg' },
 ];
 
 function budgetBucket(price: string | null): Budget {
@@ -83,21 +96,23 @@ return '';
     return text.length > length ? text.slice(0, length).trim() + '…' : text;
 }
 
-const TYPE_ROW_META: Record<Listing['type'], Pick<IdeaRow, 'title' | 'icon' | 'color' | 'bg'>> = {
-    accommodation: { title: 'Places to stay', icon: 'lodge', color: 'var(--rust)', bg: 'rust-light' },
-    activity: { title: 'Things to do', icon: 'activity', color: 'var(--sage)', bg: 'sage-light' },
-    restaurant: { title: 'Where to eat', icon: 'dining', color: 'var(--gold)', bg: 'sand' },
+const TYPE_ROW_META: Record<Listing['type'], Pick<IdeaRow, 'title' | 'bg'>> = {
+    accommodation: { title: 'Places to stay', bg: 'rust-light' },
+    activity: { title: 'Things to do', bg: 'sage-light' },
+    restaurant: { title: 'Where to eat', bg: 'sand' },
 };
 
 const ideaRows = computed<IdeaRow[]>(() => {
-    const byType: Record<string, IdeaCard[]> = { accommodation: [], activity: [], restaurant: [] };
+    const byType: Record<Listing['type'], IdeaCard[]> = { accommodation: [], activity: [], restaurant: [] };
 
     for (const listing of props.listings) {
-        byType[listing.type]?.push({
+        const images = CATEGORY_IMAGES[listing.type];
+        byType[listing.type].push({
             title: listing.name,
             description: truncate(listing.description),
             region: listing.region,
             budget: budgetBucket(listing.price_from),
+            image: images[byType[listing.type].length % images.length],
         });
     }
 
@@ -108,10 +123,8 @@ const ideaRows = computed<IdeaRow[]>(() => {
     rows.push({
         key: 'region',
         title: 'Regions to explore',
-        icon: 'region',
-        color: 'var(--night)',
         bg: 'sand-dark',
-        items: REGION_INFO.map((r) => ({ title: r.name, description: r.blurb, region: r.name, budget: null })),
+        items: REGION_INFO.map((r) => ({ title: r.name, description: r.blurb, region: r.name, budget: null, image: r.image })),
     });
 
     return rows;
@@ -236,7 +249,7 @@ const hasResults = computed(() => visibleRows.value.length > 0);
                     <div v-for="item in row.items" :key="item.title" class="idea-card">
                         <div class="idea-thumb" :style="{ background: `var(--${row.bg})` }">
                             <span class="idea-tag">{{ row.title }}</span>
-                            <svg viewBox="0 0 48 48" :style="{ color: row.color }" v-html="ICONS[row.icon]"></svg>
+                            <img :src="item.image" :alt="item.title" class="idea-thumb-img" loading="lazy" />
                         </div>
                         <div class="idea-body">
                             <h4>{{ item.title }}</h4>
