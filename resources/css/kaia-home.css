@@ -97,12 +97,15 @@
 @media (max-width: 768px) {
     .kaia-page .brand-logo {
         margin-left: -20px;
+        max-height: 90px;
     }
 }
 .kaia-page .hero-nav {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     margin-bottom: 24px;
 }
 .kaia-page .hero-nav a {
@@ -110,6 +113,7 @@
     font-size: 13px;
     font-weight: 600;
     text-decoration: none;
+    white-space: nowrap;
     border: 1px solid rgba(251, 248, 241, 0.35);
     border-radius: 8px;
     padding: 7px 14px;
@@ -184,6 +188,7 @@
 }
 .kaia-page .chat-input-row input {
     flex: 1;
+    min-width: 0;
     border: 1px solid var(--sand-dark);
     border-radius: 10px;
     padding: 12px 14px;
@@ -595,9 +600,17 @@
 }
 .kaia-page footer p {
     flex: 1;
+    min-width: 0;
 }
 .kaia-page .footer-logo {
-    height: 120px;
+    height: 100px;
     width: auto;
     flex-shrink: 0;
+}
+@media (max-width: 640px) {
+    .kaia-page footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
 }
