@@ -15,7 +15,7 @@ set -e
 
 # ── Projekt-spezifische Werte — hier anpassen ───────────────────────
 APP_DIR="/var/www/namibia-portal"
-REPO_URL="git@github.com:<ORG>/namibia-portal.git"   # TODO: echtes Repo eintragen
+REPO_URL="git@github.com:tmerle24/namibway.git"
 BRANCH="main"
 QUEUE_WORKER_NAME="namibia-portal-worker"             # Supervisor-Programmname
 
