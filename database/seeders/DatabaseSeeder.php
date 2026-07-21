@@ -22,5 +22,6 @@ class DatabaseSeeder extends Seeder
 
         $this->call(PartnerSeeder::class);
         $this->call(ListingSeeder::class);
+        $this->call(RegionSeeder::class);
     }
 }

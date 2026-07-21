@@ -19,8 +19,17 @@ interface Listing {
     price_currency: string;
 }
 
+interface Region {
+    name: string;
+    slug: string;
+    blurb: string | null;
+    image: string | null;
+    listing_region: string;
+}
+
 const props = defineProps<{
     listings: Listing[];
+    regions: Region[];
 }>();
 
 const { t } = useI18n();
@@ -62,17 +71,6 @@ const CATEGORY_IMAGES: Record<Listing['type'], string[]> = {
         '/images/explore/restaurant-3.jpg',
         '/images/explore/restaurant-4.jpg',
     ],
-};
-
-const REGION_NAMES = ['Khomas', 'Erongo', 'Hardap', 'Kunene', 'Otjozondjupa', 'Karas'] as const;
-
-const REGION_IMAGES: Record<string, string> = {
-    Khomas: '/images/explore/region-khomas.jpg',
-    Erongo: '/images/explore/region-erongo.jpg',
-    Hardap: '/images/explore/region-hardap.jpg',
-    Kunene: '/images/explore/region-kunene.jpg',
-    Otjozondjupa: '/images/explore/region-otjozondjupa.jpg',
-    Karas: '/images/explore/region-karas.jpg',
 };
 
 function budgetBucket(price: string | null): Budget {
@@ -134,12 +132,12 @@ const ideaRows = computed<IdeaRow[]>(() => {
     rows.push({
         key: 'region',
         bg: ROW_BG.region,
-        items: REGION_NAMES.map((name) => ({
-            title: name,
-            description: t(`explore.regionBlurbs.${name}`),
-            region: name,
+        items: props.regions.map((region) => ({
+            title: region.name,
+            description: region.blurb ?? '',
+            region: region.listing_region,
             budget: null,
-            image: REGION_IMAGES[name],
+            image: region.image ?? '/images/explore/region-khomas.jpg',
             slug: null,
         })),
     });
@@ -167,7 +165,15 @@ const filterBudget = ref('');
 const filterKeyword = ref('');
 const filterMoreOpen = ref(false);
 const dateInput = ref<HTMLInputElement | null>(null);
+const filterBar = ref<HTMLDivElement | null>(null);
 let fp: FlatpickrInstance | null = null;
+
+function selectRegion(region: string) {
+    filterCategory.value = '';
+    filterRegion.value = region;
+    filterMoreOpen.value = true;
+    filterBar.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 onMounted(() => {
     if (dateInput.value) {
@@ -225,7 +231,7 @@ const hasResults = computed(() => visibleRows.value.length > 0);
             <h2>{{ t('explore.title') }}</h2>
             <p>{{ t('explore.subtitle') }}</p>
         </div>
-        <div class="filter-bar">
+        <div class="filter-bar" ref="filterBar">
             <div class="filter-row">
                 <select v-model="filterCategory">
                     <option value="">{{ t('explore.filters.allCategories') }}</option>
@@ -264,11 +270,12 @@ const hasResults = computed(() => visibleRows.value.length > 0);
                 </div>
                 <div class="idea-cards">
                     <component
-                        :is="item.slug ? Link : 'div'"
+                        :is="item.slug ? Link : row.key === 'region' ? 'button' : 'div'"
                         v-for="item in row.items"
                         :key="item.title"
                         :href="item.slug ? show({ listing: item.slug }).url : undefined"
                         class="idea-card"
+                        @click="row.key === 'region' && item.region ? selectRegion(item.region) : undefined"
                     >
                         <div class="idea-thumb" :style="{ background: `var(--${row.bg})` }">
                             <span class="idea-tag">{{ t(`explore.rows.${row.key}`) }}</span>

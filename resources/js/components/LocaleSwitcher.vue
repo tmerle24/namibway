@@ -3,6 +3,14 @@ import { router, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
 
+const FLAGS: Record<string, string> = {
+    en: '🇬🇧',
+    de: '🇩🇪',
+    nl: '🇳🇱',
+    fr: '🇫🇷',
+    es: '🇪🇸',
+};
+
 function setCookie(name: string, value: string, days = 365) {
     const maxAge = days * 24 * 60 * 60;
     document.cookie = `${name}=${value};path=/;max-age=${maxAge};SameSite=Lax`;
@@ -18,7 +26,7 @@ function switchLocale(event: Event) {
 <template>
     <select :value="page.props.locale" class="locale-switcher" @change="switchLocale">
         <option v-for="(label, code) in page.props.availableLocales" :key="code" :value="code">
-            {{ label }}
+            {{ FLAGS[code as string] ?? '' }} {{ label }}
         </option>
     </select>
 </template>

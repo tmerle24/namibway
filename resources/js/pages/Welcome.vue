@@ -22,10 +22,19 @@ interface Listing {
     price_currency: string;
 }
 
+interface Region {
+    name: string;
+    slug: string;
+    blurb: string | null;
+    image: string | null;
+    listing_region: string;
+}
+
 const { t } = useI18n();
 
 defineProps<{
     listings: Listing[];
+    regions: Region[];
 }>();
 
 const plan = ref<ItineraryPlan | null>(null);
@@ -53,7 +62,7 @@ async function onBook(variant: ItineraryVariant) {
         <ItinerarySection v-if="plan" :plan="plan" @book="onBook" />
         <BookingSection v-if="bookingVariant" :variant="bookingVariant" />
         <AfterSalesSection />
-        <ExploreSection :listings="listings" />
+        <ExploreSection :listings="listings" :regions="regions" />
 
         <footer>
             <img :src="logoDark" alt="NamibWay" class="footer-logo" />

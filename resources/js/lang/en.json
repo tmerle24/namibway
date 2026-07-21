@@ -95,15 +95,7 @@
             "restaurant": "Where to eat",
             "region": "Regions to explore"
         },
-        "examples": "{count} examples",
-        "regionBlurbs": {
-            "Khomas": "Windhoek and the central highlands — most itineraries start here.",
-            "Erongo": "Coastal dunes, Swakopmund, and the Skeleton Coast approach.",
-            "Hardap": "Home to the Sossusvlei dune fields and the Namib.",
-            "Kunene": "Damaraland's rugged desert and Etosha's western reaches.",
-            "Otjozondjupa": "Bushveld and the road east toward the Kalahari.",
-            "Karas": "The far south — Fish River Canyon and the Orange River."
-        }
+        "examples": "{count} examples"
     },
     "footer": {
         "tagline": "AI-assisted travel planning for Namibia. Kaia's interview and itinerary generation are live; real partner booking and availability are coming as the platform develops."

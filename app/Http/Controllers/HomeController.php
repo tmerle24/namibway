@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Listing;
+use App\Models\Region;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -31,8 +32,21 @@ class HomeController extends Controller
                 'price_currency' => $listing->price_currency,
             ]);
 
+        $regions = Region::query()
+            ->where('is_published', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'name', 'slug', 'blurb', 'image', 'listing_region'])
+            ->map(fn (Region $region) => [
+                'name' => $region->name,
+                'slug' => $region->slug,
+                'blurb' => $region->blurb,
+                'image' => $region->image ? Storage::disk('public')->url($region->image) : null,
+                'listing_region' => $region->listing_region,
+            ]);
+
         return Inertia::render('Welcome', [
             'listings' => $listings,
+            'regions' => $regions,
         ]);
     }
 }

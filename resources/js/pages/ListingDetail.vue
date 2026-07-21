@@ -1,11 +1,34 @@
 <script setup lang="ts">
+import '../../css/kaia-home.css';
 import { Form, Head, Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import { home } from '@/routes';
 import inquiries from '@/routes/listings/inquiries';
 import logoDark from '../../images/logo-dark.png';
+
+const FALLBACK_HERO_IMAGES: Record<Listing['type'], string[]> = {
+    accommodation: [
+        '/images/explore/accommodation-1.jpg',
+        '/images/explore/accommodation-2.jpg',
+        '/images/explore/accommodation-3.jpg',
+        '/images/explore/accommodation-4.jpg',
+    ],
+    activity: [
+        '/images/explore/activity-1.jpg',
+        '/images/explore/activity-2.jpg',
+        '/images/explore/activity-3.jpg',
+        '/images/explore/activity-4.jpg',
+    ],
+    restaurant: [
+        '/images/explore/restaurant-1.jpg',
+        '/images/explore/restaurant-2.jpg',
+        '/images/explore/restaurant-3.jpg',
+        '/images/explore/restaurant-4.jpg',
+    ],
+};
 
 interface Partner {
     name: string;
@@ -36,6 +59,16 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
+
+const heroImage = computed(() => {
+    if (props.listing.image) {
+        return props.listing.image;
+    }
+
+    const fallbacks = FALLBACK_HERO_IMAGES[props.listing.type];
+
+    return fallbacks[props.listing.id % fallbacks.length];
+});
 </script>
 
 <template>
@@ -50,7 +83,7 @@ const { t } = useI18n();
             </div>
         </div>
 
-        <div class="detail-hero" :style="props.listing.image ? { backgroundImage: `url(${props.listing.image})` } : undefined">
+        <div class="detail-hero" :style="{ backgroundImage: `url(${heroImage})` }">
             <div class="detail-hero-overlay">
                 <span class="idea-tag">{{ t(`listing.types.${props.listing.type}`) }}</span>
                 <h1>{{ props.listing.name }}</h1>
