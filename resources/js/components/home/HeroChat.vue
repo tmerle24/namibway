@@ -4,6 +4,7 @@ import { nextTick, ref } from 'vue';
 import { DEMO_PLAN, KAIA_INTERVIEW_STEPS, KAIA_SUMMARY_MESSAGE  } from '@/lib/kaia-demo';
 import type {ItineraryPlan} from '@/lib/kaia-demo';
 import { dashboard, login, register } from '@/routes';
+import logoLight from '../../../images/logo-light.png';
 
 const emit = defineEmits<{
     (e: 'plan-ready', plan: ItineraryPlan): void;
@@ -73,7 +74,7 @@ return;
         </svg>
         <div class="hero-content">
             <div class="hero-nav">
-                <div class="brand"><span></span>NamibWay</div>
+                <div class="brand"><img :src="logoLight" alt="NamibWay" class="brand-logo" /></div>
                 <Link v-if="page.props.auth?.user" :href="dashboard()">Dashboard</Link>
                 <div v-else style="display: flex; gap: 8px">
                     <Link :href="login()">Log in</Link>

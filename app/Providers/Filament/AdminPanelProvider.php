@@ -27,6 +27,10 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->brandLogo(asset('images/namibway-logo-dark.png'))
+            ->darkModeBrandLogo(asset('images/namibway-logo-light.png'))
+            ->brandLogoHeight('2rem')
+            ->favicon(asset('favicon.png'))
             ->colors([
                 'primary' => Color::Amber,
             ])

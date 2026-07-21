@@ -31,14 +31,27 @@
         </style>
 
         <link rel="icon" href="/favicon.ico" sizes="any">
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+        <link rel="icon" href="/favicon.png" type="image/png">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="{{ config('app.name') }}">
+        <meta property="og:title" content="{{ config('app.name') }} — The smartest way to experience Namibia">
+        <meta property="og:description" content="AI-assisted travel planning &amp; booking for Namibia. Chat with Kaia, your AI travel companion, and get a bookable, multi-part itinerary.">
+        <meta property="og:image" content="{{ asset('images/og-image.png') }}">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta property="og:url" content="{{ url()->current() }}">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="{{ config('app.name') }} — The smartest way to experience Namibia">
+        <meta name="twitter:description" content="AI-assisted travel planning &amp; booking for Namibia. Chat with Kaia, your AI travel companion, and get a bookable, multi-part itinerary.">
+        <meta name="twitter:image" content="{{ asset('images/og-image.png') }}">
 
         @fonts
 
         @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
         <x-inertia::head>
-            <title>{{ config('app.name', 'Laravel') }}</title>
+            <title>{{ config('app.name') }} — The smartest way to experience Namibia</title>
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">
