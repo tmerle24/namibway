@@ -12,7 +12,7 @@ import logoDark from '../../images/logo-dark.png';
 
 interface Listing {
     id: number;
-    type: 'accommodation' | 'activity' | 'restaurant';
+    type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
     name: string;
     slug: string;
     description: string | null;

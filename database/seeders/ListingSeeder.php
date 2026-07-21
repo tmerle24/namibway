@@ -13,8 +13,11 @@ class ListingSeeder extends Seeder
     /**
      * Curated, presentation-ready demo listings — matches the routes referenced
      * in the Kaia chat demo and the Explore section's photography, rather than
-     * random Faker company names. Accommodation entries carry a partner (see
-     * PartnerSeeder, run first) and a few highlights for the detail page.
+     * random Faker company names. Accommodation and vehicle entries carry a
+     * partner (see PartnerSeeder, run first) and a few highlights for the
+     * detail page — highlights also double as tags Kaia reads to match
+     * camping-suitable accommodation to a camper rental (e.g. "Camping",
+     * "Camper").
      */
     public function run(): void
     {
@@ -28,6 +31,12 @@ class ListingSeeder extends Seeder
             ['type' => ListingType::Accommodation, 'name' => 'Sossus Dune Lodge', 'region' => 'Hardap', 'lat' => -24.7333, 'lng' => 15.8000, 'price' => 3400, 'featured' => false, 'description' => 'The only lodge inside the Sossusvlei park gate — first onto the dunes before the tour buses arrive.', 'highlights' => ['Inside the park gate', 'Pool', 'Early dune access']],
             ['type' => ListingType::Accommodation, 'name' => 'Little Kulala', 'region' => 'Hardap', 'lat' => -24.6167, 'lng' => 15.7333, 'price' => 8900, 'featured' => true, 'description' => 'Dune-side luxury at the gates of Sossusvlei, with a private plunge pool facing the red sand.', 'highlights' => ['Private plunge pool', 'All-inclusive', 'Star-bed sleepout', 'Free parking']],
             ['type' => ListingType::Accommodation, 'name' => 'Canyon Roadhouse', 'region' => 'Karas', 'lat' => -27.5333, 'lng' => 17.8500, 'price' => 1950, 'featured' => false, 'description' => 'A quirky, vintage-car-themed stop above Fish River Canyon — as memorable as the view itself.', 'highlights' => ['Pool', 'Restaurant on-site', 'Canyon viewpoint drives']],
+            ['type' => ListingType::Accommodation, 'name' => 'Etosha Village Campsite', 'region' => 'Kunene', 'lat' => -19.1833, 'lng' => 15.9333, 'price' => 350, 'featured' => false, 'description' => 'A simple, well-run campsite just outside Etosha\'s Andersson Gate — bring your own tent or rooftop tent and wake up to the sounds of the bush.', 'highlights' => ['Camping', 'Braai facilities', 'Ablution block', 'Near Etosha gate']],
+            ['type' => ListingType::Accommodation, 'name' => 'Sesriem Oshana Campsite', 'region' => 'Hardap', 'lat' => -24.4975, 'lng' => 15.7947, 'price' => 400, 'featured' => false, 'description' => 'The only campsite inside the Sossusvlei park gate — the same early dune access as the lodges next door, at a fraction of the cost.', 'highlights' => ['Camping', 'Inside the park gate', 'Braai facilities', 'Early dune access']],
+
+            // Vehicles
+            ['type' => ListingType::Vehicle, 'name' => 'Bushtrack 4x4 Double Cab', 'region' => 'Khomas', 'lat' => -22.5700, 'lng' => 17.0836, 'price' => 950, 'featured' => false, 'description' => 'A rugged double-cab 4x4 with unlimited kilometres included — built for Namibia\'s gravel roads, no camping gear.', 'highlights' => ['Self-drive', '4x4', 'Unlimited km', 'GPS included']],
+            ['type' => ListingType::Vehicle, 'name' => 'Bushtrack Camper 4x4', 'region' => 'Khomas', 'lat' => -22.5700, 'lng' => 17.0836, 'price' => 1450, 'featured' => true, 'description' => 'A 4x4 with a rooftop tent and full camping kit — fridge, stove, chairs — everything needed to pull off at any campsite along the route.', 'highlights' => ['Camper', '4x4', 'Rooftop tent, sleeps 2', 'Camping equipment included']],
 
             // Activities
             ['type' => ListingType::Activity, 'name' => 'Etosha Night Hide Game Drive', 'region' => 'Kunene', 'lat' => -19.1700, 'lng' => 15.9200, 'price' => 650, 'featured' => true, 'description' => 'Watch the Okaukuejo waterhole after dark from a lit viewing deck — rhino and lion sightings are common.'],
@@ -46,9 +55,11 @@ class ListingSeeder extends Seeder
         ];
 
         foreach ($listings as $listing) {
-            $partner = $listing['type'] === ListingType::Accommodation
-                ? Partner::where('name', $listing['name'])->first()
-                : null;
+            $partner = match ($listing['type']) {
+                ListingType::Accommodation => Partner::where('name', $listing['name'])->first(),
+                ListingType::Vehicle => Partner::where('name', 'Bushtrack Car & Camper Hire')->first(),
+                default => null,
+            };
 
             Listing::updateOrCreate(
                 ['slug' => Str::slug($listing['name'])],

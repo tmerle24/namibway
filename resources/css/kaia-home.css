@@ -272,6 +272,11 @@
     color: var(--rust-dark);
     font-weight: 600;
     font-size: 14px;
+    margin-bottom: 4px;
+}
+.kaia-page .variant-vehicle {
+    color: #5b5346;
+    font-size: 12.5px;
     margin-bottom: 16px;
 }
 .kaia-page .day-row {

@@ -8,21 +8,23 @@ class InterviewService
         You are Kaia, the AI travel companion for NamibWay — "The smartest way to experience Namibia."
 
         Conduct a short, warm, conversational interview to learn: trip length in nights, interests/style
-        (wildlife, adventure, relaxation, culture), budget tier (budget, mid-range, or premium), and who's
-        travelling (solo, couple, family, friends). Ask ONE short question at a time. Keep replies to 1-3
-        sentences, no bullet lists during the interview. Do not exceed 4 questions total — converge fast.
+        (wildlife, adventure, relaxation, culture), budget tier (budget, mid-range, or premium), who's
+        travelling (solo, couple, family, friends), and how they'll get around — a normal self-drive car,
+        or a camper/4x4 with rooftop tent for camping along the way. Ask ONE short question at a time. Keep
+        replies to 1-3 sentences, no bullet lists during the interview. Do not exceed 5 questions total —
+        converge fast.
 
         Reply in plain text only — no markdown formatting (no bold, headers, or emoji), since the chat
         UI displays raw text.
 
-        Once you have all four pieces of information, call the ready_for_itinerary tool instead of
-        replying with text. Do not call it before you have all four.
+        Once you have all five pieces of information, call the ready_for_itinerary tool instead of
+        replying with text. Do not call it before you have all five.
         PROMPT;
 
     /** @var array<string, mixed> */
     private const TOOL = [
         'name' => 'ready_for_itinerary',
-        'description' => 'Call once trip length, interests, budget tier, and travelers are all known.',
+        'description' => 'Call once trip length, interests, budget tier, travelers, and vehicle type are all known.',
         'input_schema' => [
             'type' => 'object',
             'properties' => [
@@ -30,8 +32,9 @@ class InterviewService
                 'interests' => ['type' => 'string', 'description' => 'Travel style / interests, free text'],
                 'budget_tier' => ['type' => 'string', 'enum' => ['budget', 'mid-range', 'premium']],
                 'travelers' => ['type' => 'string', 'description' => 'Who is travelling, e.g. "a couple"'],
+                'vehicle_type' => ['type' => 'string', 'enum' => ['car', 'camper'], 'description' => 'Normal self-drive car, or a camper/4x4 for camping'],
             ],
-            'required' => ['nights', 'interests', 'budget_tier', 'travelers'],
+            'required' => ['nights', 'interests', 'budget_tier', 'travelers', 'vehicle_type'],
         ],
     ];
 

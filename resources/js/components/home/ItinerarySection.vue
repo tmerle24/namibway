@@ -24,6 +24,7 @@ const { t } = useI18n();
             <div v-for="variant in plan.variants" :key="variant.name" class="variant-card">
                 <h3>{{ variant.name }}</h3>
                 <div class="variant-price">{{ t('itinerary.estimated', { amount: variant.estimated_total_usd.toLocaleString() }) }}</div>
+                <div v-if="variant.vehicle" class="variant-vehicle">{{ t('itinerary.vehicle', { value: variant.vehicle }) }}</div>
                 <div v-for="day in variant.days" :key="day.day" class="day-row">
                     <div class="day-num">{{ day.day }}</div>
                     <div class="day-detail">

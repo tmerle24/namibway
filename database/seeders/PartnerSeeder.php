@@ -23,6 +23,7 @@ class PartnerSeeder extends Seeder
             ['name' => 'Sossus Dune Lodge', 'email' => 'reservations@nwr.com.na', 'phone' => '+264 63 293 621', 'website' => 'https://www.nwr.com.na/sossus-dune-lodge', 'instagram' => null],
             ['name' => 'Little Kulala', 'email' => 'res@wilderness-safaris.com', 'phone' => '+264 61 274 500', 'website' => 'https://wilderness-safaris.com/camps/little-kulala', 'instagram' => 'https://instagram.com/wildernesssafaris'],
             ['name' => 'Canyon Roadhouse', 'email' => 'info@gondwana-collection.com', 'phone' => '+264 63 683 501', 'website' => 'https://www.gondwana-collection.com/canyon-roadhouse', 'instagram' => 'https://instagram.com/gondwanacollection'],
+            ['name' => 'Bushtrack Car & Camper Hire', 'email' => 'rentals@bushtrack-namibia.com', 'phone' => '+264 61 220 404', 'website' => 'https://www.bushtrack-namibia.com', 'instagram' => 'https://instagram.com/bushtracknamibia'],
         ];
 
         foreach ($partners as $partner) {

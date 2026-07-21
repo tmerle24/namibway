@@ -24,6 +24,7 @@
         "stay": "Unterkunft: {value}",
         "activity": "Aktivität: {value}",
         "dinner": "Abendessen: {value}",
+        "vehicle": "Fahrzeug: {value}",
         "bookCta": "Verfügbarkeit anfragen & buchen"
     },
     "booking": {
@@ -74,6 +75,7 @@
             "accommodation": "Unterkünfte",
             "activities": "Aktivitäten",
             "restaurants": "Restaurants",
+            "vehicles": "Fahrzeuge",
             "regions": "Regionen",
             "date": "Datum",
             "selectDate": "Datum(e) wählen",
@@ -93,6 +95,7 @@
             "accommodation": "Unterkünfte",
             "activity": "Unternehmungen",
             "restaurant": "Essen gehen",
+            "vehicle": "Unterwegs sein",
             "region": "Regionen entdecken"
         },
         "examples": "{count} Beispiele"
@@ -105,7 +108,8 @@
         "types": {
             "accommodation": "Unterkunft",
             "activity": "Aktivität",
-            "restaurant": "Restaurant"
+            "restaurant": "Restaurant",
+            "vehicle": "Fahrzeug"
         },
         "from": "Ab",
         "gallery": "Galerie",

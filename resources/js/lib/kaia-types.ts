@@ -9,6 +9,7 @@ export interface ItineraryDay {
 export interface ItineraryVariant {
     name: string;
     estimated_total_usd: number;
+    vehicle?: string;
     days: ItineraryDay[];
 }
 

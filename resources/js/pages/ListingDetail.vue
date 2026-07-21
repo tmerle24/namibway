@@ -28,6 +28,12 @@ const FALLBACK_HERO_IMAGES: Record<Listing['type'], string[]> = {
         '/images/explore/restaurant-3.jpg',
         '/images/explore/restaurant-4.jpg',
     ],
+    vehicle: [
+        '/images/explore/vehicle-1.jpg',
+        '/images/explore/vehicle-2.jpg',
+        '/images/explore/vehicle-3.jpg',
+        '/images/explore/vehicle-4.jpg',
+    ],
 };
 
 interface Partner {
@@ -40,7 +46,7 @@ interface Partner {
 
 interface Listing {
     id: number;
-    type: 'accommodation' | 'activity' | 'restaurant';
+    type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
     name: string;
     slug: string;
     description: string | null;

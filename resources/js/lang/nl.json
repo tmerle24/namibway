@@ -24,6 +24,7 @@
         "stay": "Verblijf: {value}",
         "activity": "Activiteit: {value}",
         "dinner": "Diner: {value}",
+        "vehicle": "Voertuig: {value}",
         "bookCta": "Beschikbaarheid aanvragen & boeken"
     },
     "booking": {
@@ -74,6 +75,7 @@
             "accommodation": "Accommodatie",
             "activities": "Activiteiten",
             "restaurants": "Restaurants",
+            "vehicles": "Voertuigen",
             "regions": "Regio's",
             "date": "Datum",
             "selectDate": "Selecteer datum(s)",
@@ -93,6 +95,7 @@
             "accommodation": "Plekken om te verblijven",
             "activity": "Dingen om te doen",
             "restaurant": "Waar te eten",
+            "vehicle": "Onderweg",
             "region": "Regio's om te ontdekken"
         },
         "examples": "{count} voorbeelden"
@@ -105,7 +108,8 @@
         "types": {
             "accommodation": "Accommodatie",
             "activity": "Activiteit",
-            "restaurant": "Restaurant"
+            "restaurant": "Restaurant",
+            "vehicle": "Voertuig"
         },
         "from": "Vanaf",
         "gallery": "Galerij",

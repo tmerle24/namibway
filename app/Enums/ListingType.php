@@ -10,6 +10,7 @@ enum ListingType: string implements HasColor, HasLabel
     case Accommodation = 'accommodation';
     case Activity = 'activity';
     case Restaurant = 'restaurant';
+    case Vehicle = 'vehicle';
 
     public function getLabel(): string
     {
@@ -17,6 +18,7 @@ enum ListingType: string implements HasColor, HasLabel
             self::Accommodation => 'Accommodation',
             self::Activity => 'Activity',
             self::Restaurant => 'Restaurant',
+            self::Vehicle => 'Vehicle',
         };
     }
 
@@ -26,6 +28,7 @@ enum ListingType: string implements HasColor, HasLabel
             self::Accommodation => 'info',
             self::Activity => 'success',
             self::Restaurant => 'warning',
+            self::Vehicle => 'gray',
         };
     }
 }

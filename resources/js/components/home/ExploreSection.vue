@@ -9,7 +9,7 @@ import { show } from '@/routes/listings';
 
 interface Listing {
     id: number;
-    type: 'accommodation' | 'activity' | 'restaurant';
+    type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
     name: string;
     slug: string;
     description: string | null;
@@ -35,7 +35,7 @@ const props = defineProps<{
 const { t } = useI18n();
 
 type Budget = 'budget' | 'mid-range' | 'premium' | null;
-type RowKey = 'accommodation' | 'activity' | 'restaurant' | 'region';
+type RowKey = 'accommodation' | 'activity' | 'restaurant' | 'vehicle' | 'region';
 
 interface IdeaCard {
     title: string;
@@ -70,6 +70,12 @@ const CATEGORY_IMAGES: Record<Listing['type'], string[]> = {
         '/images/explore/restaurant-2.jpg',
         '/images/explore/restaurant-3.jpg',
         '/images/explore/restaurant-4.jpg',
+    ],
+    vehicle: [
+        '/images/explore/vehicle-1.jpg',
+        '/images/explore/vehicle-2.jpg',
+        '/images/explore/vehicle-3.jpg',
+        '/images/explore/vehicle-4.jpg',
     ],
 };
 
@@ -107,11 +113,12 @@ const ROW_BG: Record<RowKey, string> = {
     accommodation: 'rust-light',
     activity: 'sage-light',
     restaurant: 'sand',
+    vehicle: 'gold',
     region: 'sand-dark',
 };
 
 const ideaRows = computed<IdeaRow[]>(() => {
-    const byType: Record<Listing['type'], IdeaCard[]> = { accommodation: [], activity: [], restaurant: [] };
+    const byType: Record<Listing['type'], IdeaCard[]> = { accommodation: [], activity: [], restaurant: [], vehicle: [] };
 
     for (const listing of props.listings) {
         const images = CATEGORY_IMAGES[listing.type];
@@ -238,6 +245,7 @@ const hasResults = computed(() => visibleRows.value.length > 0);
                     <option value="accommodation">{{ t('explore.filters.accommodation') }}</option>
                     <option value="activity">{{ t('explore.filters.activities') }}</option>
                     <option value="restaurant">{{ t('explore.filters.restaurants') }}</option>
+                    <option value="vehicle">{{ t('explore.filters.vehicles') }}</option>
                     <option value="region">{{ t('explore.filters.regions') }}</option>
                 </select>
                 <label>{{ t('explore.filters.date') }} <input ref="dateInput" type="text" :placeholder="t('explore.filters.selectDate')" readonly style="width: 170px; cursor: pointer" /></label>
