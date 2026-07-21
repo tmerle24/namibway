@@ -133,6 +133,11 @@ class ItineraryService
             Once you have enough listings, call propose_itinerary with the final structured plan. Do not
             reply with plain text — the only valid final output is a propose_itinerary tool call.
 
+            Populate "trip_summary" and "variants" as separate, independent top-level fields of that tool
+            call. "trip_summary" must contain ONLY the short summary paragraph — never embed the variants
+            list, day-by-day plan, or any XML/tag-like markup inside it. "variants" must be a real JSON
+            array value on the tool input, not a string.
+
             All text fields in the final plan (trip_summary, location, accommodation, activity, restaurant)
             must be plain text — no markdown formatting or emoji.
             PROMPT;

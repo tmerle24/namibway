@@ -19,8 +19,9 @@ return [
     'interview_max_tokens' => (int) env('KAIA_INTERVIEW_MAX_TOKENS', 1024),
 
     // Generous headroom: the model "thinks" before calling propose_itinerary,
-    // and a 2-variant, multi-day structured plan is a lot of JSON.
-    'itinerary_max_tokens' => (int) env('KAIA_ITINERARY_MAX_TOKENS', 4096),
+    // and a 2-variant, multi-day structured plan is a lot of JSON — a 14-night
+    // trip alone is ~28 day entries, which overflowed a 4096 budget in testing.
+    'itinerary_max_tokens' => (int) env('KAIA_ITINERARY_MAX_TOKENS', 8192),
 
     // Namibia's 14 political regions used in the Listing.region column —
     // Claude naturally thinks in tourist-area names (Etosha, Sossusvlei...),
