@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import { nextTick, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import { DEMO_PLAN, KAIA_INTERVIEW_STEPS, KAIA_SUMMARY_MESSAGE  } from '@/lib/kaia-demo';
 import type {ItineraryPlan} from '@/lib/kaia-demo';
 import { dashboard, login, register } from '@/routes';
@@ -11,6 +13,7 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage();
+const { t } = useI18n();
 
 interface ChatMessage {
     role: 'ai' | 'user';
@@ -75,32 +78,35 @@ return;
         <div class="hero-content">
             <div class="hero-nav">
                 <div class="brand"><img :src="logoLight" alt="NamibWay" class="brand-logo" /></div>
-                <Link v-if="page.props.auth?.user" :href="dashboard()">Dashboard</Link>
-                <div v-else style="display: flex; gap: 8px">
-                    <Link :href="login()">Log in</Link>
-                    <Link :href="register()">Register</Link>
+                <div style="display: flex; align-items: center; gap: 8px">
+                    <LocaleSwitcher />
+                    <Link v-if="page.props.auth?.user" :href="dashboard()">{{ t('nav.dashboard') }}</Link>
+                    <template v-else>
+                        <Link :href="login()">{{ t('nav.login') }}</Link>
+                        <Link :href="register()">{{ t('nav.register') }}</Link>
+                    </template>
                 </div>
             </div>
             <div class="hero-head">
-                <h1>The smartest way to experience Namibia.</h1>
-                <p>Tell your travel companion what you're after. It builds a real, bookable plan — no forms.</p>
+                <h1>{{ t('hero.title') }}</h1>
+                <p>{{ t('hero.subtitle') }}</p>
             </div>
 
             <div class="chat-panel">
                 <div class="chat-log" ref="chatLog">
                     <div v-for="(msg, i) in messages" :key="i" :class="['msg', msg.role]">{{ msg.text }}</div>
-                    <div v-if="isTyping" class="msg typing">Kaia is thinking…</div>
+                    <div v-if="isTyping" class="msg typing">{{ t('chat.thinking') }}</div>
                 </div>
                 <div class="chat-input-row">
                     <input
                         v-model="inputText"
                         type="text"
-                        placeholder="What do you want to do in Namibia?"
+                        :placeholder="t('chat.placeholder')"
                         autocomplete="off"
                         :disabled="isTyping"
                         @keydown.enter="sendMessage"
                     />
-                    <button :disabled="isTyping || !inputText.trim()" @click="sendMessage">Send</button>
+                    <button :disabled="isTyping || !inputText.trim()" @click="sendMessage">{{ t('chat.send') }}</button>
                 </div>
             </div>
         </div>

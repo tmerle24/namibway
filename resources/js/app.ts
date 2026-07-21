@@ -1,9 +1,11 @@
 import { createInertiaApp } from '@inertiajs/vue3';
 import { initializeTheme } from '@/composables/useAppearance';
+import { i18n } from '@/i18n';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeFlashToast } from '@/lib/flashToast';
+import { initializeLocale } from '@/lib/locale';
 
 const appName = import.meta.env.VITE_APP_NAME || 'NamibWay';
 const slogan = 'The smartest way to experience Namibia.';
@@ -24,6 +26,10 @@ createInertiaApp({
     },
     progress: {
         color: '#4B5563',
+    },
+    withApp: (app, { page }) => {
+        app.use(i18n);
+        initializeLocale(page.props.locale as string | undefined);
     },
 });
 

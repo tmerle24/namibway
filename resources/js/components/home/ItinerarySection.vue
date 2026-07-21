@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import type { ItineraryPlan, ItineraryVariant } from '@/lib/kaia-demo';
 
 defineProps<{
@@ -8,29 +9,31 @@ defineProps<{
 const emit = defineEmits<{
     (e: 'book', variant: ItineraryVariant): void;
 }>();
+
+const { t } = useI18n();
 </script>
 
 <template>
     <section id="itinerary-section">
         <div class="section-head">
-            <div class="eyebrow">Your plan</div>
-            <h2>A few ways to do this trip</h2>
-            <p>Generated from the conversation above — accommodation, activities and dining together, not separate silos.</p>
+            <div class="eyebrow">{{ t('itinerary.eyebrow') }}</div>
+            <h2>{{ t('itinerary.title') }}</h2>
+            <p>{{ t('itinerary.subtitle') }}</p>
         </div>
         <div class="variants">
             <div v-for="variant in plan.variants" :key="variant.name" class="variant-card">
                 <h3>{{ variant.name }}</h3>
-                <div class="variant-price">~${{ variant.estimated_total_usd.toLocaleString() }} estimated</div>
+                <div class="variant-price">{{ t('itinerary.estimated', { amount: variant.estimated_total_usd.toLocaleString() }) }}</div>
                 <div v-for="day in variant.days" :key="day.day" class="day-row">
                     <div class="day-num">{{ day.day }}</div>
                     <div class="day-detail">
                         <div><b>{{ day.location }}</b></div>
-                        <div>Stay: {{ day.accommodation || '—' }}</div>
-                        <div>Activity: {{ day.activity || '—' }}</div>
-                        <div>Dinner: {{ day.restaurant || '—' }}</div>
+                        <div>{{ t('itinerary.stay', { value: day.accommodation || '—' }) }}</div>
+                        <div>{{ t('itinerary.activity', { value: day.activity || '—' }) }}</div>
+                        <div>{{ t('itinerary.dinner', { value: day.restaurant || '—' }) }}</div>
                     </div>
                 </div>
-                <button class="cta" @click="emit('book', variant)">Request availability &amp; book</button>
+                <button class="cta" @click="emit('book', variant)">{{ t('itinerary.bookCta') }}</button>
             </div>
         </div>
     </section>

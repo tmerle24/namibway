@@ -3,20 +3,26 @@
 namespace App\Models;
 
 use App\Enums\ListingType;
+use Database\Factories\ListingFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Spatie\Translatable\HasTranslations;
 
 class Listing extends Model
 {
-    /** @use HasFactory<\Database\Factories\ListingFactory> */
-    use HasFactory;
+    /** @use HasFactory<ListingFactory> */
+    use HasFactory, HasTranslations;
+
+    /** @var array<int, string> */
+    public array $translatable = ['name', 'description'];
 
     protected $fillable = [
         'type',
         'name',
         'slug',
         'description',
+        'image',
         'region',
         'latitude',
         'longitude',

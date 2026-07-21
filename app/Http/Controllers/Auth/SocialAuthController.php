@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
+use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class SocialAuthController extends Controller
@@ -14,7 +15,7 @@ class SocialAuthController extends Controller
     /** @var list<string> */
     private const PROVIDERS = ['google', 'facebook'];
 
-    public function redirect(string $provider): RedirectResponse
+    public function redirect(string $provider): SymfonyRedirectResponse
     {
         $this->ensureProviderIsSupported($provider);
 

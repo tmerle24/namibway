@@ -48,8 +48,8 @@ class ListingSeeder extends Seeder
                 ['slug' => Str::slug($listing['name'])],
                 [
                     'type' => $listing['type'],
-                    'name' => $listing['name'],
-                    'description' => $listing['description'],
+                    'name' => ['en' => $listing['name']],
+                    'description' => ['en' => $listing['description']],
                     'region' => $listing['region'],
                     'latitude' => $listing['lat'],
                     'longitude' => $listing['lng'],

@@ -1,0 +1,111 @@
+{
+    "nav": {
+        "dashboard": "Dashboard",
+        "login": "Log in",
+        "register": "Register"
+    },
+    "hero": {
+        "title": "The smartest way to experience Namibia.",
+        "subtitle": "Tell your travel companion what you're after. It builds a real, bookable plan — no forms."
+    },
+    "chat": {
+        "placeholder": "What do you want to do in Namibia?",
+        "send": "Send",
+        "thinking": "Kaia is thinking…"
+    },
+    "itinerary": {
+        "eyebrow": "Your plan",
+        "title": "A few ways to do this trip",
+        "subtitle": "Generated from the conversation above — accommodation, activities and dining together, not separate silos.",
+        "estimated": "~${amount} estimated",
+        "stay": "Stay: {value}",
+        "activity": "Activity: {value}",
+        "dinner": "Dinner: {value}",
+        "bookCta": "Request availability & book"
+    },
+    "booking": {
+        "eyebrow": "Booking assistant",
+        "title": "Turning the plan into confirmed reality",
+        "subtitle": "Requests go out one at a time — never a flood to every partner at once.",
+        "waiting": "Waiting",
+        "sending": "Sending request…",
+        "confirmed": "Confirmed",
+        "note": "Only one request is active at a time — this protects partners from being flooded with speculative enquiries, and mirrors how a good travel agency would work a booking."
+    },
+    "afterSales": {
+        "eyebrow": "After your trip",
+        "title": "The companion doesn't stop at check-in",
+        "subtitle": "Preparation, support on the road, and a feedback loop that improves every future traveler's plan.",
+        "checklist": {
+            "title": "Prep checklist",
+            "subtitle": "Route-specific, generated with the plan.",
+            "items": [
+                "Confirm 4x4 rental & spare tyre",
+                "Cash for park entry fees",
+                "Download offline maps for Damaraland",
+                "Fuel up before Sesriem — next station is 2h out"
+            ],
+            "print": "Print checklist"
+        },
+        "support": {
+            "title": "Something went wrong on the road",
+            "subtitle": "Flat tyre, closed route, a booking that fell through — get help without hunting for a phone number.",
+            "placeholder": "Describe what happened...",
+            "send": "Send",
+            "confirm": "Support notified. Someone will reach out shortly."
+        },
+        "feedback": {
+            "title": "Share your trip",
+            "subtitle": "Feeds better suggestions to the next traveler planning a similar route.",
+            "placeholder": "What was the highlight?",
+            "publish": "Publish",
+            "confirm": "Thanks — published to the community."
+        }
+    },
+    "explore": {
+        "eyebrow": "Explore",
+        "title": "Get inspired, browse anytime",
+        "subtitle": "No interview needed — the same magazine-style catalog is browsable directly, for travelers who'd rather look than chat.",
+        "filters": {
+            "allCategories": "All categories",
+            "accommodation": "Accommodation",
+            "activities": "Activities",
+            "restaurants": "Restaurants",
+            "regions": "Regions",
+            "date": "Date",
+            "selectDate": "Select date(s)",
+            "keyword": "Search by keyword…",
+            "search": "Search",
+            "moreFilters": "More filters ▾",
+            "hideFilters": "Hide filters ▲",
+            "note": "Dates are captured for when live partner availability is connected — this catalog isn't date-checked yet.",
+            "allRegions": "All regions",
+            "anyBudget": "Any budget",
+            "budget": "Budget",
+            "midRange": "Mid-range",
+            "premium": "Premium",
+            "empty": "No matches — try clearing a filter."
+        },
+        "rows": {
+            "accommodation": "Places to stay",
+            "activity": "Things to do",
+            "restaurant": "Where to eat",
+            "region": "Regions to explore"
+        },
+        "examples": "{count} examples",
+        "regionBlurbs": {
+            "Khomas": "Windhoek and the central highlands — most itineraries start here.",
+            "Erongo": "Coastal dunes, Swakopmund, and the Skeleton Coast approach.",
+            "Hardap": "Home to the Sossusvlei dune fields and the Namib.",
+            "Kunene": "Damaraland's rugged desert and Etosha's western reaches.",
+            "Otjozondjupa": "Bushveld and the road east toward the Kalahari.",
+            "Karas": "The far south — Fish River Canyon and the Orange River."
+        }
+    },
+    "footer": {
+        "tagline": "AI-assisted travel planning for Namibia. The chat interview above is a preview flow; live AI-generated itineraries and real partner availability are coming as the platform develops."
+    },
+    "localeSwitcher": {
+        "label": "Language"
+    }
+}

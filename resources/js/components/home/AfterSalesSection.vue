@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t, tm } = useI18n();
+
+const checklistItems = tm('afterSales.checklist.items') as unknown as string[];
 
 const supportText = ref('');
 const supportNote = ref('');
@@ -8,46 +13,45 @@ function sendSupport() {
 return;
 }
 
-    supportNote.value = 'Support notified. Someone will reach out shortly.';
+    supportNote.value = t('afterSales.support.confirm');
 }
 
 const feedbackText = ref('');
 const feedbackNote = ref('');
 const rating = ref(0);
 function publishFeedback() {
-    feedbackNote.value = 'Thanks — published to the community.';
+    feedbackNote.value = t('afterSales.feedback.confirm');
 }
 </script>
 
 <template>
     <section>
         <div class="section-head">
-            <div class="eyebrow">After your trip</div>
-            <h2>The companion doesn't stop at check-in</h2>
-            <p>Preparation, support on the road, and a feedback loop that improves every future traveler's plan.</p>
+            <div class="eyebrow">{{ t('afterSales.eyebrow') }}</div>
+            <h2>{{ t('afterSales.title') }}</h2>
+            <p>{{ t('afterSales.subtitle') }}</p>
         </div>
         <div class="aftersales-grid">
             <div class="as-card">
-                <h3>Prep checklist</h3>
-                <p>Route-specific, generated with the plan.</p>
+                <h3>{{ t('afterSales.checklist.title') }}</h3>
+                <p>{{ t('afterSales.checklist.subtitle') }}</p>
                 <div class="checklist">
-                    <label><input type="checkbox" />Confirm 4x4 rental &amp; spare tyre</label>
-                    <label><input type="checkbox" />Cash for park entry fees</label>
-                    <label><input type="checkbox" />Download offline maps for Damaraland</label>
-                    <label><input type="checkbox" />Fuel up before Sesriem — next station is 2h out</label>
+                    <label v-for="(item, index) in checklistItems" :key="index">
+                        <input type="checkbox" />{{ item }}
+                    </label>
                 </div>
-                <button class="small" @click="window.print()">Print checklist</button>
+                <button class="small" @click="window.print()">{{ t('afterSales.checklist.print') }}</button>
             </div>
             <div class="as-card">
-                <h3>Something went wrong on the road</h3>
-                <p>Flat tyre, closed route, a booking that fell through — get help without hunting for a phone number.</p>
-                <textarea v-model="supportText" placeholder="Describe what happened..."></textarea>
-                <button class="small" @click="sendSupport">Send</button>
+                <h3>{{ t('afterSales.support.title') }}</h3>
+                <p>{{ t('afterSales.support.subtitle') }}</p>
+                <textarea v-model="supportText" :placeholder="t('afterSales.support.placeholder')"></textarea>
+                <button class="small" @click="sendSupport">{{ t('afterSales.support.send') }}</button>
                 <div v-if="supportNote" class="confirm-note">{{ supportNote }}</div>
             </div>
             <div class="as-card">
-                <h3>Share your trip</h3>
-                <p>Feeds better suggestions to the next traveler planning a similar route.</p>
+                <h3>{{ t('afterSales.feedback.title') }}</h3>
+                <p>{{ t('afterSales.feedback.subtitle') }}</p>
                 <div class="stars">
                     <span
                         v-for="n in 5"
@@ -56,8 +60,8 @@ function publishFeedback() {
                         @click="rating = n"
                     >★</span>
                 </div>
-                <textarea v-model="feedbackText" placeholder="What was the highlight?"></textarea>
-                <button class="small" @click="publishFeedback">Publish</button>
+                <textarea v-model="feedbackText" :placeholder="t('afterSales.feedback.placeholder')"></textarea>
+                <button class="small" @click="publishFeedback">{{ t('afterSales.feedback.publish') }}</button>
                 <div v-if="feedbackNote" class="confirm-note">{{ feedbackNote }}</div>
             </div>
         </div>

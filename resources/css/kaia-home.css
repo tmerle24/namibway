@@ -121,6 +121,21 @@
 .kaia-page .hero-nav a:hover {
     border-color: var(--paper);
 }
+.kaia-page .hero-nav .locale-switcher {
+    color: var(--sand);
+    background: transparent;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    border: 1px solid rgba(251, 248, 241, 0.35);
+    border-radius: 8px;
+    padding: 7px 10px;
+    cursor: pointer;
+}
+.kaia-page .hero-nav .locale-switcher option {
+    color: var(--ink);
+    background: var(--paper);
+}
 .kaia-page .hero-head {
     max-width: 640px;
     margin-bottom: 36px;

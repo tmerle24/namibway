@@ -7,12 +7,15 @@ use App\Filament\Resources\ListingResource\Pages;
 use App\Models\Listing;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
 class ListingResource extends Resource
 {
+    use Translatable;
+
     protected static ?string $model = Listing::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
@@ -21,6 +24,12 @@ class ListingResource extends Resource
     {
         return $form
             ->schema([
+                Forms\Components\FileUpload::make('image')
+                    ->image()
+                    ->disk('public')
+                    ->directory('listings')
+                    ->imageEditor()
+                    ->columnSpanFull(),
                 Forms\Components\Select::make('type')
                     ->options(ListingType::class)
                     ->required(),
@@ -56,6 +65,9 @@ class ListingResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('image')
+                    ->disk('public')
+                    ->square(),
                 Tables\Columns\TextColumn::make('type')
                     ->badge()
                     ->sortable(),

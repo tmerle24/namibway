@@ -3,6 +3,7 @@ import 'flatpickr/dist/flatpickr.min.css';
 import flatpickr from 'flatpickr';
 import type { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 interface Listing {
     id: number;
@@ -10,6 +11,7 @@ interface Listing {
     name: string;
     slug: string;
     description: string | null;
+    image: string | null;
     region: string | null;
     price_from: string | null;
     price_currency: string;
@@ -19,7 +21,10 @@ const props = defineProps<{
     listings: Listing[];
 }>();
 
+const { t } = useI18n();
+
 type Budget = 'budget' | 'mid-range' | 'premium' | null;
+type RowKey = 'accommodation' | 'activity' | 'restaurant' | 'region';
 
 interface IdeaCard {
     title: string;
@@ -30,8 +35,7 @@ interface IdeaCard {
 }
 
 interface IdeaRow {
-    key: string;
-    title: string;
+    key: RowKey;
     bg: string;
     items: IdeaCard[];
 }
@@ -57,14 +61,16 @@ const CATEGORY_IMAGES: Record<Listing['type'], string[]> = {
     ],
 };
 
-const REGION_INFO: { name: string; blurb: string; image: string }[] = [
-    { name: 'Khomas', blurb: 'Windhoek and the central highlands — most itineraries start here.', image: '/images/explore/region-khomas.jpg' },
-    { name: 'Erongo', blurb: 'Coastal dunes, Swakopmund, and the Skeleton Coast approach.', image: '/images/explore/region-erongo.jpg' },
-    { name: 'Hardap', blurb: 'Home to the Sossusvlei dune fields and the Namib.', image: '/images/explore/region-hardap.jpg' },
-    { name: 'Kunene', blurb: "Damaraland's rugged desert and Etosha's western reaches.", image: '/images/explore/region-kunene.jpg' },
-    { name: 'Otjozondjupa', blurb: 'Bushveld and the road east toward the Kalahari.', image: '/images/explore/region-otjozondjupa.jpg' },
-    { name: 'Karas', blurb: 'The far south — Fish River Canyon and the Orange River.', image: '/images/explore/region-karas.jpg' },
-];
+const REGION_NAMES = ['Khomas', 'Erongo', 'Hardap', 'Kunene', 'Otjozondjupa', 'Karas'] as const;
+
+const REGION_IMAGES: Record<string, string> = {
+    Khomas: '/images/explore/region-khomas.jpg',
+    Erongo: '/images/explore/region-erongo.jpg',
+    Hardap: '/images/explore/region-hardap.jpg',
+    Kunene: '/images/explore/region-kunene.jpg',
+    Otjozondjupa: '/images/explore/region-otjozondjupa.jpg',
+    Karas: '/images/explore/region-karas.jpg',
+};
 
 function budgetBucket(price: string | null): Budget {
     if (price === null) {
@@ -96,10 +102,11 @@ return '';
     return text.length > length ? text.slice(0, length).trim() + '…' : text;
 }
 
-const TYPE_ROW_META: Record<Listing['type'], Pick<IdeaRow, 'title' | 'bg'>> = {
-    accommodation: { title: 'Places to stay', bg: 'rust-light' },
-    activity: { title: 'Things to do', bg: 'sage-light' },
-    restaurant: { title: 'Where to eat', bg: 'sand' },
+const ROW_BG: Record<RowKey, string> = {
+    accommodation: 'rust-light',
+    activity: 'sage-light',
+    restaurant: 'sand',
+    region: 'sand-dark',
 };
 
 const ideaRows = computed<IdeaRow[]>(() => {
@@ -112,19 +119,24 @@ const ideaRows = computed<IdeaRow[]>(() => {
             description: truncate(listing.description),
             region: listing.region,
             budget: budgetBucket(listing.price_from),
-            image: images[byType[listing.type].length % images.length],
+            image: listing.image ?? images[byType[listing.type].length % images.length],
         });
     }
 
-    const rows: IdeaRow[] = (Object.keys(TYPE_ROW_META) as Listing['type'][])
+    const rows: IdeaRow[] = (Object.keys(byType) as Listing['type'][])
         .filter((type) => byType[type].length > 0)
-        .map((type) => ({ key: type, items: byType[type], ...TYPE_ROW_META[type] }));
+        .map((type) => ({ key: type, bg: ROW_BG[type], items: byType[type] }));
 
     rows.push({
         key: 'region',
-        title: 'Regions to explore',
-        bg: 'sand-dark',
-        items: REGION_INFO.map((r) => ({ title: r.name, description: r.blurb, region: r.name, budget: null, image: r.image })),
+        bg: ROW_BG.region,
+        items: REGION_NAMES.map((name) => ({
+            title: name,
+            description: t(`explore.regionBlurbs.${name}`),
+            region: name,
+            budget: null,
+            image: REGION_IMAGES[name],
+        })),
     });
 
     return rows;
@@ -167,7 +179,7 @@ onUnmounted(() => {
 });
 
 function matches(row: IdeaRow, item: IdeaCard): boolean {
-    if (filterCategory.value && row.title !== filterCategory.value) {
+    if (filterCategory.value && row.key !== filterCategory.value) {
 return false;
 }
 
@@ -204,51 +216,51 @@ const hasResults = computed(() => visibleRows.value.length > 0);
 <template>
     <section>
         <div class="section-head">
-            <div class="eyebrow">Explore</div>
-            <h2>Get inspired, browse anytime</h2>
-            <p>No interview needed — the same magazine-style catalog is browsable directly, for travelers who'd rather look than chat.</p>
+            <div class="eyebrow">{{ t('explore.eyebrow') }}</div>
+            <h2>{{ t('explore.title') }}</h2>
+            <p>{{ t('explore.subtitle') }}</p>
         </div>
         <div class="filter-bar">
             <div class="filter-row">
                 <select v-model="filterCategory">
-                    <option value="">All categories</option>
-                    <option value="Places to stay">Accommodation</option>
-                    <option value="Things to do">Activities</option>
-                    <option value="Where to eat">Restaurants</option>
-                    <option value="Regions to explore">Regions</option>
+                    <option value="">{{ t('explore.filters.allCategories') }}</option>
+                    <option value="accommodation">{{ t('explore.filters.accommodation') }}</option>
+                    <option value="activity">{{ t('explore.filters.activities') }}</option>
+                    <option value="restaurant">{{ t('explore.filters.restaurants') }}</option>
+                    <option value="region">{{ t('explore.filters.regions') }}</option>
                 </select>
-                <label>Date <input ref="dateInput" type="text" placeholder="Select date(s)" readonly style="width: 170px; cursor: pointer" /></label>
-                <input v-model="filterKeyword" type="text" placeholder="Search by keyword…" />
-                <button class="search-btn">Search</button>
+                <label>{{ t('explore.filters.date') }} <input ref="dateInput" type="text" :placeholder="t('explore.filters.selectDate')" readonly style="width: 170px; cursor: pointer" /></label>
+                <input v-model="filterKeyword" type="text" :placeholder="t('explore.filters.keyword')" />
+                <button class="search-btn">{{ t('explore.filters.search') }}</button>
                 <button class="filter-toggle" @click="filterMoreOpen = !filterMoreOpen">
-                    {{ filterMoreOpen ? 'Hide filters ▲' : 'More filters ▾' }}
+                    {{ filterMoreOpen ? t('explore.filters.hideFilters') : t('explore.filters.moreFilters') }}
                 </button>
-                <span class="filter-note">Dates are captured for when live partner availability is connected — this catalog isn't date-checked yet.</span>
+                <span class="filter-note">{{ t('explore.filters.note') }}</span>
             </div>
             <div class="filter-more" :class="{ open: filterMoreOpen }">
                 <select v-model="filterRegion">
-                    <option value="">All regions</option>
+                    <option value="">{{ t('explore.filters.allRegions') }}</option>
                     <option v-for="region in availableRegions" :key="region" :value="region">{{ region }}</option>
                 </select>
                 <select v-model="filterBudget">
-                    <option value="">Any budget</option>
-                    <option value="budget">Budget</option>
-                    <option value="mid-range">Mid-range</option>
-                    <option value="premium">Premium</option>
+                    <option value="">{{ t('explore.filters.anyBudget') }}</option>
+                    <option value="budget">{{ t('explore.filters.budget') }}</option>
+                    <option value="mid-range">{{ t('explore.filters.midRange') }}</option>
+                    <option value="premium">{{ t('explore.filters.premium') }}</option>
                 </select>
             </div>
         </div>
-        <p v-if="!hasResults" class="filter-empty">No matches — try clearing a filter.</p>
+        <p v-if="!hasResults" class="filter-empty">{{ t('explore.filters.empty') }}</p>
         <div>
             <div v-for="row in visibleRows" :key="row.key" class="inspire-row">
                 <div class="inspire-row-head">
-                    <h3>{{ row.title }}</h3>
-                    <span>{{ row.items.length }} examples</span>
+                    <h3>{{ t(`explore.rows.${row.key}`) }}</h3>
+                    <span>{{ t('explore.examples', { count: row.items.length }) }}</span>
                 </div>
                 <div class="idea-cards">
                     <div v-for="item in row.items" :key="item.title" class="idea-card">
                         <div class="idea-thumb" :style="{ background: `var(--${row.bg})` }">
-                            <span class="idea-tag">{{ row.title }}</span>
+                            <span class="idea-tag">{{ t(`explore.rows.${row.key}`) }}</span>
                             <img :src="item.image" :alt="item.title" class="idea-thumb-img" loading="lazy" />
                         </div>
                         <div class="idea-body">

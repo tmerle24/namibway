@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { ItineraryVariant } from '@/lib/kaia-demo';
 
 const props = defineProps<{
     variant: ItineraryVariant;
 }>();
+
+const { t } = useI18n();
 
 type QueueStatus = 'waiting' | 'sending' | 'confirmed';
 
@@ -14,12 +17,6 @@ interface QueueItem {
 }
 
 const queue = ref<QueueItem[]>([]);
-
-const statusLabel: Record<QueueStatus, string> = {
-    waiting: 'Waiting',
-    sending: 'Sending request…',
-    confirmed: 'Confirmed',
-};
 
 async function runQueue(variant: ItineraryVariant) {
     const properties = [...new Set(variant.days.map((d) => d.accommodation).filter(Boolean))];
@@ -38,19 +35,18 @@ watch(() => props.variant, (variant) => runQueue(variant), { immediate: true });
 <template>
     <section id="booking-section">
         <div class="section-head">
-            <div class="eyebrow">Booking assistant</div>
-            <h2>Turning the plan into confirmed reality</h2>
-            <p>Requests go out one at a time — never a flood to every partner at once.</p>
+            <div class="eyebrow">{{ t('booking.eyebrow') }}</div>
+            <h2>{{ t('booking.title') }}</h2>
+            <p>{{ t('booking.subtitle') }}</p>
         </div>
         <div class="queue">
             <div v-for="item in queue" :key="item.property" class="queue-item">
                 <span>{{ item.property }}</span>
-                <span :class="['status-pill', `status-${item.status}`]">{{ statusLabel[item.status] }}</span>
+                <span :class="['status-pill', `status-${item.status}`]">{{ t(`booking.${item.status}`) }}</span>
             </div>
         </div>
         <div class="governance-note">
-            Only one request is active at a time — this protects partners from being flooded with speculative
-            enquiries, and mirrors how a good travel agency would work a booking.
+            {{ t('booking.note') }}
         </div>
     </section>
 </template>

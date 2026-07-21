@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
 import { nextTick, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import AfterSalesSection from '@/components/home/AfterSalesSection.vue';
 import BookingSection from '@/components/home/BookingSection.vue';
 import ExploreSection from '@/components/home/ExploreSection.vue';
@@ -15,10 +16,13 @@ interface Listing {
     name: string;
     slug: string;
     description: string | null;
+    image: string | null;
     region: string | null;
     price_from: string | null;
     price_currency: string;
 }
+
+const { t } = useI18n();
 
 defineProps<{
     listings: Listing[];
@@ -53,10 +57,7 @@ async function onBook(variant: ItineraryVariant) {
 
         <footer>
             <img :src="logoDark" alt="NamibWay" class="footer-logo" />
-            <p>
-                AI-assisted travel planning for Namibia. The chat interview above is a preview flow; live
-                AI-generated itineraries and real partner availability are coming as the platform develops.
-            </p>
+            <p>{{ t('footer.tagline') }}</p>
         </footer>
     </div>
 </template>
