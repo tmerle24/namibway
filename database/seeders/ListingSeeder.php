@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\ListingType;
 use App\Models\Listing;
+use App\Models\Partner;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -11,21 +12,22 @@ class ListingSeeder extends Seeder
 {
     /**
      * Curated, presentation-ready demo listings — matches the routes referenced
-     * in the Kaia chat demo (resources/js/lib/kaia-demo.ts) and the Explore
-     * section's photography, rather than random Faker company names.
+     * in the Kaia chat demo and the Explore section's photography, rather than
+     * random Faker company names. Accommodation entries carry a partner (see
+     * PartnerSeeder, run first) and a few highlights for the detail page.
      */
     public function run(): void
     {
         $listings = [
             // Accommodation
-            ['type' => ListingType::Accommodation, 'name' => 'Olive Grove Guesthouse', 'region' => 'Khomas', 'lat' => -22.5700, 'lng' => 17.0836, 'price' => 1450, 'featured' => false, 'description' => 'A boutique city base in Windhoek — the natural first and last night of most Namibia itineraries.'],
-            ['type' => ListingType::Accommodation, 'name' => 'Etosha Safari Lodge', 'region' => 'Kunene', 'lat' => -19.2000, 'lng' => 15.9333, 'price' => 2100, 'featured' => false, 'description' => 'Mid-range base for Etosha game drives, close to the Okaukuejo waterhole where elephants come to drink at dusk.'],
-            ['type' => ListingType::Accommodation, 'name' => 'Ongava Tented Camp', 'region' => 'Kunene', 'lat' => -19.4167, 'lng' => 15.9500, 'price' => 5200, 'featured' => true, 'description' => 'Private reserve on Etosha\'s southern boundary — tented luxury with waterhole views from every unit.'],
-            ['type' => ListingType::Accommodation, 'name' => 'Doro Nawas Camp', 'region' => 'Kunene', 'lat' => -20.5833, 'lng' => 14.4167, 'price' => 4800, 'featured' => true, 'description' => 'Desert-adapted elephants and 6,000-year-old rock art at Twyfelfontein, a short drive from camp.'],
-            ['type' => ListingType::Accommodation, 'name' => 'The Delight Hotel', 'region' => 'Erongo', 'lat' => -22.6783, 'lng' => 14.5267, 'price' => 1650, 'featured' => false, 'description' => 'Colourful, mid-range coastal stay in Swakopmund, walking distance from the jetty and dune activities.'],
-            ['type' => ListingType::Accommodation, 'name' => 'Sossus Dune Lodge', 'region' => 'Hardap', 'lat' => -24.7333, 'lng' => 15.8000, 'price' => 3400, 'featured' => false, 'description' => 'The only lodge inside the Sossusvlei park gate — first onto the dunes before the tour buses arrive.'],
-            ['type' => ListingType::Accommodation, 'name' => 'Little Kulala', 'region' => 'Hardap', 'lat' => -24.6167, 'lng' => 15.7333, 'price' => 8900, 'featured' => true, 'description' => 'Dune-side luxury at the gates of Sossusvlei, with a private plunge pool facing the red sand.'],
-            ['type' => ListingType::Accommodation, 'name' => 'Canyon Roadhouse', 'region' => 'Karas', 'lat' => -27.5333, 'lng' => 17.8500, 'price' => 1950, 'featured' => false, 'description' => 'A quirky, vintage-car-themed stop above Fish River Canyon — as memorable as the view itself.'],
+            ['type' => ListingType::Accommodation, 'name' => 'Olive Grove Guesthouse', 'region' => 'Khomas', 'lat' => -22.5700, 'lng' => 17.0836, 'price' => 1450, 'featured' => false, 'description' => 'A boutique city base in Windhoek — the natural first and last night of most Namibia itineraries.', 'highlights' => ['Free WiFi', 'Airport shuttle', 'Pool', 'Free parking']],
+            ['type' => ListingType::Accommodation, 'name' => 'Etosha Safari Lodge', 'region' => 'Kunene', 'lat' => -19.2000, 'lng' => 15.9333, 'price' => 2100, 'featured' => false, 'description' => 'Mid-range base for Etosha game drives, close to the Okaukuejo waterhole where elephants come to drink at dusk.', 'highlights' => ['Waterhole views', 'Game drives on-site', 'Pool', 'Restaurant & bar']],
+            ['type' => ListingType::Accommodation, 'name' => 'Ongava Tented Camp', 'region' => 'Kunene', 'lat' => -19.4167, 'lng' => 15.9500, 'price' => 5200, 'featured' => true, 'description' => 'Private reserve on Etosha\'s southern boundary — tented luxury with waterhole views from every unit.', 'highlights' => ['Private waterhole', 'All-inclusive', 'Guided walks', 'Rhino tracking']],
+            ['type' => ListingType::Accommodation, 'name' => 'Doro Nawas Camp', 'region' => 'Kunene', 'lat' => -20.5833, 'lng' => 14.4167, 'price' => 4800, 'featured' => true, 'description' => 'Desert-adapted elephants and 6,000-year-old rock art at Twyfelfontein, a short drive from camp.', 'highlights' => ['Desert-adapted elephants', 'Twyfelfontein nearby', 'Pool', 'All-inclusive']],
+            ['type' => ListingType::Accommodation, 'name' => 'The Delight Hotel', 'region' => 'Erongo', 'lat' => -22.6783, 'lng' => 14.5267, 'price' => 1650, 'featured' => false, 'description' => 'Colourful, mid-range coastal stay in Swakopmund, walking distance from the jetty and dune activities.', 'highlights' => ['Walk to the jetty', 'Free WiFi', 'Breakfast included']],
+            ['type' => ListingType::Accommodation, 'name' => 'Sossus Dune Lodge', 'region' => 'Hardap', 'lat' => -24.7333, 'lng' => 15.8000, 'price' => 3400, 'featured' => false, 'description' => 'The only lodge inside the Sossusvlei park gate — first onto the dunes before the tour buses arrive.', 'highlights' => ['Inside the park gate', 'Pool', 'Early dune access']],
+            ['type' => ListingType::Accommodation, 'name' => 'Little Kulala', 'region' => 'Hardap', 'lat' => -24.6167, 'lng' => 15.7333, 'price' => 8900, 'featured' => true, 'description' => 'Dune-side luxury at the gates of Sossusvlei, with a private plunge pool facing the red sand.', 'highlights' => ['Private plunge pool', 'All-inclusive', 'Star-bed sleepout', 'Free parking']],
+            ['type' => ListingType::Accommodation, 'name' => 'Canyon Roadhouse', 'region' => 'Karas', 'lat' => -27.5333, 'lng' => 17.8500, 'price' => 1950, 'featured' => false, 'description' => 'A quirky, vintage-car-themed stop above Fish River Canyon — as memorable as the view itself.', 'highlights' => ['Pool', 'Restaurant on-site', 'Canyon viewpoint drives']],
 
             // Activities
             ['type' => ListingType::Activity, 'name' => 'Etosha Night Hide Game Drive', 'region' => 'Kunene', 'lat' => -19.1700, 'lng' => 15.9200, 'price' => 650, 'featured' => true, 'description' => 'Watch the Okaukuejo waterhole after dark from a lit viewing deck — rhino and lion sightings are common.'],
@@ -44,12 +46,18 @@ class ListingSeeder extends Seeder
         ];
 
         foreach ($listings as $listing) {
+            $partner = $listing['type'] === ListingType::Accommodation
+                ? Partner::where('name', $listing['name'])->first()
+                : null;
+
             Listing::updateOrCreate(
                 ['slug' => Str::slug($listing['name'])],
                 [
                     'type' => $listing['type'],
+                    'partner_id' => $partner?->id,
                     'name' => ['en' => $listing['name']],
                     'description' => ['en' => $listing['description']],
+                    'highlights' => isset($listing['highlights']) ? ['en' => $listing['highlights']] : null,
                     'region' => $listing['region'],
                     'latitude' => $listing['lat'],
                     'longitude' => $listing['lng'],
@@ -57,6 +65,7 @@ class ListingSeeder extends Seeder
                     'price_currency' => 'NAD',
                     'is_featured' => $listing['featured'],
                     'is_published' => true,
+                    'accepts_inquiries' => true,
                 ]
             );
         }

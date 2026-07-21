@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { ItineraryVariant } from '@/lib/kaia-demo';
+import type { ItineraryVariant } from '@/lib/kaia-types';
 
 const props = defineProps<{
     variant: ItineraryVariant;

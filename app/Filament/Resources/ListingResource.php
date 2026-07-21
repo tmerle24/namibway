@@ -25,14 +25,31 @@ class ListingResource extends Resource
         return $form
             ->schema([
                 Forms\Components\FileUpload::make('image')
+                    ->label('Hero image')
                     ->image()
                     ->disk('public')
                     ->directory('listings')
                     ->imageEditor()
                     ->columnSpanFull(),
+                Forms\Components\FileUpload::make('gallery')
+                    ->image()
+                    ->multiple()
+                    ->reorderable()
+                    ->disk('public')
+                    ->directory('listings/gallery')
+                    ->columnSpanFull(),
                 Forms\Components\Select::make('type')
                     ->options(ListingType::class)
                     ->required(),
+                Forms\Components\Select::make('partner_id')
+                    ->label('Partner')
+                    ->relationship('partner', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->createOptionForm([
+                        Forms\Components\TextInput::make('name')->required(),
+                        Forms\Components\TextInput::make('email')->email(),
+                    ]),
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
@@ -41,6 +58,10 @@ class ListingResource extends Resource
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
                 Forms\Components\Textarea::make('description')
+                    ->columnSpanFull(),
+                Forms\Components\TagsInput::make('highlights')
+                    ->placeholder('Add a highlight and press enter')
+                    ->helperText('Short USPs shown on the detail page, e.g. "Free WiFi", "Waterhole views"')
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('region')
                     ->maxLength(255),
@@ -58,6 +79,11 @@ class ListingResource extends Resource
                     ->required(),
                 Forms\Components\Toggle::make('is_published')
                     ->required(),
+                Forms\Components\Toggle::make('accepts_inquiries')
+                    ->label('Accepts inquiries')
+                    ->helperText('Shows the contact/inquiry form on the detail page')
+                    ->default(true)
+                    ->required(),
             ]);
     }
 
@@ -73,6 +99,10 @@ class ListingResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('partner.name')
+                    ->label('Partner')
+                    ->searchable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('slug')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),

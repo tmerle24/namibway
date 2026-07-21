@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import type { ItineraryPlan, ItineraryVariant } from '@/lib/kaia-demo';
+import type { ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
 
 defineProps<{
     plan: ItineraryPlan;

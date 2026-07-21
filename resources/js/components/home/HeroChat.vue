@@ -3,8 +3,8 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { nextTick, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
-import { DEMO_PLAN, KAIA_INTERVIEW_STEPS, KAIA_SUMMARY_MESSAGE  } from '@/lib/kaia-demo';
-import type {ItineraryPlan} from '@/lib/kaia-demo';
+import { sendKaiaMessage } from '@/lib/kaia-client';
+import type { ChatMessage, ItineraryPlan } from '@/lib/kaia-types';
 import { dashboard, login, register } from '@/routes';
 import logoLight from '../../../images/logo-light.png';
 
@@ -15,15 +15,9 @@ const emit = defineEmits<{
 const page = usePage();
 const { t } = useI18n();
 
-interface ChatMessage {
-    role: 'ai' | 'user';
-    text: string;
-}
-
-const messages = ref<ChatMessage[]>([{ role: 'ai', text: KAIA_INTERVIEW_STEPS[0] }]);
+const messages = ref<ChatMessage[]>([{ role: 'ai', text: t('chat.greeting') }]);
 const inputText = ref('');
 const isTyping = ref(false);
-const step = ref(0);
 const chatLog = ref<HTMLDivElement | null>(null);
 
 async function scrollToBottom() {
@@ -46,17 +40,23 @@ return;
     await scrollToBottom();
 
     isTyping.value = true;
-    await new Promise((resolve) => setTimeout(resolve, 700 + Math.random() * 500));
-    isTyping.value = false;
 
-    step.value += 1;
+    try {
+        const result = await sendKaiaMessage(messages.value);
 
-    if (step.value < KAIA_INTERVIEW_STEPS.length) {
-        messages.value.push({ role: 'ai', text: KAIA_INTERVIEW_STEPS[step.value] });
-    } else {
-        messages.value.push({ role: 'ai', text: KAIA_SUMMARY_MESSAGE });
-        emit('plan-ready', DEMO_PLAN);
+        if (result.type === 'question') {
+            messages.value.push({ role: 'ai', text: result.text });
+        } else if (result.type === 'itinerary') {
+            messages.value.push({ role: 'ai', text: t('chat.itineraryReady') });
+            emit('plan-ready', result.plan);
+        } else {
+            messages.value.push({ role: 'ai', text: result.text });
+        }
+    } catch {
+        messages.value.push({ role: 'ai', text: t('chat.error') });
     }
+
+    isTyping.value = false;
 
     await scrollToBottom();
 }

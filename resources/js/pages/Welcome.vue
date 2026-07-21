@@ -7,7 +7,7 @@ import BookingSection from '@/components/home/BookingSection.vue';
 import ExploreSection from '@/components/home/ExploreSection.vue';
 import HeroChat from '@/components/home/HeroChat.vue';
 import ItinerarySection from '@/components/home/ItinerarySection.vue';
-import type { ItineraryPlan, ItineraryVariant } from '@/lib/kaia-demo';
+import type { ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
 import logoDark from '../../images/logo-dark.png';
 
 interface Listing {

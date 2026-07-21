@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import 'flatpickr/dist/flatpickr.min.css';
 import flatpickr from 'flatpickr';
 import type { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { show } from '@/routes/listings';
 
 interface Listing {
     id: number;
@@ -32,6 +34,7 @@ interface IdeaCard {
     region: string | null;
     budget: Budget;
     image: string;
+    slug: string | null;
 }
 
 interface IdeaRow {
@@ -120,6 +123,7 @@ const ideaRows = computed<IdeaRow[]>(() => {
             region: listing.region,
             budget: budgetBucket(listing.price_from),
             image: listing.image ?? images[byType[listing.type].length % images.length],
+            slug: listing.slug,
         });
     }
 
@@ -136,6 +140,7 @@ const ideaRows = computed<IdeaRow[]>(() => {
             region: name,
             budget: null,
             image: REGION_IMAGES[name],
+            slug: null,
         })),
     });
 
@@ -258,7 +263,13 @@ const hasResults = computed(() => visibleRows.value.length > 0);
                     <span>{{ t('explore.examples', { count: row.items.length }) }}</span>
                 </div>
                 <div class="idea-cards">
-                    <div v-for="item in row.items" :key="item.title" class="idea-card">
+                    <component
+                        :is="item.slug ? Link : 'div'"
+                        v-for="item in row.items"
+                        :key="item.title"
+                        :href="item.slug ? show({ listing: item.slug }).url : undefined"
+                        class="idea-card"
+                    >
                         <div class="idea-thumb" :style="{ background: `var(--${row.bg})` }">
                             <span class="idea-tag">{{ t(`explore.rows.${row.key}`) }}</span>
                             <img :src="item.image" :alt="item.title" class="idea-thumb-img" loading="lazy" />
@@ -267,7 +278,7 @@ const hasResults = computed(() => visibleRows.value.length > 0);
                             <h4>{{ item.title }}</h4>
                             <p>{{ item.description }}</p>
                         </div>
-                    </div>
+                    </component>
                 </div>
             </div>
         </div>

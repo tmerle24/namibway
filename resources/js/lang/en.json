@@ -9,9 +9,12 @@
         "subtitle": "Tell your travel companion what you're after. It builds a real, bookable plan — no forms."
     },
     "chat": {
+        "greeting": "Hi, I'm Kaia. Tell me a bit about the trip you're dreaming of — how many days do you have?",
         "placeholder": "What do you want to do in Namibia?",
         "send": "Send",
-        "thinking": "Kaia is thinking…"
+        "thinking": "Kaia is thinking…",
+        "itineraryReady": "Perfect, that's enough to sketch a plan. Here are a few ways to do this trip:",
+        "error": "Something went wrong reaching the travel companion. Please try again."
     },
     "itinerary": {
         "eyebrow": "Your plan",
@@ -103,7 +106,39 @@
         }
     },
     "footer": {
-        "tagline": "AI-assisted travel planning for Namibia. The chat interview above is a preview flow; live AI-generated itineraries and real partner availability are coming as the platform develops."
+        "tagline": "AI-assisted travel planning for Namibia. Kaia's interview and itinerary generation are live; real partner booking and availability are coming as the platform develops."
+    },
+    "listing": {
+        "backToHome": "← Back to explore",
+        "types": {
+            "accommodation": "Accommodation",
+            "activity": "Activity",
+            "restaurant": "Restaurant"
+        },
+        "from": "From",
+        "gallery": "Gallery",
+        "about": "About",
+        "steckbrief": "At a glance",
+        "contact": {
+            "title": "Contact",
+            "website": "Website",
+            "instagram": "Instagram",
+            "facebook": "Facebook"
+        },
+        "inquiry": {
+            "title": "Request availability",
+            "subtitle": "Send your details directly to {partner} — no payment, no obligation.",
+            "subtitleGeneric": "Send your details directly to the partner — no payment, no obligation.",
+            "name": "Full name",
+            "email": "Email",
+            "phone": "Phone (optional)",
+            "travelDates": "Travel dates (optional)",
+            "message": "Message (optional)",
+            "send": "Send inquiry",
+            "sending": "Sending…",
+            "success": "Sent! The partner will get back to you directly.",
+            "unavailable": "This listing isn't currently accepting inquiries — check back soon."
+        }
     },
     "localeSwitcher": {
         "label": "Language"
