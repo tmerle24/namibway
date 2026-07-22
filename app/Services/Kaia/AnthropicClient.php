@@ -14,9 +14,10 @@ class AnthropicClient
     /**
      * @param  array<int, array{role: string, content: mixed}>  $messages
      * @param  array<int, array<string, mixed>>  $tools
+     * @param  array<string, mixed>|null  $toolChoice
      * @return array<string, mixed>
      */
-    public function send(string $model, string $system, array $messages, array $tools = [], int $maxTokens = 1024): array
+    public function send(string $model, string $system, array $messages, array $tools = [], int $maxTokens = 1024, ?array $toolChoice = null): array
     {
         $apiKey = config('services.anthropic.api_key');
 
@@ -33,6 +34,10 @@ class AnthropicClient
 
         if ($tools !== []) {
             $payload['tools'] = $tools;
+        }
+
+        if ($toolChoice !== null) {
+            $payload['tool_choice'] = $toolChoice;
         }
 
         $response = Http::withHeaders([
