@@ -12,7 +12,13 @@
         "greeting": "Hallo, ich bin Kaia. Erzähl mir ein bisschen von der Reise, die dir vorschwebt — wie viele Tage hast du?",
         "placeholder": "Was möchtest du in Namibia erleben?",
         "send": "Senden",
-        "thinking": "Kaia überlegt…",
+        "thinkingStatuses": [
+            "Kaia überlegt…",
+            "Prüft echte Verfügbarkeit…",
+            "Vergleicht Unterkünfte und Aktivitäten…",
+            "Plant die beste Route…",
+            "Stellt deinen Plan zusammen…"
+        ],
         "itineraryReady": "Perfekt, das reicht, um einen Plan zu skizzieren. Hier sind ein paar Möglichkeiten für diese Reise:",
         "error": "Bei der Verbindung zum Reisebegleiter ist etwas schiefgelaufen. Bitte versuch es erneut."
     },

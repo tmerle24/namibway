@@ -12,7 +12,13 @@
         "greeting": "Hoi, ik ben Kaia. Vertel me iets over de reis waar je van droomt — hoeveel dagen heb je?",
         "placeholder": "Wat wil je doen in Namibië?",
         "send": "Versturen",
-        "thinking": "Kaia denkt na…",
+        "thinkingStatuses": [
+            "Kaia denkt na…",
+            "Controleert echte beschikbaarheid…",
+            "Vergelijkt accommodatie en activiteiten…",
+            "Stippelt de beste route uit…",
+            "Stelt jouw plan samen…"
+        ],
         "itineraryReady": "Perfect, dat is genoeg om een plan te schetsen. Hier zijn een paar manieren om deze reis te maken:",
         "error": "Er ging iets mis bij het bereiken van de reisgezel. Probeer het opnieuw."
     },

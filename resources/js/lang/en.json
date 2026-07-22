@@ -12,7 +12,13 @@
         "greeting": "Hi, I'm Kaia. Tell me a bit about the trip you're dreaming of — how many days do you have?",
         "placeholder": "What do you want to do in Namibia?",
         "send": "Send",
-        "thinking": "Kaia is thinking…",
+        "thinkingStatuses": [
+            "Kaia is thinking…",
+            "Checking real availability…",
+            "Comparing accommodation and activities…",
+            "Mapping out the best route…",
+            "Putting together your plan…"
+        ],
         "itineraryReady": "Perfect, that's enough to sketch a plan. Here are a few ways to do this trip:",
         "error": "Something went wrong reaching the travel companion. Please try again."
     },

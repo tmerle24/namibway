@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { nextTick, ref } from 'vue';
+import { nextTick, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import { sendKaiaMessage } from '@/lib/kaia-client';
@@ -13,12 +13,32 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage();
-const { t } = useI18n();
+const { t, tm } = useI18n();
+
+const thinkingStatuses = tm('chat.thinkingStatuses') as unknown as string[];
 
 const messages = ref<ChatMessage[]>([{ role: 'ai', text: t('chat.greeting') }]);
 const inputText = ref('');
 const isTyping = ref(false);
+const thinkingIndex = ref(0);
 const chatLog = ref<HTMLDivElement | null>(null);
+let thinkingTimer: ReturnType<typeof setInterval> | null = null;
+
+function startThinking() {
+    thinkingIndex.value = 0;
+    thinkingTimer = setInterval(() => {
+        thinkingIndex.value = (thinkingIndex.value + 1) % thinkingStatuses.length;
+    }, 2500);
+}
+
+function stopThinking() {
+    if (thinkingTimer) {
+        clearInterval(thinkingTimer);
+        thinkingTimer = null;
+    }
+}
+
+onUnmounted(stopThinking);
 
 async function scrollToBottom() {
     await nextTick();
@@ -40,6 +60,7 @@ return;
     await scrollToBottom();
 
     isTyping.value = true;
+    startThinking();
 
     try {
         const result = await sendKaiaMessage(messages.value);
@@ -56,6 +77,7 @@ return;
         messages.value.push({ role: 'ai', text: t('chat.error') });
     }
 
+    stopThinking();
     isTyping.value = false;
 
     await scrollToBottom();
@@ -95,7 +117,7 @@ return;
             <div class="chat-panel">
                 <div class="chat-log" ref="chatLog">
                     <div v-for="(msg, i) in messages" :key="i" :class="['msg', msg.role]">{{ msg.text }}</div>
-                    <div v-if="isTyping" class="msg typing">{{ t('chat.thinking') }}</div>
+                    <div v-if="isTyping" class="msg typing">{{ thinkingStatuses[thinkingIndex] }}</div>
                 </div>
                 <div class="chat-input-row">
                     <input
