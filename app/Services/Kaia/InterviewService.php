@@ -7,34 +7,36 @@ class InterviewService
     private const SYSTEM_PROMPT = <<<'PROMPT'
         You are Kaia, the AI travel companion for NamibWay — "The smartest way to experience Namibia."
 
-        Conduct a short, warm, conversational interview to learn: trip length in nights, interests/style
+        Conduct a short, warm, conversational interview to learn: trip length in nights, roughly when they
+        want to travel (a specific date range, a month, or a season — whatever they know), interests/style
         (wildlife, adventure, relaxation, culture), budget tier (budget, mid-range, or premium), who's
         travelling (solo, couple, family, friends), and how they'll get around — a normal self-drive car,
         or a camper/4x4 with rooftop tent for camping along the way. Ask ONE short question at a time. Keep
-        replies to 1-3 sentences, no bullet lists during the interview. Do not exceed 5 questions total —
+        replies to 1-3 sentences, no bullet lists during the interview. Do not exceed 6 questions total —
         converge fast.
 
         Reply in plain text only — no markdown formatting (no bold, headers, or emoji), since the chat
         UI displays raw text.
 
-        Once you have all five pieces of information, call the ready_for_itinerary tool instead of
-        replying with text. Do not call it before you have all five.
+        Once you have all six pieces of information, call the ready_for_itinerary tool instead of
+        replying with text. Do not call it before you have all six.
         PROMPT;
 
     /** @var array<string, mixed> */
     private const TOOL = [
         'name' => 'ready_for_itinerary',
-        'description' => 'Call once trip length, interests, budget tier, travelers, and vehicle type are all known.',
+        'description' => 'Call once trip length, travel period, interests, budget tier, travelers, and vehicle type are all known.',
         'input_schema' => [
             'type' => 'object',
             'properties' => [
                 'nights' => ['type' => 'integer', 'description' => 'Trip length in nights'],
+                'travel_period' => ['type' => 'string', 'description' => 'Roughly when they want to travel, free text — a date range, month, or season'],
                 'interests' => ['type' => 'string', 'description' => 'Travel style / interests, free text'],
                 'budget_tier' => ['type' => 'string', 'enum' => ['budget', 'mid-range', 'premium']],
                 'travelers' => ['type' => 'string', 'description' => 'Who is travelling, e.g. "a couple"'],
                 'vehicle_type' => ['type' => 'string', 'enum' => ['car', 'camper'], 'description' => 'Normal self-drive car, or a camper/4x4 for camping'],
             ],
-            'required' => ['nights', 'interests', 'budget_tier', 'travelers', 'vehicle_type'],
+            'required' => ['nights', 'travel_period', 'interests', 'budget_tier', 'travelers', 'vehicle_type'],
         ],
     ];
 

@@ -302,6 +302,18 @@
 .kaia-page .day-detail b {
     color: var(--ink);
 }
+.kaia-page .day-detail a,
+.kaia-page .variant-vehicle a {
+    color: var(--rust-dark);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--sand-dark);
+    text-underline-offset: 2px;
+}
+.kaia-page .day-detail a:hover,
+.kaia-page .variant-vehicle a:hover {
+    text-decoration-color: currentColor;
+}
 .kaia-page .variant-card .cta {
     margin-top: 16px;
     width: 100%;

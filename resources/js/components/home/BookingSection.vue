@@ -19,7 +19,8 @@ interface QueueItem {
 const queue = ref<QueueItem[]>([]);
 
 async function runQueue(variant: ItineraryVariant) {
-    const properties = [...new Set(variant.days.map((d) => d.accommodation).filter(Boolean))];
+    const names = variant.days.map((d) => d.accommodation?.name).filter((name): name is string => Boolean(name));
+    const properties = [...new Set(names)];
     queue.value = properties.map((property) => ({ property, status: 'waiting' as QueueStatus }));
 
     for (const item of queue.value) {

@@ -1,15 +1,22 @@
+export interface ItineraryListingRef {
+    id: number | null;
+    slug: string | null;
+    name: string;
+    type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
+}
+
 export interface ItineraryDay {
     day: number;
     location: string;
-    accommodation?: string;
-    activity?: string;
-    restaurant?: string;
+    accommodation?: ItineraryListingRef | null;
+    activity?: ItineraryListingRef | null;
+    restaurant?: ItineraryListingRef | null;
 }
 
 export interface ItineraryVariant {
     name: string;
     estimated_total_usd: number;
-    vehicle?: string;
+    vehicle?: ItineraryListingRef | null;
     days: ItineraryDay[];
 }
 

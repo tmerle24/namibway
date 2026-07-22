@@ -3,11 +3,26 @@
 namespace App\Services\Kaia;
 
 use App\Models\Listing;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class ItineraryService
 {
+    /**
+     * Ordered so adjacent tiers can be included alongside an exact match —
+     * a "budget" trip still sees "mid-range" candidates, just not "premium".
+     *
+     * @var array<int, string>
+     */
+    private const BUDGET_TIERS = ['budget', 'mid-range', 'premium'];
+
+    /**
+     * Cap per type regardless of catalog size — keeps the AI's input bounded
+     * (cost + latency) even once the catalog grows to hundreds of listings.
+     */
+    private const MAX_CANDIDATES_PER_TYPE = 20;
+
     public function __construct(private readonly AnthropicClient $client) {}
 
     /**
@@ -43,12 +58,14 @@ class ItineraryService
      */
     private function attempt(array $tripParams): array
     {
+        $listings = $this->candidateListings($tripParams);
+
         $messages = [
             [
                 'role' => 'user',
                 'content' => 'Trip parameters: '.json_encode($tripParams)
                     .PHP_EOL.PHP_EOL.'NamibWay catalog (only use listings from here): '
-                    .json_encode($this->catalog()),
+                    .json_encode($this->toAiCatalog($listings)),
             ],
         ];
 
@@ -63,7 +80,9 @@ class ItineraryService
 
         foreach ($response['content'] ?? [] as $block) {
             if (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'propose_itinerary') {
-                return $this->validatePlan($block['input']);
+                $plan = $this->validatePlan($block['input']);
+
+                return $this->resolveReferences($plan, $listings);
             }
         }
 
@@ -101,6 +120,63 @@ class ItineraryService
             'trip_summary' => (string) ($plan['trip_summary'] ?? ''),
             'variants' => $variants,
         ];
+    }
+
+    /**
+     * Claude only ever returns plain listing names (keeps its job simple:
+     * "which of these names fits here" rather than juggling IDs). This walks
+     * the validated plan and turns each name back into a structured
+     * {id, slug, name, type} reference using the same candidate listings we
+     * already fetched — no extra DB round-trip. That reference is what lets
+     * the frontend link a day's accommodation straight to its real detail
+     * page, and later, what a "remove"/"swap this for an alternative"/
+     * "save as draft" UI needs to act on instead of a bare display string.
+     * If a name can't be matched (shouldn't happen — Claude was only ever
+     * shown these names), the display text is kept but the link is simply
+     * omitted rather than losing the content.
+     *
+     * @param  array{trip_summary: string, variants: array<int, array<string, mixed>>}  $plan
+     * @param  Collection<int, Listing>  $listings
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>}
+     */
+    private function resolveReferences(array $plan, Collection $listings): array
+    {
+        /** @var array<string, array{id: int, slug: string, name: string, type: string}> $index */
+        $index = [];
+
+        foreach ($listings as $listing) {
+            $name = $listing->getTranslation('name', 'en', useFallbackLocale: true);
+            $index[$listing->type->value.'|'.mb_strtolower($name)] = [
+                'id' => $listing->id,
+                'slug' => $listing->slug,
+                'name' => $name,
+                'type' => $listing->type->value,
+            ];
+        }
+
+        $resolve = function (?string $name, string $type) use ($index): ?array {
+            if ($name === null || $name === '') {
+                return null;
+            }
+
+            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type];
+        };
+
+        $plan['variants'] = array_map(function (array $variant) use ($resolve) {
+            $variant['vehicle'] = $resolve($variant['vehicle'] ?? null, 'vehicle');
+
+            $variant['days'] = array_map(function (array $day) use ($resolve) {
+                $day['accommodation'] = $resolve($day['accommodation'] ?? null, 'accommodation');
+                $day['activity'] = $resolve($day['activity'] ?? null, 'activity');
+                $day['restaurant'] = $resolve($day['restaurant'] ?? null, 'restaurant');
+
+                return $day;
+            }, $variant['days']);
+
+            return $variant;
+        }, $plan['variants']);
+
+        return $plan;
     }
 
     private function systemPrompt(): string
@@ -186,17 +262,49 @@ class ItineraryService
     }
 
     /**
-     * The entire published catalog, deterministically fetched — small enough
-     * (a few dozen listings) to hand to Claude in one shot instead of letting
-     * it explore via tool calls one region/type at a time.
+     * A deterministically pre-filtered slice of the catalog — plain indexed
+     * SQL, not AI. This is what keeps cost and latency flat as the catalog
+     * grows from a few dozen listings today to hundreds or thousands later:
+     * Claude never sees the whole catalog, only a bounded shortlist already
+     * narrowed by hard constraints (budget tier, vehicle type). Semantic
+     * matching (e.g. "interests" against descriptions) stays with the AI —
+     * that needs judgment; region/price/vehicle-type don't.
      *
-     * @return array<int, array<string, mixed>>
+     * @param  array<string, mixed>  $tripParams
+     * @return Collection<int, Listing>
      */
-    private function catalog(): array
+    private function candidateListings(array $tripParams): Collection
     {
+        $requestedTier = is_string($tripParams['budget_tier'] ?? null) ? $tripParams['budget_tier'] : null;
+        $vehicleType = is_string($tripParams['vehicle_type'] ?? null) ? $tripParams['vehicle_type'] : null;
+
         return Listing::query()
             ->where('is_published', true)
             ->get()
+            ->groupBy(fn (Listing $listing) => $listing->type->value)
+            ->flatMap(function ($listings, string $type) use ($requestedTier, $vehicleType) {
+                if ($type === 'vehicle' && $vehicleType !== null) {
+                    $listings = $listings->filter(
+                        fn (Listing $listing) => $this->isCamper($listing) === ($vehicleType === 'camper')
+                    );
+                } elseif ($type !== 'vehicle' && $requestedTier !== null) {
+                    $listings = $listings->filter(
+                        fn (Listing $listing) => $this->budgetTierDistance($listing->price_from, $requestedTier) <= 1
+                    );
+                }
+
+                return $listings->take(self::MAX_CANDIDATES_PER_TYPE);
+            })
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, Listing>  $listings
+     * @return array<int, array<string, mixed>>
+     */
+    private function toAiCatalog(Collection $listings): array
+    {
+        return $listings
             ->map(fn (Listing $listing) => [
                 'name' => $listing->getTranslation('name', 'en', useFallbackLocale: true),
                 'type' => $listing->type->value,
@@ -208,5 +316,43 @@ class ItineraryService
             ])
             ->values()
             ->all();
+    }
+
+    private function isCamper(Listing $listing): bool
+    {
+        return in_array('Camper', $listing->getTranslation('highlights', 'en', useFallbackLocale: true) ?? [], true);
+    }
+
+    private function budgetTierDistance(?string $price, string $requestedTier): int
+    {
+        $tier = $this->budgetTier($price);
+
+        if ($tier === null) {
+            return 0;
+        }
+
+        $requestedIndex = array_search($requestedTier, self::BUDGET_TIERS, true);
+        $tierIndex = array_search($tier, self::BUDGET_TIERS, true);
+
+        if ($requestedIndex === false || $tierIndex === false) {
+            return 0;
+        }
+
+        return abs($requestedIndex - $tierIndex);
+    }
+
+    private function budgetTier(?string $price): ?string
+    {
+        if ($price === null) {
+            return null;
+        }
+
+        $value = (float) $price;
+
+        return match (true) {
+            $value < 150 => 'budget',
+            $value <= 400 => 'mid-range',
+            default => 'premium',
+        };
     }
 }
