@@ -26,11 +26,13 @@
         "eyebrow": "Jouw plan",
         "title": "Een paar manieren om deze reis te maken",
         "subtitle": "Samengesteld op basis van het gesprek hierboven — accommodatie, activiteiten en eten samen bekeken, niet los van elkaar.",
-        "estimated": "~${amount} geschat",
+        "estimated": "~{currency} {amount} geschat",
         "stay": "Verblijf: {value}",
         "activity": "Activiteit: {value}",
         "dinner": "Diner: {value}",
         "vehicle": "Voertuig: {value}",
+        "remove": "Verwijderen",
+        "removeDay": "Dag verwijderen",
         "bookCta": "Beschikbaarheid aanvragen & boeken"
     },
     "booking": {

@@ -314,6 +314,32 @@
 .kaia-page .variant-vehicle a:hover {
     text-decoration-color: currentColor;
 }
+.kaia-page .line-item,
+.kaia-page .day-detail > div:first-child {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.kaia-page .item-price {
+    color: #8a7f68;
+    font-size: 11.5px;
+    font-weight: 600;
+}
+.kaia-page .remove-btn {
+    background: none;
+    border: none;
+    color: #8a7f68;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    margin-left: auto;
+    opacity: 0.6;
+}
+.kaia-page .remove-btn:hover {
+    opacity: 1;
+    color: var(--rust-dark);
+}
 .kaia-page .variant-card .cta {
     margin-top: 16px;
     width: 100%;

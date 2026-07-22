@@ -26,11 +26,13 @@
         "eyebrow": "Dein Plan",
         "title": "Ein paar Möglichkeiten für diese Reise",
         "subtitle": "Erstellt aus dem Gespräch oben — Unterkunft, Aktivitäten und Restaurants gemeinsam gedacht, nicht getrennt.",
-        "estimated": "~${amount} geschätzt",
+        "estimated": "~{currency} {amount} geschätzt",
         "stay": "Unterkunft: {value}",
         "activity": "Aktivität: {value}",
         "dinner": "Abendessen: {value}",
         "vehicle": "Fahrzeug: {value}",
+        "remove": "Entfernen",
+        "removeDay": "Tag entfernen",
         "bookCta": "Verfügbarkeit anfragen & buchen"
     },
     "booking": {

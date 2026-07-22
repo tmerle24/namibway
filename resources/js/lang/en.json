@@ -26,11 +26,13 @@
         "eyebrow": "Your plan",
         "title": "A few ways to do this trip",
         "subtitle": "Generated from the conversation above — accommodation, activities and dining together, not separate silos.",
-        "estimated": "~${amount} estimated",
+        "estimated": "~{currency} {amount} estimated",
         "stay": "Stay: {value}",
         "activity": "Activity: {value}",
         "dinner": "Dinner: {value}",
         "vehicle": "Vehicle: {value}",
+        "remove": "Remove",
+        "removeDay": "Remove day",
         "bookCta": "Request availability & book"
     },
     "booking": {

@@ -126,14 +126,15 @@ class ItineraryService
      * Claude only ever returns plain listing names (keeps its job simple:
      * "which of these names fits here" rather than juggling IDs). This walks
      * the validated plan and turns each name back into a structured
-     * {id, slug, name, type} reference using the same candidate listings we
-     * already fetched — no extra DB round-trip. That reference is what lets
-     * the frontend link a day's accommodation straight to its real detail
-     * page, and later, what a "remove"/"swap this for an alternative"/
-     * "save as draft" UI needs to act on instead of a bare display string.
-     * If a name can't be matched (shouldn't happen — Claude was only ever
-     * shown these names), the display text is kept but the link is simply
-     * omitted rather than losing the content.
+     * {id, slug, name, type, price_from, price_currency} reference using the
+     * same candidate listings we already fetched — no extra DB round-trip.
+     * That reference is what lets the frontend link a day's accommodation
+     * straight to its real detail page, show a real per-item price instead
+     * of a single AI-guessed trip total, and later, what a "remove"/"swap
+     * this for an alternative"/"save as draft" UI needs to act on instead of
+     * a bare display string. If a name can't be matched (shouldn't happen —
+     * Claude was only ever shown these names), the display text is kept but
+     * the link/price is simply omitted rather than losing the content.
      *
      * @param  array{trip_summary: string, variants: array<int, array<string, mixed>>}  $plan
      * @param  Collection<int, Listing>  $listings
@@ -141,7 +142,7 @@ class ItineraryService
      */
     private function resolveReferences(array $plan, Collection $listings): array
     {
-        /** @var array<string, array{id: int, slug: string, name: string, type: string}> $index */
+        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string}> $index */
         $index = [];
 
         foreach ($listings as $listing) {
@@ -151,6 +152,8 @@ class ItineraryService
                 'slug' => $listing->slug,
                 'name' => $name,
                 'type' => $listing->type->value,
+                'price_from' => $listing->price_from,
+                'price_currency' => $listing->price_currency,
             ];
         }
 
@@ -159,7 +162,7 @@ class ItineraryService
                 return null;
             }
 
-            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type];
+            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD'];
         };
 
         $plan['variants'] = array_map(function (array $variant) use ($resolve) {
@@ -235,7 +238,6 @@ class ItineraryService
                             'type' => 'object',
                             'properties' => [
                                 'name' => ['type' => 'string'],
-                                'estimated_total_usd' => ['type' => 'number'],
                                 'vehicle' => ['type' => 'string', 'description' => 'The one vehicle for the whole trip, not per day'],
                                 'days' => [
                                     'type' => 'array',
@@ -252,7 +254,7 @@ class ItineraryService
                                     ],
                                 ],
                             ],
-                            'required' => ['name', 'estimated_total_usd', 'days'],
+                            'required' => ['name', 'days'],
                         ],
                     ],
                 ],

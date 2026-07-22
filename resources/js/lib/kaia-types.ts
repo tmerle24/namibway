@@ -3,6 +3,8 @@ export interface ItineraryListingRef {
     slug: string | null;
     name: string;
     type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
+    price_from: string | null;
+    price_currency: string;
 }
 
 export interface ItineraryDay {
@@ -15,7 +17,6 @@ export interface ItineraryDay {
 
 export interface ItineraryVariant {
     name: string;
-    estimated_total_usd: number;
     vehicle?: ItineraryListingRef | null;
     days: ItineraryDay[];
 }
