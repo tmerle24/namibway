@@ -33,7 +33,16 @@
         "vehicle": "Véhicule : {value}",
         "remove": "Retirer",
         "removeDay": "Retirer ce jour",
-        "bookCta": "Demander la disponibilité & réserver"
+        "bookCta": "Demander la disponibilité & réserver",
+        "swap": "Échanger",
+        "alternatives": "Alternatives",
+        "noAlternatives": "Aucune alternative disponible.",
+        "useThis": "Choisir",
+        "add": "Ajouter",
+        "editLocation": "Modifier le lieu",
+        "viewDetail": "Voir le détail",
+        "addDay": "Ajouter un jour",
+        "dragToReorder": "Glisser pour réorganiser"
     },
     "booking": {
         "eyebrow": "Assistant de réservation",

@@ -11,6 +11,31 @@ use RuntimeException;
 
 class KaiaController extends Controller
 {
+    public function regions(): JsonResponse
+    {
+        $regions = \App\Models\Listing::query()
+            ->where('is_published', true)
+            ->whereNotNull('region')
+            ->distinct()
+            ->orderBy('region')
+            ->pluck('region');
+
+        return response()->json(['regions' => $regions]);
+    }
+
+    public function alternatives(Request $request, ItineraryService $itinerary): JsonResponse
+    {
+        $validated = $request->validate([
+            'type' => ['required', 'string', 'in:accommodation,activity,restaurant,vehicle'],
+            'exclude_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $excludeId = isset($validated['exclude_id']) ? (int) $validated['exclude_id'] : null;
+        $results = $itinerary->alternatives($validated['type'], $excludeId);
+
+        return response()->json(['alternatives' => $results]);
+    }
+
     public function message(Request $request, InterviewService $interview, ItineraryService $itinerary): JsonResponse
     {
         $validated = $request->validate([

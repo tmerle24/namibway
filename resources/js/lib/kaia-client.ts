@@ -1,4 +1,4 @@
-import type { ChatMessage, ItineraryPlan } from '@/lib/kaia-types';
+import type { ChatMessage, ItineraryListingRef, ItineraryPlan } from '@/lib/kaia-types';
 
 export type KaiaResponse =
     | { type: 'question'; text: string }
@@ -9,6 +9,28 @@ function xsrfToken(): string {
     const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]+)/);
 
     return match ? decodeURIComponent(match[1]) : '';
+}
+
+export async function fetchRegions(): Promise<string[]> {
+    const response = await fetch('/kaia/regions', {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    const data = await response.json();
+
+    return data.regions ?? [];
+}
+
+export async function fetchAlternatives(type: string, excludeId?: number): Promise<ItineraryListingRef[]> {
+    const params = new URLSearchParams({ type });
+    if (excludeId !== undefined) params.set('exclude_id', String(excludeId));
+    const response = await fetch(`/kaia/alternatives?${params}`, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    const data = await response.json();
+
+    return data.alternatives ?? [];
 }
 
 export async function sendKaiaMessage(history: ChatMessage[]): Promise<KaiaResponse> {

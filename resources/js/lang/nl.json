@@ -33,7 +33,16 @@
         "vehicle": "Voertuig: {value}",
         "remove": "Verwijderen",
         "removeDay": "Dag verwijderen",
-        "bookCta": "Beschikbaarheid aanvragen & boeken"
+        "bookCta": "Beschikbaarheid aanvragen & boeken",
+        "swap": "Ruilen",
+        "alternatives": "Alternatieven",
+        "noAlternatives": "Geen alternatieven beschikbaar.",
+        "useThis": "Kies dit",
+        "add": "Toevoegen",
+        "editLocation": "Locatie bewerken",
+        "viewDetail": "Detail bekijken",
+        "addDay": "Dag toevoegen",
+        "dragToReorder": "Slepen om te herschikken"
     },
     "booking": {
         "eyebrow": "Boekingsassistent",

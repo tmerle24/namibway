@@ -33,7 +33,16 @@
         "vehicle": "Vehicle: {value}",
         "remove": "Remove",
         "removeDay": "Remove day",
-        "bookCta": "Request availability & book"
+        "bookCta": "Request availability & book",
+        "swap": "Swap",
+        "alternatives": "Alternatives",
+        "noAlternatives": "No alternatives available.",
+        "useThis": "Use this",
+        "add": "Add",
+        "editLocation": "Edit location",
+        "viewDetail": "View detail",
+        "addDay": "Add day",
+        "dragToReorder": "Drag to reorder"
     },
     "booking": {
         "eyebrow": "Booking assistant",

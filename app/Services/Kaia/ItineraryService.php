@@ -182,6 +182,60 @@ class ItineraryService
         return $plan;
     }
 
+    /**
+     * Find up to 5 published alternatives for a given listing — same type,
+     * preferring same region and adjacent budget tier. No AI involved.
+     *
+     * @return array<int, array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string}>
+     */
+    public function alternatives(string $type, ?int $excludeId = null): array
+    {
+        $excluded = $excludeId !== null ? Listing::find($excludeId) : null;
+
+        $pool = Listing::query()
+            ->where('is_published', true)
+            ->where('type', $type)
+            ->when($excludeId !== null, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->get();
+
+        if ($pool->isEmpty()) {
+            return [];
+        }
+
+        $excludedTier = $excluded ? $this->budgetTier($excluded->price_from) : null;
+        $excludedRegion = $excluded?->region;
+
+        // Narrow: same region + adjacent budget tier
+        $narrow = $pool->filter(function (Listing $listing) use ($excludedRegion, $excludedTier) {
+            $regionMatch = $excludedRegion === null || $listing->region === $excludedRegion;
+            $tierMatch = $excludedTier === null || $this->budgetTierDistance($listing->price_from, $excludedTier) <= 1;
+
+            return $regionMatch && $tierMatch;
+        });
+
+        // Fallback: adjacent budget tier only (ignore region)
+        if ($narrow->isEmpty() && $excludedTier !== null) {
+            $narrow = $pool->filter(
+                fn (Listing $listing) => $this->budgetTierDistance($listing->price_from, $excludedTier) <= 1
+            );
+        }
+
+        $candidates = $narrow->isNotEmpty() ? $narrow : $pool;
+
+        return $candidates
+            ->take(5)
+            ->map(fn (Listing $listing) => [
+                'id' => $listing->id,
+                'slug' => $listing->slug,
+                'name' => $listing->getTranslation('name', 'en', useFallbackLocale: true),
+                'type' => $listing->type->value,
+                'price_from' => $listing->price_from,
+                'price_currency' => $listing->price_currency,
+            ])
+            ->values()
+            ->all();
+    }
+
     private function systemPrompt(): string
     {
         return <<<'PROMPT'
