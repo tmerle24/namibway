@@ -1,0 +1,26 @@
+name: Remote SSH Deployment
+
+on:
+  push:
+    branches:
+      - main # Startet das Deployment bei jedem Push auf den main-Branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Skript über SSH ausführen
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22 # Falls dein SSH-Port vom Standard abweicht, hier anpassen
+          script: |
+            cd /var/www/namibway
+            git pull origin main
+            bash deploy.sh
