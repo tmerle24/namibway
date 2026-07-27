@@ -13,6 +13,8 @@ use Spatie\Translatable\HasTranslations;
  * @property string|null $blurb
  * @property string|null $image
  * @property string $listing_region
+ * @property float|null $lat
+ * @property float|null $lng
  * @property bool $is_published
  * @property int $sort_order
  */
@@ -29,6 +31,8 @@ class Region extends Model
         'blurb',
         'image',
         'listing_region',
+        'lat',
+        'lng',
         'is_published',
         'sort_order',
     ];
@@ -36,6 +40,8 @@ class Region extends Model
     protected $casts = [
         'is_published' => 'boolean',
         'sort_order' => 'integer',
+        'lat' => 'float',
+        'lng' => 'float',
     ];
 
     protected static function booted(): void

@@ -3,10 +3,12 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import draggable from 'vuedraggable';
 import type { ItineraryListingRef, ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
-import { fetchAlternatives, fetchRegions } from '@/lib/kaia-client';
+import { fetchAlternatives, fetchRegions, fetchRegionCoords } from '@/lib/kaia-client';
+import type { RegionCoords } from '@/lib/kaia-client';
 import ItineraryLineItem from './ItineraryLineItem.vue';
 import AlternativesPanel from './AlternativesPanel.vue';
 import LocationPicker from './LocationPicker.vue';
+import TripMap from './TripMap.vue';
 
 const props = defineProps<{
     plan: ItineraryPlan;
@@ -24,6 +26,7 @@ const { t } = useI18n();
 const editableVariants = ref<ItineraryVariant[]>([]);
 const swap = ref<SwapState | null>(null);
 const dbRegions = ref<string[]>([]);
+const regionCoords = ref<Record<string, RegionCoords>>({});
 
 watch(
     () => props.plan,
@@ -35,7 +38,10 @@ watch(
 );
 
 onMounted(async () => {
-    dbRegions.value = await fetchRegions();
+    [dbRegions.value, regionCoords.value] = await Promise.all([
+        fetchRegions(),
+        fetchRegionCoords(),
+    ]);
 });
 
 // Combine DB regions with locations already in the plan — deduplicated
@@ -171,6 +177,12 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         :alternatives="swap.alternatives"
                         @select="applySwap" />
                 </template>
+
+                <TripMap
+                    :map-id="`trip-map-${variantIndex}`"
+                    :variant="variant"
+                    :region-coords="regionCoords"
+                />
 
                 <button type="button" class="add-day-btn" @click="addDay(variantIndex, -1)">+ {{ t('itinerary.addDay') }}</button>
 

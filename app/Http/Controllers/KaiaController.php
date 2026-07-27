@@ -23,6 +23,19 @@ class KaiaController extends Controller
         return response()->json(['regions' => $regions]);
     }
 
+    public function regionCoords(): JsonResponse
+    {
+        $coords = \App\Models\Region::query()
+            ->whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->get(['name', 'lat', 'lng'])
+            ->mapWithKeys(fn (\App\Models\Region $r) => [
+                mb_strtolower($r->getTranslation('name', 'en')) => ['lat' => $r->lat, 'lng' => $r->lng],
+            ]);
+
+        return response()->json(['coords' => $coords]);
+    }
+
     public function alternatives(Request $request, ItineraryService $itinerary): JsonResponse
     {
         $validated = $request->validate([

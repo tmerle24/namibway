@@ -21,6 +21,21 @@ export async function fetchRegions(): Promise<string[]> {
     return data.regions ?? [];
 }
 
+export interface RegionCoords {
+    lat: number;
+    lng: number;
+}
+
+export async function fetchRegionCoords(): Promise<Record<string, RegionCoords>> {
+    const response = await fetch('/kaia/region-coords', {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    const data = await response.json();
+
+    return data.coords ?? {};
+}
+
 export async function fetchAlternatives(type: string, excludeId?: number): Promise<ItineraryListingRef[]> {
     const params = new URLSearchParams({ type });
     if (excludeId !== undefined) params.set('exclude_id', String(excludeId));

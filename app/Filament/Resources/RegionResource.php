@@ -45,6 +45,16 @@ class RegionResource extends Resource
                     ->helperText('Which of the 6 political regions this destination belongs to — determines what gets shown when a traveler clicks this card.')
                     ->options(array_combine(config('kaia.regions'), config('kaia.regions')))
                     ->required(),
+                Forms\Components\TextInput::make('lat')
+                    ->label('Latitude')
+                    ->numeric()
+                    ->nullable()
+                    ->helperText('Decimal degrees, e.g. -22.5597'),
+                Forms\Components\TextInput::make('lng')
+                    ->label('Longitude')
+                    ->numeric()
+                    ->nullable()
+                    ->helperText('Decimal degrees, e.g. 17.0832'),
                 Forms\Components\TextInput::make('sort_order')
                     ->numeric()
                     ->default(0),
