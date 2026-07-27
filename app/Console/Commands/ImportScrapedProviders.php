@@ -82,7 +82,10 @@ class ImportScrapedProviders extends Command
         return self::SUCCESS;
     }
 
-    /** @param array<string, mixed> $record @param array<string, int> $stats */
+    /**
+     * @param array<string, mixed> $record
+     * @param array<string, int> $stats
+     */
     private function processRecord(array $record, bool $isDryRun, bool $skipExisting, array &$stats): void
     {
         $name = trim($record['name'] ?? '');
