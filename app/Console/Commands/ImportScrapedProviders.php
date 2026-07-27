@@ -25,7 +25,8 @@ class ImportScrapedProviders extends Command
 
         if (! file_exists($file)) {
             $this->error("File not found: {$file}");
-            $this->line("Run first: python scripts/scrape_providers.py");
+            $this->line('Run first: python scripts/scrape_providers.py');
+
             return self::FAILURE;
         }
 
@@ -33,10 +34,12 @@ class ImportScrapedProviders extends Command
 
         if (! is_array($records)) {
             $this->error("Invalid JSON in {$file}");
+
             return self::FAILURE;
         }
 
-        $this->info("Found " . count($records) . " records in {$file}");
+        $count = count($records);
+        $this->info("Found {$count} records in {$file}");
 
         $isDryRun = $this->option('dry-run');
         $skipExisting = $this->option('skip-existing');
