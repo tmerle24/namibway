@@ -44,6 +44,7 @@ class SyncPartnerContent extends Command
                 $connector = ConnectorFactory::makeContent($partner);
             } catch (InvalidArgumentException) {
                 $this->warn("  [{$listing->id}] {$listing->name}: partner has no content connector, skipping");
+
                 continue;
             }
 
@@ -53,6 +54,7 @@ class SyncPartnerContent extends Command
                 if (blank($content->name)) {
                     $this->warn("  [{$listing->id}] {$listing->name}: Wetu returned empty content for ID {$listing->wetu_id}");
                     $failed++;
+
                     continue;
                 }
 
