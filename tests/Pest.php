@@ -57,5 +57,6 @@ function makePsrResponseStub(): PsrResponseInterface
     $stream->shouldReceive('isSeekable')->andReturn(false);
     $response = Mockery::mock(PsrResponseInterface::class);
     $response->shouldReceive('getBody')->andReturn($stream);
+
     return $response;
 }
