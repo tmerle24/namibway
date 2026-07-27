@@ -30,7 +30,15 @@ class ImportScrapedProviders extends Command
             return self::FAILURE;
         }
 
-        $records = json_decode(file_get_contents($file), true);
+        $contents = file_get_contents($file);
+
+        if ($contents === false) {
+            $this->error("Could not read file: {$file}");
+
+            return self::FAILURE;
+        }
+
+        $records = json_decode($contents, true);
 
         if (! is_array($records)) {
             $this->error("Invalid JSON in {$file}");
@@ -74,6 +82,7 @@ class ImportScrapedProviders extends Command
         return self::SUCCESS;
     }
 
+    /** @param array<string, mixed> $record @param array<string, int> $stats */
     private function processRecord(array $record, bool $isDryRun, bool $skipExisting, array &$stats): void
     {
         $name = trim($record['name'] ?? '');
