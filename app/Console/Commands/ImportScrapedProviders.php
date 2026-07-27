@@ -101,29 +101,29 @@ class ImportScrapedProviders extends Command
         DB::transaction(function () use ($record, $name, $type, $slug, &$stats) {
             // Create a placeholder partner so the listing has an owner to claim
             $partner = Partner::create([
-                'name'        => $name,
-                'website'     => $record['website'] ?? null,
-                'email'       => $record['contact_email'] ?? null,
-                'source_url'  => $record['source_url'] ?? null,
+                'name' => $name,
+                'website' => $record['website'] ?? null,
+                'email' => $record['contact_email'] ?? null,
+                'source_url' => $record['source_url'] ?? null,
                 'claim_token' => Str::random(48),
             ]);
 
             Listing::create([
-                'partner_id'    => $partner->id,
-                'type'          => $type,
-                'name'          => ['en' => $name],
-                'slug'          => $slug,
-                'description'   => $record['description']
+                'partner_id' => $partner->id,
+                'type' => $type,
+                'name' => ['en' => $name],
+                'slug' => $slug,
+                'description' => $record['description']
                     ? ['en' => trim($record['description'])]
                     : null,
-                'region'        => $this->normalizeRegion($record['region'] ?? null),
-                'latitude'      => $record['latitude'] ?? null,
-                'longitude'     => $record['longitude'] ?? null,
-                'source_url'    => $record['source_url'] ?? null,
-                'website'       => $record['website'] ?? null,
+                'region' => $this->normalizeRegion($record['region'] ?? null),
+                'latitude' => $record['latitude'] ?? null,
+                'longitude' => $record['longitude'] ?? null,
+                'source_url' => $record['source_url'] ?? null,
+                'website' => $record['website'] ?? null,
                 'contact_email' => $record['contact_email'] ?? null,
-                'claim_status'  => 'unclaimed',
-                'is_published'  => false,
+                'claim_status' => 'unclaimed',
+                'is_published' => false,
                 'accepts_inquiries' => false,
             ]);
 
@@ -134,15 +134,15 @@ class ImportScrapedProviders extends Command
     private function resolveType(string $raw): string
     {
         $map = [
-            'lodge'     => 'accommodation',
-            'camp'      => 'accommodation',
-            'hotel'     => 'accommodation',
-            'guesthouse'=> 'accommodation',
-            'b&b'       => 'accommodation',
-            'tour'      => 'activity',
-            'safari'    => 'activity',
-            'rent'      => 'car_rental',
-            'car'       => 'car_rental',
+            'lodge' => 'accommodation',
+            'camp' => 'accommodation',
+            'hotel' => 'accommodation',
+            'guesthouse' => 'accommodation',
+            'b&b' => 'accommodation',
+            'tour' => 'activity',
+            'safari' => 'activity',
+            'rent' => 'car_rental',
+            'car' => 'car_rental',
         ];
 
         $lower = strtolower($raw);
@@ -162,16 +162,16 @@ class ImportScrapedProviders extends Command
         }
 
         $known = [
-            'etosha'         => 'Etosha',
-            'sossusvlei'     => 'Sossusvlei',
-            'swakopmund'     => 'Swakopmund',
-            'windhoek'       => 'Windhoek',
-            'damaraland'     => 'Damaraland',
+            'etosha' => 'Etosha',
+            'sossusvlei' => 'Sossusvlei',
+            'swakopmund' => 'Swakopmund',
+            'windhoek' => 'Windhoek',
+            'damaraland' => 'Damaraland',
             'skeleton coast' => 'Skeleton Coast',
-            'caprivi'        => 'Caprivi',
-            'fish river'     => 'Fish River Canyon',
-            'kaokoveld'      => 'Kaokoveld',
-            'namib'          => 'Namib Desert',
+            'caprivi' => 'Caprivi',
+            'fish river' => 'Fish River Canyon',
+            'kaokoveld' => 'Kaokoveld',
+            'namib' => 'Namib Desert',
         ];
 
         $lower = strtolower($region);
