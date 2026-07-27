@@ -18,7 +18,9 @@ interface Props {
 
 const props = defineProps<Props>();
 const page = usePage();
-const auth = computed(() => page.props.auth as { user: { name: string } | null });
+const auth = computed(
+    () => page.props.auth as { user: { name: string } | null },
+);
 const isLoggedIn = computed(() => auth.value?.user !== null);
 
 const form = useForm({});
@@ -38,50 +40,86 @@ const typeLabel: Record<string, string> = {
 <template>
     <Head title="Claim your listing — NamibWay" />
 
-    <div class="flex min-h-screen items-center justify-center bg-stone-50 px-4 dark:bg-stone-900">
-        <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm dark:bg-stone-800">
+    <div
+        class="flex min-h-screen items-center justify-center bg-stone-50 px-4 dark:bg-stone-900"
+    >
+        <div
+            class="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm dark:bg-stone-800"
+        >
             <div class="mb-8 text-center">
-                <span class="text-xl font-semibold tracking-tight text-stone-900 dark:text-white">NamibWay</span>
+                <span
+                    class="text-xl font-semibold tracking-tight text-stone-900 dark:text-white"
+                    >NamibWay</span
+                >
             </div>
 
             <!-- Already claimed -->
             <template v-if="partner.claimed_at">
-                <h1 class="mb-2 text-center text-2xl font-semibold text-stone-900 dark:text-white">Already claimed</h1>
+                <h1
+                    class="mb-2 text-center text-2xl font-semibold text-stone-900 dark:text-white"
+                >
+                    Already claimed
+                </h1>
                 <p class="text-center text-stone-500 dark:text-stone-400">
-                    <strong>{{ partner.name }}</strong> was claimed on {{ partner.claimed_at }}.
+                    <strong>{{ partner.name }}</strong> was claimed on
+                    {{ partner.claimed_at }}.
                 </p>
-                <p class="mt-4 text-center text-sm text-stone-500 dark:text-stone-400">
+                <p
+                    class="mt-4 text-center text-sm text-stone-500 dark:text-stone-400"
+                >
                     If you think this is a mistake, contact us at
-                    <a href="mailto:hello@namibway.com" class="text-amber-600 hover:underline">hello@namibway.com</a>.
+                    <a
+                        href="mailto:hello@namibway.com"
+                        class="text-amber-600 hover:underline"
+                        >hello@namibway.com</a
+                    >.
                 </p>
             </template>
 
             <!-- Available to claim -->
             <template v-else>
-                <h1 class="mb-1 text-center text-2xl font-semibold text-stone-900 dark:text-white">
+                <h1
+                    class="mb-1 text-center text-2xl font-semibold text-stone-900 dark:text-white"
+                >
                     Claim your free listing
                 </h1>
-                <p class="mb-8 text-center text-sm text-stone-500 dark:text-stone-400">
-                    Take ownership of this listing on NamibWay and start receiving traveller inquiries.
+                <p
+                    class="mb-8 text-center text-sm text-stone-500 dark:text-stone-400"
+                >
+                    Take ownership of this listing on NamibWay and start
+                    receiving traveller inquiries.
                 </p>
 
                 <!-- Listing card -->
-                <div class="mb-8 rounded-xl border border-stone-200 p-4 dark:border-stone-700">
-                    <div class="mb-1 text-xs font-medium uppercase tracking-wider text-stone-400 dark:text-stone-500">
+                <div
+                    class="mb-8 rounded-xl border border-stone-200 p-4 dark:border-stone-700"
+                >
+                    <div
+                        class="mb-1 text-xs font-medium tracking-wider text-stone-400 uppercase dark:text-stone-500"
+                    >
                         {{ typeLabel[listing?.type ?? ''] ?? listing?.type }}
-                        <template v-if="listing?.region"> · {{ listing.region }}</template>
+                        <template v-if="listing?.region">
+                            · {{ listing.region }}</template
+                        >
                     </div>
-                    <div class="text-lg font-semibold text-stone-900 dark:text-white">
+                    <div
+                        class="text-lg font-semibold text-stone-900 dark:text-white"
+                    >
                         {{ listing?.name ?? partner.name }}
                     </div>
-                    <div v-if="partner.website" class="mt-1 text-sm text-stone-400 dark:text-stone-500">
+                    <div
+                        v-if="partner.website"
+                        class="mt-1 text-sm text-stone-400 dark:text-stone-500"
+                    >
                         {{ partner.website }}
                     </div>
                 </div>
 
                 <!-- Logged in: claim button -->
                 <template v-if="isLoggedIn">
-                    <p class="mb-4 text-center text-sm text-stone-600 dark:text-stone-300">
+                    <p
+                        class="mb-4 text-center text-sm text-stone-600 dark:text-stone-300"
+                    >
                         Claiming as <strong>{{ auth.user?.name }}</strong>
                     </p>
                     <button
@@ -96,8 +134,11 @@ const typeLabel: Record<string, string> = {
 
                 <!-- Guest: prompt to log in / register -->
                 <template v-else>
-                    <p class="mb-4 text-center text-sm text-stone-600 dark:text-stone-300">
-                        You need a NamibWay account to claim this listing. It's free.
+                    <p
+                        class="mb-4 text-center text-sm text-stone-600 dark:text-stone-300"
+                    >
+                        You need a NamibWay account to claim this listing. It's
+                        free.
                     </p>
                     <a
                         href="/register"
@@ -112,7 +153,8 @@ const typeLabel: Record<string, string> = {
                         Sign in
                     </a>
                     <p class="mt-4 text-center text-xs text-stone-400">
-                        After signing in, come back to the link in your email to complete the claim.
+                        After signing in, come back to the link in your email to
+                        complete the claim.
                     </p>
                 </template>
             </template>
