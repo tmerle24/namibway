@@ -1,4 +1,8 @@
-import type { ChatMessage, ItineraryListingRef, ItineraryPlan } from '@/lib/kaia-types';
+import type {
+    ChatMessage,
+    ItineraryListingRef,
+    ItineraryPlan,
+} from '@/lib/kaia-types';
 
 export type KaiaResponse =
     | { type: 'question'; text: string }
@@ -21,7 +25,10 @@ export async function fetchRegions(): Promise<string[]> {
     return data.regions ?? [];
 }
 
-export async function fetchAlternatives(type: string, excludeId?: number): Promise<ItineraryListingRef[]> {
+export async function fetchAlternatives(
+    type: string,
+    excludeId?: number,
+): Promise<ItineraryListingRef[]> {
     const params = new URLSearchParams({ type });
 
     if (excludeId !== undefined) {
@@ -37,7 +44,9 @@ export async function fetchAlternatives(type: string, excludeId?: number): Promi
     return data.alternatives ?? [];
 }
 
-export async function sendKaiaMessage(history: ChatMessage[]): Promise<KaiaResponse> {
+export async function sendKaiaMessage(
+    history: ChatMessage[],
+): Promise<KaiaResponse> {
     const response = await fetch('/kaia/message', {
         method: 'POST',
         credentials: 'same-origin',

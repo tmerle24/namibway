@@ -14,9 +14,9 @@ const open = ref(false);
 const query = ref('');
 
 const filtered = computed(() =>
-    props.suggestions.filter(s =>
-        s.toLowerCase().includes(query.value.toLowerCase())
-    )
+    props.suggestions.filter((s) =>
+        s.toLowerCase().includes(query.value.toLowerCase()),
+    ),
 );
 
 function openPicker() {
@@ -54,12 +54,23 @@ function handleBlur() {
                 :placeholder="modelValue"
                 @blur="handleBlur"
                 @keydown.enter.prevent="select(query || modelValue)"
-                @keydown.escape="open = false; query = ''"
+                @keydown.escape="
+                    open = false;
+                    query = '';
+                "
             />
             <ul v-if="filtered.length" class="location-suggestions">
-                <li v-for="s in filtered" :key="s" @mousedown.prevent="select(s)">{{ s }}</li>
+                <li
+                    v-for="s in filtered"
+                    :key="s"
+                    @mousedown.prevent="select(s)"
+                >
+                    {{ s }}
+                </li>
             </ul>
         </template>
-        <b v-else class="location-editable" @click="openPicker">{{ modelValue || '—' }}</b>
+        <b v-else class="location-editable" @click="openPicker">{{
+            modelValue || '—'
+        }}</b>
     </div>
 </template>

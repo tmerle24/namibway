@@ -11,7 +11,8 @@ const appName = import.meta.env.VITE_APP_NAME || 'NamibWay';
 const slogan = 'The smartest way to experience Namibia.';
 
 createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : `${appName} — ${slogan}`),
+    title: (title) =>
+        title ? `${title} - ${appName}` : `${appName} — ${slogan}`,
     layout: (name) => {
         switch (true) {
             case name === 'Welcome':
