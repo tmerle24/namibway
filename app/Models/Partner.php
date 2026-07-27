@@ -6,6 +6,7 @@ use App\Enums\ConnectorType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Spatie\Translatable\HasTranslations;
 
 /**
@@ -21,8 +22,8 @@ use Spatie\Translatable\HasTranslations;
  * @property string|null $facebook
  * @property string|null $source_url
  * @property string|null $claim_token
- * @property \Illuminate\Support\Carbon|null $claim_token_sent_at
- * @property \Illuminate\Support\Carbon|null $claimed_at
+ * @property Carbon|null $claim_token_sent_at
+ * @property Carbon|null $claimed_at
  * @property ConnectorType|null $connector_type
  * @property string|null $connector_property_code
  * @property array<string, mixed>|null $connector_config
