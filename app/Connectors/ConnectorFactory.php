@@ -21,7 +21,7 @@ class ConnectorFactory
 {
     public static function makeBooking(Partner $partner): BookingConnector
     {
-        $type = ConnectorType::tryFrom($partner->connector_type ?? '');
+        $type = $partner->connector_type;
 
         return match ($type) {
             ConnectorType::ResConnect => self::makeResConnect($partner),
@@ -36,7 +36,7 @@ class ConnectorFactory
 
     public static function makeContent(Partner $partner): ContentConnector
     {
-        $type = ConnectorType::tryFrom($partner->connector_type ?? '');
+        $type = $partner->connector_type;
 
         return match ($type) {
             ConnectorType::Wetu => self::makeWetu($partner),

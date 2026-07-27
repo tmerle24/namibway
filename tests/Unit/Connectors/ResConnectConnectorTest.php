@@ -83,6 +83,7 @@ it('handles API errors gracefully on availability check', function () {
     $httpResponse = Mockery::mock(Response::class);
     $httpResponse->shouldReceive('status')->andReturn(503);
     $httpResponse->shouldReceive('body')->andReturn('Service unavailable');
+    $httpResponse->shouldReceive('toPsrResponse')->andReturn(Mockery::mock(\Psr\Http\Message\ResponseInterface::class));
 
     $this->client
         ->shouldReceive('get')
@@ -153,6 +154,7 @@ it('returns failed response on reservation API error', function () {
     $httpResponse = Mockery::mock(Response::class);
     $httpResponse->shouldReceive('status')->andReturn(422);
     $httpResponse->shouldReceive('body')->andReturn('Validation error');
+    $httpResponse->shouldReceive('toPsrResponse')->andReturn(Mockery::mock(\Psr\Http\Message\ResponseInterface::class));
 
     $this->client->shouldReceive('post')->andThrow(new RequestException($httpResponse));
 
@@ -180,6 +182,7 @@ it('returns false when cancellation fails', function () {
     $httpResponse = Mockery::mock(Response::class);
     $httpResponse->shouldReceive('status')->andReturn(404);
     $httpResponse->shouldReceive('body')->andReturn('Not found');
+    $httpResponse->shouldReceive('toPsrResponse')->andReturn(Mockery::mock(\Psr\Http\Message\ResponseInterface::class));
 
     $this->client->shouldReceive('post')->andThrow(new RequestException($httpResponse));
 

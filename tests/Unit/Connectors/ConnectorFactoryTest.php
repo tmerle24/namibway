@@ -6,13 +6,7 @@ use App\Enums\ConnectorType;
 use App\Models\Partner;
 
 it('creates a ResConnectConnector for a partner configured with resconnect', function () {
-    $partner = new Partner([
-        'connector_type' => ConnectorType::ResConnect->value,
-        'connector_property_code' => 'PROP001',
-        'connector_config' => ['api_key' => 'test-key-123'],
-    ]);
-
-    // Bypass encrypted cast for unit test
+    $partner = new Partner;
     $partner->setRawAttributes([
         'connector_type' => ConnectorType::ResConnect->value,
         'connector_property_code' => 'PROP001',

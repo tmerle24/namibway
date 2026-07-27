@@ -71,6 +71,7 @@ it('returns empty content on API error', function () {
     $httpResponse = Mockery::mock(Response::class);
     $httpResponse->shouldReceive('status')->andReturn(404);
     $httpResponse->shouldReceive('body')->andReturn('Not found');
+    $httpResponse->shouldReceive('toPsrResponse')->andReturn(Mockery::mock(\Psr\Http\Message\ResponseInterface::class));
 
     $this->client->shouldReceive('get')
         ->andThrow(new RequestException($httpResponse));

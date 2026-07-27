@@ -150,7 +150,7 @@ class ListingResource extends Resource
                     ->label('Import from Wetu')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('info')
-                    ->visible(fn (Listing $record): bool => $record->partner?->connector_type === ConnectorType::Wetu->value)
+                    ->visible(fn (Listing $record): bool => $record->partner?->connector_type === ConnectorType::Wetu)
                     ->requiresConfirmation()
                     ->modalHeading('Import content from Wetu')
                     ->modalDescription('This will overwrite the name, description, highlights, region, and coordinates with data from Wetu. Existing images are not replaced.')

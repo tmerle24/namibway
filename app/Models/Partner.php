@@ -17,7 +17,7 @@ use Spatie\Translatable\HasTranslations;
  * @property string|null $website
  * @property string|null $instagram
  * @property string|null $facebook
- * @property string|null $connector_type
+ * @property ConnectorType|null $connector_type
  * @property string|null $connector_property_code
  * @property array<string, mixed>|null $connector_config
  */
