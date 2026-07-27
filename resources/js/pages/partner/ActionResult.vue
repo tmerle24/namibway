@@ -11,7 +11,7 @@ interface Inquiry {
     connector_reference?: string;
 }
 
-const props = defineProps<{
+defineProps<{
     outcome: 'confirmed' | 'cancelled' | 'already_handled';
     message: string;
     inquiry?: Inquiry;
