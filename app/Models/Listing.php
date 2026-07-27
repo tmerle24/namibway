@@ -21,6 +21,7 @@ class Listing extends Model
 
     protected $fillable = [
         'partner_id',
+        'wetu_id',
         'type',
         'name',
         'slug',
@@ -36,6 +37,7 @@ class Listing extends Model
         'is_featured',
         'is_published',
         'accepts_inquiries',
+        'content_synced_at',
         'source_url',
         'claim_status',
         'website',
@@ -51,6 +53,7 @@ class Listing extends Model
         'is_featured' => 'boolean',
         'is_published' => 'boolean',
         'accepts_inquiries' => 'boolean',
+        'content_synced_at' => 'datetime',
     ];
 
     protected static function booted(): void
