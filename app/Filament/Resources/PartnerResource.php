@@ -2,10 +2,12 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\ConnectorType;
 use App\Filament\Resources\PartnerResource\Pages;
 use App\Models\Partner;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -50,6 +52,34 @@ class PartnerResource extends Resource
                 Forms\Components\TextInput::make('facebook')
                     ->url()
                     ->maxLength(255),
+
+                Forms\Components\Section::make('Booking Connector')
+                    ->description('Connect this partner to their property management system for live availability and reservations.')
+                    ->collapsed()
+                    ->schema([
+                        Forms\Components\Select::make('connector_type')
+                            ->label('Connector')
+                            ->options(collect(ConnectorType::cases())->mapWithKeys(
+                                fn (ConnectorType $c) => [$c->value => $c->label()]
+                            ))
+                            ->placeholder('None (manual handling)')
+                            ->live()
+                            ->native(false),
+
+                        Forms\Components\TextInput::make('connector_property_code')
+                            ->label('Property Code')
+                            ->helperText('The property identifier in the partner\'s PMS (e.g. ResRequest property code).')
+                            ->maxLength(100)
+                            ->visible(fn (Get $get) => filled($get('connector_type'))),
+
+                        Forms\Components\KeyValue::make('connector_config')
+                            ->label('Connector Config')
+                            ->helperText('Key/value pairs stored encrypted. ResConnect: api_key, base_url (opt). NightsBridge: bbid, api_key. hopeCloud: api_key, account_id. Wetu: api_key.')
+                            ->keyLabel('Key')
+                            ->valueLabel('Value')
+                            ->visible(fn (Get $get) => filled($get('connector_type'))),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -68,6 +98,11 @@ class PartnerResource extends Resource
                 Tables\Columns\TextColumn::make('listings_count')
                     ->counts('listings')
                     ->label('Listings'),
+                Tables\Columns\TextColumn::make('connector_type')
+                    ->label('Connector')
+                    ->formatStateUsing(fn ($state) => $state instanceof ConnectorType ? $state->label() : '—')
+                    ->badge()
+                    ->color(fn ($state) => $state instanceof ConnectorType && $state !== ConnectorType::Manual ? 'success' : 'gray'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

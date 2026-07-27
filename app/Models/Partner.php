@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ConnectorType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Translatable\HasTranslations;
@@ -16,6 +17,9 @@ use Spatie\Translatable\HasTranslations;
  * @property string|null $website
  * @property string|null $instagram
  * @property string|null $facebook
+ * @property ConnectorType|null $connector_type
+ * @property string|null $connector_property_code
+ * @property array<string, mixed>|null $connector_config
  */
 class Partner extends Model
 {
@@ -33,6 +37,14 @@ class Partner extends Model
         'website',
         'instagram',
         'facebook',
+        'connector_type',
+        'connector_property_code',
+        'connector_config',
+    ];
+
+    protected $casts = [
+        'connector_type' => ConnectorType::class,
+        'connector_config' => 'encrypted:array',
     ];
 
     /**

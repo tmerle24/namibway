@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\InquiryStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,6 +14,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $phone
  * @property string|null $travel_dates
  * @property string|null $message
+ * @property InquiryStatus $status
+ * @property string|null $connector_reference
+ * @property string|null $notes
  */
 class Inquiry extends Model
 {
@@ -23,6 +27,13 @@ class Inquiry extends Model
         'phone',
         'travel_dates',
         'message',
+        'status',
+        'connector_reference',
+        'notes',
+    ];
+
+    protected $casts = [
+        'status' => InquiryStatus::class,
     ];
 
     /**

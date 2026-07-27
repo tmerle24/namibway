@@ -29,15 +29,45 @@ function formatPrice(price: string): string {
     <i18n-t :keypath="keypath" tag="div" class="line-item">
         <template #value>
             <template v-if="props.itemRef">
-                <a v-if="props.itemRef.slug" :href="refUrl(props.itemRef)" target="_blank" rel="noopener noreferrer">{{ props.itemRef.name }}</a>
+                <a
+                    v-if="props.itemRef.slug"
+                    :href="refUrl(props.itemRef)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >{{ props.itemRef.name }}</a
+                >
                 <template v-else>{{ props.itemRef.name }}</template>
-                <span v-if="props.itemRef.price_from" class="item-price">{{ props.itemRef.price_currency }} {{ formatPrice(props.itemRef.price_from) }}</span>
-                <button v-if="props.itemRef.id" type="button" class="swap-btn" :aria-label="t('itinerary.swap')" @click="$emit('swap')">⇄</button>
-                <button type="button" class="remove-btn" :aria-label="t('itinerary.remove')" @click="$emit('remove')">×</button>
+                <span v-if="props.itemRef.price_from" class="item-price"
+                    >{{ props.itemRef.price_currency }}
+                    {{ formatPrice(props.itemRef.price_from) }}</span
+                >
+                <button
+                    v-if="props.itemRef.id"
+                    type="button"
+                    class="swap-btn"
+                    :aria-label="t('itinerary.swap')"
+                    @click="$emit('swap')"
+                >
+                    ⇄
+                </button>
+                <button
+                    type="button"
+                    class="remove-btn"
+                    :aria-label="t('itinerary.remove')"
+                    @click="$emit('remove')"
+                >
+                    ×
+                </button>
             </template>
             <template v-else>
                 —
-                <button type="button" class="add-item-btn" @click="$emit('add')">+ {{ t('itinerary.add') }}</button>
+                <button
+                    type="button"
+                    class="add-item-btn"
+                    @click="$emit('add')"
+                >
+                    + {{ t('itinerary.add') }}
+                </button>
             </template>
         </template>
     </i18n-t>
