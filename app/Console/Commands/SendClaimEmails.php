@@ -17,7 +17,7 @@ class SendClaimEmails extends Command
     public function handle(): int
     {
         $isDryRun = $this->option('dry-run');
-        $limit = (int)$this->option('limit');
+        $limit = (int) $this->option('limit');
 
         $partners = Partner::whereNotNull('email')
             ->whereNull('claim_token_sent_at')
@@ -42,7 +42,7 @@ class SendClaimEmails extends Command
             return self::SUCCESS;
         }
 
-        if (! $this->confirm("Send {$partners->count()} emails?")) {
+        if (!$this->confirm("Send {$partners->count()} emails?")) {
             return self::SUCCESS;
         }
 
