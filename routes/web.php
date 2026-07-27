@@ -7,6 +7,17 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', HomeController::class)->name('home');
 
 Route::get('listings/{listing:slug}', [ListingController::class, 'show'])->name('listings.show');
+
+Route::post('trip/save', [\App\Http\Controllers\SavedPlanController::class, 'store'])
+    ->middleware('throttle:20,1')
+    ->name('trip.save');
+
+Route::get('trip/{token}', [\App\Http\Controllers\SavedPlanController::class, 'show'])
+    ->name('trip.show');
+
+Route::get('trip/{token}/pdf', [\App\Http\Controllers\SavedPlanController::class, 'pdf'])
+    ->middleware('throttle:10,1')
+    ->name('trip.pdf');
 Route::post('listings/{listing:slug}/inquiries', [ListingController::class, 'storeInquiry'])
     ->middleware('throttle:10,1')
     ->name('listings.inquiries.store');

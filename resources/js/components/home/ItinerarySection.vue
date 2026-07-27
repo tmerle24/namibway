@@ -9,6 +9,7 @@ import ItineraryLineItem from './ItineraryLineItem.vue';
 import AlternativesPanel from './AlternativesPanel.vue';
 import LocationPicker from './LocationPicker.vue';
 import TripMap from './TripMap.vue';
+import SaveShareBar from './SaveShareBar.vue';
 
 const props = defineProps<{
     plan: ItineraryPlan;
@@ -27,6 +28,7 @@ const editableVariants = ref<ItineraryVariant[]>([]);
 const swap = ref<SwapState | null>(null);
 const dbRegions = ref<string[]>([]);
 const regionCoords = ref<Record<string, RegionCoords>>({});
+const savedTokens = ref<Record<number, string>>({});
 
 watch(
     () => props.plan,
@@ -247,6 +249,12 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                 <button type="button" class="add-day-btn" @click="addDay(variantIndex, variant.days.length - 1)">+ {{ t('itinerary.addDay') }}</button>
 
                 <button class="cta" @click="emit('book', variant)">{{ t('itinerary.bookCta') }}</button>
+
+                <SaveShareBar
+                    :plan="{ trip_summary: plan.trip_summary, variants: [variant] }"
+                    :token="savedTokens[variantIndex] ?? null"
+                    @saved="(token) => { savedTokens[variantIndex] = token }"
+                />
             </div>
         </div>
     </section>
