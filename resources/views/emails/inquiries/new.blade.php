@@ -9,7 +9,9 @@ You've received a new inquiry via NamibWay.
 | **Name** | {{ $inquiry->name }} |
 | **Email** | {{ $inquiry->email }} |
 | **Phone** | {{ $inquiry->phone ?? '—' }} |
-| **Travel dates** | {{ $inquiry->travel_dates ?? '—' }} |
+| **Check-in** | {{ $inquiry->check_in?->format('D, d M Y') ?? $inquiry->travel_dates ?? '—' }} |
+| **Check-out** | {{ $inquiry->check_out?->format('D, d M Y') ?? '—' }} |
+| **Guests** | {{ $inquiry->adults }} adult{{ $inquiry->adults !== 1 ? 's' : '' }}@if($inquiry->children > 0), {{ $inquiry->children }} child{{ $inquiry->children !== 1 ? 'ren' : '' }}@endif |
 </x-mail::table>
 
 @if ($inquiry->message)
