@@ -22,6 +22,10 @@ const rating = ref(0);
 function publishFeedback() {
     feedbackNote.value = t('afterSales.feedback.confirm');
 }
+
+function printChecklist() {
+    window.print();
+}
 </script>
 
 <template>
@@ -40,7 +44,7 @@ function publishFeedback() {
                         <input type="checkbox" />{{ item }}
                     </label>
                 </div>
-                <button class="small" @click="window.print()">
+                <button class="small" @click="printChecklist()">
                     {{ t('afterSales.checklist.print') }}
                 </button>
             </div>
