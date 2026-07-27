@@ -19,9 +19,14 @@ interface QueueItem {
 const queue = ref<QueueItem[]>([]);
 
 async function runQueue(variant: ItineraryVariant) {
-    const names = variant.days.map((d) => d.accommodation?.name).filter((name): name is string => Boolean(name));
+    const names = variant.days
+        .map((d) => d.accommodation?.name)
+        .filter((name): name is string => Boolean(name));
     const properties = [...new Set(names)];
-    queue.value = properties.map((property) => ({ property, status: 'waiting' as QueueStatus }));
+    queue.value = properties.map((property) => ({
+        property,
+        status: 'waiting' as QueueStatus,
+    }));
 
     for (const item of queue.value) {
         item.status = 'sending';
@@ -30,7 +35,11 @@ async function runQueue(variant: ItineraryVariant) {
     }
 }
 
-watch(() => props.variant, (variant) => runQueue(variant), { immediate: true });
+watch(
+    () => props.variant,
+    (variant) => runQueue(variant),
+    { immediate: true },
+);
 </script>
 
 <template>
@@ -43,7 +52,9 @@ watch(() => props.variant, (variant) => runQueue(variant), { immediate: true });
         <div class="queue">
             <div v-for="item in queue" :key="item.property" class="queue-item">
                 <span>{{ item.property }}</span>
-                <span :class="['status-pill', `status-${item.status}`]">{{ t(`booking.${item.status}`) }}</span>
+                <span :class="['status-pill', `status-${item.status}`]">{{
+                    t(`booking.${item.status}`)
+                }}</span>
             </div>
         </div>
         <div class="governance-note">

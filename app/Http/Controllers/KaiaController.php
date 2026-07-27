@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Listing;
 use App\Services\Kaia\InterviewService;
 use App\Services\Kaia\ItineraryService;
 use Illuminate\Http\JsonResponse;
@@ -13,7 +14,7 @@ class KaiaController extends Controller
 {
     public function regions(): JsonResponse
     {
-        $regions = \App\Models\Listing::query()
+        $regions = Listing::query()
             ->where('is_published', true)
             ->whereNotNull('region')
             ->distinct()

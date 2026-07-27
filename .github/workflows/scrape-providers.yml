@@ -1,0 +1,92 @@
+name: Scrape Providers
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Source to scrape"
+        required: true
+        default: "visitnamibia"
+        type: choice
+        options:
+          - visitnamibia
+          - safaribookings
+          - tripadvisor
+          - all
+      fetch_details:
+        description: "Fetch detail pages (slower, extracts website/email/coords)"
+        required: false
+        default: false
+        type: boolean
+      preview_count:
+        description: "How many records to print in the log for inspection"
+        required: false
+        default: "30"
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml
+
+      - name: Run scraper
+        run: |
+          ARGS="--source ${{ github.event.inputs.source }}"
+          if [ "${{ github.event.inputs.fetch_details }}" = "true" ]; then
+            ARGS="$ARGS --fetch-details"
+          fi
+          python scripts/scrape_providers.py $ARGS
+
+      - name: Show results summary
+        run: |
+          echo "=== Record count ==="
+          python3 -c "
+          import json
+          with open('scripts/scraped_providers.json') as f:
+              records = json.load(f)
+          print(f'Total records: {len(records)}')
+
+          # Count by type
+          from collections import Counter
+          types = Counter(r.get('type') for r in records)
+          print('By type:')
+          for t, n in sorted(types.items()):
+              print(f'  {t}: {n}')
+
+          # Count with email / website
+          with_email = sum(1 for r in records if r.get('contact_email'))
+          with_website = sum(1 for r in records if r.get('website'))
+          with_coords = sum(1 for r in records if r.get('latitude'))
+          print(f'With email:   {with_email}')
+          print(f'With website: {with_website}')
+          print(f'With coords:  {with_coords}')
+
+          # Preview first N records
+          limit = int('${{ github.event.inputs.preview_count }}')
+          print(f'\n=== First {limit} records ===')
+          for r in records[:limit]:
+              print(json.dumps({
+                  'name': r.get('name'),
+                  'type': r.get('type'),
+                  'region': r.get('region'),
+                  'website': r.get('website'),
+                  'contact_email': r.get('contact_email'),
+              }, ensure_ascii=False))
+          "
+
+      - name: Upload JSON artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraped-providers-${{ github.event.inputs.source }}-${{ github.run_number }}
+          path: scripts/scraped_providers.json
+          retention-days: 14

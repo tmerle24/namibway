@@ -35,7 +35,8 @@ const props = defineProps<{
 const { t } = useI18n();
 
 type Budget = 'budget' | 'mid-range' | 'premium' | null;
-type RowKey = 'accommodation' | 'activity' | 'restaurant' | 'vehicle' | 'region';
+type RowKey =
+    'accommodation' | 'activity' | 'restaurant' | 'vehicle' | 'region';
 
 interface IdeaCard {
     title: string;
@@ -81,30 +82,30 @@ const CATEGORY_IMAGES: Record<Listing['type'], string[]> = {
 
 function budgetBucket(price: string | null): Budget {
     if (price === null) {
-return null;
-}
+        return null;
+    }
 
     const value = parseFloat(price);
 
     if (Number.isNaN(value)) {
-return null;
-}
+        return null;
+    }
 
     if (value < 150) {
-return 'budget';
-}
+        return 'budget';
+    }
 
     if (value <= 400) {
-return 'mid-range';
-}
+        return 'mid-range';
+    }
 
     return 'premium';
 }
 
 function truncate(text: string | null, length = 120): string {
     if (!text) {
-return '';
-}
+        return '';
+    }
 
     return text.length > length ? text.slice(0, length).trim() + '…' : text;
 }
@@ -118,7 +119,12 @@ const ROW_BG: Record<RowKey, string> = {
 };
 
 const ideaRows = computed<IdeaRow[]>(() => {
-    const byType: Record<Listing['type'], IdeaCard[]> = { accommodation: [], activity: [], restaurant: [], vehicle: [] };
+    const byType: Record<Listing['type'], IdeaCard[]> = {
+        accommodation: [],
+        activity: [],
+        restaurant: [],
+        vehicle: [],
+    };
 
     for (const listing of props.listings) {
         const images = CATEGORY_IMAGES[listing.type];
@@ -127,7 +133,9 @@ const ideaRows = computed<IdeaRow[]>(() => {
             description: truncate(listing.description),
             region: listing.region,
             budget: budgetBucket(listing.price_from),
-            image: listing.image ?? images[byType[listing.type].length % images.length],
+            image:
+                listing.image ??
+                images[byType[listing.type].length % images.length],
             slug: listing.slug,
         });
     }
@@ -158,8 +166,8 @@ const availableRegions = computed(() => {
     for (const row of ideaRows.value) {
         for (const item of row.items) {
             if (item.region) {
-regions.add(item.region);
-}
+                regions.add(item.region);
+            }
         }
     }
 
@@ -198,33 +206,43 @@ onUnmounted(() => {
 
 function matches(row: IdeaRow, item: IdeaCard): boolean {
     if (filterCategory.value && row.key !== filterCategory.value) {
-return false;
-}
+        return false;
+    }
 
     if (filterRegion.value && item.region !== filterRegion.value) {
-return false;
-}
+        return false;
+    }
 
-    if (filterBudget.value && item.budget !== null && item.budget !== filterBudget.value) {
-return false;
-}
+    if (
+        filterBudget.value &&
+        item.budget !== null &&
+        item.budget !== filterBudget.value
+    ) {
+        return false;
+    }
 
     if (filterBudget.value && item.budget === null && row.key !== 'region') {
-return false;
-}
+        return false;
+    }
 
     const keyword = filterKeyword.value.trim().toLowerCase();
 
-    if (keyword && !(item.title + ' ' + item.description).toLowerCase().includes(keyword)) {
-return false;
-}
+    if (
+        keyword &&
+        !(item.title + ' ' + item.description).toLowerCase().includes(keyword)
+    ) {
+        return false;
+    }
 
     return true;
 }
 
 const visibleRows = computed(() =>
     ideaRows.value
-        .map((row) => ({ ...row, items: row.items.filter((item) => matches(row, item)) }))
+        .map((row) => ({
+            ...row,
+            items: row.items.filter((item) => matches(row, item)),
+        }))
         .filter((row) => row.items.length > 0),
 );
 
@@ -241,53 +259,130 @@ const hasResults = computed(() => visibleRows.value.length > 0);
         <div class="filter-bar" ref="filterBar">
             <div class="filter-row">
                 <select v-model="filterCategory">
-                    <option value="">{{ t('explore.filters.allCategories') }}</option>
-                    <option value="accommodation">{{ t('explore.filters.accommodation') }}</option>
-                    <option value="activity">{{ t('explore.filters.activities') }}</option>
-                    <option value="restaurant">{{ t('explore.filters.restaurants') }}</option>
-                    <option value="vehicle">{{ t('explore.filters.vehicles') }}</option>
-                    <option value="region">{{ t('explore.filters.regions') }}</option>
+                    <option value="">
+                        {{ t('explore.filters.allCategories') }}
+                    </option>
+                    <option value="accommodation">
+                        {{ t('explore.filters.accommodation') }}
+                    </option>
+                    <option value="activity">
+                        {{ t('explore.filters.activities') }}
+                    </option>
+                    <option value="restaurant">
+                        {{ t('explore.filters.restaurants') }}
+                    </option>
+                    <option value="vehicle">
+                        {{ t('explore.filters.vehicles') }}
+                    </option>
+                    <option value="region">
+                        {{ t('explore.filters.regions') }}
+                    </option>
                 </select>
-                <label>{{ t('explore.filters.date') }} <input ref="dateInput" type="text" :placeholder="t('explore.filters.selectDate')" readonly style="width: 170px; cursor: pointer" /></label>
-                <input v-model="filterKeyword" type="text" :placeholder="t('explore.filters.keyword')" />
-                <button class="search-btn">{{ t('explore.filters.search') }}</button>
-                <button class="filter-toggle" @click="filterMoreOpen = !filterMoreOpen">
-                    {{ filterMoreOpen ? t('explore.filters.hideFilters') : t('explore.filters.moreFilters') }}
+                <label
+                    >{{ t('explore.filters.date') }}
+                    <input
+                        ref="dateInput"
+                        type="text"
+                        :placeholder="t('explore.filters.selectDate')"
+                        readonly
+                        style="width: 170px; cursor: pointer"
+                /></label>
+                <input
+                    v-model="filterKeyword"
+                    type="text"
+                    :placeholder="t('explore.filters.keyword')"
+                />
+                <button class="search-btn">
+                    {{ t('explore.filters.search') }}
+                </button>
+                <button
+                    class="filter-toggle"
+                    @click="filterMoreOpen = !filterMoreOpen"
+                >
+                    {{
+                        filterMoreOpen
+                            ? t('explore.filters.hideFilters')
+                            : t('explore.filters.moreFilters')
+                    }}
                 </button>
                 <span class="filter-note">{{ t('explore.filters.note') }}</span>
             </div>
             <div class="filter-more" :class="{ open: filterMoreOpen }">
                 <select v-model="filterRegion">
-                    <option value="">{{ t('explore.filters.allRegions') }}</option>
-                    <option v-for="region in availableRegions" :key="region" :value="region">{{ region }}</option>
+                    <option value="">
+                        {{ t('explore.filters.allRegions') }}
+                    </option>
+                    <option
+                        v-for="region in availableRegions"
+                        :key="region"
+                        :value="region"
+                    >
+                        {{ region }}
+                    </option>
                 </select>
                 <select v-model="filterBudget">
-                    <option value="">{{ t('explore.filters.anyBudget') }}</option>
-                    <option value="budget">{{ t('explore.filters.budget') }}</option>
-                    <option value="mid-range">{{ t('explore.filters.midRange') }}</option>
-                    <option value="premium">{{ t('explore.filters.premium') }}</option>
+                    <option value="">
+                        {{ t('explore.filters.anyBudget') }}
+                    </option>
+                    <option value="budget">
+                        {{ t('explore.filters.budget') }}
+                    </option>
+                    <option value="mid-range">
+                        {{ t('explore.filters.midRange') }}
+                    </option>
+                    <option value="premium">
+                        {{ t('explore.filters.premium') }}
+                    </option>
                 </select>
             </div>
         </div>
-        <p v-if="!hasResults" class="filter-empty">{{ t('explore.filters.empty') }}</p>
+        <p v-if="!hasResults" class="filter-empty">
+            {{ t('explore.filters.empty') }}
+        </p>
         <div>
             <div v-for="row in visibleRows" :key="row.key" class="inspire-row">
                 <div class="inspire-row-head">
                     <h3>{{ t(`explore.rows.${row.key}`) }}</h3>
-                    <span>{{ t('explore.examples', { count: row.items.length }) }}</span>
+                    <span>{{
+                        t('explore.examples', { count: row.items.length })
+                    }}</span>
                 </div>
                 <div class="idea-cards">
                     <component
-                        :is="item.slug ? Link : row.key === 'region' ? 'button' : 'div'"
+                        :is="
+                            item.slug
+                                ? Link
+                                : row.key === 'region'
+                                  ? 'button'
+                                  : 'div'
+                        "
                         v-for="item in row.items"
                         :key="item.title"
-                        :href="item.slug ? show({ listing: item.slug }).url : undefined"
+                        :href="
+                            item.slug
+                                ? show({ listing: item.slug }).url
+                                : undefined
+                        "
                         class="idea-card"
-                        @click="row.key === 'region' && item.region ? selectRegion(item.region) : undefined"
+                        @click="
+                            row.key === 'region' && item.region
+                                ? selectRegion(item.region)
+                                : undefined
+                        "
                     >
-                        <div class="idea-thumb" :style="{ background: `var(--${row.bg})` }">
-                            <span class="idea-tag">{{ t(`explore.rows.${row.key}`) }}</span>
-                            <img :src="item.image" :alt="item.title" class="idea-thumb-img" loading="lazy" />
+                        <div
+                            class="idea-thumb"
+                            :style="{ background: `var(--${row.bg})` }"
+                        >
+                            <span class="idea-tag">{{
+                                t(`explore.rows.${row.key}`)
+                            }}</span>
+                            <img
+                                :src="item.image"
+                                :alt="item.title"
+                                class="idea-thumb-img"
+                                loading="lazy"
+                            />
                         </div>
                         <div class="idea-body">
                             <h4>{{ item.title }}</h4>

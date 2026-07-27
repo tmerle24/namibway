@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Enums\ConnectorType;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Spatie\Translatable\HasTranslations;
 
 /**
  * @property int $id
+ * @property int|null $user_id
  * @property string $name
  * @property string|null $bio
  * @property string|null $logo
@@ -16,6 +20,13 @@ use Spatie\Translatable\HasTranslations;
  * @property string|null $website
  * @property string|null $instagram
  * @property string|null $facebook
+ * @property string|null $source_url
+ * @property string|null $claim_token
+ * @property Carbon|null $claim_token_sent_at
+ * @property Carbon|null $claimed_at
+ * @property ConnectorType|null $connector_type
+ * @property string|null $connector_property_code
+ * @property array<string, mixed>|null $connector_config
  */
 class Partner extends Model
 {
@@ -25,6 +36,7 @@ class Partner extends Model
     public array $translatable = ['bio'];
 
     protected $fillable = [
+        'user_id',
         'name',
         'bio',
         'logo',
@@ -33,7 +45,27 @@ class Partner extends Model
         'website',
         'instagram',
         'facebook',
+        'source_url',
+        'claim_token',
+        'claim_token_sent_at',
+        'claimed_at',
+        'connector_type',
+        'connector_property_code',
+        'connector_config',
     ];
+
+    protected $casts = [
+        'connector_type' => ConnectorType::class,
+        'connector_config' => 'encrypted:array',
+    ];
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     /**
      * @return HasMany<Listing, $this>

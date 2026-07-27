@@ -54,7 +54,13 @@
     position: relative;
     min-height: 560px;
     overflow: hidden;
-    background: linear-gradient(180deg, var(--night) 0%, var(--night) 38%, var(--gold) 78%, var(--rust) 100%);
+    background: linear-gradient(
+        180deg,
+        var(--night) 0%,
+        var(--night) 38%,
+        var(--gold) 78%,
+        var(--rust) 100%
+    );
 }
 .kaia-page .hero svg.hero-bg {
     position: absolute;
@@ -734,7 +740,11 @@
     justify-content: flex-end;
     align-items: flex-start;
     padding: 28px 32px;
-    background: linear-gradient(180deg, rgba(16, 26, 48, 0) 40%, rgba(16, 26, 48, 0.75) 100%);
+    background: linear-gradient(
+        180deg,
+        rgba(16, 26, 48, 0) 40%,
+        rgba(16, 26, 48, 0.75) 100%
+    );
 }
 .kaia-page .detail-hero-overlay h1 {
     color: var(--paper);
@@ -1068,7 +1078,7 @@
     background: var(--paper);
     border: 1px solid var(--sand-dark);
     border-radius: 8px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
     list-style: none;
     margin: 3px 0 0 0;
     padding: 4px;

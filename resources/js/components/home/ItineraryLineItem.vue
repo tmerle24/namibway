@@ -30,7 +30,13 @@ function formatPrice(price: string): string {
     <i18n-t :keypath="keypath" tag="div" class="line-item">
         <template #value>
             <template v-if="props.itemRef">
-                <a v-if="props.itemRef.slug" :href="refUrl(props.itemRef)" target="_blank" rel="noopener noreferrer">{{ props.itemRef.name }}</a>
+                <a
+                    v-if="props.itemRef.slug"
+                    :href="refUrl(props.itemRef)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >{{ props.itemRef.name }}</a
+                >
                 <template v-else>{{ props.itemRef.name }}</template>
                 <span v-if="props.itemRef.price_from" class="item-price">{{ props.itemRef.price_currency }} {{ formatPrice(props.itemRef.price_from) }}</span>
                 <template v-if="!props.readonly">
