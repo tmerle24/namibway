@@ -74,7 +74,7 @@ class PartnerResource extends Resource
 
                         Forms\Components\KeyValue::make('connector_config')
                             ->label('Connector Config')
-                            ->helperText('Key/value pairs stored encrypted. ResConnect: api_key, base_url (optional). NightsBridge: bbid, api_key. Wetu: api_key.')
+                            ->helperText('Key/value pairs stored encrypted. ResConnect: api_key, base_url (opt). NightsBridge: bbid, api_key. hopeCloud: api_key, account_id. Wetu: api_key.')
                             ->keyLabel('Key')
                             ->valueLabel('Value')
                             ->visible(fn (Get $get) => filled($get('connector_type'))),

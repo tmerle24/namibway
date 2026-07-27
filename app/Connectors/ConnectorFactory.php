@@ -4,6 +4,8 @@ namespace App\Connectors;
 
 use App\Connectors\Contracts\BookingConnector;
 use App\Connectors\Contracts\ContentConnector;
+use App\Connectors\HopeCloud\HopeCloudClient;
+use App\Connectors\HopeCloud\HopeCloudConnector;
 use App\Connectors\NightsBridge\NightsBridgeClient;
 use App\Connectors\NightsBridge\NightsBridgeConnector;
 use App\Connectors\ResConnect\ResConnectClient;
@@ -23,11 +25,9 @@ class ConnectorFactory
         return match ($type) {
             ConnectorType::ResConnect => self::makeResConnect($partner),
             ConnectorType::NightsBridge => self::makeNightsBridge($partner),
+            ConnectorType::HopeCloud => self::makeHopeCloud($partner),
             null, ConnectorType::Manual, ConnectorType::Wetu => throw new InvalidArgumentException(
                 "Partner [{$partner->id}] has no automated booking connector configured."
-            ),
-            default => throw new InvalidArgumentException(
-                "Connector type [{$type->value}] is not yet implemented."
             ),
         };
     }
@@ -82,6 +82,24 @@ class ConnectorFactory
 
         return new NightsBridgeConnector(
             client: new NightsBridgeClient(bbid: $bbid, apiKey: $apiKey, baseUrl: $baseUrl),
+        );
+    }
+
+    private static function makeHopeCloud(Partner $partner): HopeCloudConnector
+    {
+        $config = $partner->connector_config ?? [];
+        $apiKey = $config['api_key'] ?? '';
+        $accountId = $config['account_id'] ?? '';
+        $baseUrl = $config['base_url'] ?? config('connectors.hopecloud.default_base_url');
+
+        if (blank($apiKey) || blank($accountId)) {
+            throw new InvalidArgumentException(
+                "Partner [{$partner->id}] is missing hopeCloud api_key or account_id."
+            );
+        }
+
+        return new HopeCloudConnector(
+            client: new HopeCloudClient(apiKey: $apiKey, accountId: $accountId, baseUrl: $baseUrl),
         );
     }
 
