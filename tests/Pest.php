@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
+use Psr\Http\Message\StreamInterface as PsrStreamInterface;
 use Tests\TestCase;
 
 /*
@@ -47,4 +49,13 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+function makePsrResponseStub(): PsrResponseInterface
+{
+    $stream = Mockery::mock(PsrStreamInterface::class);
+    $stream->shouldReceive('isSeekable')->andReturn(false);
+    $response = Mockery::mock(PsrResponseInterface::class);
+    $response->shouldReceive('getBody')->andReturn($stream);
+    return $response;
 }

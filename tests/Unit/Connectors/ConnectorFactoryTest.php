@@ -5,13 +5,12 @@ use App\Connectors\ResConnect\ResConnectConnector;
 use App\Enums\ConnectorType;
 use App\Models\Partner;
 
+afterEach(fn () => Mockery::close());
+
 it('creates a ResConnectConnector for a partner configured with resconnect', function () {
-    $partner = new Partner;
-    $partner->setRawAttributes([
-        'connector_type' => ConnectorType::ResConnect->value,
-        'connector_property_code' => 'PROP001',
-        'connector_config' => json_encode(['api_key' => 'test-key-123']),
-    ]);
+    $partner = Mockery::mock(Partner::class)->makePartial();
+    $partner->shouldReceive('getAttribute')->with('connector_config')->andReturn(['api_key' => 'test-key-123']);
+    $partner->setRawAttributes(['connector_type' => ConnectorType::ResConnect->value]);
 
     $connector = ConnectorFactory::make($partner);
 
@@ -27,11 +26,9 @@ it('throws when no connector is configured', function () {
 });
 
 it('throws when connector api_key is missing', function () {
-    $partner = new Partner;
-    $partner->setRawAttributes([
-        'connector_type' => ConnectorType::ResConnect->value,
-        'connector_config' => json_encode([]),
-    ]);
+    $partner = Mockery::mock(Partner::class)->makePartial();
+    $partner->shouldReceive('getAttribute')->with('connector_config')->andReturn([]);
+    $partner->setRawAttributes(['connector_type' => ConnectorType::ResConnect->value]);
 
     expect(fn () => ConnectorFactory::make($partner))
         ->toThrow(InvalidArgumentException::class, 'missing the ResConnect API key');
