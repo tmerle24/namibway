@@ -16,7 +16,7 @@ class InquiryObserver
      */
     public function creating(Inquiry $inquiry): void
     {
-        if ($inquiry->status !== null) {
+        if ($inquiry->getAttribute('status') !== null) {
             return;
         }
 

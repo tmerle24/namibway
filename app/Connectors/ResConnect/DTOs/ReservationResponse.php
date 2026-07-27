@@ -4,7 +4,7 @@ namespace App\Connectors\ResConnect\DTOs;
 
 use App\Enums\ReservationStatus;
 
-final class ReservationResponse
+class ReservationResponse
 {
     public function __construct(
         public readonly bool $success,
@@ -16,9 +16,9 @@ final class ReservationResponse
         public readonly ?string $error = null,
     ) {}
 
-    public static function failed(string $reason): self
+    public static function failed(string $reason): static
     {
-        return new self(
+        return new static(
             success: false,
             status: ReservationStatus::Failed,
             error: $reason,

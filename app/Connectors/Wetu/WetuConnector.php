@@ -25,13 +25,17 @@ class WetuConnector implements ContentConnector
                 'fields' => 'name,introduction,location,images,keyfeatures,website',
             ]);
 
-            $images = collect($data['Images'] ?? $data['images'] ?? [])
+            /** @var array<int, array<string, mixed>> $rawImages */
+            $rawImages = $data['Images'] ?? $data['images'] ?? [];
+            $images = collect($rawImages)
                 ->map(fn (array $img) => $img['Url'] ?? $img['url'] ?? null)
                 ->filter()
                 ->values()
                 ->all();
 
-            $highlights = collect($data['KeyFeatures'] ?? $data['key_features'] ?? [])
+            /** @var array<int, array<string, mixed>> $rawFeatures */
+            $rawFeatures = $data['KeyFeatures'] ?? $data['key_features'] ?? [];
+            $highlights = collect($rawFeatures)
                 ->map(fn (array $f) => $f['Text'] ?? $f['text'] ?? null)
                 ->filter()
                 ->values()

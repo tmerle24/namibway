@@ -34,7 +34,9 @@ class NightsBridgeConnector implements BookingConnector
                 'NumberOfChildren' => $request->children,
             ]);
 
-            $roomTypes = collect($data['Rooms'] ?? $data['rooms'] ?? [])
+            /** @var array<int, array<string, mixed>> $rawRooms */
+            $rawRooms = $data['Rooms'] ?? $data['rooms'] ?? [];
+            $roomTypes = collect($rawRooms)
                 ->map(fn (array $r) => new RoomType(
                     code: (string) ($r['RoomId'] ?? $r['room_id'] ?? ''),
                     name: $r['RoomName'] ?? $r['room_name'] ?? 'Unknown',

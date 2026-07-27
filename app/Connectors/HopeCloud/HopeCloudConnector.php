@@ -41,7 +41,9 @@ class HopeCloudConnector implements BookingConnector
 
             $levyRate = (float) ($data['tourism_levy_rate'] ?? 0);
 
-            $roomTypes = collect($data['room_types'] ?? [])
+            /** @var array<int, array<string, mixed>> $rawRoomTypes */
+            $rawRoomTypes = $data['room_types'] ?? [];
+            $roomTypes = collect($rawRoomTypes)
                 ->map(function (array $rt) use ($levyRate, $nights, $persons): RoomType {
                     $baseRate = (float) ($rt['rate_per_night'] ?? 0);
                     $levyTotal = $levyRate * $persons * $nights;

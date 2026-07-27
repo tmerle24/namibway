@@ -34,7 +34,9 @@ class ResConnectConnector implements BookingConnector
                 'children' => $request->children,
             ]);
 
-            $roomTypes = collect($data['room_types'] ?? [])
+            /** @var array<int, array<string, mixed>> $rawRoomTypes */
+            $rawRoomTypes = $data['room_types'] ?? [];
+            $roomTypes = collect($rawRoomTypes)
                 ->map(fn (array $rt) => new RoomType(
                     code: $rt['code'],
                     name: $rt['name'],
