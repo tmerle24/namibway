@@ -9,8 +9,8 @@ import {
     InputOTPGroup,
     InputOTPSlot,
 } from '@/components/ui/input-otp';
-import type { TwoFactorConfigContent } from '@/types';
 import { store } from '@/routes/two-factor/login';
+import type { TwoFactorConfigContent } from '@/types';
 
 const showRecoveryInput = ref<boolean>(false);
 const code = ref<string>('');

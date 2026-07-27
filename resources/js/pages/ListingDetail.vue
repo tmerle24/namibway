@@ -5,9 +5,9 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
-import logoDark from '../../images/logo-dark.png';
 import { home } from '@/routes';
 import inquiries from '@/routes/listings/inquiries';
+import logoDark from '../../images/logo-dark.png';
 
 const FALLBACK_HERO_IMAGES: Record<Listing['type'], string[]> = {
     accommodation: [

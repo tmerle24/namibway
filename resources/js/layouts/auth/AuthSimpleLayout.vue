@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import { home } from '@/routes';
 import logoDark from '../../../images/logo-dark.png';
 import logoLight from '../../../images/logo-light.png';
-import { home } from '@/routes';
 
 defineProps<{
     title?: string;
