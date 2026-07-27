@@ -25,6 +25,7 @@ class Partner extends Model
     public array $translatable = ['bio'];
 
     protected $fillable = [
+        'user_id',
         'name',
         'bio',
         'logo',
@@ -33,6 +34,10 @@ class Partner extends Model
         'website',
         'instagram',
         'facebook',
+        'source_url',
+        'claim_token',
+        'claim_token_sent_at',
+        'claimed_at',
     ];
 
     /**
