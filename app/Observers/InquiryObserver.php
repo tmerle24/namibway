@@ -22,7 +22,7 @@ class InquiryObserver
 
         $connectorType = $inquiry->listing?->partner?->connector_type;
 
-        $inquiry->status = $connectorType === ConnectorType::Nwr
+        $inquiry->status = $connectorType === ConnectorType::Nwr->value
             ? InquiryStatus::NwrPending
             : InquiryStatus::Pending;
     }

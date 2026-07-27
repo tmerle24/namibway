@@ -4,6 +4,7 @@ namespace App\Connectors\ResConnect\DTOs;
 
 use App\Enums\ReservationStatus;
 
+/** @phpstan-consistent-constructor */
 class ReservationResponse
 {
     public function __construct(

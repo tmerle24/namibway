@@ -3,6 +3,7 @@
 namespace App\Connectors\HopeCloud\DTOs;
 
 use App\Connectors\ResConnect\DTOs\ReservationResponse;
+use App\Enums\ReservationStatus;
 
 /**
  * Extended reservation response that includes Namibia Tourism Levy details.
@@ -30,5 +31,4 @@ final class HopeCloudReservationResponse extends ReservationResponse
             error: $error,
         );
     }
-
 }
