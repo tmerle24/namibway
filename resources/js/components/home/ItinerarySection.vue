@@ -2,10 +2,10 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import draggable from 'vuedraggable';
-import type { ItineraryListingRef, ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
 import { fetchAlternatives, fetchRegions } from '@/lib/kaia-client';
-import ItineraryLineItem from './ItineraryLineItem.vue';
+import type { ItineraryListingRef, ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
 import AlternativesPanel from './AlternativesPanel.vue';
+import ItineraryLineItem from './ItineraryLineItem.vue';
 import LocationPicker from './LocationPicker.vue';
 
 const props = defineProps<{
@@ -43,6 +43,7 @@ const locationSuggestions = computed(() => {
     const planLocations = editableVariants.value
         .flatMap(v => v.days.map(d => d.location))
         .filter(Boolean);
+
     return [...new Set([...planLocations, ...dbRegions.value])].sort();
 });
 
@@ -60,7 +61,9 @@ function removeItem(variantIndex: number, dayIndex: number, field: 'accommodatio
 function removeDay(variantIndex: number, dayIndex: number) {
     const days = editableVariants.value[variantIndex].days;
     days.splice(dayIndex, 1);
-    days.forEach((day, index) => { day.day = index + 1; });
+    days.forEach((day, index) => {
+        day.day = index + 1;
+    });
     swap.value = null;
 }
 
@@ -69,7 +72,9 @@ function addDay(variantIndex: number, afterDayIndex: number) {
     const days = editableVariants.value[variantIndex].days;
     const prevLocation = afterDayIndex >= 0 ? (days[afterDayIndex]?.location ?? '') : '';
     days.splice(afterDayIndex + 1, 0, { day: 0, location: prevLocation, accommodation: null, activity: null, restaurant: null });
-    days.forEach((day, index) => { day.day = index + 1; });
+    days.forEach((day, index) => {
+        day.day = index + 1;
+    });
     swap.value = null;
 }
 
@@ -96,12 +101,14 @@ async function openSwap(variantIndex: number, dayIndex: number | null, field: Sw
 
     if (swap.value?.key === key) {
         swap.value = null;
+
         return;
     }
 
     swap.value = { key, variantIndex, dayIndex, field, loading: true, alternatives: [] };
 
     const results = await fetchAlternatives(field, itemRef?.id ?? undefined);
+
     if (swap.value?.key === key) {
         swap.value.loading = false;
         swap.value.alternatives = results;
@@ -109,7 +116,9 @@ async function openSwap(variantIndex: number, dayIndex: number | null, field: Sw
 }
 
 function applySwap(alternative: ItineraryListingRef) {
-    if (!swap.value) return;
+    if (!swap.value) {
+        return;
+    }
 
     const { variantIndex, dayIndex, field } = swap.value;
     const variant = editableVariants.value[variantIndex];
