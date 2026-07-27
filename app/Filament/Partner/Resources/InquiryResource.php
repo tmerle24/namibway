@@ -23,6 +23,7 @@ class InquiryResource extends Resource
 
     protected static ?string $breadcrumb = 'Booking Requests';
 
+    /** @return Builder<Inquiry> */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()

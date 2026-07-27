@@ -21,6 +21,7 @@ class ListingResource extends Resource
 
     protected static ?string $breadcrumb = 'Listings';
 
+    /** @return Builder<Listing> */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
