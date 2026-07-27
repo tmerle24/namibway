@@ -79,6 +79,7 @@ class ImportScrapedProviders extends Command
         $name = trim($record['name'] ?? '');
         if (! $name) {
             $stats['skipped']++;
+
             return;
         }
 
@@ -87,11 +88,13 @@ class ImportScrapedProviders extends Command
 
         if ($skipExisting && Listing::where('slug', $slug)->exists()) {
             $stats['skipped']++;
+
             return;
         }
 
         if ($isDryRun) {
             $stats['created']++;
+
             return;
         }
 
@@ -189,6 +192,7 @@ class ImportScrapedProviders extends Command
             $slug = "{$base}-{$i}";
             $i++;
         }
+
         return $slug;
     }
 }

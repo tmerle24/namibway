@@ -27,6 +27,7 @@ class SendClaimEmails extends Command
 
         if ($partners->isEmpty()) {
             $this->info('No partners to contact.');
+
             return self::SUCCESS;
         }
 
@@ -39,6 +40,7 @@ class SendClaimEmails extends Command
                 $p->email,
                 $this->claimUrl($p),
             ])->toArray());
+
             return self::SUCCESS;
         }
 
@@ -55,7 +57,7 @@ class SendClaimEmails extends Command
                 Mail::send(
                     'emails.claim-listing',
                     [
-                        'partner'  => $partner,
+                        'partner' => $partner,
                         'claimUrl' => $this->claimUrl($partner),
                     ],
                     function ($message) use ($partner) {
