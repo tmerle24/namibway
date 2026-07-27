@@ -1,6 +1,7 @@
 {
     "preset": "laravel",
     "rules": {
-        "unary_operator_spaces": false
+        "unary_operator_spaces": false,
+        "phpdoc_align": false
     }
 }
