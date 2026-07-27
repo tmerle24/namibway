@@ -2,6 +2,8 @@
 
 use App\Connectors\Wetu\WetuClient;
 use App\Connectors\Wetu\WetuConnector;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 
 beforeEach(function () {
     $this->client = Mockery::mock(WetuClient::class);
@@ -66,12 +68,12 @@ it('handles missing optional fields gracefully', function () {
 });
 
 it('returns empty content on API error', function () {
-    $httpResponse = Mockery::mock(\Illuminate\Http\Client\Response::class);
+    $httpResponse = Mockery::mock(Response::class);
     $httpResponse->shouldReceive('status')->andReturn(404);
     $httpResponse->shouldReceive('body')->andReturn('Not found');
 
     $this->client->shouldReceive('get')
-        ->andThrow(new \Illuminate\Http\Client\RequestException($httpResponse));
+        ->andThrow(new RequestException($httpResponse));
 
     $content = $this->connector->fetchPropertyContent('WETU-GHOST');
 

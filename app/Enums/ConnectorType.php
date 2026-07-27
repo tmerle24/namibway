@@ -13,7 +13,7 @@ enum ConnectorType: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::ResConnect => 'ResConnect (ResRequest)',
             self::NightsBridge => 'NightsBridge',
             self::HopeCloud => 'hopeCloud',
@@ -25,7 +25,7 @@ enum ConnectorType: string
 
     public function isBookingConnector(): bool
     {
-        return match($this) {
+        return match ($this) {
             self::ResConnect, self::NightsBridge, self::HopeCloud, self::Nwr => true,
             default => false,
         };

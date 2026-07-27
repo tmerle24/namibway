@@ -7,7 +7,7 @@ use App\Enums\ReservationStatus;
 use Carbon\Carbon;
 
 beforeEach(function () {
-    $this->connector = new NwrConnector();
+    $this->connector = new NwrConnector;
 });
 
 it('reports the correct connector type', function () {

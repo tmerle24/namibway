@@ -8,7 +8,6 @@ use App\Enums\ReservationStatus;
 use Carbon\Carbon;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
-use Mockery\MockInterface;
 
 beforeEach(function () {
     $this->client = Mockery::mock(ResConnectClient::class);

@@ -12,7 +12,7 @@ enum InquiryStatus: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::Pending => 'Pending',
             self::NwrPending => 'NWR — Manual check required',
             self::Confirmed => 'Confirmed',
@@ -23,7 +23,7 @@ enum InquiryStatus: string
 
     public function color(): string
     {
-        return match($this) {
+        return match ($this) {
             self::Pending => 'warning',
             self::NwrPending => 'danger',
             self::Confirmed => 'success',

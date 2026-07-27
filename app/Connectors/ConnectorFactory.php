@@ -27,7 +27,7 @@ class ConnectorFactory
             ConnectorType::ResConnect => self::makeResConnect($partner),
             ConnectorType::NightsBridge => self::makeNightsBridge($partner),
             ConnectorType::HopeCloud => self::makeHopeCloud($partner),
-            ConnectorType::Nwr => new NwrConnector(),
+            ConnectorType::Nwr => new NwrConnector,
             null, ConnectorType::Manual, ConnectorType::Wetu => throw new InvalidArgumentException(
                 "Partner [{$partner->id}] has no automated booking connector configured."
             ),

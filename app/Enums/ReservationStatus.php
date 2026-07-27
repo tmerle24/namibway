@@ -12,7 +12,7 @@ enum ReservationStatus: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::Pending => 'Pending',
             self::Confirmed => 'Confirmed',
             self::OnRequest => 'On Request',
