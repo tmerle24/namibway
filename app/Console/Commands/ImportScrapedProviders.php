@@ -23,7 +23,7 @@ class ImportScrapedProviders extends Command
     {
         $file = $this->argument('file') ?? base_path('scripts/scraped_providers.json');
 
-        if (!file_exists($file)) {
+        if (! file_exists($file)) {
             $this->error("File not found: {$file}");
             $this->line('Run first: python scripts/scrape_providers.py');
 
@@ -32,7 +32,7 @@ class ImportScrapedProviders extends Command
 
         $records = json_decode(file_get_contents($file), true);
 
-        if (!is_array($records)) {
+        if (! is_array($records)) {
             $this->error("Invalid JSON in {$file}");
 
             return self::FAILURE;
@@ -77,7 +77,7 @@ class ImportScrapedProviders extends Command
     private function processRecord(array $record, bool $isDryRun, bool $skipExisting, array &$stats): void
     {
         $name = trim($record['name'] ?? '');
-        if (!$name) {
+        if (! $name) {
             $stats['skipped']++;
             return;
         }
@@ -154,7 +154,7 @@ class ImportScrapedProviders extends Command
 
     private function normalizeRegion(?string $region): ?string
     {
-        if (!$region) {
+        if (! $region) {
             return null;
         }
 

@@ -42,7 +42,7 @@ class SendClaimEmails extends Command
             return self::SUCCESS;
         }
 
-        if (!$this->confirm("Send {$partners->count()} emails?")) {
+        if (! $this->confirm("Send {$partners->count()} emails?")) {
             return self::SUCCESS;
         }
 
