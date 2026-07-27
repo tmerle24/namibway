@@ -5,8 +5,8 @@ import { useI18n } from 'vue-i18n';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import { sendKaiaMessage } from '@/lib/kaia-client';
 import type { ChatMessage, ItineraryPlan } from '@/lib/kaia-types';
-import { dashboard, login, register } from '@/routes';
 import logoLight from '../../../images/logo-light.png';
+import { dashboard, login, register } from '@/routes';
 
 const emit = defineEmits<{
     (e: 'plan-ready', plan: ItineraryPlan): void;

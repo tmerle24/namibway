@@ -23,7 +23,11 @@ export async function fetchRegions(): Promise<string[]> {
 
 export async function fetchAlternatives(type: string, excludeId?: number): Promise<ItineraryListingRef[]> {
     const params = new URLSearchParams({ type });
-    if (excludeId !== undefined) params.set('exclude_id', String(excludeId));
+
+    if (excludeId !== undefined) {
+        params.set('exclude_id', String(excludeId));
+    }
+
     const response = await fetch(`/kaia/alternatives?${params}`, {
         credentials: 'same-origin',
         headers: { Accept: 'application/json' },

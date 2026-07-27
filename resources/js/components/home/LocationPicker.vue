@@ -26,7 +26,11 @@ function openPicker() {
 
 function select(value: string) {
     const trimmed = value.trim();
-    if (trimmed) emit('update:modelValue', trimmed);
+
+    if (trimmed) {
+        emit('update:modelValue', trimmed);
+    }
+
     open.value = false;
     query.value = '';
 }
