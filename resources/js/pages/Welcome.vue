@@ -42,7 +42,9 @@ const bookingVariant = ref<ItineraryVariant | null>(null);
 
 async function scrollTo(id: string) {
     await nextTick();
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document
+        .getElementById(id)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function onPlanReady(newPlan: ItineraryPlan) {

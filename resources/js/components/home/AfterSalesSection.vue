@@ -10,8 +10,8 @@ const supportText = ref('');
 const supportNote = ref('');
 function sendSupport() {
     if (!supportText.value.trim()) {
-return;
-}
+        return;
+    }
 
     supportNote.value = t('afterSales.support.confirm');
 }
@@ -40,14 +40,23 @@ function publishFeedback() {
                         <input type="checkbox" />{{ item }}
                     </label>
                 </div>
-                <button class="small" @click="window.print()">{{ t('afterSales.checklist.print') }}</button>
+                <button class="small" @click="window.print()">
+                    {{ t('afterSales.checklist.print') }}
+                </button>
             </div>
             <div class="as-card">
                 <h3>{{ t('afterSales.support.title') }}</h3>
                 <p>{{ t('afterSales.support.subtitle') }}</p>
-                <textarea v-model="supportText" :placeholder="t('afterSales.support.placeholder')"></textarea>
-                <button class="small" @click="sendSupport">{{ t('afterSales.support.send') }}</button>
-                <div v-if="supportNote" class="confirm-note">{{ supportNote }}</div>
+                <textarea
+                    v-model="supportText"
+                    :placeholder="t('afterSales.support.placeholder')"
+                ></textarea>
+                <button class="small" @click="sendSupport">
+                    {{ t('afterSales.support.send') }}
+                </button>
+                <div v-if="supportNote" class="confirm-note">
+                    {{ supportNote }}
+                </div>
             </div>
             <div class="as-card">
                 <h3>{{ t('afterSales.feedback.title') }}</h3>
@@ -58,11 +67,19 @@ function publishFeedback() {
                         :key="n"
                         :class="{ active: n <= rating }"
                         @click="rating = n"
-                    >★</span>
+                        >★</span
+                    >
                 </div>
-                <textarea v-model="feedbackText" :placeholder="t('afterSales.feedback.placeholder')"></textarea>
-                <button class="small" @click="publishFeedback">{{ t('afterSales.feedback.publish') }}</button>
-                <div v-if="feedbackNote" class="confirm-note">{{ feedbackNote }}</div>
+                <textarea
+                    v-model="feedbackText"
+                    :placeholder="t('afterSales.feedback.placeholder')"
+                ></textarea>
+                <button class="small" @click="publishFeedback">
+                    {{ t('afterSales.feedback.publish') }}
+                </button>
+                <div v-if="feedbackNote" class="confirm-note">
+                    {{ feedbackNote }}
+                </div>
             </div>
         </div>
     </section>

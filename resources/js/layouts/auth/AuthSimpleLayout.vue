@@ -21,8 +21,16 @@ defineProps<{
                         :href="home()"
                         class="mb-1 flex flex-col items-center gap-2 font-medium"
                     >
-                        <img :src="logoDark" alt="NamibWay" class="w-auto max-w-[200px] dark:hidden" />
-                        <img :src="logoLight" alt="NamibWay" class="hidden w-auto max-w-[200px] dark:block" />
+                        <img
+                            :src="logoDark"
+                            alt="NamibWay"
+                            class="w-auto max-w-[200px] dark:hidden"
+                        />
+                        <img
+                            :src="logoLight"
+                            alt="NamibWay"
+                            class="hidden w-auto max-w-[200px] dark:block"
+                        />
                         <span class="sr-only">{{ title }}</span>
                     </Link>
                     <div class="space-y-2 text-center">

@@ -24,8 +24,16 @@ function switchLocale(event: Event) {
 </script>
 
 <template>
-    <select :value="page.props.locale" class="locale-switcher" @change="switchLocale">
-        <option v-for="(label, code) in page.props.availableLocales" :key="code" :value="code">
+    <select
+        :value="page.props.locale"
+        class="locale-switcher"
+        @change="switchLocale"
+    >
+        <option
+            v-for="(label, code) in page.props.availableLocales"
+            :key="code"
+            :value="code"
+        >
             {{ FLAGS[code as string] ?? '' }} {{ label }}
         </option>
     </select>

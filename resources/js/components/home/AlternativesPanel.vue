@@ -24,13 +24,36 @@ function detailUrl(slug: string): string {
         <div class="alternatives-title">{{ t('itinerary.alternatives') }}</div>
         <div v-if="loading" class="alternatives-loading">…</div>
         <template v-else-if="alternatives.length">
-            <div v-for="alt in alternatives" :key="String(alt.id)" class="alternative-item">
+            <div
+                v-for="alt in alternatives"
+                :key="String(alt.id)"
+                class="alternative-item"
+            >
                 <span class="alt-name">{{ alt.name }}</span>
-                <span v-if="alt.price_from" class="alt-price">{{ alt.price_currency }} {{ Number(alt.price_from).toLocaleString() }}</span>
-                <a v-if="alt.slug" :href="detailUrl(alt.slug)" target="_blank" rel="noopener noreferrer" class="alt-detail-link" :title="t('itinerary.viewDetail')">↗</a>
-                <button type="button" class="alt-use-btn" @click="emit('select', alt)">{{ t('itinerary.useThis') }}</button>
+                <span v-if="alt.price_from" class="alt-price"
+                    >{{ alt.price_currency }}
+                    {{ Number(alt.price_from).toLocaleString() }}</span
+                >
+                <a
+                    v-if="alt.slug"
+                    :href="detailUrl(alt.slug)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="alt-detail-link"
+                    :title="t('itinerary.viewDetail')"
+                    >↗</a
+                >
+                <button
+                    type="button"
+                    class="alt-use-btn"
+                    @click="emit('select', alt)"
+                >
+                    {{ t('itinerary.useThis') }}
+                </button>
             </div>
         </template>
-        <div v-else class="alternatives-empty">{{ t('itinerary.noAlternatives') }}</div>
+        <div v-else class="alternatives-empty">
+            {{ t('itinerary.noAlternatives') }}
+        </div>
     </div>
 </template>
