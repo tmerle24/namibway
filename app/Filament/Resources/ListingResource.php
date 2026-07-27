@@ -2,11 +2,15 @@
 
 namespace App\Filament\Resources;
 
+use App\Connectors\ConnectorFactory;
+use App\Enums\ConnectorType;
 use App\Enums\ListingType;
 use App\Filament\Resources\ListingResource\Pages;
 use App\Models\Listing;
+use App\Models\Partner;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -142,6 +146,57 @@ class ListingResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('import_wetu')
+                    ->label('Import from Wetu')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('info')
+                    ->visible(fn (Listing $record): bool => $record->partner?->connector_type === ConnectorType::Wetu)
+                    ->requiresConfirmation()
+                    ->modalHeading('Import content from Wetu')
+                    ->modalDescription('This will overwrite the name, description, highlights, region, and coordinates with data from Wetu. Existing images are not replaced.')
+                    ->action(function (Listing $record): void {
+                        $partner = $record->partner;
+
+                        if (! $partner instanceof Partner) {
+                            Notification::make()->title('No partner linked to this listing.')->danger()->send();
+
+                            return;
+                        }
+
+                        try {
+                            $wetuId = $partner->connector_property_code;
+
+                            if (blank($wetuId)) {
+                                Notification::make()->title('Partner has no Wetu property code configured.')->danger()->send();
+
+                                return;
+                            }
+
+                            $content = ConnectorFactory::makeContent($partner)->fetchPropertyContent($wetuId);
+
+                            $record->update(array_filter([
+                                'name' => $content->name ?: null,
+                                'description' => $content->description,
+                                'highlights' => $content->highlights ?: null,
+                                'region' => $content->region,
+                                'latitude' => $content->latitude,
+                                'longitude' => $content->longitude,
+                            ], fn ($v) => $v !== null));
+
+                            Notification::make()
+                                ->title('Content imported from Wetu')
+                                ->body("Imported: {$content->name}")
+                                ->success()
+                                ->send();
+
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->title('Wetu import failed')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

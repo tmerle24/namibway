@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Inquiry;
 use App\Models\User;
+use App\Observers\InquiryObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Date;
@@ -27,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        Inquiry::observe(InquiryObserver::class);
 
         Event::listen(function (Login $event) {
             if ($event->user instanceof User) {
