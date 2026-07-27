@@ -28,3 +28,5 @@ yarn-error.log
 /.vscode
 /.zed
 .claude/settings.local.json
+/scripts/scraped_providers.json
+/scripts/scraped_providers.csv

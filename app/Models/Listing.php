@@ -38,6 +38,10 @@ class Listing extends Model
         'is_published',
         'accepts_inquiries',
         'content_synced_at',
+        'source_url',
+        'claim_status',
+        'website',
+        'contact_email',
     ];
 
     protected $casts = [
