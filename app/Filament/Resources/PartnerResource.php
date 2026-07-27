@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Enums\ConnectorType;
 use App\Filament\Resources\PartnerResource\Pages;
 use App\Models\Partner;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -52,6 +53,31 @@ class PartnerResource extends Resource
                 Forms\Components\TextInput::make('facebook')
                     ->url()
                     ->maxLength(255),
+
+                Forms\Components\Section::make('Partner Portal Access')
+                    ->description('Link a user account so this partner can log in to manage their listings.')
+                    ->collapsed()
+                    ->schema([
+                        Forms\Components\Select::make('portal_user_id')
+                            ->label('Portal user')
+                            ->options(User::whereNull('partner_id')->orWhereHas('partner', fn ($q) => $q->whereKey(0))->pluck('email', 'id'))
+                            ->searchable()
+                            ->placeholder('No portal access')
+                            ->helperText('Assigning a user here grants them access to /partner for this property.')
+                            ->dehydrated(false)
+                            ->afterStateHydrated(function ($component, Partner $record) {
+                                $user = User::where('partner_id', $record->id)->first();
+                                $component->state($user?->id);
+                            })
+                            ->saveRelationshipsUsing(function (?int $state, Partner $record) {
+                                User::where('partner_id', $record->id)->whereKeyNot($state ?? 0)->update(['partner_id' => null]);
+
+                                if ($state) {
+                                    User::whereKey($state)->update(['partner_id' => $record->id]);
+                                }
+                            }),
+                    ])
+                    ->columnSpanFull(),
 
                 Forms\Components\Section::make('Booking Connector')
                     ->description('Connect this partner to their property management system for live availability and reservations.')
