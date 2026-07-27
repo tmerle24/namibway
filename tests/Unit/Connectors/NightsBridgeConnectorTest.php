@@ -8,6 +8,7 @@ use App\Enums\ReservationStatus;
 use Carbon\Carbon;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
+use Psr\Http\Message\ResponseInterface;
 
 beforeEach(function () {
     $this->client = Mockery::mock(NightsBridgeClient::class);
@@ -59,7 +60,7 @@ it('handles API errors gracefully on availability', function () {
     $httpResponse = Mockery::mock(Response::class);
     $httpResponse->shouldReceive('status')->andReturn(500);
     $httpResponse->shouldReceive('body')->andReturn('Internal Server Error');
-    $httpResponse->shouldReceive('toPsrResponse')->andReturn(Mockery::mock(\Psr\Http\Message\ResponseInterface::class));
+    $httpResponse->shouldReceive('toPsrResponse')->andReturn(Mockery::mock(ResponseInterface::class));
     $this->client->shouldReceive('get')->andThrow(new RequestException($httpResponse));
 
     $response = $this->connector->checkAvailability(
@@ -121,7 +122,7 @@ it('returns false on failed cancellation', function () {
     $httpResponse = Mockery::mock(Response::class);
     $httpResponse->shouldReceive('status')->andReturn(404);
     $httpResponse->shouldReceive('body')->andReturn('Not found');
-    $httpResponse->shouldReceive('toPsrResponse')->andReturn(Mockery::mock(\Psr\Http\Message\ResponseInterface::class));
+    $httpResponse->shouldReceive('toPsrResponse')->andReturn(Mockery::mock(ResponseInterface::class));
     $this->client->shouldReceive('post')->andThrow(new RequestException($httpResponse));
 
     expect($this->connector->cancelReservation('NB-GHOST'))->toBeFalse();

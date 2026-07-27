@@ -4,6 +4,7 @@ use App\Connectors\Wetu\WetuClient;
 use App\Connectors\Wetu\WetuConnector;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
+use Psr\Http\Message\ResponseInterface;
 
 beforeEach(function () {
     $this->client = Mockery::mock(WetuClient::class);
@@ -71,7 +72,7 @@ it('returns empty content on API error', function () {
     $httpResponse = Mockery::mock(Response::class);
     $httpResponse->shouldReceive('status')->andReturn(404);
     $httpResponse->shouldReceive('body')->andReturn('Not found');
-    $httpResponse->shouldReceive('toPsrResponse')->andReturn(Mockery::mock(\Psr\Http\Message\ResponseInterface::class));
+    $httpResponse->shouldReceive('toPsrResponse')->andReturn(Mockery::mock(ResponseInterface::class));
 
     $this->client->shouldReceive('get')
         ->andThrow(new RequestException($httpResponse));
