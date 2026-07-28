@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
+import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ItineraryLineItem from '@/components/home/ItineraryLineItem.vue';
 import SaveShareBar from '@/components/home/SaveShareBar.vue';
 import TripMap from '@/components/home/TripMap.vue';
+import { fetchRegionCoords } from '@/lib/kaia-client';
+import type { RegionCoords } from '@/lib/kaia-client';
 import type { ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
 import logoDark from '../../images/logo-dark.png';
 
@@ -15,6 +18,12 @@ defineProps<{
 }>();
 
 const { t } = useI18n();
+
+const regionCoords = ref<Record<string, RegionCoords>>({});
+
+onMounted(async () => {
+    regionCoords.value = await fetchRegionCoords();
+});
 
 function estimatedLabel(variant: ItineraryVariant): string | null {
     let amount = 0;
@@ -79,7 +88,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                 <TripMap
                     :map-id="`trip-map-${variantIndex}`"
                     :variant="variant"
-                    :region-coords="{}"
+                    :region-coords="regionCoords"
                 />
 
                 <template v-if="variant.vehicle">
