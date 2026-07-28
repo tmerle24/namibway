@@ -42,7 +42,14 @@
         "editLocation": "Editar lugar",
         "viewDetail": "Ver detalle",
         "addDay": "Añadir día",
-        "dragToReorder": "Arrastrar para reordenar"
+        "dragToReorder": "Arrastrar para reordenar",
+        "saveShare": "Guardar y compartir",
+        "saving": "Guardando…",
+        "shareLink": "Enlace para compartir",
+        "copyLink": "Copiar enlace",
+        "linkCopied": "¡Copiado!",
+        "downloadPdf": "Descargar PDF",
+        "print": "Imprimir"
     },
     "booking": {
         "eyebrow": "Asistente de reservas",

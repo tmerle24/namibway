@@ -42,7 +42,14 @@
         "editLocation": "Ort bearbeiten",
         "viewDetail": "Details anzeigen",
         "addDay": "Tag hinzufügen",
-        "dragToReorder": "Ziehen zum Verschieben"
+        "dragToReorder": "Ziehen zum Verschieben",
+        "saveShare": "Speichern & teilen",
+        "saving": "Speichern…",
+        "shareLink": "Teilbarer Link",
+        "copyLink": "Link kopieren",
+        "linkCopied": "Kopiert!",
+        "downloadPdf": "PDF herunterladen",
+        "print": "Drucken"
     },
     "booking": {
         "eyebrow": "Buchungsassistent",

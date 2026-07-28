@@ -42,7 +42,14 @@
         "editLocation": "Locatie bewerken",
         "viewDetail": "Detail bekijken",
         "addDay": "Dag toevoegen",
-        "dragToReorder": "Slepen om te herschikken"
+        "dragToReorder": "Slepen om te herschikken",
+        "saveShare": "Opslaan & delen",
+        "saving": "Opslaan…",
+        "shareLink": "Deelbare link",
+        "copyLink": "Link kopiëren",
+        "linkCopied": "Gekopieerd!",
+        "downloadPdf": "PDF downloaden",
+        "print": "Afdrukken"
     },
     "booking": {
         "eyebrow": "Boekingsassistent",

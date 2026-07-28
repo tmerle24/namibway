@@ -60,7 +60,14 @@
         "editLocation": "Edit location",
         "viewDetail": "View detail",
         "addDay": "Add day",
-        "dragToReorder": "Drag to reorder"
+        "dragToReorder": "Drag to reorder",
+        "saveShare": "Save & share",
+        "saving": "Saving…",
+        "shareLink": "Shareable link",
+        "copyLink": "Copy link",
+        "linkCopied": "Copied!",
+        "downloadPdf": "Download PDF",
+        "print": "Print"
     },
     "booking": {
         "eyebrow": "Booking assistant",

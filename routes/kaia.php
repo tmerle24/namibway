@@ -18,3 +18,11 @@ Route::get('kaia/alternatives', [KaiaController::class, 'alternatives'])
 Route::get('kaia/region-coords', [KaiaController::class, 'regionCoords'])
     ->middleware('throttle:30,1')
     ->name('kaia.region-coords');
+
+Route::post('kaia/plans', [KaiaController::class, 'savePlan'])
+    ->middleware('throttle:20,1')
+    ->name('kaia.plans.save');
+
+Route::get('kaia/plans/{token}', [KaiaController::class, 'loadPlan'])
+    ->middleware('throttle:60,1')
+    ->name('kaia.plans.load');

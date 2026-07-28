@@ -47,6 +47,10 @@ async function sendSupportMessage() {
     }
 }
 
+function doPrint() {
+    window.print();
+}
+
 const feedbackText = ref('');
 const feedbackNote = ref('');
 const feedbackError = ref('');

@@ -91,7 +91,7 @@ export interface SavedPlanResult {
 }
 
 export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
-    const response = await fetch('/trip/save', {
+    const response = await fetch('/kaia/plans', {
         method: 'POST',
         credentials: 'same-origin',
         headers: {
@@ -99,14 +99,17 @@ export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
             Accept: 'application/json',
             'X-XSRF-TOKEN': xsrfToken(),
         },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ variant: plan }),
     });
 
     if (!response.ok) {
         throw new Error('Failed to save plan');
     }
 
-    return response.json();
+    const data = await response.json();
+    const token = data.token as string;
+
+    return { token, url: `${window.location.origin}/trip/${token}` };
 }
 
 export async function createTrip(

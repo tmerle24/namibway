@@ -175,6 +175,53 @@ function applySwap(alternative: ItineraryListingRef) {
     swap.value = null;
 }
 
+// --- Save & share ---
+
+interface SaveState {
+    saving: boolean;
+    token: string | null;
+    copied: boolean;
+}
+
+const saveStates = ref<SaveState[]>([]);
+
+watch(
+    () => props.plan,
+    (plan) => {
+        saveStates.value = plan.variants.map(() => ({ saving: false, token: null, copied: false }));
+    },
+    { immediate: true },
+);
+
+function shareUrl(token: string): string {
+    return `${window.location.origin}/trip/${token}`;
+}
+
+async function doSave(variantIndex: number) {
+    const state = saveStates.value[variantIndex];
+    if (state.saving || state.token) return;
+
+    state.saving = true;
+    try {
+        state.token = await savePlan(editableVariants.value[variantIndex]);
+    } finally {
+        state.saving = false;
+    }
+}
+
+async function copyLink(variantIndex: number) {
+    const state = saveStates.value[variantIndex];
+    if (!state.token) return;
+
+    await navigator.clipboard.writeText(shareUrl(state.token));
+    state.copied = true;
+    setTimeout(() => { state.copied = false; }, 2000);
+}
+
+function printVariant() {
+    window.print();
+}
+
 function estimatedLabel(variant: ItineraryVariant): string | null {
     let amount = 0;
     let currency: string | null = null;
