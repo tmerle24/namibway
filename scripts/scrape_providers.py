@@ -27,6 +27,7 @@ import time
 import re
 import argparse
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
@@ -53,7 +54,7 @@ HEADERS = {
 def get(url: str, retries: int = 3, delay: float = 2.0) -> "requests.Response | None":
     for attempt in range(retries):
         try:
-            resp = requests.get(url, headers=HEADERS, timeout=20)
+            resp = requests.get(url, headers=HEADERS, timeout=10)
             resp.raise_for_status()
             return resp
         except requests.RequestException as e:
@@ -88,129 +89,149 @@ def extract_email(text: str) -> "str | None":
 
 VISITNAMIBIA_BASE = "https://visitnamibia.com.na"
 
+# Domains to skip when extracting provider websites from detail pages
+_SKIP_DOMAINS = {
+    "visitnamibia.com.na", "facebook.com", "instagram.com",
+    "twitter.com", "x.com", "youtube.com", "linkedin.com",
+    "tiktok.com", "pinterest.com", "whatsapp.com",
+}
+
 # Category slugs from the /business-directory-search-by-category/ page.
 # These map to the URL pattern /business-directory/?s=&cat=N or similar.
 # Run with --source visitnamibia first, then inspect the category page if
 # the selectors below need updating.
-VISITNAMIBIA_LISTING_URLS = [
-    "/all-listings/",
-    "/business-directory/",
-]
-
-# Type keywords → NamibWay types
-VISITNAMIBIA_TYPE_MAP = {
+# Category URL: /search-result/?in_cat=N
+# in_cat=47 = Accommodation (confirmed from NTB site).
+# Other IDs are discovered at runtime from /business-directory-search-by-category/.
+# We map NTB category names → our internal types; unrecognised categories → "other".
+VISITNAMIBIA_CATEGORY_TYPE_MAP: dict[str, str] = {
+    # Accommodation
     "accommodation": "accommodation",
-    "lodge": "accommodation",
-    "camp": "accommodation",
-    "hotel": "accommodation",
-    "guesthouse": "accommodation",
-    "b&b": "accommodation",
-    "bed": "accommodation",
+    "hotels": "accommodation",
+    "lodges": "accommodation",
+    "guesthouses": "accommodation",
+    "guest houses": "accommodation",
+    "bed and breakfast": "accommodation",
+    "self catering": "accommodation",
     "self-catering": "accommodation",
-    "chalet": "accommodation",
-    "restaurant": "restaurant",
-    "café": "restaurant",
-    "cafe": "restaurant",
-    "bar": "restaurant",
-    "eatery": "restaurant",
-    "activity": "activity",
-    "tour": "activity",
-    "safari": "activity",
-    "excursion": "activity",
+    "backpackers": "accommodation",
+    "camping": "accommodation",
+    "campsites": "accommodation",
+    "tented camps": "accommodation",
+    "rest camps": "accommodation",
+    "resorts": "accommodation",
+    # Activities / Tours
+    "tours": "activity",
+    "safaris": "activity",
+    "hunting": "activity",
+    "activities": "activity",
     "adventure": "activity",
+    "excursions": "activity",
+    "transfers": "activity",
+    "shuttles": "activity",
+    "travel agents": "activity",
+    "tour operators": "activity",
+    # Restaurants / Food
+    "restaurants": "restaurant",
+    "food and beverage": "restaurant",
+    "catering": "restaurant",
+    # Car rental
     "car rental": "car_rental",
-    "vehicle": "car_rental",
-    "hire": "car_rental",
+    "car hire": "car_rental",
+    "vehicle rental": "car_rental",
+    "4x4 rental": "car_rental",
 }
 
+# Ordered keyword fallback for names when category label is unrecognised.
+VISITNAMIBIA_TYPE_HINTS: list[tuple[list[str], str]] = [
+    (
+        ["car rental", "auto rental", "vehicle rental", "car hire", "self drive",
+         "4x4 rental", "4wd rental"],
+        "car_rental",
+    ),
+    (
+        ["lodge", "hotel", "camp", "resort", "guesthouse", "guest house",
+         "bed and breakfast", "b&b", "self catering", "self-catering",
+         "apartment", "chalet", "tented camp", "rest camp", "accommodation",
+         "backpacker", "hostel", "villa", "cottage"],
+        "accommodation",
+    ),
+    (
+        ["restaurant", "café", "cafe", "bistro", "eatery", "diner", "kitchen",
+         "steakhouse", "spur", "pizza", "takeaway"],
+        "restaurant",
+    ),
+    (
+        ["tour", "safari", "hunting", "transfer", "shuttle", "excursion",
+         "adventure", "activity", "travel", "expedition", "quad", "skydive",
+         "sandboard", "hiking", "canopy", "kayak", "balloon"],
+        "activity",
+    ),
+]
 
-def resolve_ntb_type(raw: str) -> str:
-    lower = raw.lower()
-    for keyword, resolved in VISITNAMIBIA_TYPE_MAP.items():
-        if keyword in lower:
-            return resolved
-    return "accommodation"
+
+def resolve_ntb_type(text: str) -> str:
+    """Resolve type from any text (category label or listing name)."""
+    lower = text.lower()
+    for keywords, t in VISITNAMIBIA_TYPE_HINTS:
+        if any(kw in lower for kw in keywords):
+            return t
+    return "other"
 
 
-def scrape_visitnamibia_page(url: str) -> list:
-    """
-    Scrape one page of the NTB directory.
-
-    visitnamibia.com.na appears to be a WordPress site with a directory
-    plugin (likely GeoDirectory or a custom post type). The selectors below
-    cover the most common structures; update them if the site changes.
-    """
-    print(f"  Fetching: {url}")
-    resp = get(url)
-    if not resp:
-        return []
-
-    soup = BeautifulSoup(resp.text, "lxml")
-    records = []
-
-    # --- Try GeoDirectory card selectors first ---
+def _parse_search_result_cards(soup: "BeautifulSoup", forced_type: "str | None" = None) -> list:
+    """Parse listing cards from a GeoDirectory search-result page."""
     cards = soup.select(
         ".geodir-category-listing, .gd-listing-item, .geodir-post, "
-        ".listing-item, .business-item, .directory-item, "
-        "article.type-gd_place, article.type-listing"
+        "article.type-gd_place, article.type-listing, "
+        ".listing-item, .business-item"
     )
-
-    # --- Fallback: WordPress generic article cards ---
     if not cards:
-        cards = soup.select("article.post, article.type-post, .entry")
+        cards = soup.select("article.post, article.type-post")
 
-    # --- Last-resort: look for any card-like div with a heading + link ---
-    if not cards:
-        cards = soup.select(".card, .item, [class*='listing']")
-
+    records = []
     for card in cards:
         try:
             name_el = card.select_one(
                 "h2.entry-title a, h3.entry-title a, "
                 ".geodir-post-title a, .gd-post-title a, "
-                ".listing-title a, .business-name a, "
                 "h2 a, h3 a, h4 a"
             )
             if not name_el:
                 continue
-
             name = name_el.get_text(strip=True)
             if not name or len(name) < 2:
                 continue
 
-            detail_href = name_el.get("href", "")
-            detail_url = urljoin(VISITNAMIBIA_BASE, detail_href) if detail_href else url
+            detail_url = urljoin(VISITNAMIBIA_BASE, name_el.get("href", ""))
 
-            # Category / type
-            cat_el = card.select_one(
-                ".geodir-category, .gd-category, "
-                ".listing-category, .business-category, "
-                "[class*='cat'], .type, .category"
-            )
-            raw_type = cat_el.get_text(strip=True) if cat_el else ""
-            listing_type = resolve_ntb_type(raw_type)
+            # Type: use forced_type (from category) or fall back to name heuristic
+            if forced_type:
+                listing_type = forced_type
+            else:
+                cat_el = card.select_one(".geodir-category, .gd-category, .listing-category")
+                raw = cat_el.get_text(strip=True) if cat_el else ""
+                listing_type = resolve_ntb_type(f"{raw} {name}")
 
-            # Region / location
             region_el = card.select_one(
                 ".geodir-post-meta-field-address, .gd-location, "
-                ".listing-location, .business-location, "
-                "[class*='location'], [class*='address'], [class*='region']"
+                ".listing-location, [class*='location'], [class*='address']"
             )
             region = region_el.get_text(strip=True) if region_el else None
 
-            # Description snippet
             desc_el = card.select_one(
-                ".geodir-post-excerpt, .entry-summary, "
-                ".listing-description, p.description, p"
+                ".geodir-post-excerpt, .entry-summary, .listing-description, p"
             )
             description = desc_el.get_text(strip=True) if desc_el else None
             if description and len(description) > 500:
                 description = description[:500]
 
-            # Website & email from card text (often not present until detail page)
-            website_el = card.select_one("a[href^='http']:not([href*='visitnamibia'])")
-            website = website_el["href"] if website_el else None
-            contact_email = extract_email(card.get_text())
+            _card_email = extract_email(card.get_text())
+            contact_email = (
+                _card_email
+                if _card_email and "visitnamibia.com.na" not in _card_email.lower()
+                else None
+            )
 
             records.append({
                 "name": name,
@@ -218,21 +239,19 @@ def scrape_visitnamibia_page(url: str) -> list:
                 "region": region,
                 "description": description,
                 "source_url": detail_url,
-                "website": website,
+                "website": None,
                 "contact_email": contact_email,
+                "phone": None,
                 "latitude": None,
                 "longitude": None,
             })
-
         except Exception as e:
             print(f"  [warn] card parse error: {e}")
-            continue
-
     return records
 
 
 def scrape_visitnamibia_detail(record: dict) -> dict:
-    """Fetch the NTB detail page to extract website, email, and coordinates."""
+    """Fetch a detail page and extract website, email, phone and coordinates."""
     url = record.get("source_url", "")
     if not url or VISITNAMIBIA_BASE not in url:
         return record
@@ -242,111 +261,205 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
         return record
 
     soup = BeautifulSoup(resp.text, "lxml")
-    text = soup.get_text()
+    content = (
+        soup.select_one(
+            "article.gd_place, article.type-gd_place, "
+            ".geodir-single-main, .geodir-post-body, "
+            ".geodir-listing-content, .entry-content, main"
+        )
+        or soup
+    )
 
+    # Website — GeoDirectory field only; generic links are always NTB social junk
     if not record.get("website"):
-        for a in soup.select("a[href^='http']"):
-            href = a["href"]
-            domain = urlparse(href).netloc
-            if "visitnamibia" not in domain and "facebook" not in domain and "instagram" not in domain:
-                record["website"] = href
+        for sel in (".geodir-field-website a", ".gd-field-website a",
+                    "[class*='field-website'] a", "[class*='field_website'] a"):
+            el = content.select_one(sel)
+            if el:
+                href = el.get("href", "")
+                domain = urlparse(href).netloc.lower().removeprefix("www.")
+                if not any(domain == s or domain.endswith("." + s) for s in _SKIP_DOMAINS):
+                    record["website"] = href
+                    break
+
+    # Email
+    if not record.get("contact_email"):
+        for sel in (".geodir-field-email a", ".gd-field-email a",
+                    "[class*='field-email'] a", "[href^='mailto:']"):
+            el = content.select_one(sel)
+            if el:
+                href = el.get("href", "")
+                email = href[7:] if href.startswith("mailto:") else el.get_text(strip=True)
+                if email and "visitnamibia.com.na" not in email.lower():
+                    record["contact_email"] = email
+                    break
+
+    # Phone
+    if not record.get("phone"):
+        for sel in (".geodir-field-phone a", "[class*='field-phone'] a",
+                    "[href^='tel:']"):
+            el = content.select_one(sel)
+            if el:
+                href = el.get("href", "")
+                record["phone"] = href[4:] if href.startswith("tel:") else el.get_text(strip=True)
                 break
 
-    if not record.get("contact_email"):
-        record["contact_email"] = extract_email(text)
+    # Coordinates — GeoDirectory data attributes or JSON-LD
+    if not record.get("latitude"):
+        map_el = soup.select_one("[data-lat]")
+        if map_el:
+            record["latitude"] = map_el.get("data-lat")
+            record["longitude"] = map_el.get("data-lng")
 
-    # GeoDirectory embeds lat/lng in data attributes or a map script
-    map_el = soup.select_one("[data-lat], [data-lng]")
-    if map_el:
-        record["latitude"] = map_el.get("data-lat")
-        record["longitude"] = map_el.get("data-lng")
+    if not record.get("latitude"):
+        for script in soup.select("script[type='application/ld+json']"):
+            try:
+                data = json.loads(script.string or "")
+                geo = data.get("geo", {})
+                if geo.get("latitude"):
+                    record["latitude"] = geo["latitude"]
+                    record["longitude"] = geo.get("longitude")
+                    break
+            except (json.JSONDecodeError, AttributeError):
+                pass
 
-    # Fallback: JSON-LD schema
-    for script in soup.select("script[type='application/ld+json']"):
-        try:
-            data = json.loads(script.string or "")
-            geo = data.get("geo", {})
-            if geo.get("latitude"):
-                record["latitude"] = geo["latitude"]
-                record["longitude"] = geo.get("longitude")
-        except (json.JSONDecodeError, AttributeError):
-            pass
-
-    time.sleep(1)
+    time.sleep(0.3)
     return record
 
 
-def scrape_visitnamibia_categories() -> list:
+def _ntb_discover_categories() -> list[tuple[str, str]]:
     """
-    Fetch the category index page and scrape each category separately
-    to get better type classification.
+    Fetch /business-directory-search-by-category/ and return
+    [(category_name, search_url), ...] using in_cat= parameter.
     """
     url = f"{VISITNAMIBIA_BASE}/business-directory-search-by-category/"
-    print(f"  Fetching category index: {url}")
+    print(f"  Discovering categories: {url}")
     resp = get(url)
     if not resp:
         return []
 
     soup = BeautifulSoup(resp.text, "lxml")
+    cats: list[tuple[str, str]] = []
+    seen: set[str] = set()
 
-    # Collect category links
-    cat_links = []
-    for a in soup.select("a[href*='business-directory'], a[href*='category'], a[href*='cat=']"):
-        href = a["href"]
-        if href and href not in cat_links and VISITNAMIBIA_BASE in href:
-            cat_links.append(href)
+    for a in soup.select("a[href]"):
+        href = a.get("href", "")
+        if "in_cat=" not in href and "cat=" not in href:
+            continue
+        if VISITNAMIBIA_BASE not in href and not href.startswith("/"):
+            continue
+        full = urljoin(VISITNAMIBIA_BASE, href)
+        if full in seen:
+            continue
+        seen.add(full)
+        name = a.get_text(strip=True)
+        if name:
+            cats.append((name, full))
 
-    print(f"  Found {len(cat_links)} category links")
-    all_records = []
+    print(f"  Found {len(cats)} categories: {[n for n, _ in cats]}")
+    return cats
 
-    for cat_url in cat_links:
-        page = 1
-        while True:
-            paged_url = cat_url if page == 1 else f"{cat_url.rstrip('/')}/page/{page}/"
-            records = scrape_visitnamibia_page(paged_url)
-            if not records:
+
+def _ntb_paginate_category(base_url: str, forced_type: str) -> list:
+    """Paginate through all pages of a single NTB category search URL."""
+    records: list = []
+    page = 1
+    consecutive_empty = 0
+    while True:
+        paged_url = base_url if page == 1 else f"{base_url}&paged={page}"
+        resp = get(paged_url)
+        if not resp:
+            break
+        soup = BeautifulSoup(resp.text, "lxml")
+        page_records = _parse_search_result_cards(soup, forced_type=forced_type)
+        if not page_records:
+            consecutive_empty += 1
+            if consecutive_empty >= 2:
                 break
-            all_records.extend(records)
-            page += 1
-            time.sleep(2)
+        else:
+            consecutive_empty = 0
+            records.extend(page_records)
+            print(f"    page {page}: {len(page_records)} records (running total: {len(records)})")
+        page += 1
+        time.sleep(1.5)
+    return records
 
-    return all_records
 
-
-def scrape_visitnamibia(fetch_details: bool = False) -> list:
+def scrape_visitnamibia(
+    fetch_details: bool = False,
+    detail_workers: int = 8,
+    detail_batch_size: int = 0,
+    detail_batch_offset: int = 0,
+) -> list:
     print("\n=== visitnamibia.com.na (NTB Official Directory) ===")
     all_records: list = []
 
-    # 1. Paginate through /all-listings/ and /business-directory/
-    for path in VISITNAMIBIA_LISTING_URLS:
-        page = 1
-        while True:
-            paged_url = (
-                f"{VISITNAMIBIA_BASE}{path}"
-                if page == 1
-                else f"{VISITNAMIBIA_BASE}{path}page/{page}/"
-            )
-            records = scrape_visitnamibia_page(paged_url)
-            if not records:
-                break
-            print(f"  → {len(records)} listings (page {page}) from {path}")
-            all_records.extend(records)
-            page += 1
+    # 1. Discover all NTB categories from the category index page
+    categories = _ntb_discover_categories()
+
+    if not categories:
+        # Fallback: scrape the main directory without category filter
+        print("  [warn] No categories discovered — falling back to main directory listing")
+        fallback_url = (
+            f"{VISITNAMIBIA_BASE}/search-result/?directory_type=listing&q="
+        )
+        page_records = _ntb_paginate_category(fallback_url, forced_type=None)
+        all_records.extend(page_records)
+    else:
+        # 2. Scrape each category, mapping name → internal type
+        for cat_name, cat_url in categories:
+            # Normalise category name for lookup
+            normalised = cat_name.lower().strip()
+            # Try exact match first, then substring
+            forced_type = VISITNAMIBIA_CATEGORY_TYPE_MAP.get(normalised)
+            if not forced_type:
+                for key, val in VISITNAMIBIA_CATEGORY_TYPE_MAP.items():
+                    if key in normalised or normalised in key:
+                        forced_type = val
+                        break
+            if not forced_type:
+                forced_type = resolve_ntb_type(cat_name)
+
+            print(f"\n  Category: {cat_name!r} → type={forced_type}")
+            cat_records = _ntb_paginate_category(cat_url, forced_type=forced_type)
+            print(f"  Category total: {len(cat_records)}")
+            all_records.extend(cat_records)
             time.sleep(2)
 
-    # 2. Scrape by category for better type resolution
-    category_records = scrape_visitnamibia_categories()
-    print(f"  → {len(category_records)} listings from category pages")
-    all_records.extend(category_records)
-
     all_records = dedupe(all_records)
-    print(f"  Total (deduped): {len(all_records)}")
+    print(f"\n  Grand total (deduped): {len(all_records)}")
+
+    # Count by type
+    from collections import Counter
+    type_counts = Counter(r.get("type") for r in all_records)
+    for t, n in sorted(type_counts.items()):
+        print(f"    {t}: {n}")
 
     if fetch_details:
-        print("  Fetching detail pages for website URLs, emails, coordinates…")
-        for i, record in enumerate(all_records):
-            print(f"  [{i + 1}/{len(all_records)}] {record['name']}")
-            all_records[i] = scrape_visitnamibia_detail(record)
+        start = detail_batch_offset
+        end = (detail_batch_offset + detail_batch_size) if detail_batch_size else len(all_records)
+        batch = all_records[start:end]
+        print(
+            f"\n  Fetching detail pages [{start}–{min(end, len(all_records))}]"
+            f" of {len(all_records)} ({detail_workers} workers)…"
+        )
+
+        def enrich(args: tuple) -> tuple[int, dict]:
+            idx, record = args
+            return idx, scrape_visitnamibia_detail(record)
+
+        with ThreadPoolExecutor(max_workers=detail_workers) as executor:
+            futures = {
+                executor.submit(enrich, (start + i, rec)): start + i
+                for i, rec in enumerate(batch)
+            }
+            done = 0
+            for future in as_completed(futures):
+                idx, enriched = future.result()
+                all_records[idx] = enriched
+                done += 1
+                if done % 200 == 0 or done == len(batch):
+                    print(f"  [{done}/{len(batch)}] detail pages enriched")
 
     return all_records
 
@@ -590,20 +703,29 @@ def scrape_google_places(api_key: str) -> list:
 # Output
 # ---------------------------------------------------------------------------
 
+RECORD_FIELDS = [
+    "name", "type", "region", "description",
+    "source_url", "website", "contact_email", "phone",
+    "latitude", "longitude",
+]
+
+
 def save(records: list) -> None:
     json_path = OUTPUT_DIR / "scraped_providers.json"
     csv_path = OUTPUT_DIR / "scraped_providers.csv"
 
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(records, f, ensure_ascii=False, indent=2)
-    print(f"\nSaved JSON → {json_path} ({len(records)} records)")
+    # Ensure all records have all fields (fill missing with None)
+    normalised = [{f: r.get(f) for f in RECORD_FIELDS} for r in records]
 
-    if records:
-        fields = list(records[0].keys())
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(normalised, f, ensure_ascii=False, indent=2)
+    print(f"\nSaved JSON → {json_path} ({len(normalised)} records)")
+
+    if normalised:
         with open(csv_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+            writer = csv.DictWriter(f, fieldnames=RECORD_FIELDS, extrasaction="ignore")
             writer.writeheader()
-            writer.writerows(records)
+            writer.writerows(normalised)
         print(f"Saved CSV  → {csv_path}")
 
 
@@ -628,12 +750,37 @@ def main() -> None:
         action="store_true",
         help="Also fetch individual detail pages (slower but extracts websites/emails)",
     )
+    parser.add_argument(
+        "--detail-workers",
+        type=int,
+        default=4,
+        help="Parallel workers for detail page fetching (default: 4)",
+    )
+    parser.add_argument(
+        "--detail-batch-size",
+        type=int,
+        default=0,
+        help="Max records to detail-fetch per run (0 = all, for splitting across runs)",
+    )
+    parser.add_argument(
+        "--detail-batch-offset",
+        type=int,
+        default=0,
+        help="Skip this many records before starting detail fetch (for splitting across runs)",
+    )
     args = parser.parse_args()
 
     all_records: list = []
 
     if args.source in ("visitnamibia", "all"):
-        all_records.extend(scrape_visitnamibia(fetch_details=args.fetch_details))
+        all_records.extend(
+            scrape_visitnamibia(
+                fetch_details=args.fetch_details,
+                detail_workers=args.detail_workers,
+                detail_batch_size=args.detail_batch_size,
+                detail_batch_offset=args.detail_batch_offset,
+            )
+        )
 
     if args.source in ("safaribookings", "all"):
         all_records.extend(scrape_safaribookings(fetch_details=args.fetch_details))
