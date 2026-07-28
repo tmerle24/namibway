@@ -185,14 +185,15 @@ def scrape_visitnamibia_page(url: str) -> list:
             detail_href = name_el.get("href", "")
             detail_url = urljoin(VISITNAMIBIA_BASE, detail_href) if detail_href else url
 
-            # Category / type — fall back to name heuristic when card has no category tag
+            # Category / type — explicit GeoDirectory selectors only (no wildcards),
+            # then always also check the name so the heuristic runs even when the
+            # card has a category element with unhelpful text.
             cat_el = card.select_one(
                 ".geodir-category, .gd-category, "
-                ".listing-category, .business-category, "
-                "[class*='cat'], .type, .category"
+                ".listing-category, .business-category"
             )
             raw_type = cat_el.get_text(strip=True) if cat_el else ""
-            listing_type = resolve_ntb_type(raw_type or name)
+            listing_type = resolve_ntb_type(f"{raw_type} {name}")
 
             # Region / location
             region_el = card.select_one(
