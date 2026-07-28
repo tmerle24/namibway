@@ -54,7 +54,7 @@ HEADERS = {
 def get(url: str, retries: int = 3, delay: float = 2.0) -> "requests.Response | None":
     for attempt in range(retries):
         try:
-            resp = requests.get(url, headers=HEADERS, timeout=20)
+            resp = requests.get(url, headers=HEADERS, timeout=10)
             resp.raise_for_status()
             return resp
         except requests.RequestException as e:
@@ -277,7 +277,7 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
         except (json.JSONDecodeError, AttributeError):
             pass
 
-    time.sleep(0.5)
+    time.sleep(0.3)
     return record
 
 

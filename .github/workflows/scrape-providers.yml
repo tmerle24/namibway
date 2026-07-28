@@ -19,9 +19,9 @@ on:
         default: false
         type: boolean
       detail_workers:
-        description: "Parallel workers for detail fetching (default 4)"
+        description: "Parallel workers for detail fetching (default 8)"
         required: false
-        default: "4"
+        default: "8"
       detail_batch_size:
         description: "Max records to detail-fetch (0 = all). Use with offset to split across runs."
         required: false
@@ -54,7 +54,7 @@ jobs:
       - name: Run scraper
         run: |
           ARGS="--source ${{ github.event.inputs.source }}"
-          ARGS="$ARGS --detail-workers ${{ github.event.inputs.detail_workers || '4' }}"
+          ARGS="$ARGS --detail-workers ${{ github.event.inputs.detail_workers || '8' }}"
           ARGS="$ARGS --detail-batch-size ${{ github.event.inputs.detail_batch_size || '0' }}"
           ARGS="$ARGS --detail-batch-offset ${{ github.event.inputs.detail_batch_offset || '0' }}"
           if [ "${{ github.event.inputs.fetch_details }}" = "true" ]; then
