@@ -38,15 +38,40 @@ function formatPrice(price: string): string {
                     >{{ props.itemRef.name }}</a
                 >
                 <template v-else>{{ props.itemRef.name }}</template>
-                <span v-if="props.itemRef.price_from" class="item-price">{{ props.itemRef.price_currency }} {{ formatPrice(props.itemRef.price_from) }}</span>
+                <span v-if="props.itemRef.price_from" class="item-price"
+                    >{{ props.itemRef.price_currency }}
+                    {{ formatPrice(props.itemRef.price_from) }}</span
+                >
                 <template v-if="!props.readonly">
-                    <button v-if="props.itemRef.id" type="button" class="swap-btn" :aria-label="t('itinerary.swap')" @click="$emit('swap')">⇄</button>
-                    <button type="button" class="remove-btn" :aria-label="t('itinerary.remove')" @click="$emit('remove')">×</button>
+                    <button
+                        v-if="props.itemRef.id"
+                        type="button"
+                        class="swap-btn"
+                        :aria-label="t('itinerary.swap')"
+                        @click="$emit('swap')"
+                    >
+                        ⇄
+                    </button>
+                    <button
+                        type="button"
+                        class="remove-btn"
+                        :aria-label="t('itinerary.remove')"
+                        @click="$emit('remove')"
+                    >
+                        ×
+                    </button>
                 </template>
             </template>
             <template v-else>
                 —
-                <button v-if="!props.readonly" type="button" class="add-item-btn" @click="$emit('add')">+ {{ t('itinerary.add') }}</button>
+                <button
+                    v-if="!props.readonly"
+                    type="button"
+                    class="add-item-btn"
+                    @click="$emit('add')"
+                >
+                    + {{ t('itinerary.add') }}
+                </button>
             </template>
         </template>
     </i18n-t>
