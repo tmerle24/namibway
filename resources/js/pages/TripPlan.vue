@@ -129,7 +129,12 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         :key="day.day"
                         class="day-row"
                     >
-                        <div class="day-num">{{ day.day }}</div>
+                        <div class="day-col">
+                            <div class="day-num">{{ day.day }}</div>
+                            <div v-if="day.date" class="day-date">
+                                {{ day.date }}
+                            </div>
+                        </div>
                         <div class="day-detail">
                             <div class="day-location-label">
                                 {{ day.location }}
@@ -201,6 +206,24 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
     font-size: 14px;
     max-width: 600px;
     line-height: 1.5;
+}
+
+.day-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 44px;
+    flex-shrink: 0;
+    padding-top: 1px;
+}
+
+.day-date {
+    font-size: 9px;
+    color: #a09080;
+    text-align: center;
+    margin-top: 2px;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 .day-location-label {

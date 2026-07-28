@@ -19,8 +19,11 @@ class ImportProviders extends Command
     protected $description = 'Import scraped provider data into listings table (one-time, idempotent via slug upsert)';
 
     private bool $dry = false;
+
     private int $created = 0;
+
     private int $updated = 0;
+
     private int $skipped = 0;
 
     public function handle(): int
@@ -32,7 +35,7 @@ class ImportProviders extends Command
         }
 
         $ntbPath = $this->option('ntb') ?: base_path('data/scraped/scraped_providers.json');
-        $ypPath  = $this->option('yp')  ?: base_path('data/scraped/namibiayp_contacts.json');
+        $ypPath = $this->option('yp') ?: base_path('data/scraped/namibiayp_contacts.json');
 
         if (file_exists($ntbPath)) {
             $this->info("Importing NTB records from {$ntbPath}…");
@@ -59,7 +62,7 @@ class ImportProviders extends Command
 
     private function importNtb(string $path): void
     {
-        $records = json_decode(file_get_contents($path), true);
+        $records = json_decode((string) file_get_contents($path), true);
         $bar = $this->output->createProgressBar(count($records));
         $bar->start();
 
@@ -70,6 +73,7 @@ class ImportProviders extends Command
             if (! $name) {
                 $this->skipped++;
                 $bar->advance();
+
                 continue;
             }
 
@@ -77,19 +81,19 @@ class ImportProviders extends Command
             $slug = $this->uniqueSlug(Str::slug($name));
 
             $fields = [
-                'type'          => $type,
-                'region'        => $r['region'] ?? null,
-                'description'   => $this->localise($r['description'] ?? null),
-                'latitude'      => $r['latitude'] ?? null,
-                'longitude'     => $r['longitude'] ?? null,
-                'website'       => $this->cleanUrl($r['website'] ?? null),
+                'type' => $type,
+                'region' => $r['region'] ?? null,
+                'description' => $this->localise($r['description'] ?? null),
+                'latitude' => $r['latitude'] ?? null,
+                'longitude' => $r['longitude'] ?? null,
+                'website' => $this->cleanUrl($r['website'] ?? null),
                 'contact_email' => $r['contact_email'] ?? null,
-                'phone'         => $r['phone'] ?? null,
-                'source_url'    => $r['source_url'] ?? null,
+                'phone' => $r['phone'] ?? null,
+                'source_url' => $r['source_url'] ?? null,
                 'scrape_source' => 'ntb',
-                'scraped_at'    => $now,
-                'claim_status'  => 'unclaimed',
-                'is_published'  => false,
+                'scraped_at' => $now,
+                'claim_status' => 'unclaimed',
+                'is_published' => false,
             ];
 
             $this->upsertListing($slug, $name, $fields);
@@ -102,7 +106,7 @@ class ImportProviders extends Command
 
     private function importYp(string $path, bool $merge): void
     {
-        $records = json_decode(file_get_contents($path), true);
+        $records = json_decode((string) file_get_contents($path), true);
         $bar = $this->output->createProgressBar(count($records));
         $bar->start();
 
@@ -120,6 +124,7 @@ class ImportProviders extends Command
             if (! $name) {
                 $this->skipped++;
                 $bar->advance();
+
                 continue;
             }
 
@@ -127,11 +132,21 @@ class ImportProviders extends Command
 
             if ($match) {
                 $fill = [];
-                if (! $match->phone     && ($r['phone'] ?? null))     $fill['phone']     = $r['phone'];
-                if (! $match->address   && ($r['address'] ?? null))   $fill['address']   = $r['address'];
-                if (! $match->website   && ($r['website'] ?? null))   $fill['website']   = $this->cleanUrl($r['website']);
-                if (! $match->latitude  && ($r['latitude'] ?? null))  $fill['latitude']  = $r['latitude'];
-                if (! $match->longitude && ($r['longitude'] ?? null)) $fill['longitude'] = $r['longitude'];
+                if (! $match->phone && ($r['phone'] ?? null)) {
+                    $fill['phone'] = $r['phone'];
+                }
+                if (! $match->address && ($r['address'] ?? null)) {
+                    $fill['address'] = $r['address'];
+                }
+                if (! $match->website && ($r['website'] ?? null)) {
+                    $fill['website'] = $this->cleanUrl($r['website']);
+                }
+                if (! $match->latitude && ($r['latitude'] ?? null)) {
+                    $fill['latitude'] = $r['latitude'];
+                }
+                if (! $match->longitude && ($r['longitude'] ?? null)) {
+                    $fill['longitude'] = $r['longitude'];
+                }
 
                 if ($fill) {
                     if (! $this->dry) {
@@ -146,17 +161,17 @@ class ImportProviders extends Command
                 $slug = $this->uniqueSlug(Str::slug($name));
 
                 $fields = [
-                    'type'          => $type,
-                    'region'        => $r['region'] ?? null,
-                    'latitude'      => $r['latitude'] ?? null,
-                    'longitude'     => $r['longitude'] ?? null,
-                    'website'       => $this->cleanUrl($r['website'] ?? null),
-                    'phone'         => $r['phone'] ?? null,
-                    'address'       => $r['address'] ?? null,
+                    'type' => $type,
+                    'region' => $r['region'] ?? null,
+                    'latitude' => $r['latitude'] ?? null,
+                    'longitude' => $r['longitude'] ?? null,
+                    'website' => $this->cleanUrl($r['website'] ?? null),
+                    'phone' => $r['phone'] ?? null,
+                    'address' => $r['address'] ?? null,
                     'scrape_source' => 'namibiayp',
-                    'scraped_at'    => $now,
-                    'claim_status'  => 'unclaimed',
-                    'is_published'  => false,
+                    'scraped_at' => $now,
+                    'claim_status' => 'unclaimed',
+                    'is_published' => false,
                 ];
 
                 $this->upsertListing($slug, $name, $fields);
@@ -169,10 +184,12 @@ class ImportProviders extends Command
         $this->newLine();
     }
 
+    /** @param array<string, mixed> $fields */
     private function upsertListing(string $slug, string $name, array $fields): void
     {
         if ($this->dry) {
             $this->created++;
+
             return;
         }
 
@@ -200,16 +217,15 @@ class ImportProviders extends Command
         }
     }
 
-    private function findSimilar(string $name, array $pool, float $threshold): ?object
+    /** @param array<int|string, Listing> $pool */
+    private function findSimilar(string $name, array $pool, float $threshold): ?Listing
     {
         $best = null;
         $bestScore = 0.0;
         $nameLower = mb_strtolower(trim($name));
 
         foreach ($pool as $listing) {
-            $candidate = mb_strtolower(trim(
-                is_array($listing->name) ? ($listing->name['en'] ?? '') : $listing->name
-            ));
+            $candidate = mb_strtolower(trim((string) $listing->name));
             similar_text($nameLower, $candidate, $pct);
             $score = $pct / 100;
             if ($score > $bestScore) {
@@ -225,13 +241,15 @@ class ImportProviders extends Command
     {
         $map = [
             'accommodation' => ListingType::Accommodation->value,
-            'activity'      => ListingType::Activity->value,
-            'restaurant'    => ListingType::Restaurant->value,
-            'vehicle'       => ListingType::Vehicle->value,
+            'activity' => ListingType::Activity->value,
+            'restaurant' => ListingType::Restaurant->value,
+            'vehicle' => ListingType::Vehicle->value,
         ];
+
         return $map[strtolower($raw)] ?? ListingType::Accommodation->value;
     }
 
+    /** @return array<string, string>|null */
     private function localise(?string $text): ?array
     {
         return $text ? ['en' => $text] : null;
@@ -239,11 +257,14 @@ class ImportProviders extends Command
 
     private function cleanUrl(?string $url): ?string
     {
-        if (! $url) return null;
+        if (! $url) {
+            return null;
+        }
         $url = trim($url);
+
         return (str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))
             ? $url
-            : 'https://' . $url;
+            : 'https://'.$url;
     }
 
     private function uniqueSlug(string $base): string
@@ -254,6 +275,7 @@ class ImportProviders extends Command
             $i++;
             $slug = "{$base}-{$i}";
         }
+
         return $slug;
     }
 }
