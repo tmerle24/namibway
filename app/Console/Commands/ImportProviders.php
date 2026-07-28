@@ -19,8 +19,11 @@ class ImportProviders extends Command
     protected $description = 'Import scraped provider data into listings table (one-time, idempotent via slug upsert)';
 
     private bool $dry = false;
+
     private int $created = 0;
+
     private int $updated = 0;
+
     private int $skipped = 0;
 
     public function handle(): int
@@ -243,7 +246,7 @@ class ImportProviders extends Command
         $url = trim($url);
         return (str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))
             ? $url
-            : 'https://' . $url;
+            : 'https://'.$url;
     }
 
     private function uniqueSlug(string $base): string
