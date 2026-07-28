@@ -59,7 +59,7 @@ export async function fetchRegionCoords(): Promise<
             headers: { Accept: 'application/json' },
         });
         const data = await response.json();
-        // DB values take precedence; static fallback fills any gaps
+
         return { ...STATIC_REGION_COORDS, ...(data.coords ?? {}) };
     } catch {
         return { ...STATIC_REGION_COORDS };
