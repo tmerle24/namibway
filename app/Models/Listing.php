@@ -36,6 +36,14 @@ class Listing extends Model
         'is_featured',
         'is_published',
         'accepts_inquiries',
+        'source_url',
+        'claim_status',
+        'website',
+        'contact_email',
+        'phone',
+        'address',
+        'scrape_source',
+        'scraped_at',
     ];
 
     protected $casts = [
@@ -47,6 +55,8 @@ class Listing extends Model
         'is_featured' => 'boolean',
         'is_published' => 'boolean',
         'accepts_inquiries' => 'boolean',
+        'scraped_at' => 'datetime',
+        'content_synced_at' => 'datetime',
     ];
 
     protected static function booted(): void

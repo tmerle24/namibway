@@ -9,6 +9,7 @@ export interface ItineraryListingRef {
 
 export interface ItineraryDay {
     day: number;
+    date?: string | null;
     location: string;
     accommodation?: ItineraryListingRef | null;
     activity?: ItineraryListingRef | null;
@@ -29,4 +30,14 @@ export interface ItineraryPlan {
 export interface ChatMessage {
     role: 'ai' | 'user';
     text: string;
+}
+
+export interface GuestDetails {
+    name: string;
+    email: string;
+    phone: string;
+    check_in: string;
+    check_out: string;
+    adults: number;
+    children: number;
 }

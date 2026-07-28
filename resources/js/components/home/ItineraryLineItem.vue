@@ -6,6 +6,7 @@ import { show } from '@/routes/listings';
 const props = defineProps<{
     keypath: string;
     itemRef: ItineraryListingRef | null | undefined;
+    readonly?: boolean;
 }>();
 
 defineEmits<{
@@ -41,27 +42,30 @@ function formatPrice(price: string): string {
                     >{{ props.itemRef.price_currency }}
                     {{ formatPrice(props.itemRef.price_from) }}</span
                 >
-                <button
-                    v-if="props.itemRef.id"
-                    type="button"
-                    class="swap-btn"
-                    :aria-label="t('itinerary.swap')"
-                    @click="$emit('swap')"
-                >
-                    ⇄
-                </button>
-                <button
-                    type="button"
-                    class="remove-btn"
-                    :aria-label="t('itinerary.remove')"
-                    @click="$emit('remove')"
-                >
-                    ×
-                </button>
+                <template v-if="!props.readonly">
+                    <button
+                        v-if="props.itemRef.id"
+                        type="button"
+                        class="swap-btn"
+                        :aria-label="t('itinerary.swap')"
+                        @click="$emit('swap')"
+                    >
+                        ⇄
+                    </button>
+                    <button
+                        type="button"
+                        class="remove-btn"
+                        :aria-label="t('itinerary.remove')"
+                        @click="$emit('remove')"
+                    >
+                        ×
+                    </button>
+                </template>
             </template>
             <template v-else>
                 —
                 <button
+                    v-if="!props.readonly"
                     type="button"
                     class="add-item-btn"
                     @click="$emit('add')"

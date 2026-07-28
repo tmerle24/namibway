@@ -1,45 +1,76 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { TripInquiryStatus } from '@/lib/kaia-client';
+import { fetchTripInquiries } from '@/lib/kaia-client';
 import type { ItineraryVariant } from '@/lib/kaia-types';
 
 const props = defineProps<{
     variant: ItineraryVariant;
+    tripId: number;
 }>();
 
 const { t } = useI18n();
 
-type QueueStatus = 'waiting' | 'sending' | 'confirmed';
+const inquiries = ref<TripInquiryStatus[]>([]);
+let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
-interface QueueItem {
-    property: string;
-    status: QueueStatus;
+const TERMINAL_STATUSES = new Set(['confirmed', 'cancelled', 'failed']);
+
+function statusClass(status: string): string {
+    if (status === 'confirmed') {
+        return 'status-confirmed';
+    }
+
+    if (status === 'cancelled' || status === 'failed') {
+        return 'status-failed';
+    }
+
+    if (status === 'on_request' || status === 'nwr_pending') {
+        return 'status-waiting';
+    }
+
+    return 'status-sending';
 }
 
-const queue = ref<QueueItem[]>([]);
+function allTerminal(items: TripInquiryStatus[]): boolean {
+    return (
+        items.length > 0 && items.every((i) => TERMINAL_STATUSES.has(i.status))
+    );
+}
 
-async function runQueue(variant: ItineraryVariant) {
-    const names = variant.days
-        .map((d) => d.accommodation?.name)
-        .filter((name): name is string => Boolean(name));
-    const properties = [...new Set(names)];
-    queue.value = properties.map((property) => ({
-        property,
-        status: 'waiting' as QueueStatus,
-    }));
+async function poll() {
+    try {
+        const result = await fetchTripInquiries(props.tripId);
 
-    for (const item of queue.value) {
-        item.status = 'sending';
-        await new Promise((resolve) => setTimeout(resolve, 1400));
-        item.status = 'confirmed';
+        inquiries.value = result;
+
+        if (!allTerminal(result)) {
+            pollTimer = setTimeout(poll, 4000);
+        }
+    } catch {
+        pollTimer = setTimeout(poll, 8000);
     }
 }
 
 watch(
-    () => props.variant,
-    (variant) => runQueue(variant),
+    () => props.tripId,
+    () => {
+        if (pollTimer !== null) {
+            clearTimeout(pollTimer);
+        }
+
+        inquiries.value = [];
+        poll();
+    },
     { immediate: true },
 );
+
+onUnmounted(() => {
+    if (pollTimer !== null) {
+        clearTimeout(pollTimer);
+    }
+});
 </script>
 
 <template>
@@ -50,11 +81,21 @@ watch(
             <p>{{ t('booking.subtitle') }}</p>
         </div>
         <div class="queue">
-            <div v-for="item in queue" :key="item.property" class="queue-item">
-                <span>{{ item.property }}</span>
-                <span :class="['status-pill', `status-${item.status}`]">{{
-                    t(`booking.${item.status}`)
+            <div
+                v-for="item in inquiries"
+                :key="item.listing_name"
+                class="queue-item"
+            >
+                <span>{{ item.listing_name }}</span>
+                <span :class="['status-pill', statusClass(item.status)]">{{
+                    item.label
                 }}</span>
+            </div>
+            <div
+                v-if="inquiries.length === 0"
+                class="queue-item queue-item--loading"
+            >
+                <span>{{ t('booking.loadingStatus') }}</span>
             </div>
         </div>
         <div class="governance-note">

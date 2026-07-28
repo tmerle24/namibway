@@ -54,6 +54,10 @@ class ListingResource extends Resource
                         Forms\Components\TextInput::make('name')->required(),
                         Forms\Components\TextInput::make('email')->email(),
                     ]),
+                Forms\Components\TextInput::make('wetu_id')
+                    ->label('Wetu property ID')
+                    ->placeholder('e.g. WETU-001')
+                    ->helperText('Set this to enable automatic content sync from Wetu'),
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),

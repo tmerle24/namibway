@@ -5,7 +5,9 @@ namespace App\Observers;
 use App\Enums\ConnectorType;
 use App\Enums\InquiryStatus;
 use App\Jobs\ProcessInquiry;
+use App\Mail\NewInquiryReceived;
 use App\Models\Inquiry;
+use Illuminate\Support\Facades\Mail;
 
 class InquiryObserver
 {
@@ -40,6 +42,18 @@ class InquiryObserver
 
         if (in_array($connectorType, $automatedTypes)) {
             ProcessInquiry::dispatch($inquiry);
+
+            return;
+        }
+
+        if ($connectorType === ConnectorType::Nwr) {
+            return;
+        }
+
+        $partnerEmail = $inquiry->listing?->partner?->email;
+
+        if ($partnerEmail) {
+            Mail::to($partnerEmail)->send(new NewInquiryReceived($inquiry));
         }
     }
 }

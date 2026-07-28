@@ -1,0 +1,51 @@
+name: Commit Artifact to Repo
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Workflow run ID to download artifact from (find in Actions URL)"
+        required: true
+      artifact_name:
+        description: "Artifact name (e.g. namibiayp-contacts-3, scraped-providers-visitnamibia-5)"
+        required: true
+      target_path:
+        description: "Target path in repo (e.g. data/scraped/namibiayp_contacts.json)"
+        required: true
+
+jobs:
+  commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifact
+        run: |
+          gh run download ${{ github.event.inputs.run_id }} \
+            --name "${{ github.event.inputs.artifact_name }}" \
+            --dir /tmp/artifact
+          ls /tmp/artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Move JSON to target path
+        run: |
+          mkdir -p "$(dirname '${{ github.event.inputs.target_path }}')"
+          json_file=$(find /tmp/artifact -name "*.json" | head -1)
+          if [ -z "$json_file" ]; then
+            echo "No JSON file found in artifact"
+            exit 1
+          fi
+          echo "Found: $json_file"
+          cp "$json_file" "${{ github.event.inputs.target_path }}"
+          echo "Record count: $(python3 -c "import json; d=json.load(open('${{ github.event.inputs.target_path }}')); print(len(d))")"
+
+      - name: Commit to repo
+        run: |
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add "${{ github.event.inputs.target_path }}"
+          git diff --cached --stat
+          git commit -m "data: commit ${{ github.event.inputs.artifact_name }} from run #${{ github.event.inputs.run_id }} [skip ci]" \
+            || echo "Nothing to commit (file unchanged)"
+          git push

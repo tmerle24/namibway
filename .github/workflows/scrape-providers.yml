@@ -1,0 +1,132 @@
+name: Scrape Providers
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Source to scrape"
+        required: true
+        default: "visitnamibia"
+        type: choice
+        options:
+          - visitnamibia
+          - safaribookings
+          - tripadvisor
+          - all
+      fetch_details:
+        description: "Fetch detail pages (website/email/phone/coords)"
+        required: false
+        default: false
+        type: boolean
+      detail_workers:
+        description: "Parallel workers for detail fetching (default 8)"
+        required: false
+        default: "8"
+      detail_batch_size:
+        description: "Max records to detail-fetch (0 = all). Use with offset to split across runs."
+        required: false
+        default: "0"
+      detail_batch_offset:
+        description: "Skip N records before starting detail fetch (for batched runs)"
+        required: false
+        default: "0"
+      preview_count:
+        description: "How many records to print in the log for inspection"
+        required: false
+        default: "30"
+      commit_results:
+        description: "Commit JSON output to data/scraped/ in repo (for server import via git pull)"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml
+
+      - name: Run scraper
+        run: |
+          ARGS="--source ${{ github.event.inputs.source }}"
+          ARGS="$ARGS --detail-workers ${{ github.event.inputs.detail_workers || '8' }}"
+          ARGS="$ARGS --detail-batch-size ${{ github.event.inputs.detail_batch_size || '0' }}"
+          ARGS="$ARGS --detail-batch-offset ${{ github.event.inputs.detail_batch_offset || '0' }}"
+          if [ "${{ github.event.inputs.fetch_details }}" = "true" ]; then
+            ARGS="$ARGS --fetch-details"
+          fi
+          python scripts/scrape_providers.py $ARGS
+
+      - name: Show results summary
+        run: |
+          echo "=== Record count ==="
+          python3 -c "
+          import json
+          with open('scripts/scraped_providers.json') as f:
+              records = json.load(f)
+          print(f'Total records: {len(records)}')
+
+          from collections import Counter
+          types = Counter(r.get('type') for r in records)
+          print('By type:')
+          for t, n in sorted(types.items()):
+              print(f'  {t}: {n}')
+
+          with_email = sum(1 for r in records if r.get('contact_email'))
+          with_website = sum(1 for r in records if r.get('website'))
+          with_coords = sum(1 for r in records if r.get('latitude'))
+          with_phone = sum(1 for r in records if r.get('phone'))
+          print(f'With email:   {with_email}')
+          print(f'With website: {with_website}')
+          print(f'With phone:   {with_phone}')
+          print(f'With coords:  {with_coords}')
+
+          limit = int('${{ github.event.inputs.preview_count || 30 }}')
+          print(f'\n=== First {limit} records ===')
+          for r in records[:limit]:
+              print(json.dumps({
+                  'name': r.get('name'),
+                  'type': r.get('type'),
+                  'region': r.get('region'),
+                  'website': r.get('website'),
+                  'contact_email': r.get('contact_email'),
+                  'phone': r.get('phone'),
+              }, ensure_ascii=False))
+          "
+
+      - name: Commit results to repo
+        if: ${{ github.event.inputs.commit_results == 'true' }}
+        run: |
+          mkdir -p data/scraped
+          cp scripts/scraped_providers.json data/scraped/scraped_providers.json
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add data/scraped/scraped_providers.json
+          git commit -m "data: ${{ github.event.inputs.source }} scrape run #${{ github.run_number }} ($(python3 -c \"import json; print(len(json.load(open('data/scraped/scraped_providers.json'))))\") records) [skip ci]"
+          git push
+
+      - name: Upload JSON artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraped-providers-${{ github.event.inputs.source }}-${{ github.run_number }}
+          path: scripts/scraped_providers.json
+          retention-days: 14
+
+      - name: Upload CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraped-providers-csv-${{ github.event.inputs.source }}-${{ github.run_number }}
+          path: scripts/scraped_providers.csv
+          retention-days: 14
