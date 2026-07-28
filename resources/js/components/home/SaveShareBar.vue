@@ -26,8 +26,8 @@ if (props.token) {
 
 async function save() {
     if (saving.value || shareUrl.value) {
-return;
-}
+        return;
+    }
 
     saving.value = true;
 
@@ -42,14 +42,14 @@ return;
 
 async function copyLink() {
     if (!shareUrl.value) {
-return;
-}
+        return;
+    }
 
     await navigator.clipboard.writeText(shareUrl.value);
     copied.value = true;
     setTimeout(() => {
- copied.value = false; 
-}, 2000);
+        copied.value = false;
+    }, 2000);
 }
 
 function openPdf(token: string) {
@@ -64,7 +64,12 @@ function printPage() {
 <template>
     <div class="save-share-bar">
         <template v-if="!shareUrl">
-            <button type="button" class="save-btn" :disabled="saving" @click="save">
+            <button
+                type="button"
+                class="save-btn"
+                :disabled="saving"
+                @click="save"
+            >
                 {{ saving ? t('itinerary.saving') : t('itinerary.saveCta') }}
             </button>
         </template>
@@ -79,7 +84,9 @@ function printPage() {
                     @click="($event.target as HTMLInputElement).select()"
                 />
                 <button type="button" class="copy-btn" @click="copyLink">
-                    {{ copied ? t('itinerary.copied') : t('itinerary.copyLink') }}
+                    {{
+                        copied ? t('itinerary.copied') : t('itinerary.copyLink')
+                    }}
                 </button>
             </div>
             <div class="export-row">
@@ -117,7 +124,9 @@ function printPage() {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition:
+        background 0.15s,
+        color 0.15s;
 }
 
 .save-btn:hover:not(:disabled) {

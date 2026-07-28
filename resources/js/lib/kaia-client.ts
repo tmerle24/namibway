@@ -30,7 +30,9 @@ export interface RegionCoords {
     lng: number;
 }
 
-export async function fetchRegionCoords(): Promise<Record<string, RegionCoords>> {
+export async function fetchRegionCoords(): Promise<
+    Record<string, RegionCoords>
+> {
     const response = await fetch('/kaia/region-coords', {
         credentials: 'same-origin',
         headers: { Accept: 'application/json' },
@@ -40,7 +42,10 @@ export async function fetchRegionCoords(): Promise<Record<string, RegionCoords>>
     return data.coords ?? {};
 }
 
-export async function fetchAlternatives(type: string, excludeId?: number): Promise<ItineraryListingRef[]> {
+export async function fetchAlternatives(
+    type: string,
+    excludeId?: number,
+): Promise<ItineraryListingRef[]> {
     const params = new URLSearchParams({ type });
 
     if (excludeId !== undefined) {
@@ -74,13 +79,15 @@ export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
     });
 
     if (!response.ok) {
-throw new Error('Failed to save plan');
-}
+        throw new Error('Failed to save plan');
+    }
 
     return response.json();
 }
 
-export async function sendKaiaMessage(history: ChatMessage[]): Promise<KaiaResponse> {
+export async function sendKaiaMessage(
+    history: ChatMessage[],
+): Promise<KaiaResponse> {
     const response = await fetch('/kaia/message', {
         method: 'POST',
         credentials: 'same-origin',

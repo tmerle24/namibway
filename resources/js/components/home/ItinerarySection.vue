@@ -2,9 +2,17 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import draggable from 'vuedraggable';
-import { fetchAlternatives, fetchRegions, fetchRegionCoords } from '@/lib/kaia-client';
+import {
+    fetchAlternatives,
+    fetchRegions,
+    fetchRegionCoords,
+} from '@/lib/kaia-client';
 import type { RegionCoords } from '@/lib/kaia-client';
-import type { ItineraryListingRef, ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
+import type {
+    ItineraryListingRef,
+    ItineraryPlan,
+    ItineraryVariant,
+} from '@/lib/kaia-types';
 import AlternativesPanel from './AlternativesPanel.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
 import LocationPicker from './LocationPicker.vue';
@@ -245,7 +253,13 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     :region-coords="regionCoords"
                 />
 
-                <button type="button" class="add-day-btn" @click="addDay(variantIndex, -1)">+ {{ t('itinerary.addDay') }}</button>
+                <button
+                    type="button"
+                    class="add-day-btn"
+                    @click="addDay(variantIndex, -1)"
+                >
+                    + {{ t('itinerary.addDay') }}
+                </button>
 
                 <draggable
                     v-model="editableVariants[variantIndex].days"
@@ -420,12 +434,21 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     + {{ t('itinerary.addDay') }}
                 </button>
 
-                <button class="cta" @click="emit('book', variant)">{{ t('itinerary.bookCta') }}</button>
+                <button class="cta" @click="emit('book', variant)">
+                    {{ t('itinerary.bookCta') }}
+                </button>
 
                 <SaveShareBar
-                    :plan="{ trip_summary: plan.trip_summary, variants: [variant] }"
+                    :plan="{
+                        trip_summary: plan.trip_summary,
+                        variants: [variant],
+                    }"
                     :token="savedTokens[variantIndex] ?? null"
-                    @saved="(token) => { savedTokens[variantIndex] = token }"
+                    @saved="
+                        (token) => {
+                            savedTokens[variantIndex] = token;
+                        }
+                    "
                 />
             </div>
         </div>

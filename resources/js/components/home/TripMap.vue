@@ -22,11 +22,14 @@ async function initMap(containerId: string) {
     await import('leaflet/dist/leaflet.css');
 
     // Fix default icon paths broken by Vite's asset hashing
-    delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
+    delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)
+        ._getIconUrl;
     L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        iconRetinaUrl:
+            'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
         iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        shadowUrl:
+            'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     });
 
     map = L.map(containerId, {
@@ -37,7 +40,8 @@ async function initMap(containerId: string) {
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        attribution:
+            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 18,
     }).addTo(map);
 
@@ -46,8 +50,8 @@ async function initMap(containerId: string) {
 
 function renderRoute() {
     if (!map) {
-return;
-}
+        return;
+    }
 
     // Lazy-import to avoid SSR issues
     import('leaflet').then(({ default: L }) => {
@@ -61,29 +65,37 @@ return;
         }
 
         // Collect waypoints in day order (deduplicated consecutive)
-        const waypoints: Array<{ latlng: [number, number]; label: string; day: number }> = [];
+        const waypoints: Array<{
+            latlng: [number, number];
+            label: string;
+            day: number;
+        }> = [];
         let prevLocation = '';
 
         for (const day of props.variant.days) {
             const key = day.location?.toLowerCase().trim();
 
             if (!key || key === prevLocation) {
-continue;
-}
+                continue;
+            }
 
             const coords = props.regionCoords[key];
 
             if (!coords) {
-continue;
-}
+                continue;
+            }
 
-            waypoints.push({ latlng: [coords.lat, coords.lng], label: day.location, day: day.day });
+            waypoints.push({
+                latlng: [coords.lat, coords.lng],
+                label: day.location,
+                day: day.day,
+            });
             prevLocation = key;
         }
 
         if (waypoints.length === 0) {
-return;
-}
+            return;
+        }
 
         // Draw dashed route line
         const latlngs = waypoints.map((w) => w.latlng);
@@ -128,7 +140,9 @@ onUnmounted(() => {
     map = null;
 });
 
-watch(() => [props.variant, props.regionCoords] as const, renderRoute, { deep: true });
+watch(() => [props.variant, props.regionCoords] as const, renderRoute, {
+    deep: true,
+});
 </script>
 
 <template>

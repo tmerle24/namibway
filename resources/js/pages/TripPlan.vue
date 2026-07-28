@@ -23,8 +23,9 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
     for (const day of variant.days) {
         for (const item of [day.accommodation, day.activity, day.restaurant]) {
             if (item?.price_from) {
- amount += Number(item.price_from); currency ??= item.price_currency; 
-}
+                amount += Number(item.price_from);
+                currency ??= item.price_currency;
+            }
         }
     }
 
@@ -34,10 +35,13 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
     }
 
     if (!currency) {
-return null;
-}
+        return null;
+    }
 
-    return t('itinerary.estimated', { amount: Math.round(amount).toLocaleString(), currency });
+    return t('itinerary.estimated', {
+        amount: Math.round(amount).toLocaleString(),
+        currency,
+    });
 }
 </script>
 
@@ -45,19 +49,32 @@ return null;
     <div class="kaia-page trip-plan-page">
         <header class="trip-plan-header">
             <a href="/" class="trip-plan-logo">
-                <img :src="logoDark" alt="NamibWay" class="footer-logo" style="height:28px;" />
+                <img
+                    :src="logoDark"
+                    alt="NamibWay"
+                    class="footer-logo"
+                    style="height: 28px"
+                />
             </a>
             <div class="trip-plan-meta">
                 <div class="eyebrow">{{ t('itinerary.eyebrow') }}</div>
                 <h1>{{ title || t('itinerary.title') }}</h1>
-                <p v-if="plan.trip_summary" class="trip-summary">{{ plan.trip_summary }}</p>
+                <p v-if="plan.trip_summary" class="trip-summary">
+                    {{ plan.trip_summary }}
+                </p>
             </div>
         </header>
 
         <div class="variants">
-            <div v-for="(variant, variantIndex) in plan.variants" :key="variant.name" class="variant-card">
+            <div
+                v-for="(variant, variantIndex) in plan.variants"
+                :key="variant.name"
+                class="variant-card"
+            >
                 <h3>{{ variant.name }}</h3>
-                <div v-if="estimatedLabel(variant)" class="variant-price">{{ estimatedLabel(variant) }}</div>
+                <div v-if="estimatedLabel(variant)" class="variant-price">
+                    {{ estimatedLabel(variant) }}
+                </div>
 
                 <TripMap
                     :map-id="`trip-map-${variantIndex}`"
@@ -77,14 +94,32 @@ return null;
                     <div class="day-num">{{ day.day }}</div>
                     <div class="day-detail">
                         <div class="day-location-label">{{ day.location }}</div>
-                        <ItineraryLineItem v-if="day.accommodation" keypath="itinerary.stay"    :item-ref="day.accommodation" :readonly="true" />
-                        <ItineraryLineItem v-if="day.activity"      keypath="itinerary.activity" :item-ref="day.activity"      :readonly="true" />
-                        <ItineraryLineItem v-if="day.restaurant"    keypath="itinerary.dinner"   :item-ref="day.restaurant"    :readonly="true" />
+                        <ItineraryLineItem
+                            v-if="day.accommodation"
+                            keypath="itinerary.stay"
+                            :item-ref="day.accommodation"
+                            :readonly="true"
+                        />
+                        <ItineraryLineItem
+                            v-if="day.activity"
+                            keypath="itinerary.activity"
+                            :item-ref="day.activity"
+                            :readonly="true"
+                        />
+                        <ItineraryLineItem
+                            v-if="day.restaurant"
+                            keypath="itinerary.dinner"
+                            :item-ref="day.restaurant"
+                            :readonly="true"
+                        />
                     </div>
                 </div>
 
                 <SaveShareBar
-                    :plan="{ trip_summary: plan.trip_summary, variants: [variant] }"
+                    :plan="{
+                        trip_summary: plan.trip_summary,
+                        variants: [variant],
+                    }"
                     :token="token"
                 />
             </div>
@@ -129,10 +164,22 @@ return null;
 }
 
 @media print {
-    .trip-plan-header { padding-top: 0; }
-    .save-share-bar { display: none !important; }
-    .trip-map-wrapper { display: none !important; }
-    .variant-card { border: none; padding: 0; break-inside: avoid; }
-    footer { display: none; }
+    .trip-plan-header {
+        padding-top: 0;
+    }
+    .save-share-bar {
+        display: none !important;
+    }
+    .trip-map-wrapper {
+        display: none !important;
+    }
+    .variant-card {
+        border: none;
+        padding: 0;
+        break-inside: avoid;
+    }
+    footer {
+        display: none;
+    }
 }
 </style>
