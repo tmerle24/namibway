@@ -21,7 +21,9 @@
     .route-map svg { width: 100%; height: auto; display: block; }
 
     .day-row { display: flex; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dotted #e8e0d4; }
-    .day-num { width: 36px; font-weight: bold; color: #c0533a; font-size: 13px; flex-shrink: 0; padding-top: 1px; }
+    .day-col { width: 44px; flex-shrink: 0; padding-top: 1px; }
+    .day-num { font-weight: bold; color: #c0533a; font-size: 13px; }
+    .day-date { font-size: 8px; color: #a09080; margin-top: 1px; }
     .day-location { font-weight: bold; margin-bottom: 4px; font-size: 11.5px; }
     .day-items { font-size: 10.5px; color: #5b5346; }
     .day-item { margin-bottom: 2px; }
@@ -109,7 +111,10 @@
 
     @foreach($variant['days'] as $day)
     <div class="day-row">
-        <div class="day-num">{{ $day['day'] }}</div>
+        <div class="day-col">
+            <div class="day-num">{{ $day['day'] }}</div>
+            @if(!empty($day['date']))<div class="day-date">{{ $day['date'] }}</div>@endif
+        </div>
         <div>
             <div class="day-location">{{ $day['location'] }}</div>
             <div class="day-items">

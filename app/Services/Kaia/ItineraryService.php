@@ -253,6 +253,12 @@ class ItineraryService
             "Etosha", "Erongo", "Hardap", "Kunene", "Otjozondjupa", "Karas") — these values are used
             to draw the route on the trip map and must match exactly.
 
+            For each day's "date" field, compute the calendar date from the trip's "travel_period" start
+            date: if travel_period is "14 August 2026", day 1 is "14 Aug 2026", day 2 is "15 Aug 2026",
+            and so on. If only a month is given (e.g. "August 2026"), use the 1st as day 1. Format as
+            "D Mon YYYY" (e.g. "3 Aug 2026"). If the travel_period is too vague to compute a date, omit
+            the date field.
+
             Reuse the same accommodation across multiple consecutive days when the traveler stays in one
             place for a few nights — you do NOT need a different accommodation for every day (a 14-day trip
             might only need 4-5 distinct accommodations, each covering several nights). It's fine to leave
@@ -303,6 +309,7 @@ class ItineraryService
                                         'type' => 'object',
                                         'properties' => [
                                             'day' => ['type' => 'integer'],
+                                            'date' => ['type' => 'string', 'description' => 'Calendar date for this day, e.g. "14 Aug 2026". Computed from travel_period start date.'],
                                             'location' => ['type' => 'string', 'description' => 'Exact region value from the listing catalog, e.g. "Khomas", "Etosha", "Erongo"'],
                                             'accommodation' => ['type' => 'string'],
                                             'activity' => ['type' => 'string'],
