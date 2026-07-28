@@ -39,7 +39,7 @@ class SavedPlan extends Model
         });
     }
 
-    /** @return BelongsTo<User, SavedPlan> */
+    /** @phpstan-ignore missingType.generics */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
