@@ -48,8 +48,11 @@ class TripController extends Controller
             'plan' => $validated['plan'],
         ]);
 
+        /** @var list<array<string, mixed>> $variantDays */
+        $variantDays = $validated['variant_days'];
+
         /** @var array<int, int> $accommodationIds */
-        $accommodationIds = collect($validated['variant_days'])
+        $accommodationIds = collect($variantDays)
             ->map(fn (array $day) => isset($day['accommodation']['id']) ? (int) $day['accommodation']['id'] : null)
             ->filter()
             ->unique()
