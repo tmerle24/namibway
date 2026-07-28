@@ -277,7 +277,7 @@ def _parse_search_result_cards(soup: "BeautifulSoup", forced_type: "str | None" 
                 "description": description,
                 "source_url": detail_url,
                 "website": None,
-                "contact_email": contact_email,
+                "email": contact_email,
                 "phone": None,
                 "latitude": None,
                 "longitude": None,
@@ -320,7 +320,7 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
                     break
 
     # Email
-    if not record.get("contact_email"):
+    if not record.get("email"):
         for sel in (".geodir-field-email a", ".gd-field-email a",
                     "[class*='field-email'] a", "[href^='mailto:']"):
             el = content.select_one(sel)
@@ -328,7 +328,7 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
                 href = el.get("href", "")
                 email = href[7:] if href.startswith("mailto:") else el.get_text(strip=True)
                 if email and "visitnamibia.com.na" not in email.lower():
-                    record["contact_email"] = email
+                    record["email"] = email
                     break
 
     # Phone
@@ -646,7 +646,7 @@ def scrape_safaribookings_page(path: str) -> list:
                 "description": description,
                 "source_url": detail_url or url,
                 "website": None,
-                "contact_email": None,
+                "email": None,
                 "latitude": None,
                 "longitude": None,
             })
@@ -681,7 +681,7 @@ def scrape_safaribookings(fetch_details: bool = False) -> list:
                     if href.startswith("http") and "safaribookings.com" not in href:
                         all_records[i]["website"] = href
                         break
-                all_records[i]["contact_email"] = extract_email(resp.text)
+                all_records[i]["email"] = extract_email(resp.text)
             time.sleep(1)
 
     return all_records
@@ -736,7 +736,7 @@ def scrape_tripadvisor_page(url: str, listing_type: str) -> list:
             "description": None,
             "source_url": source_url,
             "website": None,
-            "contact_email": None,
+            "email": None,
             "latitude": None,
             "longitude": None,
         })
@@ -804,7 +804,7 @@ def scrape_google_places(api_key: str) -> list:
                     "description": None,
                     "source_url": f"https://maps.google.com/?q=place_id:{place['place_id']}",
                     "website": None,
-                    "contact_email": None,
+                    "email": None,
                     "latitude": place.get("geometry", {}).get("location", {}).get("lat"),
                     "longitude": place.get("geometry", {}).get("location", {}).get("lng"),
                 })
@@ -828,7 +828,7 @@ def scrape_google_places(api_key: str) -> list:
 
 RECORD_FIELDS = [
     "name", "type", "region", "description",
-    "source_url", "website", "contact_email", "phone",
+    "source_url", "website", "email", "phone",
     "latitude", "longitude",
 ]
 

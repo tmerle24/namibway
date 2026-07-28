@@ -87,7 +87,7 @@ class ImportProviders extends Command
                 'latitude'      => $r['latitude'] ?? null,
                 'longitude'     => $r['longitude'] ?? null,
                 'website'       => $this->cleanUrl($r['website'] ?? null),
-                'contact_email' => $r['contact_email'] ?? null,
+                'contact_email' => $r['email'] ?? null,
                 'phone'         => $r['phone'] ?? null,
                 'source_url'    => $r['source_url'] ?? null,
                 'scrape_source' => 'ntb',
@@ -138,11 +138,12 @@ class ImportProviders extends Command
             if ($match) {
                 // Fill only empty fields — never overwrite existing data
                 $fill = [];
-                if (! $match->phone   && ($r['phone'] ?? null))   $fill['phone']     = $r['phone'];
-                if (! $match->address && ($r['address'] ?? null))  $fill['address']   = $r['address'];
-                if (! $match->website && ($r['website'] ?? null))  $fill['website']   = $this->cleanUrl($r['website']);
-                if (! $match->latitude  && ($r['latitude'] ?? null))  $fill['latitude']  = $r['latitude'];
-                if (! $match->longitude && ($r['longitude'] ?? null)) $fill['longitude'] = $r['longitude'];
+                if (! $match->phone         && ($r['phone'] ?? null))    $fill['phone']         = $r['phone'];
+                if (! $match->address       && ($r['address'] ?? null))  $fill['address']       = $r['address'];
+                if (! $match->website       && ($r['website'] ?? null))  $fill['website']       = $this->cleanUrl($r['website']);
+                if (! $match->contact_email && ($r['email'] ?? null))    $fill['contact_email'] = $r['email'];
+                if (! $match->latitude      && ($r['latitude'] ?? null))  $fill['latitude']      = $r['latitude'];
+                if (! $match->longitude     && ($r['longitude'] ?? null)) $fill['longitude']     = $r['longitude'];
 
                 if ($fill) {
                     if (! $this->dry) {
@@ -163,8 +164,10 @@ class ImportProviders extends Command
                     'latitude'      => $r['latitude'] ?? null,
                     'longitude'     => $r['longitude'] ?? null,
                     'website'       => $this->cleanUrl($r['website'] ?? null),
+                    'contact_email' => $r['email'] ?? null,
                     'phone'         => $r['phone'] ?? null,
                     'address'       => $r['address'] ?? null,
+                    'source_url'    => $r['source_url'] ?? null,
                     'scrape_source' => 'namibiayp',
                     'scraped_at'    => $now,
                     'claim_status'  => 'unclaimed',
