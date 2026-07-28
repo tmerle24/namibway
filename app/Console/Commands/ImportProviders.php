@@ -225,9 +225,7 @@ class ImportProviders extends Command
         $nameLower = mb_strtolower(trim($name));
 
         foreach ($pool as $listing) {
-            $candidate = mb_strtolower(trim(
-                is_array($listing->name) ? ($listing->name['en'] ?? '') : $listing->name
-            ));
+            $candidate = mb_strtolower(trim((string) $listing->name));
             similar_text($nameLower, $candidate, $pct);
             $score = $pct / 100;
             if ($score > $bestScore) {
