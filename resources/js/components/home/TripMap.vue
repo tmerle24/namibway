@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue';
 import type { Map as LeafletMap, Marker, Polyline } from 'leaflet';
-import type { ItineraryVariant } from '@/lib/kaia-types';
+import { onMounted, onUnmounted, watch } from 'vue';
 import type { RegionCoords } from '@/lib/kaia-client';
+import type { ItineraryVariant } from '@/lib/kaia-types';
 
 const props = defineProps<{
     variant: ItineraryVariant;
@@ -45,13 +45,16 @@ async function initMap(containerId: string) {
 }
 
 function renderRoute() {
-    if (!map) return;
+    if (!map) {
+return;
+}
 
     // Lazy-import to avoid SSR issues
     import('leaflet').then(({ default: L }) => {
         // Clear previous layers
         markers.forEach((m) => m.remove());
         markers = [];
+
         if (routeLine) {
             routeLine.remove();
             routeLine = null;
@@ -63,14 +66,24 @@ function renderRoute() {
 
         for (const day of props.variant.days) {
             const key = day.location?.toLowerCase().trim();
-            if (!key || key === prevLocation) continue;
+
+            if (!key || key === prevLocation) {
+continue;
+}
+
             const coords = props.regionCoords[key];
-            if (!coords) continue;
+
+            if (!coords) {
+continue;
+}
+
             waypoints.push({ latlng: [coords.lat, coords.lng], label: day.location, day: day.day });
             prevLocation = key;
         }
 
-        if (waypoints.length === 0) return;
+        if (waypoints.length === 0) {
+return;
+}
 
         // Draw dashed route line
         const latlngs = waypoints.map((w) => w.latlng);

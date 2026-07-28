@@ -2,14 +2,14 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import draggable from 'vuedraggable';
-import type { ItineraryListingRef, ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
 import { fetchAlternatives, fetchRegions, fetchRegionCoords } from '@/lib/kaia-client';
 import type { RegionCoords } from '@/lib/kaia-client';
-import ItineraryLineItem from './ItineraryLineItem.vue';
+import type { ItineraryListingRef, ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
 import AlternativesPanel from './AlternativesPanel.vue';
+import ItineraryLineItem from './ItineraryLineItem.vue';
 import LocationPicker from './LocationPicker.vue';
-import TripMap from './TripMap.vue';
 import SaveShareBar from './SaveShareBar.vue';
+import TripMap from './TripMap.vue';
 
 const props = defineProps<{
     plan: ItineraryPlan;

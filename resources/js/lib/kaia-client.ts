@@ -73,7 +73,9 @@ export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
         body: JSON.stringify({ plan }),
     });
 
-    if (!response.ok) throw new Error('Failed to save plan');
+    if (!response.ok) {
+throw new Error('Failed to save plan');
+}
 
     return response.json();
 }
