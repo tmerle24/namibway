@@ -62,7 +62,7 @@ class ImportProviders extends Command
 
     private function importNtb(string $path): void
     {
-        $records = json_decode(file_get_contents($path), true);
+        $records = json_decode((string) file_get_contents($path), true);
         $bar = $this->output->createProgressBar(count($records));
         $bar->start();
 
@@ -106,7 +106,7 @@ class ImportProviders extends Command
 
     private function importYp(string $path, bool $merge): void
     {
-        $records = json_decode(file_get_contents($path), true);
+        $records = json_decode((string) file_get_contents($path), true);
         $bar = $this->output->createProgressBar(count($records));
         $bar->start();
 
@@ -184,6 +184,7 @@ class ImportProviders extends Command
         $this->newLine();
     }
 
+    /** @param array<string, mixed> $fields */
     private function upsertListing(string $slug, string $name, array $fields): void
     {
         if ($this->dry) {
@@ -216,7 +217,8 @@ class ImportProviders extends Command
         }
     }
 
-    private function findSimilar(string $name, array $pool, float $threshold): ?object
+    /** @param array<int|string, Listing> $pool */
+    private function findSimilar(string $name, array $pool, float $threshold): ?Listing
     {
         $best = null;
         $bestScore = 0.0;
@@ -249,6 +251,7 @@ class ImportProviders extends Command
         return $map[strtolower($raw)] ?? ListingType::Accommodation->value;
     }
 
+    /** @return array<string, string>|null */
     private function localise(?string $text): ?array
     {
         return $text ? ['en' => $text] : null;
