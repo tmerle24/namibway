@@ -40,6 +40,10 @@ class Listing extends Model
         'claim_status',
         'website',
         'contact_email',
+        'phone',
+        'address',
+        'scrape_source',
+        'scraped_at',
     ];
 
     protected $casts = [
@@ -51,6 +55,7 @@ class Listing extends Model
         'is_featured' => 'boolean',
         'is_published' => 'boolean',
         'accepts_inquiries' => 'boolean',
+        'scraped_at' => 'datetime',
     ];
 
     protected static function booted(): void
