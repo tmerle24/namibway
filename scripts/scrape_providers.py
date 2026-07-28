@@ -41,7 +41,7 @@ OUTPUT_DIR = Path(__file__).parent
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (compatible; NamibWayBot/1.0; "
-        "building public tourism directory — namibway.com)"
+        "building public tourism directory - namibway.com)"
     )
 }
 
