@@ -89,6 +89,13 @@ def extract_email(text: str) -> "str | None":
 
 VISITNAMIBIA_BASE = "https://visitnamibia.com.na"
 
+# Domains to skip when extracting provider websites from detail pages
+_SKIP_DOMAINS = {
+    "visitnamibia.com.na", "facebook.com", "instagram.com",
+    "twitter.com", "x.com", "youtube.com", "linkedin.com",
+    "tiktok.com", "pinterest.com", "whatsapp.com",
+}
+
 # Category slugs from the /business-directory-search-by-category/ page.
 # These map to the URL pattern /business-directory/?s=&cat=N or similar.
 # Run with --source visitnamibia first, then inspect the category page if
@@ -215,7 +222,12 @@ def scrape_visitnamibia_page(url: str) -> list:
             # Website & email from card text (often not present until detail page)
             website_el = card.select_one("a[href^='http']:not([href*='visitnamibia'])")
             website = website_el["href"] if website_el else None
-            contact_email = extract_email(card.get_text())
+            _card_email = extract_email(card.get_text())
+            contact_email = (
+                _card_email
+                if _card_email and "visitnamibia.com.na" not in _card_email.lower()
+                else None
+            )
 
             records.append({
                 "name": name,
@@ -247,18 +259,47 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
         return record
 
     soup = BeautifulSoup(resp.text, "lxml")
-    text = soup.get_text()
+
+    # Restrict to the listing content area so we don't pick up header/footer junk
+    content = (
+        soup.select_one(
+            "article.gd_place, article.type-gd_place, "
+            ".geodir-single-main, .geodir-post-body, "
+            ".geodir-listing-content, .geodir-entry-content, "
+            ".entry-content, main#main, main"
+        )
+        or soup
+    )
 
     if not record.get("website"):
-        for a in soup.select("a[href^='http']"):
-            href = a["href"]
-            domain = urlparse(href).netloc
-            if "visitnamibia" not in domain and "facebook" not in domain and "instagram" not in domain:
-                record["website"] = href
-                break
+        # Try GeoDirectory-specific website field first
+        website_el = content.select_one(
+            ".geodir-field-website a, .gd-field-website a"
+        )
+        if website_el:
+            record["website"] = website_el.get("href")
+        else:
+            for a in content.select("a[href^='http']"):
+                href = a.get("href", "")
+                domain = urlparse(href).netloc.lower().removeprefix("www.")
+                if not any(domain == s or domain.endswith("." + s) for s in _SKIP_DOMAINS):
+                    record["website"] = href
+                    break
 
     if not record.get("contact_email"):
-        record["contact_email"] = extract_email(text)
+        # Try GeoDirectory-specific email field first
+        email_el = content.select_one(
+            ".geodir-field-email a, .gd-field-email a"
+        )
+        if email_el:
+            href = email_el.get("href", "")
+            record["contact_email"] = (
+                href[7:] if href.startswith("mailto:") else email_el.get_text(strip=True)
+            )
+        else:
+            email = extract_email(content.get_text())
+            if email and "visitnamibia.com.na" not in email.lower():
+                record["contact_email"] = email
 
     # GeoDirectory embeds lat/lng in data attributes or a map script
     map_el = soup.select_one("[data-lat], [data-lng]")
