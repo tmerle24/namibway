@@ -118,6 +118,7 @@ def _parse_category_cards(soup: BeautifulSoup, listing_type: str, page_url: str)
     """
     cards = soup.select("div.company[data-cmpid]")
     if not cards:
+        # Fallback: any div with company class
         cards = soup.select("div.company, div[class*='company'][id*='cmap']")
 
     if not cards:
@@ -129,14 +130,16 @@ def _parse_category_cards(soup: BeautifulSoup, listing_type: str, page_url: str)
     records: list[dict] = []
     for card in cards:
         try:
+            # Name + detail URL
             name_el = card.select_one(".company_header h3 a, h3 a, h2 a")
             if not name_el:
                 continue
-            name = name_el.get_text(strip=True)
+            name = re.sub(r"\s+", " ", name_el.get_text(strip=True).lstrip("*").strip())
             if not name or len(name) < 2:
                 continue
             detail_url = urljoin(BASE, name_el.get("href", ""))
 
+            # Address — .address div; city is in <b> tag inside it
             address_el = card.select_one(".address")
             address = address_el.get_text(separator=" ", strip=True) if address_el else None
             region = None
@@ -144,20 +147,24 @@ def _parse_category_cards(soup: BeautifulSoup, listing_type: str, page_url: str)
                 b = address_el.select_one("b")
                 region = b.get_text(strip=True) if b else None
 
+            # Phone — .s div that contains fa-phone icon → span > b text
             phone = None
             for s_div in card.select(".s"):
                 if s_div.select_one(".fa-phone"):
                     b = s_div.select_one("span b")
                     span = s_div.select_one("span")
                     raw = (b or span).get_text(strip=True) if (b or span) else ""
+                    # Skip placeholder text
                     if raw and raw.lower() not in ("phone", "tel", "telephone"):
                         phone = re.sub(r"[^\d+\-\s()]", "", raw).strip() or None
                     break
+            # Also check tel: links
             if not phone:
                 tel_a = card.select_one("a[href^='tel:']")
                 if tel_a:
                     phone = tel_a.get("href", "")[4:].strip() or None
 
+            # Coordinates — .mapmarker hidden div with data-ltd / data-lng
             lat = lon = None
             marker = card.select_one(".mapmarker[data-ltd]")
             if marker:
@@ -272,6 +279,9 @@ def scrape_detail(record: dict) -> dict:
 
     soup = BeautifulSoup(resp.text, "lxml")
 
+    # ------------------------------------------------------------------ #
+    # 1. JSON-LD — richest single source (name, address, phone, url, geo)
+    # ------------------------------------------------------------------ #
     ld = {}
     for script in soup.select("script[type='application/ld+json']"):
         try:
@@ -282,15 +292,18 @@ def scrape_detail(record: dict) -> dict:
         except (json.JSONDecodeError, AttributeError):
             pass
 
+    # Phone from JSON-LD
     if not record.get("phone") and ld.get("telephone"):
         record["phone"] = ld["telephone"]
 
+    # Website from JSON-LD url field
     if not record.get("website") and ld.get("url"):
         w = _parse_yp_website(ld["url"])
         domain = urlparse(w or "").netloc.lower().removeprefix("www.")
         if w and not any(domain == s or domain.endswith("." + s) for s in _SKIP_DOMAINS):
             record["website"] = w
 
+    # Coordinates from JSON-LD geo
     if not record.get("latitude") and ld.get("geo"):
         try:
             record["latitude"]  = float(ld["geo"]["latitude"])
@@ -298,6 +311,7 @@ def scrape_detail(record: dict) -> dict:
         except (KeyError, ValueError, TypeError):
             pass
 
+    # Address from JSON-LD
     if not record.get("address") and ld.get("address"):
         addr = ld["address"]
         parts = [addr.get("streetAddress"), addr.get("addressLocality"), addr.get("addressCountry")]
@@ -305,8 +319,12 @@ def scrape_detail(record: dict) -> dict:
     if not record.get("region") and ld.get("address", {}).get("addressLocality"):
         record["region"] = ld["address"]["addressLocality"]
 
+    # ------------------------------------------------------------------ #
+    # 2. HTML fallbacks for anything not in JSON-LD
+    # ------------------------------------------------------------------ #
     content = soup.select_one("#company_item, #left, main") or soup
 
+    # Phone (additional numbers not in JSON-LD — mobile, fax)
     if not record.get("phone"):
         for a in content.select("a[href^='tel:']"):
             raw = a.get("href", "")[4:].strip()
@@ -314,6 +332,7 @@ def scrape_detail(record: dict) -> dict:
                 record["phone"] = raw
                 break
 
+    # All phone numbers (primary + mobile) as list for later use
     phones = []
     for a in content.select("a[href^='tel:']"):
         raw = a.get("href", "")[4:].strip()
@@ -324,11 +343,13 @@ def scrape_detail(record: dict) -> dict:
         if len(phones) > 1:
             record["phone_mobile"] = phones[1]
 
+    # Website from .weblinks redirect URL
     if not record.get("website"):
         weblink = content.select_one(".weblinks a, .text.weblinks a")
         if weblink:
             w = _parse_yp_website(weblink.get("href", ""))
             if not w:
+                # Try text content as URL
                 txt = weblink.get_text(strip=True)
                 if txt and "." in txt and " " not in txt:
                     w = ("https://" + txt) if not txt.startswith("http") else txt
@@ -337,15 +358,18 @@ def scrape_detail(record: dict) -> dict:
                 if not any(domain == s or domain.endswith("." + s) for s in _SKIP_DOMAINS):
                     record["website"] = w
 
+    # Description
     if not record.get("description"):
         desc_el = content.select_one(".text.desc, #company_desc, .desc")
         if desc_el:
+            # Remove <details> "Show more" wrapper text if present
             for details in desc_el.select("details"):
                 details.unwrap()
             txt = desc_el.get_text(separator=" ", strip=True)
             if txt and len(txt) > 10:
                 record["description"] = txt[:2000]
 
+    # Address from #company_address
     if not record.get("address"):
         addr_el = content.select_one("#company_address")
         if addr_el:
@@ -355,6 +379,7 @@ def scrape_detail(record: dict) -> dict:
         if addr_el:
             record["region"] = addr_el.get_text(strip=True)
 
+    # Coordinates from map canvas data attributes
     if not record.get("latitude"):
         map_el = soup.select_one("[data-map-ltd]")
         if map_el:
@@ -364,6 +389,7 @@ def scrape_detail(record: dict) -> dict:
             except (ValueError, TypeError):
                 pass
 
+    # Photos — collect up to 5 medium-size image URLs
     if not record.get("photos"):
         photos = []
         for div in content.select("div.photo_href[data-mfp-src]"):
@@ -448,6 +474,7 @@ def main() -> None:
         all_contacts.extend(records)
         time.sleep(2)
 
+    # Dedupe by name
     seen: set[str] = set()
     deduped: list[dict] = []
     for r in all_contacts:
@@ -457,6 +484,7 @@ def main() -> None:
             deduped.append(r)
     print(f"\nTotal after dedup: {len(deduped)}")
 
+    # Detail page enrichment
     if not args.no_details:
         to_enrich = [r for r in deduped if r.get("detail_url")]
         print(f"\nFetching {len(to_enrich)} detail pages ({args.workers} workers)…")
@@ -474,6 +502,7 @@ def main() -> None:
                     p = sum(1 for r in deduped if r.get("phone"))
                     print(f"  [{done}/{len(to_enrich)}] website={w} email={e} phone={p}")
 
+    # Save raw contacts
     out = OUTPUT_DIR / "namibiayp_contacts.json"
     with open(out, "w", encoding="utf-8") as f:
         json.dump(deduped, f, ensure_ascii=False, indent=2)
@@ -485,6 +514,7 @@ def main() -> None:
     a = sum(1 for r in deduped if r.get("address"))
     print(f"  website={w}  email={e}  phone={p}  address={a}")
 
+    # Merge
     if not args.no_merge:
         ntb_path = OUTPUT_DIR / "scraped_providers.json"
         print(f"\nMerging into {ntb_path}…")
