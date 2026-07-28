@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AfterSalesController;
 use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListingController;
@@ -27,6 +28,9 @@ Route::post('listings/{listing:slug}/inquiries', [ListingController::class, 'sto
 
 Route::post('trips', [TripController::class, 'store'])->middleware('throttle:5,1')->name('trips.store');
 Route::get('trips/{trip}/inquiries', [TripController::class, 'inquiries'])->middleware('throttle:30,1')->name('trips.inquiries');
+
+Route::post('support', [AfterSalesController::class, 'support'])->middleware('throttle:5,1')->name('support.store');
+Route::post('feedback', [AfterSalesController::class, 'feedback'])->middleware('throttle:5,1')->name('feedback.store');
 
 Route::get('claim/{token}', [ClaimController::class, 'show'])->name('claim.show');
 Route::post('claim/{token}', [ClaimController::class, 'store'])->middleware('auth')->name('claim.store');

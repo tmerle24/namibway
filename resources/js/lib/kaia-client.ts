@@ -139,6 +139,54 @@ export async function fetchTripInquiries(
     return (data as { inquiries: TripInquiryStatus[] }).inquiries ?? [];
 }
 
+export interface SupportPayload {
+    name: string;
+    email: string;
+    message: string;
+    trip_id?: number | null;
+}
+
+export async function sendSupport(payload: SupportPayload): Promise<void> {
+    const response = await fetch('/support', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to send support message.');
+    }
+}
+
+export interface FeedbackPayload {
+    name?: string | null;
+    message: string;
+    rating?: number | null;
+    trip_id?: number | null;
+}
+
+export async function sendFeedback(payload: FeedbackPayload): Promise<void> {
+    const response = await fetch('/feedback', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to send feedback.');
+    }
+}
+
 export async function sendKaiaMessage(
     history: ChatMessage[],
 ): Promise<KaiaResponse> {
