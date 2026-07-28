@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { ItineraryPlan } from '@/lib/kaia-types';
 import { savePlan } from '@/lib/kaia-client';
+import type { ItineraryPlan } from '@/lib/kaia-types';
 
 const props = defineProps<{
     plan: ItineraryPlan;
@@ -25,8 +25,12 @@ if (props.token) {
 }
 
 async function save() {
-    if (saving.value || shareUrl.value) return;
+    if (saving.value || shareUrl.value) {
+return;
+}
+
     saving.value = true;
+
     try {
         const result = await savePlan(props.plan);
         shareUrl.value = result.url;
@@ -37,10 +41,15 @@ async function save() {
 }
 
 async function copyLink() {
-    if (!shareUrl.value) return;
+    if (!shareUrl.value) {
+return;
+}
+
     await navigator.clipboard.writeText(shareUrl.value);
     copied.value = true;
-    setTimeout(() => { copied.value = false; }, 2000);
+    setTimeout(() => {
+ copied.value = false; 
+}, 2000);
 }
 
 function openPdf(token: string) {

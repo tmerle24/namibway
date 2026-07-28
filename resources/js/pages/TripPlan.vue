@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
-import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
 import ItineraryLineItem from '@/components/home/ItineraryLineItem.vue';
-import TripMap from '@/components/home/TripMap.vue';
 import SaveShareBar from '@/components/home/SaveShareBar.vue';
+import TripMap from '@/components/home/TripMap.vue';
+import type { ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
 import logoDark from '../../images/logo-dark.png';
 
-const props = defineProps<{
+defineProps<{
     plan: ItineraryPlan;
     title: string | null;
     token: string;
@@ -17,22 +16,27 @@ const props = defineProps<{
 
 const { t } = useI18n();
 
-// On the public plan page the plan is already saved — show export/print directly
-const alreadySaved = ref(true);
-
 function estimatedLabel(variant: ItineraryVariant): string | null {
     let amount = 0;
     let currency: string | null = null;
+
     for (const day of variant.days) {
         for (const item of [day.accommodation, day.activity, day.restaurant]) {
-            if (item?.price_from) { amount += Number(item.price_from); currency ??= item.price_currency; }
+            if (item?.price_from) {
+ amount += Number(item.price_from); currency ??= item.price_currency; 
+}
         }
     }
+
     if (variant.vehicle?.price_from) {
         amount += Number(variant.vehicle.price_from) * variant.days.length;
         currency ??= variant.vehicle.price_currency;
     }
-    if (!currency) return null;
+
+    if (!currency) {
+return null;
+}
+
     return t('itinerary.estimated', { amount: Math.round(amount).toLocaleString(), currency });
 }
 </script>
