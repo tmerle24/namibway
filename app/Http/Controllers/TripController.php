@@ -62,6 +62,7 @@ class TripController extends Controller
         foreach ($accommodationIds as $listingId) {
             Inquiry::create([
                 'listing_id' => $listingId,
+                'trip_id' => $trip->id,
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'] ?? null,
@@ -77,5 +78,20 @@ class TripController extends Controller
             'trip_id' => $trip->id,
             'inquiry_count' => count($accommodationIds),
         ]);
+    }
+
+    public function inquiries(Trip $trip): JsonResponse
+    {
+        $inquiries = $trip->inquiries()
+            ->with('listing:id,name')
+            ->get(['id', 'trip_id', 'listing_id', 'status']);
+
+        $data = $inquiries->map(fn (Inquiry $inquiry) => [
+            'listing_name' => $inquiry->listing?->name ?? '—',
+            'status' => $inquiry->status->value,
+            'label' => $inquiry->status->label(),
+        ]);
+
+        return response()->json(['inquiries' => $data]);
     }
 }

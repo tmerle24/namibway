@@ -48,6 +48,7 @@ const bookingVariant = ref<ItineraryVariant | null>(null);
 const bookingActive = ref(false);
 const bookingLoading = ref(false);
 const bookingError = ref<string | null>(null);
+const bookingTripId = ref<number | null>(null);
 
 async function scrollTo(id: string) {
     await nextTick();
@@ -79,12 +80,13 @@ async function onGuestSubmit(details: GuestDetails) {
     bookingError.value = null;
 
     try {
-        await createTrip(
+        const result = await createTrip(
             details,
             bookingVariant.value.name,
             plan.value,
             bookingVariant.value.days,
         );
+        bookingTripId.value = result.trip_id;
         bookingActive.value = true;
         await scrollTo('booking-section');
     } catch (e) {
@@ -108,8 +110,9 @@ async function onGuestSubmit(details: GuestDetails) {
             @submit="onGuestSubmit"
         />
         <BookingSection
-            v-if="bookingActive && bookingVariant"
+            v-if="bookingActive && bookingVariant && bookingTripId"
             :variant="bookingVariant"
+            :trip-id="bookingTripId"
         />
         <AfterSalesSection />
         <ExploreSection :listings="listings" :regions="regions" />

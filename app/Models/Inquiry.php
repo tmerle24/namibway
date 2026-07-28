@@ -10,6 +10,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $listing_id
+ * @property int|null $trip_id
  * @property string $name
  * @property string $email
  * @property string|null $phone
@@ -30,6 +31,7 @@ class Inquiry extends Model
 {
     protected $fillable = [
         'listing_id',
+        'trip_id',
         'name',
         'email',
         'phone',
@@ -54,6 +56,7 @@ class Inquiry extends Model
         'adults' => 'integer',
         'children' => 'integer',
         'total_amount' => 'float',
+        'trip_id' => 'integer',
     ];
 
     /**
@@ -62,5 +65,13 @@ class Inquiry extends Model
     public function listing(): BelongsTo
     {
         return $this->belongsTo(Listing::class);
+    }
+
+    /**
+     * @return BelongsTo<Trip, $this>
+     */
+    public function trip(): BelongsTo
+    {
+        return $this->belongsTo(Trip::class);
     }
 }

@@ -58,6 +58,7 @@
         "waiting": "Waiting",
         "sending": "Sending request…",
         "confirmed": "Confirmed",
+        "loadingStatus": "Loading status…",
         "note": "Only one request is active at a time — this protects partners from being flooded with speculative enquiries, and mirrors how a good travel agency would work a booking."
     },
     "afterSales": {

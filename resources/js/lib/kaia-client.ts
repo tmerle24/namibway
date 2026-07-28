@@ -121,6 +121,24 @@ export async function createTrip(
     return response.json();
 }
 
+export interface TripInquiryStatus {
+    listing_name: string;
+    status: string;
+    label: string;
+}
+
+export async function fetchTripInquiries(
+    tripId: number,
+): Promise<TripInquiryStatus[]> {
+    const response = await fetch(`/trips/${tripId}/inquiries`, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    const data = await response.json();
+
+    return (data as { inquiries: TripInquiryStatus[] }).inquiries ?? [];
+}
+
 export async function sendKaiaMessage(
     history: ChatMessage[],
 ): Promise<KaiaResponse> {
