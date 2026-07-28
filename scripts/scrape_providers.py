@@ -248,12 +248,8 @@ def scrape_visitnamibia_page(url: str) -> list:
     return records
 
 
-_detail_debug_done = False  # print HTML structure once for selector diagnosis
-
-
 def scrape_visitnamibia_detail(record: dict) -> dict:
     """Fetch the NTB detail page to extract website, email, and coordinates."""
-    global _detail_debug_done
     url = record.get("source_url", "")
     if not url or VISITNAMIBIA_BASE not in url:
         return record
@@ -274,23 +270,6 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
         )
         or soup
     )
-
-    # Debug: print page HTML snippets once so we can tune selectors
-    if not _detail_debug_done:
-        _detail_debug_done = True
-        print(f"\n=== DEBUG detail page: {url} ===")
-        print(f"Content tag: {content.name}, classes: {content.get('class')}")
-        # Print all class names that appear in the content area
-        all_classes = set()
-        for el in content.find_all(True):
-            for c in (el.get("class") or []):
-                if any(kw in c.lower() for kw in ("geodir", "gd-", "website", "email", "contact", "field")):
-                    all_classes.add(c)
-        print(f"Relevant classes found: {sorted(all_classes)}")
-        # Print first 1500 chars of content HTML
-        print("Content HTML (first 1500 chars):")
-        print(str(content)[:1500])
-        print("=== END DEBUG ===\n")
 
     if not record.get("website"):
         # Only trust GeoDirectory-specific website field — generic link fallback
