@@ -1,0 +1,82 @@
+name: Scrape NamibiaYP Contacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max listings per category (0=all, 20 for test run)"
+        required: false
+        default: "20"
+      workers:
+        description: "Parallel workers for detail pages (default 6)"
+        required: false
+        default: "6"
+      fetch_details:
+        description: "Fetch detail pages for email/website"
+        required: false
+        default: true
+        type: boolean
+      merge:
+        description: "Merge contacts into scraped_providers.json"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml
+
+      - name: Run scraper
+        run: |
+          ARGS="--limit ${{ github.event.inputs.limit || '20' }}"
+          ARGS="$ARGS --workers ${{ github.event.inputs.workers || '6' }}"
+          if [ "${{ github.event.inputs.fetch_details }}" = "false" ]; then
+            ARGS="$ARGS --no-details"
+          fi
+          if [ "${{ github.event.inputs.merge }}" = "false" ]; then
+            ARGS="$ARGS --no-merge"
+          fi
+          python scripts/scrape_namibiayp.py $ARGS
+
+      - name: Show results summary
+        run: |
+          python3 -c "
+          import json
+          with open('scripts/namibiayp_contacts.json') as f:
+              records = json.load(f)
+          print(f'Total: {len(records)}')
+          from collections import Counter
+          for t, n in sorted(Counter(r.get('type') for r in records).items()):
+              print(f'  {t}: {n}')
+          w = sum(1 for r in records if r.get('website'))
+          e = sum(1 for r in records if r.get('email'))
+          p = sum(1 for r in records if r.get('phone'))
+          a = sum(1 for r in records if r.get('address'))
+          c = sum(1 for r in records if r.get('latitude'))
+          print(f'website={w}  email={e}  phone={p}  address={a}  coords={c}')
+          print()
+          print('=== First 20 records ===')
+          for r in records[:20]:
+              print(json.dumps({k: r.get(k) for k in
+                  ['name','type','region','phone','email','website','address','latitude','longitude']
+              }, ensure_ascii=False))
+          "
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: namibiayp-contacts-${{ github.run_number }}
+          path: scripts/namibiayp_contacts.json
+          retention-days: 14
