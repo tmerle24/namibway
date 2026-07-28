@@ -50,5 +50,7 @@ jobs:
           git add "${{ github.event.inputs.target_path }}"
           git diff --cached --stat
           git commit -m "data: commit ${{ github.event.inputs.artifact_name }} from run #${{ github.event.inputs.run_id }} [skip ci]" \
-            || echo "Nothing to commit (file unchanged)"
+            || { echo "Nothing to commit (file unchanged)"; exit 0; }
+          git fetch origin ${{ github.ref_name }}
+          git rebase origin/${{ github.ref_name }}
           git push
