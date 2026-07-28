@@ -81,11 +81,15 @@ function renderRoute() {
 
             // Exact match first; fall back to partial match (region name contained in location or vice versa)
             let coords = props.regionCoords[key];
+
             if (!coords) {
                 const fallbackKey = Object.keys(props.regionCoords).find(
                     (k) => key.includes(k) || k.includes(key),
                 );
-                if (fallbackKey) coords = props.regionCoords[fallbackKey];
+
+                if (fallbackKey) {
+                    coords = props.regionCoords[fallbackKey];
+                }
             }
 
             if (!coords) {
