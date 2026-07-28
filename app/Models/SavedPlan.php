@@ -39,7 +39,7 @@ class SavedPlan extends Model
         });
     }
 
-    /** @return BelongsTo<User, self> */
+    /** @return BelongsTo<User, SavedPlan> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
