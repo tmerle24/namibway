@@ -2,7 +2,12 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import draggable from 'vuedraggable';
-import { fetchAlternatives, fetchRegions } from '@/lib/kaia-client';
+import {
+    fetchAlternatives,
+    fetchRegions,
+    fetchRegionCoords,
+} from '@/lib/kaia-client';
+import type { RegionCoords } from '@/lib/kaia-client';
 import type {
     ItineraryListingRef,
     ItineraryPlan,
@@ -11,6 +16,8 @@ import type {
 import AlternativesPanel from './AlternativesPanel.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
 import LocationPicker from './LocationPicker.vue';
+import SaveShareBar from './SaveShareBar.vue';
+import TripMap from './TripMap.vue';
 
 const props = defineProps<{
     plan: ItineraryPlan;
@@ -28,6 +35,8 @@ const { t } = useI18n();
 const editableVariants = ref<ItineraryVariant[]>([]);
 const swap = ref<SwapState | null>(null);
 const dbRegions = ref<string[]>([]);
+const regionCoords = ref<Record<string, RegionCoords>>({});
+const savedTokens = ref<Record<number, string>>({});
 
 watch(
     () => props.plan,
@@ -39,7 +48,10 @@ watch(
 );
 
 onMounted(async () => {
-    dbRegions.value = await fetchRegions();
+    [dbRegions.value, regionCoords.value] = await Promise.all([
+        fetchRegions(),
+        fetchRegionCoords(),
+    ]);
 });
 
 // Combine DB regions with locations already in the plan — deduplicated
@@ -235,6 +247,12 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     />
                 </template>
 
+                <TripMap
+                    :map-id="`trip-map-${variantIndex}`"
+                    :variant="variant"
+                    :region-coords="regionCoords"
+                />
+
                 <button
                     type="button"
                     class="add-day-btn"
@@ -419,6 +437,19 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                 <button class="cta" @click="emit('book', variant)">
                     {{ t('itinerary.bookCta') }}
                 </button>
+
+                <SaveShareBar
+                    :plan="{
+                        trip_summary: plan.trip_summary,
+                        variants: [variant],
+                    }"
+                    :token="savedTokens[variantIndex] ?? null"
+                    @saved="
+                        (token) => {
+                            savedTokens[variantIndex] = token;
+                        }
+                    "
+                />
             </div>
         </div>
     </section>

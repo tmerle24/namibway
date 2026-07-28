@@ -1,19 +1,9 @@
 <script setup lang="ts">
-import { usePage } from '@inertiajs/vue3';
-import AppLogoIcon from '@/components/AppLogoIcon.vue';
-
-const name = usePage().props.name;
+import logoDark from '../../images/logo-dark.png';
+import logoLight from '../../images/logo-light.png';
 </script>
 
 <template>
-    <div
-        class="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground"
-    >
-        <AppLogoIcon class="size-5 fill-current text-white dark:text-black" />
-    </div>
-    <div class="ml-1 grid flex-1 text-left text-sm">
-        <span class="mb-0.5 truncate leading-tight font-semibold">{{
-            name
-        }}</span>
-    </div>
+    <img :src="logoDark" alt="NamibWay" class="h-7 dark:hidden" />
+    <img :src="logoLight" alt="NamibWay" class="hidden h-7 dark:block" />
 </template>

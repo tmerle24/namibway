@@ -78,14 +78,12 @@ jobs:
               records = json.load(f)
           print(f'Total records: {len(records)}')
 
-          # Count by type
           from collections import Counter
           types = Counter(r.get('type') for r in records)
           print('By type:')
           for t, n in sorted(types.items()):
               print(f'  {t}: {n}')
 
-          # Count with email / website / coords / phone
           with_email = sum(1 for r in records if r.get('contact_email'))
           with_website = sum(1 for r in records if r.get('website'))
           with_coords = sum(1 for r in records if r.get('latitude'))
@@ -95,7 +93,6 @@ jobs:
           print(f'With phone:   {with_phone}')
           print(f'With coords:  {with_coords}')
 
-          # Preview first N records
           limit = int('${{ github.event.inputs.preview_count || 30 }}')
           print(f'\n=== First {limit} records ===')
           for r in records[:limit]:

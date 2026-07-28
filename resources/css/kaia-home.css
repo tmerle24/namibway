@@ -1122,3 +1122,76 @@
     background: var(--sand);
     border-radius: 8px;
 }
+
+/* Guest details form */
+.kaia-page .guest-form-section {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 60px 24px;
+}
+.kaia-page .guest-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    margin-top: 32px;
+}
+.kaia-page .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.kaia-page .form-row label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+}
+.kaia-page .form-row input {
+    padding: 10px 14px;
+    border: 1px solid var(--sand-dark);
+    border-radius: 8px;
+    font-size: 15px;
+    background: var(--paper);
+    color: var(--ink);
+    transition: border-color 0.15s;
+}
+.kaia-page .form-row input:focus {
+    outline: none;
+    border-color: var(--rust);
+}
+.kaia-page .guest-form .cta-btn {
+    align-self: flex-start;
+    padding: 12px 28px;
+    background: var(--rust);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.kaia-page .guest-form .cta-btn:hover:not(:disabled) {
+    background: var(--rust-dark);
+}
+.kaia-page .guest-form .cta-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.kaia-page .form-error {
+    color: #c0392b;
+    font-size: 14px;
+    margin: 0;
+}
+.kaia-page .form-note {
+    font-size: 13px;
+    color: #8a7f68;
+    margin: 0;
+}
+@media (max-width: 600px) {
+    .kaia-page .form-row {
+        grid-template-columns: 1fr;
+    }
+}

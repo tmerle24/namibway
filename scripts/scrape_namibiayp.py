@@ -134,7 +134,7 @@ def _parse_category_cards(soup: BeautifulSoup, listing_type: str, page_url: str)
             name_el = card.select_one(".company_header h3 a, h3 a, h2 a")
             if not name_el:
                 continue
-            name = name_el.get_text(strip=True)
+            name = re.sub(r"\s+", " ", name_el.get_text(strip=True).lstrip("*").strip())
             if not name or len(name) < 2:
                 continue
             detail_url = urljoin(BASE, name_el.get("href", ""))
@@ -177,7 +177,7 @@ def _parse_category_cards(soup: BeautifulSoup, listing_type: str, page_url: str)
             records.append({
                 "name":       name,
                 "type":       listing_type,
-                "source_url": detail_url if "/company/" in detail_url else None,
+                "detail_url": detail_url if "/company/" in detail_url else None,
                 "phone":      phone,
                 "email":      None,
                 "website":    None,
@@ -219,7 +219,7 @@ def scrape_category(path: str, listing_type: str, limit: int = 0) -> list[dict]:
             break
 
         # Stop if every entry on this page is already known (site is cycling)
-        new_records = [r for r in records if r.get("source_url") not in seen_urls]
+        new_records = [r for r in records if r.get("detail_url") not in seen_urls]
         if not new_records:
             consecutive_all_dupes += 1
             if consecutive_all_dupes >= 2:
@@ -228,7 +228,7 @@ def scrape_category(path: str, listing_type: str, limit: int = 0) -> list[dict]:
         else:
             consecutive_all_dupes = 0
             for r in new_records:
-                seen_urls.add(r.get("source_url", ""))
+                seen_urls.add(r.get("detail_url", ""))
             all_records.extend(new_records)
             print(f"  → {len(new_records)} new listings (page {page}, total: {len(all_records)})")
 
@@ -279,7 +279,7 @@ def scrape_detail(record: dict) -> dict:
 
     NOTE: Email is hidden behind login — not extractable.
     """
-    url = record.get("source_url")
+    url = record.get("detail_url")
     if not url or "/company/" not in url:
         return record
 
@@ -442,7 +442,7 @@ def merge_into_ntb(contacts: list[dict], ntb_path: Path, threshold: float = 0.82
             target = ntb[best_idx]
             for ntb_field, src_field in [
                 ("website",       "website"),
-                ("email",         "email"),
+                ("contact_email", "email"),
                 ("phone",         "phone"),
                 ("region",        "region"),
                 ("latitude",      "latitude"),
@@ -496,7 +496,7 @@ def main() -> None:
 
     # Detail page enrichment
     if not args.no_details:
-        to_enrich = [r for r in deduped if r.get("source_url")]
+        to_enrich = [r for r in deduped if r.get("detail_url")]
         print(f"\nFetching {len(to_enrich)} detail pages ({args.workers} workers)…")
         idx_map = {id(r): i for i, r in enumerate(deduped)}
         with ThreadPoolExecutor(max_workers=args.workers) as executor:

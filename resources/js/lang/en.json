@@ -4,6 +4,17 @@
         "login": "Log in",
         "register": "Register"
     },
+    "dashboard": {
+        "title": "My trips",
+        "subtitle": "Plans you've saved from your conversations with Kaia.",
+        "empty": "You haven't saved any trip plans yet.",
+        "startPlanning": "Start planning a trip",
+        "planTitle": "Trip",
+        "created": "Saved on",
+        "actions": "Actions",
+        "view": "View",
+        "untitled": "Untitled plan"
+    },
     "hero": {
         "title": "The smartest way to experience Namibia.",
         "subtitle": "Tell your travel companion what you're after. It builds a real, bookable plan — no forms."
@@ -34,6 +45,13 @@
         "remove": "Remove",
         "removeDay": "Remove day",
         "bookCta": "Request availability & book",
+        "saveCta": "Save & share",
+        "saving": "Saving…",
+        "savedLink": "Shareable link",
+        "copyLink": "Copy link",
+        "copied": "Copied!",
+        "downloadPdf": "Download PDF",
+        "print": "Print",
         "swap": "Swap",
         "alternatives": "Alternatives",
         "noAlternatives": "No alternatives available.",
@@ -51,6 +69,7 @@
         "waiting": "Waiting",
         "sending": "Sending request…",
         "confirmed": "Confirmed",
+        "loadingStatus": "Loading status…",
         "note": "Only one request is active at a time — this protects partners from being flooded with speculative enquiries, and mirrors how a good travel agency would work a booking."
     },
     "afterSales": {
@@ -71,16 +90,22 @@
         "support": {
             "title": "Something went wrong on the road",
             "subtitle": "Flat tyre, closed route, a booking that fell through — get help without hunting for a phone number.",
+            "namePlaceholder": "Your name",
+            "emailPlaceholder": "Your email",
             "placeholder": "Describe what happened...",
             "send": "Send",
-            "confirm": "Support notified. Someone will reach out shortly."
+            "sending": "Sending…",
+            "confirm": "Support notified. Someone will reach out shortly.",
+            "error": "Something went wrong. Please try again."
         },
         "feedback": {
             "title": "Share your trip",
             "subtitle": "Feeds better suggestions to the next traveler planning a similar route.",
             "placeholder": "What was the highlight?",
             "publish": "Publish",
-            "confirm": "Thanks — published to the community."
+            "sending": "Sending…",
+            "confirm": "Thanks — published to the community.",
+            "error": "Something went wrong. Please try again."
         }
     },
     "explore": {
@@ -117,6 +142,14 @@
         },
         "examples": "{count} examples"
     },
+    "tripPlan": {
+        "loginCta": {
+            "title": "Keep this trip plan",
+            "subtitle": "Log in or create a free account to access it from your dashboard any time.",
+            "login": "Log in",
+            "register": "Create account"
+        }
+    },
     "footer": {
         "tagline": "AI-assisted travel planning for Namibia. Kaia's interview and itinerary generation are live; real partner booking and availability are coming as the platform develops."
     },
@@ -152,6 +185,30 @@
             "success": "Sent! The partner will get back to you directly.",
             "unavailable": "This listing isn't currently accepting inquiries — check back soon."
         }
+    },
+    "guestForm": {
+        "eyebrow": "Almost there",
+        "title": "Who's travelling?",
+        "subtitle": "One quick form — then we send your request to each property in your plan. No payment, no obligation.",
+        "name": "Full name",
+        "namePlaceholder": "Jane Smith",
+        "email": "Email",
+        "emailPlaceholder": "jane@example.com",
+        "phone": "Phone (optional)",
+        "phonePlaceholder": "+264 …",
+        "checkIn": "Check-in date",
+        "checkOut": "Check-out date",
+        "adults": "Adults",
+        "children": "Children",
+        "submit": "Send booking requests",
+        "sending": "Sending…",
+        "note": "Your details are shared only with the properties in your selected plan.",
+        "errors": {
+            "generic": "Something went wrong. Please try again."
+        }
+    },
+    "errors": {
+        "bookingFailed": "Something went wrong. Please try again."
     },
     "localeSwitcher": {
         "label": "Language"

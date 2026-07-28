@@ -2,15 +2,15 @@
 
 namespace App\Connectors\ResConnect\DTOs;
 
-use Carbon\Carbon;
+use Carbon\CarbonInterface;
 
 final class ReservationRequest
 {
     public function __construct(
         public readonly string $propertyCode,
         public readonly string $roomTypeCode,
-        public readonly Carbon $checkIn,
-        public readonly Carbon $checkOut,
+        public readonly CarbonInterface $checkIn,
+        public readonly CarbonInterface $checkOut,
         public readonly int $adults,
         public readonly int $children,
         public readonly string $guestName,

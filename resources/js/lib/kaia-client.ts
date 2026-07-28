@@ -1,5 +1,7 @@
 import type {
     ChatMessage,
+    GuestDetails,
+    ItineraryDay,
     ItineraryListingRef,
     ItineraryPlan,
 } from '@/lib/kaia-types';
@@ -25,6 +27,23 @@ export async function fetchRegions(): Promise<string[]> {
     return data.regions ?? [];
 }
 
+export interface RegionCoords {
+    lat: number;
+    lng: number;
+}
+
+export async function fetchRegionCoords(): Promise<
+    Record<string, RegionCoords>
+> {
+    const response = await fetch('/kaia/region-coords', {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    const data = await response.json();
+
+    return data.coords ?? {};
+}
+
 export async function fetchAlternatives(
     type: string,
     excludeId?: number,
@@ -42,6 +61,130 @@ export async function fetchAlternatives(
     const data = await response.json();
 
     return data.alternatives ?? [];
+}
+
+export interface SavedPlanResult {
+    token: string;
+    url: string;
+}
+
+export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
+    const response = await fetch('/trip/save', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify({ plan }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to save plan');
+    }
+
+    return response.json();
+}
+
+export async function createTrip(
+    details: GuestDetails,
+    variantName: string,
+    plan: ItineraryPlan,
+    variantDays: ItineraryDay[],
+): Promise<{ trip_id: number; inquiry_count: number }> {
+    const response = await fetch('/trips', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify({
+            ...details,
+            variant_name: variantName,
+            plan,
+            variant_days: variantDays,
+        }),
+    });
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+
+        throw new Error(
+            (data as { error?: string }).error ??
+                'Booking failed. Please try again.',
+        );
+    }
+
+    return response.json();
+}
+
+export interface TripInquiryStatus {
+    listing_name: string;
+    status: string;
+    label: string;
+}
+
+export async function fetchTripInquiries(
+    tripId: number,
+): Promise<TripInquiryStatus[]> {
+    const response = await fetch(`/trips/${tripId}/inquiries`, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    const data = await response.json();
+
+    return (data as { inquiries: TripInquiryStatus[] }).inquiries ?? [];
+}
+
+export interface SupportPayload {
+    name: string;
+    email: string;
+    message: string;
+    trip_id?: number | null;
+}
+
+export async function sendSupport(payload: SupportPayload): Promise<void> {
+    const response = await fetch('/support', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to send support message.');
+    }
+}
+
+export interface FeedbackPayload {
+    name?: string | null;
+    message: string;
+    rating?: number | null;
+    trip_id?: number | null;
+}
+
+export async function sendFeedback(payload: FeedbackPayload): Promise<void> {
+    const response = await fetch('/feedback', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to send feedback.');
+    }
 }
 
 export async function sendKaiaMessage(

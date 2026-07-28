@@ -5,9 +5,15 @@ import { useI18n } from 'vue-i18n';
 import AfterSalesSection from '@/components/home/AfterSalesSection.vue';
 import BookingSection from '@/components/home/BookingSection.vue';
 import ExploreSection from '@/components/home/ExploreSection.vue';
+import GuestDetailsForm from '@/components/home/GuestDetailsForm.vue';
 import HeroChat from '@/components/home/HeroChat.vue';
 import ItinerarySection from '@/components/home/ItinerarySection.vue';
-import type { ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
+import { createTrip } from '@/lib/kaia-client';
+import type {
+    GuestDetails,
+    ItineraryPlan,
+    ItineraryVariant,
+} from '@/lib/kaia-types';
 import logoDark from '../../images/logo-dark.png';
 
 interface Listing {
@@ -39,6 +45,12 @@ defineProps<{
 
 const plan = ref<ItineraryPlan | null>(null);
 const bookingVariant = ref<ItineraryVariant | null>(null);
+const bookingActive = ref(false);
+const bookingLoading = ref(false);
+const bookingError = ref<string | null>(null);
+const bookingTripId = ref<number | null>(null);
+const guestName = ref<string | null>(null);
+const guestEmail = ref<string | null>(null);
 
 async function scrollTo(id: string) {
     await nextTick();
@@ -49,12 +61,44 @@ async function scrollTo(id: string) {
 
 async function onPlanReady(newPlan: ItineraryPlan) {
     plan.value = newPlan;
+    bookingVariant.value = null;
+    bookingActive.value = false;
     await scrollTo('itinerary-section');
 }
 
 async function onBook(variant: ItineraryVariant) {
     bookingVariant.value = variant;
-    await scrollTo('booking-section');
+    bookingActive.value = false;
+    bookingError.value = null;
+    await scrollTo('guest-form-section');
+}
+
+async function onGuestSubmit(details: GuestDetails) {
+    if (!bookingVariant.value || !plan.value) {
+        return;
+    }
+
+    bookingLoading.value = true;
+    bookingError.value = null;
+
+    try {
+        const result = await createTrip(
+            details,
+            bookingVariant.value.name,
+            plan.value,
+            bookingVariant.value.days,
+        );
+        bookingTripId.value = result.trip_id;
+        guestName.value = details.name;
+        guestEmail.value = details.email;
+        bookingActive.value = true;
+        await scrollTo('booking-section');
+    } catch (e) {
+        bookingError.value =
+            e instanceof Error ? e.message : t('errors.bookingFailed');
+    } finally {
+        bookingLoading.value = false;
+    }
 }
 </script>
 
@@ -62,8 +106,23 @@ async function onBook(variant: ItineraryVariant) {
     <div class="kaia-page">
         <HeroChat @plan-ready="onPlanReady" />
         <ItinerarySection v-if="plan" :plan="plan" @book="onBook" />
-        <BookingSection v-if="bookingVariant" :variant="bookingVariant" />
-        <AfterSalesSection />
+        <GuestDetailsForm
+            v-if="bookingVariant && !bookingActive"
+            :variant="bookingVariant"
+            :loading="bookingLoading"
+            :error="bookingError"
+            @submit="onGuestSubmit"
+        />
+        <BookingSection
+            v-if="bookingActive && bookingVariant && bookingTripId"
+            :variant="bookingVariant"
+            :trip-id="bookingTripId"
+        />
+        <AfterSalesSection
+            :guest-name="guestName"
+            :guest-email="guestEmail"
+            :trip-id="bookingTripId"
+        />
         <ExploreSection :listings="listings" :regions="regions" />
 
         <footer>

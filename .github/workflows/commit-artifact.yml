@@ -16,8 +16,6 @@ on:
 jobs:
   commit:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +31,6 @@ jobs:
       - name: Move JSON to target path
         run: |
           mkdir -p "$(dirname '${{ github.event.inputs.target_path }}')"
-          # Find the JSON file in the artifact (there should be exactly one)
           json_file=$(find /tmp/artifact -name "*.json" | head -1)
           if [ -z "$json_file" ]; then
             echo "No JSON file found in artifact"
@@ -50,7 +47,5 @@ jobs:
           git add "${{ github.event.inputs.target_path }}"
           git diff --cached --stat
           git commit -m "data: commit ${{ github.event.inputs.artifact_name }} from run #${{ github.event.inputs.run_id }} [skip ci]" \
-            || { echo "Nothing to commit (file unchanged)"; exit 0; }
-          git fetch origin ${{ github.ref_name }}
-          git rebase origin/${{ github.ref_name }}
+            || echo "Nothing to commit (file unchanged)"
           git push
