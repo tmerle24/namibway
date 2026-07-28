@@ -181,13 +181,50 @@ def resolve_ntb_type(text: str) -> str:
 
 def _parse_search_result_cards(soup: "BeautifulSoup", forced_type: "str | None" = None) -> list:
     """Parse listing cards from a GeoDirectory search-result page."""
-    cards = soup.select(
-        ".geodir-category-listing, .gd-listing-item, .geodir-post, "
-        "article.type-gd_place, article.type-listing, "
-        ".listing-item, .business-item"
-    )
+    # Try selectors from most-specific to least-specific
+    selectors = [
+        # GeoDirectory post type articles
+        "article.type-gd_place",
+        "article.gd_place",
+        "article[class*='gd_place']",
+        "article[class*='type-gd_place']",
+        # GeoDirectory wrapper divs
+        ".geodir-category-listing",
+        ".gd-listing-item",
+        ".gd-listings-item",
+        ".geodir-post",
+        # Generic WordPress listing
+        ".listing-item",
+        ".business-item",
+        ".directory-item",
+        # Broader fallback
+        "article.post",
+        "article.type-post",
+        "article[class*='listing']",
+        # Last resort
+        "article",
+    ]
+    cards = []
+    matched_selector = None
+    for sel in selectors:
+        candidates = soup.select(sel)
+        # Filter out articles without a title link (avoids picking up page wrappers)
+        candidates = [c for c in candidates if c.select_one("a[href]")]
+        if candidates:
+            cards = candidates
+            matched_selector = sel
+            break
+
     if not cards:
-        cards = soup.select("article.post, article.type-post")
+        # Debug dump so we can identify the right selector from the log
+        print("  [debug] No listing cards found. First 8 article/div elements on page:")
+        for el in soup.select("article, .post, div[class*='listing'], div[class*='gd-']")[:8]:
+            classes = " ".join(el.get("class", []))
+            print(f"    <{el.name} class='{classes}'>")
+        return []
+
+    if matched_selector not in ("article.type-gd_place", "article.gd_place"):
+        print(f"  [debug] Cards matched via fallback selector: {matched_selector!r}")
 
     records = []
     for card in cards:
@@ -327,36 +364,122 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
     return record
 
 
+# Known NTB category IDs confirmed from the site.
+# Format: (display_name, in_cat_id, internal_type)
+# in_cat=47 confirmed by user. Others discovered by probing 1–120.
+_NTB_KNOWN_CATEGORIES: list[tuple[str, int, str]] = [
+    ("Accommodation", 47, "accommodation"),
+]
+
+# Probe this range of category IDs to auto-discover more categories
+_NTB_PROBE_CAT_RANGE = range(1, 121)
+
+
 def _ntb_discover_categories() -> list[tuple[str, str]]:
     """
-    Fetch /business-directory-search-by-category/ and return
-    [(category_name, search_url), ...] using in_cat= parameter.
+    Try to discover category IDs by probing the category index page.
+    Falls back to _NTB_KNOWN_CATEGORIES if discovery yields nothing.
     """
-    url = f"{VISITNAMIBIA_BASE}/business-directory-search-by-category/"
-    print(f"  Discovering categories: {url}")
-    resp = get(url)
-    if not resp:
-        return []
+    index_url = f"{VISITNAMIBIA_BASE}/business-directory-search-by-category/"
+    print(f"  Discovering categories from: {index_url}")
+    resp = get(index_url)
 
-    soup = BeautifulSoup(resp.text, "lxml")
     cats: list[tuple[str, str]] = []
     seen: set[str] = set()
 
-    for a in soup.select("a[href]"):
-        href = a.get("href", "")
-        if "in_cat=" not in href and "cat=" not in href:
-            continue
-        if VISITNAMIBIA_BASE not in href and not href.startswith("/"):
-            continue
-        full = urljoin(VISITNAMIBIA_BASE, href)
-        if full in seen:
-            continue
-        seen.add(full)
-        name = a.get_text(strip=True)
-        if name:
-            cats.append((name, full))
+    if resp:
+        soup = BeautifulSoup(resp.text, "lxml")
 
-    print(f"  Found {len(cats)} categories: {[n for n, _ in cats]}")
+        # Strategy 1: look for any link with in_cat= or cat= anywhere in href
+        for a in soup.select("a[href]"):
+            href = a.get("href", "")
+            if not href:
+                continue
+            if "in_cat=" in href or ("cat=" in href and "search-result" in href):
+                full = urljoin(VISITNAMIBIA_BASE, href)
+                if full not in seen:
+                    seen.add(full)
+                    name = a.get_text(strip=True)
+                    if name:
+                        cats.append((name, full))
+
+        # Strategy 2: look for links to GeoDirectory category archive pages
+        if not cats:
+            for a in soup.select("a[href]"):
+                href = a.get("href", "")
+                full = urljoin(VISITNAMIBIA_BASE, href)
+                parsed = urlparse(full)
+                if parsed.netloc and "visitnamibia" not in parsed.netloc:
+                    continue
+                path = parsed.path
+                # GeoDirectory category archive: /gd-category/slug/ or /listing-category/slug/
+                if any(seg in path for seg in ["/gd-category/", "/listing-category/", "/category/"]):
+                    if full not in seen:
+                        seen.add(full)
+                        name = a.get_text(strip=True)
+                        if name:
+                            cats.append((name, full))
+
+        if cats:
+            print(f"  Found {len(cats)} categories from index page")
+            return cats
+
+        # Debug: print all links on the category page so we can adapt selectors
+        print("  [debug] No category links found. All links on category page:")
+        for a in soup.select("a[href]")[:40]:
+            href = a.get("href", "")
+            label = a.get_text(strip=True)
+            if href and label:
+                print(f"    {label!r:35s} → {href}")
+
+    # Strategy 3: probe known category IDs + range to discover more
+    print(f"  Probing category IDs {_NTB_PROBE_CAT_RANGE.start}–{_NTB_PROBE_CAT_RANGE.stop - 1}…")
+    search_base = f"{VISITNAMIBIA_BASE}/search-result/?directory_type=listing&q=&in_cat="
+
+    # Start with known IDs
+    for name, cat_id, _ in _NTB_KNOWN_CATEGORIES:
+        url = f"{search_base}{cat_id}"
+        cats.append((name, url))
+
+    # Probe range to find unknown categories
+    known_ids = {c[1] for c in _NTB_KNOWN_CATEGORIES}
+    for cat_id in _NTB_PROBE_CAT_RANGE:
+        if cat_id in known_ids:
+            continue
+        url = f"{search_base}{cat_id}"
+        r = get(url)
+        if not r:
+            continue
+        soup = BeautifulSoup(r.text, "lxml")
+        # Check page title or breadcrumb for the category name
+        cat_name = None
+        for sel in [".geodir-category-title", ".gd-category-name",
+                    "h1.page-title", ".archive-title", "h1", "h2.entry-title"]:
+            el = soup.select_one(sel)
+            if el:
+                t = el.get_text(strip=True)
+                if t and len(t) < 80 and t not in ("Search Results", "Listings", ""):
+                    cat_name = t
+                    break
+        # Check if there are any listing cards on this page
+        has_listings = bool(soup.select(
+            "article.type-gd_place, article.gd_place, .gd-listing-item, "
+            ".geodir-category-listing, article[class*='gd_place']"
+        ))
+        if has_listings and cat_id not in known_ids:
+            name_str = cat_name or f"Category {cat_id}"
+            print(f"    Found: in_cat={cat_id} → {name_str!r}")
+            cats.append((name_str, url))
+            known_ids.add(cat_id)
+        time.sleep(0.5)
+
+    if not cats:
+        # Absolute fallback: use hardcoded known categories only
+        print("  [warn] Probe found nothing — using hardcoded known categories only")
+        for name, cat_id, _ in _NTB_KNOWN_CATEGORIES:
+            cats.append((name, f"{search_base}{cat_id}"))
+
+    print(f"  Total categories to scrape: {len(cats)}")
     return cats
 
 
