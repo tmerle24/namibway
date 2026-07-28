@@ -14,7 +14,7 @@ on:
           - tripadvisor
           - all
       fetch_details:
-        description: "Fetch detail pages (website/email/coords)"
+        description: "Fetch detail pages (website/email/phone/coords)"
         required: false
         default: false
         type: boolean
@@ -78,12 +78,14 @@ jobs:
           for t, n in sorted(types.items()):
               print(f'  {t}: {n}')
 
-          # Count with email / website / coords
+          # Count with email / website / coords / phone
           with_email = sum(1 for r in records if r.get('contact_email'))
           with_website = sum(1 for r in records if r.get('website'))
           with_coords = sum(1 for r in records if r.get('latitude'))
+          with_phone = sum(1 for r in records if r.get('phone'))
           print(f'With email:   {with_email}')
           print(f'With website: {with_website}')
+          print(f'With phone:   {with_phone}')
           print(f'With coords:  {with_coords}')
 
           # Preview first N records
@@ -96,6 +98,7 @@ jobs:
                   'region': r.get('region'),
                   'website': r.get('website'),
                   'contact_email': r.get('contact_email'),
+                  'phone': r.get('phone'),
               }, ensure_ascii=False))
           "
 
@@ -104,4 +107,11 @@ jobs:
         with:
           name: scraped-providers-${{ github.event.inputs.source }}-${{ github.run_number }}
           path: scripts/scraped_providers.json
+          retention-days: 14
+
+      - name: Upload CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraped-providers-csv-${{ github.event.inputs.source }}-${{ github.run_number }}
+          path: scripts/scraped_providers.csv
           retention-days: 14
