@@ -1,5 +1,7 @@
 import type {
     ChatMessage,
+    GuestDetails,
+    ItineraryDay,
     ItineraryListingRef,
     ItineraryPlan,
 } from '@/lib/kaia-types';
@@ -83,6 +85,58 @@ export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
     }
 
     return response.json();
+}
+
+export async function createTrip(
+    details: GuestDetails,
+    variantName: string,
+    plan: ItineraryPlan,
+    variantDays: ItineraryDay[],
+): Promise<{ trip_id: number; inquiry_count: number }> {
+    const response = await fetch('/trips', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify({
+            ...details,
+            variant_name: variantName,
+            plan,
+            variant_days: variantDays,
+        }),
+    });
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+
+        throw new Error(
+            (data as { error?: string }).error ??
+                'Booking failed. Please try again.',
+        );
+    }
+
+    return response.json();
+}
+
+export interface TripInquiryStatus {
+    listing_name: string;
+    status: string;
+    label: string;
+}
+
+export async function fetchTripInquiries(
+    tripId: number,
+): Promise<TripInquiryStatus[]> {
+    const response = await fetch(`/trips/${tripId}/inquiries`, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    const data = await response.json();
+
+    return (data as { inquiries: TripInquiryStatus[] }).inquiries ?? [];
 }
 
 export async function sendKaiaMessage(
