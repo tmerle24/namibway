@@ -249,6 +249,10 @@ class ItineraryService
             back and forth between distant regions. Build exactly 2 variants of differing budget/pace where
             the catalog allows it, otherwise 1 is fine.
 
+            For each day's "location" field, use the listing's exact "region" value (e.g. "Khomas",
+            "Etosha", "Erongo", "Hardap", "Kunene", "Otjozondjupa", "Karas") — these values are used
+            to draw the route on the trip map and must match exactly.
+
             Reuse the same accommodation across multiple consecutive days when the traveler stays in one
             place for a few nights — you do NOT need a different accommodation for every day (a 14-day trip
             might only need 4-5 distinct accommodations, each covering several nights). It's fine to leave
@@ -299,7 +303,7 @@ class ItineraryService
                                         'type' => 'object',
                                         'properties' => [
                                             'day' => ['type' => 'integer'],
-                                            'location' => ['type' => 'string'],
+                                            'location' => ['type' => 'string', 'description' => 'Exact region value from the listing catalog, e.g. "Khomas", "Etosha", "Erongo"'],
                                             'accommodation' => ['type' => 'string'],
                                             'activity' => ['type' => 'string'],
                                             'restaurant' => ['type' => 'string'],
