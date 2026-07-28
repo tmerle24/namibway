@@ -272,32 +272,27 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
     )
 
     if not record.get("website"):
-        # Try GeoDirectory-specific website field first
+        # Only trust GeoDirectory-specific website field — generic link fallback
+        # always picks up NTB's own social links scattered across the page.
         website_el = content.select_one(
-            ".geodir-field-website a, .gd-field-website a"
+            ".geodir-field-website a, .gd-field-website a, "
+            "[class*='field-website'] a, [class*='field_website'] a"
         )
         if website_el:
-            record["website"] = website_el.get("href")
-        else:
-            for a in content.select("a[href^='http']"):
-                href = a.get("href", "")
-                domain = urlparse(href).netloc.lower().removeprefix("www.")
-                if not any(domain == s or domain.endswith("." + s) for s in _SKIP_DOMAINS):
-                    record["website"] = href
-                    break
+            href = website_el.get("href", "")
+            domain = urlparse(href).netloc.lower().removeprefix("www.")
+            if not any(domain == s or domain.endswith("." + s) for s in _SKIP_DOMAINS):
+                record["website"] = href
 
     if not record.get("contact_email"):
-        # Try GeoDirectory-specific email field first
+        # Only trust GeoDirectory-specific email field for the same reason.
         email_el = content.select_one(
-            ".geodir-field-email a, .gd-field-email a"
+            ".geodir-field-email a, .gd-field-email a, "
+            "[class*='field-email'] a, [class*='field_email'] a"
         )
         if email_el:
             href = email_el.get("href", "")
-            record["contact_email"] = (
-                href[7:] if href.startswith("mailto:") else email_el.get_text(strip=True)
-            )
-        else:
-            email = extract_email(content.get_text())
+            email = href[7:] if href.startswith("mailto:") else email_el.get_text(strip=True)
             if email and "visitnamibia.com.na" not in email.lower():
                 record["contact_email"] = email
 
