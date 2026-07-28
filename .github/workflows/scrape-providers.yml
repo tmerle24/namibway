@@ -34,6 +34,11 @@ on:
         description: "How many records to print in the log for inspection"
         required: false
         default: "30"
+      commit_results:
+        description: "Commit JSON output to data/scraped/ in repo (for server import via git pull)"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   scrape:
@@ -41,10 +46,10 @@ jobs:
     timeout-minutes: 90
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -71,14 +76,12 @@ jobs:
               records = json.load(f)
           print(f'Total records: {len(records)}')
 
-          # Count by type
           from collections import Counter
           types = Counter(r.get('type') for r in records)
           print('By type:')
           for t, n in sorted(types.items()):
               print(f'  {t}: {n}')
 
-          # Count with email / website / coords / phone
           with_email = sum(1 for r in records if r.get('contact_email'))
           with_website = sum(1 for r in records if r.get('website'))
           with_coords = sum(1 for r in records if r.get('latitude'))
@@ -88,7 +91,6 @@ jobs:
           print(f'With phone:   {with_phone}')
           print(f'With coords:  {with_coords}')
 
-          # Preview first N records
           limit = int('${{ github.event.inputs.preview_count || 30 }}')
           print(f'\n=== First {limit} records ===')
           for r in records[:limit]:
@@ -102,8 +104,19 @@ jobs:
               }, ensure_ascii=False))
           "
 
+      - name: Commit results to repo
+        if: ${{ github.event.inputs.commit_results == 'true' }}
+        run: |
+          mkdir -p data/scraped
+          cp scripts/scraped_providers.json data/scraped/scraped_providers.json
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add data/scraped/scraped_providers.json
+          git commit -m "data: ${{ github.event.inputs.source }} scrape run #${{ github.run_number }} ($(python3 -c \"import json; print(len(json.load(open('data/scraped/scraped_providers.json'))))\") records) [skip ci]"
+          git push
+
       - name: Upload JSON artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: scraped-providers-${{ github.event.inputs.source }}-${{ github.run_number }}
           path: scripts/scraped_providers.json

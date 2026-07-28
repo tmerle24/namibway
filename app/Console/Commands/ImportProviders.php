@@ -31,8 +31,8 @@ class ImportProviders extends Command
             $this->warn('DRY RUN — no changes will be written');
         }
 
-        $ntbPath = $this->option('ntb') ?: base_path('scripts/scraped_providers.json');
-        $ypPath  = $this->option('yp')  ?: base_path('scripts/namibiayp_contacts.json');
+        $ntbPath = $this->option('ntb') ?: base_path('data/scraped/scraped_providers.json');
+        $ypPath  = $this->option('yp')  ?: base_path('data/scraped/namibiayp_contacts.json');
 
         if (file_exists($ntbPath)) {
             $this->info("Importing NTB records from {$ntbPath}…");
@@ -56,10 +56,6 @@ class ImportProviders extends Command
 
         return self::SUCCESS;
     }
-
-    // ------------------------------------------------------------------
-    // NTB / visitnamibia.com.na
-    // ------------------------------------------------------------------
 
     private function importNtb(string $path): void
     {
@@ -104,10 +100,6 @@ class ImportProviders extends Command
         $this->newLine();
     }
 
-    // ------------------------------------------------------------------
-    // namibiayp.com — enrich existing NTB records, create new otherwise
-    // ------------------------------------------------------------------
-
     private function importYp(string $path, bool $merge): void
     {
         $records = json_decode(file_get_contents($path), true);
@@ -116,7 +108,6 @@ class ImportProviders extends Command
 
         $now = Carbon::now();
 
-        // Load all existing names once for similarity matching
         $existing = $merge
             ? Listing::select('id', 'name', 'phone', 'address', 'website', 'latitude', 'longitude')
                 ->get()
@@ -132,15 +123,13 @@ class ImportProviders extends Command
                 continue;
             }
 
-            // Try to find an existing listing by name similarity
             $match = $merge ? $this->findSimilar($name, $existing, 0.82) : null;
 
             if ($match) {
-                // Fill only empty fields — never overwrite existing data
                 $fill = [];
-                if (! $match->phone   && ($r['phone'] ?? null))   $fill['phone']     = $r['phone'];
-                if (! $match->address && ($r['address'] ?? null))  $fill['address']   = $r['address'];
-                if (! $match->website && ($r['website'] ?? null))  $fill['website']   = $this->cleanUrl($r['website']);
+                if (! $match->phone     && ($r['phone'] ?? null))     $fill['phone']     = $r['phone'];
+                if (! $match->address   && ($r['address'] ?? null))   $fill['address']   = $r['address'];
+                if (! $match->website   && ($r['website'] ?? null))   $fill['website']   = $this->cleanUrl($r['website']);
                 if (! $match->latitude  && ($r['latitude'] ?? null))  $fill['latitude']  = $r['latitude'];
                 if (! $match->longitude && ($r['longitude'] ?? null)) $fill['longitude'] = $r['longitude'];
 
@@ -153,7 +142,6 @@ class ImportProviders extends Command
                     $this->skipped++;
                 }
             } else {
-                // No NTB match — insert as new listing
                 $type = $this->resolveType($r['type'] ?? 'accommodation');
                 $slug = $this->uniqueSlug(Str::slug($name));
 
@@ -181,10 +169,6 @@ class ImportProviders extends Command
         $this->newLine();
     }
 
-    // ------------------------------------------------------------------
-    // Helpers
-    // ------------------------------------------------------------------
-
     private function upsertListing(string $slug, string $name, array $fields): void
     {
         if ($this->dry) {
@@ -195,7 +179,6 @@ class ImportProviders extends Command
         $existing = Listing::where('slug', $slug)->first();
 
         if ($existing) {
-            // Only fill empty fields — NTB is source of truth for what it has
             $fill = [];
             foreach ($fields as $k => $v) {
                 if ($v !== null && blank($existing->getAttributeValue($k))) {
