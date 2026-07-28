@@ -34,6 +34,11 @@ on:
         description: "How many records to print in the log for inspection"
         required: false
         default: "30"
+      commit_results:
+        description: "Commit JSON output to data/scraped/ in repo (for server import via git pull)"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   scrape:
@@ -101,6 +106,17 @@ jobs:
                   'phone': r.get('phone'),
               }, ensure_ascii=False))
           "
+
+      - name: Commit results to repo
+        if: ${{ github.event.inputs.commit_results == 'true' }}
+        run: |
+          mkdir -p data/scraped
+          cp scripts/scraped_providers.json data/scraped/scraped_providers.json
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add data/scraped/scraped_providers.json
+          git commit -m "data: ${{ github.event.inputs.source }} scrape run #${{ github.run_number }} ($(python3 -c \"import json; print(len(json.load(open('data/scraped/scraped_providers.json'))))\") records) [skip ci]"
+          git push
 
       - name: Upload JSON artifact
         uses: actions/upload-artifact@v4

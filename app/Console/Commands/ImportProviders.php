@@ -31,8 +31,8 @@ class ImportProviders extends Command
             $this->warn('DRY RUN — no changes will be written');
         }
 
-        $ntbPath = $this->option('ntb') ?: base_path('scripts/scraped_providers.json');
-        $ypPath  = $this->option('yp')  ?: base_path('scripts/namibiayp_contacts.json');
+        $ntbPath = $this->option('ntb') ?: base_path('data/scraped/scraped_providers.json');
+        $ypPath  = $this->option('yp')  ?: base_path('data/scraped/namibiayp_contacts.json');
 
         if (file_exists($ntbPath)) {
             $this->info("Importing NTB records from {$ntbPath}…");

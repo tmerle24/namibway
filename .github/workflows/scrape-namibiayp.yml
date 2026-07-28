@@ -21,6 +21,11 @@ on:
         required: false
         default: false
         type: boolean
+      commit_results:
+        description: "Commit JSON output to data/scraped/ in repo (for server import via git pull)"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   scrape:
@@ -73,6 +78,17 @@ jobs:
                   ['name','type','region','phone','email','website','address','latitude','longitude']
               }, ensure_ascii=False))
           "
+
+      - name: Commit results to repo
+        if: ${{ github.event.inputs.commit_results == 'true' }}
+        run: |
+          mkdir -p data/scraped
+          cp scripts/namibiayp_contacts.json data/scraped/namibiayp_contacts.json
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add data/scraped/namibiayp_contacts.json
+          git commit -m "data: namibiayp scrape run #${{ github.run_number }} ($(python3 -c \"import json; print(len(json.load(open('data/scraped/namibiayp_contacts.json'))))\") records) [skip ci]"
+          git push
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
