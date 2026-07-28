@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Region;
 use App\Models\SavedPlan;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -53,9 +54,23 @@ class SavedPlanController extends Controller
     {
         $saved = SavedPlan::where('token', $token)->firstOrFail();
 
+        $regionCoords = Region::query()
+            ->whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->get(['name', 'lat', 'lng'])
+            ->mapWithKeys(fn (Region $r) => [
+                mb_strtolower($r->getTranslation('name', 'en')) => [
+                    'lat' => $r->lat,
+                    'lng' => $r->lng,
+                ],
+            ])
+            ->toArray();
+
+        /** @phpstan-ignore class.notFound */
         $pdf = Pdf::loadView('pdf.trip-plan', [
             'plan' => $saved->plan_json,
             'title' => $saved->title,
+            'regionCoords' => $regionCoords,
         ]);
 
         $filename = Str::slug($saved->title ?: 'namibway-trip').'.pdf';

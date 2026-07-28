@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ClaimController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\SavedPlanController;
@@ -32,7 +33,7 @@ Route::get('claim/{token}', [ClaimController::class, 'show'])->name('claim.show'
 Route::post('claim/{token}', [ClaimController::class, 'store'])->middleware('auth')->name('claim.store');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
 });
 
 require __DIR__.'/settings.php';

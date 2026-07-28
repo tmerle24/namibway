@@ -56,92 +56,106 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
 
 <template>
     <div class="kaia-page trip-plan-page">
-        <header class="trip-plan-header">
-            <a href="/" class="trip-plan-logo">
-                <img
-                    :src="logoDark"
-                    alt="NamibWay"
-                    class="footer-logo"
-                    style="height: 28px"
-                />
-            </a>
-            <div class="trip-plan-meta">
-                <div class="eyebrow">{{ t('itinerary.eyebrow') }}</div>
-                <h1>{{ title || t('itinerary.title') }}</h1>
-                <p v-if="plan.trip_summary" class="trip-summary">
-                    {{ plan.trip_summary }}
-                </p>
-            </div>
-        </header>
-
-        <div class="variants">
-            <div
-                v-for="(variant, variantIndex) in plan.variants"
-                :key="variant.name"
-                class="variant-card"
-            >
-                <h3>{{ variant.name }}</h3>
-                <div v-if="estimatedLabel(variant)" class="variant-price">
-                    {{ estimatedLabel(variant) }}
-                </div>
-
-                <TripMap
-                    :map-id="`trip-map-${variantIndex}`"
-                    :variant="variant"
-                    :region-coords="regionCoords"
-                />
-
-                <template v-if="variant.vehicle">
-                    <ItineraryLineItem
-                        keypath="itinerary.vehicle"
-                        :item-ref="variant.vehicle"
-                        :readonly="true"
+        <div class="trip-plan-content">
+            <header class="trip-plan-header">
+                <a href="/" class="trip-plan-logo">
+                    <img
+                        :src="logoDark"
+                        alt="NamibWay"
+                        class="footer-logo"
+                        style="height: 28px"
                     />
-                </template>
-
-                <div v-for="day in variant.days" :key="day.day" class="day-row">
-                    <div class="day-num">{{ day.day }}</div>
-                    <div class="day-detail">
-                        <div class="day-location-label">{{ day.location }}</div>
-                        <ItineraryLineItem
-                            v-if="day.accommodation"
-                            keypath="itinerary.stay"
-                            :item-ref="day.accommodation"
-                            :readonly="true"
-                        />
-                        <ItineraryLineItem
-                            v-if="day.activity"
-                            keypath="itinerary.activity"
-                            :item-ref="day.activity"
-                            :readonly="true"
-                        />
-                        <ItineraryLineItem
-                            v-if="day.restaurant"
-                            keypath="itinerary.dinner"
-                            :item-ref="day.restaurant"
-                            :readonly="true"
-                        />
-                    </div>
+                </a>
+                <div class="trip-plan-meta">
+                    <div class="eyebrow">{{ t('itinerary.eyebrow') }}</div>
+                    <h1>{{ title || t('itinerary.title') }}</h1>
+                    <p v-if="plan.trip_summary" class="trip-summary">
+                        {{ plan.trip_summary }}
+                    </p>
                 </div>
+            </header>
 
-                <SaveShareBar
-                    :plan="{
-                        trip_summary: plan.trip_summary,
-                        variants: [variant],
-                    }"
-                    :token="token"
-                />
+            <div class="variants">
+                <div
+                    v-for="(variant, variantIndex) in plan.variants"
+                    :key="variant.name"
+                    class="variant-card"
+                >
+                    <h3>{{ variant.name }}</h3>
+                    <div v-if="estimatedLabel(variant)" class="variant-price">
+                        {{ estimatedLabel(variant) }}
+                    </div>
+
+                    <TripMap
+                        :map-id="`trip-map-${variantIndex}`"
+                        :variant="variant"
+                        :region-coords="regionCoords"
+                    />
+
+                    <template v-if="variant.vehicle">
+                        <ItineraryLineItem
+                            keypath="itinerary.vehicle"
+                            :item-ref="variant.vehicle"
+                            :readonly="true"
+                        />
+                    </template>
+
+                    <div
+                        v-for="day in variant.days"
+                        :key="day.day"
+                        class="day-row"
+                    >
+                        <div class="day-num">{{ day.day }}</div>
+                        <div class="day-detail">
+                            <div class="day-location-label">
+                                {{ day.location }}
+                            </div>
+                            <ItineraryLineItem
+                                v-if="day.accommodation"
+                                keypath="itinerary.stay"
+                                :item-ref="day.accommodation"
+                                :readonly="true"
+                            />
+                            <ItineraryLineItem
+                                v-if="day.activity"
+                                keypath="itinerary.activity"
+                                :item-ref="day.activity"
+                                :readonly="true"
+                            />
+                            <ItineraryLineItem
+                                v-if="day.restaurant"
+                                keypath="itinerary.dinner"
+                                :item-ref="day.restaurant"
+                                :readonly="true"
+                            />
+                        </div>
+                    </div>
+
+                    <SaveShareBar
+                        :plan="{
+                            trip_summary: plan.trip_summary,
+                            variants: [variant],
+                        }"
+                        :token="token"
+                    />
+                </div>
             </div>
-        </div>
 
-        <footer>
-            <img :src="logoDark" alt="NamibWay" class="footer-logo" />
-            <p>{{ t('footer.tagline') }}</p>
-        </footer>
+            <footer>
+                <img :src="logoDark" alt="NamibWay" class="footer-logo" />
+                <p>{{ t('footer.tagline') }}</p>
+            </footer>
+        </div>
     </div>
 </template>
 
 <style scoped>
+.trip-plan-content {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 0 24px 40px;
+}
+
 .trip-plan-header {
     padding: 28px 0 20px;
     border-bottom: 1px solid var(--sand-dark, #d6c9b5);
@@ -173,6 +187,9 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
 }
 
 @media print {
+    .trip-plan-content {
+        padding: 0;
+    }
     .trip-plan-header {
         padding-top: 0;
     }
