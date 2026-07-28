@@ -19,8 +19,11 @@ class ImportProviders extends Command
     protected $description = 'Import scraped provider data into listings table (one-time, idempotent via slug upsert)';
 
     private bool $dry = false;
+
     private int $created = 0;
+
     private int $updated = 0;
+
     private int $skipped = 0;
 
     public function handle(): int
@@ -32,7 +35,7 @@ class ImportProviders extends Command
         }
 
         $ntbPath = $this->option('ntb') ?: base_path('data/scraped/scraped_providers.json');
-        $ypPath  = $this->option('yp')  ?: base_path('data/scraped/namibiayp_contacts.json');
+        $ypPath = $this->option('yp') ?: base_path('data/scraped/namibiayp_contacts.json');
 
         if (file_exists($ntbPath)) {
             $this->info("Importing NTB records from {$ntbPath}…");
@@ -81,19 +84,19 @@ class ImportProviders extends Command
             $slug = $this->uniqueSlug(Str::slug($name));
 
             $fields = [
-                'type'          => $type,
-                'region'        => $r['region'] ?? null,
-                'description'   => $this->localise($r['description'] ?? null),
-                'latitude'      => $r['latitude'] ?? null,
-                'longitude'     => $r['longitude'] ?? null,
-                'website'       => $this->cleanUrl($r['website'] ?? null),
+                'type' => $type,
+                'region' => $r['region'] ?? null,
+                'description' => $this->localise($r['description'] ?? null),
+                'latitude' => $r['latitude'] ?? null,
+                'longitude' => $r['longitude'] ?? null,
+                'website' => $this->cleanUrl($r['website'] ?? null),
                 'contact_email' => $r['email'] ?? null,
-                'phone'         => $r['phone'] ?? null,
-                'source_url'    => $r['source_url'] ?? null,
+                'phone' => $r['phone'] ?? null,
+                'source_url' => $r['source_url'] ?? null,
                 'scrape_source' => 'ntb',
-                'scraped_at'    => $now,
-                'claim_status'  => 'unclaimed',
-                'is_published'  => false,
+                'scraped_at' => $now,
+                'claim_status' => 'unclaimed',
+                'is_published' => false,
             ];
 
             $this->upsertListing($slug, $name, $fields);
@@ -118,7 +121,7 @@ class ImportProviders extends Command
 
         // Load all existing names once for similarity matching
         $existing = $merge
-            ? Listing::select('id', 'name', 'phone', 'address', 'website', 'latitude', 'longitude')
+            ? Listing::select('id', 'name', 'phone', 'address', 'website', 'contact_email', 'latitude', 'longitude')
                 ->get()
                 ->keyBy('id')
                 ->all()
@@ -138,12 +141,30 @@ class ImportProviders extends Command
             if ($match) {
                 // Fill only empty fields — never overwrite existing data
                 $fill = [];
-                if (! $match->phone         && ($r['phone'] ?? null))    $fill['phone']         = $r['phone'];
-                if (! $match->address       && ($r['address'] ?? null))  $fill['address']       = $r['address'];
-                if (! $match->website       && ($r['website'] ?? null))  $fill['website']       = $this->cleanUrl($r['website']);
-                if (! $match->contact_email && ($r['email'] ?? null))    $fill['contact_email'] = $r['email'];
-                if (! $match->latitude      && ($r['latitude'] ?? null))  $fill['latitude']      = $r['latitude'];
-                if (! $match->longitude     && ($r['longitude'] ?? null)) $fill['longitude']     = $r['longitude'];
+
+                if (! $match->phone && ($r['phone'] ?? null)) {
+                    $fill['phone'] = $r['phone'];
+                }
+
+                if (! $match->address && ($r['address'] ?? null)) {
+                    $fill['address'] = $r['address'];
+                }
+
+                if (! $match->website && ($r['website'] ?? null)) {
+                    $fill['website'] = $this->cleanUrl($r['website']);
+                }
+
+                if (! $match->contact_email && ($r['email'] ?? null)) {
+                    $fill['contact_email'] = $r['email'];
+                }
+
+                if (! $match->latitude && ($r['latitude'] ?? null)) {
+                    $fill['latitude'] = $r['latitude'];
+                }
+
+                if (! $match->longitude && ($r['longitude'] ?? null)) {
+                    $fill['longitude'] = $r['longitude'];
+                }
 
                 if ($fill) {
                     if (! $this->dry) {
@@ -159,19 +180,19 @@ class ImportProviders extends Command
                 $slug = $this->uniqueSlug(Str::slug($name));
 
                 $fields = [
-                    'type'          => $type,
-                    'region'        => $r['region'] ?? null,
-                    'latitude'      => $r['latitude'] ?? null,
-                    'longitude'     => $r['longitude'] ?? null,
-                    'website'       => $this->cleanUrl($r['website'] ?? null),
+                    'type' => $type,
+                    'region' => $r['region'] ?? null,
+                    'latitude' => $r['latitude'] ?? null,
+                    'longitude' => $r['longitude'] ?? null,
+                    'website' => $this->cleanUrl($r['website'] ?? null),
                     'contact_email' => $r['email'] ?? null,
-                    'phone'         => $r['phone'] ?? null,
-                    'address'       => $r['address'] ?? null,
-                    'source_url'    => $r['source_url'] ?? null,
+                    'phone' => $r['phone'] ?? null,
+                    'address' => $r['address'] ?? null,
+                    'source_url' => $r['source_url'] ?? null,
                     'scrape_source' => 'namibiayp',
-                    'scraped_at'    => $now,
-                    'claim_status'  => 'unclaimed',
-                    'is_published'  => false,
+                    'scraped_at' => $now,
+                    'claim_status' => 'unclaimed',
+                    'is_published' => false,
                 ];
 
                 $this->upsertListing($slug, $name, $fields);
@@ -192,6 +213,7 @@ class ImportProviders extends Command
     {
         if ($this->dry) {
             $this->created++;
+
             return;
         }
 
@@ -245,10 +267,11 @@ class ImportProviders extends Command
     {
         $map = [
             'accommodation' => ListingType::Accommodation->value,
-            'activity'      => ListingType::Activity->value,
-            'restaurant'    => ListingType::Restaurant->value,
-            'vehicle'       => ListingType::Vehicle->value,
+            'activity' => ListingType::Activity->value,
+            'restaurant' => ListingType::Restaurant->value,
+            'vehicle' => ListingType::Vehicle->value,
         ];
+
         return $map[strtolower($raw)] ?? ListingType::Accommodation->value;
     }
 
@@ -259,11 +282,15 @@ class ImportProviders extends Command
 
     private function cleanUrl(?string $url): ?string
     {
-        if (! $url) return null;
+        if (! $url) {
+            return null;
+        }
+
         $url = trim($url);
+
         return (str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))
             ? $url
-            : 'https://' . $url;
+            : 'https://'.$url;
     }
 
     private function uniqueSlug(string $base): string
@@ -274,6 +301,7 @@ class ImportProviders extends Command
             $i++;
             $slug = "{$base}-{$i}";
         }
+
         return $slug;
     }
 }
