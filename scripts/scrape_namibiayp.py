@@ -198,10 +198,12 @@ def _parse_category_cards(soup: BeautifulSoup, listing_type: str, page_url: str)
 
 def scrape_category(path: str, listing_type: str, limit: int = 0) -> list[dict]:
     # Pagination pattern confirmed: /category/Hotels/2, /category/Hotels/3 …
+    # The site returns the same N listings on every page past the real end — detect cycling.
     base_url = BASE + path
     all_records: list[dict] = []
+    seen_urls: set[str] = set()
     page = 1
-    consecutive_empty = 0
+    consecutive_all_dupes = 0
 
     while True:
         page_url = base_url if page == 1 else f"{base_url}/{page}"
@@ -214,13 +216,21 @@ def scrape_category(path: str, listing_type: str, limit: int = 0) -> list[dict]:
         records = _parse_category_cards(soup, listing_type, page_url)
 
         if not records:
-            consecutive_empty += 1
-            if consecutive_empty >= 2:
+            break
+
+        # Stop if every entry on this page is already known (site is cycling)
+        new_records = [r for r in records if r.get("detail_url") not in seen_urls]
+        if not new_records:
+            consecutive_all_dupes += 1
+            if consecutive_all_dupes >= 2:
+                print(f"  → cycling detected — stopping")
                 break
         else:
-            consecutive_empty = 0
-            all_records.extend(records)
-            print(f"  → {len(records)} listings (page {page}, total: {len(all_records)})")
+            consecutive_all_dupes = 0
+            for r in new_records:
+                seen_urls.add(r.get("detail_url", ""))
+            all_records.extend(new_records)
+            print(f"  → {len(new_records)} new listings (page {page}, total: {len(all_records)})")
 
         if limit and len(all_records) >= limit:
             all_records = all_records[:limit]
