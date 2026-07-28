@@ -334,11 +334,6 @@ def scrape_visitnamibia(fetch_details: bool = False) -> list:
             page += 1
             time.sleep(2)
 
-    # 2. Scrape by category for better type resolution
-    category_records = scrape_visitnamibia_categories()
-    print(f"  → {len(category_records)} listings from category pages")
-    all_records.extend(category_records)
-
     all_records = dedupe(all_records)
     print(f"  Total (deduped): {len(all_records)}")
 
