@@ -87,7 +87,7 @@ class TripController extends Controller
             ->get(['id', 'trip_id', 'listing_id', 'status']);
 
         $data = $inquiries->map(fn (Inquiry $inquiry) => [
-            'listing_name' => $inquiry->listing?->name ?? '—',
+            'listing_name' => $inquiry->listing->name,
             'status' => $inquiry->status->value,
             'label' => $inquiry->status->label(),
         ]);
