@@ -160,6 +160,30 @@
             "unavailable": "This listing isn't currently accepting inquiries — check back soon."
         }
     },
+    "guestForm": {
+        "eyebrow": "Almost there",
+        "title": "Who's travelling?",
+        "subtitle": "One quick form — then we send your request to each property in your plan. No payment, no obligation.",
+        "name": "Full name",
+        "namePlaceholder": "Jane Smith",
+        "email": "Email",
+        "emailPlaceholder": "jane@example.com",
+        "phone": "Phone (optional)",
+        "phonePlaceholder": "+264 …",
+        "checkIn": "Check-in date",
+        "checkOut": "Check-out date",
+        "adults": "Adults",
+        "children": "Children",
+        "submit": "Send booking requests",
+        "sending": "Sending…",
+        "note": "Your details are shared only with the properties in your selected plan.",
+        "errors": {
+            "generic": "Something went wrong. Please try again."
+        }
+    },
+    "errors": {
+        "bookingFailed": "Something went wrong. Please try again."
+    },
     "localeSwitcher": {
         "label": "Language"
     }

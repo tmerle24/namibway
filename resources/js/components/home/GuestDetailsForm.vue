@@ -1,0 +1,140 @@
+<script setup lang="ts">
+import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import type { GuestDetails, ItineraryVariant } from '@/lib/kaia-types';
+
+defineProps<{
+    variant: ItineraryVariant;
+    loading?: boolean;
+    error?: string | null;
+}>();
+
+const emit = defineEmits<{
+    submit: [details: GuestDetails];
+}>();
+
+const { t } = useI18n();
+
+const name = ref('');
+const email = ref('');
+const phone = ref('');
+const checkIn = ref('');
+const checkOut = ref('');
+const adults = ref(2);
+const children = ref(0);
+
+function today(): string {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function submit() {
+    emit('submit', {
+        name: name.value,
+        email: email.value,
+        phone: phone.value,
+        check_in: checkIn.value,
+        check_out: checkOut.value,
+        adults: adults.value,
+        children: children.value,
+    });
+}
+</script>
+
+<template>
+    <section id="guest-form-section" class="guest-form-section">
+        <div class="section-head">
+            <div class="eyebrow">{{ t('guestForm.eyebrow') }}</div>
+            <h2>{{ t('guestForm.title') }}</h2>
+            <p>{{ t('guestForm.subtitle') }}</p>
+        </div>
+
+        <form class="guest-form" @submit.prevent="submit">
+            <div class="form-row">
+                <label>
+                    {{ t('guestForm.name') }}
+                    <input
+                        v-model="name"
+                        type="text"
+                        required
+                        autocomplete="name"
+                        :placeholder="t('guestForm.namePlaceholder')"
+                    />
+                </label>
+                <label>
+                    {{ t('guestForm.email') }}
+                    <input
+                        v-model="email"
+                        type="email"
+                        required
+                        autocomplete="email"
+                        :placeholder="t('guestForm.emailPlaceholder')"
+                    />
+                </label>
+            </div>
+
+            <div class="form-row">
+                <label>
+                    {{ t('guestForm.phone') }}
+                    <input
+                        v-model="phone"
+                        type="tel"
+                        autocomplete="tel"
+                        :placeholder="t('guestForm.phonePlaceholder')"
+                    />
+                </label>
+            </div>
+
+            <div class="form-row">
+                <label>
+                    {{ t('guestForm.checkIn') }}
+                    <input
+                        v-model="checkIn"
+                        type="date"
+                        required
+                        :min="today()"
+                    />
+                </label>
+                <label>
+                    {{ t('guestForm.checkOut') }}
+                    <input
+                        v-model="checkOut"
+                        type="date"
+                        required
+                        :min="checkIn || today()"
+                    />
+                </label>
+            </div>
+
+            <div class="form-row">
+                <label>
+                    {{ t('guestForm.adults') }}
+                    <input
+                        v-model.number="adults"
+                        type="number"
+                        min="1"
+                        max="20"
+                        required
+                    />
+                </label>
+                <label>
+                    {{ t('guestForm.children') }}
+                    <input
+                        v-model.number="children"
+                        type="number"
+                        min="0"
+                        max="20"
+                    />
+                </label>
+            </div>
+
+            <p v-if="error" class="form-error">{{ error }}</p>
+
+            <button type="submit" class="cta-btn" :disabled="loading">
+                <span v-if="loading">{{ t('guestForm.sending') }}</span>
+                <span v-else>{{ t('guestForm.submit') }}</span>
+            </button>
+
+            <p class="form-note">{{ t('guestForm.note') }}</p>
+        </form>
+    </section>
+</template>
