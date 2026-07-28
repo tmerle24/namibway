@@ -7,7 +7,6 @@ import { fetchAlternatives, fetchRegions, fetchRegionCoords } from '@/lib/kaia-c
 import type { RegionCoords } from '@/lib/kaia-client';
 import ItineraryLineItem from './ItineraryLineItem.vue';
 import AlternativesPanel from './AlternativesPanel.vue';
-import ItineraryLineItem from './ItineraryLineItem.vue';
 import LocationPicker from './LocationPicker.vue';
 import TripMap from './TripMap.vue';
 import SaveShareBar from './SaveShareBar.vue';
