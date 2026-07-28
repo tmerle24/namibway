@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\SavedPlan;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -47,11 +49,11 @@ class SavedPlanController extends Controller
         ]);
     }
 
-    public function pdf(Request $request, string $token): \Illuminate\Http\Response
+    public function pdf(Request $request, string $token): HttpResponse
     {
         $saved = SavedPlan::where('token', $token)->firstOrFail();
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.trip-plan', [
+        $pdf = Pdf::loadView('pdf.trip-plan', [
             'plan' => $saved->plan_json,
             'title' => $saved->title,
         ]);
