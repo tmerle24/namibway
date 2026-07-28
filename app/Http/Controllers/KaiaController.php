@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Listing;
+use App\Models\Region;
 use App\Services\Kaia\InterviewService;
 use App\Services\Kaia\ItineraryService;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +23,19 @@ class KaiaController extends Controller
             ->pluck('region');
 
         return response()->json(['regions' => $regions]);
+    }
+
+    public function regionCoords(): JsonResponse
+    {
+        $coords = Region::query()
+            ->whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->get(['name', 'lat', 'lng'])
+            ->mapWithKeys(fn (Region $r) => [
+                mb_strtolower($r->getTranslation('name', 'en')) => ['lat' => $r->lat, 'lng' => $r->lng],
+            ]);
+
+        return response()->json(['coords' => $coords]);
     }
 
     public function alternatives(Request $request, ItineraryService $itinerary): JsonResponse

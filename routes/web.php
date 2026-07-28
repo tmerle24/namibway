@@ -3,11 +3,23 @@
 use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListingController;
+use App\Http\Controllers\SavedPlanController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
 
 Route::get('listings/{listing:slug}', [ListingController::class, 'show'])->name('listings.show');
+
+Route::post('trip/save', [SavedPlanController::class, 'store'])
+    ->middleware('throttle:20,1')
+    ->name('trip.save');
+
+Route::get('trip/{token}', [SavedPlanController::class, 'show'])
+    ->name('trip.show');
+
+Route::get('trip/{token}/pdf', [SavedPlanController::class, 'pdf'])
+    ->middleware('throttle:10,1')
+    ->name('trip.pdf');
 Route::post('listings/{listing:slug}/inquiries', [ListingController::class, 'storeInquiry'])
     ->middleware('throttle:10,1')
     ->name('listings.inquiries.store');

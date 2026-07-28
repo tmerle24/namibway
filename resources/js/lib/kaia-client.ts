@@ -25,6 +25,23 @@ export async function fetchRegions(): Promise<string[]> {
     return data.regions ?? [];
 }
 
+export interface RegionCoords {
+    lat: number;
+    lng: number;
+}
+
+export async function fetchRegionCoords(): Promise<
+    Record<string, RegionCoords>
+> {
+    const response = await fetch('/kaia/region-coords', {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    const data = await response.json();
+
+    return data.coords ?? {};
+}
+
 export async function fetchAlternatives(
     type: string,
     excludeId?: number,
@@ -42,6 +59,30 @@ export async function fetchAlternatives(
     const data = await response.json();
 
     return data.alternatives ?? [];
+}
+
+export interface SavedPlanResult {
+    token: string;
+    url: string;
+}
+
+export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
+    const response = await fetch('/trip/save', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify({ plan }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to save plan');
+    }
+
+    return response.json();
 }
 
 export async function sendKaiaMessage(

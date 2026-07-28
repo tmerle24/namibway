@@ -18,13 +18,13 @@ class RegionSeeder extends Seeder
     public function run(): void
     {
         $regions = [
-            ['name' => 'Khomas', 'listing_region' => 'Khomas', 'blurb' => 'Windhoek and the central highlands — most itineraries start here.', 'image' => 'regions/khomas.jpg', 'sort' => 10],
-            ['name' => 'Erongo', 'listing_region' => 'Erongo', 'blurb' => 'Coastal dunes, Swakopmund, and the Skeleton Coast approach.', 'image' => 'regions/erongo.jpg', 'sort' => 20],
-            ['name' => 'Hardap', 'listing_region' => 'Hardap', 'blurb' => 'Home to the Sossusvlei dune fields and the Namib.', 'image' => 'regions/hardap.jpg', 'sort' => 30],
-            ['name' => 'Kunene', 'listing_region' => 'Kunene', 'blurb' => 'Damaraland\'s rugged desert, ancient rock art, and desert-adapted wildlife.', 'image' => 'regions/kunene.jpg', 'sort' => 40],
-            ['name' => 'Etosha', 'listing_region' => 'Kunene', 'blurb' => 'Namibia\'s premier wildlife park — waterhole game viewing at its very best.', 'image' => 'regions/etosha.jpg', 'sort' => 50],
-            ['name' => 'Otjozondjupa', 'listing_region' => 'Otjozondjupa', 'blurb' => 'Bushveld and the road east toward the Kalahari.', 'image' => 'regions/otjozondjupa.jpg', 'sort' => 60],
-            ['name' => 'Karas', 'listing_region' => 'Karas', 'blurb' => 'The far south — Fish River Canyon and the Orange River.', 'image' => 'regions/karas.jpg', 'sort' => 70],
+            ['name' => 'Khomas',       'listing_region' => 'Khomas',       'lat' => -22.5597, 'lng' => 17.0832, 'blurb' => 'Windhoek and the central highlands — most itineraries start here.',          'image' => 'regions/khomas.jpg',       'sort' => 10],
+            ['name' => 'Erongo',       'listing_region' => 'Erongo',       'lat' => -22.0000, 'lng' => 14.9000, 'blurb' => 'Coastal dunes, Swakopmund, and the Skeleton Coast approach.',                 'image' => 'regions/erongo.jpg',       'sort' => 20],
+            ['name' => 'Hardap',       'listing_region' => 'Hardap',       'lat' => -24.5000, 'lng' => 16.5000, 'blurb' => 'Home to the Sossusvlei dune fields and the Namib.',                          'image' => 'regions/hardap.jpg',       'sort' => 30],
+            ['name' => 'Kunene',       'listing_region' => 'Kunene',       'lat' => -19.5800, 'lng' => 13.9200, 'blurb' => "Damaraland's rugged desert, ancient rock art, and desert-adapted wildlife.", 'image' => 'regions/kunene.jpg',       'sort' => 40],
+            ['name' => 'Etosha',       'listing_region' => 'Kunene',       'lat' => -18.8550, 'lng' => 16.3290, 'blurb' => "Namibia's premier wildlife park — waterhole game viewing at its very best.", 'image' => 'regions/etosha.jpg',       'sort' => 50],
+            ['name' => 'Otjozondjupa', 'listing_region' => 'Otjozondjupa', 'lat' => -20.4600, 'lng' => 17.9200, 'blurb' => 'Bushveld and the road east toward the Kalahari.',                           'image' => 'regions/otjozondjupa.jpg', 'sort' => 60],
+            ['name' => 'Karas',        'listing_region' => 'Karas',        'lat' => -27.7500, 'lng' => 18.0000, 'blurb' => 'The far south — Fish River Canyon and the Orange River.',                   'image' => 'regions/karas.jpg',        'sort' => 70],
         ];
 
         foreach ($regions as $region) {
@@ -35,6 +35,8 @@ class RegionSeeder extends Seeder
                     'blurb' => ['en' => $region['blurb']],
                     'image' => $region['image'],
                     'listing_region' => $region['listing_region'],
+                    'lat' => $region['lat'],
+                    'lng' => $region['lng'],
                     'sort_order' => $region['sort'],
                     'is_published' => true,
                 ]
