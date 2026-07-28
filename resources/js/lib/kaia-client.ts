@@ -32,16 +32,38 @@ export interface RegionCoords {
     lng: number;
 }
 
+// Static fallback so the map renders even when DB has no lat/lng rows yet
+const STATIC_REGION_COORDS: Record<string, RegionCoords> = {
+    khomas: { lat: -22.5597, lng: 17.0832 },
+    erongo: { lat: -22.0, lng: 14.9 },
+    hardap: { lat: -24.5, lng: 16.5 },
+    kunene: { lat: -19.58, lng: 13.92 },
+    etosha: { lat: -18.855, lng: 16.329 },
+    otjozondjupa: { lat: -20.46, lng: 17.92 },
+    karas: { lat: -27.75, lng: 18.0 },
+    kavango: { lat: -18.1, lng: 19.9 },
+    zambezi: { lat: -17.8, lng: 24.5 },
+    ohangwena: { lat: -17.5, lng: 16.8 },
+    omusati: { lat: -18.4, lng: 14.8 },
+    oshana: { lat: -18.45, lng: 15.7 },
+    oshikoto: { lat: -18.45, lng: 16.8 },
+    omaheke: { lat: -21.8, lng: 20.5 },
+};
+
 export async function fetchRegionCoords(): Promise<
     Record<string, RegionCoords>
 > {
-    const response = await fetch('/kaia/region-coords', {
-        credentials: 'same-origin',
-        headers: { Accept: 'application/json' },
-    });
-    const data = await response.json();
+    try {
+        const response = await fetch('/kaia/region-coords', {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+        });
+        const data = await response.json();
 
-    return data.coords ?? {};
+        return { ...STATIC_REGION_COORDS, ...(data.coords ?? {}) };
+    } catch {
+        return { ...STATIC_REGION_COORDS };
+    }
 }
 
 export async function fetchAlternatives(
