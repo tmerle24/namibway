@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
-import { onMounted, ref } from 'vue';
+import { usePage } from '@inertiajs/vue3';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ItineraryLineItem from '@/components/home/ItineraryLineItem.vue';
 import SaveShareBar from '@/components/home/SaveShareBar.vue';
@@ -10,12 +11,20 @@ import type { RegionCoords } from '@/lib/kaia-client';
 import type { ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
 import logoDark from '../../images/logo-dark.png';
 
-defineProps<{
+const props = defineProps<{
     plan: ItineraryPlan;
     title: string | null;
     token: string;
     shareUrl: string;
 }>();
+
+const page = usePage();
+const auth = computed(() => page.props.auth as { user: { id: number } | null });
+const isLoggedIn = computed(() => auth.value.user !== null);
+
+function loginUrl(): string {
+    return `/login/start?redirect=/trip/${props.token}`;
+}
 
 const { t } = useI18n();
 
@@ -74,6 +83,21 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     </p>
                 </div>
             </header>
+
+            <div v-if="!isLoggedIn" class="login-banner">
+                <div class="login-banner-text">
+                    <strong>{{ t('tripPlan.loginCta.title') }}</strong>
+                    <span>{{ t('tripPlan.loginCta.subtitle') }}</span>
+                </div>
+                <div class="login-banner-actions">
+                    <a :href="loginUrl()" class="login-btn">{{
+                        t('tripPlan.loginCta.login')
+                    }}</a>
+                    <a href="/register" class="register-btn">{{
+                        t('tripPlan.loginCta.register')
+                    }}</a>
+                </div>
+            </div>
 
             <div class="variants">
                 <div
@@ -184,6 +208,69 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
     font-size: 13px;
     margin-bottom: 6px;
     color: #2c2521;
+}
+
+.login-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: #faf8f5;
+    border: 1px solid var(--sand-dark, #d6c9b5);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+}
+
+.login-banner-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13px;
+    color: #5b5346;
+}
+
+.login-banner-text strong {
+    font-size: 14px;
+    color: #2c2521;
+}
+
+.login-banner-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.login-btn {
+    display: inline-block;
+    padding: 7px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    background: #c0533a;
+    color: #fff;
+    text-decoration: none;
+}
+
+.login-btn:hover {
+    background: #a8432c;
+}
+
+.register-btn {
+    display: inline-block;
+    padding: 7px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    background: transparent;
+    color: #c0533a;
+    border: 1px solid #c0533a;
+    text-decoration: none;
+}
+
+.register-btn:hover {
+    background: #fdf0ed;
 }
 
 @media print {

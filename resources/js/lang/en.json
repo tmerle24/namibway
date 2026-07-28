@@ -136,6 +136,14 @@
         },
         "examples": "{count} examples"
     },
+    "tripPlan": {
+        "loginCta": {
+            "title": "Keep this trip plan",
+            "subtitle": "Log in or create a free account to access it from your dashboard any time.",
+            "login": "Log in",
+            "register": "Create account"
+        }
+    },
     "footer": {
         "tagline": "AI-assisted travel planning for Namibia. Kaia's interview and itinerary generation are live; real partner booking and availability are coming as the platform develops."
     },

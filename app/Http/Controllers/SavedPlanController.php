@@ -70,6 +70,7 @@ class SavedPlanController extends Controller
             'plan' => $saved->plan_json,
             'title' => $saved->title,
             'regionCoords' => $regionCoords,
+            'shareUrl' => route('trip.show', $token),
         ]);
 
         $filename = Str::slug($saved->title ?: 'namibway-trip').'.pdf';

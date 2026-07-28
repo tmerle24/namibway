@@ -6,6 +6,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\SavedPlanController;
 use App\Http\Controllers\TripController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
@@ -31,6 +32,17 @@ Route::get('trips/{trip}/inquiries', [TripController::class, 'inquiries'])->midd
 
 Route::get('claim/{token}', [ClaimController::class, 'show'])->name('claim.show');
 Route::post('claim/{token}', [ClaimController::class, 'store'])->middleware('auth')->name('claim.store');
+
+// Store intended URL in session so Fortify redirects back after login
+Route::get('login/start', function (Request $request) {
+    $url = $request->query('redirect', '');
+
+    if (is_string($url) && str_starts_with($url, '/')) {
+        $request->session()->put('url.intended', url($url));
+    }
+
+    return redirect()->route('login');
+})->middleware('guest')->name('login.start');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');

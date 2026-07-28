@@ -130,7 +130,8 @@
 @endforeach
 
 <div class="footer">
-    NamibWay · The smartest way to experience Namibia · namibway.com
+    NamibWay · The smartest way to experience Namibia<br>
+    View online: <strong>{{ $shareUrl }}</strong>
 </div>
 
 </body>
