@@ -79,16 +79,22 @@
         "support": {
             "title": "Something went wrong on the road",
             "subtitle": "Flat tyre, closed route, a booking that fell through — get help without hunting for a phone number.",
+            "namePlaceholder": "Your name",
+            "emailPlaceholder": "Your email",
             "placeholder": "Describe what happened...",
             "send": "Send",
-            "confirm": "Support notified. Someone will reach out shortly."
+            "sending": "Sending…",
+            "confirm": "Support notified. Someone will reach out shortly.",
+            "error": "Something went wrong. Please try again."
         },
         "feedback": {
             "title": "Share your trip",
             "subtitle": "Feeds better suggestions to the next traveler planning a similar route.",
             "placeholder": "What was the highlight?",
             "publish": "Publish",
-            "confirm": "Thanks — published to the community."
+            "sending": "Sending…",
+            "confirm": "Thanks — published to the community.",
+            "error": "Something went wrong. Please try again."
         }
     },
     "explore": {

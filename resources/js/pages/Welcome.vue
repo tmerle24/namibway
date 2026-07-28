@@ -49,6 +49,8 @@ const bookingActive = ref(false);
 const bookingLoading = ref(false);
 const bookingError = ref<string | null>(null);
 const bookingTripId = ref<number | null>(null);
+const guestName = ref<string | null>(null);
+const guestEmail = ref<string | null>(null);
 
 async function scrollTo(id: string) {
     await nextTick();
@@ -87,6 +89,8 @@ async function onGuestSubmit(details: GuestDetails) {
             bookingVariant.value.days,
         );
         bookingTripId.value = result.trip_id;
+        guestName.value = details.name;
+        guestEmail.value = details.email;
         bookingActive.value = true;
         await scrollTo('booking-section');
     } catch (e) {
@@ -114,7 +118,11 @@ async function onGuestSubmit(details: GuestDetails) {
             :variant="bookingVariant"
             :trip-id="bookingTripId"
         />
-        <AfterSalesSection />
+        <AfterSalesSection
+            :guest-name="guestName"
+            :guest-email="guestEmail"
+            :trip-id="bookingTripId"
+        />
         <ExploreSection :listings="listings" :regions="regions" />
 
         <footer>
