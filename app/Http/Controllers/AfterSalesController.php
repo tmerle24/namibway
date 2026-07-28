@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\SupportMessage;
-use App\Models\Trip;
 use App\Models\TripFeedback;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
