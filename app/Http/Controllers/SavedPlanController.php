@@ -66,7 +66,6 @@ class SavedPlanController extends Controller
             ])
             ->toArray();
 
-        /** @phpstan-ignore class.notFound */
         $pdf = Pdf::loadView('pdf.trip-plan', [
             'plan' => $saved->plan_json,
             'title' => $saved->title,
