@@ -53,6 +53,7 @@ class SavedPlanController extends Controller
     {
         $saved = SavedPlan::where('token', $token)->firstOrFail();
 
+        /** @phpstan-ignore class.notFound */
         $pdf = Pdf::loadView('pdf.trip-plan', [
             'plan' => $saved->plan_json,
             'title' => $saved->title,

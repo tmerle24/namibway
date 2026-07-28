@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
  * @property int $id
  * @property string $token
  * @property string|null $title
- * @property array $plan_json
+ * @property array<string, mixed> $plan_json
  * @property int|null $user_id
  * @property string|null $session_id
  */
@@ -39,6 +39,7 @@ class SavedPlan extends Model
         });
     }
 
+    /** @return BelongsTo<User, self> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
