@@ -14,10 +14,22 @@ on:
           - tripadvisor
           - all
       fetch_details:
-        description: "Fetch detail pages (slower, extracts website/email/coords)"
+        description: "Fetch detail pages (website/email/coords)"
         required: false
         default: false
         type: boolean
+      detail_workers:
+        description: "Parallel workers for detail fetching (default 4)"
+        required: false
+        default: "4"
+      detail_batch_size:
+        description: "Max records to detail-fetch (0 = all). Use with offset to split across runs."
+        required: false
+        default: "0"
+      detail_batch_offset:
+        description: "Skip N records before starting detail fetch (for batched runs)"
+        required: false
+        default: "0"
       preview_count:
         description: "How many records to print in the log for inspection"
         required: false
@@ -26,7 +38,7 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
 
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +54,9 @@ jobs:
       - name: Run scraper
         run: |
           ARGS="--source ${{ github.event.inputs.source }}"
+          ARGS="$ARGS --detail-workers ${{ github.event.inputs.detail_workers || '4' }}"
+          ARGS="$ARGS --detail-batch-size ${{ github.event.inputs.detail_batch_size || '0' }}"
+          ARGS="$ARGS --detail-batch-offset ${{ github.event.inputs.detail_batch_offset || '0' }}"
           if [ "${{ github.event.inputs.fetch_details }}" = "true" ]; then
             ARGS="$ARGS --fetch-details"
           fi
@@ -63,7 +78,7 @@ jobs:
           for t, n in sorted(types.items()):
               print(f'  {t}: {n}')
 
-          # Count with email / website
+          # Count with email / website / coords
           with_email = sum(1 for r in records if r.get('contact_email'))
           with_website = sum(1 for r in records if r.get('website'))
           with_coords = sum(1 for r in records if r.get('latitude'))
@@ -72,7 +87,7 @@ jobs:
           print(f'With coords:  {with_coords}')
 
           # Preview first N records
-          limit = int('${{ github.event.inputs.preview_count }}')
+          limit = int('${{ github.event.inputs.preview_count || 30 }}')
           print(f'\n=== First {limit} records ===')
           for r in records[:limit]:
               print(json.dumps({

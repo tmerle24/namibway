@@ -27,6 +27,7 @@ import time
 import re
 import argparse
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
@@ -97,39 +98,42 @@ VISITNAMIBIA_LISTING_URLS = [
     "/business-directory/",
 ]
 
-# Type keywords → NamibWay types
-VISITNAMIBIA_TYPE_MAP = {
-    "accommodation": "accommodation",
-    "lodge": "accommodation",
-    "camp": "accommodation",
-    "hotel": "accommodation",
-    "guesthouse": "accommodation",
-    "b&b": "accommodation",
-    "bed": "accommodation",
-    "self-catering": "accommodation",
-    "chalet": "accommodation",
-    "restaurant": "restaurant",
-    "café": "restaurant",
-    "cafe": "restaurant",
-    "bar": "restaurant",
-    "eatery": "restaurant",
-    "activity": "activity",
-    "tour": "activity",
-    "safari": "activity",
-    "excursion": "activity",
-    "adventure": "activity",
-    "car rental": "car_rental",
-    "vehicle": "car_rental",
-    "hire": "car_rental",
-}
+# Ordered priority list: first match wins.
+# Car rental checked before "tour" so "Rental and Tours" → car_rental, not activity.
+VISITNAMIBIA_TYPE_HINTS: list[tuple[list[str], str]] = [
+    (
+        ["car rental", "auto rental", "vehicle rental", "car hire", "self drive",
+         "4x4 rental", "4wd rental"],
+        "car_rental",
+    ),
+    (
+        ["lodge", "hotel", "camp", "resort", "guesthouse", "guest house",
+         "bed and breakfast", "b&b", "self catering", "self-catering",
+         "apartment", "chalet", "tented camp", "rest camp", "accommodation",
+         "backpacker", "hostel", "villa", "cottage"],
+        "accommodation",
+    ),
+    (
+        ["restaurant", "café", "cafe", "bistro", "eatery", "diner", "kitchen",
+         "steakhouse", "spur", "pizza", "takeaway"],
+        "restaurant",
+    ),
+    (
+        ["tour", "safari", "hunting", "transfer", "shuttle", "excursion",
+         "adventure", "activity", "travel", "expedition", "quad", "skydive",
+         "sandboard", "hiking", "canopy", "kayak", "balloon"],
+        "activity",
+    ),
+]
 
 
-def resolve_ntb_type(raw: str) -> str:
-    lower = raw.lower()
-    for keyword, resolved in VISITNAMIBIA_TYPE_MAP.items():
-        if keyword in lower:
-            return resolved
-    return "accommodation"
+def resolve_ntb_type(text: str) -> str:
+    """Resolve type from any text (category label or listing name)."""
+    lower = text.lower()
+    for keywords, t in VISITNAMIBIA_TYPE_HINTS:
+        if any(kw in lower for kw in keywords):
+            return t
+    return "other"
 
 
 def scrape_visitnamibia_page(url: str) -> list:
@@ -181,14 +185,14 @@ def scrape_visitnamibia_page(url: str) -> list:
             detail_href = name_el.get("href", "")
             detail_url = urljoin(VISITNAMIBIA_BASE, detail_href) if detail_href else url
 
-            # Category / type
+            # Category / type — fall back to name heuristic when card has no category tag
             cat_el = card.select_one(
                 ".geodir-category, .gd-category, "
                 ".listing-category, .business-category, "
                 "[class*='cat'], .type, .category"
             )
             raw_type = cat_el.get_text(strip=True) if cat_el else ""
-            listing_type = resolve_ntb_type(raw_type)
+            listing_type = resolve_ntb_type(raw_type or name)
 
             # Region / location
             region_el = card.select_one(
@@ -272,7 +276,7 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
         except (json.JSONDecodeError, AttributeError):
             pass
 
-    time.sleep(1)
+    time.sleep(0.5)
     return record
 
 
@@ -313,7 +317,12 @@ def scrape_visitnamibia_categories() -> list:
     return all_records
 
 
-def scrape_visitnamibia(fetch_details: bool = False) -> list:
+def scrape_visitnamibia(
+    fetch_details: bool = False,
+    detail_workers: int = 4,
+    detail_batch_size: int = 0,
+    detail_batch_offset: int = 0,
+) -> list:
     print("\n=== visitnamibia.com.na (NTB Official Directory) ===")
     all_records: list = []
 
@@ -338,10 +347,31 @@ def scrape_visitnamibia(fetch_details: bool = False) -> list:
     print(f"  Total (deduped): {len(all_records)}")
 
     if fetch_details:
-        print("  Fetching detail pages for website URLs, emails, coordinates…")
-        for i, record in enumerate(all_records):
-            print(f"  [{i + 1}/{len(all_records)}] {record['name']}")
-            all_records[i] = scrape_visitnamibia_detail(record)
+        # Apply batch slicing if requested
+        start = detail_batch_offset
+        end = (detail_batch_offset + detail_batch_size) if detail_batch_size else len(all_records)
+        batch = all_records[start:end]
+        print(
+            f"  Fetching detail pages [{start}–{min(end, len(all_records))}]"
+            f" of {len(all_records)} ({detail_workers} workers)…"
+        )
+
+        def enrich(args: tuple) -> tuple[int, dict]:
+            idx, record = args
+            return idx, scrape_visitnamibia_detail(record)
+
+        with ThreadPoolExecutor(max_workers=detail_workers) as executor:
+            futures = {
+                executor.submit(enrich, (start + i, rec)): start + i
+                for i, rec in enumerate(batch)
+            }
+            done = 0
+            for future in as_completed(futures):
+                idx, enriched = future.result()
+                all_records[idx] = enriched
+                done += 1
+                if done % 100 == 0 or done == len(batch):
+                    print(f"  [{done}/{len(batch)}] detail pages enriched")
 
     return all_records
 
@@ -623,12 +653,37 @@ def main() -> None:
         action="store_true",
         help="Also fetch individual detail pages (slower but extracts websites/emails)",
     )
+    parser.add_argument(
+        "--detail-workers",
+        type=int,
+        default=4,
+        help="Parallel workers for detail page fetching (default: 4)",
+    )
+    parser.add_argument(
+        "--detail-batch-size",
+        type=int,
+        default=0,
+        help="Max records to detail-fetch per run (0 = all, for splitting across runs)",
+    )
+    parser.add_argument(
+        "--detail-batch-offset",
+        type=int,
+        default=0,
+        help="Skip this many records before starting detail fetch (for splitting across runs)",
+    )
     args = parser.parse_args()
 
     all_records: list = []
 
     if args.source in ("visitnamibia", "all"):
-        all_records.extend(scrape_visitnamibia(fetch_details=args.fetch_details))
+        all_records.extend(
+            scrape_visitnamibia(
+                fetch_details=args.fetch_details,
+                detail_workers=args.detail_workers,
+                detail_batch_size=args.detail_batch_size,
+                detail_batch_offset=args.detail_batch_offset,
+            )
+        )
 
     if args.source in ("safaribookings", "all"):
         all_records.extend(scrape_safaribookings(fetch_details=args.fetch_details))
