@@ -58,7 +58,7 @@ class SavedPlanController extends Controller
             'title' => $saved->title,
         ]);
 
-        $filename = Str::slug($saved->title ?: 'namibway-trip') . '.pdf';
+        $filename = Str::slug($saved->title ?: 'namibway-trip').'.pdf';
 
         return $pdf->download($filename);
     }
