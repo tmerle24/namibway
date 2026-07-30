@@ -8,6 +8,7 @@ use App\Models\Inquiry;
 use App\Models\Listing;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -85,6 +86,67 @@ class ListingController extends Controller
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Inquiry sent.')]);
+
+        return back();
+    }
+
+    /**
+     * Send one inquiry to each of several shortlisted listings at once — for
+     * travelers comparing a few options from search rather than a single
+     * listing's page. Each listing still gets its own Inquiry row (and its
+     * own partner notification via InquiryObserver); only the "one active
+     * request at a time" gate is checked once, up front, for the whole batch.
+     */
+    public function storeBatchInquiry(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'listing_ids' => ['required', 'array', 'min:1', 'max:10'],
+            'listing_ids.*' => ['integer', 'distinct'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'message' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $activeStatuses = array_map(
+            fn (InquiryStatus $s) => $s->value,
+            array_filter(InquiryStatus::cases(), fn (InquiryStatus $s) => $s->isActive())
+        );
+
+        $alreadyActive = Inquiry::where('email', $validated['email'])
+            ->whereIn('status', $activeStatuses)
+            ->exists();
+
+        if ($alreadyActive) {
+            return back()->withErrors([
+                'email' => __('You already have an active booking request in progress. Please wait for it to be resolved before submitting a new one.'),
+            ]);
+        }
+
+        $listings = Listing::query()
+            ->whereIn('id', $validated['listing_ids'])
+            ->where('is_published', true)
+            ->where('accepts_inquiries', true)
+            ->get();
+
+        if ($listings->isEmpty()) {
+            return back()->withErrors([
+                'listing_ids' => __('None of the selected listings are currently accepting inquiries.'),
+            ]);
+        }
+
+        $contact = collect($validated)->only(['name', 'email', 'phone', 'message'])->all();
+
+        DB::transaction(function () use ($listings, $contact) {
+            foreach ($listings as $listing) {
+                $listing->inquiries()->create($contact);
+            }
+        });
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => trans_choice(':count inquiry sent.|:count inquiries sent.', $listings->count(), ['count' => $listings->count()]),
+        ]);
 
         return back();
     }

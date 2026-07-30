@@ -133,11 +133,15 @@
             "moreFilters": "More filters ▾",
             "hideFilters": "Hide filters ▲",
             "note": "Dates are captured for when live partner availability is connected — this catalog isn't date-checked yet.",
-            "allRegions": "All regions",
+            "allRegions": "All regions & towns",
             "anyBudget": "Any budget",
             "budget": "Budget",
             "midRange": "Mid-range",
             "premium": "Premium",
+            "anyRating": "Any rating",
+            "rating45": "4.5+ stars",
+            "rating4": "4+ stars",
+            "rating3": "3+ stars",
             "empty": "No matches — try clearing a filter."
         },
         "rows": {
@@ -147,7 +151,20 @@
             "vehicle": "Getting around",
             "region": "Regions to explore"
         },
-        "examples": "{count} examples"
+        "examples": "{count} examples",
+        "shortlist": {
+            "toggle": "Add to shortlist",
+            "count": "{count} selected",
+            "request": "Request availability",
+            "hide": "Hide",
+            "name": "Full name",
+            "email": "Email",
+            "phone": "Phone (optional)",
+            "message": "Message (optional)",
+            "send": "Send inquiry to all",
+            "sending": "Sending…",
+            "success": "Sent! Each property will get back to you directly."
+        }
     },
     "tripPlan": {
         "loginCta": {

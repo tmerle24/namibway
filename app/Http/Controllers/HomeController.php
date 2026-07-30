@@ -24,7 +24,8 @@ class HomeController extends Controller
             ->limit(300)
             ->get([
                 'id', 'type', 'name', 'slug', 'description',
-                'image', 'region', 'price_from', 'price_currency',
+                'image', 'region', 'address', 'latitude', 'longitude',
+                'price_from', 'price_currency', 'rating', 'rating_count',
             ])
             ->map(fn (Listing $listing) => [
                 'id' => $listing->id,
@@ -33,9 +34,13 @@ class HomeController extends Controller
                 'slug' => $listing->slug,
                 'description' => $listing->description,
                 'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
-                'region' => $listing->region,
+                'region' => self::detectTown($listing->address) ?? $listing->region,
+                'latitude' => $listing->latitude !== null ? (float) $listing->latitude : null,
+                'longitude' => $listing->longitude !== null ? (float) $listing->longitude : null,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                'rating' => $listing->rating !== null ? (float) $listing->rating : null,
+                'rating_count' => $listing->rating_count,
             ]);
 
         $regions = Region::query()
@@ -54,5 +59,39 @@ class HomeController extends Controller
             'listings' => $listings,
             'regions' => $regions,
         ]);
+    }
+
+    /**
+     * Namibian addresses conventionally end with the town name (e.g. "Kramersdorf,
+     * Swakopmund"), but scraped listings don't always have a comma before it — so
+     * match against known towns instead of blindly taking the last address segment.
+     */
+    private static function detectTown(?string $address): ?string
+    {
+        if (! $address) {
+            return null;
+        }
+
+        $towns = [
+            'Windhoek', 'Swakopmund', 'Walvis Bay', 'Otjiwarongo', 'Oshakati',
+            'Rundu', 'Tsumeb', 'Henties Bay', 'Rehoboth', 'Gobabis', 'Sesriem',
+            'Okahandja', 'Keetmanshoop', 'Lüderitz', 'Katima Mulilo', 'Ondangwa',
+            'Outjo', 'Mariental', 'Karibib', 'Omaruru', 'Grootfontein', 'Opuwo',
+            'Otavi', 'Usakos', 'Aranos', 'Khorixas', 'Oshikango', 'Oranjemund',
+        ];
+
+        $match = null;
+        $lastPosition = -1;
+
+        foreach ($towns as $town) {
+            $position = mb_strripos($address, $town);
+
+            if ($position !== false && $position > $lastPosition) {
+                $match = $town;
+                $lastPosition = $position;
+            }
+        }
+
+        return $match;
     }
 }

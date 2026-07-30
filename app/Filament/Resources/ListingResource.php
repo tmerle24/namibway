@@ -83,6 +83,16 @@ class ListingResource extends Resource
                     ->required()
                     ->maxLength(3)
                     ->default('NAD'),
+                Forms\Components\TextInput::make('rating')
+                    ->numeric()
+                    ->minValue(0)
+                    ->maxValue(5)
+                    ->step(0.1)
+                    ->helperText('Average rating out of 5, e.g. from Google/TripAdvisor'),
+                Forms\Components\TextInput::make('rating_count')
+                    ->label('Number of ratings')
+                    ->numeric()
+                    ->minValue(0),
                 Forms\Components\Toggle::make('is_featured')
                     ->required(),
                 Forms\Components\Toggle::make('is_published')
@@ -131,6 +141,9 @@ class ListingResource extends Resource
                 Tables\Columns\TextColumn::make('price_currency')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('rating')
+                    ->numeric(1)
+                    ->sortable(),
                 Tables\Columns\IconColumn::make('is_featured')
                     ->boolean(),
                 Tables\Columns\IconColumn::make('is_published')
