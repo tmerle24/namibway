@@ -48,6 +48,7 @@ class Listing extends Model
         'scrape_id',
         'scrape_data',
         'scraped_at',
+        'google_photos_checked_at',
     ];
 
     protected $casts = [
@@ -65,6 +66,7 @@ class Listing extends Model
         'scraped_at' => 'datetime',
         'og_scraped_at' => 'datetime',
         'content_synced_at' => 'datetime',
+        'google_photos_checked_at' => 'datetime',
     ];
 
     protected static function booted(): void

@@ -34,6 +34,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // minutes so listings cycle through steadily without hammering any one
         // partner website (see CrawlListingWebsiteJob's per-host cooldown).
         $schedule->command('namibway:scrape-websites --limit=10')->everyFiveMinutes()->withoutOverlapping();
+
+        // No-op if GOOGLE_PLACES_API_KEY isn't set. Small batch every 15 minutes
+        // to keep API usage predictable — a listing is only ever checked once
+        // (or once per --refresh-days), so this naturally tapers off once the
+        // backlog of imageless listings is worked through.
+        $schedule->command('namibway:fetch-google-photos --limit=5')->everyFifteenMinutes()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'locale', 'currency']);
