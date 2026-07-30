@@ -23,6 +23,7 @@ const isTyping = ref(false);
 const thinkingIndex = ref(0);
 const chatLog = ref<HTMLDivElement | null>(null);
 const chatPanel = ref<HTMLDivElement | null>(null);
+const chatInput = ref<HTMLInputElement | null>(null);
 let thinkingTimer: ReturnType<typeof setInterval> | null = null;
 
 function startThinking() {
@@ -106,6 +107,11 @@ async function sendMessage() {
     isTyping.value = false;
 
     await scrollToBottom();
+
+    // The input is disabled while Kaia is "typing", which drops focus —
+    // bring it back so the user can keep typing without reaching for the mouse.
+    await nextTick();
+    chatInput.value?.focus();
 }
 </script>
 
@@ -188,6 +194,7 @@ async function sendMessage() {
                 </div>
                 <div class="chat-input-row">
                     <input
+                        ref="chatInput"
                         v-model="inputText"
                         type="text"
                         :placeholder="t('chat.placeholder')"
