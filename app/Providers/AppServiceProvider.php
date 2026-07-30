@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Models\Inquiry;
+use App\Models\Review;
 use App\Models\User;
 use App\Observers\InquiryObserver;
+use App\Observers\ReviewObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Date;
@@ -31,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         Inquiry::observe(InquiryObserver::class);
+        Review::observe(ReviewObserver::class);
 
         Event::listen(function (Login $event) {
             if ($event->user instanceof User) {

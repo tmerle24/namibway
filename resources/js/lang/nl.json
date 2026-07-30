@@ -175,6 +175,18 @@
             "sending": "Versturen…",
             "success": "Verstuurd! De partner neemt rechtstreeks contact met je op.",
             "unavailable": "Dit aanbod accepteert momenteel geen aanvragen — kom later nog eens terug."
+        },
+        "reviews": {
+            "title": "Beoordelingen",
+            "count": "{count} beoordelingen",
+            "empty": "Nog geen beoordelingen — deel als eerste je ervaring.",
+            "formTitle": "Beoordeling achterlaten",
+            "name": "Volledige naam",
+            "rating": "Jouw beoordeling",
+            "comment": "Jouw beoordeling (tekst)",
+            "send": "Beoordeling versturen",
+            "sending": "Versturen…",
+            "success": "Bedankt! Je beoordeling verschijnt zodra deze is gecontroleerd."
         }
     },
     "localeSwitcher": {

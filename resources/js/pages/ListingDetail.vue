@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import { home } from '@/routes';
 import inquiries from '@/routes/listings/inquiries';
+import reviewRoutes from '@/routes/listings/reviews';
 import logoDark from '../../images/logo-dark.png';
 
 const FALLBACK_HERO_IMAGES: Record<Listing['type'], string[]> = {
@@ -56,15 +57,29 @@ interface Listing {
     region: string | null;
     price_from: string | null;
     price_currency: string;
+    rating: number | null;
+    rating_count: number | null;
     accepts_inquiries: boolean;
     partner: Partner | null;
 }
 
+interface Review {
+    id: number;
+    name: string;
+    rating: number;
+    comment: string;
+    created_at: string;
+}
+
 const props = defineProps<{
     listing: Listing;
+    reviews: Review[];
 }>();
 
 const { t } = useI18n();
+
+const reviewRatingInput = ref(0);
+const reviewRatingHover = ref(0);
 
 const heroImage = computed(() => {
     if (props.listing.image) {
@@ -103,6 +118,16 @@ const heroImage = computed(() => {
                 }}</span>
                 <h1>{{ props.listing.name }}</h1>
                 <p v-if="props.listing.region">{{ props.listing.region }}</p>
+                <p v-if="props.listing.rating !== null" class="detail-rating">
+                    ★ {{ props.listing.rating.toFixed(1) }}
+                    <span v-if="props.listing.rating_count">
+                        ({{
+                            t('listing.reviews.count', {
+                                count: props.listing.rating_count,
+                            })
+                        }})
+                    </span>
+                </p>
                 <p v-if="props.listing.price_from" class="detail-price">
                     {{ t('listing.from') }} {{ props.listing.price_currency }}
                     {{ props.listing.price_from }}
@@ -246,6 +271,96 @@ const heroImage = computed(() => {
                         {{ t('listing.inquiry.unavailable') }}
                     </p>
                 </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="section-head">
+                <h2>{{ t('listing.reviews.title') }}</h2>
+            </div>
+
+            <div v-if="props.reviews.length" class="review-list">
+                <div
+                    v-for="review in props.reviews"
+                    :key="review.id"
+                    class="review-item"
+                >
+                    <div class="review-item-head">
+                        <span class="review-stars">{{
+                            '★'.repeat(review.rating) +
+                            '☆'.repeat(5 - review.rating)
+                        }}</span>
+                        <strong>{{ review.name }}</strong>
+                        <span class="review-date">{{ review.created_at }}</span>
+                    </div>
+                    <p>{{ review.comment }}</p>
+                </div>
+            </div>
+            <p v-else class="inquiry-subtitle">
+                {{ t('listing.reviews.empty') }}
+            </p>
+
+            <div class="review-form-panel">
+                <h3>{{ t('listing.reviews.formTitle') }}</h3>
+                <Form
+                    v-bind="reviewRoutes.store.form({ listing: props.listing.slug })"
+                    reset-on-success
+                    v-slot="{ errors, processing, recentlySuccessful }"
+                    class="inquiry-form"
+                    @success="reviewRatingInput = 0"
+                >
+                    <label>
+                        {{ t('listing.reviews.name') }}
+                        <input name="name" type="text" required />
+                        <InputError :message="errors.name" />
+                    </label>
+                    <div class="star-picker">
+                        <span>{{ t('listing.reviews.rating') }}</span>
+                        <div
+                            class="star-picker-stars"
+                            @mouseleave="reviewRatingHover = 0"
+                        >
+                            <button
+                                v-for="n in 5"
+                                :key="n"
+                                type="button"
+                                class="star-picker-star"
+                                :class="{
+                                    filled: (reviewRatingHover || reviewRatingInput) >= n,
+                                }"
+                                @mouseenter="reviewRatingHover = n"
+                                @click="reviewRatingInput = n"
+                            >
+                                ★
+                            </button>
+                        </div>
+                        <input
+                            name="rating"
+                            type="hidden"
+                            :value="reviewRatingInput || ''"
+                        />
+                        <InputError :message="errors.rating" />
+                    </div>
+                    <label>
+                        {{ t('listing.reviews.comment') }}
+                        <textarea name="comment" rows="3" required></textarea>
+                        <InputError :message="errors.comment" />
+                    </label>
+                    <button
+                        type="submit"
+                        class="cta"
+                        :disabled="processing || reviewRatingInput === 0"
+                    >
+                        {{
+                            processing
+                                ? t('listing.reviews.sending')
+                                : t('listing.reviews.send')
+                        }}
+                    </button>
+                    <p v-if="recentlySuccessful" class="confirm-note">
+                        {{ t('listing.reviews.success') }}
+                    </p>
+                </Form>
             </div>
         </section>
 

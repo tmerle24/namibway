@@ -91,4 +91,12 @@ class Listing extends Model
     {
         return $this->hasMany(Inquiry::class);
     }
+
+    /**
+     * @return HasMany<Review, $this>
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
 }

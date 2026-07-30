@@ -193,6 +193,18 @@
             "sending": "Wird gesendet…",
             "success": "Gesendet! Der Partner meldet sich direkt bei dir.",
             "unavailable": "Dieses Angebot nimmt derzeit keine Anfragen an — schau bald wieder vorbei."
+        },
+        "reviews": {
+            "title": "Bewertungen",
+            "count": "{count} Bewertungen",
+            "empty": "Noch keine Bewertungen — teile als Erste(r) deine Erfahrung.",
+            "formTitle": "Bewertung abgeben",
+            "name": "Vollständiger Name",
+            "rating": "Deine Bewertung",
+            "comment": "Deine Bewertung (Text)",
+            "send": "Bewertung absenden",
+            "sending": "Wird gesendet…",
+            "success": "Danke! Deine Bewertung erscheint, sobald sie geprüft wurde."
         }
     },
     "localeSwitcher": {

@@ -175,6 +175,18 @@
             "sending": "Envoi en cours…",
             "success": "Envoyé ! Le partenaire vous recontactera directement.",
             "unavailable": "Cette offre n'accepte pas de demandes pour le moment — revenez bientôt."
+        },
+        "reviews": {
+            "title": "Avis",
+            "count": "{count} avis",
+            "empty": "Pas encore d'avis — soyez le premier à partager votre expérience.",
+            "formTitle": "Laisser un avis",
+            "name": "Nom complet",
+            "rating": "Votre note",
+            "comment": "Votre avis",
+            "send": "Envoyer l'avis",
+            "sending": "Envoi en cours…",
+            "success": "Merci ! Votre avis apparaîtra une fois vérifié."
         }
     },
     "localeSwitcher": {
