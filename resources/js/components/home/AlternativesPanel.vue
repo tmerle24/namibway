@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import { formatPrice } from '@/lib/currency';
 import type { ItineraryListingRef } from '@/lib/kaia-types';
 import { show } from '@/routes/listings';
 
@@ -30,10 +31,9 @@ function detailUrl(slug: string): string {
                 class="alternative-item"
             >
                 <span class="alt-name">{{ alt.name }}</span>
-                <span v-if="alt.price_from" class="alt-price"
-                    >{{ alt.price_currency }}
-                    {{ Number(alt.price_from).toLocaleString() }}</span
-                >
+                <span v-if="formatPrice(alt.price_from)" class="alt-price">{{
+                    formatPrice(alt.price_from)
+                }}</span>
                 <a
                     v-if="alt.slug"
                     :href="detailUrl(alt.slug)"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import { formatPrice } from '@/lib/currency';
 import type { ItineraryListingRef } from '@/lib/kaia-types';
 import { show } from '@/routes/listings';
 
@@ -20,10 +21,6 @@ const { t } = useI18n();
 function refUrl(ref: ItineraryListingRef): string {
     return show({ listing: ref.slug ?? '' }).url;
 }
-
-function formatPrice(price: string): string {
-    return Number(price).toLocaleString();
-}
 </script>
 
 <template>
@@ -38,9 +35,10 @@ function formatPrice(price: string): string {
                     >{{ props.itemRef.name }}</a
                 >
                 <template v-else>{{ props.itemRef.name }}</template>
-                <span v-if="props.itemRef.price_from" class="item-price"
-                    >{{ props.itemRef.price_currency }}
-                    {{ formatPrice(props.itemRef.price_from) }}</span
+                <span
+                    v-if="formatPrice(props.itemRef.price_from)"
+                    class="item-price"
+                    >{{ formatPrice(props.itemRef.price_from) }}</span
                 >
                 <template v-if="!props.readonly">
                     <button

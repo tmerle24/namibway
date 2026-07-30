@@ -2,6 +2,7 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import { sendKaiaMessage } from '@/lib/kaia-client';
 import type { ChatMessage, ItineraryPlan } from '@/lib/kaia-types';
@@ -177,6 +178,7 @@ async function sendMessage() {
                     <img :src="logoLight" alt="NamibWay" class="brand-logo" />
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px">
+                    <CurrencySwitcher />
                     <LocaleSwitcher />
                     <Link v-if="page.props.auth?.user" :href="dashboard()">{{
                         t('nav.dashboard')

@@ -26,7 +26,7 @@
         "eyebrow": "Tu plan",
         "title": "Algunas formas de hacer este viaje",
         "subtitle": "Generado a partir de la conversación anterior — alojamiento, actividades y restaurantes pensados juntos, no por separado.",
-        "estimated": "~{currency} {amount} estimado",
+        "estimated": "~{price} estimado",
         "stay": "Alojamiento: {value}",
         "activity": "Actividad: {value}",
         "dinner": "Cena: {value}",

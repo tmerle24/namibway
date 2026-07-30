@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Currency\ExchangeRateService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -44,6 +45,9 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'locale' => app()->getLocale(),
             'availableLocales' => config('locales.labels'),
+            'currency' => app('currentCurrency'),
+            'availableCurrencies' => config('currencies.labels'),
+            'currencyRates' => app(ExchangeRateService::class)->rates(),
         ];
     }
 }

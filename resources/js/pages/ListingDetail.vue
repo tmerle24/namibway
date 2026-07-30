@@ -3,8 +3,10 @@ import '../../css/kaia-home.css';
 import { Form, Head, Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
+import { formatPrice } from '@/lib/currency';
 import { home } from '@/routes';
 import inquiries from '@/routes/listings/inquiries';
 import reviewRoutes from '@/routes/listings/reviews';
@@ -101,6 +103,7 @@ const heroImage = computed(() => {
                 ><img :src="logoDark" alt="NamibWay" class="brand-logo"
             /></Link>
             <div style="display: flex; align-items: center; gap: 8px">
+                <CurrencySwitcher />
                 <LocaleSwitcher />
                 <Link :href="home()" class="detail-back">{{
                     t('listing.backToHome')
@@ -128,9 +131,12 @@ const heroImage = computed(() => {
                         }})
                     </span>
                 </p>
-                <p v-if="props.listing.price_from" class="detail-price">
-                    {{ t('listing.from') }} {{ props.listing.price_currency }}
-                    {{ props.listing.price_from }}
+                <p
+                    v-if="formatPrice(props.listing.price_from)"
+                    class="detail-price"
+                >
+                    {{ t('listing.from') }}
+                    {{ formatPrice(props.listing.price_from) }}
                 </p>
             </div>
         </div>

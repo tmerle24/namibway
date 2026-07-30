@@ -3,9 +3,11 @@ import '../../css/kaia-home.css';
 import { usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import ItineraryLineItem from '@/components/home/ItineraryLineItem.vue';
 import SaveShareBar from '@/components/home/SaveShareBar.vue';
 import TripMap from '@/components/home/TripMap.vue';
+import { formatPrice } from '@/lib/currency';
 import { fetchRegionCoords } from '@/lib/kaia-client';
 import type { RegionCoords } from '@/lib/kaia-client';
 import type { ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
@@ -36,30 +38,27 @@ onMounted(async () => {
 
 function estimatedLabel(variant: ItineraryVariant): string | null {
     let amount = 0;
-    let currency: string | null = null;
+    let hasAnyPrice = false;
 
     for (const day of variant.days) {
         for (const item of [day.accommodation, day.activity, day.restaurant]) {
             if (item?.price_from) {
                 amount += Number(item.price_from);
-                currency ??= item.price_currency;
+                hasAnyPrice = true;
             }
         }
     }
 
     if (variant.vehicle?.price_from) {
         amount += Number(variant.vehicle.price_from) * variant.days.length;
-        currency ??= variant.vehicle.price_currency;
+        hasAnyPrice = true;
     }
 
-    if (!currency) {
+    if (!hasAnyPrice) {
         return null;
     }
 
-    return t('itinerary.estimated', {
-        amount: Math.round(amount).toLocaleString(),
-        currency,
-    });
+    return t('itinerary.estimated', { price: formatPrice(amount) });
 }
 </script>
 

@@ -3,6 +3,7 @@ import { usePage } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import draggable from 'vuedraggable';
+import { formatPrice } from '@/lib/currency';
 import {
     fetchAlternatives,
     fetchRegionCoords,
@@ -250,30 +251,27 @@ async function saveAllVariants() {
 
 function estimatedLabel(variant: ItineraryVariant): string | null {
     let amount = 0;
-    let currency: string | null = null;
+    let hasAnyPrice = false;
 
     for (const day of variant.days) {
         for (const item of [day.accommodation, day.activity, day.restaurant]) {
             if (item?.price_from) {
                 amount += Number(item.price_from);
-                currency ??= item.price_currency;
+                hasAnyPrice = true;
             }
         }
     }
 
     if (variant.vehicle?.price_from) {
         amount += Number(variant.vehicle.price_from) * variant.days.length;
-        currency ??= variant.vehicle.price_currency;
+        hasAnyPrice = true;
     }
 
-    if (currency === null) {
+    if (!hasAnyPrice) {
         return null;
     }
 
-    return t('itinerary.estimated', {
-        amount: Math.round(amount).toLocaleString(),
-        currency,
-    });
+    return t('itinerary.estimated', { price: formatPrice(amount) });
 }
 </script>
 

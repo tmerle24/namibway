@@ -37,7 +37,7 @@
         "eyebrow": "Your plan",
         "title": "A few ways to do this trip",
         "subtitle": "Generated from the conversation above — accommodation, activities and dining together, not separate silos.",
-        "estimated": "~{currency} {amount} estimated",
+        "estimated": "~{price} estimated",
         "stay": "Stay: {value}",
         "activity": "Activity: {value}",
         "dinner": "Dinner: {value}",

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SetCurrency;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -19,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('partners:sync-content')->dailyAt('03:00');
 
+        $schedule->command('currency:refresh-rates')->dailyAt('04:00');
+
         // Scrapes namibiayp.com every 6h until all pages are exhausted.
         // Idempotent: already-scraped companies are skipped automatically.
         // Listings with photos are auto-published; without photos stay unpublished.
@@ -33,11 +36,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('namibway:scrape-websites --limit=10')->everyFiveMinutes()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'locale']);
+        $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'locale', 'currency']);
 
         $middleware->web(append: [
             HandleAppearance::class,
             SetLocale::class,
+            SetCurrency::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

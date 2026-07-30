@@ -4,6 +4,7 @@ import { i18n } from '@/i18n';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
+import { initializeCurrency } from '@/lib/currency';
 import { initializeFlashToast } from '@/lib/flashToast';
 import { initializeLocale } from '@/lib/locale';
 
@@ -32,6 +33,10 @@ createInertiaApp({
     withApp: (app, { page }) => {
         app.use(i18n);
         initializeLocale(page.props.locale as string | undefined);
+        initializeCurrency(
+            page.props.currency as string | undefined,
+            page.props.currencyRates as Record<string, number> | undefined,
+        );
     },
 });
 
