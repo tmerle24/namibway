@@ -23,14 +23,14 @@ class ScrapeNamibiayp extends Command
     private const BASE = 'https://www.namibiayp.com';
 
     private const CATEGORIES = [
-        'Lodges_Resorts'                => ListingType::Accommodation,
-        'Tourism_Accommodation'         => ListingType::Accommodation,
-        'Guest_houses'                  => ListingType::Accommodation,
-        'Specialist_accommodation'      => ListingType::Accommodation,
-        'Self_catering_accommodation'   => ListingType::Accommodation,
-        'Camping_and_Outdoors'          => ListingType::Accommodation,
-        'Restaurants'                   => ListingType::Restaurant,
-        'Tour_operators'                => ListingType::Activity,
+        'Lodges_Resorts' => ListingType::Accommodation,
+        'Tourism_Accommodation' => ListingType::Accommodation,
+        'Guest_houses' => ListingType::Accommodation,
+        'Specialist_accommodation' => ListingType::Accommodation,
+        'Self_catering_accommodation' => ListingType::Accommodation,
+        'Camping_and_Outdoors' => ListingType::Accommodation,
+        'Restaurants' => ListingType::Restaurant,
+        'Tour_operators' => ListingType::Activity,
     ];
 
     private int $created = 0;
@@ -59,7 +59,7 @@ class ScrapeNamibiayp extends Command
         $this->info('Collecting company URLs from namibiayp.com…');
 
         $companyUrls = $this->collectUrls($maxPages);
-        $this->info('Found ' . count($companyUrls) . ' unique companies');
+        $this->info('Found '.count($companyUrls).' unique companies');
 
         if ($limit > 0) {
             $companyUrls = array_slice($companyUrls, 0, $limit);
@@ -92,7 +92,7 @@ class ScrapeNamibiayp extends Command
 
         foreach (self::CATEGORIES as $cat => $type) {
             for ($page = 1; $page <= $maxPages; $page++) {
-                $pageUrl = self::BASE . "/category/{$cat}" . ($page > 1 ? "/{$page}" : '');
+                $pageUrl = self::BASE."/category/{$cat}".($page > 1 ? "/{$page}" : '');
 
                 try {
                     $html = $this->fetch($pageUrl);
@@ -109,7 +109,7 @@ class ScrapeNamibiayp extends Command
                     foreach (array_unique($m[0]) as $path) {
                         if (! isset($seen[$path])) {
                             $seen[$path] = true;
-                            $results[] = [self::BASE . $path, $type];
+                            $results[] = [self::BASE.$path, $type];
                         }
                     }
 
@@ -176,7 +176,7 @@ class ScrapeNamibiayp extends Command
                 : Listing::where('slug', $slug)->first();
 
             if ($this->dry) {
-                $this->line("\n  [dry] {$name} | photos: " . count($photos));
+                $this->line("\n  [dry] {$name} | photos: ".count($photos));
                 $this->created++;
 
                 return;
@@ -268,18 +268,19 @@ class ScrapeNamibiayp extends Command
         }
     }
 
+    /** @return array<int, string> */
     private function extractPhotos(string $html): array
     {
         // Main photos: /img/na/m/filename.jpg (no underscore = full size)
         preg_match_all('#/img/na/[a-z]/(?!_)([^"\')\s<>]+\.(?:jpg|jpeg|png|webp))#i', $html, $m);
-        $paths = array_unique($m[0] ?? []);
+        $paths = array_unique($m[0]);
 
         // Prefer /m/ (main) size, then any other
         $main = array_values(array_filter($paths, fn ($p) => str_contains($p, '/img/na/m/')));
         $others = array_values(array_filter($paths, fn ($p) => ! str_contains($p, '/img/na/m/')));
 
         return array_map(
-            fn ($p) => self::BASE . $p,
+            fn ($p) => self::BASE.$p,
             array_slice(array_merge($main, $others), 0, 5)
         );
     }
@@ -416,15 +417,16 @@ class ScrapeNamibiayp extends Command
                 return null;
             }
 
-            $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION) ?: 'jpg');
+            $path = parse_url($url, PHP_URL_PATH);
+            $ext = strtolower(pathinfo(is_string($path) ? $path : '', PATHINFO_EXTENSION) ?: 'jpg');
             if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
                 $ext = 'jpg';
             }
 
-            $filename = 'listings/namibiayp/' . $slug . '-' . Str::random(8) . '.' . $ext;
-            Storage::disk('public')->put($filename, $response->body());
+            $filename = 'listings/namibiayp/'.$slug.'-'.Str::random(8).'.'.$ext;
+            Storage::disk('r2')->put($filename, $response->body());
 
-            return '/storage/' . $filename;
+            return Storage::disk('r2')->url($filename);
         } catch (\Throwable) {
             return null;
         }
