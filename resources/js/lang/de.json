@@ -52,7 +52,9 @@
         "print": "Drucken",
         "saveToAccount": "Speichern",
         "savedToAccount": "Gespeichert ✓",
-        "copyFailed": "Kopieren nicht möglich — bitte den Link manuell markieren und kopieren."
+        "copyFailed": "Kopieren nicht möglich — bitte den Link manuell markieren und kopieren.",
+        "setStartDate": "Startdatum festlegen",
+        "drivingTime": "Fahrzeit"
     },
     "booking": {
         "eyebrow": "Buchungsassistent",
@@ -120,7 +122,8 @@
             "rating45": "4,5+ Sterne",
             "rating4": "4+ Sterne",
             "rating3": "3+ Sterne",
-            "empty": "Keine Treffer — versuch, einen Filter zu entfernen."
+            "empty": "Keine Treffer — versuch, einen Filter zu entfernen.",
+            "clearFilters": "Filter zurücksetzen"
         },
         "rows": {
             "accommodation": "Unterkünfte",

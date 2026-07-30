@@ -52,7 +52,9 @@
         "print": "Afdrukken",
         "saveToAccount": "Opslaan",
         "savedToAccount": "Opgeslagen!",
-        "copyFailed": "Automatisch kopiëren is niet gelukt — de link is geselecteerd, kopieer hem handmatig."
+        "copyFailed": "Automatisch kopiëren is niet gelukt — de link is geselecteerd, kopieer hem handmatig.",
+        "setStartDate": "Startdatum instellen",
+        "drivingTime": "Rijtijd"
     },
     "booking": {
         "eyebrow": "Boekingsassistent",
@@ -120,7 +122,8 @@
             "rating45": "4,5+ sterren",
             "rating4": "4+ sterren",
             "rating3": "3+ sterren",
-            "empty": "Geen resultaten — probeer een filter te wissen."
+            "empty": "Geen resultaten — probeer een filter te wissen.",
+            "clearFilters": "Filters wissen"
         },
         "rows": {
             "accommodation": "Plekken om te verblijven",

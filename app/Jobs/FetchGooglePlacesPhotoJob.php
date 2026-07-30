@@ -139,11 +139,21 @@ class FetchGooglePlacesPhotoJob implements ShouldBeUnique, ShouldQueue
             return [];
         }
 
-        return collect($response->json('result.photos', []))
-            ->pluck('photo_reference')
-            ->filter()
-            ->values()
-            ->all();
+        $photos = $response->json('result.photos');
+
+        if (! is_array($photos)) {
+            return [];
+        }
+
+        $refs = [];
+
+        foreach ($photos as $photo) {
+            if (is_array($photo) && isset($photo['photo_reference']) && is_string($photo['photo_reference'])) {
+                $refs[] = $photo['photo_reference'];
+            }
+        }
+
+        return $refs;
     }
 
     private function downloadPhoto(string $apiKey, string $photoReference, string $slug): ?string
