@@ -232,5 +232,28 @@
     },
     "localeSwitcher": {
         "label": "Sprache"
+    },
+    "howItWorks": {
+        "ai": {
+            "badge": "KI-gestützt",
+            "title": "Reiseplan erstellen lassen",
+            "steps": [
+                "Chat — erzähl Kaia, was du dir vorstellst",
+                "Reiseplan prüfen — Unterkunft, Aktivitäten, Restaurants",
+                "Alles auf einmal anfragen — ein Klick"
+            ],
+            "cta": "Jetzt planen ↑"
+        },
+        "or": "oder",
+        "search": {
+            "badge": "Klassische Suche",
+            "title": "Einfach klassisch suchen",
+            "steps": [
+                "Nach Kategorie, Region und Budget filtern",
+                "Details und Fotos ansehen",
+                "Den Anbieter direkt kontaktieren"
+            ],
+            "cta": "Listings durchsuchen ↓"
+        }
     }
 }

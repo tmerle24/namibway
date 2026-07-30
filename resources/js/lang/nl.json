@@ -232,5 +232,28 @@
         "loginFailed": "Verkeerd e-mailadres of wachtwoord.",
         "registerFailed": "Registratie mislukt.",
         "networkError": "Netwerkfout. Probeer opnieuw."
+    },
+    "howItWorks": {
+        "ai": {
+            "badge": "AI-gestuurde planning",
+            "title": "Laat Kaia je reis plannen",
+            "steps": [
+                "Chat — vertel Kaia wat je wilt",
+                "Bekijk het reisplan — verblijf, activiteiten, eten",
+                "Boek alles tegelijk — één klik"
+            ],
+            "cta": "Begin met plannen ↑"
+        },
+        "or": "of",
+        "search": {
+            "badge": "Klassiek zoeken",
+            "title": "Zelf zoeken & boeken",
+            "steps": [
+                "Filter op categorie, regio en budget",
+                "Bekijk details en foto's",
+                "Neem direct contact op met de eigenaar"
+            ],
+            "cta": "Bekijk aanbod ↓"
+        }
     }
 }

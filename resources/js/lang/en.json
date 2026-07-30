@@ -282,5 +282,28 @@
     },
     "localeSwitcher": {
         "label": "Language"
+    },
+    "howItWorks": {
+        "ai": {
+            "badge": "AI-powered",
+            "title": "Let Kaia plan your trip",
+            "steps": [
+                "Chat — tell Kaia what you have in mind",
+                "Review the itinerary — accommodation, activities, dining",
+                "One click to request everything at once"
+            ],
+            "cta": "Start planning ↑"
+        },
+        "or": "or",
+        "search": {
+            "badge": "Classic search",
+            "title": "Browse & book yourself",
+            "steps": [
+                "Filter by category, region and budget",
+                "View listing details and photos",
+                "Contact the owner directly"
+            ],
+            "cta": "Browse listings ↓"
+        }
     }
 }

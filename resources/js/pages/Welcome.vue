@@ -7,6 +7,7 @@ import BookingSection from '@/components/home/BookingSection.vue';
 import ExploreSection from '@/components/home/ExploreSection.vue';
 import GuestDetailsForm from '@/components/home/GuestDetailsForm.vue';
 import HeroChat from '@/components/home/HeroChat.vue';
+import HowItWorks from '@/components/home/HowItWorks.vue';
 import ItinerarySection from '@/components/home/ItinerarySection.vue';
 import { createTrip } from '@/lib/kaia-client';
 import type {
@@ -127,6 +128,7 @@ async function onGuestSubmit(details: GuestDetails) {
             :guest-email="guestEmail"
             :trip-id="bookingTripId"
         />
+        <HowItWorks />
         <ExploreSection :listings="listings" :regions="regions" />
 
         <footer>

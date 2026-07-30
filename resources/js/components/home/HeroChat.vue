@@ -130,7 +130,7 @@ async function sendMessage() {
 </script>
 
 <template>
-    <div class="hero">
+    <div id="kaia-hero" class="hero">
         <svg
             class="hero-bg"
             viewBox="0 0 1040 340"

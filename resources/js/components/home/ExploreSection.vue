@@ -486,7 +486,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
 </script>
 
 <template>
-    <section>
+    <section id="explore-section">
         <div class="section-head">
             <div class="eyebrow">{{ t('explore.eyebrow') }}</div>
             <h2>{{ t('explore.title') }}</h2>

@@ -232,5 +232,28 @@
         "loginFailed": "Email o contraseña incorrectos.",
         "registerFailed": "Registro fallido.",
         "networkError": "Error de red. Inténtelo de nuevo."
+    },
+    "howItWorks": {
+        "ai": {
+            "badge": "Con IA",
+            "title": "Deja que Kaia planifique tu viaje",
+            "steps": [
+                "Chatea — cuéntale a Kaia qué tienes en mente",
+                "Revisa el itinerario — alojamiento, actividades, restaurantes",
+                "Reserva todo de una vez — un solo clic"
+            ],
+            "cta": "Empezar a planificar ↑"
+        },
+        "or": "o",
+        "search": {
+            "badge": "Búsqueda clásica",
+            "title": "Busca y reserva tú mismo",
+            "steps": [
+                "Filtra por categoría, región y presupuesto",
+                "Consulta detalles y fotos",
+                "Contacta directamente con el propietario"
+            ],
+            "cta": "Ver alojamientos ↓"
+        }
     }
 }
