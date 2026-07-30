@@ -201,10 +201,15 @@ class ScrapeNamibiayp extends Command
 
             if ($existing) {
                 $fill = [];
-                if ($heroUrl && ! $existing->image) {
+                $needsPhoto = ! $existing->image || str_starts_with((string) $existing->image, '/storage/');
+                if ($heroUrl && $needsPhoto) {
                     $fill['image'] = $heroUrl;
                 }
-                if (! empty($galleryUrls) && empty($existing->gallery)) {
+                $needsGallery = empty($existing->gallery) || (
+                    is_array($existing->gallery) &&
+                    count(array_filter($existing->gallery, fn ($u) => str_starts_with((string) $u, '/storage/'))) > 0
+                );
+                if (! empty($galleryUrls) && $needsGallery) {
                     $fill['gallery'] = $galleryUrls;
                 }
                 if ($website && ! $existing->website) {
