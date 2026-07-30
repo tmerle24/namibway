@@ -170,8 +170,7 @@ class ScrapeNamibiayp extends Command
 
             // Structured LocalBusiness JSON-LD (schema.org) is the most reliable,
             // owner-published source — prefer it over ad-hoc HTML regex matches.
-            $website = $jsonLd['url']
-                ?? $this->extractHref($html, '#href=["\x27](https?://(?!www\.namibiayp)[^"\'<>]{5,200})["\x27]#i');
+            $website = $jsonLd['url'] ?? $this->extractWebsiteLink($html);
             $phone = $jsonLd['telephone']
                 ?? $this->extractText($html, '#class="[^"]*phone[^"]*"[^>]*>\s*([\d\s+()-]{6,25})<#i');
             $address = $jsonLd['address'] ?? $this->extractText($html, '#class="[^"]*address[^"]*"[^>]*>(.*?)</[a-z]+>#si');
@@ -415,15 +414,24 @@ class ScrapeNamibiayp extends Command
         ]);
     }
 
-    private function extractHref(string $html, string $pattern): ?string
+    /**
+     * namibiayp wraps a business's real website in a click-tracking redirect,
+     * e.g. <a href="/redir/4369?u=saturnfarm.de">saturnfarm.de</a> — the domain
+     * lives in the "u" query param and is shown without a scheme.
+     */
+    private function extractWebsiteLink(string $html): ?string
     {
-        if (preg_match($pattern, $html, $m)) {
-            $url = trim($m[1]);
-
-            return filter_var($url, FILTER_VALIDATE_URL) ? $url : null;
+        if (! preg_match('#/redir/\d+\?u=([^"&<>]+)#i', $html, $m)) {
+            return null;
         }
 
-        return null;
+        $url = html_entity_decode(urldecode(trim($m[1])), ENT_QUOTES, 'UTF-8');
+
+        if (! preg_match('#^https?://#i', $url)) {
+            $url = 'http://'.$url;
+        }
+
+        return filter_var($url, FILTER_VALIDATE_URL) ? $url : null;
     }
 
     private function downloadPhoto(string $url, string $slug): ?string

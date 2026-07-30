@@ -108,11 +108,15 @@
             "moreFilters": "Plus de filtres ▾",
             "hideFilters": "Masquer les filtres ▲",
             "note": "Les dates sont enregistrées pour quand la disponibilité réelle des partenaires sera connectée — ce catalogue n'est pas encore vérifié par date.",
-            "allRegions": "Toutes les régions",
+            "allRegions": "Toutes les régions et villes",
             "anyBudget": "Tous budgets",
             "budget": "Économique",
             "midRange": "Milieu de gamme",
             "premium": "Premium",
+            "anyRating": "Toutes notes",
+            "rating45": "4,5+ étoiles",
+            "rating4": "4+ étoiles",
+            "rating3": "3+ étoiles",
             "empty": "Aucun résultat — essayez de retirer un filtre."
         },
         "rows": {
@@ -122,7 +126,20 @@
             "vehicle": "Sur la route",
             "region": "Régions à explorer"
         },
-        "examples": "{count} exemples"
+        "examples": "{count} exemples",
+        "shortlist": {
+            "toggle": "Ajouter à la liste",
+            "count": "{count} sélectionné(s)",
+            "request": "Demander la disponibilité",
+            "hide": "Masquer",
+            "name": "Nom complet",
+            "email": "E-mail",
+            "phone": "Téléphone (facultatif)",
+            "message": "Message (facultatif)",
+            "send": "Envoyer la demande à tous",
+            "sending": "Envoi en cours…",
+            "success": "Envoyé ! Chaque partenaire vous recontactera directement."
+        }
     },
     "footer": {
         "tagline": "Planification de voyage assistée par IA pour la Namibie. L'entretien et la génération d'itinéraires de Kaia sont déjà en ligne ; les réservations réelles auprès des partenaires et la disponibilité arriveront au fur et à mesure du développement de la plateforme."

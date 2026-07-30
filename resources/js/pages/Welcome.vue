@@ -24,8 +24,12 @@ interface Listing {
     description: string | null;
     image: string | null;
     region: string | null;
+    latitude: number | null;
+    longitude: number | null;
     price_from: string | null;
     price_currency: string;
+    rating: number | null;
+    rating_count: number | null;
 }
 
 interface Region {

@@ -108,11 +108,15 @@
             "moreFilters": "Weitere Filter ▾",
             "hideFilters": "Filter ausblenden ▲",
             "note": "Daten werden erfasst, sobald echte Partner-Verfügbarkeit angebunden ist — dieser Katalog ist noch nicht datumsgeprüft.",
-            "allRegions": "Alle Regionen",
+            "allRegions": "Alle Regionen & Orte",
             "anyBudget": "Beliebiges Budget",
             "budget": "Budget",
             "midRange": "Mittelklasse",
             "premium": "Premium",
+            "anyRating": "Beliebige Bewertung",
+            "rating45": "4,5+ Sterne",
+            "rating4": "4+ Sterne",
+            "rating3": "3+ Sterne",
             "empty": "Keine Treffer — versuch, einen Filter zu entfernen."
         },
         "rows": {
@@ -122,7 +126,20 @@
             "vehicle": "Unterwegs sein",
             "region": "Regionen entdecken"
         },
-        "examples": "{count} Beispiele"
+        "examples": "{count} Beispiele",
+        "shortlist": {
+            "toggle": "Zur Merkliste hinzufügen",
+            "count": "{count} ausgewählt",
+            "request": "Verfügbarkeit anfragen",
+            "hide": "Ausblenden",
+            "name": "Vollständiger Name",
+            "email": "E-Mail",
+            "phone": "Telefon (optional)",
+            "message": "Nachricht (optional)",
+            "send": "Anfrage an alle senden",
+            "sending": "Wird gesendet…",
+            "success": "Gesendet! Jeder Anbieter meldet sich direkt bei dir."
+        }
     },
     "saveModal": {
         "title": "Plan speichern",

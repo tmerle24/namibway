@@ -6,6 +6,8 @@ import type { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instanc
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { show } from '@/routes/listings';
+import ExploreMap, { type ExploreMapMarker } from './ExploreMap.vue';
+import ShortlistBar from './ShortlistBar.vue';
 
 interface Listing {
     id: number;
@@ -15,8 +17,12 @@ interface Listing {
     description: string | null;
     image: string | null;
     region: string | null;
+    latitude: number | null;
+    longitude: number | null;
     price_from: string | null;
     price_currency: string;
+    rating: number | null;
+    rating_count: number | null;
 }
 
 interface Region {
@@ -39,12 +45,16 @@ type RowKey =
     'accommodation' | 'activity' | 'restaurant' | 'vehicle' | 'region';
 
 interface IdeaCard {
+    id: number | null;
     title: string;
     description: string;
     region: string | null;
     budget: Budget;
     image: string;
     slug: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    rating: number | null;
 }
 
 interface IdeaRow {
@@ -129,6 +139,7 @@ const ideaRows = computed<IdeaRow[]>(() => {
     for (const listing of props.listings) {
         const images = CATEGORY_IMAGES[listing.type];
         byType[listing.type].push({
+            id: listing.id,
             title: listing.name,
             description: truncate(listing.description),
             region: listing.region,
@@ -137,6 +148,9 @@ const ideaRows = computed<IdeaRow[]>(() => {
                 listing.image ??
                 images[byType[listing.type].length % images.length],
             slug: listing.slug,
+            latitude: listing.latitude,
+            longitude: listing.longitude,
+            rating: listing.rating,
         });
     }
 
@@ -148,12 +162,16 @@ const ideaRows = computed<IdeaRow[]>(() => {
         key: 'region',
         bg: ROW_BG.region,
         items: props.regions.map((region) => ({
+            id: null,
             title: region.name,
             description: region.blurb ?? '',
             region: region.listing_region,
             budget: null,
             image: region.image ?? '/images/explore/region-khomas.jpg',
             slug: null,
+            latitude: null,
+            longitude: null,
+            rating: null,
         })),
     });
 
@@ -177,6 +195,7 @@ const availableRegions = computed(() => {
 const filterCategory = ref('');
 const filterRegion = ref('');
 const filterBudget = ref('');
+const filterMinRating = ref('');
 const filterKeyword = ref('');
 const filterMoreOpen = ref(false);
 const dateInput = ref<HTMLInputElement | null>(null);
@@ -188,6 +207,28 @@ function selectRegion(region: string) {
     filterRegion.value = region;
     filterMoreOpen.value = true;
     filterBar.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+const shortlist = ref<Map<number, string>>(new Map());
+
+function toggleShortlist(item: IdeaCard) {
+    if (item.id === null) {
+        return;
+    }
+
+    if (shortlist.value.has(item.id)) {
+        shortlist.value.delete(item.id);
+    } else {
+        shortlist.value.set(item.id, item.title);
+    }
+}
+
+function removeFromShortlist(id: number) {
+    shortlist.value.delete(id);
+}
+
+function clearShortlist() {
+    shortlist.value.clear();
 }
 
 onMounted(() => {
@@ -225,11 +266,21 @@ function matches(row: IdeaRow, item: IdeaCard): boolean {
         return false;
     }
 
+    if (filterMinRating.value && row.key !== 'region') {
+        const minRating = Number(filterMinRating.value);
+
+        if (item.rating === null || item.rating < minRating) {
+            return false;
+        }
+    }
+
     const keyword = filterKeyword.value.trim().toLowerCase();
 
     if (
         keyword &&
-        !(item.title + ' ' + item.description).toLowerCase().includes(keyword)
+        !(item.title + ' ' + item.description + ' ' + (item.region ?? ''))
+            .toLowerCase()
+            .includes(keyword)
     ) {
         return false;
     }
@@ -247,6 +298,28 @@ const visibleRows = computed(() =>
 );
 
 const hasResults = computed(() => visibleRows.value.length > 0);
+
+const mapMarkers = computed<ExploreMapMarker[]>(() =>
+    visibleRows.value
+        .filter((row) => row.key !== 'region')
+        .flatMap((row) =>
+            row.items
+                .filter(
+                    (item): item is IdeaCard & {
+                        latitude: number;
+                        longitude: number;
+                    } => item.latitude !== null && item.longitude !== null,
+                )
+                .map((item) => ({
+                    title: item.title,
+                    typeLabel: t(`explore.rows.${row.key}`),
+                    image: item.image,
+                    slug: item.slug,
+                    latitude: item.latitude,
+                    longitude: item.longitude,
+                })),
+        ),
+);
 </script>
 
 <template>
@@ -334,11 +407,30 @@ const hasResults = computed(() => visibleRows.value.length > 0);
                         {{ t('explore.filters.premium') }}
                     </option>
                 </select>
+                <select v-model="filterMinRating">
+                    <option value="">
+                        {{ t('explore.filters.anyRating') }}
+                    </option>
+                    <option value="4.5">
+                        {{ t('explore.filters.rating45') }}
+                    </option>
+                    <option value="4">
+                        {{ t('explore.filters.rating4') }}
+                    </option>
+                    <option value="3">
+                        {{ t('explore.filters.rating3') }}
+                    </option>
+                </select>
             </div>
         </div>
         <p v-if="!hasResults" class="filter-empty">
             {{ t('explore.filters.empty') }}
         </p>
+        <ExploreMap
+            v-if="mapMarkers.length > 0"
+            :markers="mapMarkers"
+            map-id="explore-map"
+        />
         <div>
             <div v-for="row in visibleRows" :key="row.key" class="inspire-row">
                 <div class="inspire-row-head">
@@ -377,6 +469,17 @@ const hasResults = computed(() => visibleRows.value.length > 0);
                             <span class="idea-tag">{{
                                 t(`explore.rows.${row.key}`)
                             }}</span>
+                            <button
+                                v-if="item.id !== null"
+                                type="button"
+                                class="idea-shortlist-toggle"
+                                :class="{ active: shortlist.has(item.id) }"
+                                :aria-pressed="shortlist.has(item.id)"
+                                :title="t('explore.shortlist.toggle')"
+                                @click.stop.prevent="toggleShortlist(item)"
+                            >
+                                {{ shortlist.has(item.id) ? '✓' : '+' }}
+                            </button>
                             <img
                                 :src="item.image"
                                 :alt="item.title"
@@ -386,11 +489,19 @@ const hasResults = computed(() => visibleRows.value.length > 0);
                         </div>
                         <div class="idea-body">
                             <h4>{{ item.title }}</h4>
+                            <p v-if="item.rating !== null" class="idea-rating">
+                                ★ {{ item.rating.toFixed(1) }}
+                            </p>
                             <p>{{ item.description }}</p>
                         </div>
                     </component>
                 </div>
             </div>
         </div>
+        <ShortlistBar
+            :items="shortlist"
+            @remove="removeFromShortlist"
+            @clear="clearShortlist"
+        />
     </section>
 </template>

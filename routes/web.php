@@ -28,6 +28,10 @@ Route::post('listings/{listing:slug}/inquiries', [ListingController::class, 'sto
     ->middleware('throttle:10,1')
     ->name('listings.inquiries.store');
 
+Route::post('inquiries/batch', [ListingController::class, 'storeBatchInquiry'])
+    ->middleware('throttle:10,1')
+    ->name('inquiries.batch.store');
+
 Route::post('trips', [TripController::class, 'store'])->middleware('throttle:5,1')->name('trips.store');
 Route::get('trips/{trip}/inquiries', [TripController::class, 'inquiries'])->middleware('throttle:30,1')->name('trips.inquiries');
 
