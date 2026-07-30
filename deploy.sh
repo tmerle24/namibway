@@ -55,20 +55,20 @@ fi
 
 # ── Ab hier: normaler Update-/Deploy-Flow ───────────────────────────
 
-echo "═══ 1/9 Maintenance-Mode AN ═══"
+echo "═══ 1/10 Maintenance-Mode AN ═══"
 php artisan down --retry=15 || true
 
 if [ "$FIRST_INSTALL" = false ]; then
-   echo "═══ 2/9 Git Pull ($BRANCH) ═══"
+   echo "═══ 2/10 Git Pull ($BRANCH) ═══"
    OLD_COMMIT=$(git rev-parse HEAD)
    git fetch origin "$BRANCH"
    git reset --hard "origin/$BRANCH"
    NEW_COMMIT=$(git rev-parse HEAD)
 else
-   echo "═══ 2/9 Erstinstallation — kein Pull nötig (frisch geklont) ═══"
+   echo "═══ 2/10 Erstinstallation — kein Pull nötig (frisch geklont) ═══"
 fi
 
-echo "═══ 3/9 Composer ═══"
+echo "═══ 3/10 Composer ═══"
 if [ "$FIRST_INSTALL" = true ] || git diff HEAD@{1} HEAD --name-only 2>/dev/null | grep -q "composer.lock"; then
     composer install --no-dev --optimize-autoloader
 else
@@ -76,38 +76,43 @@ else
 fi
 
 if [ "$SKIP_NPM" = false ]; then
-    echo "═══ 4/9 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
+    echo "═══ 4/10 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
     php artisan config:clear
     php artisan route:clear
 
-    echo "═══ 5/9 npm install + build ═══"
+    echo "═══ 5/10 npm install + build ═══"
     if [ "$FIRST_INSTALL" = true ] || git diff HEAD@{1} HEAD --name-only 2>/dev/null | grep -qE "package-lock\.json|package\.json"; then
         npm ci
     fi
     export NODE_OPTIONS="--max-old-space-size=3072"
     npm run build
 else
-    echo "═══ 4-5/9 npm build übersprungen (--no-npm) ═══"
+    echo "═══ 4-5/10 npm build übersprungen (--no-npm) ═══"
 fi
 
 if [ "$SKIP_MIGRATE" = false ]; then
-    echo "═══ 6/9 Migrationen ═══"
+    echo "═══ 6/10 Migrationen ═══"
     php artisan migrate --force
 else
-    echo "═══ 6/9 Migrationen übersprungen (--no-migrate) ═══"
+    echo "═══ 6/10 Migrationen übersprungen (--no-migrate) ═══"
 fi
 
-echo "═══ 7/9 Storage-Link ═══"
+echo "═══ 7/10 Storage-Link ═══"
 php artisan storage:link 2>/dev/null || true
 
-echo "═══ 8/9 Caches neu aufbauen ═══"
+echo "═══ 8/10 Caches neu aufbauen ═══"
 php artisan config:cache
 php artisan route:cache
 php artisan view:clear
 php artisan view:cache
 php artisan event:cache
 
-echo "═══ 9/9 Verzeichnis-Rechte, Horizon neu starten, Maintenance-Mode AUS ═══"
+echo "═══ 9/10 Laravel-Scheduler-Cron sicherstellen (Backups u.a. laufen darüber) ═══"
+CRON_LINE="* * * * * cd $APP_DIR && php artisan schedule:run >> /dev/null 2>&1"
+(crontab -l 2>/dev/null | grep -qF "$APP_DIR" && echo "  → Cron-Eintrag bereits vorhanden") || \
+    (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
+
+echo "═══ 10/10 Verzeichnis-Rechte, Horizon neu starten, Maintenance-Mode AUS ═══"
 sudo chown -R "$(whoami):www-data" "$APP_DIR"
 sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;

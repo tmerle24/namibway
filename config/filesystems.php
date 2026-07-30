@@ -74,6 +74,21 @@ return [
             'report' => false,
         ],
 
+        // Dedicated, non-public bucket for DB backups. Must NOT have a public
+        // URL / custom domain attached on the Cloudflare side — unlike the
+        // 'r2' disk above, backups contain password hashes and user emails.
+        'r2-backups' => [
+            'driver' => 's3',
+            'key' => env('CLOUDFLARE_R2_BACKUP_ACCESS_KEY_ID', env('CLOUDFLARE_R2_ACCESS_KEY_ID')),
+            'secret' => env('CLOUDFLARE_R2_BACKUP_SECRET_ACCESS_KEY', env('CLOUDFLARE_R2_SECRET_ACCESS_KEY')),
+            'region' => 'auto',
+            'bucket' => env('CLOUDFLARE_R2_BACKUP_BUCKET'),
+            'endpoint' => env('CLOUDFLARE_R2_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*
