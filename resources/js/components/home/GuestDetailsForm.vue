@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { GuestDetails, ItineraryVariant } from '@/lib/kaia-types';
 
-defineProps<{
+const props = defineProps<{
     variant: ItineraryVariant;
     loading?: boolean;
     error?: string | null;
@@ -15,11 +15,43 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+function parseDateToIso(dateStr: string | null | undefined): string {
+    if (!dateStr) {
+        return '';
+    }
+
+    const d = new Date(dateStr);
+
+    if (isNaN(d.getTime())) {
+        return '';
+    }
+
+    return d.toISOString().slice(0, 10);
+}
+
+function deriveCheckOut(variant: ItineraryVariant): string {
+    const lastDay = variant.days.at(-1);
+
+    if (!lastDay?.date) {
+        return '';
+    }
+
+    const d = new Date(lastDay.date);
+
+    if (isNaN(d.getTime())) {
+        return '';
+    }
+
+    d.setDate(d.getDate() + 1);
+
+    return d.toISOString().slice(0, 10);
+}
+
 const name = ref('');
 const email = ref('');
 const phone = ref('');
-const checkIn = ref('');
-const checkOut = ref('');
+const checkIn = ref(parseDateToIso(props.variant.days[0]?.date));
+const checkOut = ref(deriveCheckOut(props.variant));
 const adults = ref(2);
 const children = ref(0);
 
