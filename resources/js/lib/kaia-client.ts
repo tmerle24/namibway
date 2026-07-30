@@ -93,7 +93,6 @@ const STATIC_REGION_COORDS: Record<string, RegionCoords> = {
     'cheetah conservation fund': { lat: -20.46, lng: 17.92 },
     'naukluft mountains': { lat: -24.05, lng: 15.95 },
     spitzkoppe: { lat: -21.8258, lng: 15.1836 },
-    spitzkoppe: { lat: -21.8258, lng: 15.1836 },
     'namib desert': { lat: -24.05, lng: 15.95 },
 };
 
