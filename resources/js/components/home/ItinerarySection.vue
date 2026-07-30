@@ -46,10 +46,35 @@ const savedTokens = ref<Record<number, string>>({});
 // --- Auth-gate for saving ---
 const showAuthModal = ref(false);
 
+// Track the start date per variant so we can recompute day dates after
+// drag-and-drop reordering or manual day additions.
+const startDates = ref<(Date | null)[]>([]);
+
+function parseDayDate(dateStr: string | null | undefined): Date | null {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function formatDayDate(date: Date): string {
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function applyDates(variantIndex: number) {
+    const start = startDates.value[variantIndex];
+    if (!start) return;
+    editableVariants.value[variantIndex].days.forEach((day, i) => {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        day.date = formatDayDate(d);
+    });
+}
+
 watch(
     () => props.plan,
     (plan) => {
         editableVariants.value = JSON.parse(JSON.stringify(plan.variants));
+        startDates.value = plan.variants.map((v) => parseDayDate(v.days[0]?.date));
         swap.value = null;
     },
     { immediate: true },
@@ -75,6 +100,7 @@ function renumberDays(variantIndex: number) {
     editableVariants.value[variantIndex].days.forEach((day, index) => {
         day.day = index + 1;
     });
+    applyDates(variantIndex);
 }
 
 function removeItem(
@@ -92,6 +118,7 @@ function removeDay(variantIndex: number, dayIndex: number) {
     days.forEach((day, index) => {
         day.day = index + 1;
     });
+    applyDates(variantIndex);
     swap.value = null;
 }
 
@@ -110,6 +137,7 @@ function addDay(variantIndex: number, afterDayIndex: number) {
     days.forEach((day, index) => {
         day.day = index + 1;
     });
+    applyDates(variantIndex);
     swap.value = null;
 }
 
@@ -318,6 +346,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                     >⠿</span
                                 >
                                 {{ day.day }}
+                                <span v-if="day.date" class="day-date">{{ day.date }}</span>
                             </div>
                             <div class="day-detail">
                                 <div>
