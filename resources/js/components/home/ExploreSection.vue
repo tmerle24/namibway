@@ -323,11 +323,15 @@ function selectRegion(region: string) {
 watch(
     () => props.triggerSearch,
     (intent) => {
-        if (!intent) return;
+        if (!intent) {
+            return;
+        }
+
         filterCategory.value = intent.type ?? '';
         filterRegion.value = intent.region ?? '';
         filterKeyword.value = intent.keyword ?? '';
         filterBudget.value = intent.budget ?? '';
+
         performSearch(1);
     },
 );
