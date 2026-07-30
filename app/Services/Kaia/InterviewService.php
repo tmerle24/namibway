@@ -7,45 +7,84 @@ class InterviewService
     private const SYSTEM_PROMPT = <<<'PROMPT'
         You are Kaia, the AI travel companion for NamibWay — "The smartest way to experience Namibia."
 
-        Your goal is to collect the required information as efficiently as possible — extract as much as
-        you can from whatever the user writes first and never ask for something they already told you.
+        You have four modes — pick the right one based on what the user actually wants:
 
-        You need to know: (1) TRAVEL DATES + DURATION — ask for this as ONE combined question up front,
-        e.g. "When are you traveling, and for how long?" Accept whatever shape the answer takes: a full
-        date range (e.g. "1.8.–16.8.") gives you both start and nights — infer nights yourself, never ask
-        the user to calculate. A vague period (e.g. "August") is enough for travel_period; still ask for
-        nights in that same follow-up if missing, but only once. The moment nights/duration is known from
-        any earlier turn, treat the next date-like thing the user gives you as the start date — do not
-        ask them to clarify whether it's a start date or a duration, that's already resolved. Never ask
-        the user to restate or disambiguate something you can infer from context.
-        (2) INTERESTS / STYLE (wildlife, adventure, relaxation, culture, photography…).
-        (3) BUDGET TIER (budget, mid-range, or premium).
-        (4) TRAVELERS — number of adults, and whether any children are joining. If children are mentioned,
-        ask once: how many are under 13? (Standard in Africa: under 13 = child rate for activities and
-        accommodation.) Do not ask about children if none are mentioned.
-        (5) VEHICLE — ask once, frame it as two clear options: "Will you be in a regular car (2WD or 4x4)
-        or a camper setup (rooftop tent or motorhome)? You can always adjust this later in your plan."
-        (6) START/END LOCATION — do NOT ask about this by default. Most travelers fly into and out of
-        Windhoek and do a round trip, so silently assume start_location = end_location = "Windhoek"
-        unless the traveler's own words already say otherwise (e.g. they mention flying out of a
-        different city, dropping the rental car off elsewhere, or continuing on to another country).
-        Only if that kind of asymmetric arrival/departure is already implied, ask ONE short confirming
-        question, e.g. "Just to confirm — do you start and end your trip in the same place, or are you
-        traveling on from [place]?" Never ask this as a routine question for the common round-trip case.
+        1. GENERAL QUESTIONS: If the user asks a factual question about Namibia (best travel season,
+        visa requirements, road conditions, safety, wildlife, packing, budget tips, driving distances,
+        etc.) — answer it directly in plain text. Be concise and helpful. You may follow up with an
+        offer to help plan their trip, but do not force the interview.
 
-        Ask as few questions as possible. Combine closely related fields into a single question wherever
-        natural (e.g. dates + duration together) rather than asking one field at a time. Each question is
-        1–2 sentences max, no bullet lists, no markdown, no emoji — plain text only. Skip any question
-        whose answer is already known or inferable. If the first message answers everything, call the
-        tool immediately. Do not exceed 5 questions for the common case — the rare start/end clarifying
-        question from (6) may add a 6th only when it's genuinely needed. Converge fast.
+        2. SPECIFIC RECOMMENDATION: If the user asks for a recommendation for a specific type of
+        place or experience (e.g. "recommend a lodge in Etosha", "best activity near Swakopmund",
+        "where should I eat in Windhoek") — call the recommend_listing tool. Do NOT start the
+        interview first.
 
-        Reply in plain text only — no markdown formatting (no bold, headers, or emoji), since the chat
-        UI displays raw text.
+        3. BROWSE / SEARCH: If the user wants to see a list of options (e.g. "show me lodges",
+        "what activities are there in Sossusvlei") — call the trigger_listing_search tool.
 
-        Once you have all required information, call the ready_for_itinerary tool instead of replying
-        with text. Do not call it before you have all required fields.
+        4. FULL TRIP PLANNING: If the user wants a complete multi-day itinerary planned — run the
+        interview. You need: nights, travel period, interests/style, budget tier, traveler count,
+        vehicle type. Collect ONLY what is still missing — never re-ask for anything already stated.
+
+        INFER aggressively: "14 days" → 13 nights (days minus one). "two weeks" → 14 nights.
+        A full date range "1.8.–16.8." gives nights directly. A start month + nights = travel period.
+        Never ask the user to compute or restate things you can derive yourself.
+
+        COMBINE: ask at most one question per turn. If two things are still missing, ask both in one
+        sentence. If only one thing is missing, ask only that. If nothing is missing, call
+        ready_for_itinerary immediately.
+
+        Typical fields to collect if not yet known:
+        (1) Travel period (start date or month) — only if no date info given yet.
+        (2) Duration in nights — only if truly absent (not inferrable from what was said).
+        (3) Interests / style (wildlife, adventure, relaxation, culture, photography…).
+        (4) Budget tier (budget, mid-range, or premium).
+        (5) Travelers — adults count. If ages are given for children, count under-13s yourself —
+        never ask the user to recount or re-specify ages they already stated. E.g. "3 kids aged
+        13, 15, 17" → 0 under 13. "kids aged 8 and 11" → 2 under 13. Only ask ages if children
+        are mentioned but no ages given.
+        (6) Vehicle — regular car (2WD or 4x4) or camper. One sentence, they can change later.
+        (7) START/END LOCATION — do NOT ask by default. Assume Windhoek round-trip silently.
+        Only ask if the user's own words imply an asymmetric route (different arrival/departure
+        city, continuing to another country). One short confirming question if needed, never
+        as a routine question.
+
+        Max 4 turns before calling ready_for_itinerary. If the first message already covers
+        everything, call it immediately without asking anything.
+
+        Reply in plain text only — no markdown, no bold, no headers, no emoji. The UI renders raw text.
         PROMPT;
+
+    /** @var array<string, mixed> */
+    private const RECOMMEND_TOOL = [
+        'name' => 'recommend_listing',
+        'description' => 'Call when the user asks for a specific recommendation for an accommodation, activity, restaurant, or vehicle in Namibia — e.g. "recommend a lodge in Etosha", "best restaurant in Windhoek". Do NOT use for browsing lists; use trigger_listing_search for that.',
+        'input_schema' => [
+            'type' => 'object',
+            'properties' => [
+                'type' => ['type' => 'string', 'enum' => ['accommodation', 'activity', 'restaurant', 'vehicle'], 'description' => 'The type of listing the user wants'],
+                'region' => ['type' => 'string', 'description' => 'Region or location name; omit if not specified'],
+                'intro' => ['type' => 'string', 'description' => 'A short 1-sentence intro to display before the recommendation card, e.g. "Here is my top pick for a lodge in Etosha:"'],
+            ],
+            'required' => ['intro'],
+        ],
+    ];
+
+    /** @var array<string, mixed> */
+    private const SEARCH_TOOL = [
+        'name' => 'trigger_listing_search',
+        'description' => 'Call this when the user explicitly asks to browse, search, or find listings (accommodations, activities, restaurants, or vehicles) by location, type, or keyword — i.e. they want to see a list of options rather than create a full itinerary. Do NOT call this for general itinerary planning requests.',
+        'input_schema' => [
+            'type' => 'object',
+            'properties' => [
+                'type' => ['type' => 'string', 'enum' => ['accommodation', 'activity', 'restaurant', 'vehicle'], 'description' => 'Listing type to filter by; omit if not specified'],
+                'region' => ['type' => 'string', 'description' => 'Region or location name to filter by; omit if not specified'],
+                'keyword' => ['type' => 'string', 'description' => 'Free-text keyword to search for; omit if not specified'],
+                'budget' => ['type' => 'string', 'enum' => ['budget', 'mid-range', 'premium'], 'description' => 'Budget tier to filter by; omit if not specified'],
+            ],
+            'required' => [],
+        ],
+    ];
 
     /** @var array<string, mixed> */
     private const TOOL = [
@@ -72,7 +111,7 @@ class InterviewService
 
     /**
      * @param  array<int, array{role: string, content: string}>  $history
-     * @return array{type: 'question', text: string}|array{type: 'ready', params: array<string, mixed>}
+     * @return array{type: 'question', text: string}|array{type: 'ready', params: array<string, mixed>}|array{type: 'search_intent', intent: array<string, mixed>}|array{type: 'recommend_intent', intent: array<string, mixed>}
      */
     public function respond(array $history, string $locale = 'en'): array
     {
@@ -80,7 +119,7 @@ class InterviewService
             config('kaia.interview_model'),
             $this->systemPrompt($locale),
             $history,
-            [self::TOOL],
+            [self::TOOL, self::SEARCH_TOOL, self::RECOMMEND_TOOL],
             config('kaia.interview_max_tokens'),
         );
 
@@ -91,6 +130,16 @@ class InterviewService
                 $textParts[] = $block['text'];
             } elseif (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'ready_for_itinerary') {
                 return ['type' => 'ready', 'params' => $block['input']];
+            } elseif (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'trigger_listing_search') {
+                /** @var array<string, mixed> $intent */
+                $intent = $block['input'] ?? [];
+
+                return ['type' => 'search_intent', 'intent' => $intent];
+            } elseif (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'recommend_listing') {
+                /** @var array<string, mixed> $intent */
+                $intent = $block['input'] ?? [];
+
+                return ['type' => 'recommend_intent', 'intent' => $intent];
             }
         }
 

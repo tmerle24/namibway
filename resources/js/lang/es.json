@@ -20,6 +20,10 @@
             "Armando tu plan…"
         ],
         "itineraryReady": "Perfecto, con eso basta para esbozar un plan. Aquí tienes algunas formas de hacer este viaje:",
+        "searchTriggered": "¡He encontrado algunos resultados para ti — desplázate hacia abajo para ver los alojamientos!",
+        "recommendationIntro": "Aquí está mi mejor recomendación para ti:",
+        "viewListing": "Ver y solicitar →",
+        "from": "desde",
         "error": "Algo salió mal al conectar con el compañero de viaje. Inténtalo de nuevo."
     },
     "itinerary": {
@@ -148,6 +152,19 @@
             "send": "Enviar solicitud a todos",
             "sending": "Enviando…",
             "success": "¡Enviado! Cada alojamiento se pondrá en contacto contigo directamente."
+        },
+        "results": {
+            "count": "{count} resultado | {count} resultados",
+            "loadMore": "Cargar más",
+            "viewDetails": "Ver detalles →",
+            "noResults": "Sin resultados — prueba a ajustar los filtros.",
+            "searching": "Buscando…",
+            "backToInspiration": "← Volver a la inspiración",
+            "sortBy": "Ordenar:",
+            "sortFeatured": "Destacados",
+            "sortPriceAsc": "Precio: menor a mayor",
+            "sortPriceDesc": "Precio: mayor a menor",
+            "sortRating": "Mejor valorados"
         }
     },
     "footer": {
@@ -183,7 +200,11 @@
             "send": "Enviar consulta",
             "sending": "Enviando…",
             "success": "¡Enviado! El socio se pondrá en contacto contigo directamente.",
-            "unavailable": "Esta oferta no acepta consultas por el momento — vuelve pronto."
+            "unavailable": "Esta oferta no acepta consultas por el momento — vuelve pronto.",
+            "checkIn": "Llegada",
+            "checkOut": "Salida",
+            "adults": "Adultos",
+            "children": "Niños (menores de 12)"
         },
         "reviews": {
             "title": "Valoraciones",
@@ -200,6 +221,14 @@
     },
     "localeSwitcher": {
         "label": "Idioma"
+    },
+    "tripPlan": {
+        "loginCta": {
+            "title": "Guardar este plan de viaje",
+            "subtitle": "Inicia sesión o crea una cuenta gratuita — accesible desde tu panel en cualquier momento.",
+            "login": "Iniciar sesión",
+            "register": "Crear cuenta"
+        }
     },
     "saveModal": {
         "title": "Guardar el plan",
@@ -218,5 +247,28 @@
         "loginFailed": "Email o contraseña incorrectos.",
         "registerFailed": "Registro fallido.",
         "networkError": "Error de red. Inténtelo de nuevo."
+    },
+    "howItWorks": {
+        "ai": {
+            "badge": "Con IA",
+            "title": "Deja que Kaia planifique tu viaje",
+            "steps": [
+                "Chatea — cuéntale a Kaia qué tienes en mente",
+                "Revisa el itinerario — alojamiento, actividades, restaurantes",
+                "Reserva todo de una vez — un solo clic"
+            ],
+            "cta": "Empezar a planificar ↑"
+        },
+        "or": "o",
+        "search": {
+            "badge": "Búsqueda clásica",
+            "title": "Busca y reserva tú mismo",
+            "steps": [
+                "Filtra por categoría, región y presupuesto",
+                "Consulta detalles y fotos",
+                "Contacta directamente con el propietario"
+            ],
+            "cta": "Ver alojamientos ↓"
+        }
     }
 }

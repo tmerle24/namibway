@@ -34,6 +34,27 @@ export interface ItineraryPlan {
 export interface ChatMessage {
     role: 'ai' | 'user';
     text: string;
+    recommendation?: ListingRecommendation | null;
+}
+
+export interface ListingRecommendation {
+    id: number;
+    type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
+    name: string;
+    slug: string;
+    region: string | null;
+    image: string | null;
+    price_from: string | null;
+    price_currency: string;
+    rating: number | null;
+    rating_count: number | null;
+}
+
+export interface SearchIntent {
+    type?: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
+    region?: string;
+    keyword?: string;
+    budget?: 'budget' | 'mid-range' | 'premium';
 }
 
 export interface GuestDetails {

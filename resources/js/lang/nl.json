@@ -20,6 +20,10 @@
             "Stelt jouw plan samen…"
         ],
         "itineraryReady": "Perfect, dat is genoeg om een plan te schetsen. Hier zijn een paar manieren om deze reis te maken:",
+        "searchTriggered": "Ik heb wat resultaten voor je gevonden — scroll naar beneden om de aanbiedingen te bekijken!",
+        "recommendationIntro": "Dit is mijn topkeuze voor jou:",
+        "viewListing": "Bekijk & vraag aan →",
+        "from": "vanaf",
         "error": "Er ging iets mis bij het bereiken van de reisgezel. Probeer het opnieuw."
     },
     "itinerary": {
@@ -148,6 +152,19 @@
             "send": "Aanvraag naar allemaal sturen",
             "sending": "Bezig met verzenden…",
             "success": "Verzonden! Elke aanbieder neemt rechtstreeks contact met je op."
+        },
+        "results": {
+            "count": "{count} resultaat | {count} resultaten",
+            "loadMore": "Meer laden",
+            "viewDetails": "Details bekijken →",
+            "noResults": "Geen resultaten gevonden — pas je filters aan.",
+            "searching": "Zoeken…",
+            "backToInspiration": "← Terug naar inspiratie",
+            "sortBy": "Sorteren:",
+            "sortFeatured": "Aanbevolen",
+            "sortPriceAsc": "Prijs: laag naar hoog",
+            "sortPriceDesc": "Prijs: hoog naar laag",
+            "sortRating": "Hoogst beoordeeld"
         }
     },
     "footer": {
@@ -183,7 +200,11 @@
             "send": "Aanvraag versturen",
             "sending": "Versturen…",
             "success": "Verstuurd! De partner neemt rechtstreeks contact met je op.",
-            "unavailable": "Dit aanbod accepteert momenteel geen aanvragen — kom later nog eens terug."
+            "unavailable": "Dit aanbod accepteert momenteel geen aanvragen — kom later nog eens terug.",
+            "checkIn": "Aankomst",
+            "checkOut": "Vertrek",
+            "adults": "Volwassenen",
+            "children": "Kinderen (onder 12)"
         },
         "reviews": {
             "title": "Beoordelingen",
@@ -200,6 +221,14 @@
     },
     "localeSwitcher": {
         "label": "Taal"
+    },
+    "tripPlan": {
+        "loginCta": {
+            "title": "Dit reisplan bewaren",
+            "subtitle": "Log in of maak een gratis account aan — altijd bereikbaar via je dashboard.",
+            "login": "Inloggen",
+            "register": "Account aanmaken"
+        }
     },
     "saveModal": {
         "title": "Plan opslaan",
@@ -218,5 +247,28 @@
         "loginFailed": "Verkeerd e-mailadres of wachtwoord.",
         "registerFailed": "Registratie mislukt.",
         "networkError": "Netwerkfout. Probeer opnieuw."
+    },
+    "howItWorks": {
+        "ai": {
+            "badge": "AI-gestuurde planning",
+            "title": "Laat Kaia je reis plannen",
+            "steps": [
+                "Chat — vertel Kaia wat je wilt",
+                "Bekijk het reisplan — verblijf, activiteiten, eten",
+                "Boek alles tegelijk — één klik"
+            ],
+            "cta": "Begin met plannen ↑"
+        },
+        "or": "of",
+        "search": {
+            "badge": "Klassiek zoeken",
+            "title": "Zelf zoeken & boeken",
+            "steps": [
+                "Filter op categorie, regio en budget",
+                "Bekijk details en foto's",
+                "Neem direct contact op met de eigenaar"
+            ],
+            "cta": "Bekijk aanbod ↓"
+        }
     }
 }

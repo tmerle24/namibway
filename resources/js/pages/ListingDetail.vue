@@ -247,11 +247,58 @@ const heroImage = computed(() => {
                                 <input name="phone" type="text" />
                                 <InputError :message="errors.phone" />
                             </label>
-                            <label>
-                                {{ t('listing.inquiry.travelDates') }}
-                                <input name="travel_dates" type="text" />
-                                <InputError :message="errors.travel_dates" />
-                            </label>
+                            <div class="inquiry-dates-row">
+                                <label class="inquiry-date-field">
+                                    {{ t('listing.inquiry.checkIn') }}
+                                    <input
+                                        name="check_in"
+                                        type="date"
+                                        :min="
+                                            new Date()
+                                                .toISOString()
+                                                .slice(0, 10)
+                                        "
+                                    />
+                                    <InputError :message="errors.check_in" />
+                                </label>
+                                <label class="inquiry-date-field">
+                                    {{ t('listing.inquiry.checkOut') }}
+                                    <input
+                                        name="check_out"
+                                        type="date"
+                                        :min="
+                                            new Date()
+                                                .toISOString()
+                                                .slice(0, 10)
+                                        "
+                                    />
+                                    <InputError :message="errors.check_out" />
+                                </label>
+                            </div>
+                            <div class="inquiry-guests-row">
+                                <label class="inquiry-guest-field">
+                                    {{ t('listing.inquiry.adults') }}
+                                    <input
+                                        name="adults"
+                                        type="number"
+                                        min="1"
+                                        max="20"
+                                        value="2"
+                                    />
+                                    <InputError :message="errors.adults" />
+                                </label>
+                                <label class="inquiry-guest-field">
+                                    {{ t('listing.inquiry.children') }}
+                                    <input
+                                        name="children"
+                                        type="number"
+                                        min="0"
+                                        max="20"
+                                        value="0"
+                                    />
+                                    <InputError :message="errors.children" />
+                                </label>
+                            </div>
                             <label>
                                 {{ t('listing.inquiry.message') }}
                                 <textarea name="message" rows="3"></textarea>

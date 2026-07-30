@@ -20,6 +20,10 @@
             "Stellt deinen Plan zusammen…"
         ],
         "itineraryReady": "Perfekt, das reicht, um einen Plan zu skizzieren. Hier sind ein paar Möglichkeiten für diese Reise:",
+        "searchTriggered": "Ich habe einige Ergebnisse für dich gefunden — scroll nach unten, um die Angebote zu sehen!",
+        "recommendationIntro": "Hier ist mein Top-Tipp für dich:",
+        "viewListing": "Ansehen & anfragen →",
+        "from": "ab",
         "error": "Bei der Verbindung zum Reisebegleiter ist etwas schiefgelaufen. Bitte versuch es erneut."
     },
     "itinerary": {
@@ -148,6 +152,27 @@
             "send": "Anfrage an alle senden",
             "sending": "Wird gesendet…",
             "success": "Gesendet! Jeder Anbieter meldet sich direkt bei dir."
+        },
+        "results": {
+            "count": "{count} Ergebnis | {count} Ergebnisse",
+            "loadMore": "Mehr laden",
+            "viewDetails": "Details ansehen →",
+            "noResults": "Keine Ergebnisse — passe deine Filter an.",
+            "searching": "Suche läuft…",
+            "backToInspiration": "← Zurück zur Übersicht",
+            "sortBy": "Sortierung:",
+            "sortFeatured": "Empfohlen",
+            "sortPriceAsc": "Preis: günstigste zuerst",
+            "sortPriceDesc": "Preis: teuerste zuerst",
+            "sortRating": "Bestbewertet"
+        }
+    },
+    "tripPlan": {
+        "loginCta": {
+            "title": "Diesen Reiseplan behalten",
+            "subtitle": "Melde dich an oder erstelle ein kostenloses Konto — jederzeit über das Dashboard abrufbar.",
+            "login": "Anmelden",
+            "register": "Konto erstellen"
         }
     },
     "saveModal": {
@@ -201,7 +226,11 @@
             "send": "Anfrage senden",
             "sending": "Wird gesendet…",
             "success": "Gesendet! Der Partner meldet sich direkt bei dir.",
-            "unavailable": "Dieses Angebot nimmt derzeit keine Anfragen an — schau bald wieder vorbei."
+            "unavailable": "Dieses Angebot nimmt derzeit keine Anfragen an — schau bald wieder vorbei.",
+            "checkIn": "Anreise",
+            "checkOut": "Abreise",
+            "adults": "Erwachsene",
+            "children": "Kinder (unter 12)"
         },
         "reviews": {
             "title": "Bewertungen",
@@ -218,5 +247,28 @@
     },
     "localeSwitcher": {
         "label": "Sprache"
+    },
+    "howItWorks": {
+        "ai": {
+            "badge": "KI-gestützt",
+            "title": "Reiseplan erstellen lassen",
+            "steps": [
+                "Chat — erzähl Kaia, was du dir vorstellst",
+                "Reiseplan prüfen — Unterkunft, Aktivitäten, Restaurants",
+                "Alles auf einmal anfragen — ein Klick"
+            ],
+            "cta": "Jetzt planen ↑"
+        },
+        "or": "oder",
+        "search": {
+            "badge": "Klassische Suche",
+            "title": "Einfach klassisch suchen",
+            "steps": [
+                "Nach Kategorie, Region und Budget filtern",
+                "Details und Fotos ansehen",
+                "Den Anbieter direkt kontaktieren"
+            ],
+            "cta": "Listings durchsuchen ↓"
+        }
     }
 }

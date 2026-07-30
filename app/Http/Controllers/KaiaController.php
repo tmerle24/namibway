@@ -100,6 +100,44 @@ class KaiaController extends Controller
                 return response()->json(['type' => 'question', 'text' => $result['text']]);
             }
 
+            if ($result['type'] === 'search_intent') {
+                return response()->json(['type' => 'search_intent', 'intent' => $result['intent']]);
+            }
+
+            if ($result['type'] === 'recommend_intent') {
+                $intent = $result['intent'];
+                $query = Listing::query()->where('is_published', true);
+
+                if (isset($intent['type']) && is_string($intent['type'])) {
+                    $query->where('type', $intent['type']);
+                }
+
+                if (isset($intent['region']) && is_string($intent['region'])) {
+                    $query->where('region', 'ilike', '%'.$intent['region'].'%');
+                }
+
+                $listing = $query->orderByDesc('is_featured')->orderByDesc('rating')->first();
+
+                $listingData = $listing ? [
+                    'id' => $listing->id,
+                    'type' => $listing->type->value,
+                    'name' => $listing->name,
+                    'slug' => $listing->slug,
+                    'region' => $listing->region,
+                    'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
+                    'price_from' => $listing->price_from,
+                    'price_currency' => $listing->price_currency,
+                    'rating' => $listing->rating !== null ? (float) $listing->rating : null,
+                    'rating_count' => $listing->rating_count,
+                ] : null;
+
+                return response()->json([
+                    'type' => 'recommendation',
+                    'intro' => $intent['intro'] ?? '',
+                    'listing' => $listingData,
+                ]);
+            }
+
             $plan = $itinerary->generate($result['params']);
 
             return response()->json(['type' => 'itinerary', 'plan' => $plan]);

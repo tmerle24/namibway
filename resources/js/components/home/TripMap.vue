@@ -65,8 +65,11 @@ let map: LeafletMap | null = null;
 let markers: Marker[] = [];
 let routeLine: Polyline | null = null;
 
-const NAMIBIA_CENTER: [number, number] = [-22.0, 17.5];
-const DEFAULT_ZOOM = 5;
+// Namibia bounding box: SW(-29.5, 11.5) → NE(-16.9, 25.3)
+const NAMIBIA_BOUNDS: [[number, number], [number, number]] = [
+    [-29.5, 11.5],
+    [-16.9, 25.3],
+];
 
 async function initMap(containerId: string) {
     const L = (await import('leaflet')).default;
@@ -84,11 +87,11 @@ async function initMap(containerId: string) {
     });
 
     map = L.map(containerId, {
-        center: NAMIBIA_CENTER,
-        zoom: DEFAULT_ZOOM,
         zoomControl: true,
         scrollWheelZoom: false,
     });
+
+    map.fitBounds(NAMIBIA_BOUNDS);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution:
@@ -190,6 +193,8 @@ function renderRoute() {
         }
 
         if (waypoints.length === 0) {
+            map!.fitBounds(NAMIBIA_BOUNDS);
+
             return;
         }
 
@@ -222,7 +227,7 @@ function renderRoute() {
 
             const accHtml = wp.accommodationName
                 ? wp.accommodationSlug
-                    ? `<a href="/listing/${wp.accommodationSlug}" target="_blank" rel="noopener" class="map-popup-link">${wp.accommodationName}</a>`
+                    ? `<a href="/listings/${wp.accommodationSlug}" target="_blank" rel="noopener" class="map-popup-link">${wp.accommodationName}</a>`
                     : wp.accommodationName
                 : '';
 
@@ -246,9 +251,9 @@ function renderRoute() {
         });
 
         if (waypoints.length === 1) {
-            map!.setView(waypoints[0].latlng, 8);
+            map!.setView(waypoints[0].latlng, 7);
         } else {
-            map!.fitBounds(L.latLngBounds(latlngs), { padding: [48, 48] });
+            map!.fitBounds(L.latLngBounds(latlngs), { padding: [56, 40] });
         }
 
         // Fetch driving times between consecutive stops and render labels
@@ -308,15 +313,17 @@ watch(() => [props.variant, props.regionCoords] as const, renderRoute, {
 
 <style scoped>
 .trip-map-wrapper {
-    margin: 20px 0 4px;
+    margin: 20px auto 4px;
     border-radius: 12px;
     overflow: hidden;
     border: 1px solid var(--sand-dark, #d6c9b5);
+    max-width: 420px;
+    aspect-ratio: 3 / 4;
 }
 
 .trip-map-container {
-    height: 320px;
     width: 100%;
+    height: 100%;
     background: #f0ece4;
 }
 </style>

@@ -7,12 +7,14 @@ import BookingSection from '@/components/home/BookingSection.vue';
 import ExploreSection from '@/components/home/ExploreSection.vue';
 import GuestDetailsForm from '@/components/home/GuestDetailsForm.vue';
 import HeroChat from '@/components/home/HeroChat.vue';
+import HowItWorks from '@/components/home/HowItWorks.vue';
 import ItinerarySection from '@/components/home/ItinerarySection.vue';
 import { createTrip } from '@/lib/kaia-client';
 import type {
     GuestDetails,
     ItineraryPlan,
     ItineraryVariant,
+    SearchIntent,
 } from '@/lib/kaia-types';
 import logoDark from '../../images/logo-dark.png';
 
@@ -48,6 +50,7 @@ defineProps<{
 }>();
 
 const plan = ref<ItineraryPlan | null>(null);
+const searchIntent = ref<SearchIntent | null>(null);
 const bookingVariant = ref<ItineraryVariant | null>(null);
 const bookingActive = ref(false);
 const bookingLoading = ref(false);
@@ -61,6 +64,11 @@ async function scrollTo(id: string) {
     document
         .getElementById(id)
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function onSearchIntent(intent: SearchIntent) {
+    searchIntent.value = intent;
+    await scrollTo('explore-section');
 }
 
 async function onPlanReady(newPlan: ItineraryPlan) {
@@ -108,7 +116,7 @@ async function onGuestSubmit(details: GuestDetails) {
 
 <template>
     <div class="kaia-page">
-        <HeroChat @plan-ready="onPlanReady" />
+        <HeroChat @plan-ready="onPlanReady" @search-intent="onSearchIntent" />
         <ItinerarySection v-if="plan" :plan="plan" @book="onBook" />
         <GuestDetailsForm
             v-if="bookingVariant && !bookingActive"
@@ -127,7 +135,12 @@ async function onGuestSubmit(details: GuestDetails) {
             :guest-email="guestEmail"
             :trip-id="bookingTripId"
         />
-        <ExploreSection :listings="listings" :regions="regions" />
+        <HowItWorks />
+        <ExploreSection
+            :listings="listings"
+            :regions="regions"
+            :trigger-search="searchIntent"
+        />
 
         <footer>
             <img :src="logoDark" alt="NamibWay" class="footer-logo" />
