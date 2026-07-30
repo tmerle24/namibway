@@ -233,7 +233,9 @@ watch(() => [props.variant, props.regionCoords] as const, renderRoute, {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     font-family: inherit;
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease;
 }
 
 .trip-map-marker:hover {

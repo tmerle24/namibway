@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const emit = defineEmits<{
@@ -20,7 +20,10 @@ const loginError = ref('');
 const loginLoading = ref(false);
 
 async function submitLogin() {
-    if (loginLoading.value) return;
+    if (loginLoading.value) {
+        return;
+    }
+
     loginError.value = '';
     loginLoading.value = true;
 
@@ -33,15 +36,22 @@ async function submitLogin() {
                 Accept: 'application/json',
                 'X-XSRF-TOKEN': xsrfToken(),
             },
-            body: JSON.stringify({ email: loginEmail.value, password: loginPassword.value }),
+            body: JSON.stringify({
+                email: loginEmail.value,
+                password: loginPassword.value,
+            }),
         });
 
         if (res.ok) {
             // Reload only the auth prop — Vue state stays intact
-            router.reload({ only: ['auth'], onSuccess: () => emit('authenticated') });
+            router.reload({
+                only: ['auth'],
+                onSuccess: () => emit('authenticated'),
+            });
         } else {
             const data = await res.json().catch(() => ({}));
-            loginError.value = flattenErrors(data) || t('saveModal.loginFailed');
+            loginError.value =
+                flattenErrors(data) || t('saveModal.loginFailed');
         }
     } catch {
         loginError.value = t('saveModal.networkError');
@@ -59,7 +69,10 @@ const regError = ref('');
 const regLoading = ref(false);
 
 async function submitRegister() {
-    if (regLoading.value) return;
+    if (regLoading.value) {
+        return;
+    }
+
     regError.value = '';
     regLoading.value = true;
 
@@ -81,10 +94,14 @@ async function submitRegister() {
         });
 
         if (res.ok) {
-            router.reload({ only: ['auth'], onSuccess: () => emit('authenticated') });
+            router.reload({
+                only: ['auth'],
+                onSuccess: () => emit('authenticated'),
+            });
         } else {
             const data = await res.json().catch(() => ({}));
-            regError.value = flattenErrors(data) || t('saveModal.registerFailed');
+            regError.value =
+                flattenErrors(data) || t('saveModal.registerFailed');
         }
     } catch {
         regError.value = t('saveModal.networkError');
@@ -95,16 +112,27 @@ async function submitRegister() {
 
 function xsrfToken(): string {
     const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]+)/);
+
     return match ? decodeURIComponent(match[1]) : '';
 }
 
 function flattenErrors(data: unknown): string {
-    if (typeof data !== 'object' || data === null) return '';
-    const d = data as Record<string, unknown>;
-    if (d.errors && typeof d.errors === 'object') {
-        return Object.values(d.errors as Record<string, string[]>).flat().join(' ');
+    if (typeof data !== 'object' || data === null) {
+        return '';
     }
-    if (typeof d.message === 'string') return d.message;
+
+    const d = data as Record<string, unknown>;
+
+    if (d.errors && typeof d.errors === 'object') {
+        return Object.values(d.errors as Record<string, string[]>)
+            .flat()
+            .join(' ');
+    }
+
+    if (typeof d.message === 'string') {
+        return d.message;
+    }
+
     return '';
 }
 </script>
@@ -112,22 +140,38 @@ function flattenErrors(data: unknown): string {
 <template>
     <div class="modal-backdrop" @click.self="emit('close')">
         <div class="modal-box" role="dialog" aria-modal="true">
-            <button class="modal-close" :aria-label="t('saveModal.close')" @click="emit('close')">×</button>
+            <button
+                class="modal-close"
+                :aria-label="t('saveModal.close')"
+                @click="emit('close')"
+            >
+                ×
+            </button>
 
             <h3>{{ t('saveModal.title') }}</h3>
             <p class="modal-sub">{{ t('saveModal.subtitle') }}</p>
 
             <div class="modal-tabs">
-                <button :class="['tab-btn', { active: tab === 'login' }]" @click="tab = 'login'">
+                <button
+                    :class="['tab-btn', { active: tab === 'login' }]"
+                    @click="tab = 'login'"
+                >
                     {{ t('saveModal.tabLogin') }}
                 </button>
-                <button :class="['tab-btn', { active: tab === 'register' }]" @click="tab = 'register'">
+                <button
+                    :class="['tab-btn', { active: tab === 'register' }]"
+                    @click="tab = 'register'"
+                >
                     {{ t('saveModal.tabRegister') }}
                 </button>
             </div>
 
             <!-- Login tab -->
-            <form v-if="tab === 'login'" class="modal-form" @submit.prevent="submitLogin">
+            <form
+                v-if="tab === 'login'"
+                class="modal-form"
+                @submit.prevent="submitLogin"
+            >
                 <input
                     v-model="loginEmail"
                     type="email"
@@ -143,8 +187,16 @@ function flattenErrors(data: unknown): string {
                     required
                 />
                 <p v-if="loginError" class="form-error">{{ loginError }}</p>
-                <button type="submit" class="modal-submit" :disabled="loginLoading">
-                    {{ loginLoading ? t('saveModal.loggingIn') : t('saveModal.loginCta') }}
+                <button
+                    type="submit"
+                    class="modal-submit"
+                    :disabled="loginLoading"
+                >
+                    {{
+                        loginLoading
+                            ? t('saveModal.loggingIn')
+                            : t('saveModal.loginCta')
+                    }}
                 </button>
             </form>
 
@@ -179,8 +231,16 @@ function flattenErrors(data: unknown): string {
                     required
                 />
                 <p v-if="regError" class="form-error">{{ regError }}</p>
-                <button type="submit" class="modal-submit" :disabled="regLoading">
-                    {{ regLoading ? t('saveModal.registering') : t('saveModal.registerCta') }}
+                <button
+                    type="submit"
+                    class="modal-submit"
+                    :disabled="regLoading"
+                >
+                    {{
+                        regLoading
+                            ? t('saveModal.registering')
+                            : t('saveModal.registerCta')
+                    }}
                 </button>
             </form>
         </div>
@@ -218,7 +278,9 @@ function flattenErrors(data: unknown): string {
     color: #8a7f68;
     line-height: 1;
 }
-.modal-close:hover { color: var(--ink, #241c15); }
+.modal-close:hover {
+    color: var(--ink, #241c15);
+}
 h3 {
     font-family: 'Fraunces', serif;
     font-size: 20px;
@@ -247,7 +309,9 @@ h3 {
     color: #8a7f68;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
-    transition: color 0.15s, border-color 0.15s;
+    transition:
+        color 0.15s,
+        border-color 0.15s;
 }
 .tab-btn.active {
     color: var(--rust, #b5651d);
@@ -289,6 +353,11 @@ h3 {
     cursor: pointer;
     transition: background 0.15s;
 }
-.modal-submit:hover:not(:disabled) { background: var(--night-deep, #101a30); }
-.modal-submit:disabled { opacity: 0.5; cursor: default; }
+.modal-submit:hover:not(:disabled) {
+    background: var(--night-deep, #101a30);
+}
+.modal-submit:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
 </style>

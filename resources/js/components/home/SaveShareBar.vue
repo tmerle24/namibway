@@ -33,6 +33,7 @@ async function save() {
 
     if (props.isLoggedIn === false) {
         emit('need-auth');
+
         return;
     }
 

@@ -206,7 +206,6 @@ class ScrapeNamibiayp extends Command
                     $fill['image'] = $heroUrl;
                 }
                 $needsGallery = empty($existing->gallery) || (
-                    is_array($existing->gallery) &&
                     count(array_filter($existing->gallery, fn ($u) => str_starts_with((string) $u, '/storage/'))) > 0
                 );
                 if (! empty($galleryUrls) && $needsGallery) {

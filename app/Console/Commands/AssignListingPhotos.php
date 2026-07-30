@@ -178,6 +178,7 @@ class AssignListingPhotos extends Command
         return self::SUCCESS;
     }
 
+    /** @return array<string, mixed> */
     private function fallbackByType(string $type): array
     {
         return match ($type) {
