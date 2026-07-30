@@ -42,7 +42,14 @@
         "editLocation": "Editar lugar",
         "viewDetail": "Ver detalle",
         "addDay": "Añadir día",
-        "dragToReorder": "Arrastrar para reordenar"
+        "dragToReorder": "Arrastrar para reordenar",
+        "saveShare": "Guardar y compartir",
+        "saving": "Guardando…",
+        "shareLink": "Enlace para compartir",
+        "copyLink": "Copiar enlace",
+        "linkCopied": "¡Copiado!",
+        "downloadPdf": "Descargar PDF",
+        "print": "Imprimir"
     },
     "booking": {
         "eyebrow": "Asistente de reservas",
@@ -155,5 +162,23 @@
     },
     "localeSwitcher": {
         "label": "Idioma"
+    },
+    "saveModal": {
+        "title": "Guardar el plan",
+        "subtitle": "Inicie sesión o cree una cuenta gratuita — ambas variantes se guardan.",
+        "close": "Cerrar",
+        "tabLogin": "Iniciar sesión",
+        "tabRegister": "Crear cuenta",
+        "name": "Nombre completo",
+        "email": "Email",
+        "password": "Contraseña",
+        "passwordConfirm": "Confirmar contraseña",
+        "loginCta": "Iniciar sesión y guardar plan",
+        "loggingIn": "Iniciando sesión…",
+        "registerCta": "Crear cuenta y guardar plan",
+        "registering": "Creando cuenta…",
+        "loginFailed": "Email o contraseña incorrectos.",
+        "registerFailed": "Registro fallido.",
+        "networkError": "Error de red. Inténtelo de nuevo."
     }
 }

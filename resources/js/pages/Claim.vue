@@ -14,6 +14,7 @@ interface Props {
         region: string | null;
     } | null;
     store_url: string;
+    decline_url: string;
 }
 
 const props = defineProps<Props>();
@@ -157,6 +158,15 @@ const typeLabel: Record<string, string> = {
                         complete the claim.
                     </p>
                 </template>
+
+                <p class="mt-6 text-center text-xs text-stone-400">
+                    Not your business, or would rather not be listed?
+                    <a
+                        :href="decline_url"
+                        class="text-stone-500 underline hover:text-stone-700 dark:hover:text-stone-300"
+                        >Remove this listing</a
+                    >
+                </p>
             </template>
         </div>
     </div>

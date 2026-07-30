@@ -18,6 +18,16 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('partners:sync-content')->dailyAt('03:00');
+
+        // Scrapes namibiayp.com every 6h until all pages are exhausted.
+        // Idempotent: already-scraped companies are skipped automatically.
+        // Listings with photos are auto-published; without photos stay unpublished.
+        $schedule->command('listings:scrape-namibiayp --pages=20')
+            ->everySixHours()
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        $schedule->command('namibway:scrape-websites --limit=100')->dailyAt('02:30')->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'locale']);

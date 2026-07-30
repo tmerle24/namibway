@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Listing;
 use App\Models\Region;
+use App\Models\TripPlan;
 use App\Services\Kaia\InterviewService;
 use App\Services\Kaia\ItineraryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class KaiaController extends Controller
@@ -51,6 +53,29 @@ class KaiaController extends Controller
         return response()->json(['alternatives' => $results]);
     }
 
+    public function savePlan(Request $request): JsonResponse
+    {
+        $request->validate(['variant' => 'required|array']);
+
+        $token = Str::random(8);
+        TripPlan::create([
+            'token' => $token,
+            'plan_data' => $request->input('variant'),
+            'expires_at' => now()->addDays(30),
+        ]);
+
+        return response()->json(['token' => $token]);
+    }
+
+    public function loadPlan(string $token): JsonResponse
+    {
+        $plan = TripPlan::where('token', $token)
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->firstOrFail();
+
+        return response()->json(['variant' => $plan->plan_data]);
+    }
+
     public function message(Request $request, InterviewService $interview, ItineraryService $itinerary): JsonResponse
     {
         $validated = $request->validate([
@@ -65,7 +90,7 @@ class KaiaController extends Controller
         ], $validated['history']);
 
         try {
-            $result = $interview->respond($messages);
+            $result = $interview->respond($messages, app()->getLocale());
 
             if ($result['type'] === 'question') {
                 return response()->json(['type' => 'question', 'text' => $result['text']]);

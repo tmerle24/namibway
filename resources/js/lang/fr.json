@@ -42,7 +42,14 @@
         "editLocation": "Modifier le lieu",
         "viewDetail": "Voir le détail",
         "addDay": "Ajouter un jour",
-        "dragToReorder": "Glisser pour réorganiser"
+        "dragToReorder": "Glisser pour réorganiser",
+        "saveShare": "Sauvegarder & partager",
+        "saving": "Sauvegarde…",
+        "shareLink": "Lien de partage",
+        "copyLink": "Copier le lien",
+        "linkCopied": "Copié !",
+        "downloadPdf": "Télécharger PDF",
+        "print": "Imprimer"
     },
     "booking": {
         "eyebrow": "Assistant de réservation",
@@ -155,5 +162,23 @@
     },
     "localeSwitcher": {
         "label": "Langue"
+    },
+    "saveModal": {
+        "title": "Sauvegarder le plan",
+        "subtitle": "Connectez-vous ou créez un compte gratuit — les deux variantes sont sauvegardées.",
+        "close": "Fermer",
+        "tabLogin": "Se connecter",
+        "tabRegister": "Créer un compte",
+        "name": "Nom complet",
+        "email": "Email",
+        "password": "Mot de passe",
+        "passwordConfirm": "Confirmer le mot de passe",
+        "loginCta": "Se connecter et sauvegarder",
+        "loggingIn": "Connexion…",
+        "registerCta": "Créer un compte et sauvegarder",
+        "registering": "Création du compte…",
+        "loginFailed": "Email ou mot de passe incorrect.",
+        "registerFailed": "Inscription échouée.",
+        "networkError": "Erreur réseau. Veuillez réessayer."
     }
 }

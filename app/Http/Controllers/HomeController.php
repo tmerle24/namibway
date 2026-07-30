@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Listing;
 use App\Models\Region;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -12,10 +11,17 @@ class HomeController extends Controller
 {
     public function __invoke(): Response
     {
+        // Rotate the order daily so the homepage doesn't always show the
+        // same arrangement, while still always preferring listings that
+        // have a real photo (image or gallery).
+        $daySeed = now()->format('Y-m-d');
+
         $listings = Listing::query()
             ->where('is_published', true)
+            ->orderByRaw("(image IS NOT NULL OR json_array_length(COALESCE(gallery, '[]')) > 0) DESC")
             ->orderByDesc('is_featured')
-            ->orderBy('slug')
+            ->orderByRaw('MD5(id::text || ?)', [$daySeed])
+            ->limit(300)
             ->get([
                 'id', 'type', 'name', 'slug', 'description',
                 'image', 'region', 'price_from', 'price_currency',
@@ -26,7 +32,7 @@ class HomeController extends Controller
                 'name' => $listing->name,
                 'slug' => $listing->slug,
                 'description' => $listing->description,
-                'image' => $listing->image ? Storage::disk('public')->url($listing->image) : null,
+                'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
                 'region' => $listing->region,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
@@ -40,7 +46,7 @@ class HomeController extends Controller
                 'name' => $region->name,
                 'slug' => $region->slug,
                 'blurb' => $region->blurb,
-                'image' => $region->image ? Storage::disk('public')->url($region->image) : null,
+                'image' => $region->image ? self::resolveMediaUrl($region->image) : null,
                 'listing_region' => $region->listing_region,
             ]);
 

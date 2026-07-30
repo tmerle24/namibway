@@ -22,6 +22,7 @@ const inputText = ref('');
 const isTyping = ref(false);
 const thinkingIndex = ref(0);
 const chatLog = ref<HTMLDivElement | null>(null);
+const chatPanel = ref<HTMLDivElement | null>(null);
 let thinkingTimer: ReturnType<typeof setInterval> | null = null;
 
 function startThinking() {
@@ -41,12 +42,36 @@ function stopThinking() {
 
 onUnmounted(stopThinking);
 
-async function scrollToBottom() {
-    await nextTick();
-
+function syncScroll() {
     if (chatLog.value) {
         chatLog.value.scrollTop = chatLog.value.scrollHeight;
     }
+
+    // Also bring the panel's bottom edge into view on the page itself, so the
+    // user never has to manually scroll the outer page to see a new message —
+    // but only if the panel is already at least partly on screen, so we don't
+    // yank scroll position while someone is reading further down the page.
+    const panel = chatPanel.value;
+
+    if (panel) {
+        const rect = panel.getBoundingClientRect();
+        const isPartlyVisible = rect.top < window.innerHeight && rect.bottom > 0;
+        const hiddenBelowFold = rect.bottom - window.innerHeight;
+
+        if (isPartlyVisible && hiddenBelowFold > 0) {
+            window.scrollBy({ top: hiddenBelowFold + 24, behavior: 'smooth' });
+        }
+    }
+}
+
+async function scrollToBottom() {
+    await nextTick();
+    syncScroll();
+
+    // Web fonts (or an image) can finish loading and reflow the message text
+    // a frame or two after the DOM patch lands, leaving the scroll position
+    // short of the true bottom — settle it again once layout has caught up.
+    requestAnimationFrame(() => requestAnimationFrame(syncScroll));
 }
 
 async function sendMessage() {
@@ -58,10 +83,9 @@ async function sendMessage() {
 
     messages.value.push({ role: 'user', text });
     inputText.value = '';
-    await scrollToBottom();
-
     isTyping.value = true;
     startThinking();
+    await scrollToBottom();
 
     try {
         const result = await sendKaiaMessage(messages.value);
@@ -149,7 +173,7 @@ async function sendMessage() {
                 <p>{{ t('hero.subtitle') }}</p>
             </div>
 
-            <div class="chat-panel">
+            <div class="chat-panel" ref="chatPanel">
                 <div class="chat-log" ref="chatLog">
                     <div
                         v-for="(msg, i) in messages"

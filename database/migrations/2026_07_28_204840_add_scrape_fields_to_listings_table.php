@@ -9,17 +9,28 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('listings', function (Blueprint $table) {
-            $table->string('phone')->nullable()->after('contact_email');
-            $table->string('address')->nullable()->after('phone');
-            $table->string('scrape_source')->nullable()->after('address'); // ntb | namibiayp | namibiadirectory | manual
-            $table->timestamp('scraped_at')->nullable()->after('scrape_source');
+            if (! Schema::hasColumn('listings', 'phone')) {
+                $table->string('phone')->nullable()->after('contact_email');
+            }
+            if (! Schema::hasColumn('listings', 'address')) {
+                $table->string('address')->nullable()->after('phone');
+            }
+            if (! Schema::hasColumn('listings', 'scrape_source')) {
+                $table->string('scrape_source')->nullable()->after('address');
+            }
+            if (! Schema::hasColumn('listings', 'scraped_at')) {
+                $table->timestamp('scraped_at')->nullable()->after('scrape_source');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('listings', function (Blueprint $table) {
-            $table->dropColumn(['phone', 'address', 'scrape_source', 'scraped_at']);
+            $cols = array_filter(['phone', 'address', 'scrape_source', 'scraped_at'], fn ($c) => Schema::hasColumn('listings', $c));
+            if ($cols) {
+                $table->dropColumn(array_values($cols));
+            }
         });
     }
 };

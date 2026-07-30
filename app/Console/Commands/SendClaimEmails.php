@@ -10,7 +10,8 @@ class SendClaimEmails extends Command
 {
     protected $signature = 'namibway:send-claim-emails
                             {--limit=50 : Max emails to send in this batch}
-                            {--dry-run : Show recipients without sending}';
+                            {--dry-run : Show recipients without sending}
+                            {--force : Skip the confirmation prompt (for non-interactive/scripted runs)}';
 
     protected $description = 'Send "claim your listing" emails to unclaimed partners that have an email address';
 
@@ -20,8 +21,11 @@ class SendClaimEmails extends Command
         $limit = (int) $this->option('limit');
 
         $partners = Partner::whereNotNull('email')
+            ->whereNotNull('claim_token')
             ->whereNull('claim_token_sent_at')
             ->whereNull('claimed_at')
+            ->whereNull('claim_rejected_at')
+            ->with('listings')
             ->limit($limit)
             ->get();
 
@@ -44,7 +48,7 @@ class SendClaimEmails extends Command
             return self::SUCCESS;
         }
 
-        if (! $this->confirm("Send {$partners->count()} emails?")) {
+        if (! $this->option('force') && ! $this->confirm("Send {$partners->count()} emails?")) {
             return self::SUCCESS;
         }
 
@@ -54,11 +58,16 @@ class SendClaimEmails extends Command
 
         foreach ($partners as $partner) {
             try {
+                $listing = $partner->listings->first();
+
                 Mail::send(
                     'emails.claim-listing',
                     [
                         'partner' => $partner,
+                        'listing' => $listing,
                         'claimUrl' => $this->claimUrl($partner),
+                        'declineUrl' => $this->declineUrl($partner),
+                        'listingUrl' => $listing?->is_published ? route('listings.show', $listing->slug) : null,
                     ],
                     function ($message) use ($partner) {
                         $message
@@ -88,5 +97,10 @@ class SendClaimEmails extends Command
     private function claimUrl(Partner $partner): string
     {
         return url("/claim/{$partner->claim_token}");
+    }
+
+    private function declineUrl(Partner $partner): string
+    {
+        return url("/claim/{$partner->claim_token}/decline");
     }
 }

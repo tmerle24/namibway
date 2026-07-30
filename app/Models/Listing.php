@@ -43,12 +43,15 @@ class Listing extends Model
         'phone',
         'address',
         'scrape_source',
+        'scrape_id',
+        'scrape_data',
         'scraped_at',
     ];
 
     protected $casts = [
         'type' => ListingType::class,
         'gallery' => 'array',
+        'scrape_data' => 'array',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
         'price_from' => 'decimal:2',

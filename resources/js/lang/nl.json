@@ -42,7 +42,14 @@
         "editLocation": "Locatie bewerken",
         "viewDetail": "Detail bekijken",
         "addDay": "Dag toevoegen",
-        "dragToReorder": "Slepen om te herschikken"
+        "dragToReorder": "Slepen om te herschikken",
+        "saveShare": "Opslaan & delen",
+        "saving": "Opslaan…",
+        "shareLink": "Deelbare link",
+        "copyLink": "Link kopiëren",
+        "linkCopied": "Gekopieerd!",
+        "downloadPdf": "PDF downloaden",
+        "print": "Afdrukken"
     },
     "booking": {
         "eyebrow": "Boekingsassistent",
@@ -155,5 +162,23 @@
     },
     "localeSwitcher": {
         "label": "Taal"
+    },
+    "saveModal": {
+        "title": "Plan opslaan",
+        "subtitle": "Log in of maak een gratis account aan — beide varianten worden opgeslagen.",
+        "close": "Sluiten",
+        "tabLogin": "Inloggen",
+        "tabRegister": "Account aanmaken",
+        "name": "Volledige naam",
+        "email": "Email",
+        "password": "Wachtwoord",
+        "passwordConfirm": "Wachtwoord bevestigen",
+        "loginCta": "Inloggen en plan opslaan",
+        "loggingIn": "Inloggen…",
+        "registerCta": "Account aanmaken en plan opslaan",
+        "registering": "Account aanmaken…",
+        "loginFailed": "Verkeerd e-mailadres of wachtwoord.",
+        "registerFailed": "Registratie mislukt.",
+        "networkError": "Netwerkfout. Probeer opnieuw."
     }
 }

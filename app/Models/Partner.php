@@ -24,6 +24,7 @@ use Spatie\Translatable\HasTranslations;
  * @property string|null $claim_token
  * @property Carbon|null $claim_token_sent_at
  * @property Carbon|null $claimed_at
+ * @property Carbon|null $claim_rejected_at
  * @property ConnectorType|null $connector_type
  * @property string|null $connector_property_code
  * @property array<string, mixed>|null $connector_config
@@ -49,6 +50,7 @@ class Partner extends Model
         'claim_token',
         'claim_token_sent_at',
         'claimed_at',
+        'claim_rejected_at',
         'connector_type',
         'connector_property_code',
         'connector_config',
@@ -57,6 +59,9 @@ class Partner extends Model
     protected $casts = [
         'connector_type' => ConnectorType::class,
         'connector_config' => 'encrypted:array',
+        'claim_token_sent_at' => 'datetime',
+        'claimed_at' => 'datetime',
+        'claim_rejected_at' => 'datetime',
     ];
 
     /**

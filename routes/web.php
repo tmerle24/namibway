@@ -36,6 +36,8 @@ Route::post('feedback', [AfterSalesController::class, 'feedback'])->middleware('
 
 Route::get('claim/{token}', [ClaimController::class, 'show'])->name('claim.show');
 Route::post('claim/{token}', [ClaimController::class, 'store'])->middleware('auth')->name('claim.store');
+Route::get('claim/{token}/decline', [ClaimController::class, 'declineShow'])->name('claim.decline.show');
+Route::post('claim/{token}/decline', [ClaimController::class, 'decline'])->name('claim.decline');
 
 // Store intended URL in session so Fortify redirects back after login
 Route::get('login/start', function (Request $request) {

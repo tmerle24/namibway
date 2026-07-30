@@ -124,6 +124,32 @@ class PartnerResource extends Resource
                 Tables\Columns\TextColumn::make('listings_count')
                     ->counts('listings')
                     ->label('Listings'),
+                Tables\Columns\TextColumn::make('outreach_status')
+                    ->label('Outreach')
+                    ->state(function (Partner $record): string {
+                        if ($record->claimed_at) {
+                            return 'Claimed';
+                        }
+                        if ($record->claim_rejected_at) {
+                            return 'Declined';
+                        }
+                        if ($record->claim_token_sent_at) {
+                            return 'Contacted';
+                        }
+                        if ($record->email) {
+                            return 'Ready to contact';
+                        }
+
+                        return 'No email';
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Claimed' => 'success',
+                        'Declined' => 'danger',
+                        'Contacted' => 'info',
+                        'Ready to contact' => 'warning',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('connector_type')
                     ->label('Connector')
                     ->formatStateUsing(fn ($state) => $state instanceof ConnectorType ? $state->label() : '—')

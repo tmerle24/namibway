@@ -173,6 +173,18 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sand-dark) transparent;
+}
+.kaia-page .chat-log::-webkit-scrollbar {
+    width: 6px;
+}
+.kaia-page .chat-log::-webkit-scrollbar-track {
+    background: transparent;
+}
+.kaia-page .chat-log::-webkit-scrollbar-thumb {
+    background: var(--sand-dark);
+    border-radius: 3px;
 }
 .kaia-page .msg {
     max-width: 82%;
@@ -362,6 +374,74 @@
 .kaia-page .variant-card .cta:disabled {
     opacity: 0.45;
     cursor: default;
+}
+
+/* ---------- SAVE & SHARE ---------- */
+.kaia-page .cta-outline {
+    background: transparent;
+    border: 1.5px solid var(--rust);
+    color: var(--rust);
+}
+.kaia-page .cta-outline:hover {
+    background: var(--rust-light);
+}
+.kaia-page .cta-outline:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+.kaia-page .share-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+.kaia-page .share-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5b5346;
+    white-space: nowrap;
+}
+.kaia-page .share-input {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    padding: 6px 10px;
+    border: 1px solid var(--sand-dark);
+    border-radius: 7px;
+    background: var(--paper);
+    color: #3d372c;
+    cursor: text;
+}
+.kaia-page .share-copy-btn {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 7px;
+    background: var(--sand);
+    color: #3d372c;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+.kaia-page .share-copy-btn:hover {
+    background: var(--sand-dark);
+}
+.kaia-page .share-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+.kaia-page .share-action-btn {
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 7px;
+    background: var(--sand);
+    color: #3d372c;
+    transition: background 0.15s;
+}
+.kaia-page .share-action-btn:hover {
+    background: var(--sand-dark);
 }
 
 /* ---------- BOOKING ASSISTANT ---------- */

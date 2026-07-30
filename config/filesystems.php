@@ -33,7 +33,7 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false,  // disabled: public files go through the public disk + storage symlink
             'throw' => false,
             'report' => false,
         ],
@@ -56,6 +56,35 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'throw' => false,
+            'report' => false,
+        ],
+
+        'r2' => [
+            'driver' => 's3',
+            'key' => env('CLOUDFLARE_R2_ACCESS_KEY_ID'),
+            'secret' => env('CLOUDFLARE_R2_SECRET_ACCESS_KEY'),
+            'region' => 'auto',
+            'bucket' => env('CLOUDFLARE_R2_BUCKET', 'namibway'),
+            'endpoint' => env('CLOUDFLARE_R2_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'url' => env('CLOUDFLARE_R2_URL'),
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
+        // Dedicated, non-public bucket for DB backups. Must NOT have a public
+        // URL / custom domain attached on the Cloudflare side — unlike the
+        // 'r2' disk above, backups contain password hashes and user emails.
+        'r2-backups' => [
+            'driver' => 's3',
+            'key' => env('CLOUDFLARE_R2_BACKUP_ACCESS_KEY_ID', env('CLOUDFLARE_R2_ACCESS_KEY_ID')),
+            'secret' => env('CLOUDFLARE_R2_BACKUP_SECRET_ACCESS_KEY', env('CLOUDFLARE_R2_SECRET_ACCESS_KEY')),
+            'region' => 'auto',
+            'bucket' => env('CLOUDFLARE_R2_BACKUP_BUCKET'),
+            'endpoint' => env('CLOUDFLARE_R2_ENDPOINT'),
+            'use_path_style_endpoint' => true,
             'throw' => false,
             'report' => false,
         ],
