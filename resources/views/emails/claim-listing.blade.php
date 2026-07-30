@@ -44,6 +44,24 @@
     set your rates, and decide how enquiries reach you.
 </p>
 
+@if($listing)
+<p><strong>What we've listed so far:</strong></p>
+<ul>
+    <li>{{ $listing->getTranslation('name', 'en') }} ({{ ucfirst($listing->type->value) }}@if($listing->region), {{ $listing->region }}@endif)</li>
+    <li>{{ $listing->image ? '1 photo' : 'No photo yet' }}@if(!empty($listing->gallery)), {{ count($listing->gallery) }} more in the gallery@endif</li>
+    @if($listing->address)
+    <li>Address: {{ $listing->address }}</li>
+    @endif
+    @if($listing->phone)
+    <li>Phone: {{ $listing->phone }}</li>
+    @endif
+</ul>
+@endif
+
+@if($listingUrl)
+<p><a href="{{ $listingUrl }}">See how it looks on namibway.com →</a></p>
+@endif
+
 <a class="cta" href="{{ $claimUrl }}">View &amp; claim your listing →</a>
 
 <p>
@@ -66,8 +84,8 @@
 
 <div class="footer">
     You are receiving this email because {{ $partner->name }} appears in public tourism
-    directories for Namibia. To be removed, reply with "remove" or click
-    <a href="{{ $claimUrl }}?action=remove">here</a>.
+    directories for Namibia. Not your business, or would rather not be listed?
+    <a href="{{ $declineUrl }}">Remove my listing</a> — one click, no reply needed.
 </div>
 
 </body>

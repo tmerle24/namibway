@@ -135,6 +135,18 @@ class ListingResource extends Resource
                     ->boolean(),
                 Tables\Columns\IconColumn::make('is_published')
                     ->boolean(),
+                Tables\Columns\TextColumn::make('claim_status')
+                    ->label('Claim')
+                    ->badge()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'claimed' => 'success',
+                        'rejected' => 'danger',
+                        'unclaimed' => 'warning',
+                        default => 'gray',
+                    }),
+                Tables\Columns\TextColumn::make('scrape_source')
+                    ->label('Source')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -147,6 +159,13 @@ class ListingResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('type')
                     ->options(ListingType::class),
+                Tables\Filters\SelectFilter::make('claim_status')
+                    ->options([
+                        'unclaimed' => 'Unclaimed',
+                        'claimed' => 'Claimed',
+                        'rejected' => 'Rejected',
+                    ]),
+                Tables\Filters\TernaryFilter::make('is_published'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -204,6 +223,18 @@ class ListingResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('publish')
+                        ->label('Publish')
+                        ->icon('heroicon-o-eye')
+                        ->color('success')
+                        ->action(fn ($records) => $records->each->update(['is_published' => true]))
+                        ->deselectRecordsAfterCompletion(),
+                    Tables\Actions\BulkAction::make('unpublish')
+                        ->label('Unpublish')
+                        ->icon('heroicon-o-eye-slash')
+                        ->color('gray')
+                        ->action(fn ($records) => $records->each->update(['is_published' => false]))
+                        ->deselectRecordsAfterCompletion(),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);

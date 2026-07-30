@@ -133,7 +133,9 @@ class ScrapeNamibiayp extends Command
                 return;
             }
 
-            $name = $this->extractText($html, '#<h1[^>]*>(.*?)</h1>#si');
+            $jsonLd = $this->extractJsonLd($html);
+
+            $name = $jsonLd['name'] ?? $this->extractText($html, '#<h1[^>]*>(.*?)</h1>#si');
             $name = html_entity_decode(strip_tags($name ?? ''), ENT_QUOTES, 'UTF-8');
             $name = trim($name);
 
@@ -152,11 +154,18 @@ class ScrapeNamibiayp extends Command
 
             $description = $this->extractDescription($html);
             $photos = $this->extractPhotos($html);
-            $website = $this->extractHref($html, '#href=["\x27](https?://(?!www\.namibiayp)[^"\'<>]{5,200})["\x27]#i');
-            $phone = $this->extractText($html, '#class="[^"]*phone[^"]*"[^>]*>\s*([\d\s+()-]{6,25})<#i');
-            $address = $this->extractText($html, '#class="[^"]*address[^"]*"[^>]*>(.*?)</[a-z]+>#si');
+
+            // Structured LocalBusiness JSON-LD (schema.org) is the most reliable,
+            // owner-published source — prefer it over ad-hoc HTML regex matches.
+            $website = $jsonLd['url']
+                ?? $this->extractHref($html, '#href=["\x27](https?://(?!www\.namibiayp)[^"\'<>]{5,200})["\x27]#i');
+            $phone = $jsonLd['telephone']
+                ?? $this->extractText($html, '#class="[^"]*phone[^"]*"[^>]*>\s*([\d\s+()-]{6,25})<#i');
+            $address = $jsonLd['address'] ?? $this->extractText($html, '#class="[^"]*address[^"]*"[^>]*>(.*?)</[a-z]+>#si');
             $address = $address ? trim(strip_tags($address)) : null;
             $email = $this->extractEmail($html);
+            $latitude = $jsonLd['latitude'] ?? null;
+            $longitude = $jsonLd['longitude'] ?? null;
 
             // Extract YP company ID for idempotency
             preg_match('#/company/(\d+)/#', $url, $idm);
@@ -207,7 +216,15 @@ class ScrapeNamibiayp extends Command
                 if ($address && ! $existing->address) {
                     $fill['address'] = $address;
                 }
+                if ($latitude && ! $existing->latitude) {
+                    $fill['latitude'] = $latitude;
+                    $fill['longitude'] = $longitude;
+                }
                 if ($fill) {
+                    // Auto-publish if we just added a photo to an unpublished listing
+                    if (isset($fill['image']) && ! $existing->is_published) {
+                        $fill['is_published'] = true;
+                    }
                     $existing->update($fill);
                     $this->updated++;
                 } else {
@@ -233,12 +250,14 @@ class ScrapeNamibiayp extends Command
                 'website' => $website,
                 'phone' => $phone,
                 'address' => $address,
+                'latitude' => $latitude,
+                'longitude' => $longitude,
                 'source_url' => $url,
                 'scrape_source' => 'namibiayp',
                 'scrape_id' => $ypId,
                 'scraped_at' => now(),
                 'claim_status' => 'unclaimed',
-                'is_published' => false,
+                'is_published' => $heroUrl !== null, // publish immediately when we have a photo
                 'accepts_inquiries' => true,
             ]);
             $listing->setTranslation('name', 'en', $name);
@@ -287,6 +306,62 @@ class ScrapeNamibiayp extends Command
         }
 
         return null;
+    }
+
+    /**
+     * Extract the owner-published schema.org LocalBusiness JSON-LD block, if present.
+     * This is the most reliable source on this site — structured data the business
+     * itself supplied for search engines — so we prefer it over scraping rendered HTML.
+     *
+     * @return array{name?: string, url?: string, telephone?: string, address?: string, latitude?: float, longitude?: float}
+     */
+    private function extractJsonLd(string $html): array
+    {
+        if (! preg_match_all('#<script[^>]+type=["\x27]application/ld\+json["\x27][^>]*>(.*?)</script>#si', $html, $matches)) {
+            return [];
+        }
+
+        foreach ($matches[1] as $block) {
+            $data = json_decode(trim($block), true);
+
+            if (! is_array($data) || ($data['@type'] ?? null) !== 'LocalBusiness') {
+                continue;
+            }
+
+            $result = [];
+
+            if (! empty($data['name'])) {
+                $result['name'] = html_entity_decode((string) $data['name'], ENT_QUOTES, 'UTF-8');
+            }
+
+            if (! empty($data['url']) && filter_var($data['url'], FILTER_VALIDATE_URL)) {
+                $result['url'] = $data['url'];
+            }
+
+            if (! empty($data['telephone'])) {
+                $result['telephone'] = trim((string) $data['telephone']);
+            }
+
+            if (is_array($data['address'] ?? null)) {
+                $parts = array_filter([
+                    $data['address']['streetAddress'] ?? null,
+                    $data['address']['addressLocality'] ?? null,
+                    $data['address']['addressRegion'] ?? null,
+                ]);
+                if ($parts) {
+                    $result['address'] = html_entity_decode(implode(', ', $parts), ENT_QUOTES, 'UTF-8');
+                }
+            }
+
+            if (is_array($data['geo'] ?? null) && isset($data['geo']['latitude'], $data['geo']['longitude'])) {
+                $result['latitude'] = (float) $data['geo']['latitude'];
+                $result['longitude'] = (float) $data['geo']['longitude'];
+            }
+
+            return $result;
+        }
+
+        return [];
     }
 
     private function extractEmail(string $html): ?string

@@ -115,4 +115,16 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Internal Sales Address
+    |--------------------------------------------------------------------------
+    |
+    | Where internal notifications about declined/opted-out partners are
+    | sent, so a sales rep can follow up by phone.
+    |
+    */
+
+    'sales_address' => env('MAIL_SALES_ADDRESS', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
+
 ];
