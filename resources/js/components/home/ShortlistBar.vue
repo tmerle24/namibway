@@ -41,7 +41,10 @@ const formOpen = ref(false);
                 v-bind="batch.store.form()"
                 reset-on-success
                 :transform="
-                    (data) => ({ ...data, listing_ids: [...props.items.keys()] })
+                    (data) => ({
+                        ...data,
+                        listing_ids: [...props.items.keys()],
+                    })
                 "
                 v-slot="{ errors, processing, recentlySuccessful }"
                 class="shortlist-form"

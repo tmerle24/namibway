@@ -91,7 +91,9 @@ function renderMarkers() {
 
             if (item.slug) {
                 const slug = item.slug;
-                marker.on('click', () => router.visit(show({ listing: slug }).url));
+                marker.on('click', () =>
+                    router.visit(show({ listing: slug }).url),
+                );
             }
 
             markerLayers.push(marker);

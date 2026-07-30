@@ -306,7 +306,9 @@ const mapMarkers = computed<ExploreMapMarker[]>(() =>
         .flatMap((row) =>
             row.items
                 .filter(
-                    (item): item is IdeaCard & {
+                    (
+                        item,
+                    ): item is IdeaCard & {
                         latitude: number;
                         longitude: number;
                     } => item.latitude !== null && item.longitude !== null,
