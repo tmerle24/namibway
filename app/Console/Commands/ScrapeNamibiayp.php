@@ -215,13 +215,13 @@ class ScrapeNamibiayp extends Command
                 }
 
                 if (! $existing->partner_id) {
-                    $existing->update(['partner_id' => $this->findOrCreatePartner($name, $url, $website, $phone)->id]);
+                    $existing->update(['partner_id' => $this->findOrCreatePartner($name, $url, $website, $phone, $email)->id]);
                 }
 
                 return;
             }
 
-            $partner = $this->findOrCreatePartner($name, $url, $website, $phone);
+            $partner = $this->findOrCreatePartner($name, $url, $website, $phone, $email);
 
             $listing = new Listing([
                 'partner_id' => $partner->id,
@@ -287,6 +287,39 @@ class ScrapeNamibiayp extends Command
         }
 
         return null;
+    }
+
+    private function extractEmail(string $html): ?string
+    {
+        if (preg_match('#mailto:([^"\'?\s<>]+@[^"\'?\s<>]+)#i', $html, $m)) {
+            return html_entity_decode(trim($m[1]), ENT_QUOTES, 'UTF-8');
+        }
+
+        return null;
+    }
+
+    private function findOrCreatePartner(string $name, string $sourceUrl, ?string $website, ?string $phone, ?string $email = null): Partner
+    {
+        $partner = Partner::where('source_url', $sourceUrl)->first();
+
+        if ($partner) {
+            $partner->fill(array_filter([
+                'email' => $partner->email ? null : $email,
+                'phone' => $partner->phone ? null : $phone,
+                'website' => $partner->website ? null : $website,
+            ]))->save();
+
+            return $partner;
+        }
+
+        return Partner::create([
+            'name' => $name,
+            'email' => $email,
+            'phone' => $phone,
+            'website' => $website,
+            'source_url' => $sourceUrl,
+            'claim_token' => Str::random(48),
+        ]);
     }
 
     private function extractHref(string $html, string $pattern): ?string
