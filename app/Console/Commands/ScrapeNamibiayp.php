@@ -138,6 +138,11 @@ class ScrapeNamibiayp extends Command
             $name = $jsonLd['name'] ?? $this->extractText($html, '#<h1[^>]*>(.*?)</h1>#si');
             $name = html_entity_decode(strip_tags($name ?? ''), ENT_QUOTES, 'UTF-8');
             $name = trim($name);
+            // Strip namibiayp directory suffix: "Business Name - City, Namibia"
+            $name = (string) preg_replace('/ - [A-Za-zÀ-ÿ\s]+,\s*[A-Za-z\s]+$/', '', $name);
+            // Strip leading asterisks/symbols namibiayp sometimes prepends
+            $name = ltrim($name, '*- ');
+            $name = trim($name);
 
             if (! $name || strlen($name) < 2) {
                 $this->skipped++;
@@ -153,6 +158,14 @@ class ScrapeNamibiayp extends Command
             }
 
             $description = $this->extractDescription($html);
+            // Discard namibiayp directory boilerplate descriptions
+            if ($description && (
+                str_contains($description, 'Contact Details') ||
+                str_contains($description, 'Phone Number, Email') ||
+                preg_match('/\bbased in .{3,50}, Namibia\b/i', $description)
+            )) {
+                $description = null;
+            }
             $photos = $this->extractPhotos($html);
 
             // Structured LocalBusiness JSON-LD (schema.org) is the most reliable,
