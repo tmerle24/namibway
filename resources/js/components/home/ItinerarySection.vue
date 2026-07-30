@@ -52,7 +52,9 @@ const drivingLegsPerVariant = ref<Record<number, DrivingLeg[]>>({});
 const routeStart = ref('Windhoek');
 const routeEnd = ref('Windhoek');
 const isRoundTrip = computed(
-    () => routeStart.value.trim().toLowerCase() === routeEnd.value.trim().toLowerCase(),
+    () =>
+        routeStart.value.trim().toLowerCase() ===
+        routeEnd.value.trim().toLowerCase(),
 );
 
 // --- Auth-gate for saving ---

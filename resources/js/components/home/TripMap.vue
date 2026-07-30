@@ -219,7 +219,8 @@ function renderRoute() {
 
         waypoints.forEach((wp, index) => {
             const isStart = index === 0;
-            const isEnd = index === waypoints.length - 1 && waypoints.length > 1;
+            const isEnd =
+                index === waypoints.length - 1 && waypoints.length > 1;
             const markerClass = [
                 'trip-map-marker',
                 isStart && 'trip-map-marker--start',
