@@ -219,6 +219,14 @@
     "localeSwitcher": {
         "label": "Langue"
     },
+    "tripPlan": {
+        "loginCta": {
+            "title": "Conserver ce plan de voyage",
+            "subtitle": "Connectez-vous ou créez un compte gratuit — accessible depuis votre tableau de bord à tout moment.",
+            "login": "Se connecter",
+            "register": "Créer un compte"
+        }
+    },
     "saveModal": {
         "title": "Sauvegarder le plan",
         "subtitle": "Connectez-vous ou créez un compte gratuit — les deux variantes sont sauvegardées.",

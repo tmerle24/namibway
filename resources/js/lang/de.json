@@ -164,6 +164,14 @@
             "sortRating": "Bestbewertet"
         }
     },
+    "tripPlan": {
+        "loginCta": {
+            "title": "Diesen Reiseplan behalten",
+            "subtitle": "Melde dich an oder erstelle ein kostenloses Konto — jederzeit über das Dashboard abrufbar.",
+            "login": "Anmelden",
+            "register": "Konto erstellen"
+        }
+    },
     "saveModal": {
         "title": "Plan speichern",
         "subtitle": "Anmelden oder kostenloses Konto erstellen — beide Varianten werden gespeichert, damit keine verloren geht.",

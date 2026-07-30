@@ -219,6 +219,14 @@
     "localeSwitcher": {
         "label": "Taal"
     },
+    "tripPlan": {
+        "loginCta": {
+            "title": "Dit reisplan bewaren",
+            "subtitle": "Log in of maak een gratis account aan — altijd bereikbaar via je dashboard.",
+            "login": "Inloggen",
+            "register": "Account aanmaken"
+        }
+    },
     "saveModal": {
         "title": "Plan opslaan",
         "subtitle": "Log in of maak een gratis account aan — beide varianten worden opgeslagen.",

@@ -212,7 +212,7 @@ function renderRoute() {
 
             const accHtml = wp.accommodationName
                 ? wp.accommodationSlug
-                    ? `<a href="/listing/${wp.accommodationSlug}" target="_blank" rel="noopener" class="map-popup-link">${wp.accommodationName}</a>`
+                    ? `<a href="/listings/${wp.accommodationSlug}" target="_blank" rel="noopener" class="map-popup-link">${wp.accommodationName}</a>`
                     : wp.accommodationName
                 : '';
 
