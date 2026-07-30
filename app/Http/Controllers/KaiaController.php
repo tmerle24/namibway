@@ -90,7 +90,7 @@ class KaiaController extends Controller
         ], $validated['history']);
 
         try {
-            $result = $interview->respond($messages);
+            $result = $interview->respond($messages, app()->getLocale());
 
             if ($result['type'] === 'question') {
                 return response()->json(['type' => 'question', 'text' => $result['text']]);

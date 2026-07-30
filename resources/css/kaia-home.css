@@ -173,6 +173,18 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sand-dark) transparent;
+}
+.kaia-page .chat-log::-webkit-scrollbar {
+    width: 6px;
+}
+.kaia-page .chat-log::-webkit-scrollbar-track {
+    background: transparent;
+}
+.kaia-page .chat-log::-webkit-scrollbar-thumb {
+    background: var(--sand-dark);
+    border-radius: 3px;
 }
 .kaia-page .msg {
     max-width: 82%;

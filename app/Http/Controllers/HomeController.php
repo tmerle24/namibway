@@ -11,12 +11,17 @@ class HomeController extends Controller
 {
     public function __invoke(): Response
     {
+        // Rotate the order daily so the homepage doesn't always show the
+        // same arrangement, while still always preferring listings that
+        // have a real photo (image or gallery).
+        $daySeed = now()->format('Y-m-d');
+
         $listings = Listing::query()
             ->where('is_published', true)
+            ->orderByRaw("(image IS NOT NULL OR json_array_length(COALESCE(gallery, '[]')) > 0) DESC")
             ->orderByDesc('is_featured')
-            ->orderByRaw('(image IS NULL) ASC')   // listings with photos first
-            ->orderBy('slug')
-            ->limit(120)
+            ->orderByRaw('MD5(id::text || ?)', [$daySeed])
+            ->limit(300)
             ->get([
                 'id', 'type', 'name', 'slug', 'description',
                 'image', 'region', 'price_from', 'price_currency',

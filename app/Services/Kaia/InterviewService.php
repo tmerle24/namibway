@@ -10,10 +10,14 @@ class InterviewService
         Your goal is to collect the required information as efficiently as possible — extract as much as
         you can from whatever the user writes first and never ask for something they already told you.
 
-        You need to know: (1) TRAVEL DATES + DURATION — a full date range (e.g. "1.8.–16.8.") gives you
-        both start and nights; infer nights yourself, never ask the user to calculate. A start date only →
-        ask for end date or nights. A duration only → ask for a rough start date. A vague period (e.g.
-        "August") → enough for travel_period, ask for nights. Pin to a real date when possible.
+        You need to know: (1) TRAVEL DATES + DURATION — ask for this as ONE combined question up front,
+        e.g. "When are you traveling, and for how long?" Accept whatever shape the answer takes: a full
+        date range (e.g. "1.8.–16.8.") gives you both start and nights — infer nights yourself, never ask
+        the user to calculate. A vague period (e.g. "August") is enough for travel_period; still ask for
+        nights in that same follow-up if missing, but only once. The moment nights/duration is known from
+        any earlier turn, treat the next date-like thing the user gives you as the start date — do not
+        ask them to clarify whether it's a start date or a duration, that's already resolved. Never ask
+        the user to restate or disambiguate something you can infer from context.
         (2) INTERESTS / STYLE (wildlife, adventure, relaxation, culture, photography…).
         (3) BUDGET TIER (budget, mid-range, or premium).
         (4) TRAVELERS — number of adults, and whether any children are joining. If children are mentioned,
@@ -22,9 +26,11 @@ class InterviewService
         (5) VEHICLE — ask once, frame it as two clear options: "Will you be in a regular car (2WD or 4x4)
         or a camper setup (rooftop tent or motorhome)? You can always adjust this later in your plan."
 
-        Ask ONE short question at a time, 1–2 sentences max. No bullet lists, no markdown, no emoji —
-        plain text only. Skip any question whose answer is already known. If the first message answers
-        everything, call the tool immediately. Do not exceed 5 questions total — converge fast.
+        Ask as few questions as possible. Combine closely related fields into a single question wherever
+        natural (e.g. dates + duration together) rather than asking one field at a time. Each question is
+        1–2 sentences max, no bullet lists, no markdown, no emoji — plain text only. Skip any question
+        whose answer is already known or inferable. If the first message answers everything, call the
+        tool immediately. Do not exceed 5 questions total — converge fast.
 
         Reply in plain text only — no markdown formatting (no bold, headers, or emoji), since the chat
         UI displays raw text.
@@ -58,11 +64,11 @@ class InterviewService
      * @param  array<int, array{role: string, content: string}>  $history
      * @return array{type: 'question', text: string}|array{type: 'ready', params: array<string, mixed>}
      */
-    public function respond(array $history): array
+    public function respond(array $history, string $locale = 'en'): array
     {
         $response = $this->client->send(
             config('kaia.interview_model'),
-            self::SYSTEM_PROMPT,
+            $this->systemPrompt($locale),
             $history,
             [self::TOOL],
             config('kaia.interview_max_tokens'),
@@ -79,5 +85,14 @@ class InterviewService
         }
 
         return ['type' => 'question', 'text' => trim(implode("\n", $textParts))];
+    }
+
+    private function systemPrompt(string $locale): string
+    {
+        $language = config("locales.labels.{$locale}", 'English');
+
+        return self::SYSTEM_PROMPT."\n\n        IMPORTANT: Reply in {$language} ({$locale}) — every single message, ".
+            'no matter what language earlier turns in the conversation happen to be in. Never switch to English '.
+            "unless {$language} is English.";
     }
 }
