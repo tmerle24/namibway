@@ -19,7 +19,7 @@ function scrollToId(id: string) {
             <h3 class="how-path-title">{{ t('howItWorks.ai.title') }}</h3>
             <ol class="how-path-steps">
                 <li
-                    v-for="(step, i) in t('howItWorks.ai.steps') as string[]"
+                    v-for="(step, i) in t('howItWorks.ai.steps') as unknown as string[]"
                     :key="i"
                 >
                     {{ step }}
@@ -41,7 +41,7 @@ function scrollToId(id: string) {
                 <li
                     v-for="(step, i) in t(
                         'howItWorks.search.steps',
-                    ) as string[]"
+                    ) as unknown as string[]"
                     :key="i"
                 >
                     {{ step }}
