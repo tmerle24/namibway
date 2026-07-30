@@ -52,18 +52,30 @@ const showAuthModal = ref(false);
 const startDates = ref<(Date | null)[]>([]);
 
 function parseDayDate(dateStr: string | null | undefined): Date | null {
-    if (!dateStr) return null;
+    if (!dateStr) {
+        return null;
+    }
+
     const d = new Date(dateStr);
+
     return isNaN(d.getTime()) ? null : d;
 }
 
 function formatDayDate(date: Date): string {
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    });
 }
 
 function applyDates(variantIndex: number) {
     const start = startDates.value[variantIndex];
-    if (!start) return;
+
+    if (!start) {
+        return;
+    }
+
     editableVariants.value[variantIndex].days.forEach((day, i) => {
         const d = new Date(start);
         d.setDate(d.getDate() + i);
@@ -75,7 +87,9 @@ watch(
     () => props.plan,
     (plan) => {
         editableVariants.value = JSON.parse(JSON.stringify(plan.variants));
-        startDates.value = plan.variants.map((v) => parseDayDate(v.days[0]?.date));
+        startDates.value = plan.variants.map((v) =>
+            parseDayDate(v.days[0]?.date),
+        );
         swap.value = null;
 
         // Claude doesn't always fill in every day's date field consistently —
@@ -349,7 +363,9 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                     >⠿</span
                                 >
                                 {{ day.day }}
-                                <span v-if="day.date" class="day-date">{{ day.date }}</span>
+                                <span v-if="day.date" class="day-date">{{
+                                    day.date
+                                }}</span>
                             </div>
                             <div class="day-detail">
                                 <div>

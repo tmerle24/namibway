@@ -317,10 +317,10 @@
     display: block;
     font-family: inherit;
     font-size: 11px;
-    color: #8a7f68;
-    font-weight: 600;
+    color: #7a6f63;
+    font-weight: 400;
     white-space: nowrap;
-    margin-top: 1px;
+    margin-top: 2px;
 }
 .kaia-page .day-detail div {
     margin-bottom: 2px;

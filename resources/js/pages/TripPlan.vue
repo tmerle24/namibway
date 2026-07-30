@@ -217,8 +217,8 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
 }
 
 .day-date {
-    font-size: 9px;
-    color: #a09080;
+    font-size: 11px;
+    color: #7a6f63;
     text-align: center;
     margin-top: 2px;
     line-height: 1.2;

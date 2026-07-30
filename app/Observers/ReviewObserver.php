@@ -32,7 +32,7 @@ class ReviewObserver
         }
 
         Listing::whereKey($listingId)->update([
-            'rating' => round($approved->avg('rating'), 1),
+            'rating' => round((float) $approved->avg('rating'), 1),
             'rating_count' => $count,
         ]);
     }

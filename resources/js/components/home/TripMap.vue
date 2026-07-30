@@ -102,7 +102,9 @@ function renderRoute() {
             latlng: [number, number];
             label: string;
             day: number;
+            date: string | null;
             accommodationName: string | null;
+            accommodationSlug: string | null;
         }> = [];
         const seenCoords = new Set<string>();
 
@@ -130,7 +132,9 @@ function renderRoute() {
                 latlng,
                 label: day.location,
                 day: day.day,
+                date: day.date ?? null,
                 accommodationName: day.accommodation?.name ?? null,
+                accommodationSlug: day.accommodation?.slug ?? null,
             });
         }
 
@@ -155,12 +159,18 @@ function renderRoute() {
                 iconAnchor: [14, 14],
             });
 
+            const accHtml = wp.accommodationName
+                ? wp.accommodationSlug
+                    ? `<a href="/listing/${wp.accommodationSlug}" target="_blank" rel="noopener" class="map-popup-link">${wp.accommodationName}</a>`
+                    : wp.accommodationName
+                : '';
+
             const popupLines = [
                 `<div class="map-popup">`,
-                `<div class="map-popup-day">Day ${wp.day}</div>`,
+                `<div class="map-popup-day">Day ${wp.day}${wp.date ? `<span class="map-popup-date"> · ${wp.date}</span>` : ''}</div>`,
                 `<div class="map-popup-location">${wp.label}</div>`,
-                wp.accommodationName
-                    ? `<div class="map-popup-accommodation">${wp.accommodationName}</div>`
+                accHtml
+                    ? `<div class="map-popup-accommodation">${accHtml}</div>`
                     : '',
                 `</div>`,
             ].join('');
@@ -264,8 +274,23 @@ watch(() => [props.variant, props.regionCoords] as const, renderRoute, {
     margin-bottom: 3px;
 }
 
+.map-popup-date {
+    font-weight: 400;
+    color: #8a7d6e;
+}
+
 .map-popup-accommodation {
     font-size: 11px;
     color: #6b5f54;
+}
+
+.map-popup-link {
+    color: #c0533a;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.map-popup-link:hover {
+    text-decoration: underline;
 }
 </style>

@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Models\Listing;
 use App\Services\Kaia\AnthropicClient;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class GenerateListingDescriptions extends Command
 {
@@ -60,7 +59,7 @@ class GenerateListingDescriptions extends Command
                 }
             } catch (\Throwable $e) {
                 $this->newLine();
-                $this->error("Failed [{$listing->id}]: " . $e->getMessage());
+                $this->error(sprintf('Failed [%d]: %s', $listing->id, $e->getMessage()));
                 $failed++;
             }
 
@@ -81,16 +80,9 @@ class GenerateListingDescriptions extends Command
         $region = $listing->region ?? 'Namibia';
         $address = $listing->address ? ", {$listing->address}" : '';
 
-        $system = 'You write concise, evocative descriptions for a Namibian travel platform. ' .
-            'Write exactly 1–2 sentences (max 200 characters total). ' .
-            'Focus on what makes this place appealing to travelers. ' .
-            'No marketing fluff, no "welcome to", no repeating the name. ' .
-            'Reply with only the description text, nothing else.';
+        $system = 'You write concise, evocative descriptions for a Namibian travel platform. Write exactly 1–2 sentences (max 200 characters total). Focus on what makes this place appealing to travelers. No marketing fluff, no "welcome to", no repeating the name. Reply with only the description text, nothing else.';
 
-        $prompt = "Write a short travel description for: {$name}\n" .
-            "Type: {$type}\n" .
-            "Location: {$region}{$address}\n\n" .
-            'Give travelers a reason to be interested. Be specific if the type suggests it (e.g. game lodge = wildlife, restaurant = cuisine/atmosphere).';
+        $prompt = "Write a short travel description for: {$name}\nType: {$type}\nLocation: {$region}{$address}\n\nGive travelers a reason to be interested. Be specific if the type suggests it (e.g. game lodge = wildlife, restaurant = cuisine/atmosphere).";
 
         $response = $client->send(
             self::MODEL,
@@ -100,7 +92,9 @@ class GenerateListingDescriptions extends Command
             256,
         );
 
-        $text = collect($response['content'] ?? [])
+        /** @var array<int, array<string, mixed>> $content */
+        $content = $response['content'] ?? [];
+        $text = collect($content)
             ->where('type', 'text')
             ->pluck('text')
             ->implode('');

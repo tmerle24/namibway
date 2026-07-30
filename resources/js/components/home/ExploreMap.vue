@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { router } from '@inertiajs/vue3';
 import type { Map as LeafletMap, Marker } from 'leaflet';
 import { onMounted, onUnmounted, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
 import { show } from '@/routes/listings';
 
 export interface ExploreMapMarker {
@@ -91,7 +91,9 @@ function renderMarkers() {
 
             if (item.slug) {
                 const slug = item.slug;
-                marker.on('click', () => router.visit(show({ listing: slug }).url));
+                marker.on('click', () =>
+                    router.visit(show({ listing: slug }).url),
+                );
             }
 
             markerLayers.push(marker);

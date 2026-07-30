@@ -309,7 +309,9 @@ const heroImage = computed(() => {
             <div class="review-form-panel">
                 <h3>{{ t('listing.reviews.formTitle') }}</h3>
                 <Form
-                    v-bind="reviewRoutes.store.form({ listing: props.listing.slug })"
+                    v-bind="
+                        reviewRoutes.store.form({ listing: props.listing.slug })
+                    "
                     reset-on-success
                     v-slot="{ errors, processing, recentlySuccessful }"
                     class="inquiry-form"
@@ -332,7 +334,9 @@ const heroImage = computed(() => {
                                 type="button"
                                 class="star-picker-star"
                                 :class="{
-                                    filled: (reviewRatingHover || reviewRatingInput) >= n,
+                                    filled:
+                                        (reviewRatingHover ||
+                                            reviewRatingInput) >= n,
                                 }"
                                 @mouseenter="reviewRatingHover = n"
                                 @click="reviewRatingInput = n"

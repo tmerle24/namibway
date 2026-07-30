@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Listing;
 use App\Models\Region;
-use App\Models\TripPlan;
+use App\Models\SavedPlan;
 use App\Services\Kaia\InterviewService;
 use App\Services\Kaia\ItineraryService;
 use Illuminate\Http\JsonResponse;
@@ -57,23 +57,27 @@ class KaiaController extends Controller
     {
         $request->validate(['variant' => 'required|array']);
 
-        $token = Str::random(8);
-        TripPlan::create([
-            'token' => $token,
-            'plan_data' => $request->input('variant'),
-            'expires_at' => now()->addDays(30),
+        $planData = $request->input('variant');
+        $title = Str::limit($planData['trip_summary'] ?? '', 80, '');
+
+        $saved = SavedPlan::create([
+            'title' => $title,
+            'plan_json' => $planData,
+            'user_id' => $request->user()?->id,
+            'session_id' => $request->session()->getId(),
         ]);
 
-        return response()->json(['token' => $token]);
+        return response()->json([
+            'token' => $saved->token,
+            'url' => route('trip.show', $saved->token),
+        ]);
     }
 
     public function loadPlan(string $token): JsonResponse
     {
-        $plan = TripPlan::where('token', $token)
-            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->firstOrFail();
+        $plan = SavedPlan::where('token', $token)->firstOrFail();
 
-        return response()->json(['variant' => $plan->plan_data]);
+        return response()->json(['variant' => $plan->plan_json]);
     }
 
     public function message(Request $request, InterviewService $interview, ItineraryService $itinerary): JsonResponse
