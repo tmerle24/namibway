@@ -58,6 +58,7 @@ class ListPartners extends ListRecords
         ];
     }
 
+    /** @return Builder<Partner> */
     private static function eligibleForOutreachQuery(): Builder
     {
         return Partner::whereNotNull('email')
