@@ -175,6 +175,18 @@
             "sending": "Enviando…",
             "success": "¡Enviado! El socio se pondrá en contacto contigo directamente.",
             "unavailable": "Esta oferta no acepta consultas por el momento — vuelve pronto."
+        },
+        "reviews": {
+            "title": "Valoraciones",
+            "count": "{count} valoraciones",
+            "empty": "Aún no hay valoraciones — sé el primero en compartir tu experiencia.",
+            "formTitle": "Dejar una valoración",
+            "name": "Nombre completo",
+            "rating": "Tu valoración",
+            "comment": "Tu comentario",
+            "send": "Enviar valoración",
+            "sending": "Enviando…",
+            "success": "¡Gracias! Tu valoración aparecerá una vez verificada."
         }
     },
     "localeSwitcher": {

@@ -1021,6 +1021,75 @@
     opacity: 0.5;
     cursor: default;
 }
+.kaia-page .detail-hero-overlay .detail-rating {
+    color: var(--gold);
+    font-weight: 600;
+    margin-top: 2px;
+}
+.kaia-page .review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    margin-bottom: 28px;
+}
+.kaia-page .review-item {
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--sand-dark);
+}
+.kaia-page .review-item-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+.kaia-page .review-stars {
+    color: var(--gold);
+    letter-spacing: 1px;
+}
+.kaia-page .review-date {
+    color: #8a7f6f;
+    font-size: 12px;
+    margin-left: auto;
+}
+.kaia-page .review-item p {
+    font-size: 13.5px;
+    color: #4a4438;
+}
+.kaia-page .review-form-panel {
+    background: var(--sand);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 480px;
+}
+.kaia-page .review-form-panel h3 {
+    font-size: 18px;
+    margin-bottom: 14px;
+}
+.kaia-page .star-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #4a4438;
+}
+.kaia-page .star-picker-stars {
+    display: flex;
+    gap: 4px;
+}
+.kaia-page .star-picker-star {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--sand-dark);
+    cursor: pointer;
+    padding: 0;
+}
+.kaia-page .star-picker-star.filled {
+    color: var(--gold);
+}
 
 /* Swap button (⇄) alongside remove-btn */
 .kaia-page .swap-btn {

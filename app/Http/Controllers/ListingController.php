@@ -6,6 +6,7 @@ use App\Enums\InquiryStatus;
 use App\Mail\NewInquiryReceived;
 use App\Models\Inquiry;
 use App\Models\Listing;
+use App\Models\Review;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,18 @@ class ListingController extends Controller
         abort_unless($listing->is_published, 404);
 
         $listing->load('partner');
+
+        $reviews = $listing->reviews()
+            ->where('is_approved', true)
+            ->latest()
+            ->get(['id', 'name', 'rating', 'comment', 'created_at'])
+            ->map(fn (Review $review) => [
+                'id' => $review->id,
+                'name' => $review->name,
+                'rating' => $review->rating,
+                'comment' => $review->comment,
+                'created_at' => $review->created_at->toDateString(),
+            ]);
 
         return Inertia::render('ListingDetail', [
             'listing' => [
@@ -36,6 +49,8 @@ class ListingController extends Controller
                 'region' => $listing->region,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                'rating' => $listing->rating !== null ? (float) $listing->rating : null,
+                'rating_count' => $listing->rating_count,
                 'accepts_inquiries' => $listing->accepts_inquiries,
                 'partner' => $listing->partner ? [
                     'name' => $listing->partner->name,
@@ -45,6 +60,7 @@ class ListingController extends Controller
                     'facebook' => $listing->partner->facebook,
                 ] : null,
             ],
+            'reviews' => $reviews,
         ]);
     }
 
@@ -86,6 +102,26 @@ class ListingController extends Controller
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Inquiry sent.')]);
+
+        return back();
+    }
+
+    public function storeReview(Request $request, Listing $listing): RedirectResponse
+    {
+        abort_unless($listing->is_published, 404);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'comment' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $listing->reviews()->create($validated);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Thanks! Your review will appear once it has been checked.'),
+        ]);
 
         return back();
     }
