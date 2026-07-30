@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { usePage } from '@inertiajs/vue3';
 import draggable from 'vuedraggable';
 import {
     fetchAlternatives,
@@ -200,13 +200,17 @@ async function saveAllVariants() {
     const results = await Promise.allSettled(
         editableVariants.value.map((variant, i) =>
             savePlan({ trip_summary: props.plan.trip_summary, variants: [variant] }).then(
-                (result) => { savedTokens.value[i] = result.token; },
+                (result) => {
+                    savedTokens.value[i] = result.token;
+                },
             ),
         ),
     );
     // Log any failures silently — the UI will keep the Save button for failed ones
     results.forEach((r, i) => {
-        if (r.status === 'rejected') console.warn(`Failed to save variant ${i}:`, r.reason);
+        if (r.status === 'rejected') {
+            console.warn(`Failed to save variant ${i}:`, r.reason);
+        }
     });
 }
 

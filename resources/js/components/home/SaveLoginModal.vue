@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const emit = defineEmits<{
@@ -20,7 +20,10 @@ const loginError = ref('');
 const loginLoading = ref(false);
 
 async function submitLogin() {
-    if (loginLoading.value) return;
+    if (loginLoading.value) {
+        return;
+    }
+
     loginError.value = '';
     loginLoading.value = true;
 
@@ -59,7 +62,10 @@ const regError = ref('');
 const regLoading = ref(false);
 
 async function submitRegister() {
-    if (regLoading.value) return;
+    if (regLoading.value) {
+        return;
+    }
+
     regError.value = '';
     regLoading.value = true;
 
@@ -95,16 +101,25 @@ async function submitRegister() {
 
 function xsrfToken(): string {
     const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]+)/);
+
     return match ? decodeURIComponent(match[1]) : '';
 }
 
 function flattenErrors(data: unknown): string {
-    if (typeof data !== 'object' || data === null) return '';
+    if (typeof data !== 'object' || data === null) {
+        return '';
+    }
+
     const d = data as Record<string, unknown>;
+
     if (d.errors && typeof d.errors === 'object') {
         return Object.values(d.errors as Record<string, string[]>).flat().join(' ');
     }
-    if (typeof d.message === 'string') return d.message;
+
+    if (typeof d.message === 'string') {
+        return d.message;
+    }
+
     return '';
 }
 </script>
