@@ -6,7 +6,8 @@ import type { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instanc
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { show } from '@/routes/listings';
-import ExploreMap, { type ExploreMapMarker } from './ExploreMap.vue';
+import ExploreMap from './ExploreMap.vue';
+import type { ExploreMapMarker } from './ExploreMap.vue';
 import ShortlistBar from './ShortlistBar.vue';
 
 interface Listing {
