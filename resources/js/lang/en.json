@@ -45,13 +45,6 @@
         "remove": "Remove",
         "removeDay": "Remove day",
         "bookCta": "Request availability & book",
-        "saveCta": "Save & share",
-        "saving": "Saving…",
-        "savedLink": "Shareable link",
-        "copyLink": "Copy link",
-        "copied": "Copied!",
-        "downloadPdf": "Download PDF",
-        "print": "Print",
         "swap": "Swap",
         "alternatives": "Alternatives",
         "noAlternatives": "No alternatives available.",
@@ -67,7 +60,10 @@
         "copyLink": "Copy link",
         "linkCopied": "Copied!",
         "downloadPdf": "Download PDF",
-        "print": "Print"
+        "print": "Print",
+        "saveToAccount": "Save",
+        "savedToAccount": "Saved ✓",
+        "copyFailed": "Couldn't copy automatically — the link is selected, copy it manually."
     },
     "booking": {
         "eyebrow": "Booking assistant",

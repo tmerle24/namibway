@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { savePlan } from '@/lib/kaia-client';
 import type { ItineraryPlan } from '@/lib/kaia-types';
+import SaveLoginModal from './SaveLoginModal.vue';
 
 const props = defineProps<{
     plan: ItineraryPlan;
@@ -20,8 +21,13 @@ const { t } = useI18n();
 const saving = ref(false);
 const shareUrl = ref<string | null>(null);
 const copied = ref(false);
+const copyFailed = ref(false);
 
-// If a token was passed in (shared plan page), derive the URL immediately
+// Whether this instance was mounted already pointing at an existing shared
+// plan (e.g. the /trip/{token} page), as opposed to becoming shared during
+// this session via save(). Only in that case do we offer "save to account".
+const viewingExistingShare = !!props.token;
+
 if (props.token) {
     shareUrl.value = window.location.href;
 }
@@ -53,11 +59,26 @@ async function copyLink() {
         return;
     }
 
-    await navigator.clipboard.writeText(shareUrl.value);
-    copied.value = true;
-    setTimeout(() => {
-        copied.value = false;
-    }, 2000);
+    copyFailed.value = false;
+
+    try {
+        await navigator.clipboard.writeText(shareUrl.value);
+        copied.value = true;
+        setTimeout(() => {
+            copied.value = false;
+        }, 2000);
+    } catch {
+        // Clipboard API unavailable/denied (e.g. insecure context) — fall
+        // back to a manual text selection so the user can still copy.
+        copyFailed.value = true;
+        selectShareUrlInput();
+    }
+}
+
+const shareUrlInput = ref<HTMLInputElement | null>(null);
+
+function selectShareUrlInput() {
+    shareUrlInput.value?.select();
 }
 
 function openPdf(token: string) {
@@ -66,6 +87,38 @@ function openPdf(token: string) {
 
 function printPage() {
     window.print();
+}
+
+// --- Save to account (bookmark an already-shared plan) ---
+
+const savingToAccount = ref(false);
+const savedToAccount = ref(false);
+const showAccountAuthModal = ref(false);
+
+async function saveToAccount() {
+    if (savingToAccount.value || savedToAccount.value) {
+        return;
+    }
+
+    if (props.isLoggedIn === false) {
+        showAccountAuthModal.value = true;
+
+        return;
+    }
+
+    savingToAccount.value = true;
+
+    try {
+        await savePlan(props.plan);
+        savedToAccount.value = true;
+    } finally {
+        savingToAccount.value = false;
+    }
+}
+
+function onAccountAuthenticated() {
+    showAccountAuthModal.value = false;
+    saveToAccount();
 }
 </script>
 
@@ -78,14 +131,15 @@ function printPage() {
                 :disabled="saving"
                 @click="save"
             >
-                {{ saving ? t('itinerary.saving') : t('itinerary.saveCta') }}
+                {{ saving ? t('itinerary.saving') : t('itinerary.saveShare') }}
             </button>
         </template>
 
         <template v-else>
             <div class="share-url-row">
-                <span class="share-label">{{ t('itinerary.savedLink') }}</span>
+                <span class="share-label">{{ t('itinerary.shareLink') }}</span>
                 <input
+                    ref="shareUrlInput"
                     :value="shareUrl"
                     readonly
                     class="share-url-input"
@@ -93,10 +147,15 @@ function printPage() {
                 />
                 <button type="button" class="copy-btn" @click="copyLink">
                     {{
-                        copied ? t('itinerary.copied') : t('itinerary.copyLink')
+                        copied
+                            ? t('itinerary.linkCopied')
+                            : t('itinerary.copyLink')
                     }}
                 </button>
             </div>
+            <p v-if="copyFailed" class="copy-fallback-hint">
+                {{ t('itinerary.copyFailed') }}
+            </p>
             <div class="export-row">
                 <button
                     v-if="token"
@@ -109,8 +168,29 @@ function printPage() {
                 <button type="button" class="export-btn" @click="printPage">
                     {{ t('itinerary.print') }}
                 </button>
+                <button
+                    v-if="viewingExistingShare"
+                    type="button"
+                    class="export-btn"
+                    :disabled="savingToAccount || savedToAccount"
+                    @click="saveToAccount"
+                >
+                    {{
+                        savedToAccount
+                            ? t('itinerary.savedToAccount')
+                            : savingToAccount
+                              ? t('itinerary.saving')
+                              : t('itinerary.saveToAccount')
+                    }}
+                </button>
             </div>
         </template>
+
+        <SaveLoginModal
+            v-if="showAccountAuthModal"
+            @close="showAccountAuthModal = false"
+            @authenticated="onAccountAuthenticated"
+        />
     </div>
 </template>
 
@@ -189,11 +269,13 @@ function printPage() {
 
 .export-row {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
 }
 
 .export-btn {
     flex: 1;
+    min-width: 100px;
     padding: 7px 12px;
     border-radius: 7px;
     border: 1px solid var(--sand-dark, #d6c9b5);
@@ -203,7 +285,18 @@ function printPage() {
     transition: background 0.12s;
 }
 
-.export-btn:hover {
+.export-btn:hover:not(:disabled) {
     background: var(--sand-dark, #d6c9b5);
+}
+
+.export-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.copy-fallback-hint {
+    font-size: 11px;
+    color: #7a6a5e;
+    margin: -2px 0 0;
 }
 </style>

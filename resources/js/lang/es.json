@@ -49,7 +49,10 @@
         "copyLink": "Copiar enlace",
         "linkCopied": "¡Copiado!",
         "downloadPdf": "Descargar PDF",
-        "print": "Imprimir"
+        "print": "Imprimir",
+        "saveToAccount": "Guardar",
+        "savedToAccount": "¡Guardado!",
+        "copyFailed": "No se pudo copiar automáticamente — el enlace está seleccionado, cópialo manualmente."
     },
     "booking": {
         "eyebrow": "Asistente de reservas",

@@ -49,7 +49,10 @@
         "copyLink": "Link kopiëren",
         "linkCopied": "Gekopieerd!",
         "downloadPdf": "PDF downloaden",
-        "print": "Afdrukken"
+        "print": "Afdrukken",
+        "saveToAccount": "Opslaan",
+        "savedToAccount": "Opgeslagen!",
+        "copyFailed": "Automatisch kopiëren is niet gelukt — de link is geselecteerd, kopieer hem handmatig."
     },
     "booking": {
         "eyebrow": "Boekingsassistent",

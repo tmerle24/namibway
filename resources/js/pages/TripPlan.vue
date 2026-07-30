@@ -165,6 +165,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                             variants: [variant],
                         }"
                         :token="token"
+                        :is-logged-in="isLoggedIn"
                     />
                 </div>
             </div>

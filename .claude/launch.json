@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "dev"],
       "port": 8085,
       "autoPort": false
+    },
+    {
+      "name": "namibway-dev-verify",
+      "runtimeExecutable": "composer",
+      "runtimeArgs": ["run", "dev"],
+      "port": 8095,
+      "autoPort": false
     }
   ]
 }

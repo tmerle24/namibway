@@ -2,6 +2,7 @@
 import { usePage } from '@inertiajs/vue3';
 import { ChevronsUpDown } from '@lucide/vue';
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -19,11 +20,17 @@ import UserMenuContent from '@/components/UserMenuContent.vue';
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 const { isMobile, state } = useSidebar();
+const { t } = useI18n();
 </script>
 
 <template>
     <SidebarMenu>
-        <SidebarMenuItem>
+        <SidebarMenuItem v-if="!user">
+            <SidebarMenuButton size="lg" as-child>
+                <a href="/login">{{ t('nav.login') }}</a>
+            </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem v-else>
             <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                     <SidebarMenuButton

@@ -49,7 +49,10 @@
         "copyLink": "Link kopieren",
         "linkCopied": "Kopiert!",
         "downloadPdf": "PDF herunterladen",
-        "print": "Drucken"
+        "print": "Drucken",
+        "saveToAccount": "Speichern",
+        "savedToAccount": "Gespeichert ✓",
+        "copyFailed": "Kopieren nicht möglich — bitte den Link manuell markieren und kopieren."
     },
     "booking": {
         "eyebrow": "Buchungsassistent",
