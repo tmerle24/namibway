@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { nextTick, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import { sendKaiaMessage } from '@/lib/kaia-client';
@@ -13,11 +13,23 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage();
-const { t, tm } = useI18n();
+const { t, tm, locale } = useI18n();
 
-const thinkingStatuses = tm('chat.thinkingStatuses') as unknown as string[];
+const thinkingStatuses = computed(
+    () => tm('chat.thinkingStatuses') as unknown as string[],
+);
 
 const messages = ref<ChatMessage[]>([{ role: 'ai', text: t('chat.greeting') }]);
+
+// The greeting is seeded once at mount, but switching locale via the
+// LocaleSwitcher doesn't remount this component (Inertia does a partial
+// reload) — so it never picks up the new language on its own. Re-translate
+// it as long as the user hasn't started chatting yet.
+watch(locale, () => {
+    if (messages.value.length === 1 && messages.value[0].role === 'ai') {
+        messages.value[0].text = t('chat.greeting');
+    }
+});
 const inputText = ref('');
 const isTyping = ref(false);
 const thinkingIndex = ref(0);
@@ -30,7 +42,7 @@ function startThinking() {
     thinkingIndex.value = 0;
     thinkingTimer = setInterval(() => {
         thinkingIndex.value =
-            (thinkingIndex.value + 1) % thinkingStatuses.length;
+            (thinkingIndex.value + 1) % thinkingStatuses.value.length;
     }, 2500);
 }
 
@@ -200,7 +212,7 @@ async function sendMessage() {
                         type="text"
                         :placeholder="t('chat.placeholder')"
                         autocomplete="off"
-                        :disabled="isTyping"
+                        :readonly="isTyping"
                         @keydown.enter="sendMessage"
                     />
                     <button

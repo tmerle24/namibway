@@ -76,6 +76,11 @@ watch(
         editableVariants.value = JSON.parse(JSON.stringify(plan.variants));
         startDates.value = plan.variants.map((v) => parseDayDate(v.days[0]?.date));
         swap.value = null;
+
+        // Claude doesn't always fill in every day's date field consistently —
+        // normalize all days from day 1's date right away rather than only
+        // after the traveler drags/adds/removes something.
+        plan.variants.forEach((_, i) => applyDates(i));
     },
     { immediate: true },
 );

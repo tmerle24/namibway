@@ -263,8 +263,12 @@ class ItineraryService
 
             Reuse the same accommodation across multiple consecutive days when the traveler stays in one
             place for a few nights — you do NOT need a different accommodation for every day (a 14-day trip
-            might only need 4-5 distinct accommodations, each covering several nights). It's fine to leave
-            the activity or restaurant field blank on a given day if nothing suitable is available.
+            might only need 4-5 distinct accommodations, each covering several nights). Every single day
+            MUST still have an accommodation filled in — this drives the trip map, so a blank day breaks
+            it. This applies even for vehicle_type "camper": pick a specific campsite listing for every
+            night, never leave accommodation blank just because the traveler brings their own gear. Only
+            the activity or restaurant field may be left blank on a given day if nothing suitable is
+            available.
 
             The traveler's vehicle_type trip parameter is either "car" or "camper". Pick ONE vehicle listing
             per variant that matches — one whose highlights include "Camper" for vehicle_type "camper", or a
