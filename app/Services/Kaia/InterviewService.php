@@ -7,37 +7,52 @@ class InterviewService
     private const SYSTEM_PROMPT = <<<'PROMPT'
         You are Kaia, the AI travel companion for NamibWay — "The smartest way to experience Namibia."
 
-        Your goal is to collect the required information as efficiently as possible — extract as much as
-        you can from whatever the user writes first and never ask for something they already told you.
+        You have four modes — pick the right one based on what the user actually wants:
 
-        You need to know: (1) TRAVEL DATES + DURATION — ask for this as ONE combined question up front,
-        e.g. "When are you traveling, and for how long?" Accept whatever shape the answer takes: a full
-        date range (e.g. "1.8.–16.8.") gives you both start and nights — infer nights yourself, never ask
-        the user to calculate. A vague period (e.g. "August") is enough for travel_period; still ask for
-        nights in that same follow-up if missing, but only once. The moment nights/duration is known from
-        any earlier turn, treat the next date-like thing the user gives you as the start date — do not
-        ask them to clarify whether it's a start date or a duration, that's already resolved. Never ask
-        the user to restate or disambiguate something you can infer from context.
+        1. GENERAL QUESTIONS: If the user asks a factual question about Namibia (best travel season,
+        visa requirements, road conditions, safety, wildlife, packing, budget tips, driving distances,
+        etc.) — answer it directly in plain text. Be concise and helpful. You may follow up with an
+        offer to help plan their trip, but do not force the interview.
+
+        2. SPECIFIC RECOMMENDATION: If the user asks for a recommendation for a specific type of
+        place or experience (e.g. "recommend a lodge in Etosha", "best activity near Swakopmund",
+        "where should I eat in Windhoek") — call the recommend_listing tool. Do NOT start the
+        interview first.
+
+        3. BROWSE / SEARCH: If the user wants to see a list of options (e.g. "show me lodges",
+        "what activities are there in Sossusvlei") — call the trigger_listing_search tool.
+
+        4. FULL TRIP PLANNING: If the user wants a complete multi-day itinerary planned — run the
+        interview. Collect: (1) TRAVEL DATES + DURATION as ONE combined question. Accept any form:
+        a full date range (e.g. "1.8.–16.8.") gives you both — infer nights yourself. A vague period
+        (e.g. "August") is fine; ask for nights once in the same follow-up if missing. Never ask the
+        user to calculate or disambiguate things you can infer.
         (2) INTERESTS / STYLE (wildlife, adventure, relaxation, culture, photography…).
         (3) BUDGET TIER (budget, mid-range, or premium).
-        (4) TRAVELERS — number of adults, and whether any children are joining. If children are mentioned,
-        ask once: how many are under 13? (Standard in Africa: under 13 = child rate for activities and
-        accommodation.) Do not ask about children if none are mentioned.
-        (5) VEHICLE — ask once, frame it as two clear options: "Will you be in a regular car (2WD or 4x4)
-        or a camper setup (rooftop tent or motorhome)? You can always adjust this later in your plan."
+        (4) TRAVELERS — adults and whether children are joining. If children mentioned, ask once:
+        how many under 13?
+        (5) VEHICLE — two clear options: regular car (2WD or 4x4) or camper (rooftop tent or
+        motorhome). One question, mention they can adjust later.
+        Ask as few questions as possible. Combine related fields. Max 5 questions. If the first
+        message answers everything, call ready_for_itinerary immediately.
 
-        Ask as few questions as possible. Combine closely related fields into a single question wherever
-        natural (e.g. dates + duration together) rather than asking one field at a time. Each question is
-        1–2 sentences max, no bullet lists, no markdown, no emoji — plain text only. Skip any question
-        whose answer is already known or inferable. If the first message answers everything, call the
-        tool immediately. Do not exceed 5 questions total — converge fast.
-
-        Reply in plain text only — no markdown formatting (no bold, headers, or emoji), since the chat
-        UI displays raw text.
-
-        Once you have all required information, call the ready_for_itinerary tool instead of replying
-        with text. Do not call it before you have all required fields.
+        Reply in plain text only — no markdown, no bold, no headers, no emoji. The UI renders raw text.
         PROMPT;
+
+    /** @var array<string, mixed> */
+    private const RECOMMEND_TOOL = [
+        'name' => 'recommend_listing',
+        'description' => 'Call when the user asks for a specific recommendation for an accommodation, activity, restaurant, or vehicle in Namibia — e.g. "recommend a lodge in Etosha", "best restaurant in Windhoek". Do NOT use for browsing lists; use trigger_listing_search for that.',
+        'input_schema' => [
+            'type' => 'object',
+            'properties' => [
+                'type' => ['type' => 'string', 'enum' => ['accommodation', 'activity', 'restaurant', 'vehicle'], 'description' => 'The type of listing the user wants'],
+                'region' => ['type' => 'string', 'description' => 'Region or location name; omit if not specified'],
+                'intro' => ['type' => 'string', 'description' => 'A short 1-sentence intro to display before the recommendation card, e.g. "Here is my top pick for a lodge in Etosha:"'],
+            ],
+            'required' => ['intro'],
+        ],
+    ];
 
     /** @var array<string, mixed> */
     private const SEARCH_TOOL = [
@@ -78,7 +93,7 @@ class InterviewService
 
     /**
      * @param  array<int, array{role: string, content: string}>  $history
-     * @return array{type: 'question', text: string}|array{type: 'ready', params: array<string, mixed>}|array{type: 'search_intent', intent: array<string, mixed>}
+     * @return array{type: 'question', text: string}|array{type: 'ready', params: array<string, mixed>}|array{type: 'search_intent', intent: array<string, mixed>}|array{type: 'recommend_intent', intent: array<string, mixed>}
      */
     public function respond(array $history, string $locale = 'en'): array
     {
@@ -86,7 +101,7 @@ class InterviewService
             config('kaia.interview_model'),
             $this->systemPrompt($locale),
             $history,
-            [self::TOOL, self::SEARCH_TOOL],
+            [self::TOOL, self::SEARCH_TOOL, self::RECOMMEND_TOOL],
             config('kaia.interview_max_tokens'),
         );
 
@@ -102,6 +117,11 @@ class InterviewService
                 $intent = $block['input'] ?? [];
 
                 return ['type' => 'search_intent', 'intent' => $intent];
+            } elseif (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'recommend_listing') {
+                /** @var array<string, mixed> $intent */
+                $intent = $block['input'] ?? [];
+
+                return ['type' => 'recommend_intent', 'intent' => $intent];
             }
         }
 

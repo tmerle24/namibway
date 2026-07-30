@@ -250,6 +250,66 @@
 .kaia-page .chat-input-row button:hover:not(:disabled) {
     background: var(--rust-dark);
 }
+.kaia-page .chat-rec-card {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    background: var(--paper);
+    border: 1px solid var(--sand-dark);
+    border-radius: 8px;
+    overflow: hidden;
+    text-decoration: none;
+    color: var(--ink);
+    transition: box-shadow 0.15s;
+}
+.kaia-page .chat-rec-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+.kaia-page .chat-rec-img {
+    width: 90px;
+    min-width: 90px;
+    height: 90px;
+    object-fit: cover;
+}
+.kaia-page .chat-rec-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 10px 10px 0;
+    flex: 1;
+    min-width: 0;
+}
+.kaia-page .chat-rec-type {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--rust-dark);
+}
+.kaia-page .chat-rec-name {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.kaia-page .chat-rec-region {
+    font-size: 12px;
+    color: var(--rust);
+}
+.kaia-page .chat-rec-meta {
+    display: flex;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--ink);
+    opacity: 0.7;
+}
+.kaia-page .chat-rec-cta {
+    margin-top: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--rust);
+}
 
 /* ---------- SECTIONS ---------- */
 .kaia-page section {

@@ -21,6 +21,9 @@
         ],
         "itineraryReady": "Parfait, c'est suffisant pour esquisser un plan. Voici quelques façons d'organiser ce voyage :",
         "searchTriggered": "J'ai trouvé quelques résultats pour vous — faites défiler vers le bas pour voir les offres !",
+        "recommendationIntro": "Voici ma meilleure recommandation pour vous :",
+        "viewListing": "Voir & demander →",
+        "from": "à partir de",
         "error": "Une erreur s'est produite lors de la connexion au compagnon de voyage. Veuillez réessayer."
     },
     "itinerary": {

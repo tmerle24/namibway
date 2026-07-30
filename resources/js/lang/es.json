@@ -21,6 +21,9 @@
         ],
         "itineraryReady": "Perfecto, con eso basta para esbozar un plan. Aquí tienes algunas formas de hacer este viaje:",
         "searchTriggered": "¡He encontrado algunos resultados para ti — desplázate hacia abajo para ver los alojamientos!",
+        "recommendationIntro": "Aquí está mi mejor recomendación para ti:",
+        "viewListing": "Ver y solicitar →",
+        "from": "desde",
         "error": "Algo salió mal al conectar con el compañero de viaje. Inténtalo de nuevo."
     },
     "itinerary": {

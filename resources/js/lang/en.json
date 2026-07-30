@@ -32,6 +32,9 @@
         ],
         "itineraryReady": "Perfect, that's enough to sketch a plan. Here are a few ways to do this trip:",
         "searchTriggered": "I've found some results for you — scroll down to see the listings!",
+        "recommendationIntro": "Here is my top pick for you:",
+        "viewListing": "View & enquire →",
+        "from": "from",
         "error": "Something went wrong reaching the travel companion. Please try again."
     },
     "itinerary": {

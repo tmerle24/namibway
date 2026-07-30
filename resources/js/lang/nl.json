@@ -21,6 +21,9 @@
         ],
         "itineraryReady": "Perfect, dat is genoeg om een plan te schetsen. Hier zijn een paar manieren om deze reis te maken:",
         "searchTriggered": "Ik heb wat resultaten voor je gevonden — scroll naar beneden om de aanbiedingen te bekijken!",
+        "recommendationIntro": "Dit is mijn topkeuze voor jou:",
+        "viewListing": "Bekijk & vraag aan →",
+        "from": "vanaf",
         "error": "Er ging iets mis bij het bereiken van de reisgezel. Probeer het opnieuw."
     },
     "itinerary": {

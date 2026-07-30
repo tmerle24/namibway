@@ -4,6 +4,7 @@ import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
+import { formatPrice } from '@/lib/currency';
 import { sendKaiaMessage } from '@/lib/kaia-client';
 import type {
     ChatMessage,
@@ -121,6 +122,12 @@ async function sendMessage() {
                 text: t('chat.searchTriggered'),
             });
             emit('search-intent', result.intent);
+        } else if (result.type === 'recommendation') {
+            messages.value.push({
+                role: 'ai',
+                text: result.intro || t('chat.recommendationIntro'),
+                recommendation: result.listing,
+            });
         } else {
             messages.value.push({ role: 'ai', text: result.text });
         }
@@ -213,6 +220,57 @@ async function sendMessage() {
                         :class="['msg', msg.role]"
                     >
                         {{ msg.text }}
+                        <a
+                            v-if="msg.recommendation"
+                            :href="`/listings/${msg.recommendation.slug}`"
+                            class="chat-rec-card"
+                        >
+                            <img
+                                v-if="msg.recommendation.image"
+                                :src="msg.recommendation.image"
+                                :alt="msg.recommendation.name"
+                                class="chat-rec-img"
+                            />
+                            <div class="chat-rec-body">
+                                <span class="chat-rec-type">{{
+                                    t(
+                                        `listing.types.${msg.recommendation.type}`,
+                                    )
+                                }}</span>
+                                <strong class="chat-rec-name">{{
+                                    msg.recommendation.name
+                                }}</strong>
+                                <span
+                                    v-if="msg.recommendation.region"
+                                    class="chat-rec-region"
+                                    >{{ msg.recommendation.region }}</span
+                                >
+                                <div class="chat-rec-meta">
+                                    <span v-if="msg.recommendation.rating"
+                                        >★
+                                        {{
+                                            msg.recommendation.rating.toFixed(1)
+                                        }}</span
+                                    >
+                                    <span
+                                        v-if="
+                                            formatPrice(
+                                                msg.recommendation.price_from,
+                                            )
+                                        "
+                                        >{{ t('chat.from') }}
+                                        {{
+                                            formatPrice(
+                                                msg.recommendation.price_from,
+                                            )
+                                        }}</span
+                                    >
+                                </div>
+                                <span class="chat-rec-cta">{{
+                                    t('chat.viewListing')
+                                }}</span>
+                            </div>
+                        </a>
                     </div>
                     <div v-if="isTyping" class="msg typing">
                         {{ thinkingStatuses[thinkingIndex] }}

@@ -21,6 +21,9 @@
         ],
         "itineraryReady": "Perfekt, das reicht, um einen Plan zu skizzieren. Hier sind ein paar Möglichkeiten für diese Reise:",
         "searchTriggered": "Ich habe einige Ergebnisse für dich gefunden — scroll nach unten, um die Angebote zu sehen!",
+        "recommendationIntro": "Hier ist mein Top-Tipp für dich:",
+        "viewListing": "Ansehen & anfragen →",
+        "from": "ab",
         "error": "Bei der Verbindung zum Reisebegleiter ist etwas schiefgelaufen. Bitte versuch es erneut."
     },
     "itinerary": {
