@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Models\Listing;
 use App\Services\Kaia\AnthropicClient;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class GenerateListingDescriptions extends Command
 {

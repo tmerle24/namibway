@@ -15,11 +15,39 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+// Kaia formats dates as "D Mon YYYY" (e.g. "9 Aug 2026"). Parse that explicitly
+// rather than relying on Date() which handles this format inconsistently across browsers.
+const MONTH_MAP: Record<string, number> = {
+    Jan: 0,
+    Feb: 1,
+    Mar: 2,
+    Apr: 3,
+    May: 4,
+    Jun: 5,
+    Jul: 6,
+    Aug: 7,
+    Sep: 8,
+    Oct: 9,
+    Nov: 10,
+    Dec: 11,
+};
+
 function parseDateToIso(dateStr: string | null | undefined): string {
     if (!dateStr) {
         return '';
     }
 
+    const m = /^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/.exec(dateStr);
+
+    if (m) {
+        const month = MONTH_MAP[m[2]];
+
+        if (month !== undefined) {
+            return `${m[3]}-${String(month + 1).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+        }
+    }
+
+    // Fallback for ISO or other parseable formats
     const d = new Date(dateStr);
 
     if (isNaN(d.getTime())) {
@@ -36,15 +64,16 @@ function deriveCheckOut(variant: ItineraryVariant): string {
         return '';
     }
 
-    const d = new Date(lastDay.date);
+    const isoStr = parseDateToIso(lastDay.date);
 
-    if (isNaN(d.getTime())) {
+    if (!isoStr) {
         return '';
     }
 
-    d.setDate(d.getDate() + 1);
+    const [y, mo, da] = isoStr.split('-').map(Number);
+    const d = new Date(y, mo - 1, da + 1);
 
-    return d.toISOString().slice(0, 10);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 const name = ref('');
