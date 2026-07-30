@@ -39,7 +39,10 @@ class InterviewService
         (2) Duration in nights — only if truly absent (not inferrable from what was said).
         (3) Interests / style (wildlife, adventure, relaxation, culture, photography…).
         (4) Budget tier (budget, mid-range, or premium).
-        (5) Travelers — adults count. Ask about children only if group travel is implied.
+        (5) Travelers — adults count. If ages are given for children, count under-13s yourself —
+        never ask the user to recount or re-specify ages they already stated. E.g. "3 kids aged
+        13, 15, 17" → 0 under 13. "kids aged 8 and 11" → 2 under 13. Only ask ages if children
+        are mentioned but no ages given.
         (6) Vehicle — regular car (2WD or 4x4) or camper. One sentence, they can change later.
 
         Max 4 turns before calling ready_for_itinerary. If the first message already covers
