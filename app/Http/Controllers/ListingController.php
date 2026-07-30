@@ -171,7 +171,7 @@ class ListingController extends Controller
             ]);
         }
 
-        $contact = collect($validated)->only(['name', 'email', 'phone', 'message'])->all();
+        $contact = array_intersect_key($validated, array_flip(['name', 'email', 'phone', 'message']));
 
         DB::transaction(function () use ($listings, $contact) {
             foreach ($listings as $listing) {

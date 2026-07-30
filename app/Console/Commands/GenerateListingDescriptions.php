@@ -92,7 +92,9 @@ class GenerateListingDescriptions extends Command
             256,
         );
 
-        $text = collect($response['content'] ?? [])
+        /** @var array<int, array<string, mixed>> $content */
+        $content = $response['content'] ?? [];
+        $text = collect($content)
             ->where('type', 'text')
             ->pluck('text')
             ->implode('');
