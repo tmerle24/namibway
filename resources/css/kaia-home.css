@@ -313,6 +313,15 @@
     font-size: 15px;
     min-width: 26px;
 }
+.kaia-page .day-date {
+    display: block;
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--sand);
+    font-weight: 400;
+    white-space: nowrap;
+    margin-top: 1px;
+}
 .kaia-page .day-detail div {
     margin-bottom: 2px;
     color: #4a4438;
