@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Listing;
 use App\Models\Region;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,7 +25,7 @@ class HomeController extends Controller
                 'name' => $listing->name,
                 'slug' => $listing->slug,
                 'description' => $listing->description,
-                'image' => $listing->image ? Storage::disk('public')->url($listing->image) : null,
+                'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
                 'region' => $listing->region,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
@@ -40,7 +39,7 @@ class HomeController extends Controller
                 'name' => $region->name,
                 'slug' => $region->slug,
                 'blurb' => $region->blurb,
-                'image' => $region->image ? Storage::disk('public')->url($region->image) : null,
+                'image' => $region->image ? self::resolveMediaUrl($region->image) : null,
                 'listing_region' => $region->listing_region,
             ]);
 

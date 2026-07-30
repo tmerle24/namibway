@@ -9,7 +9,6 @@ use App\Models\Listing;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,9 +28,9 @@ class ListingController extends Controller
                 'slug' => $listing->slug,
                 'description' => $listing->description,
                 'highlights' => $listing->highlights ?? [],
-                'image' => $listing->image ? Storage::disk('public')->url($listing->image) : null,
+                'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
                 'gallery' => collect($listing->gallery ?? [])
-                    ->map(fn (string $path) => Storage::disk('public')->url($path))
+                    ->map(fn (string $path) => self::resolveMediaUrl($path))
                     ->values(),
                 'region' => $listing->region,
                 'price_from' => $listing->price_from,
@@ -39,7 +38,7 @@ class ListingController extends Controller
                 'accepts_inquiries' => $listing->accepts_inquiries,
                 'partner' => $listing->partner ? [
                     'name' => $listing->partner->name,
-                    'logo' => $listing->partner->logo ? Storage::disk('public')->url($listing->partner->logo) : null,
+                    'logo' => $listing->partner->logo ? self::resolveMediaUrl($listing->partner->logo) : null,
                     'website' => $listing->partner->website,
                     'instagram' => $listing->partner->instagram,
                     'facebook' => $listing->partner->facebook,

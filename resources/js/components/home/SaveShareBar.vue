@@ -7,10 +7,12 @@ import type { ItineraryPlan } from '@/lib/kaia-types';
 const props = defineProps<{
     plan: ItineraryPlan;
     token: string | null;
+    isLoggedIn?: boolean;
 }>();
 
 const emit = defineEmits<{
     (e: 'saved', token: string, url: string): void;
+    (e: 'need-auth'): void;
 }>();
 
 const { t } = useI18n();
@@ -26,6 +28,11 @@ if (props.token) {
 
 async function save() {
     if (saving.value || shareUrl.value) {
+        return;
+    }
+
+    if (props.isLoggedIn === false) {
+        emit('need-auth');
         return;
     }
 

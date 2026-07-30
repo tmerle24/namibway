@@ -157,6 +157,24 @@
             "register": "Create account"
         }
     },
+    "saveModal": {
+        "title": "Save your plan",
+        "subtitle": "Log in or create a free account — both variants are saved so you don't lose either option.",
+        "close": "Close",
+        "tabLogin": "Log in",
+        "tabRegister": "Create account",
+        "name": "Full name",
+        "email": "Email",
+        "password": "Password",
+        "passwordConfirm": "Confirm password",
+        "loginCta": "Log in and save plan",
+        "loggingIn": "Logging in…",
+        "registerCta": "Create account and save plan",
+        "registering": "Creating account…",
+        "loginFailed": "Wrong email or password.",
+        "registerFailed": "Registration failed — please check your details.",
+        "networkError": "Network error. Please try again."
+    },
     "footer": {
         "tagline": "AI-assisted travel planning for Namibia. Kaia's interview and itinerary generation are live; real partner booking and availability are coming as the platform develops."
     },

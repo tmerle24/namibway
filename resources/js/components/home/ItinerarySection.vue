@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { usePage } from '@inertiajs/vue3';
 import draggable from 'vuedraggable';
 import {
     fetchAlternatives,
-    fetchRegions,
     fetchRegionCoords,
+    fetchRegions,
+    savePlan,
 } from '@/lib/kaia-client';
 import type { RegionCoords } from '@/lib/kaia-client';
 import type {
@@ -16,6 +18,7 @@ import type {
 import AlternativesPanel from './AlternativesPanel.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
 import LocationPicker from './LocationPicker.vue';
+import SaveLoginModal from './SaveLoginModal.vue';
 import SaveShareBar from './SaveShareBar.vue';
 import TripMap from './TripMap.vue';
 
@@ -28,6 +31,8 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const page = usePage();
+const isLoggedIn = computed(() => !!page.props.auth?.user);
 
 // A local, editable copy — the traveler can remove a day or a single item
 // (accommodation/activity/restaurant) without another round-trip to Kaia.
@@ -37,6 +42,9 @@ const swap = ref<SwapState | null>(null);
 const dbRegions = ref<string[]>([]);
 const regionCoords = ref<Record<string, RegionCoords>>({});
 const savedTokens = ref<Record<number, string>>({});
+
+// --- Auth-gate for saving ---
+const showAuthModal = ref(false);
 
 watch(
     () => props.plan,
@@ -175,51 +183,31 @@ function applySwap(alternative: ItineraryListingRef) {
     swap.value = null;
 }
 
-// --- Save & share ---
+// --- Save & share (auth-gated) ---
 
-interface SaveState {
-    saving: boolean;
-    token: string | null;
-    copied: boolean;
+// Called by SaveShareBar when the user isn't logged in
+function onNeedAuth() {
+    showAuthModal.value = true;
 }
 
-const saveStates = ref<SaveState[]>([]);
-
-watch(
-    () => props.plan,
-    (plan) => {
-        saveStates.value = plan.variants.map(() => ({ saving: false, token: null, copied: false }));
-    },
-    { immediate: true },
-);
-
-function shareUrl(token: string): string {
-    return `${window.location.origin}/trip/${token}`;
+// After successful login in the modal: save ALL variants so none is lost
+async function onAuthSuccess() {
+    showAuthModal.value = false;
+    await saveAllVariants();
 }
 
-async function doSave(variantIndex: number) {
-    const state = saveStates.value[variantIndex];
-    if (state.saving || state.token) return;
-
-    state.saving = true;
-    try {
-        state.token = await savePlan(editableVariants.value[variantIndex]);
-    } finally {
-        state.saving = false;
-    }
-}
-
-async function copyLink(variantIndex: number) {
-    const state = saveStates.value[variantIndex];
-    if (!state.token) return;
-
-    await navigator.clipboard.writeText(shareUrl(state.token));
-    state.copied = true;
-    setTimeout(() => { state.copied = false; }, 2000);
-}
-
-function printVariant() {
-    window.print();
+async function saveAllVariants() {
+    const results = await Promise.allSettled(
+        editableVariants.value.map((variant, i) =>
+            savePlan({ trip_summary: props.plan.trip_summary, variants: [variant] }).then(
+                (result) => { savedTokens.value[i] = result.token; },
+            ),
+        ),
+    );
+    // Log any failures silently — the UI will keep the Save button for failed ones
+    results.forEach((r, i) => {
+        if (r.status === 'rejected') console.warn(`Failed to save variant ${i}:`, r.reason);
+    });
 }
 
 function estimatedLabel(variant: ItineraryVariant): string | null {
@@ -491,13 +479,17 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         variants: [variant],
                     }"
                     :token="savedTokens[variantIndex] ?? null"
-                    @saved="
-                        (token) => {
-                            savedTokens[variantIndex] = token;
-                        }
-                    "
+                    :is-logged-in="isLoggedIn"
+                    @saved="(token) => { savedTokens[variantIndex] = token; }"
+                    @need-auth="onNeedAuth"
                 />
             </div>
         </div>
+
+        <SaveLoginModal
+            v-if="showAuthModal"
+            @close="showAuthModal = false"
+            @authenticated="onAuthSuccess"
+        />
     </section>
 </template>

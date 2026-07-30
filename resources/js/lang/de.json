@@ -124,6 +124,24 @@
         },
         "examples": "{count} Beispiele"
     },
+    "saveModal": {
+        "title": "Plan speichern",
+        "subtitle": "Anmelden oder kostenloses Konto erstellen — beide Varianten werden gespeichert, damit keine verloren geht.",
+        "close": "Schließen",
+        "tabLogin": "Anmelden",
+        "tabRegister": "Konto erstellen",
+        "name": "Vollständiger Name",
+        "email": "E-Mail",
+        "password": "Passwort",
+        "passwordConfirm": "Passwort bestätigen",
+        "loginCta": "Anmelden und Plan speichern",
+        "loggingIn": "Anmelden…",
+        "registerCta": "Konto erstellen und Plan speichern",
+        "registering": "Konto wird erstellt…",
+        "loginFailed": "Falsche E-Mail oder falsches Passwort.",
+        "registerFailed": "Registrierung fehlgeschlagen — bitte Angaben prüfen.",
+        "networkError": "Netzwerkfehler. Bitte erneut versuchen."
+    },
     "footer": {
         "tagline": "KI-gestützte Reiseplanung für Namibia. Kaias Interview und Reiseplan-Erstellung sind bereits live; echte Partnerbuchungen und Verfügbarkeiten folgen mit der weiteren Entwicklung der Plattform."
     },
