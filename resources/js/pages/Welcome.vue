@@ -14,6 +14,7 @@ import type {
     GuestDetails,
     ItineraryPlan,
     ItineraryVariant,
+    SearchIntent,
 } from '@/lib/kaia-types';
 import logoDark from '../../images/logo-dark.png';
 
@@ -49,6 +50,7 @@ defineProps<{
 }>();
 
 const plan = ref<ItineraryPlan | null>(null);
+const searchIntent = ref<SearchIntent | null>(null);
 const bookingVariant = ref<ItineraryVariant | null>(null);
 const bookingActive = ref(false);
 const bookingLoading = ref(false);
@@ -62,6 +64,11 @@ async function scrollTo(id: string) {
     document
         .getElementById(id)
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function onSearchIntent(intent: SearchIntent) {
+    searchIntent.value = intent;
+    await scrollTo('explore-section');
 }
 
 async function onPlanReady(newPlan: ItineraryPlan) {
@@ -109,7 +116,7 @@ async function onGuestSubmit(details: GuestDetails) {
 
 <template>
     <div class="kaia-page">
-        <HeroChat @plan-ready="onPlanReady" />
+        <HeroChat @plan-ready="onPlanReady" @search-intent="onSearchIntent" />
         <ItinerarySection v-if="plan" :plan="plan" @book="onBook" />
         <GuestDetailsForm
             v-if="bookingVariant && !bookingActive"
@@ -129,7 +136,11 @@ async function onGuestSubmit(details: GuestDetails) {
             :trip-id="bookingTripId"
         />
         <HowItWorks />
-        <ExploreSection :listings="listings" :regions="regions" />
+        <ExploreSection
+            :listings="listings"
+            :regions="regions"
+            :trigger-search="searchIntent"
+        />
 
         <footer>
             <img :src="logoDark" alt="NamibWay" class="footer-logo" />

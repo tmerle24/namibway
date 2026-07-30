@@ -100,6 +100,10 @@ class KaiaController extends Controller
                 return response()->json(['type' => 'question', 'text' => $result['text']]);
             }
 
+            if ($result['type'] === 'search_intent') {
+                return response()->json(['type' => 'search_intent', 'intent' => $result['intent']]);
+            }
+
             $plan = $itinerary->generate($result['params']);
 
             return response()->json(['type' => 'itinerary', 'plan' => $plan]);

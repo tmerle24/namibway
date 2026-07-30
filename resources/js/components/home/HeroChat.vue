@@ -5,12 +5,17 @@ import { useI18n } from 'vue-i18n';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import { sendKaiaMessage } from '@/lib/kaia-client';
-import type { ChatMessage, ItineraryPlan } from '@/lib/kaia-types';
+import type {
+    ChatMessage,
+    ItineraryPlan,
+    SearchIntent,
+} from '@/lib/kaia-types';
 import { dashboard, login, register } from '@/routes';
 import logoLight from '../../../images/logo-light.png';
 
 const emit = defineEmits<{
     (e: 'plan-ready', plan: ItineraryPlan): void;
+    (e: 'search-intent', intent: SearchIntent): void;
 }>();
 
 const page = usePage();
@@ -110,6 +115,12 @@ async function sendMessage() {
         } else if (result.type === 'itinerary') {
             messages.value.push({ role: 'ai', text: t('chat.itineraryReady') });
             emit('plan-ready', result.plan);
+        } else if (result.type === 'search_intent') {
+            messages.value.push({
+                role: 'ai',
+                text: t('chat.searchTriggered'),
+            });
+            emit('search-intent', result.intent);
         } else {
             messages.value.push({ role: 'ai', text: result.text });
         }

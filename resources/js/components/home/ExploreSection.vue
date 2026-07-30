@@ -6,6 +6,7 @@ import type { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instanc
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatPrice } from '@/lib/currency';
+import type { SearchIntent } from '@/lib/kaia-types';
 import { show } from '@/routes/listings';
 import ExploreMap from './ExploreMap.vue';
 import type { ExploreMapMarker } from './ExploreMap.vue';
@@ -38,6 +39,7 @@ interface Region {
 const props = defineProps<{
     listings: Listing[];
     regions: Region[];
+    triggerSearch?: SearchIntent | null;
 }>();
 
 const { t } = useI18n();
@@ -317,6 +319,18 @@ function selectRegion(region: string) {
     filterMoreOpen.value = true;
     filterBar.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+watch(
+    () => props.triggerSearch,
+    (intent) => {
+        if (!intent) return;
+        filterCategory.value = intent.type ?? '';
+        filterRegion.value = intent.region ?? '';
+        filterKeyword.value = intent.keyword ?? '';
+        filterBudget.value = intent.budget ?? '';
+        performSearch(1);
+    },
+);
 
 const SHORTLIST_KEY = 'namibway_shortlist';
 

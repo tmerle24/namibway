@@ -34,6 +34,13 @@ export interface ChatMessage {
     text: string;
 }
 
+export interface SearchIntent {
+    type?: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
+    region?: string;
+    keyword?: string;
+    budget?: 'budget' | 'mid-range' | 'premium';
+}
+
 export interface GuestDetails {
     name: string;
     email: string;

@@ -4,11 +4,13 @@ import type {
     ItineraryDay,
     ItineraryListingRef,
     ItineraryPlan,
+    SearchIntent,
 } from '@/lib/kaia-types';
 
 export type KaiaResponse =
     | { type: 'question'; text: string }
     | { type: 'itinerary'; plan: ItineraryPlan }
+    | { type: 'search_intent'; intent: SearchIntent }
     | { type: 'error'; text: string };
 
 function xsrfToken(): string {

@@ -40,6 +40,22 @@ class InterviewService
         PROMPT;
 
     /** @var array<string, mixed> */
+    private const SEARCH_TOOL = [
+        'name' => 'trigger_listing_search',
+        'description' => 'Call this when the user explicitly asks to browse, search, or find listings (accommodations, activities, restaurants, or vehicles) by location, type, or keyword — i.e. they want to see a list of options rather than create a full itinerary. Do NOT call this for general itinerary planning requests.',
+        'input_schema' => [
+            'type' => 'object',
+            'properties' => [
+                'type' => ['type' => 'string', 'enum' => ['accommodation', 'activity', 'restaurant', 'vehicle'], 'description' => 'Listing type to filter by; omit if not specified'],
+                'region' => ['type' => 'string', 'description' => 'Region or location name to filter by; omit if not specified'],
+                'keyword' => ['type' => 'string', 'description' => 'Free-text keyword to search for; omit if not specified'],
+                'budget' => ['type' => 'string', 'enum' => ['budget', 'mid-range', 'premium'], 'description' => 'Budget tier to filter by; omit if not specified'],
+            ],
+            'required' => [],
+        ],
+    ];
+
+    /** @var array<string, mixed> */
     private const TOOL = [
         'name' => 'ready_for_itinerary',
         'description' => 'Call once trip length, travel period, interests, budget tier, traveler counts, and vehicle type are all known.',
@@ -70,7 +86,7 @@ class InterviewService
             config('kaia.interview_model'),
             $this->systemPrompt($locale),
             $history,
-            [self::TOOL],
+            [self::TOOL, self::SEARCH_TOOL],
             config('kaia.interview_max_tokens'),
         );
 
@@ -81,6 +97,8 @@ class InterviewService
                 $textParts[] = $block['text'];
             } elseif (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'ready_for_itinerary') {
                 return ['type' => 'ready', 'params' => $block['input']];
+            } elseif (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'trigger_listing_search') {
+                return ['type' => 'search_intent', 'intent' => $block['input']];
             }
         }
 
