@@ -138,8 +138,8 @@ class ScrapeNamibiayp extends Command
             $name = $jsonLd['name'] ?? $this->extractText($html, '#<h1[^>]*>(.*?)</h1>#si');
             $name = html_entity_decode(strip_tags($name ?? ''), ENT_QUOTES, 'UTF-8');
             $name = trim($name);
-            // Strip namibiayp directory suffix: "Business Name - City, Namibia"
-            $name = (string) preg_replace('/ - [A-Za-zÀ-ÿ\s]+,\s*[A-Za-z\s]+$/', '', $name);
+            // Strip namibiayp directory suffix: "Business Name - City, Namibia" or "Business Name - City"
+            $name = (string) preg_replace('/ - [A-Za-zÀ-ÿ\s]+(,\s*[A-Za-z\s]+)?$/', '', $name);
             // Strip leading asterisks/symbols namibiayp sometimes prepends
             $name = ltrim($name, '*- ');
             $name = trim($name);
