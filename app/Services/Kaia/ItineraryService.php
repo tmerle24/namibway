@@ -142,7 +142,7 @@ class ItineraryService
      */
     private function resolveReferences(array $plan, Collection $listings): array
     {
-        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string}> $index */
+        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string, lat: float|null, lng: float|null}> $index */
         $index = [];
 
         foreach ($listings as $listing) {
@@ -154,6 +154,8 @@ class ItineraryService
                 'type' => $listing->type->value,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                'lat' => $listing->latitude ? (float) $listing->latitude : null,
+                'lng' => $listing->longitude ? (float) $listing->longitude : null,
             ];
         }
 
@@ -162,7 +164,7 @@ class ItineraryService
                 return null;
             }
 
-            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD'];
+            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'lat' => null, 'lng' => null];
         };
 
         $plan['variants'] = array_map(function (array $variant) use ($resolve) {
