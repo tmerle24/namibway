@@ -3,7 +3,6 @@ import '../../css/kaia-home.css';
 import { usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import ItineraryLineItem from '@/components/home/ItineraryLineItem.vue';
 import SaveShareBar from '@/components/home/SaveShareBar.vue';
 import TripMap from '@/components/home/TripMap.vue';

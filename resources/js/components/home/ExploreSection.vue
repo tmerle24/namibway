@@ -3,7 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import 'flatpickr/dist/flatpickr.min.css';
 import flatpickr from 'flatpickr';
 import type { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { show } from '@/routes/listings';
 import ExploreMap from './ExploreMap.vue';
@@ -203,6 +203,24 @@ const dateInput = ref<HTMLInputElement | null>(null);
 const filterBar = ref<HTMLDivElement | null>(null);
 let fp: FlatpickrInstance | null = null;
 
+const hasActiveFilters = computed(
+    () =>
+        filterCategory.value !== '' ||
+        filterRegion.value !== '' ||
+        filterBudget.value !== '' ||
+        filterMinRating.value !== '' ||
+        filterKeyword.value !== '',
+);
+
+function clearFilters() {
+    filterCategory.value = '';
+    filterRegion.value = '';
+    filterBudget.value = '';
+    filterMinRating.value = '';
+    filterKeyword.value = '';
+    fp?.clear();
+}
+
 function selectRegion(region: string) {
     filterCategory.value = '';
     filterRegion.value = region;
@@ -210,7 +228,35 @@ function selectRegion(region: string) {
     filterBar.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-const shortlist = ref<Map<number, string>>(new Map());
+const SHORTLIST_KEY = 'namibway_shortlist';
+
+function loadShortlist(): Map<number, string> {
+    try {
+        const raw = localStorage.getItem(SHORTLIST_KEY);
+
+        if (raw) {
+            return new Map(JSON.parse(raw) as [number, string][]);
+        }
+    } catch {
+        // ignore corrupt storage
+    }
+
+    return new Map();
+}
+
+const shortlist = ref<Map<number, string>>(loadShortlist());
+
+watch(
+    shortlist,
+    (map) => {
+        try {
+            localStorage.setItem(SHORTLIST_KEY, JSON.stringify([...map]));
+        } catch {
+            // ignore storage errors
+        }
+    },
+    { deep: true },
+);
 
 function toggleShortlist(item: IdeaCard) {
     if (item.id === null) {
@@ -222,14 +268,24 @@ function toggleShortlist(item: IdeaCard) {
     } else {
         shortlist.value.set(item.id, item.title);
     }
+
+    shortlist.value = new Map(shortlist.value);
 }
 
 function removeFromShortlist(id: number) {
     shortlist.value.delete(id);
+    shortlist.value = new Map(shortlist.value);
 }
 
 function clearShortlist() {
     shortlist.value.clear();
+    shortlist.value = new Map(shortlist.value);
+
+    try {
+        localStorage.removeItem(SHORTLIST_KEY);
+    } catch {
+        // ignore
+    }
 }
 
 onMounted(() => {
@@ -380,6 +436,13 @@ const mapMarkers = computed<ExploreMapMarker[]>(() =>
                             ? t('explore.filters.hideFilters')
                             : t('explore.filters.moreFilters')
                     }}
+                </button>
+                <button
+                    v-if="hasActiveFilters"
+                    class="filter-clear"
+                    @click="clearFilters"
+                >
+                    {{ t('explore.filters.clearFilters') }}
                 </button>
                 <span class="filter-note">{{ t('explore.filters.note') }}</span>
             </div>

@@ -297,6 +297,25 @@
     font-size: 12.5px;
     margin-bottom: 16px;
 }
+.kaia-page .start-date-prompt {
+    margin: 6px 0 10px;
+}
+.kaia-page .start-date-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: #7a6a5e;
+}
+.kaia-page .start-date-input {
+    font-size: 12px;
+    padding: 3px 7px;
+    border: 1px solid var(--sand-dark, #d6c9b5);
+    border-radius: 5px;
+    background: var(--paper, #faf8f5);
+    color: #2c2521;
+    cursor: pointer;
+}
 .kaia-page .day-row {
     display: flex;
     gap: 12px;
@@ -623,6 +642,24 @@
     text-decoration: underline;
     padding: 9px 2px;
     white-space: nowrap;
+}
+.kaia-page .filter-clear {
+    background: none;
+    border: 1px solid #d6c9b5;
+    border-radius: 5px;
+    color: #7a6a5e;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        background 0.12s,
+        color 0.12s;
+}
+.kaia-page .filter-clear:hover {
+    background: #f0ece4;
+    color: #2c2521;
 }
 .kaia-page .filter-more {
     display: none;

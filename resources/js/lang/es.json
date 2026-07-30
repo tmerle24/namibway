@@ -52,7 +52,9 @@
         "print": "Imprimir",
         "saveToAccount": "Guardar",
         "savedToAccount": "¡Guardado!",
-        "copyFailed": "No se pudo copiar automáticamente — el enlace está seleccionado, cópialo manualmente."
+        "copyFailed": "No se pudo copiar automáticamente — el enlace está seleccionado, cópialo manualmente.",
+        "setStartDate": "Establecer fecha de inicio",
+        "drivingTime": "Conducción"
     },
     "booking": {
         "eyebrow": "Asistente de reservas",
@@ -120,7 +122,8 @@
             "rating45": "4,5+ estrellas",
             "rating4": "4+ estrellas",
             "rating3": "3+ estrellas",
-            "empty": "Sin resultados — prueba a quitar un filtro."
+            "empty": "Sin resultados — prueba a quitar un filtro.",
+            "clearFilters": "Limpiar filtros"
         },
         "rows": {
             "accommodation": "Dónde alojarse",

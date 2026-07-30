@@ -4,6 +4,57 @@ import { onMounted, onUnmounted, watch } from 'vue';
 import type { RegionCoords } from '@/lib/kaia-client';
 import type { ItineraryDay, ItineraryVariant } from '@/lib/kaia-types';
 
+interface OsrmLeg {
+    duration: number;
+    distance: number;
+}
+
+function formatDuration(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.round((seconds % 3600) / 60);
+
+    if (h === 0) {
+        return `${m} min`;
+    }
+
+    if (m === 0) {
+        return `${h} h`;
+    }
+
+    return `${h} h ${m} min`;
+}
+
+async function fetchDrivingLegs(
+    latlngs: [number, number][],
+): Promise<OsrmLeg[]> {
+    if (latlngs.length < 2) {
+        return [];
+    }
+
+    const coords = latlngs.map(([lat, lng]) => `${lng},${lat}`).join(';');
+    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=false&steps=false`;
+
+    try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 6000);
+        const res = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(timer);
+
+        if (!res.ok) {
+            return [];
+        }
+
+        const data = (await res.json()) as {
+            code: string;
+            routes: Array<{ legs: OsrmLeg[] }>;
+        };
+
+        return data.code === 'Ok' ? (data.routes[0]?.legs ?? []) : [];
+    } catch {
+        return [];
+    }
+}
+
 const props = defineProps<{
     variant: ItineraryVariant;
     regionCoords: Record<string, RegionCoords>;
@@ -189,6 +240,39 @@ function renderRoute() {
         } else {
             map!.fitBounds(L.latLngBounds(latlngs), { padding: [48, 48] });
         }
+
+        // Fetch driving times between consecutive stops and render labels
+        if (waypoints.length >= 2) {
+            fetchDrivingLegs(latlngs).then((legs) => {
+                if (!map) {
+                    return;
+                }
+
+                legs.forEach((leg, i) => {
+                    const from = latlngs[i];
+                    const to = latlngs[i + 1];
+
+                    if (!from || !to) {
+                        return;
+                    }
+
+                    const midLat = (from[0] + to[0]) / 2;
+                    const midLng = (from[1] + to[1]) / 2;
+                    const label = formatDuration(leg.duration);
+                    const timeIcon = L.divIcon({
+                        className: '',
+                        html: `<div class="trip-map-drive-label">${label}</div>`,
+                        iconSize: [80, 20],
+                        iconAnchor: [40, 10],
+                    });
+                    const m = L.marker([midLat, midLng], {
+                        icon: timeIcon,
+                        interactive: false,
+                    }).addTo(map!);
+                    markers.push(m);
+                });
+            });
+        }
     });
 }
 
@@ -292,5 +376,19 @@ watch(() => [props.variant, props.regionCoords] as const, renderRoute, {
 
 .map-popup-link:hover {
     text-decoration: underline;
+}
+
+.trip-map-drive-label {
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid #d6c9b5;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #5b5346;
+    padding: 2px 7px;
+    white-space: nowrap;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+    font-family: inherit;
+    pointer-events: none;
 }
 </style>

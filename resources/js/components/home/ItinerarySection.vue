@@ -83,6 +83,21 @@ function applyDates(variantIndex: number) {
     });
 }
 
+function onStartDateInput(variantIndex: number, value: string) {
+    if (!value) {
+        return;
+    }
+
+    const d = new Date(value);
+
+    if (isNaN(d.getTime())) {
+        return;
+    }
+
+    startDates.value[variantIndex] = d;
+    applyDates(variantIndex);
+}
+
 watch(
     () => props.plan,
     (plan) => {
@@ -331,6 +346,22 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         @select="applySwap"
                     />
                 </template>
+
+                <div v-if="!startDates[variantIndex]" class="start-date-prompt">
+                    <label class="start-date-label">
+                        {{ t('itinerary.setStartDate') }}:
+                        <input
+                            type="date"
+                            class="start-date-input"
+                            @change="
+                                onStartDateInput(
+                                    variantIndex,
+                                    ($event.target as HTMLInputElement).value,
+                                )
+                            "
+                        />
+                    </label>
+                </div>
 
                 <TripMap
                     :map-id="`trip-map-${variantIndex}`"

@@ -63,7 +63,9 @@
         "print": "Print",
         "saveToAccount": "Save",
         "savedToAccount": "Saved ✓",
-        "copyFailed": "Couldn't copy automatically — the link is selected, copy it manually."
+        "copyFailed": "Couldn't copy automatically — the link is selected, copy it manually.",
+        "setStartDate": "Set start date",
+        "drivingTime": "Driving"
     },
     "booking": {
         "eyebrow": "Booking assistant",
@@ -138,7 +140,8 @@
             "rating45": "4.5+ stars",
             "rating4": "4+ stars",
             "rating3": "3+ stars",
-            "empty": "No matches — try clearing a filter."
+            "empty": "No matches — try clearing a filter.",
+            "clearFilters": "Clear filters"
         },
         "rows": {
             "accommodation": "Places to stay",
