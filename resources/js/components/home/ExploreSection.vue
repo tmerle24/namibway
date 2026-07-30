@@ -512,6 +512,18 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
         </div>
         <div class="filter-bar" ref="filterBar">
             <div class="filter-row">
+                <select v-model="filterRegion">
+                    <option value="">
+                        {{ t('explore.filters.allRegions') }}
+                    </option>
+                    <option
+                        v-for="region in availableRegions"
+                        :key="region"
+                        :value="region"
+                    >
+                        {{ region }}
+                    </option>
+                </select>
                 <select v-model="filterCategory">
                     <option value="">
                         {{ t('explore.filters.allCategories') }}
@@ -528,23 +540,13 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                     <option value="vehicle">
                         {{ t('explore.filters.vehicles') }}
                     </option>
-                    <option value="region">
-                        {{ t('explore.filters.regions') }}
-                    </option>
                 </select>
-                <label
-                    >{{ t('explore.filters.date') }}
-                    <input
-                        ref="dateInput"
-                        type="text"
-                        :placeholder="t('explore.filters.selectDate')"
-                        readonly
-                        style="width: 170px; cursor: pointer"
-                /></label>
                 <input
-                    v-model="filterKeyword"
+                    ref="dateInput"
                     type="text"
-                    :placeholder="t('explore.filters.keyword')"
+                    :placeholder="t('explore.filters.selectDate')"
+                    readonly
+                    style="width: 170px; cursor: pointer"
                 />
                 <button class="search-btn" @click="performSearch(1)">
                     {{ t('explore.filters.search') }}
@@ -569,18 +571,11 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                 <span class="filter-note">{{ t('explore.filters.note') }}</span>
             </div>
             <div class="filter-more" :class="{ open: filterMoreOpen }">
-                <select v-model="filterRegion">
-                    <option value="">
-                        {{ t('explore.filters.allRegions') }}
-                    </option>
-                    <option
-                        v-for="region in availableRegions"
-                        :key="region"
-                        :value="region"
-                    >
-                        {{ region }}
-                    </option>
-                </select>
+                <input
+                    v-model="filterKeyword"
+                    type="text"
+                    :placeholder="t('explore.filters.keyword')"
+                />
                 <select v-model="filterBudget">
                     <option value="">
                         {{ t('explore.filters.anyBudget') }}
