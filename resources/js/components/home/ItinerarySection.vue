@@ -199,11 +199,12 @@ async function onAuthSuccess() {
 async function saveAllVariants() {
     const results = await Promise.allSettled(
         editableVariants.value.map((variant, i) =>
-            savePlan({ trip_summary: props.plan.trip_summary, variants: [variant] }).then(
-                (result) => {
-                    savedTokens.value[i] = result.token;
-                },
-            ),
+            savePlan({
+                trip_summary: props.plan.trip_summary,
+                variants: [variant],
+            }).then((result) => {
+                savedTokens.value[i] = result.token;
+            }),
         ),
     );
     // Log any failures silently — the UI will keep the Save button for failed ones
@@ -484,7 +485,11 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     }"
                     :token="savedTokens[variantIndex] ?? null"
                     :is-logged-in="isLoggedIn"
-                    @saved="(token) => { savedTokens[variantIndex] = token; }"
+                    @saved="
+                        (token) => {
+                            savedTokens[variantIndex] = token;
+                        }
+                    "
                     @need-auth="onNeedAuth"
                 />
             </div>

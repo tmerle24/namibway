@@ -55,7 +55,7 @@ const STATIC_REGION_COORDS: Record<string, RegionCoords> = {
     windhoek: { lat: -22.5597, lng: 17.0832 },
     swakopmund: { lat: -22.6784, lng: 14.5258 },
     'walvis bay': { lat: -22.9576, lng: 14.5052 },
-    'lüderitz': { lat: -26.6481, lng: 15.1594 },
+    lüderitz: { lat: -26.6481, lng: 15.1594 },
     luderitz: { lat: -26.6481, lng: 15.1594 },
     keetmanshoop: { lat: -26.5769, lng: 18.1324 },
     mariental: { lat: -24.6263, lng: 17.9887 },
@@ -92,7 +92,7 @@ const STATIC_REGION_COORDS: Record<string, RegionCoords> = {
     'desert rhino camp': { lat: -19.9, lng: 13.96 },
     'cheetah conservation fund': { lat: -20.46, lng: 17.92 },
     'naukluft mountains': { lat: -24.05, lng: 15.95 },
-    'spitzkoppe': { lat: -21.8258, lng: 15.1836 },
+    spitzkoppe: { lat: -21.8258, lng: 15.1836 },
     spitzkoppe: { lat: -21.8258, lng: 15.1836 },
     'namib desert': { lat: -24.05, lng: 15.95 },
 };

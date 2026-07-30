@@ -55,7 +55,8 @@ function syncScroll() {
 
     if (panel) {
         const rect = panel.getBoundingClientRect();
-        const isPartlyVisible = rect.top < window.innerHeight && rect.bottom > 0;
+        const isPartlyVisible =
+            rect.top < window.innerHeight && rect.bottom > 0;
         const hiddenBelowFold = rect.bottom - window.innerHeight;
 
         if (isPartlyVisible && hiddenBelowFold > 0) {
