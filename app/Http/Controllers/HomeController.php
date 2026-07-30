@@ -14,7 +14,9 @@ class HomeController extends Controller
         $listings = Listing::query()
             ->where('is_published', true)
             ->orderByDesc('is_featured')
+            ->orderByRaw('(image IS NULL) ASC')   // listings with photos first
             ->orderBy('slug')
+            ->limit(120)
             ->get([
                 'id', 'type', 'name', 'slug', 'description',
                 'image', 'region', 'price_from', 'price_currency',

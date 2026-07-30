@@ -33,7 +33,7 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false,  // disabled: public files go through the public disk + storage symlink
             'throw' => false,
             'report' => false,
         ],
