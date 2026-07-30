@@ -59,6 +59,7 @@ class Listing extends Model
         'is_published' => 'boolean',
         'accepts_inquiries' => 'boolean',
         'scraped_at' => 'datetime',
+        'og_scraped_at' => 'datetime',
         'content_synced_at' => 'datetime',
     ];
 

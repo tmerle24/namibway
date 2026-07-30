@@ -27,7 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping()
             ->runInBackground();
 
-        $schedule->command('namibway:scrape-websites --limit=100')->dailyAt('02:30')->withoutOverlapping();
+        // Runs inline (no queue worker required) — crawls a small batch every 5
+        // minutes so listings cycle through steadily without hammering any one
+        // partner website (see CrawlListingWebsiteJob's per-host cooldown).
+        $schedule->command('namibway:scrape-websites --limit=10')->everyFiveMinutes()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'locale']);
