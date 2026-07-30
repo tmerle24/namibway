@@ -27,6 +27,8 @@ export interface ItineraryVariant {
 export interface ItineraryPlan {
     trip_summary: string;
     variants: ItineraryVariant[];
+    start_location?: string;
+    end_location?: string;
 }
 
 export interface ChatMessage {

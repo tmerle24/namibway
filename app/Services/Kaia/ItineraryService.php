@@ -37,7 +37,7 @@ class ItineraryService
      * self-corrects rather than surfacing a one-off glitch to the traveler.
      *
      * @param  array<string, mixed>  $tripParams
-     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>}
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}
      */
     public function generate(array $tripParams): array
     {
@@ -54,7 +54,7 @@ class ItineraryService
 
     /**
      * @param  array<string, mixed>  $tripParams
-     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>}
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}
      */
     private function attempt(array $tripParams): array
     {
@@ -71,7 +71,7 @@ class ItineraryService
 
         $response = $this->client->send(
             config('kaia.itinerary_model'),
-            $this->systemPrompt(),
+            $this->systemPrompt($tripParams),
             $messages,
             [$this->proposeItineraryTool()],
             config('kaia.itinerary_max_tokens'),
@@ -81,8 +81,16 @@ class ItineraryService
         foreach ($response['content'] ?? [] as $block) {
             if (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'propose_itinerary') {
                 $plan = $this->validatePlan($block['input']);
+                $plan = $this->resolveReferences($plan, $listings);
 
-                return $this->resolveReferences($plan, $listings);
+                // Echoed from the trip params (already resolved/defaulted by
+                // stringParam) rather than trusted from Claude's tool call —
+                // the traveler's start/end is a known fact, not something to
+                // re-derive from the model.
+                $plan['start_location'] = $this->stringParam($tripParams, 'start_location', 'Windhoek');
+                $plan['end_location'] = $this->stringParam($tripParams, 'end_location', $plan['start_location']);
+
+                return $plan;
             }
         }
 
@@ -301,18 +309,25 @@ class ItineraryService
             ->all();
     }
 
-    private function systemPrompt(): string
+    /**
+     * @param  array<string, mixed>  $tripParams
+     */
+    private function systemPrompt(array $tripParams): string
     {
-        return <<<'PROMPT'
+        $routeGuidance = $this->routingGuidance($tripParams);
+
+        return <<<PROMPT
             You are Kaia, the AI travel companion for NamibWay. Build a real, bookable Namibia itinerary
             for the traveler based on the trip parameters and catalog you were given.
 
             You MUST base every day of the plan only on listings from the provided catalog. Never invent
             a property, activity, restaurant, or vehicle name that isn't in it.
 
-            Sequence days in a sensible geographic order using each listing's "region" field — don't jump
-            back and forth between distant regions. Build exactly 2 variants of differing budget/pace where
-            the catalog allows it, otherwise 1 is fine.
+            {$routeGuidance}
+
+            Build exactly 2 variants of differing budget/pace where the catalog allows it, otherwise 1 is
+            fine — both variants must follow the same ROUTE instructions above; direction is handled
+            separately, outside this generation step.
 
             For each day's "location" field, use the listing's exact "region" value — e.g. "Khomas",
             "Erongo", "Hardap", "Kunene", "Otjozondjupa", "Karas". Never use a park or tourist-area name
@@ -353,6 +368,67 @@ class ItineraryService
             All text fields in the final plan (trip_summary, location, accommodation, activity, restaurant,
             vehicle) must be plain text — no markdown formatting or emoji.
             PROMPT;
+    }
+
+    /**
+     * Namibia's road-trip geography is a hard fact, not something to leave to
+     * the model's judgment call by call (see CLAUDE.md: Claude should not be
+     * the source of truth for Namibian logistics). Most travelers fly into
+     * and out of Windhoek and drive the same classic loop; only ~10-15% do a
+     * one-way. This turns start_location/end_location plus trip length into
+     * a concrete routing instruction instead of the old vague "sequence
+     * sensibly" sentence.
+     *
+     * @param  array<string, mixed>  $tripParams
+     */
+    private function routingGuidance(array $tripParams): string
+    {
+        $start = $this->stringParam($tripParams, 'start_location', 'Windhoek');
+        $end = $this->stringParam($tripParams, 'end_location', $start);
+        $nights = is_numeric($tripParams['nights'] ?? null) ? (int) $tripParams['nights'] : null;
+
+        $bucket = match (true) {
+            $nights === null => 'medium',
+            $nights <= 7 => 'short',
+            $nights <= 16 => 'medium',
+            default => 'long',
+        };
+
+        $loopGuidance = match ($bucket) {
+            'short' => 'Keep it simple for a short trip: out from Khomas (Windhoek) to Kunene (Etosha '
+                .'safari) and back — do not try to cover the whole country.',
+            'medium' => 'Follow the classic Namibia loop: Khomas (Windhoek) north to Otjozondjupa '
+                .'(Waterberg) and Kunene (Etosha safari), west to Erongo (Damaraland / Spitzkoppe / '
+                .'Swakopmund coast), south to Hardap (Sossusvlei / Sesriem / Solitaire dunes), then back '
+                .'to Khomas (Windhoek).',
+            default => 'Follow the classic Namibia loop (Khomas -> Otjozondjupa -> Kunene -> Erongo -> '
+                .'Hardap -> Khomas) but extend it for the extra nights: add more time in Erongo for the '
+                .'Skeleton Coast, and extend south into Karas (Luderitz / Fish River Canyon) before '
+                .'looping back.',
+        };
+
+        if (mb_strtolower($start) === mb_strtolower($end)) {
+            return "ROUTE: the trip starts and ends in the same place (\"{$start}\") — day 1's location "
+                ."and the last day's location must both be the region containing \"{$start}\". "
+                ."{$loopGuidance} Never jump back and forth between distant regions; visit each region "
+                .'once, in one continuous pass.';
+        }
+
+        return "ROUTE: this is a ONE-WAY trip. Day 1's location must be the region containing "
+            ."\"{$start}\". The LAST day's location must be the region containing \"{$end}\" — do NOT "
+            ."loop back to \"{$start}\". Use this as a guide for the middle of the trip: {$loopGuidance} "
+            ."— but drop the \"back to Khomas\" leg and finish in whichever region contains \"{$end}\" "
+            .'instead. Never jump back and forth between distant regions.';
+    }
+
+    /**
+     * @param  array<string, mixed>  $tripParams
+     */
+    private function stringParam(array $tripParams, string $key, string $default): string
+    {
+        $value = $tripParams[$key] ?? null;
+
+        return is_string($value) && $value !== '' ? $value : $default;
     }
 
     /**

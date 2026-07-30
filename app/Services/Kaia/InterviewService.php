@@ -25,12 +25,20 @@ class InterviewService
         accommodation.) Do not ask about children if none are mentioned.
         (5) VEHICLE — ask once, frame it as two clear options: "Will you be in a regular car (2WD or 4x4)
         or a camper setup (rooftop tent or motorhome)? You can always adjust this later in your plan."
+        (6) START/END LOCATION — do NOT ask about this by default. Most travelers fly into and out of
+        Windhoek and do a round trip, so silently assume start_location = end_location = "Windhoek"
+        unless the traveler's own words already say otherwise (e.g. they mention flying out of a
+        different city, dropping the rental car off elsewhere, or continuing on to another country).
+        Only if that kind of asymmetric arrival/departure is already implied, ask ONE short confirming
+        question, e.g. "Just to confirm — do you start and end your trip in the same place, or are you
+        traveling on from [place]?" Never ask this as a routine question for the common round-trip case.
 
         Ask as few questions as possible. Combine closely related fields into a single question wherever
         natural (e.g. dates + duration together) rather than asking one field at a time. Each question is
         1–2 sentences max, no bullet lists, no markdown, no emoji — plain text only. Skip any question
         whose answer is already known or inferable. If the first message answers everything, call the
-        tool immediately. Do not exceed 5 questions total — converge fast.
+        tool immediately. Do not exceed 5 questions for the common case — the rare start/end clarifying
+        question from (6) may add a 6th only when it's genuinely needed. Converge fast.
 
         Reply in plain text only — no markdown formatting (no bold, headers, or emoji), since the chat
         UI displays raw text.
@@ -53,6 +61,8 @@ class InterviewService
                 'adults' => ['type' => 'integer', 'description' => 'Number of adults travelling'],
                 'children_under_13' => ['type' => 'integer', 'description' => 'Number of children under 13 in the group; 0 if none or not travelling with children'],
                 'vehicle_type' => ['type' => 'string', 'enum' => ['car', 'camper'], 'description' => 'car = regular 2WD or 4x4; camper = rooftop tent or motorhome'],
+                'start_location' => ['type' => 'string', 'description' => 'Where the trip starts, e.g. "Windhoek". Default to "Windhoek" unless the traveler said otherwise — do not ask for this unless a one-way trip is already implied.'],
+                'end_location' => ['type' => 'string', 'description' => 'Where the trip ends, e.g. "Windhoek". Same as start_location for the common round-trip case; a different city only for a one-way trip.'],
             ],
             'required' => ['nights', 'travel_period', 'interests', 'budget_tier', 'adults', 'children_under_13', 'vehicle_type'],
         ],
