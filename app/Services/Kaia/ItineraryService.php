@@ -167,7 +167,7 @@ class ItineraryService
             return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'lat' => null, 'lng' => null];
         };
 
-        $plan['variants'] = array_map(function (array $variant) use ($resolve) {
+        $plan['variants'] = array_map(function (array $variant) use ($resolve, $listings) {
             $variant['vehicle'] = $resolve($variant['vehicle'] ?? null, 'vehicle');
 
             $variant['days'] = array_map(function (array $day) use ($resolve) {
@@ -178,10 +178,73 @@ class ItineraryService
                 return $day;
             }, $variant['days']);
 
+            $variant['days'] = $this->backfillAccommodation($variant['days'], $listings);
+
             return $variant;
         }, $plan['variants']);
 
         return $plan;
+    }
+
+    /**
+     * The prompt asks Claude to fill in every day's accommodation, but that's
+     * a request, not a guarantee — and a blank day falls back to a coarse
+     * region-centroid on the trip map, collapsing distinct legs into one
+     * marker. Backfill deterministically instead of trusting the model:
+     * first from a neighboring day at the same location (keeps the
+     * "same lodge for several nights" pattern), then as a last resort any
+     * published accommodation in that region, so every day gets a real point.
+     *
+     * @param  array<int, array<string, mixed>>  $days
+     * @param  Collection<int, Listing>  $listings
+     * @return array<int, array<string, mixed>>
+     */
+    private function backfillAccommodation(array $days, Collection $listings): array
+    {
+        for ($i = 1; $i < count($days); $i++) {
+            if ($days[$i]['accommodation'] === null
+                && mb_strtolower((string) $days[$i]['location']) === mb_strtolower((string) $days[$i - 1]['location'])) {
+                $days[$i]['accommodation'] = $days[$i - 1]['accommodation'];
+            }
+        }
+
+        for ($i = count($days) - 2; $i >= 0; $i--) {
+            if ($days[$i]['accommodation'] === null
+                && mb_strtolower((string) $days[$i]['location']) === mb_strtolower((string) $days[$i + 1]['location'])) {
+                $days[$i]['accommodation'] = $days[$i + 1]['accommodation'];
+            }
+        }
+
+        $accommodationsByRegion = $listings
+            ->filter(fn (Listing $listing) => $listing->type->value === 'accommodation')
+            ->groupBy(fn (Listing $listing) => mb_strtolower((string) $listing->region));
+
+        foreach ($days as &$day) {
+            if ($day['accommodation'] !== null) {
+                continue;
+            }
+
+            $fallback = $accommodationsByRegion->get(mb_strtolower((string) $day['location']))?->first();
+
+            if ($fallback === null) {
+                continue;
+            }
+
+            $day['accommodation'] = [
+                'id' => $fallback->id,
+                'slug' => $fallback->slug,
+                'name' => $fallback->getTranslation('name', 'en', useFallbackLocale: true),
+                'type' => 'accommodation',
+                'price_from' => $fallback->price_from,
+                'price_currency' => $fallback->price_currency,
+                'lat' => $fallback->latitude ? (float) $fallback->latitude : null,
+                'lng' => $fallback->longitude ? (float) $fallback->longitude : null,
+            ];
+        }
+
+        unset($day);
+
+        return $days;
     }
 
     /**
@@ -251,9 +314,11 @@ class ItineraryService
             back and forth between distant regions. Build exactly 2 variants of differing budget/pace where
             the catalog allows it, otherwise 1 is fine.
 
-            For each day's "location" field, use the listing's exact "region" value (e.g. "Khomas",
-            "Etosha", "Erongo", "Hardap", "Kunene", "Otjozondjupa", "Karas") — these values are used
-            to draw the route on the trip map and must match exactly.
+            For each day's "location" field, use the listing's exact "region" value — e.g. "Khomas",
+            "Erongo", "Hardap", "Kunene", "Otjozondjupa", "Karas". Never use a park or tourist-area name
+            (e.g. "Etosha") even if that's what the traveler said — look up which of those region values
+            the chosen listing actually carries and use that instead. These values are used to draw the
+            route on the trip map and must match a real region exactly.
 
             For each day's "date" field, compute the calendar date from the trip's "travel_period" start
             date: if travel_period is "14 August 2026", day 1 is "14 Aug 2026", day 2 is "15 Aug 2026",
@@ -316,7 +381,7 @@ class ItineraryService
                                         'properties' => [
                                             'day' => ['type' => 'integer'],
                                             'date' => ['type' => 'string', 'description' => 'Calendar date for this day, e.g. "14 Aug 2026". Computed from travel_period start date.'],
-                                            'location' => ['type' => 'string', 'description' => 'Exact region value from the listing catalog, e.g. "Khomas", "Etosha", "Erongo"'],
+                                            'location' => ['type' => 'string', 'description' => 'Exact region value from the listing catalog, e.g. "Khomas", "Kunene", "Erongo" — never a park/tourist-area name like "Etosha"'],
                                             'accommodation' => ['type' => 'string'],
                                             'activity' => ['type' => 'string'],
                                             'restaurant' => ['type' => 'string'],
