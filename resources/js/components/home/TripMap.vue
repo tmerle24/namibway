@@ -121,7 +121,7 @@ function renderRoute() {
         waypoints.forEach((wp, index) => {
             const icon = L.divIcon({
                 className: '',
-                html: `<div class="trip-map-marker">${index + 1}</div>`,
+                html: `<div class="trip-map-marker">${wp.day}</div>`,
                 iconSize: [28, 28],
                 iconAnchor: [14, 14],
             });
