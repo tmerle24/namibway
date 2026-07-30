@@ -78,7 +78,7 @@ class InterviewService
 
     /**
      * @param  array<int, array{role: string, content: string}>  $history
-     * @return array{type: 'question', text: string}|array{type: 'ready', params: array<string, mixed>}
+     * @return array{type: 'question', text: string}|array{type: 'ready', params: array<string, mixed>}|array{type: 'search_intent', intent: array<string, mixed>}
      */
     public function respond(array $history, string $locale = 'en'): array
     {
@@ -98,7 +98,10 @@ class InterviewService
             } elseif (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'ready_for_itinerary') {
                 return ['type' => 'ready', 'params' => $block['input']];
             } elseif (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'trigger_listing_search') {
-                return ['type' => 'search_intent', 'intent' => $block['input']];
+                /** @var array<string, mixed> $intent */
+                $intent = $block['input'] ?? [];
+
+                return ['type' => 'search_intent', 'intent' => $intent];
             }
         }
 
