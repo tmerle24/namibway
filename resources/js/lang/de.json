@@ -145,6 +145,19 @@
             "send": "Anfrage an alle senden",
             "sending": "Wird gesendet…",
             "success": "Gesendet! Jeder Anbieter meldet sich direkt bei dir."
+        },
+        "results": {
+            "count": "{count} Ergebnis | {count} Ergebnisse",
+            "loadMore": "Mehr laden",
+            "viewDetails": "Details ansehen →",
+            "noResults": "Keine Ergebnisse — passe deine Filter an.",
+            "searching": "Suche läuft…",
+            "backToInspiration": "← Zurück zur Übersicht",
+            "sortBy": "Sortierung:",
+            "sortFeatured": "Empfohlen",
+            "sortPriceAsc": "Preis: günstigste zuerst",
+            "sortPriceDesc": "Preis: teuerste zuerst",
+            "sortRating": "Bestbewertet"
         }
     },
     "saveModal": {
@@ -198,7 +211,11 @@
             "send": "Anfrage senden",
             "sending": "Wird gesendet…",
             "success": "Gesendet! Der Partner meldet sich direkt bei dir.",
-            "unavailable": "Dieses Angebot nimmt derzeit keine Anfragen an — schau bald wieder vorbei."
+            "unavailable": "Dieses Angebot nimmt derzeit keine Anfragen an — schau bald wieder vorbei.",
+            "checkIn": "Anreise",
+            "checkOut": "Abreise",
+            "adults": "Erwachsene",
+            "children": "Kinder (unter 12)"
         },
         "reviews": {
             "title": "Bewertungen",

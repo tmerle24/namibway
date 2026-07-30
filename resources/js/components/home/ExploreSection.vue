@@ -5,6 +5,7 @@ import flatpickr from 'flatpickr';
 import type { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { formatPrice } from '@/lib/currency';
 import { show } from '@/routes/listings';
 import ExploreMap from './ExploreMap.vue';
 import type { ExploreMapMarker } from './ExploreMap.vue';
@@ -62,6 +63,28 @@ interface IdeaRow {
     key: RowKey;
     bg: string;
     items: IdeaCard[];
+}
+
+interface SearchListing {
+    id: number;
+    type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
+    name: string;
+    slug: string;
+    description: string | null;
+    image: string | null;
+    region: string | null;
+    price_from: string | null;
+    price_currency: string;
+    rating: number | null;
+    rating_count: number | null;
+    accepts_inquiries: boolean;
+}
+
+interface SearchMeta {
+    current_page: number;
+    last_page: number;
+    total: number;
+    per_page: number;
 }
 
 const CATEGORY_IMAGES: Record<Listing['type'], string[]> = {
@@ -203,6 +226,72 @@ const dateInput = ref<HTMLInputElement | null>(null);
 const filterBar = ref<HTMLDivElement | null>(null);
 let fp: FlatpickrInstance | null = null;
 
+const searchMode = ref(false);
+const searchResults = ref<SearchListing[]>([]);
+const searchMeta = ref<SearchMeta>({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+    per_page: 12,
+});
+const searchLoading = ref(false);
+const sortBy = ref('featured');
+
+async function performSearch(page = 1, append = false) {
+    searchLoading.value = true;
+    searchMode.value = true;
+
+    const params = new URLSearchParams();
+
+    if (filterCategory.value) {
+        params.set('type', filterCategory.value);
+    }
+
+    if (filterRegion.value) {
+        params.set('region', filterRegion.value);
+    }
+
+    if (filterKeyword.value) {
+        params.set('keyword', filterKeyword.value);
+    }
+
+    if (filterBudget.value) {
+        params.set('budget', filterBudget.value);
+    }
+
+    if (filterMinRating.value) {
+        params.set('min_rating', filterMinRating.value);
+    }
+
+    params.set('sort', sortBy.value);
+    params.set('page', String(page));
+
+    try {
+        const res = await fetch(`/listings/search?${params.toString()}`);
+        const json = (await res.json()) as {
+            data: SearchListing[];
+            meta: SearchMeta;
+        };
+
+        if (append) {
+            searchResults.value = [...searchResults.value, ...json.data];
+        } else {
+            searchResults.value = json.data;
+        }
+
+        searchMeta.value = json.meta;
+    } catch {
+        // silently ignore network errors
+    } finally {
+        searchLoading.value = false;
+    }
+}
+
+function exitSearchMode() {
+    searchMode.value = false;
+    searchResults.value = [];
+}
+
 const hasActiveFilters = computed(
     () =>
         filterCategory.value !== '' ||
@@ -219,6 +308,7 @@ function clearFilters() {
     filterMinRating.value = '';
     filterKeyword.value = '';
     fp?.clear();
+    exitSearchMode();
 }
 
 function selectRegion(region: string) {
@@ -286,6 +376,16 @@ function clearShortlist() {
     } catch {
         // ignore
     }
+}
+
+function toggleSearchShortlist(item: SearchListing) {
+    if (shortlist.value.has(item.id)) {
+        shortlist.value.delete(item.id);
+    } else {
+        shortlist.value.set(item.id, item.name);
+    }
+
+    shortlist.value = new Map(shortlist.value);
 }
 
 onMounted(() => {
@@ -356,8 +456,12 @@ const visibleRows = computed(() =>
 
 const hasResults = computed(() => visibleRows.value.length > 0);
 
-const mapMarkers = computed<ExploreMapMarker[]>(() =>
-    visibleRows.value
+const mapMarkers = computed<ExploreMapMarker[]>(() => {
+    if (searchMode.value) {
+        return [];
+    }
+
+    return visibleRows.value
         .filter((row) => row.key !== 'region')
         .flatMap((row) =>
             row.items
@@ -377,8 +481,8 @@ const mapMarkers = computed<ExploreMapMarker[]>(() =>
                     latitude: item.latitude,
                     longitude: item.longitude,
                 })),
-        ),
-);
+        );
+});
 </script>
 
 <template>
@@ -424,7 +528,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() =>
                     type="text"
                     :placeholder="t('explore.filters.keyword')"
                 />
-                <button class="search-btn">
+                <button class="search-btn" @click="performSearch(1)">
                     {{ t('explore.filters.search') }}
                 </button>
                 <button
@@ -489,81 +593,219 @@ const mapMarkers = computed<ExploreMapMarker[]>(() =>
                 </select>
             </div>
         </div>
-        <p v-if="!hasResults" class="filter-empty">
-            {{ t('explore.filters.empty') }}
-        </p>
-        <ExploreMap
-            v-if="mapMarkers.length > 0"
-            :markers="mapMarkers"
-            map-id="explore-map"
-        />
-        <div>
-            <div v-for="row in visibleRows" :key="row.key" class="inspire-row">
-                <div class="inspire-row-head">
-                    <h3>{{ t(`explore.rows.${row.key}`) }}</h3>
-                    <span>{{
-                        t('explore.examples', { count: row.items.length })
-                    }}</span>
-                </div>
-                <div class="idea-cards">
-                    <component
-                        :is="
-                            item.slug
-                                ? Link
-                                : row.key === 'region'
-                                  ? 'button'
-                                  : 'div'
-                        "
-                        v-for="item in row.items"
-                        :key="item.title"
-                        :href="
-                            item.slug
-                                ? show({ listing: item.slug }).url
-                                : undefined
-                        "
-                        class="idea-card"
-                        @click="
-                            row.key === 'region' && item.region
-                                ? selectRegion(item.region)
-                                : undefined
-                        "
-                    >
-                        <div
-                            class="idea-thumb"
-                            :style="{ background: `var(--${row.bg})` }"
+        <!-- Search results mode -->
+        <template v-if="searchMode">
+            <div class="search-results-header">
+                <span class="search-results-count">
+                    {{ t('explore.results.count', searchMeta.total) }}
+                </span>
+                <div class="search-results-controls">
+                    <label class="sort-label">
+                        {{ t('explore.results.sortBy') }}
+                        <select
+                            v-model="sortBy"
+                            class="sort-select"
+                            @change="performSearch(1)"
                         >
-                            <span class="idea-tag">{{
-                                t(`explore.rows.${row.key}`)
-                            }}</span>
-                            <button
-                                v-if="item.id !== null"
-                                type="button"
-                                class="idea-shortlist-toggle"
-                                :class="{ active: shortlist.has(item.id) }"
-                                :aria-pressed="shortlist.has(item.id)"
-                                :title="t('explore.shortlist.toggle')"
-                                @click.stop.prevent="toggleShortlist(item)"
-                            >
-                                {{ shortlist.has(item.id) ? '✓' : '+' }}
-                            </button>
-                            <img
-                                :src="item.image"
-                                :alt="item.title"
-                                class="idea-thumb-img"
-                                loading="lazy"
-                            />
-                        </div>
-                        <div class="idea-body">
-                            <h4>{{ item.title }}</h4>
-                            <p v-if="item.rating !== null" class="idea-rating">
-                                ★ {{ item.rating.toFixed(1) }}
-                            </p>
-                            <p>{{ item.description }}</p>
-                        </div>
-                    </component>
+                            <option value="featured">
+                                {{ t('explore.results.sortFeatured') }}
+                            </option>
+                            <option value="price_asc">
+                                {{ t('explore.results.sortPriceAsc') }}
+                            </option>
+                            <option value="price_desc">
+                                {{ t('explore.results.sortPriceDesc') }}
+                            </option>
+                            <option value="rating">
+                                {{ t('explore.results.sortRating') }}
+                            </option>
+                        </select>
+                    </label>
+                    <button class="filter-clear" @click="clearFilters">
+                        {{ t('explore.results.backToInspiration') }}
+                    </button>
                 </div>
             </div>
-        </div>
+
+            <p
+                v-if="searchLoading && !searchResults.length"
+                class="filter-empty"
+            >
+                {{ t('explore.results.searching') }}
+            </p>
+            <p
+                v-else-if="!searchLoading && !searchResults.length"
+                class="filter-empty"
+            >
+                {{ t('explore.results.noResults') }}
+            </p>
+
+            <div v-else class="result-cards">
+                <Link
+                    v-for="item in searchResults"
+                    :key="item.id"
+                    :href="show({ listing: item.slug }).url"
+                    class="result-card"
+                >
+                    <div class="result-card-thumb">
+                        <span class="idea-tag">{{
+                            t(`explore.rows.${item.type}`)
+                        }}</span>
+                        <button
+                            type="button"
+                            class="idea-shortlist-toggle"
+                            :class="{ active: shortlist.has(item.id) }"
+                            :aria-pressed="shortlist.has(item.id)"
+                            :title="t('explore.shortlist.toggle')"
+                            @click.stop.prevent="toggleSearchShortlist(item)"
+                        >
+                            {{ shortlist.has(item.id) ? '✓' : '+' }}
+                        </button>
+                        <img
+                            :src="
+                                item.image ??
+                                `/images/explore/${item.type}-1.jpg`
+                            "
+                            :alt="item.name"
+                            loading="lazy"
+                            class="result-card-img"
+                        />
+                    </div>
+                    <div class="result-card-body">
+                        <div
+                            v-if="item.rating !== null"
+                            class="result-card-rating"
+                        >
+                            ★ {{ item.rating.toFixed(1) }}
+                            <span
+                                v-if="item.rating_count"
+                                class="result-card-rating-count"
+                                >({{ item.rating_count }})</span
+                            >
+                        </div>
+                        <h4 class="result-card-name">{{ item.name }}</h4>
+                        <p v-if="item.region" class="result-card-region">
+                            {{ item.region }}
+                        </p>
+                        <p v-if="item.description" class="result-card-desc">
+                            {{ truncate(item.description, 110) }}
+                        </p>
+                        <div class="result-card-footer">
+                            <span
+                                v-if="formatPrice(item.price_from)"
+                                class="result-card-price"
+                            >
+                                {{ t('listing.from') }}
+                                {{ formatPrice(item.price_from) }}
+                            </span>
+                            <span class="result-card-cta">{{
+                                t('explore.results.viewDetails')
+                            }}</span>
+                        </div>
+                    </div>
+                </Link>
+            </div>
+
+            <button
+                v-if="searchMeta.current_page < searchMeta.last_page"
+                class="load-more-btn"
+                :disabled="searchLoading"
+                @click="performSearch(searchMeta.current_page + 1, true)"
+            >
+                {{
+                    searchLoading
+                        ? t('explore.results.searching')
+                        : t('explore.results.loadMore')
+                }}
+            </button>
+        </template>
+
+        <!-- Inspiration / magazine mode -->
+        <template v-else>
+            <p v-if="!hasResults" class="filter-empty">
+                {{ t('explore.filters.empty') }}
+            </p>
+            <ExploreMap
+                v-if="mapMarkers.length > 0"
+                :markers="mapMarkers"
+                map-id="explore-map"
+            />
+            <div>
+                <div
+                    v-for="row in visibleRows"
+                    :key="row.key"
+                    class="inspire-row"
+                >
+                    <div class="inspire-row-head">
+                        <h3>{{ t(`explore.rows.${row.key}`) }}</h3>
+                        <span>{{
+                            t('explore.examples', { count: row.items.length })
+                        }}</span>
+                    </div>
+                    <div class="idea-cards">
+                        <component
+                            :is="
+                                item.slug
+                                    ? Link
+                                    : row.key === 'region'
+                                      ? 'button'
+                                      : 'div'
+                            "
+                            v-for="item in row.items"
+                            :key="item.title"
+                            :href="
+                                item.slug
+                                    ? show({ listing: item.slug }).url
+                                    : undefined
+                            "
+                            class="idea-card"
+                            @click="
+                                row.key === 'region' && item.region
+                                    ? selectRegion(item.region)
+                                    : undefined
+                            "
+                        >
+                            <div
+                                class="idea-thumb"
+                                :style="{ background: `var(--${row.bg})` }"
+                            >
+                                <span class="idea-tag">{{
+                                    t(`explore.rows.${row.key}`)
+                                }}</span>
+                                <button
+                                    v-if="item.id !== null"
+                                    type="button"
+                                    class="idea-shortlist-toggle"
+                                    :class="{ active: shortlist.has(item.id) }"
+                                    :aria-pressed="shortlist.has(item.id)"
+                                    :title="t('explore.shortlist.toggle')"
+                                    @click.stop.prevent="toggleShortlist(item)"
+                                >
+                                    {{ shortlist.has(item.id) ? '✓' : '+' }}
+                                </button>
+                                <img
+                                    :src="item.image"
+                                    :alt="item.title"
+                                    class="idea-thumb-img"
+                                    loading="lazy"
+                                />
+                            </div>
+                            <div class="idea-body">
+                                <h4>{{ item.title }}</h4>
+                                <p
+                                    v-if="item.rating !== null"
+                                    class="idea-rating"
+                                >
+                                    ★ {{ item.rating.toFixed(1) }}
+                                </p>
+                                <p>{{ item.description }}</p>
+                            </div>
+                        </component>
+                    </div>
+                </div>
+            </div>
+        </template>
+
         <ShortlistBar
             :items="shortlist"
             @remove="removeFromShortlist"

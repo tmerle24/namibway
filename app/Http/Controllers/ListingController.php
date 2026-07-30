@@ -7,6 +7,7 @@ use App\Mail\NewInquiryReceived;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Review;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,90 @@ use Inertia\Response;
 
 class ListingController extends Controller
 {
+    public function search(Request $request): JsonResponse
+    {
+        $query = Listing::query()->where('is_published', true);
+
+        $type = $request->query('type');
+
+        if (is_string($type) && $type !== '') {
+            $query->where('type', $type);
+        }
+
+        $region = $request->query('region');
+
+        if (is_string($region) && $region !== '') {
+            $query->where('region', 'ilike', '%'.$region.'%');
+        }
+
+        $keyword = $request->query('keyword');
+
+        if (is_string($keyword) && $keyword !== '') {
+            $kw = '%'.mb_strtolower($keyword).'%';
+            $query->where(function ($q) use ($kw) {
+                $q->whereRaw('lower(cast(name as text)) like ?', [$kw])
+                    ->orWhereRaw('lower(cast(description as text)) like ?', [$kw]);
+            });
+        }
+
+        $budget = $request->query('budget');
+
+        if (is_string($budget)) {
+            if ($budget === 'budget') {
+                $query->where(function ($q) {
+                    $q->where('price_from', '<', 150)->orWhereNull('price_from');
+                });
+            } elseif ($budget === 'mid-range') {
+                $query->whereBetween('price_from', [150, 400]);
+            } elseif ($budget === 'premium') {
+                $query->where('price_from', '>', 400);
+            }
+        }
+
+        $minRating = $request->query('min_rating');
+
+        if (is_string($minRating) && $minRating !== '') {
+            $query->where('rating', '>=', (float) $minRating);
+        }
+
+        $sort = $request->query('sort', 'featured');
+
+        if ($sort === 'price_asc') {
+            $query->orderBy('price_from');
+        } elseif ($sort === 'price_desc') {
+            $query->orderByDesc('price_from');
+        } elseif ($sort === 'rating') {
+            $query->orderByDesc('rating');
+        } else {
+            $query->orderByDesc('is_featured')->orderByDesc('rating');
+        }
+
+        $paginator = $query->paginate(12);
+
+        return response()->json([
+            'data' => $paginator->getCollection()->map(fn (Listing $l) => [
+                'id' => $l->id,
+                'type' => $l->type->value,
+                'name' => $l->name,
+                'slug' => $l->slug,
+                'description' => $l->description,
+                'image' => $l->image ? self::resolveMediaUrl($l->image) : null,
+                'region' => $l->region,
+                'price_from' => $l->price_from,
+                'price_currency' => $l->price_currency,
+                'rating' => $l->rating !== null ? (float) $l->rating : null,
+                'rating_count' => $l->rating_count,
+                'accepts_inquiries' => $l->accepts_inquiries,
+            ])->all(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
+                'per_page' => $paginator->perPage(),
+            ],
+        ]);
+    }
+
     public function show(Listing $listing): Response
     {
         abort_unless($listing->is_published, 404);

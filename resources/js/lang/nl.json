@@ -145,6 +145,19 @@
             "send": "Aanvraag naar allemaal sturen",
             "sending": "Bezig met verzenden…",
             "success": "Verzonden! Elke aanbieder neemt rechtstreeks contact met je op."
+        },
+        "results": {
+            "count": "{count} resultaat | {count} resultaten",
+            "loadMore": "Meer laden",
+            "viewDetails": "Details bekijken →",
+            "noResults": "Geen resultaten gevonden — pas je filters aan.",
+            "searching": "Zoeken…",
+            "backToInspiration": "← Terug naar inspiratie",
+            "sortBy": "Sorteren:",
+            "sortFeatured": "Aanbevolen",
+            "sortPriceAsc": "Prijs: laag naar hoog",
+            "sortPriceDesc": "Prijs: hoog naar laag",
+            "sortRating": "Hoogst beoordeeld"
         }
     },
     "footer": {
@@ -180,7 +193,11 @@
             "send": "Aanvraag versturen",
             "sending": "Versturen…",
             "success": "Verstuurd! De partner neemt rechtstreeks contact met je op.",
-            "unavailable": "Dit aanbod accepteert momenteel geen aanvragen — kom later nog eens terug."
+            "unavailable": "Dit aanbod accepteert momenteel geen aanvragen — kom later nog eens terug.",
+            "checkIn": "Aankomst",
+            "checkOut": "Vertrek",
+            "adults": "Volwassenen",
+            "children": "Kinderen (onder 12)"
         },
         "reviews": {
             "title": "Beoordelingen",

@@ -145,6 +145,19 @@
             "send": "Enviar solicitud a todos",
             "sending": "Enviando…",
             "success": "¡Enviado! Cada alojamiento se pondrá en contacto contigo directamente."
+        },
+        "results": {
+            "count": "{count} resultado | {count} resultados",
+            "loadMore": "Cargar más",
+            "viewDetails": "Ver detalles →",
+            "noResults": "Sin resultados — prueba a ajustar los filtros.",
+            "searching": "Buscando…",
+            "backToInspiration": "← Volver a la inspiración",
+            "sortBy": "Ordenar:",
+            "sortFeatured": "Destacados",
+            "sortPriceAsc": "Precio: menor a mayor",
+            "sortPriceDesc": "Precio: mayor a menor",
+            "sortRating": "Mejor valorados"
         }
     },
     "footer": {
@@ -180,7 +193,11 @@
             "send": "Enviar consulta",
             "sending": "Enviando…",
             "success": "¡Enviado! El socio se pondrá en contacto contigo directamente.",
-            "unavailable": "Esta oferta no acepta consultas por el momento — vuelve pronto."
+            "unavailable": "Esta oferta no acepta consultas por el momento — vuelve pronto.",
+            "checkIn": "Llegada",
+            "checkOut": "Salida",
+            "adults": "Adultos",
+            "children": "Niños (menores de 12)"
         },
         "reviews": {
             "title": "Valoraciones",

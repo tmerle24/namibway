@@ -1420,3 +1420,195 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ── Search results mode ── */
+.kaia-page .search-results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px 0 12px;
+    border-bottom: 1px solid var(--sand-dark, #d6c9b5);
+    margin-bottom: 20px;
+}
+.kaia-page .search-results-count {
+    font-size: 14px;
+    font-weight: 600;
+    color: #5b5346;
+}
+.kaia-page .search-results-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.kaia-page .sort-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #5b5346;
+}
+.kaia-page .sort-select {
+    font-size: 13px;
+    border: 1px solid var(--sand-dark, #d6c9b5);
+    border-radius: 6px;
+    padding: 4px 8px;
+    background: #fff;
+    color: #2c2521;
+    cursor: pointer;
+}
+.kaia-page .result-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 28px;
+}
+@media (max-width: 900px) {
+    .kaia-page .result-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 580px) {
+    .kaia-page .result-cards {
+        grid-template-columns: 1fr;
+    }
+}
+.kaia-page .result-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--sand-dark, #d6c9b5);
+    background: #fff;
+    text-decoration: none;
+    color: inherit;
+    transition:
+        box-shadow 0.15s,
+        transform 0.15s;
+}
+.kaia-page .result-card:hover {
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+.kaia-page .result-card-thumb {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: var(--sand, #ede8df);
+}
+.kaia-page .result-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+.kaia-page .result-card:hover .result-card-img {
+    transform: scale(1.04);
+}
+.kaia-page .result-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 16px 16px;
+    flex: 1;
+}
+.kaia-page .result-card-rating {
+    font-size: 12px;
+    font-weight: 600;
+    color: #c0533a;
+}
+.kaia-page .result-card-rating-count {
+    font-weight: 400;
+    color: #8a7d6e;
+}
+.kaia-page .result-card-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #2c2521;
+    margin: 0;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.kaia-page .result-card-region {
+    font-size: 12px;
+    color: #8a7d6e;
+    margin: 0;
+}
+.kaia-page .result-card-desc {
+    font-size: 12px;
+    color: #5b5346;
+    line-height: 1.5;
+    margin: 2px 0 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.kaia-page .result-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--sand, #ede8df);
+}
+.kaia-page .result-card-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2c2521;
+}
+.kaia-page .result-card-cta {
+    font-size: 12px;
+    font-weight: 600;
+    color: #c0533a;
+}
+.kaia-page .load-more-btn {
+    display: block;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto 32px;
+    padding: 12px 24px;
+    background: transparent;
+    border: 1.5px solid #c0533a;
+    border-radius: 8px;
+    color: #c0533a;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        color 0.15s;
+}
+.kaia-page .load-more-btn:hover:not(:disabled) {
+    background: #c0533a;
+    color: #fff;
+}
+.kaia-page .load-more-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ── Inquiry form: check-in/out row and guest count row ── */
+.kaia-page .inquiry-dates-row,
+.kaia-page .inquiry-guests-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.kaia-page .inquiry-date-field,
+.kaia-page .inquiry-guest-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+@media (max-width: 480px) {
+    .kaia-page .inquiry-dates-row,
+    .kaia-page .inquiry-guests-row {
+        grid-template-columns: 1fr;
+    }
+}

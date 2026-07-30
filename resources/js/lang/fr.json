@@ -145,6 +145,19 @@
             "send": "Envoyer la demande à tous",
             "sending": "Envoi en cours…",
             "success": "Envoyé ! Chaque partenaire vous recontactera directement."
+        },
+        "results": {
+            "count": "{count} résultat | {count} résultats",
+            "loadMore": "Charger plus",
+            "viewDetails": "Voir les détails →",
+            "noResults": "Aucun résultat — essayez de modifier vos filtres.",
+            "searching": "Recherche…",
+            "backToInspiration": "← Retour à l'inspiration",
+            "sortBy": "Trier :",
+            "sortFeatured": "En vedette",
+            "sortPriceAsc": "Prix : croissant",
+            "sortPriceDesc": "Prix : décroissant",
+            "sortRating": "Mieux notés"
         }
     },
     "footer": {
@@ -180,7 +193,11 @@
             "send": "Envoyer la demande",
             "sending": "Envoi en cours…",
             "success": "Envoyé ! Le partenaire vous recontactera directement.",
-            "unavailable": "Cette offre n'accepte pas de demandes pour le moment — revenez bientôt."
+            "unavailable": "Cette offre n'accepte pas de demandes pour le moment — revenez bientôt.",
+            "checkIn": "Arrivée",
+            "checkOut": "Départ",
+            "adults": "Adultes",
+            "children": "Enfants (moins de 12 ans)"
         },
         "reviews": {
             "title": "Avis",

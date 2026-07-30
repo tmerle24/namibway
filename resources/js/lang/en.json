@@ -163,6 +163,19 @@
             "send": "Send inquiry to all",
             "sending": "Sending…",
             "success": "Sent! Each property will get back to you directly."
+        },
+        "results": {
+            "count": "{count} result | {count} results",
+            "loadMore": "Load more",
+            "viewDetails": "View details →",
+            "noResults": "No results found — try adjusting your filters.",
+            "searching": "Searching…",
+            "backToInspiration": "← Back to inspiration",
+            "sortBy": "Sort:",
+            "sortFeatured": "Featured",
+            "sortPriceAsc": "Price: low to high",
+            "sortPriceDesc": "Price: high to low",
+            "sortRating": "Highest rated"
         }
     },
     "tripPlan": {
@@ -224,7 +237,11 @@
             "send": "Send inquiry",
             "sending": "Sending…",
             "success": "Sent! The partner will get back to you directly.",
-            "unavailable": "This listing isn't currently accepting inquiries — check back soon."
+            "unavailable": "This listing isn't currently accepting inquiries — check back soon.",
+            "checkIn": "Check-in",
+            "checkOut": "Check-out",
+            "adults": "Adults",
+            "children": "Children (under 12)"
         },
         "reviews": {
             "title": "Reviews",
