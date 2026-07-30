@@ -59,7 +59,7 @@ class GenerateListingDescriptions extends Command
                 }
             } catch (\Throwable $e) {
                 $this->newLine();
-                $this->error("Failed [{$listing->id}]: " . $e->getMessage());
+                $this->error(sprintf('Failed [%d]: %s', $listing->id, $e->getMessage()));
                 $failed++;
             }
 
