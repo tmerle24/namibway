@@ -44,6 +44,15 @@ const dbRegions = ref<string[]>([]);
 const regionCoords = ref<Record<string, RegionCoords>>({});
 const savedTokens = ref<Record<number, string>>({});
 
+// Trip-level start/end — same for every variant, editable inline like a
+// day's location. Reversing a variant's direction (below) doesn't touch
+// these; it only reorders that variant's own days.
+const routeStart = ref('Windhoek');
+const routeEnd = ref('Windhoek');
+const isRoundTrip = computed(
+    () => routeStart.value.trim().toLowerCase() === routeEnd.value.trim().toLowerCase(),
+);
+
 // --- Auth-gate for saving ---
 const showAuthModal = ref(false);
 
@@ -105,6 +114,8 @@ watch(
         startDates.value = plan.variants.map((v) =>
             parseDayDate(v.days[0]?.date),
         );
+        routeStart.value = plan.start_location || 'Windhoek';
+        routeEnd.value = plan.end_location || routeStart.value;
         swap.value = null;
 
         // Claude doesn't always fill in every day's date field consistently —
@@ -136,6 +147,15 @@ function renumberDays(variantIndex: number) {
         day.day = index + 1;
     });
     applyDates(variantIndex);
+}
+
+// The cheap "do the same loop backwards" alternative Till asked for — no
+// second Kaia call, just reorder the days this variant already has and
+// reuse the existing renumber/date helpers.
+function reverseVariant(variantIndex: number) {
+    editableVariants.value[variantIndex].days.reverse();
+    renumberDays(variantIndex);
+    swap.value = null;
 }
 
 function removeItem(
@@ -265,6 +285,8 @@ async function saveAllVariants() {
             savePlan({
                 trip_summary: props.plan.trip_summary,
                 variants: [variant],
+                start_location: routeStart.value,
+                end_location: routeEnd.value,
             }).then((result) => {
                 savedTokens.value[i] = result.token;
             }),
@@ -310,6 +332,23 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
             <div class="eyebrow">{{ t('itinerary.eyebrow') }}</div>
             <h2>{{ t('itinerary.title') }}</h2>
             <p>{{ t('itinerary.subtitle') }}</p>
+            <div class="route-summary">
+                <span class="route-label">{{ t('itinerary.route') }}:</span>
+                <LocationPicker
+                    :model-value="routeStart"
+                    :suggestions="locationSuggestions"
+                    @update:model-value="routeStart = $event"
+                />
+                <span class="route-arrow">→</span>
+                <LocationPicker
+                    :model-value="routeEnd"
+                    :suggestions="locationSuggestions"
+                    @update:model-value="routeEnd = $event"
+                />
+                <span v-if="isRoundTrip" class="route-roundtrip-tag">{{
+                    t('itinerary.roundTrip')
+                }}</span>
+            </div>
         </div>
         <div class="variants">
             <div
@@ -317,7 +356,16 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                 :key="variant.name"
                 class="variant-card"
             >
-                <h3>{{ variant.name }}</h3>
+                <div class="variant-head">
+                    <h3>{{ variant.name }}</h3>
+                    <button
+                        type="button"
+                        class="reverse-route-btn"
+                        @click="reverseVariant(variantIndex)"
+                    >
+                        ⇄ {{ t('itinerary.reverseRoute') }}
+                    </button>
+                </div>
                 <div v-if="estimatedLabel(variant)" class="variant-price">
                     {{ estimatedLabel(variant) }}
                 </div>
@@ -561,6 +609,8 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     :plan="{
                         trip_summary: plan.trip_summary,
                         variants: [variant],
+                        start_location: routeStart,
+                        end_location: routeEnd,
                     }"
                     :token="savedTokens[variantIndex] ?? null"
                     :is-logged-in="isLoggedIn"

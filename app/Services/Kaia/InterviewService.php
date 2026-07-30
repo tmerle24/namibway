@@ -44,6 +44,10 @@ class InterviewService
         13, 15, 17" → 0 under 13. "kids aged 8 and 11" → 2 under 13. Only ask ages if children
         are mentioned but no ages given.
         (6) Vehicle — regular car (2WD or 4x4) or camper. One sentence, they can change later.
+        (7) START/END LOCATION — do NOT ask by default. Assume Windhoek round-trip silently.
+        Only ask if the user's own words imply an asymmetric route (different arrival/departure
+        city, continuing to another country). One short confirming question if needed, never
+        as a routine question.
 
         Max 4 turns before calling ready_for_itinerary. If the first message already covers
         everything, call it immediately without asking anything.
@@ -96,6 +100,8 @@ class InterviewService
                 'adults' => ['type' => 'integer', 'description' => 'Number of adults travelling'],
                 'children_under_13' => ['type' => 'integer', 'description' => 'Number of children under 13 in the group; 0 if none or not travelling with children'],
                 'vehicle_type' => ['type' => 'string', 'enum' => ['car', 'camper'], 'description' => 'car = regular 2WD or 4x4; camper = rooftop tent or motorhome'],
+                'start_location' => ['type' => 'string', 'description' => 'Where the trip starts, e.g. "Windhoek". Default to "Windhoek" unless the traveler said otherwise — do not ask for this unless a one-way trip is already implied.'],
+                'end_location' => ['type' => 'string', 'description' => 'Where the trip ends, e.g. "Windhoek". Same as start_location for the common round-trip case; a different city only for a one-way trip.'],
             ],
             'required' => ['nights', 'travel_period', 'interests', 'budget_tier', 'adults', 'children_under_13', 'vehicle_type'],
         ],

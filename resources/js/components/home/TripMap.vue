@@ -207,10 +207,20 @@ function renderRoute() {
             opacity: 0.85,
         }).addTo(map!);
 
-        waypoints.forEach((wp) => {
+        waypoints.forEach((wp, index) => {
+            const isStart = index === 0;
+            const isEnd = index === waypoints.length - 1 && waypoints.length > 1;
+            const markerClass = [
+                'trip-map-marker',
+                isStart && 'trip-map-marker--start',
+                isEnd && 'trip-map-marker--end',
+            ]
+                .filter(Boolean)
+                .join(' ');
+
             const icon = L.divIcon({
                 className: '',
-                html: `<div class="trip-map-marker">${wp.day}</div>`,
+                html: `<div class="${markerClass}">${wp.day}</div>`,
                 iconSize: [28, 28],
                 iconAnchor: [14, 14],
             });
@@ -342,6 +352,14 @@ watch(() => [props.variant, props.regionCoords] as const, renderRoute, {
 .trip-map-marker:hover {
     transform: scale(1.2);
     box-shadow: 0 4px 12px rgba(192, 83, 58, 0.5);
+}
+
+.trip-map-marker--start {
+    background: #2f7d4f;
+}
+
+.trip-map-marker--end {
+    background: #2f5d7d;
 }
 
 .map-popup {
