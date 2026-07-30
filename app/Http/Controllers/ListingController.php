@@ -39,7 +39,9 @@ class ListingController extends Controller
             $kw = '%'.mb_strtolower($keyword).'%';
             $query->where(function ($q) use ($kw) {
                 $q->whereRaw('lower(cast(name as text)) like ?', [$kw])
-                    ->orWhereRaw('lower(cast(description as text)) like ?', [$kw]);
+                    ->orWhereRaw('lower(cast(description as text)) like ?', [$kw])
+                    ->orWhereRaw('lower(cast(region as text)) like ?', [$kw])
+                    ->orWhereRaw('lower(cast(type as text)) like ?', [$kw]);
             });
         }
 

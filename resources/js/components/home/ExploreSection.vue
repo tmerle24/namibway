@@ -453,7 +453,15 @@ function matches(row: IdeaRow, item: IdeaCard): boolean {
 
     if (
         keyword &&
-        !(item.title + ' ' + item.description + ' ' + (item.region ?? ''))
+        !(
+            item.title +
+            ' ' +
+            item.description +
+            ' ' +
+            (item.region ?? '') +
+            ' ' +
+            t(`explore.rows.${row.key}`)
+        )
             .toLowerCase()
             .includes(keyword)
     ) {
@@ -540,6 +548,9 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                     <option value="vehicle">
                         {{ t('explore.filters.vehicles') }}
                     </option>
+                    <option value="region">
+                        {{ t('explore.filters.regions') }}
+                    </option>
                 </select>
                 <input
                     ref="dateInput"
@@ -547,6 +558,11 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                     :placeholder="t('explore.filters.selectDate')"
                     readonly
                     style="width: 170px; cursor: pointer"
+                />
+                <input
+                    v-model="filterKeyword"
+                    type="text"
+                    :placeholder="t('explore.filters.keyword')"
                 />
                 <button class="search-btn" @click="performSearch(1)">
                     {{ t('explore.filters.search') }}
@@ -571,11 +587,6 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                 <span class="filter-note">{{ t('explore.filters.note') }}</span>
             </div>
             <div class="filter-more" :class="{ open: filterMoreOpen }">
-                <input
-                    v-model="filterKeyword"
-                    type="text"
-                    :placeholder="t('explore.filters.keyword')"
-                />
                 <select v-model="filterBudget">
                     <option value="">
                         {{ t('explore.filters.anyBudget') }}
