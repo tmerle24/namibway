@@ -21,6 +21,7 @@ class SendClaimEmails extends Command
         $limit = (int) $this->option('limit');
 
         $partners = Partner::whereNotNull('email')
+            ->whereNotNull('claim_token')
             ->whereNull('claim_token_sent_at')
             ->whereNull('claimed_at')
             ->whereNull('claim_rejected_at')

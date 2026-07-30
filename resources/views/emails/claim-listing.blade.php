@@ -47,8 +47,22 @@
 @if($listing)
 <p><strong>What we've listed so far:</strong></p>
 <ul>
-    <li>{{ $listing->getTranslation('name', 'en') }} ({{ ucfirst($listing->type->value) }}@if($listing->region), {{ $listing->region }}@endif)</li>
-    <li>{{ $listing->image ? '1 photo' : 'No photo yet' }}@if(!empty($listing->gallery)), {{ count($listing->gallery) }} more in the gallery@endif</li>
+    <li>
+        {{ $listing->getTranslation('name', 'en') }} ({{ ucfirst($listing->type->value) }}@if($listing->region)
+, {{ $listing->region }}
+@endif
+)
+    </li>
+    <li>
+        @if($listing->image)
+            1 photo
+        @else
+            No photo yet
+        @endif
+        @if(! empty($listing->gallery))
+            , {{ count($listing->gallery) }} more in the gallery
+        @endif
+    </li>
     @if($listing->address)
     <li>Address: {{ $listing->address }}</li>
     @endif

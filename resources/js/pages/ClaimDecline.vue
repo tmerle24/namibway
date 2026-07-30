@@ -66,11 +66,9 @@ function decline() {
                     Done — you're removed
                 </h1>
                 <p class="text-center text-stone-500 dark:text-stone-400">
-                    <strong>{{ partner.name }}</strong> has been unpublished
-                    on NamibWay. If you change your mind, use the
-                    <a
-                        :href="claim_url"
-                        class="text-amber-600 hover:underline"
+                    <strong>{{ partner.name }}</strong> has been unpublished on
+                    NamibWay. If you change your mind, use the
+                    <a :href="claim_url" class="text-amber-600 hover:underline"
                         >claim link</a
                     >
                     from our email any time.
@@ -88,8 +86,8 @@ function decline() {
                 >
                     We'll unpublish
                     <strong>{{ listing?.name ?? partner.name }}</strong>
-                    from NamibWay right away. No hard feelings — you can
-                    always claim it later using the link in our email.
+                    from NamibWay right away. No hard feelings — you can always
+                    claim it later using the link in our email.
                 </p>
 
                 <button

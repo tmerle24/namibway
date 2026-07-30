@@ -12,9 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('listings', function (Blueprint $table) {
-            $table->string('scrape_source')->nullable()->after('accepts_inquiries');
-            $table->string('scrape_id')->nullable()->after('scrape_source');
-            $table->json('scrape_data')->nullable()->after('scrape_id');
+            if (! Schema::hasColumn('listings', 'scrape_source')) {
+                $table->string('scrape_source')->nullable()->after('accepts_inquiries');
+            }
+            if (! Schema::hasColumn('listings', 'scrape_id')) {
+                $table->string('scrape_id')->nullable()->after('scrape_source');
+            }
+            if (! Schema::hasColumn('listings', 'scrape_data')) {
+                $table->json('scrape_data')->nullable()->after('scrape_id');
+            }
         });
     }
 

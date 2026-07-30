@@ -50,6 +50,7 @@ class Partner extends Model
         'claim_token',
         'claim_token_sent_at',
         'claimed_at',
+        'claim_rejected_at',
         'connector_type',
         'connector_property_code',
         'connector_config',
@@ -58,6 +59,9 @@ class Partner extends Model
     protected $casts = [
         'connector_type' => ConnectorType::class,
         'connector_config' => 'encrypted:array',
+        'claim_token_sent_at' => 'datetime',
+        'claimed_at' => 'datetime',
+        'claim_rejected_at' => 'datetime',
     ];
 
     /**

@@ -124,6 +124,7 @@ class AssignListingPhotos extends Command
     ];
 
     private const UNSPLASH_BASE = 'https://images.unsplash.com/';
+
     private const UNSPLASH_PARAMS = '?w=1200&q=80&auto=format&fit=crop';
 
     public function handle(): int
@@ -139,6 +140,7 @@ class AssignListingPhotos extends Command
             if ($listing->image && ! $force) {
                 $this->line("  skip {$listing->slug} (already has image)");
                 $skipped++;
+
                 continue;
             }
 
@@ -150,15 +152,16 @@ class AssignListingPhotos extends Command
                 $this->line("  fallback for {$listing->slug} (no curated map)");
             }
 
-            $heroUrl = self::UNSPLASH_BASE . $map['hero'] . self::UNSPLASH_PARAMS;
+            $heroUrl = self::UNSPLASH_BASE.$map['hero'].self::UNSPLASH_PARAMS;
             $galleryUrls = array_map(
-                fn ($id) => self::UNSPLASH_BASE . $id . self::UNSPLASH_PARAMS,
+                fn ($id) => self::UNSPLASH_BASE.$id.self::UNSPLASH_PARAMS,
                 $map['gallery'] ?? []
             );
 
             if ($dryRun) {
                 $this->line("  [dry-run] {$listing->slug} → {$heroUrl}");
                 $updated++;
+
                 continue;
             }
 

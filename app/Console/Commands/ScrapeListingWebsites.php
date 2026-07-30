@@ -71,7 +71,7 @@ class ScrapeListingWebsites extends Command
         $host = parse_url($url, PHP_URL_HOST);
 
         if (! $host) {
-            $this->markScraped($listing, []);
+            $this->markScraped($listing);
             $this->skippedNoData++;
 
             return;
@@ -90,7 +90,7 @@ class ScrapeListingWebsites extends Command
         }
 
         if (! $html) {
-            $this->markScraped($listing, []);
+            $this->markScraped($listing);
             $this->skippedNoData++;
 
             return;
@@ -99,14 +99,14 @@ class ScrapeListingWebsites extends Command
         $og = $this->extractOgTags($html, $url);
 
         if (empty($og)) {
-            $this->markScraped($listing, []);
+            $this->markScraped($listing);
             $this->skippedNoData++;
 
             return;
         }
 
         if ($this->dry) {
-            $this->line("\n  [dry] {$listing->getTranslation('name', 'en')} | " . json_encode($og));
+            $this->line("\n  [dry] {$listing->getTranslation('name', 'en')} | ".json_encode($og));
             $this->enriched++;
 
             return;
@@ -136,7 +136,7 @@ class ScrapeListingWebsites extends Command
         $fill['scrape_data'] = array_merge($listing->scrape_data ?? [], ['og' => $og]);
 
         $listing->update($fill);
-        $this->markScraped($listing, $og);
+        $this->markScraped($listing);
 
         if ($listing->partner) {
             $listing->partner->fill(array_filter([
@@ -148,7 +148,7 @@ class ScrapeListingWebsites extends Command
         $this->enriched++;
     }
 
-    private function markScraped(Listing $listing, array $og): void
+    private function markScraped(Listing $listing): void
     {
         if ($this->dry) {
             return;
@@ -194,13 +194,13 @@ class ScrapeListingWebsites extends Command
 
     private function extractMeta(string $html, string $property): ?string
     {
-        $pattern = '#<meta[^>]+(?:property|name)=["\x27]' . preg_quote($property, '#') . '["\x27][^>]+content=["\x27]([^"\']*)["\x27]#i';
+        $pattern = '#<meta[^>]+(?:property|name)=["\x27]'.preg_quote($property, '#').'["\x27][^>]+content=["\x27]([^"\']*)["\x27]#i';
         if (preg_match($pattern, $html, $m)) {
             return html_entity_decode(trim($m[1]), ENT_QUOTES, 'UTF-8') ?: null;
         }
 
         // content attribute can come before the property attribute
-        $pattern = '#<meta[^>]+content=["\x27]([^"\']*)["\x27][^>]+(?:property|name)=["\x27]' . preg_quote($property, '#') . '["\x27]#i';
+        $pattern = '#<meta[^>]+content=["\x27]([^"\']*)["\x27][^>]+(?:property|name)=["\x27]'.preg_quote($property, '#').'["\x27]#i';
         if (preg_match($pattern, $html, $m)) {
             return html_entity_decode(trim($m[1]), ENT_QUOTES, 'UTF-8') ?: null;
         }
@@ -226,7 +226,7 @@ class ScrapeListingWebsites extends Command
             return "{$scheme}://{$host}{$maybeRelative}";
         }
 
-        return "{$scheme}://{$host}/" . ltrim($maybeRelative, '/');
+        return "{$scheme}://{$host}/".ltrim($maybeRelative, '/');
     }
 
     private function robotsAllow(string $url): bool
@@ -269,10 +269,10 @@ class ScrapeListingWebsites extends Command
                 default => 'jpg',
             };
 
-            $filename = 'listings/website-enrichment/' . $slug . '-' . Str::random(8) . '.' . $ext;
+            $filename = 'listings/website-enrichment/'.$slug.'-'.Str::random(8).'.'.$ext;
             Storage::disk('public')->put($filename, $response->body());
 
-            return '/storage/' . $filename;
+            return '/storage/'.$filename;
         } catch (\Throwable) {
             return null;
         }

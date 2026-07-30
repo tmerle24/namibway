@@ -37,11 +37,7 @@ class ListPartners extends ListRecords
                         ->required(),
                 ])
                 ->action(function (array $data): void {
-                    $eligible = Partner::whereNotNull('email')
-                        ->whereNull('claim_token_sent_at')
-                        ->whereNull('claimed_at')
-                        ->whereNull('claim_rejected_at')
-                        ->count();
+                    $eligible = self::eligibleForOutreachQuery()->count();
 
                     Artisan::call('namibway:send-claim-emails', [
                         '--limit' => (int) $data['limit'],
@@ -52,16 +48,21 @@ class ListPartners extends ListRecords
 
                     Notification::make()
                         ->title($sentCount > 0 ? "Sent {$sentCount} outreach email(s)" : 'Nothing to send')
-                        ->body($sentCount > 0 ? null : 'No eligible partners (need an email, and not yet contacted/claimed/declined).')
+                        ->body($sentCount > 0 ? null : 'No eligible partners (need an email and claim link, and not yet contacted/claimed/declined).')
                         ->success()
                         ->send();
                 })
-                ->visible(fn () => Partner::whereNotNull('email')
-                    ->whereNull('claim_token_sent_at')
-                    ->whereNull('claimed_at')
-                    ->whereNull('claim_rejected_at')
-                    ->exists()),
+                ->visible(fn () => self::eligibleForOutreachQuery()->exists()),
             Actions\CreateAction::make(),
         ];
+    }
+
+    private static function eligibleForOutreachQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return Partner::whereNotNull('email')
+            ->whereNotNull('claim_token')
+            ->whereNull('claim_token_sent_at')
+            ->whereNull('claimed_at')
+            ->whereNull('claim_rejected_at');
     }
 }
