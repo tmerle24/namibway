@@ -9,6 +9,7 @@ use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Pages\ListRecords\Concerns\Translatable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Artisan;
 
 class ListPartners extends ListRecords
@@ -57,7 +58,7 @@ class ListPartners extends ListRecords
         ];
     }
 
-    private static function eligibleForOutreachQuery(): \Illuminate\Database\Eloquent\Builder
+    private static function eligibleForOutreachQuery(): Builder
     {
         return Partner::whereNotNull('email')
             ->whereNotNull('claim_token')

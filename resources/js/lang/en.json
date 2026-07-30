@@ -218,7 +218,7 @@
         "name": "Full name",
         "namePlaceholder": "Jane Smith",
         "email": "Email",
-        "emailPlaceholder": "jane@example.com",
+        "emailPlaceholder": "jane{'@'}example.com",
         "phone": "Phone (optional)",
         "phonePlaceholder": "+264 …",
         "checkIn": "Check-in date",
