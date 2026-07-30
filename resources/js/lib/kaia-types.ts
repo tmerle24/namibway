@@ -5,6 +5,8 @@ export interface ItineraryListingRef {
     type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
     price_from: string | null;
     price_currency: string;
+    lat?: number | null;
+    lng?: number | null;
 }
 
 export interface ItineraryDay {
