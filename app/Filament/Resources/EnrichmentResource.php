@@ -60,6 +60,16 @@ class EnrichmentResource extends Resource
 
     private const TAB_LOG = 9;
 
+    // A queued-but-unstarted job sitting this long means a worker never picked it up; a
+    // started-but-unfinished job sitting this long is past even a worst-case legitimate
+    // run (timeout + one retry's backoff + timeout ≈ 6 min, see EnrichListingJob). Past
+    // these, the listing is treated as stuck rather than genuinely in progress — it stops
+    // blocking edits and the "Cancel" action can clear the row explicitly instead of an
+    // admin being stuck with an uneditable listing indefinitely.
+    private const QUEUED_STALE_AFTER_MINUTES = 3;
+
+    private const RUNNING_STALE_AFTER_MINUTES = 6;
+
     /**
      * Which tab the edit modal should open on, stamped by editAction()'s
      * mutateRecordDataUsing() (which always runs before the form/Tabs render) and read by
@@ -80,8 +90,9 @@ class EnrichmentResource extends Resource
                 ->label('')
                 ->content(new HtmlString(
                     '<div style="padding:8px 12px;background:#fef3c7;border-radius:6px;color:#92400e;">'
-                    .'⏳ Enrichment is currently running for this listing — fields are locked until it finishes. '
-                    .'Refresh in a moment.</div>'
+                    .'⏳ Enrichment is currently running for this listing — fields are locked until it finishes, '
+                    .'or automatically after a few minutes if it\'s stuck. Close this and use the "Cancel" row '
+                    .'action to unlock it immediately.</div>'
                 ))
                 ->visible(fn (?Listing $record): bool => self::isEnriching($record))
                 ->columnSpanFull(),
@@ -190,25 +201,44 @@ class EnrichmentResource extends Resource
         ]);
     }
 
+    private static function latestJob(Listing $record): ?EnrichmentJob
+    {
+        return $record->relationLoaded('latestEnrichmentJob') ? $record->latestEnrichmentJob : $record->latestEnrichmentJob()->first();
+    }
+
+    /** A job that's been queued or running far past any legitimate duration — see the STALE_AFTER constants. */
+    private static function isStale(EnrichmentJob $job): bool
+    {
+        if ($job->finished_at !== null) {
+            return false;
+        }
+
+        return $job->started_at === null
+            ? $job->created_at->lt(now()->subMinutes(self::QUEUED_STALE_AFTER_MINUTES))
+            : $job->started_at->lt(now()->subMinutes(self::RUNNING_STALE_AFTER_MINUTES));
+    }
+
+    /** Only a genuinely fresh in-flight job blocks editing — a stale/stuck one no longer does (see the "Cancel" action). */
     private static function isEnriching(?Listing $record): bool
     {
         if ($record === null) {
             return false;
         }
 
-        $job = $record->relationLoaded('latestEnrichmentJob') ? $record->latestEnrichmentJob : $record->latestEnrichmentJob()->first();
+        $job = self::latestJob($record);
 
-        return $job !== null && $job->finished_at === null;
+        return $job !== null && $job->finished_at === null && ! self::isStale($job);
     }
 
-    /** 'none' | 'queued' | 'running' | 'ok' | 'failed' — see EnrichListingJob::enqueue(). */
+    /** 'none' | 'queued' | 'running' | 'stuck' | 'ok' | 'failed' — see EnrichListingJob::enqueue(). */
     private static function lastRunState(Listing $record): string
     {
-        $job = $record->relationLoaded('latestEnrichmentJob') ? $record->latestEnrichmentJob : $record->latestEnrichmentJob()->first();
+        $job = self::latestJob($record);
 
         return match (true) {
             $job === null => 'none',
             $job->finished_at !== null => ($job->success ? 'ok' : 'failed'),
+            self::isStale($job) => 'stuck',
             $job->started_at !== null => 'running',
             default => 'queued',
         };
@@ -230,9 +260,10 @@ class EnrichmentResource extends Resource
             $statusHtml = match (true) {
                 $job->finished_at !== null && $job->success => '<span style="color:#16a34a">success</span>',
                 $job->finished_at !== null => '<span style="color:#dc2626">failed</span>',
+                self::isStale($job) => '<span style="color:#dc2626">stuck — use "Cancel" to clear</span>',
                 $job->started_at !== null => '<span style="color:#d97706">running</span>',
                 // Created but not yet started — either the worker hasn't picked it up yet,
-                // or (if this persists) the queue isn't being processed at all.
+                // or (if this persists past a few minutes) the queue isn't being processed at all.
                 default => '<span style="color:#6b7280">queued</span>',
             };
 
@@ -456,23 +487,26 @@ class EnrichmentResource extends Resource
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'ok' => 'success',
-                        'failed' => 'danger',
+                        'failed', 'stuck' => 'danger',
                         'running' => 'warning',
                         default => 'gray',
                     })
                     ->icon(fn (string $state): string => match ($state) {
                         'ok' => 'heroicon-o-check-circle',
                         'failed' => 'heroicon-o-x-circle',
+                        'stuck' => 'heroicon-o-exclamation-triangle',
                         'running' => 'heroicon-o-clock',
                         'queued' => 'heroicon-o-inbox-stack',
                         default => 'heroicon-o-minus',
                     })
                     ->tooltip(function (Listing $record): ?string {
-                        $job = $record->relationLoaded('latestEnrichmentJob') ? $record->latestEnrichmentJob : $record->latestEnrichmentJob()->first();
+                        $job = self::latestJob($record);
 
                         return match (true) {
-                            $job !== null && $job->finished_at !== null && ! $job->success => $job->log,
-                            $job !== null && $job->finished_at === null && $job->started_at === null => 'Waiting for a queue worker to pick this up. Stuck here for more than a few seconds usually means the worker (Horizon) isn\'t running.',
+                            $job === null => null,
+                            $job->finished_at !== null => ($job->success ? null : $job->log),
+                            self::isStale($job) => 'This run never finished and is past a normal duration — use the "Cancel" row action to clear it.',
+                            $job->started_at === null => 'Waiting for a queue worker to pick this up. Stuck here for more than a few minutes usually means the worker (Horizon) isn\'t running.',
                             default => null,
                         };
                     }),
@@ -568,6 +602,33 @@ class EnrichmentResource extends Resource
                             ->body('Running in the background — the "Last run" column and Log tab update automatically within ~10s of finishing.')
                             ->success()
                             ->send();
+                    }),
+                Tables\Actions\Action::make('cancel_enrichment')
+                    ->label('Cancel')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    // Visible for queued/running/stuck alike — not just isEnriching() (fresh
+                    // only), otherwise the button disappears exactly when a run goes stale and
+                    // "Cancel" is what the badge/tooltip tell the admin to use.
+                    ->visible(function (Listing $record): bool {
+                        $job = self::latestJob($record);
+
+                        return $job !== null && $job->finished_at === null;
+                    })
+                    ->requiresConfirmation()
+                    ->modalDescription('Marks this run as cancelled so you can edit the listing again. This does not stop a queue worker that later does pick it up — if it does, its real result will overwrite this.')
+                    ->action(function (Listing $record): void {
+                        $job = self::latestJob($record);
+
+                        if ($job !== null && $job->finished_at === null) {
+                            $job->update([
+                                'finished_at' => now(),
+                                'success' => false,
+                                'log' => 'Cancelled by '.(auth()->user()->name ?? 'Admin').'.',
+                            ]);
+                        }
+
+                        Notification::make()->title('Enrichment run cancelled')->success()->send();
                     }),
             ])
             ->bulkActions([

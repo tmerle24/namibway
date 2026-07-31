@@ -42,7 +42,11 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 120;
 
-    public int $uniqueFor = 1800;
+    // Worst case a legitimate run takes timeout + backoff + timeout ≈ 6 minutes (one retry).
+    // Kept just above that rather than something long like 30 minutes — a stuck/crashed
+    // dispatch (e.g. the queue()-name-collision bug fixed alongside this) used to hold this
+    // lock for a long time with no way to clear it, silently no-op'ing every retry attempt.
+    public int $uniqueFor = 420;
 
     /** @param list<string>|null $steps */
     public function __construct(
