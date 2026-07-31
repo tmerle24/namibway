@@ -457,34 +457,52 @@ class EnrichmentResource extends Resource
                     ->boolean()
                     ->action($editWebsite)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->website))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('website', 'ilike', "%{$search}%")),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('website', 'ilike', "%{$search}%"))
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(website IS NOT NULL AND website != '') desc")
+                        : $query->orderByRaw("(website IS NOT NULL AND website != '') asc")),
                 Tables\Columns\IconColumn::make('has_email')
                     ->label('Email')
                     ->boolean()
                     ->action($editEmail)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->contact_email))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('contact_email', 'ilike', "%{$search}%")),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('contact_email', 'ilike', "%{$search}%"))
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(contact_email IS NOT NULL AND contact_email != '') desc")
+                        : $query->orderByRaw("(contact_email IS NOT NULL AND contact_email != '') asc")),
                 Tables\Columns\IconColumn::make('has_phone')
                     ->label('Phone')
                     ->boolean()
                     ->action($editPhone)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->phone))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('phone', 'ilike', "%{$search}%")),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('phone', 'ilike', "%{$search}%"))
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(phone IS NOT NULL AND phone != '') desc")
+                        : $query->orderByRaw("(phone IS NOT NULL AND phone != '') asc")),
                 Tables\Columns\IconColumn::make('has_description')
                     ->label('Description')
                     ->boolean()
                     ->action($editDescription)
-                    ->getStateUsing(fn (Listing $record): bool => filled($record->getTranslation('description', 'en', useFallbackLocale: false))),
+                    ->getStateUsing(fn (Listing $record): bool => filled($record->getTranslation('description', 'en', useFallbackLocale: false)))
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(description->>'en' IS NOT NULL AND description->>'en' != '') desc")
+                        : $query->orderByRaw("(description->>'en' IS NOT NULL AND description->>'en' != '') asc")),
                 Tables\Columns\IconColumn::make('has_photos')
                     ->label('Photos')
                     ->boolean()
                     ->action($editPhotos)
-                    ->getStateUsing(fn (Listing $record): bool => filled($record->image)),
+                    ->getStateUsing(fn (Listing $record): bool => filled($record->image))
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(image IS NOT NULL AND image != '') desc")
+                        : $query->orderByRaw("(image IS NOT NULL AND image != '') asc")),
                 Tables\Columns\IconColumn::make('has_gps')
                     ->label('GPS')
                     ->boolean()
                     ->action($editAddress)
-                    ->getStateUsing(fn (Listing $record): bool => $record->latitude !== null && $record->longitude !== null),
+                    ->getStateUsing(fn (Listing $record): bool => $record->latitude !== null && $record->longitude !== null)
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw('(latitude IS NOT NULL AND longitude IS NOT NULL) desc')
+                        : $query->orderByRaw('(latitude IS NOT NULL AND longitude IS NOT NULL) asc')),
                 Tables\Columns\TextColumn::make('claim_status')
                     ->label('Claimed')
                     ->badge()
@@ -579,6 +597,12 @@ class EnrichmentResource extends Resource
                         true: fn (Builder $query) => $query->whereRaw("description->>'en' IS NOT NULL AND description->>'en' != ''"),
                         false: fn (Builder $query) => $query->whereRaw("description->>'en' IS NULL OR description->>'en' = ''"),
                     ),
+                Tables\Filters\TernaryFilter::make('has_gps')
+                    ->label('Has GPS')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereNotNull('latitude')->whereNotNull('longitude'),
+                        false: fn (Builder $query) => $query->where(fn ($q) => $q->whereNull('latitude')->orWhereNull('longitude')),
+                    ),
                 Tables\Filters\SelectFilter::make('claim_status')
                     ->label('Claimed')
                     ->options(['unclaimed' => 'Unclaimed', 'pending' => 'Pending', 'claimed' => 'Claimed', 'rejected' => 'Rejected']),
@@ -602,6 +626,16 @@ class EnrichmentResource extends Resource
                     ),
             ])
             ->actions([
+                Tables\Actions\Action::make('view_frontend')
+                    ->label('')
+                    ->tooltip('View on namibway.com')
+                    ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->color('gray')
+                    // Unpublished listings 404 on the frontend (ListingController@show),
+                    // same guard ClaimInviteService uses before building this same URL.
+                    ->visible(fn (Listing $record): bool => $record->is_published)
+                    ->url(fn (Listing $record): string => route('listings.show', $record->slug))
+                    ->openUrlInNewTab(),
                 $editBasic,
                 Tables\Actions\Action::make('enrich')
                     ->label('Enrich')

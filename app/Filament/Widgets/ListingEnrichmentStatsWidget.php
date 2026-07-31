@@ -24,6 +24,15 @@ class ListingEnrichmentStatsWidget extends BaseWidget
             coalesce(avg(enrichment_score), 0) as average_completion
         SQL)->first();
 
+        // Same plain-query-builder reasoning as $totals above — these are aggregates
+        // over enrichment_jobs, not real model attributes.
+        $costs = DB::table('enrichment_jobs')->selectRaw(<<<'SQL'
+            coalesce(sum(cost_estimate) filter (where created_at >= current_date), 0) as ai_today,
+            coalesce(sum(places_cost_estimate) filter (where created_at >= current_date), 0) as places_today,
+            coalesce(sum(cost_estimate) filter (where created_at >= current_date - interval '7 days'), 0) as ai_7d,
+            coalesce(sum(places_cost_estimate) filter (where created_at >= current_date - interval '7 days'), 0) as places_7d
+        SQL)->first();
+
         return [
             Stat::make('Total Listings', number_format($totals->total)),
             Stat::make('Complete Listings', number_format($totals->complete))->color('success'),
@@ -33,6 +42,10 @@ class ListingEnrichmentStatsWidget extends BaseWidget
             Stat::make('Missing Description', number_format($totals->missing_description))->color('danger'),
             Stat::make('Claimed Listings', number_format($totals->claimed))->color('success'),
             Stat::make('Average Completion', round((float) $totals->average_completion).'%'),
+            Stat::make('Enrichment Cost (Today)', '$'.number_format($costs->ai_today + $costs->places_today, 2))
+                ->description('Claude $'.number_format($costs->ai_today, 2).' · Places $'.number_format($costs->places_today, 2)),
+            Stat::make('Enrichment Cost (7 Days)', '$'.number_format($costs->ai_7d + $costs->places_7d, 2))
+                ->description('Claude $'.number_format($costs->ai_7d, 2).' · Places $'.number_format($costs->places_7d, 2)),
         ];
     }
 }
