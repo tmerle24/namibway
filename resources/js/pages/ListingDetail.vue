@@ -76,6 +76,7 @@ interface Review {
 const props = defineProps<{
     listing: Listing;
     reviews: Review[];
+    is_preview?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -98,6 +99,20 @@ const heroImage = computed(() => {
     <Head :title="props.listing.name" />
 
     <div class="kaia-page">
+        <div
+            v-if="props.is_preview"
+            :style="{
+                background: '#92400e',
+                color: '#fef3c7',
+                textAlign: 'center',
+                padding: '8px 12px',
+                fontSize: '14px',
+                fontWeight: 600,
+            }"
+        >
+            Draft preview — this listing is not published yet, only admins can see this page
+        </div>
+
         <div class="detail-topbar">
             <Link :href="home()" class="brand"
                 ><img :src="logoDark" alt="NamibWay" class="brand-logo"

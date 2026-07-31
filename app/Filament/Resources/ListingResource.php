@@ -199,11 +199,11 @@ class ListingResource extends Resource
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('view_frontend')
                     ->label('')
-                    ->tooltip('View on namibway.com')
                     ->icon('heroicon-o-arrow-top-right-on-square')
                     ->color('gray')
-                    // Unpublished listings 404 on the frontend (ListingController@show).
-                    ->visible(fn (Listing $record): bool => $record->is_published)
+                    ->tooltip(fn (Listing $record): string => $record->is_published
+                        ? 'View on namibway.com'
+                        : 'Preview draft on namibway.com (not published yet — visible to admins only)')
                     ->url(fn (Listing $record): string => route('listings.show', $record->slug))
                     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('import_wetu')

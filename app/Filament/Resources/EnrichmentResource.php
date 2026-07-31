@@ -634,12 +634,11 @@ class EnrichmentResource extends Resource
             ->actions([
                 Tables\Actions\Action::make('view_frontend')
                     ->label('')
-                    ->tooltip('View on namibway.com')
                     ->icon('heroicon-o-arrow-top-right-on-square')
                     ->color('gray')
-                    // Unpublished listings 404 on the frontend (ListingController@show),
-                    // same guard ClaimInviteService uses before building this same URL.
-                    ->visible(fn (Listing $record): bool => $record->is_published)
+                    ->tooltip(fn (Listing $record): string => $record->is_published
+                        ? 'View on namibway.com'
+                        : 'Preview draft on namibway.com (not published yet — visible to admins only)')
                     ->url(fn (Listing $record): string => route('listings.show', $record->slug))
                     ->openUrlInNewTab(),
                 $editBasic,
