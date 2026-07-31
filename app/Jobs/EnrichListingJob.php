@@ -56,10 +56,17 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
         public readonly int $listingId,
         public readonly ?array $steps = null,
         public readonly ?int $enrichmentJobId = null,
+        public readonly bool $useGooglePlaces = true,
     ) {}
 
-    /** @param list<string>|null $steps */
-    public static function enqueue(int $listingId, ?array $steps = null): EnrichmentJob
+    /**
+     * @param  list<string>|null  $steps
+     * @param  bool  $useGooglePlaces  Defaults to true — preserves existing behavior for the
+     *                                 nightly command, the on-demand listing-page trigger, and the
+     *                                 dashboard's bulk actions. Only the "Enrich" row action's opt-in
+     *                                 checkbox ever passes false.
+     */
+    public static function enqueue(int $listingId, ?array $steps = null, bool $useGooglePlaces = true): EnrichmentJob
     {
         $run = EnrichmentJob::create([
             'listing_id' => $listingId,
@@ -68,14 +75,14 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
             'success' => false,
         ]);
 
-        self::dispatch($listingId, $steps, $run->id);
+        self::dispatch($listingId, $steps, $run->id, $useGooglePlaces);
 
         return $run;
     }
 
     public function uniqueId(): string
     {
-        return $this->listingId.':'.($this->steps ? implode(',', $this->steps) : 'full');
+        return $this->listingId.':'.($this->steps ? implode(',', $this->steps) : 'full').':'.($this->useGooglePlaces ? 'places' : 'no-places');
     }
 
     public function handle(EnrichmentPipeline $pipeline): void
@@ -99,7 +106,7 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
         $run->update(['started_at' => now()]);
 
         try {
-            $result = $pipeline->run($listing, $this->steps);
+            $result = $pipeline->run($listing, $this->steps, $this->useGooglePlaces);
 
             $run->update([
                 'finished_at' => now(),

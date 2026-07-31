@@ -6,17 +6,20 @@ use App\Models\Listing;
 
 /**
  * Orchestrates the full VisitNamibia enrichment run for one listing:
- * normalize -> find website -> Google Places location facts (GPS/phone/
- * address) -> fetch homepage -> non-AI OG-tag/contact scrape and/or AI
- * structured extraction -> import photos (website scrape, falling back to
- * Google Places Photos) -> AI description generation -> recalculate
- * completion score. Every write is additive/fill-gaps-only (never
- * overwrites a value already on the listing), matching the convention
- * already established by CrawlListingWebsiteJob/FetchGooglePlacesPhotoJob.
+ * normalize -> find website -> location facts (GPS/phone/address, OpenStreetMap
+ * first since it's free, Google Places only for whatever OSM didn't cover) ->
+ * fetch homepage -> non-AI OG-tag/contact scrape and/or AI structured extraction
+ * -> import photos (website scrape, falling back to Google Places Photos) -> AI
+ * description generation -> recalculate completion score. Every write is
+ * additive/fill-gaps-only (never overwrites a value already on the listing),
+ * matching the convention already established by
+ * CrawlListingWebsiteJob/FetchGooglePlacesPhotoJob.
  *
  * The 'scrape' step (and 'website', 'images') never call Claude — only
  * 'ai_extract' and 'description' do. A caller that only requests the
- * former gets a genuinely AI-free, zero-token enrichment pass.
+ * former gets a genuinely AI-free, zero-token enrichment pass — OSM/Places
+ * location lookups and website/Places photo scraping still run, but neither
+ * is billed by Anthropic (Places itself has its own separate, non-AI cost).
  */
 class EnrichmentPipeline
 {
@@ -26,15 +29,19 @@ class EnrichmentPipeline
         private readonly AIListingExtractorService $aiExtractor,
         private readonly AIDescriptionGeneratorService $descriptionGenerator,
         private readonly GooglePlacesPhotoFinder $photoFinder,
+        private readonly OsmLocationFinder $osmFinder,
         private readonly CompletionScoreService $scoreService,
     ) {}
 
     /**
      * @param  list<string>|null  $steps  Restrict to a subset of ['website', 'scrape', 'ai_extract', 'images', 'description'].
      *                                    Null runs the full pipeline.
+     * @param  bool  $useGooglePlaces  Defaults to true for automated/nightly/bulk callers. The
+     *                                 "Enrich" dashboard action lets an admin opt out per run — Places
+     *                                 is a paid API, unlike the OSM lookup this otherwise falls back to.
      * @return array{fields_updated: list<string>, tokens_used: int, cost_estimate: float, places_calls: array<string, int>, places_cost_estimate: float, log: list<string>, score: int}
      */
-    public function run(Listing $listing, ?array $steps = null): array
+    public function run(Listing $listing, ?array $steps = null, bool $useGooglePlaces = true): array
     {
         $log = [];
         $tokensUsed = 0;
@@ -49,20 +56,16 @@ class EnrichmentPipeline
 
         if ($runs('website')) {
             if (blank($listing->website)) {
-                $this->findWebsite($listing, $updates, $log);
+                $this->findWebsite($listing, $updates, $log, $useGooglePlaces);
             }
 
-            // Independent of whether a website was found above — Google Places is the
-            // authoritative geocoding source, and findWebsite() only carries GPS/phone/
+            // Independent of whether a website was found above — OSM/Google Places are
+            // authoritative geocoding sources, and findWebsite() only carries GPS/phone/
             // address along when the same Place happens to also have a website on file.
-            // Checked against $updates too, so this doesn't redundantly re-query Places
+            // Checked against $updates too, so this doesn't redundantly re-query them
             // when findWebsite() already got everything from the very same lookup.
-            $hasGps = $listing->latitude !== null || array_key_exists('latitude', $updates);
-            $hasPhone = filled($listing->phone) || array_key_exists('phone', $updates);
-            $hasAddress = filled($listing->address) || array_key_exists('address', $updates);
-
-            if (! $hasGps || ! $hasPhone || ! $hasAddress) {
-                $this->fillLocationFacts($listing, $updates, $log);
+            if (! $this->hasAllLocationFacts($listing, $updates)) {
+                $this->fillLocationFacts($listing, $updates, $log, $useGooglePlaces);
             }
         }
 
@@ -98,7 +101,7 @@ class EnrichmentPipeline
             // No website, or its homepage didn't yield anything scrapeable — Google
             // Places Photos as a fallback source, same lookup FetchGooglePlacesPhotoJob
             // already does on its own schedule, just inline here for an immediate result.
-            if (! $listing->image && ! array_key_exists('image', $updates)) {
+            if ($useGooglePlaces && ! $listing->image && ! array_key_exists('image', $updates)) {
                 $this->fillImagesFromGooglePlaces($listing, $updates, $log);
             }
         }
@@ -160,9 +163,9 @@ class EnrichmentPipeline
 
     /** @param array<string, mixed> $updates
      *  @param list<string> $log */
-    private function findWebsite(Listing $listing, array &$updates, array &$log): void
+    private function findWebsite(Listing $listing, array &$updates, array &$log, bool $useGooglePlaces): void
     {
-        $found = $this->websiteFinder->find($listing);
+        $found = $this->websiteFinder->find($listing, $useGooglePlaces);
 
         if ($found === null) {
             $log[] = 'No website found.';
@@ -190,18 +193,65 @@ class EnrichmentPipeline
         $log[] = "Website found via {$found['source']} (confidence {$found['confidence']}%): {$found['website']}";
     }
 
-    /** @param array<string, mixed> $updates
-     *  @param list<string> $log */
-    private function fillLocationFacts(Listing $listing, array &$updates, array &$log): void
+    /**
+     * Tries OpenStreetMap (free, no API key) first, then only falls back to the paid
+     * Google Places lookup for whatever OSM didn't cover — OSM's Nominatim has no cost
+     * per call, so trying it first cuts down how often the Places API gets billed.
+     *
+     * @param array<string, mixed> $updates
+     * @param list<string> $log
+     */
+    private function fillLocationFacts(Listing $listing, array &$updates, array &$log, bool $useGooglePlaces): void
     {
-        $facts = $this->websiteFinder->findLocationFacts($listing);
+        $osmFacts = $this->osmFinder->findLocationFacts($listing);
 
-        if ($facts === []) {
-            $log[] = 'No Google Places match for GPS/phone/address.';
+        if ($osmFacts !== []) {
+            $this->applyLocationFacts($listing, $osmFacts, $updates);
+            $log[] = 'OpenStreetMap location facts (free): '.implode(', ', array_keys($osmFacts));
+        }
+
+        if ($this->hasAllLocationFacts($listing, $updates)) {
+            return;
+        }
+
+        if (! $useGooglePlaces) {
+            if ($osmFacts === []) {
+                $log[] = 'No OpenStreetMap match — Google Places not requested for this run.';
+            }
 
             return;
         }
 
+        $placesFacts = $this->websiteFinder->findLocationFacts($listing);
+
+        if ($placesFacts === []) {
+            if ($osmFacts === []) {
+                $log[] = 'No location match on OpenStreetMap or Google Places.';
+            }
+
+            return;
+        }
+
+        $this->applyLocationFacts($listing, $placesFacts, $updates);
+        $log[] = 'Google Places location facts: '.implode(', ', array_keys($placesFacts));
+    }
+
+    /** @param array<string, mixed> $updates */
+    private function hasAllLocationFacts(Listing $listing, array $updates): bool
+    {
+        $hasGps = $listing->latitude !== null || array_key_exists('latitude', $updates);
+        $hasPhone = filled($listing->phone) || array_key_exists('phone', $updates);
+        $hasAddress = filled($listing->address) || array_key_exists('address', $updates);
+
+        return $hasGps && $hasPhone && $hasAddress;
+    }
+
+    /**
+     * @param array{phone?: string, address?: string, latitude?: float, longitude?: float} $facts
+     * @param array<string, mixed> $updates
+     */
+    private function applyLocationFacts(Listing $listing, array $facts, array &$updates): void
+    {
         if (blank($listing->phone) && ! array_key_exists('phone', $updates) && ! empty($facts['phone'])) {
             $updates['phone'] = $facts['phone'];
         }
@@ -214,8 +264,6 @@ class EnrichmentPipeline
             $updates['latitude'] = $facts['latitude'];
             $updates['longitude'] = $facts['longitude'];
         }
-
-        $log[] = 'Google Places location facts: '.implode(', ', array_keys($facts));
     }
 
     /**
