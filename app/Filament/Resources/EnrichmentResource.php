@@ -70,6 +70,9 @@ class EnrichmentResource extends Resource
      */
     private static int $activeTab = self::TAB_BASIC;
 
+    /** Which field should receive focus once its tab opens — see focusAttributes(). */
+    private static ?string $activeField = 'name';
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -97,35 +100,46 @@ class EnrichmentResource extends Resource
                                 ->required()
                                 ->maxLength(255)
                                 ->autofocus()
-                                // Native autofocus is unreliable on inputs revealed by a
-                                // Livewire/Alpine modal transition (the browser's autofocus
-                                // pass often runs before the element is actually focusable) —
-                                // this retries once the slide-over has settled.
-                                ->extraInputAttributes(['x-init' => 'setTimeout(() => $el.focus(), 350)']),
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('name')),
                             Forms\Components\TextInput::make('slug')->required()->maxLength(255)->unique(ignoreRecord: true),
-                            Forms\Components\TextInput::make('ntb_number')->label('NTB number'),
+                            Forms\Components\TextInput::make('ntb_number')
+                                ->label('NTB number')
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('ntb_number')),
                             Forms\Components\Select::make('type')->label('Category')->options(ListingType::class)->required(),
-                            Forms\Components\TextInput::make('region'),
+                            Forms\Components\TextInput::make('region')
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('region')),
                         ])->columns(2),
 
                     Forms\Components\Tabs\Tab::make('Contact')
                         ->schema([
-                            Forms\Components\TextInput::make('phone'),
-                            Forms\Components\TextInput::make('contact_email')->label('Email')->email(),
-                            Forms\Components\TextInput::make('website')->url(),
+                            Forms\Components\TextInput::make('phone')
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('phone')),
+                            Forms\Components\TextInput::make('contact_email')
+                                ->label('Email')
+                                ->email()
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('contact_email')),
+                            Forms\Components\TextInput::make('website')
+                                ->url()
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('website')),
                         ])->columns(2),
 
                     Forms\Components\Tabs\Tab::make('Address')
                         ->schema([
                             Forms\Components\Textarea::make('address')->columnSpanFull(),
-                            Forms\Components\TextInput::make('latitude')->numeric(),
+                            Forms\Components\TextInput::make('latitude')
+                                ->numeric()
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('latitude')),
                             Forms\Components\TextInput::make('longitude')->numeric(),
                         ])->columns(2),
 
                     Forms\Components\Tabs\Tab::make('Description')
                         ->schema([
                             Forms\Components\Textarea::make('short_description')->rows(2)->helperText('~80 words, used on cards/previews'),
-                            Forms\Components\Textarea::make('description')->label('Long description')->rows(6)->helperText('~250 words, used on the listing page'),
+                            Forms\Components\Textarea::make('description')
+                                ->label('Long description')
+                                ->rows(6)
+                                ->helperText('~250 words, used on the listing page')
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('description')),
                             Forms\Components\TextInput::make('meta_title')->maxLength(60),
                             Forms\Components\TextInput::make('seo_description')->maxLength(160),
                         ])->columns(1),
@@ -227,34 +241,53 @@ class EnrichmentResource extends Resource
     }
 
     /**
-     * A slide-over EditAction pre-armed to open on a given form tab (see the Tabs'
-     * ->activeTab() closure in form()) and to save via saveManualEdit(). $name must be
-     * unique per distinct tab across the table — reused as-is by every column bound to
-     * that tab, so e.g. website/email/phone all share one 'edit_contact' instance.
+     * Native autofocus is unreliable on inputs revealed by a Livewire/Alpine modal
+     * transition (the browser's autofocus pass often runs before the element is actually
+     * focusable), so every field that can be a click-to-edit target retries focus itself
+     * via x-init once it matches self::$activeField (set by editAction()'s
+     * mutateRecordDataUsing(), same timing as self::$activeTab).
+     *
+     * @return array<string, string>
      */
-    private static function editAction(int $tab, string $name): Tables\Actions\EditAction
+    private static function focusAttributes(string $field): array
+    {
+        return self::$activeField === $field
+            ? ['x-init' => 'setTimeout(() => $el.focus(), 350)']
+            : [];
+    }
+
+    /**
+     * A slide-over EditAction pre-armed to open on a given form tab and field (see the
+     * Tabs' ->activeTab() closure and focusAttributes() in form()) and to save via
+     * saveManualEdit(). $name must be unique per instance — separate columns that should
+     * focus different fields on the same tab (e.g. website vs. email) need their own
+     * instance, even though they share $tab.
+     */
+    private static function editAction(int $tab, string $name, ?string $field = null): Tables\Actions\EditAction
     {
         return Tables\Actions\EditAction::make($name)
             ->slideOver()
-            ->mutateRecordDataUsing(fn (array $data, Listing $record): array => self::hydrateFormData($data, $record, $tab))
+            ->mutateRecordDataUsing(fn (array $data, Listing $record): array => self::hydrateFormData($data, $record, $tab, $field))
             ->using(fn (Listing $record, array $data): Listing => self::saveManualEdit($record, $data));
     }
 
     /**
      * name/description/short_description are Spatie-translatable JSON columns (e.g.
      * {"en": "..."}) — without this, the raw array reaches the form and renders as
-     * "[object Object]" instead of editable text. Also stamps self::$activeTab so the
-     * Tabs component (see form()) opens on the tab this action was bound to.
+     * "[object Object]" instead of editable text. Also stamps self::$activeTab/
+     * self::$activeField so the Tabs component and the clicked field (see form()) get
+     * the right tab open and the right input focused.
      *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    private static function hydrateFormData(array $data, Listing $record, int $tab): array
+    private static function hydrateFormData(array $data, Listing $record, int $tab, ?string $field): array
     {
         self::$activeTab = $tab;
+        self::$activeField = $field;
 
-        foreach (['name', 'description', 'short_description'] as $field) {
-            $data[$field] = $record->getTranslation($field, 'en', useFallbackLocale: false);
+        foreach (['name', 'description', 'short_description'] as $translatable) {
+            $data[$translatable] = $record->getTranslation($translatable, 'en', useFallbackLocale: false);
         }
 
         return $data;
@@ -300,13 +333,18 @@ class EnrichmentResource extends Resource
     public static function table(Table $table): Table
     {
         // Built once and shared across every column that should open the edit modal on that
-        // tab — clicking a specific cell (e.g. the website icon) jumps straight to the tab
-        // that field lives on, instead of always landing on Basic. Row clicks that don't land
-        // on a bound column (recordAction('edit') below) still default to $editBasic.
-        $editBasic = self::editAction(self::TAB_BASIC, 'edit');
-        $editContact = self::editAction(self::TAB_CONTACT, 'edit_contact');
-        $editAddress = self::editAction(self::TAB_ADDRESS, 'edit_address');
-        $editDescription = self::editAction(self::TAB_DESCRIPTION, 'edit_description');
+        // tab (and focused on that field, see focusAttributes()) — clicking a specific cell
+        // (e.g. the website icon) jumps straight to it instead of always landing on Basic.
+        // Row clicks that don't land on a bound column (recordAction('edit') below) still
+        // default to $editBasic.
+        $editBasic = self::editAction(self::TAB_BASIC, 'edit', 'name');
+        $editNtbNumber = self::editAction(self::TAB_BASIC, 'edit_ntb_number', 'ntb_number');
+        $editRegion = self::editAction(self::TAB_BASIC, 'edit_region', 'region');
+        $editWebsite = self::editAction(self::TAB_CONTACT, 'edit_website', 'website');
+        $editEmail = self::editAction(self::TAB_CONTACT, 'edit_email', 'contact_email');
+        $editPhone = self::editAction(self::TAB_CONTACT, 'edit_phone', 'phone');
+        $editAddress = self::editAction(self::TAB_ADDRESS, 'edit_address', 'latitude');
+        $editDescription = self::editAction(self::TAB_DESCRIPTION, 'edit_description', 'description');
         $editPhotos = self::editAction(self::TAB_PHOTOS, 'edit_photos');
         $editMetadata = self::editAction(self::TAB_METADATA, 'edit_metadata');
         $editLog = self::editAction(self::TAB_LOG, 'edit_log');
@@ -340,7 +378,7 @@ class EnrichmentResource extends Resource
                 Tables\Columns\TextColumn::make('ntb_number')
                     ->label('NTB #')
                     ->searchable()
-                    ->action($editBasic)
+                    ->action($editNtbNumber)
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('type')
                     ->label('Category')
@@ -349,24 +387,24 @@ class EnrichmentResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('region')
                     ->searchable()
-                    ->action($editBasic)
+                    ->action($editRegion)
                     ->sortable(),
                 Tables\Columns\IconColumn::make('has_website')
                     ->label('Website')
                     ->boolean()
-                    ->action($editContact)
+                    ->action($editWebsite)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->website))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('website', 'ilike', "%{$search}%")),
                 Tables\Columns\IconColumn::make('has_email')
                     ->label('Email')
                     ->boolean()
-                    ->action($editContact)
+                    ->action($editEmail)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->contact_email))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('contact_email', 'ilike', "%{$search}%")),
                 Tables\Columns\IconColumn::make('has_phone')
                     ->label('Phone')
                     ->boolean()
-                    ->action($editContact)
+                    ->action($editPhone)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->phone))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('phone', 'ilike', "%{$search}%")),
                 Tables\Columns\IconColumn::make('has_description')
