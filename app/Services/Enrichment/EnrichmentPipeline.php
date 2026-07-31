@@ -7,12 +7,16 @@ use App\Models\Listing;
 /**
  * Orchestrates the full VisitNamibia enrichment run for one listing:
  * normalize -> find website -> Google Places location facts (GPS/phone/
- * address) -> fetch homepage -> AI structured extraction -> import photos
- * (website scrape, falling back to Google Places Photos) -> AI description
- * generation -> recalculate completion score. Every write is additive/
- * fill-gaps-only (never overwrites a value already on the listing),
- * matching the convention already established by CrawlListingWebsiteJob/
- * FetchGooglePlacesPhotoJob.
+ * address) -> fetch homepage -> non-AI OG-tag/contact scrape and/or AI
+ * structured extraction -> import photos (website scrape, falling back to
+ * Google Places Photos) -> AI description generation -> recalculate
+ * completion score. Every write is additive/fill-gaps-only (never
+ * overwrites a value already on the listing), matching the convention
+ * already established by CrawlListingWebsiteJob/FetchGooglePlacesPhotoJob.
+ *
+ * The 'scrape' step (and 'website', 'images') never call Claude — only
+ * 'ai_extract' and 'description' do. A caller that only requests the
+ * former gets a genuinely AI-free, zero-token enrichment pass.
  */
 class EnrichmentPipeline
 {
@@ -26,9 +30,9 @@ class EnrichmentPipeline
     ) {}
 
     /**
-     * @param  list<string>|null  $steps  Restrict to a subset of ['website', 'ai_extract', 'images', 'description'].
+     * @param  list<string>|null  $steps  Restrict to a subset of ['website', 'scrape', 'ai_extract', 'images', 'description'].
      *                                    Null runs the full pipeline.
-     * @return array{fields_updated: list<string>, tokens_used: int, cost_estimate: float, log: list<string>, score: int}
+     * @return array{fields_updated: list<string>, tokens_used: int, cost_estimate: float, places_calls: array<string, int>, places_cost_estimate: float, log: list<string>, score: int}
      */
     public function run(Listing $listing, ?array $steps = null): array
     {
@@ -64,21 +68,31 @@ class EnrichmentPipeline
 
         $website = $updates['website'] ?? $listing->website;
         $html = null;
+        $ogImage = null;
 
-        if ($runs('ai_extract') && filled($website)) {
+        // Fetched once and shared: 'scrape' (non-AI OG-tag/contact fill) and 'ai_extract'
+        // (Claude structured extraction) both work from the same homepage fetch.
+        if (($runs('scrape') || $runs('ai_extract')) && filled($website)) {
             $html = $this->fetchHomepage($website, $log);
 
             if ($html !== null) {
                 $pageText = $this->htmlToText($html);
-                [$aiTokens, $aiCost] = $this->extractStructuredData($listing, $pageText, $updates, $aiGeneratedFields, $log);
-                $tokensUsed += $aiTokens;
-                $costEstimate += $aiCost;
             }
         }
 
-        if ($runs('images')) {
+        if ($runs('scrape') && $html !== null) {
+            $ogImage = $this->fillFromOgTags($listing, $html, $website, $updates, $log);
+        }
+
+        if ($runs('ai_extract') && $html !== null) {
+            [$aiTokens, $aiCost] = $this->extractStructuredData($listing, $pageText, $updates, $aiGeneratedFields, $log);
+            $tokensUsed += $aiTokens;
+            $costEstimate += $aiCost;
+        }
+
+        if ($runs('images') || $runs('scrape')) {
             if ($html !== null) {
-                $this->fillImages($listing, $html, $website, $updates, $log);
+                $this->fillImages($listing, $html, $website, $ogImage, $updates, $log);
             }
 
             // No website, or its homepage didn't yield anything scrapeable — Google
@@ -98,7 +112,10 @@ class EnrichmentPipeline
         $fieldsChanged = array_keys($updates);
 
         if ($fieldsChanged !== []) {
-            $updates['enriched_by'] = 'AI';
+            // Reflects what actually happened, not just what was requested — e.g. a full
+            // run that never found a website never calls Claude either, and should read
+            // as such in the Log tab rather than claiming AI involvement it didn't have.
+            $updates['enriched_by'] = $tokensUsed > 0 ? 'AI' : 'Automated (no AI)';
         }
 
         $updates['last_enriched_at'] = now();
@@ -106,10 +123,15 @@ class EnrichmentPipeline
 
         $score = $this->scoreService->recalculate($listing, $aiGeneratedFields);
 
+        $placesCalls = $this->mergePlacesCallCounts($this->websiteFinder->callCounts(), $this->photoFinder->callCounts());
+        $placesCost = $this->estimatePlacesCost($placesCalls);
+
         return [
             'fields_updated' => $fieldsChanged,
             'tokens_used' => $tokensUsed,
             'cost_estimate' => round($costEstimate, 4),
+            'places_calls' => $placesCalls,
+            'places_cost_estimate' => round($placesCost, 4),
             'log' => $log,
             'score' => $score,
         ];
@@ -194,6 +216,37 @@ class EnrichmentPipeline
         }
 
         $log[] = 'Google Places location facts: '.implode(', ', array_keys($facts));
+    }
+
+    /**
+     * Non-AI homepage scrape: og:/meta description and mailto:/tel: contact info, the same
+     * signals CrawlListingWebsiteJob already pulls on its own recurring schedule — inlined
+     * here so a 'scrape' step gets an immediate result instead of waiting for that job's
+     * next pass. Never AI-generated — copied straight from the site's own tags — so this
+     * doesn't count towards $aiGeneratedFields.
+     *
+     * @param array<string, mixed> $updates
+     * @param list<string> $log
+     * @return string|null The og:image URL, if any, to seed fillImages()'s hero candidate.
+     */
+    private function fillFromOgTags(Listing $listing, string $html, string $baseUrl, array &$updates, array &$log): ?string
+    {
+        $og = $this->extractor->extractSignals($html, $baseUrl);
+
+        if (! empty($og['description']) && blank($listing->getTranslation('description', 'en', useFallbackLocale: false)) && ! array_key_exists('description', $updates)) {
+            $updates['description'] = ['en' => $og['description']];
+            $log[] = 'Description imported from website (og:description).';
+        }
+
+        if (! empty($og['email']) && blank($listing->contact_email) && ! array_key_exists('contact_email', $updates)) {
+            $updates['contact_email'] = $og['email'];
+        }
+
+        if (! empty($og['phone']) && blank($listing->phone) && ! array_key_exists('phone', $updates)) {
+            $updates['phone'] = $og['phone'];
+        }
+
+        return $og['image'] ?? null;
     }
 
     /** @param array<string, mixed> $updates
@@ -289,13 +342,13 @@ class EnrichmentPipeline
 
     /** @param array<string, mixed> $updates
      *  @param list<string> $log */
-    private function fillImages(Listing $listing, string $html, string $baseUrl, array &$updates, array &$log): void
+    private function fillImages(Listing $listing, string $html, string $baseUrl, ?string $heroHint, array &$updates, array &$log): void
     {
         if ($listing->image && ! empty($listing->gallery)) {
             return;
         }
 
-        $images = $this->extractor->extractGalleryImages($html, $baseUrl, null);
+        $images = $this->extractor->extractGalleryImages($html, $baseUrl, $heroHint);
 
         if (empty($images)) {
             return;
@@ -377,6 +430,35 @@ class EnrichmentPipeline
         }
 
         return ($usage['input_tokens'] / 1000) * $pricing['input'] + ($usage['output_tokens'] / 1000) * $pricing['output'];
+    }
+
+    /**
+     * @param array<string, int> $a
+     * @param array<string, int> $b
+     * @return array<string, int>
+     */
+    private function mergePlacesCallCounts(array $a, array $b): array
+    {
+        $merged = $a;
+
+        foreach ($b as $key => $count) {
+            $merged[$key] = ($merged[$key] ?? 0) + $count;
+        }
+
+        return array_filter($merged, fn (int $count) => $count > 0);
+    }
+
+    /** @param array<string, int> $calls */
+    private function estimatePlacesCost(array $calls): float
+    {
+        $pricing = config('enrichment.places_pricing', []);
+        $cost = 0.0;
+
+        foreach ($calls as $type => $count) {
+            $cost += $count * ($pricing[$type] ?? 0.0);
+        }
+
+        return $cost;
     }
 
     private function htmlToText(string $html): string

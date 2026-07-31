@@ -48,6 +48,9 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
     // lock for a long time with no way to clear it, silently no-op'ing every retry attempt.
     public int $uniqueFor = 420;
 
+    /** Steps that call Claude — see EnrichmentPipeline. Anything else is AI-free. */
+    private const AI_STEPS = ['ai_extract', 'description'];
+
     /** @param list<string>|null $steps */
     public function __construct(
         public readonly int $listingId,
@@ -61,7 +64,7 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
         $run = EnrichmentJob::create([
             'listing_id' => $listingId,
             'source' => $steps ? implode(',', $steps) : 'full',
-            'actor' => 'AI',
+            'actor' => self::actorFor($steps),
             'success' => false,
         ]);
 
@@ -83,7 +86,7 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
             ?? EnrichmentJob::create([
                 'listing_id' => $this->listingId,
                 'source' => $this->steps ? implode(',', $this->steps) : 'full',
-                'actor' => 'AI',
+                'actor' => self::actorFor($this->steps),
                 'success' => false,
             ]);
 
@@ -105,6 +108,8 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
                 'fields_changed' => $result['fields_updated'],
                 'tokens_used' => $result['tokens_used'],
                 'cost_estimate' => $result['cost_estimate'],
+                'places_calls' => $result['places_calls'],
+                'places_cost_estimate' => $result['places_cost_estimate'],
             ]);
         } catch (\Throwable $e) {
             Log::error("EnrichListingJob [{$this->listingId}] failed", ['error' => $e->getMessage()]);
@@ -117,5 +122,23 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
 
             throw $e;
         }
+    }
+
+    /**
+     * Determined from what was requested, at enqueue time — before we know whether the
+     * pipeline actually ended up calling Claude (e.g. a full run that never found a
+     * website never reaches the AI steps either). EnrichmentPipeline's own enriched_by
+     * on the listing reflects that actual outcome instead; this is what the run was
+     * meant to do.
+     *
+     * @param list<string>|null $steps
+     */
+    private static function actorFor(?array $steps): string
+    {
+        if ($steps === null) {
+            return 'AI';
+        }
+
+        return array_intersect($steps, self::AI_STEPS) !== [] ? 'AI' : 'Automated (no AI)';
     }
 }

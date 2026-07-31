@@ -33,4 +33,17 @@ return [
     'pricing' => [
         'claude-haiku-4-5-20251001' => ['input' => 0.001, 'output' => 0.005],
     ],
+
+    // Rough per-request USD estimates for the Google Places API calls the pipeline makes
+    // (WebsiteFinderService, GooglePlacesPhotoFinder) — UNVERIFIED placeholders, not
+    // billing-accurate. Google's Places pricing has multiple tiers/SKUs depending on
+    // which fields you request and which plan your project is on; check
+    // console.cloud.google.com/billing for your project's actual per-SKU cost and
+    // override these via env if they differ meaningfully. Used only for the
+    // enrichment_jobs.places_cost_estimate bookkeeping column.
+    'places_pricing' => [
+        'find_place' => (float) env('ENRICHMENT_PLACES_FIND_COST', 0.017),
+        'place_details' => (float) env('ENRICHMENT_PLACES_DETAILS_COST', 0.020),
+        'photo' => (float) env('ENRICHMENT_PLACES_PHOTO_COST', 0.007),
+    ],
 ];

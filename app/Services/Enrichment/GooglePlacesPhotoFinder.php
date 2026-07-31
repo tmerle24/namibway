@@ -19,6 +19,21 @@ class GooglePlacesPhotoFinder
 {
     private const MAX_IMAGES = 4;
 
+    /** @var array<string, int> Google Places calls made by this instance — see callCounts(). */
+    private array $callCounts = ['find_place' => 0, 'place_details' => 0, 'photo' => 0];
+
+    /**
+     * Google Places calls made since this instance was created, for cost-estimate
+     * bookkeeping (EnrichmentPipeline sums this with WebsiteFinderService's). A fresh
+     * instance is resolved per queue job, so this only ever reflects one enrichment run.
+     *
+     * @return array<string, int>
+     */
+    public function callCounts(): array
+    {
+        return $this->callCounts;
+    }
+
     /** @return list<string> Public R2 URLs, hero image first. */
     public function findPhotoUrls(Listing $listing, int $max = self::MAX_IMAGES): array
     {
@@ -57,6 +72,8 @@ class GooglePlacesPhotoFinder
     {
         $query = trim($listing->name.' '.($listing->region ?: '').' Namibia');
 
+        $this->callCounts['find_place']++;
+
         try {
             $response = Http::timeout(15)->get('https://maps.googleapis.com/maps/api/place/findplacefromtext/json', [
                 'input' => $query,
@@ -80,6 +97,8 @@ class GooglePlacesPhotoFinder
     /** @return list<string> */
     private function fetchPhotoReferences(string $apiKey, string $placeId, int $listingId): array
     {
+        $this->callCounts['place_details']++;
+
         try {
             $response = Http::timeout(15)->get('https://maps.googleapis.com/maps/api/place/details/json', [
                 'place_id' => $placeId,
@@ -115,6 +134,8 @@ class GooglePlacesPhotoFinder
 
     private function downloadPhoto(string $apiKey, string $photoReference, string $slug): ?string
     {
+        $this->callCounts['photo']++;
+
         try {
             $response = Http::timeout(20)->get('https://maps.googleapis.com/maps/api/place/photo', [
                 'photoreference' => $photoReference,
