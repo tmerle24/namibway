@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\HtmlString;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The VisitNamibia Data Enrichment Dashboard. A second Filament resource
@@ -102,12 +103,12 @@ class EnrichmentResource extends Resource
                                 ->content(fn (?Listing $record): string => $record ? "{$record->enrichment_score}% ({$record->enrichment_status})" : '—'),
                             Forms\Components\Placeholder::make('data_source')
                                 ->label('Data source')
-                                ->content(fn (?Listing $record): string => $record?->data_source ?? '—'),
+                                ->content(fn (?Listing $record): string => $record ? ($record->data_source ?? '—') : '—'),
                             Forms\Components\Placeholder::make('confidence')
-                                ->content(fn (?Listing $record): string => $record?->confidence !== null ? "{$record->confidence}%" : '—'),
+                                ->content(fn (?Listing $record): string => $record && $record->confidence !== null ? "{$record->confidence}%" : '—'),
                             Forms\Components\Placeholder::make('last_enriched_at')
                                 ->label('Last enrichment')
-                                ->content(fn (?Listing $record): string => $record?->last_enriched_at?->diffForHumans() ?? 'never'),
+                                ->content(fn (?Listing $record): string => $record && $record->last_enriched_at ? $record->last_enriched_at->diffForHumans() : 'never'),
                             Forms\Components\DateTimePicker::make('verified_at'),
                             Forms\Components\Placeholder::make('history')
                                 ->label('Enrichment history')
@@ -287,20 +288,20 @@ class EnrichmentResource extends Resource
                     Tables\Actions\BulkAction::make('find_website')
                         ->label('Find Website')
                         ->icon('heroicon-o-globe-alt')
-                        ->action(fn (Collection $records) => static::queueEnrichment($records, ['website'])),
+                        ->action(fn (Collection $records) => self::queueEnrichment($records, ['website'])),
                     Tables\Actions\BulkAction::make('ai_enrich')
                         ->label('AI Enrich')
                         ->icon('heroicon-o-sparkles')
                         ->color('warning')
-                        ->action(fn (Collection $records) => static::queueEnrichment($records, null)),
+                        ->action(fn (Collection $records) => self::queueEnrichment($records, null)),
                     Tables\Actions\BulkAction::make('find_gps')
                         ->label('Find GPS')
                         ->icon('heroicon-o-map-pin')
-                        ->action(fn (Collection $records) => static::queueEnrichment($records, ['website', 'ai_extract'])),
+                        ->action(fn (Collection $records) => self::queueEnrichment($records, ['website', 'ai_extract'])),
                     Tables\Actions\BulkAction::make('generate_description')
                         ->label('Generate Description')
                         ->icon('heroicon-o-document-text')
-                        ->action(fn (Collection $records) => static::queueEnrichment($records, ['description'])),
+                        ->action(fn (Collection $records) => self::queueEnrichment($records, ['description'])),
                     Tables\Actions\BulkAction::make('invite_owner')
                         ->label('Invite Owner')
                         ->icon('heroicon-o-envelope')
@@ -322,15 +323,19 @@ class EnrichmentResource extends Resource
                     Tables\Actions\BulkAction::make('export_csv')
                         ->label('Export CSV')
                         ->icon('heroicon-o-arrow-down-tray')
-                        ->action(fn (Collection $records) => static::exportCsv($records))
+                        ->action(fn (Collection $records) => self::exportCsv($records))
                         ->deselectRecordsAfterCompletion(),
                 ]),
             ]);
     }
 
-    /** @param  list<string>|null  $steps */
+    /**
+     * @param  Collection<int, Listing>  $records
+     * @param  list<string>|null  $steps
+     */
     private static function queueEnrichment(Collection $records, ?array $steps): void
     {
+        /** @var Listing $record */
         foreach ($records as $record) {
             EnrichListingJob::dispatch($record->id, $steps);
         }
@@ -338,7 +343,8 @@ class EnrichmentResource extends Resource
         Notification::make()->title("Queued {$records->count()} listing(s) for enrichment")->success()->send();
     }
 
-    private static function exportCsv(Collection $records)
+    /** @param  Collection<int, Listing>  $records */
+    private static function exportCsv(Collection $records): StreamedResponse
     {
         $columns = ['id', 'ntb_number', 'name', 'type', 'region', 'website', 'contact_email', 'phone', 'address', 'enrichment_score', 'enrichment_status', 'claim_status', 'last_enriched_at'];
 

@@ -33,6 +33,7 @@ class WebsiteFinderService
             ?? $this->fromGooglePlaces($listing, byRegion: false, confidence: 85);
     }
 
+    /** @return array{website: string, confidence: int, source: string}|null */
     private function fromEmailDomain(Listing $listing): ?array
     {
         if (blank($listing->contact_email) || ! str_contains($listing->contact_email, '@')) {
@@ -54,6 +55,7 @@ class WebsiteFinderService
         return null;
     }
 
+    /** @return array{website: string, confidence: int, source: string, phone?: string, address?: string, latitude?: float, longitude?: float}|null */
     private function fromGooglePlaces(Listing $listing, bool $byRegion, int $confidence): ?array
     {
         $apiKey = config('services.google_places.key');
@@ -78,15 +80,26 @@ class WebsiteFinderService
             return null;
         }
 
-        return array_filter([
+        $found = [
             'website' => $details['website'],
             'confidence' => $confidence,
             'source' => 'google_places',
-            'phone' => $details['formatted_phone_number'] ?? null,
-            'address' => $details['formatted_address'] ?? null,
-            'latitude' => $details['lat'] ?? null,
-            'longitude' => $details['lng'] ?? null,
-        ], fn ($value) => $value !== null);
+        ];
+
+        if (filled($details['formatted_phone_number'] ?? null)) {
+            $found['phone'] = $details['formatted_phone_number'];
+        }
+
+        if (filled($details['formatted_address'] ?? null)) {
+            $found['address'] = $details['formatted_address'];
+        }
+
+        if (($details['lat'] ?? null) !== null && ($details['lng'] ?? null) !== null) {
+            $found['latitude'] = (float) $details['lat'];
+            $found['longitude'] = (float) $details['lng'];
+        }
+
+        return $found;
     }
 
     private function findPlaceId(string $apiKey, string $query, int $listingId): ?string

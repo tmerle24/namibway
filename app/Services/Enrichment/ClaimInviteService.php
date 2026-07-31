@@ -21,7 +21,7 @@ class ClaimInviteService
         }
 
         if (blank($partner->claim_token)) {
-            $partner->claim_token = Str::random(48);
+            $partner->update(['claim_token' => Str::random(48)]);
         }
 
         $listing = $partner->listings->first() ?? $partner->listings()->first();
@@ -43,8 +43,7 @@ class ClaimInviteService
             }
         );
 
-        $partner->claim_token_sent_at = now();
-        $partner->save();
+        $partner->update(['claim_token_sent_at' => now()]);
 
         return true;
     }

@@ -2,15 +2,18 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Listing;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\DB;
 
 class ListingEnrichmentStatsWidget extends BaseWidget
 {
     protected function getStats(): array
     {
-        $totals = Listing::query()->selectRaw(<<<'SQL'
+        // Queried via the plain query builder (not Eloquent) — these aggregate
+        // aliases aren't real Listing columns, so a stdClass result avoids
+        // static analysis treating them as (missing) model attributes.
+        $totals = DB::table('listings')->selectRaw(<<<'SQL'
             count(*) as total,
             count(*) filter (where enrichment_score >= 90) as complete,
             count(*) filter (where website is null or website = '') as missing_website,
