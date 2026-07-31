@@ -11,3 +11,5 @@ Artisan::command('inspire', function () {
 Schedule::command('backup:run --only-db')->dailyAt('02:00')->onOneServer();
 Schedule::command('backup:clean')->dailyAt('03:00')->onOneServer();
 Schedule::command('backup:monitor')->dailyAt('04:00')->onOneServer();
+
+Schedule::command('listings:nightly-enrich')->dailyAt('01:00')->onOneServer();

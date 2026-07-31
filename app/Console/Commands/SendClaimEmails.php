@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Partner;
+use App\Services\Enrichment\ClaimInviteService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
 
 class SendClaimEmails extends Command
 {
@@ -15,7 +15,7 @@ class SendClaimEmails extends Command
 
     protected $description = 'Send "claim your listing" emails to unclaimed partners that have an email address';
 
-    public function handle(): int
+    public function handle(ClaimInviteService $inviter): int
     {
         $isDryRun = $this->option('dry-run');
         $limit = (int) $this->option('limit');
@@ -42,7 +42,7 @@ class SendClaimEmails extends Command
             $this->table(['Name', 'Email', 'Claim URL'], $partners->map(fn ($p) => [
                 $p->name,
                 $p->email,
-                $this->claimUrl($p),
+                $inviter->claimUrl($p),
             ])->toArray());
 
             return self::SUCCESS;
@@ -58,27 +58,9 @@ class SendClaimEmails extends Command
 
         foreach ($partners as $partner) {
             try {
-                $listing = $partner->listings->first();
-
-                Mail::send(
-                    'emails.claim-listing',
-                    [
-                        'partner' => $partner,
-                        'listing' => $listing,
-                        'claimUrl' => $this->claimUrl($partner),
-                        'declineUrl' => $this->declineUrl($partner),
-                        'listingUrl' => $listing?->is_published ? route('listings.show', $listing->slug) : null,
-                    ],
-                    function ($message) use ($partner) {
-                        $message
-                            ->to($partner->email, $partner->name)
-                            ->from(config('mail.from.address'), 'NamibWay')
-                            ->subject('Your property on NamibWay — claim your free listing');
-                    }
-                );
-
-                $partner->update(['claim_token_sent_at' => now()]);
-                $sent++;
+                if ($inviter->invite($partner)) {
+                    $sent++;
+                }
             } catch (\Throwable $e) {
                 $this->newLine();
                 $this->error("Failed to send to {$partner->email}: {$e->getMessage()}");
@@ -92,15 +74,5 @@ class SendClaimEmails extends Command
         $this->info("Sent: {$sent} / {$partners->count()}");
 
         return self::SUCCESS;
-    }
-
-    private function claimUrl(Partner $partner): string
-    {
-        return url("/claim/{$partner->claim_token}");
-    }
-
-    private function declineUrl(Partner $partner): string
-    {
-        return url("/claim/{$partner->claim_token}/decline");
     }
 }
