@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\InquiryStatus;
+use App\Jobs\EnrichListingJob;
 use App\Mail\NewInquiryReceived;
 use App\Models\Inquiry;
 use App\Models\Listing;
@@ -106,6 +107,12 @@ class ListingController extends Controller
     public function show(Listing $listing): Response
     {
         abort_unless($listing->is_published, 404);
+
+        if ($listing->isDueForEnrichment()) {
+            // Queued, not run inline — EnrichListingJob is ShouldBeUnique so a burst of
+            // visits to the same stale listing only ever queues one enrichment run.
+            EnrichListingJob::dispatch($listing->id);
+        }
 
         $listing->load('partner');
 

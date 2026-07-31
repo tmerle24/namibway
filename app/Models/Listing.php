@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ListingType;
 use Database\Factories\ListingFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,7 +18,7 @@ class Listing extends Model
     use HasFactory, HasTranslations;
 
     /** @var array<int, string> */
-    public array $translatable = ['name', 'description', 'highlights'];
+    public array $translatable = ['name', 'description', 'short_description', 'highlights'];
 
     protected $fillable = [
         'partner_id',
@@ -25,6 +26,9 @@ class Listing extends Model
         'name',
         'slug',
         'description',
+        'short_description',
+        'seo_description',
+        'meta_title',
         'highlights',
         'image',
         'gallery',
@@ -49,6 +53,17 @@ class Listing extends Model
         'scrape_data',
         'scraped_at',
         'google_photos_checked_at',
+        'ntb_number',
+        'facilities',
+        'activities',
+        'languages',
+        'opening_hours',
+        'enrichment_score',
+        'enrichment_status',
+        'confidence',
+        'data_source',
+        'verified_at',
+        'last_enriched_at',
     ];
 
     protected $casts = [
@@ -67,7 +82,20 @@ class Listing extends Model
         'og_scraped_at' => 'datetime',
         'content_synced_at' => 'datetime',
         'google_photos_checked_at' => 'datetime',
+        'facilities' => 'array',
+        'activities' => 'array',
+        'languages' => 'array',
+        'opening_hours' => 'array',
+        'enrichment_score' => 'integer',
+        'confidence' => 'integer',
+        'verified_at' => 'datetime',
+        'last_enriched_at' => 'datetime',
     ];
+
+    /** Listings due for automatic enrichment: never enriched, low completion, or stale. */
+    private const ENRICHMENT_SCORE_THRESHOLD = 80;
+
+    private const ENRICHMENT_REFRESH_DAYS = 90;
 
     protected static function booted(): void
     {
@@ -100,5 +128,37 @@ class Listing extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
+    }
+
+    /**
+     * @return HasMany<EnrichmentJob, $this>
+     */
+    public function enrichmentJobs(): HasMany
+    {
+        return $this->hasMany(EnrichmentJob::class);
+    }
+
+    /**
+     * @return HasMany<ListingFieldStatus, $this>
+     */
+    public function fieldStatuses(): HasMany
+    {
+        return $this->hasMany(ListingFieldStatus::class);
+    }
+
+    /**
+     * @param  Builder<Listing>  $query
+     * @return Builder<Listing>
+     */
+    public function scopeOrderByEnrichmentPriority(Builder $query): Builder
+    {
+        return $query->orderByRaw('enrichment_score ASC, last_enriched_at ASC NULLS FIRST');
+    }
+
+    public function isDueForEnrichment(): bool
+    {
+        return $this->enrichment_score < self::ENRICHMENT_SCORE_THRESHOLD
+            || $this->last_enriched_at === null
+            || $this->last_enriched_at->lt(now()->subDays(self::ENRICHMENT_REFRESH_DAYS));
     }
 }
