@@ -111,7 +111,7 @@ class ListingController extends Controller
         if ($listing->isDueForEnrichment()) {
             // Queued, not run inline — EnrichListingJob is ShouldBeUnique so a burst of
             // visits to the same stale listing only ever queues one enrichment run.
-            EnrichListingJob::queue($listing->id);
+            EnrichListingJob::enqueue($listing->id);
         }
 
         $listing->load('partner');

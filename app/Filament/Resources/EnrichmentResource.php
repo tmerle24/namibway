@@ -201,7 +201,7 @@ class EnrichmentResource extends Resource
         return $job !== null && $job->finished_at === null;
     }
 
-    /** 'none' | 'queued' | 'running' | 'ok' | 'failed' — see EnrichListingJob::queue(). */
+    /** 'none' | 'queued' | 'running' | 'ok' | 'failed' — see EnrichListingJob::enqueue(). */
     private static function lastRunState(Listing $record): string
     {
         $job = $record->relationLoaded('latestEnrichmentJob') ? $record->latestEnrichmentJob : $record->latestEnrichmentJob()->first();
@@ -562,7 +562,7 @@ class EnrichmentResource extends Resource
                     ->requiresConfirmation()
                     ->modalDescription('Runs the full enrichment pipeline (website, structured extraction, photos, description) for this listing.')
                     ->action(function (Listing $record): void {
-                        EnrichListingJob::queue($record->id);
+                        EnrichListingJob::enqueue($record->id);
                         Notification::make()
                             ->title('Enrichment queued')
                             ->body('Running in the background — the "Last run" column and Log tab update automatically within ~10s of finishing.')
@@ -624,7 +624,7 @@ class EnrichmentResource extends Resource
     {
         /** @var Listing $record */
         foreach ($records as $record) {
-            EnrichListingJob::queue($record->id, $steps);
+            EnrichListingJob::enqueue($record->id, $steps);
         }
 
         Notification::make()

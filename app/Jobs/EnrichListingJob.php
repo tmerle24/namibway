@@ -18,13 +18,19 @@ use Illuminate\Support\Facades\Log;
  * the run in enrichment_jobs, so the dashboard has an audit trail of every
  * enrichment attempt (source, success, tokens spent, cost estimate).
  *
- * Always go through the static queue() method rather than ::dispatch()
+ * Always go through the static enqueue() method rather than ::dispatch()
  * directly — it writes the enrichment_jobs row up front (started_at still
  * null) so "queued but no worker has picked it up yet" is visible on the
  * dashboard instead of indistinguishable from "nothing happened". Dispatched
  * by: NightlyEnrichListings (scheduled), the on-demand trigger in
  * ListingController@show, and the Filament dashboard's row/bulk actions
  * (which pass a $steps subset to run only part of the pipeline).
+ *
+ * Note: the factory method is deliberately NOT named queue() — Laravel's Bus
+ * Dispatcher special-cases a method literally called `queue` on job classes
+ * (used to customize how a job is pushed onto its connection) and will call
+ * it with ($connection, $command) instead of the real Dispatcher::dispatch()
+ * path, crashing with a TypeError on the mismatched signature.
  */
 class EnrichListingJob implements ShouldBeUnique, ShouldQueue
 {
@@ -46,7 +52,7 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
     ) {}
 
     /** @param list<string>|null $steps */
-    public static function queue(int $listingId, ?array $steps = null): EnrichmentJob
+    public static function enqueue(int $listingId, ?array $steps = null): EnrichmentJob
     {
         $run = EnrichmentJob::create([
             'listing_id' => $listingId,
