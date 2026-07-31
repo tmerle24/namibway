@@ -421,6 +421,22 @@
     color: #2c2521;
     cursor: pointer;
 }
+.kaia-page .drive-time-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 0 5px 0;
+    border-top: 1px solid var(--sand-dark);
+    font-size: 11.5px;
+    color: #7a6a5e;
+}
+.kaia-page .drive-time-icon {
+    font-size: 13px;
+    line-height: 1;
+}
+.kaia-page .drive-time-label {
+    font-style: italic;
+}
 .kaia-page .day-row {
     display: flex;
     gap: 12px;

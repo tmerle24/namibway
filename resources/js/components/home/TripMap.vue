@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import type { Map as LeafletMap, Marker, Polyline } from 'leaflet';
 import { onMounted, onUnmounted, watch } from 'vue';
+
+export interface DrivingLeg {
+    from: string;
+    to: string;
+    seconds: number;
+}
 import type { RegionCoords } from '@/lib/kaia-client';
 import type { ItineraryDay, ItineraryVariant } from '@/lib/kaia-types';
 
@@ -59,6 +65,10 @@ const props = defineProps<{
     variant: ItineraryVariant;
     regionCoords: Record<string, RegionCoords>;
     mapId: string;
+}>();
+
+const emit = defineEmits<{
+    'driving-legs': [legs: DrivingLeg[]];
 }>();
 
 let map: LeafletMap | null = null;
@@ -209,7 +219,8 @@ function renderRoute() {
 
         waypoints.forEach((wp, index) => {
             const isStart = index === 0;
-            const isEnd = index === waypoints.length - 1 && waypoints.length > 1;
+            const isEnd =
+                index === waypoints.length - 1 && waypoints.length > 1;
             const markerClass = [
                 'trip-map-marker',
                 isStart && 'trip-map-marker--start',
@@ -256,12 +267,14 @@ function renderRoute() {
             map!.fitBounds(L.latLngBounds(latlngs), { padding: [56, 40] });
         }
 
-        // Fetch driving times between consecutive stops and render labels
+        // Fetch driving times between consecutive stops, render labels and emit for plan display
         if (waypoints.length >= 2) {
             fetchDrivingLegs(latlngs).then((legs) => {
                 if (!map) {
                     return;
                 }
+
+                const emittedLegs: DrivingLeg[] = [];
 
                 legs.forEach((leg, i) => {
                     const from = latlngs[i];
@@ -285,7 +298,15 @@ function renderRoute() {
                         interactive: false,
                     }).addTo(map!);
                     markers.push(m);
+
+                    emittedLegs.push({
+                        from: waypoints[i].label,
+                        to: waypoints[i + 1]?.label ?? '',
+                        seconds: leg.duration,
+                    });
                 });
+
+                emit('driving-legs', emittedLegs);
             });
         }
     });

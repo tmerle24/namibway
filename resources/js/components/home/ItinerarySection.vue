@@ -22,6 +22,7 @@ import LocationPicker from './LocationPicker.vue';
 import SaveLoginModal from './SaveLoginModal.vue';
 import SaveShareBar from './SaveShareBar.vue';
 import TripMap from './TripMap.vue';
+import type { DrivingLeg } from './TripMap.vue';
 
 const props = defineProps<{
     plan: ItineraryPlan;
@@ -43,6 +44,7 @@ const swap = ref<SwapState | null>(null);
 const dbRegions = ref<string[]>([]);
 const regionCoords = ref<Record<string, RegionCoords>>({});
 const savedTokens = ref<Record<number, string>>({});
+const drivingLegsPerVariant = ref<Record<number, DrivingLeg[]>>({});
 
 // Trip-level start/end — same for every variant, editable inline like a
 // day's location. Reversing a variant's direction (below) doesn't touch
@@ -50,7 +52,9 @@ const savedTokens = ref<Record<number, string>>({});
 const routeStart = ref('Windhoek');
 const routeEnd = ref('Windhoek');
 const isRoundTrip = computed(
-    () => routeStart.value.trim().toLowerCase() === routeEnd.value.trim().toLowerCase(),
+    () =>
+        routeStart.value.trim().toLowerCase() ===
+        routeEnd.value.trim().toLowerCase(),
 );
 
 // --- Auth-gate for saving ---
@@ -59,6 +63,41 @@ const showAuthModal = ref(false);
 // Track the start date per variant so we can recompute day dates after
 // drag-and-drop reordering or manual day additions.
 const startDates = ref<(Date | null)[]>([]);
+
+function formatDrivingTime(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.round((seconds % 3600) / 60);
+
+    if (h === 0) {
+        return `${m} min`;
+    }
+
+    if (m === 0) {
+        return `${h} h`;
+    }
+
+    return `${h} h ${m} min`;
+}
+
+function drivingTimeBetween(
+    variantIndex: number,
+    fromLocation: string,
+    toLocation: string,
+): string | null {
+    const legs = drivingLegsPerVariant.value[variantIndex];
+
+    if (!legs) {
+        return null;
+    }
+
+    const leg = legs.find(
+        (l) =>
+            l.from.toLowerCase().trim() === fromLocation.toLowerCase().trim() &&
+            l.to.toLowerCase().trim() === toLocation.toLowerCase().trim(),
+    );
+
+    return leg ? formatDrivingTime(leg.seconds) : null;
+}
 
 function parseDayDate(dateStr: string | null | undefined): Date | null {
     if (!dateStr) {
@@ -415,6 +454,11 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     :map-id="`trip-map-${variantIndex}`"
                     :variant="variant"
                     :region-coords="regionCoords"
+                    @driving-legs="
+                        (legs) => {
+                            drivingLegsPerVariant[variantIndex] = legs;
+                        }
+                    "
                 />
 
                 <button
@@ -434,6 +478,37 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     @end="renumberDays(variantIndex)"
                 >
                     <template #item="{ element: day, index: dayIndex }">
+                        <div
+                            v-if="
+                                dayIndex > 0 &&
+                                day.location !==
+                                    editableVariants[variantIndex].days[
+                                        dayIndex - 1
+                                    ].location &&
+                                drivingTimeBetween(
+                                    variantIndex,
+                                    editableVariants[variantIndex].days[
+                                        dayIndex - 1
+                                    ].location,
+                                    day.location,
+                                )
+                            "
+                            class="drive-time-row"
+                        >
+                            <span class="drive-time-icon">🚗</span>
+                            <span class="drive-time-label">
+                                {{ t('itinerary.drivingTime') }}:
+                                {{
+                                    drivingTimeBetween(
+                                        variantIndex,
+                                        editableVariants[variantIndex].days[
+                                            dayIndex - 1
+                                        ].location,
+                                        day.location,
+                                    )
+                                }}
+                            </span>
+                        </div>
                         <div class="day-row">
                             <div class="day-num">
                                 <span
