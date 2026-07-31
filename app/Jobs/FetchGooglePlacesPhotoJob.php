@@ -63,7 +63,8 @@ class FetchGooglePlacesPhotoJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $urls = $photoFinder->findPhotoUrls($listing);
+        $result = $photoFinder->findPhotoUrls($listing);
+        $urls = $result['urls'];
 
         $this->recordRun($listing, $photoFinder, $urls);
 
@@ -71,9 +72,16 @@ class FetchGooglePlacesPhotoJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        // Google's Maps Platform terms only permit temporarily caching Place Photos —
+        // photos_source/google_photos_expire_at let the scheduled sweep in
+        // namibway:fetch-google-photos clear and re-fetch this once the caching
+        // window lapses, instead of hosting a permanent, unattributed copy.
         $listing->update(array_filter([
             'image' => $urls[0],
             'gallery' => empty($listing->gallery) ? array_slice($urls, 1) : null,
+            'photos_source' => 'google_places',
+            'photos_attribution' => $result['attribution'],
+            'google_photos_expire_at' => now()->addDays(30),
         ], fn ($value) => $value !== null));
     }
 

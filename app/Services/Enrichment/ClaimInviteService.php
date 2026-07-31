@@ -2,6 +2,7 @@
 
 namespace App\Services\Enrichment;
 
+use App\Models\Listing;
 use App\Models\Partner;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -33,7 +34,7 @@ class ClaimInviteService
                 'listing' => $listing,
                 'claimUrl' => $this->claimUrl($partner),
                 'declineUrl' => $this->declineUrl($partner),
-                'listingUrl' => $listing?->is_published ? route('listings.show', $listing->slug) : null,
+                'listingUrl' => $listing ? $this->listingUrl($listing, $partner) : null,
             ],
             function ($message) use ($partner) {
                 $message
@@ -46,6 +47,18 @@ class ClaimInviteService
         $partner->update(['claim_token_sent_at' => now()]);
 
         return true;
+    }
+
+    /**
+     * Unpublished listings 404 for anyone else, but the owner should still be able to
+     * see how their own draft looks — the claim_token already emailed to them doubles
+     * as a preview key (see ListingController::hasValidPreviewToken()).
+     */
+    public function listingUrl(Listing $listing, Partner $partner): string
+    {
+        return $listing->is_published
+            ? route('listings.show', $listing->slug)
+            : route('listings.show', $listing->slug).'?preview='.$partner->claim_token;
     }
 
     public function claimUrl(Partner $partner): string

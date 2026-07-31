@@ -28,6 +28,8 @@ class FetchGooglePlacesPhotos extends Command
         $refreshDays = (int) $this->option('refresh-days');
         $dry = (bool) $this->option('dry-run');
 
+        $this->expireStalePhotos($dry);
+
         $listings = Listing::whereNull('image')
             ->where(function ($query) use ($refreshDays) {
                 $query->whereNull('google_photos_checked_at')
@@ -75,5 +77,40 @@ class FetchGooglePlacesPhotos extends Command
         $this->info("Checked {$listings->count()} listing(s).");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Google's Maps Platform terms only permit temporarily caching Place Photos — past
+     * google_photos_expire_at we clear the cached copy (image/gallery/photos_source/
+     * photos_attribution) rather than keep serving a stale, out-of-window copy. That
+     * makes the listing "imageless" again, so the lookup below naturally re-fetches a
+     * fresh, compliant copy — this isn't a deletion, just a forced refresh.
+     */
+    private function expireStalePhotos(bool $dry): void
+    {
+        $expired = Listing::where('photos_source', 'google_places')
+            ->where('google_photos_expire_at', '<', now())
+            ->get(['id', 'name']);
+
+        if ($expired->isEmpty()) {
+            return;
+        }
+
+        if ($dry) {
+            $this->warn("DRY RUN — would expire {$expired->count()} listing(s)' cached Google Places photos: ".$expired->pluck('name')->implode(', '));
+
+            return;
+        }
+
+        Listing::whereIn('id', $expired->pluck('id'))->update([
+            'image' => null,
+            'gallery' => null,
+            'photos_source' => null,
+            'photos_attribution' => null,
+            'google_photos_expire_at' => null,
+            'google_photos_checked_at' => null,
+        ]);
+
+        $this->info("Expired Google Places photos for {$expired->count()} listing(s) (past the 30-day caching window) — will be re-fetched.");
     }
 }

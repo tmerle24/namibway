@@ -33,6 +33,12 @@ class Listing extends Model
         'highlights',
         'image',
         'gallery',
+        'pending_image',
+        'pending_gallery',
+        'photos_source',
+        'photos_attribution',
+        'photos_approved_at',
+        'google_photos_expire_at',
         'region',
         'latitude',
         'longitude',
@@ -71,6 +77,9 @@ class Listing extends Model
     protected $casts = [
         'type' => ListingType::class,
         'gallery' => 'array',
+        'pending_gallery' => 'array',
+        'photos_approved_at' => 'datetime',
+        'google_photos_expire_at' => 'datetime',
         'scrape_data' => 'array',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
@@ -170,5 +179,32 @@ class Listing extends Model
         return $this->enrichment_score < self::ENRICHMENT_SCORE_THRESHOLD
             || $this->last_enriched_at === null
             || $this->last_enriched_at->lt(now()->subDays(self::ENRICHMENT_REFRESH_DAYS));
+    }
+
+    public function hasPendingPhotos(): bool
+    {
+        return filled($this->pending_image) || filled($this->pending_gallery);
+    }
+
+    /**
+     * Promotes website-scraped photos staged in pending_image/pending_gallery to the
+     * live image/gallery columns, once the owner (or an admin, on their behalf) has
+     * confirmed we may publish them — see EnrichmentPipeline's website image step,
+     * which stages here instead of writing image/gallery directly.
+     */
+    public function approvePendingPhotos(): void
+    {
+        if (! $this->hasPendingPhotos()) {
+            return;
+        }
+
+        $this->forceFill([
+            'image' => $this->image ?: $this->pending_image,
+            'gallery' => empty($this->gallery) ? $this->pending_gallery : $this->gallery,
+            'pending_image' => null,
+            'pending_gallery' => null,
+            'photos_source' => 'website_scrape',
+            'photos_approved_at' => now(),
+        ])->save();
     }
 }

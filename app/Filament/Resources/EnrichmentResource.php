@@ -501,6 +501,23 @@ class EnrichmentResource extends Resource
                     ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
                         ? $query->orderByRaw("(image IS NOT NULL AND image != '') desc")
                         : $query->orderByRaw("(image IS NOT NULL AND image != '') asc")),
+                Tables\Columns\IconColumn::make('has_pending_photos')
+                    ->label('Photos pending approval')
+                    ->boolean()
+                    ->trueColor('warning')
+                    ->trueIcon('heroicon-o-clock')
+                    ->falseColor('gray')
+                    ->falseIcon('heroicon-o-minus')
+                    // Website-scraped photos wait here until the owner (or an admin, via
+                    // the "View on site" preview link) approves them — see
+                    // Listing::approvePendingPhotos(). Never auto-published: we don't have
+                    // the right to publish someone else's marketing photos without consent.
+                    ->tooltip('Scraped from the listing\'s own website — awaiting owner/admin approval before going live.')
+                    ->action($editPhotos)
+                    ->getStateUsing(fn (Listing $record): bool => $record->hasPendingPhotos())
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(pending_image IS NOT NULL AND pending_image != '') desc")
+                        : $query->orderByRaw("(pending_image IS NOT NULL AND pending_image != '') asc")),
                 Tables\Columns\IconColumn::make('has_gps')
                     ->label('GPS')
                     ->boolean()
@@ -608,6 +625,12 @@ class EnrichmentResource extends Resource
                     ->queries(
                         true: fn (Builder $query) => $query->whereNotNull('latitude')->whereNotNull('longitude'),
                         false: fn (Builder $query) => $query->where(fn ($q) => $q->whereNull('latitude')->orWhereNull('longitude')),
+                    ),
+                Tables\Filters\TernaryFilter::make('has_pending_photos')
+                    ->label('Photos pending approval')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereNotNull('pending_image')->where('pending_image', '!=', ''),
+                        false: fn (Builder $query) => $query->where(fn ($q) => $q->whereNull('pending_image')->orWhere('pending_image', '')),
                     ),
                 Tables\Filters\SelectFilter::make('claim_status')
                     ->label('Claimed')

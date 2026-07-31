@@ -104,22 +104,26 @@ class ListingController extends Controller
         ]);
     }
 
-    public function show(Listing $listing): Response
+    public function show(Request $request, Listing $listing): Response
     {
-        // Admins can preview a draft listing before publishing it — same 'web' guard/User
-        // model the Filament admin panel authenticates with, so a logged-in admin's session
-        // already carries over to this plain frontend route.
+        $listing->load('partner');
+
+        // Two ways to preview a draft before it's published: a logged-in admin (same
+        // 'web' guard/User model the Filament admin panel authenticates with, so an
+        // admin's session already carries over to this plain frontend route), or the
+        // property owner via the same claim_token already emailed to them for the
+        // claim flow — see ClaimInviteService, which links here with ?preview=<token>.
+        $isAdmin = self::isAdmin();
+        $isOwnerPreview = self::hasValidPreviewToken($listing, $request);
         $isPreview = ! $listing->is_published;
 
-        abort_unless($listing->is_published || (auth()->check() && auth()->user()->is_admin), 404);
+        abort_unless($listing->is_published || $isAdmin || $isOwnerPreview, 404);
 
         if ($listing->isDueForEnrichment()) {
             // Queued, not run inline — EnrichListingJob is ShouldBeUnique so a burst of
             // visits to the same stale listing only ever queues one enrichment run.
             EnrichListingJob::enqueue($listing->id);
         }
-
-        $listing->load('partner');
 
         $reviews = $listing->reviews()
             ->where('is_approved', true)
@@ -133,6 +137,11 @@ class ListingController extends Controller
                 'created_at' => $review->created_at->toDateString(),
             ]);
 
+        // Website-scraped photos the owner hasn't approved yet — only shown to the
+        // owner themselves or an admin, never to the public, since we don't have the
+        // right to publish them without consent (see Listing::approvePendingPhotos()).
+        $canApprovePhotos = $isAdmin || $isOwnerPreview;
+
         return Inertia::render('ListingDetail', [
             'listing' => [
                 'id' => $listing->id,
@@ -145,6 +154,14 @@ class ListingController extends Controller
                 'gallery' => collect($listing->gallery ?? [])
                     ->map(fn (string $path) => self::resolveMediaUrl($path))
                     ->values(),
+                'photos_source' => $listing->photos_source,
+                'photos_attribution' => $listing->photos_attribution,
+                'pending_image' => $canApprovePhotos && $listing->pending_image
+                    ? self::resolveMediaUrl($listing->pending_image)
+                    : null,
+                'pending_gallery' => $canApprovePhotos
+                    ? collect($listing->pending_gallery ?? [])->map(fn (string $path) => self::resolveMediaUrl($path))->values()
+                    : [],
                 'region' => $listing->region,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
@@ -161,16 +178,50 @@ class ListingController extends Controller
             ],
             'reviews' => $reviews,
             'is_preview' => $isPreview,
+            'can_publish' => $isAdmin,
+            'can_approve_photos' => $canApprovePhotos,
+            'preview_token' => $isOwnerPreview ? $request->input('preview') : null,
         ]);
     }
 
     public function publish(Listing $listing): RedirectResponse
     {
-        abort_unless(auth()->check() && auth()->user()->is_admin, 403);
+        abort_unless(self::isAdmin(), 403);
 
         $listing->update(['is_published' => true]);
 
         return redirect()->route('listings.show', $listing->slug);
+    }
+
+    public function approvePhotos(Request $request, Listing $listing): RedirectResponse
+    {
+        abort_unless(self::isAdmin() || self::hasValidPreviewToken($listing, $request), 403);
+
+        $listing->approvePendingPhotos();
+
+        return redirect()->route('listings.show', array_filter([
+            'listing' => $listing->slug,
+            'preview' => $request->input('preview'),
+        ]));
+    }
+
+    private static function isAdmin(): bool
+    {
+        return auth()->check() && auth()->user()->is_admin;
+    }
+
+    /** The property owner's claim_token, already emailed to them, doubles as a preview key. */
+    private static function hasValidPreviewToken(Listing $listing, Request $request): bool
+    {
+        $token = $request->input('preview');
+
+        if (! is_string($token) || $token === '') {
+            return false;
+        }
+
+        $claimToken = $listing->partner?->claim_token;
+
+        return is_string($claimToken) && $claimToken !== '' && hash_equals($claimToken, $token);
     }
 
     public function storeInquiry(Request $request, Listing $listing): RedirectResponse
