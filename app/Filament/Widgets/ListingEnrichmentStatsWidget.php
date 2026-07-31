@@ -19,6 +19,7 @@ class ListingEnrichmentStatsWidget extends BaseWidget
             count(*) filter (where website is null or website = '') as missing_website,
             count(*) filter (where contact_email is null or contact_email = '') as missing_email,
             count(*) filter (where image is null or image = '') as missing_photos,
+            count(*) filter (where pending_image is not null and pending_image != '') as pending_photos,
             count(*) filter (where description->>'en' is null or description->>'en' = '') as missing_description,
             count(*) filter (where claim_status = 'claimed') as claimed,
             coalesce(avg(enrichment_score), 0) as average_completion
@@ -39,6 +40,9 @@ class ListingEnrichmentStatsWidget extends BaseWidget
             Stat::make('Missing Website', number_format($totals->missing_website))->color('danger'),
             Stat::make('Missing Email', number_format($totals->missing_email))->color('danger'),
             Stat::make('Missing Photos', number_format($totals->missing_photos))->color('danger'),
+            Stat::make('Photos Pending Approval', number_format($totals->pending_photos))
+                ->description('Found on the listing\'s own website, awaiting owner/admin sign-off')
+                ->color('warning'),
             Stat::make('Missing Description', number_format($totals->missing_description))->color('danger'),
             Stat::make('Claimed Listings', number_format($totals->claimed))->color('success'),
             Stat::make('Average Completion', round((float) $totals->average_completion).'%'),
