@@ -178,19 +178,30 @@ class ListingController extends Controller
             ],
             'reviews' => $reviews,
             'is_preview' => $isPreview,
-            'can_publish' => $isAdmin,
+            'can_publish' => $isAdmin || $isOwnerPreview,
             'can_approve_photos' => $canApprovePhotos,
             'preview_token' => $isOwnerPreview ? $request->input('preview') : null,
         ]);
     }
 
-    public function publish(Listing $listing): RedirectResponse
+    /**
+     * The property owner can do this themselves via their claim_token (see
+     * hasValidPreviewToken()) — no account/login required. One click publishes the
+     * listing and, if the pipeline staged any website-scraped photos awaiting consent,
+     * approves those too: asking the owner to click twice (once to approve photos, once
+     * to publish) is exactly the kind of extra friction that tanks completion rates.
+     */
+    public function publish(Request $request, Listing $listing): RedirectResponse
     {
-        abort_unless(self::isAdmin(), 403);
+        abort_unless(self::isAdmin() || self::hasValidPreviewToken($listing, $request), 403);
 
+        $listing->approvePendingPhotos();
         $listing->update(['is_published' => true]);
 
-        return redirect()->route('listings.show', $listing->slug);
+        return redirect()->route('listings.show', array_filter([
+            'listing' => $listing->slug,
+            'preview' => $request->input('preview'),
+        ]));
     }
 
     public function approvePhotos(Request $request, Listing $listing): RedirectResponse

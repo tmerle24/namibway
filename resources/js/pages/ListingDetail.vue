@@ -89,17 +89,19 @@ const props = defineProps<{
 }>();
 
 function publishListing() {
-    if (
-        !window.confirm(
-            `Publish "${props.listing.name}"? It will become visible to all visitors immediately.`,
-        )
-    ) {
+    const hasPending =
+        props.listing.pending_image || props.listing.pending_gallery.length;
+    const message = hasPending
+        ? `Publish "${props.listing.name}"? It will become visible to all visitors immediately, including the photo(s) found on your website.`
+        : `Publish "${props.listing.name}"? It will become visible to all visitors immediately.`;
+
+    if (!window.confirm(message)) {
         return;
     }
 
     router.post(
         `/listings/${props.listing.slug}/publish`,
-        {},
+        { preview: props.preview_token ?? undefined },
         { preserveScroll: true },
     );
 }
@@ -156,8 +158,45 @@ const heroImage = computed(() => {
             </button>
         </div>
 
+        <!-- Preview only — publishing (above) approves these in the same click, so
+             there's no separate action here. Once the listing is live, any *later*
+             pending photos (e.g. a re-scrape) get their own approve panel below,
+             since there's no "publish the whole listing" step to piggyback on then. -->
         <div
             v-if="
+                props.is_preview &&
+                props.can_approve_photos &&
+                (props.listing.pending_image ||
+                    props.listing.pending_gallery.length)
+            "
+            class="pending-photos-preview"
+        >
+            <p>
+                Publishing will also include
+                {{
+                    props.listing.pending_gallery.length +
+                    (props.listing.pending_image ? 1 : 0)
+                }}
+                photo(s) found on your website:
+            </p>
+            <div class="pending-photos-thumbs">
+                <img
+                    v-if="props.listing.pending_image"
+                    :src="props.listing.pending_image"
+                    alt="Pending hero image"
+                />
+                <img
+                    v-for="(src, i) in props.listing.pending_gallery"
+                    :key="i"
+                    :src="src"
+                    :alt="`Pending gallery image ${i + 1}`"
+                />
+            </div>
+        </div>
+
+        <div
+            v-if="
+                !props.is_preview &&
                 props.can_approve_photos &&
                 (props.listing.pending_image ||
                     props.listing.pending_gallery.length)
@@ -615,5 +654,30 @@ const heroImage = computed(() => {
 
 .draft-banner-publish:hover {
     background: #15803d;
+}
+
+.pending-photos-preview {
+    background: #1e3a5f;
+    color: #dbeafe;
+    padding: 10px 12px;
+    font-size: 13px;
+}
+
+.pending-photos-preview p {
+    margin: 0 0 8px;
+}
+
+.pending-photos-thumbs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+}
+
+.pending-photos-thumbs img {
+    height: 56px;
+    width: 56px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
 }
 </style>
