@@ -37,10 +37,12 @@ class PipelineImageResolver
             return null;
         }
 
+        $type = $storage->mimeType($file);
+
         return [
             'name' => basename($file),
             'size' => $storage->size($file),
-            'type' => $storage->mimeType($file),
+            'type' => $type === false ? null : $type,
             'url' => $storage->url($file),
         ];
     }
