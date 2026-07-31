@@ -18,9 +18,13 @@ use Illuminate\Support\Facades\Log;
  * the run in enrichment_jobs, so the dashboard has an audit trail of every
  * enrichment attempt (source, success, tokens spent, cost estimate).
  *
- * Dispatched by: NightlyEnrichListings (scheduled), the on-demand trigger in
- * ListingController@show, and the Filament dashboard's bulk actions (which
- * pass a $steps subset to run only part of the pipeline).
+ * Always go through the static queue() method rather than ::dispatch()
+ * directly — it writes the enrichment_jobs row up front (started_at still
+ * null) so "queued but no worker has picked it up yet" is visible on the
+ * dashboard instead of indistinguishable from "nothing happened". Dispatched
+ * by: NightlyEnrichListings (scheduled), the on-demand trigger in
+ * ListingController@show, and the Filament dashboard's row/bulk actions
+ * (which pass a $steps subset to run only part of the pipeline).
  */
 class EnrichListingJob implements ShouldBeUnique, ShouldQueue
 {
@@ -35,7 +39,26 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
     public int $uniqueFor = 1800;
 
     /** @param list<string>|null $steps */
-    public function __construct(public readonly int $listingId, public readonly ?array $steps = null) {}
+    public function __construct(
+        public readonly int $listingId,
+        public readonly ?array $steps = null,
+        public readonly ?int $enrichmentJobId = null,
+    ) {}
+
+    /** @param list<string>|null $steps */
+    public static function queue(int $listingId, ?array $steps = null): EnrichmentJob
+    {
+        $run = EnrichmentJob::create([
+            'listing_id' => $listingId,
+            'source' => $steps ? implode(',', $steps) : 'full',
+            'actor' => 'AI',
+            'success' => false,
+        ]);
+
+        self::dispatch($listingId, $steps, $run->id);
+
+        return $run;
+    }
 
     public function uniqueId(): string
     {
@@ -46,17 +69,21 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
     {
         $listing = Listing::find($this->listingId);
 
+        $run = ($this->enrichmentJobId ? EnrichmentJob::find($this->enrichmentJobId) : null)
+            ?? EnrichmentJob::create([
+                'listing_id' => $this->listingId,
+                'source' => $this->steps ? implode(',', $this->steps) : 'full',
+                'actor' => 'AI',
+                'success' => false,
+            ]);
+
         if (! $listing) {
+            $run->update(['finished_at' => now(), 'success' => false, 'log' => 'Listing no longer exists.']);
+
             return;
         }
 
-        $run = EnrichmentJob::create([
-            'listing_id' => $listing->id,
-            'started_at' => now(),
-            'source' => $this->steps ? implode(',', $this->steps) : 'full',
-            'actor' => 'AI',
-            'success' => false,
-        ]);
+        $run->update(['started_at' => now()]);
 
         try {
             $result = $pipeline->run($listing, $this->steps);

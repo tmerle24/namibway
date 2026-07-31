@@ -201,6 +201,19 @@ class EnrichmentResource extends Resource
         return $job !== null && $job->finished_at === null;
     }
 
+    /** 'none' | 'queued' | 'running' | 'ok' | 'failed' — see EnrichListingJob::queue(). */
+    private static function lastRunState(Listing $record): string
+    {
+        $job = $record->relationLoaded('latestEnrichmentJob') ? $record->latestEnrichmentJob : $record->latestEnrichmentJob()->first();
+
+        return match (true) {
+            $job === null => 'none',
+            $job->finished_at !== null => ($job->success ? 'ok' : 'failed'),
+            $job->started_at !== null => 'running',
+            default => 'queued',
+        };
+    }
+
     private static function activityLogHtml(?Listing $record): HtmlString
     {
         if ($record === null) {
@@ -214,9 +227,14 @@ class EnrichmentResource extends Resource
         }
 
         $rows = $jobs->map(function (EnrichmentJob $job): string {
-            $statusHtml = $job->success
-                ? '<span style="color:#16a34a">success</span>'
-                : '<span style="color:#dc2626">'.($job->finished_at === null ? 'running' : 'failed').'</span>';
+            $statusHtml = match (true) {
+                $job->finished_at !== null && $job->success => '<span style="color:#16a34a">success</span>',
+                $job->finished_at !== null => '<span style="color:#dc2626">failed</span>',
+                $job->started_at !== null => '<span style="color:#d97706">running</span>',
+                // Created but not yet started — either the worker hasn't picked it up yet,
+                // or (if this persists) the queue isn't being processed at all.
+                default => '<span style="color:#6b7280">queued</span>',
+            };
 
             $fieldsHtml = $job->fields_changed
                 ? ' — fields: '.e(implode(', ', $job->fields_changed))
@@ -434,12 +452,7 @@ class EnrichmentResource extends Resource
                 Tables\Columns\TextColumn::make('last_run_status')
                     ->label('Last run')
                     ->action($editLog)
-                    ->getStateUsing(fn (Listing $record): string => match (true) {
-                        $record->latestEnrichmentJob === null => 'none',
-                        $record->latestEnrichmentJob->finished_at === null => 'running',
-                        $record->latestEnrichmentJob->success => 'ok',
-                        default => 'failed',
-                    })
+                    ->getStateUsing(fn (Listing $record): string => self::lastRunState($record))
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'ok' => 'success',
@@ -451,11 +464,18 @@ class EnrichmentResource extends Resource
                         'ok' => 'heroicon-o-check-circle',
                         'failed' => 'heroicon-o-x-circle',
                         'running' => 'heroicon-o-clock',
+                        'queued' => 'heroicon-o-inbox-stack',
                         default => 'heroicon-o-minus',
                     })
-                    ->tooltip(fn (Listing $record): ?string => $record->latestEnrichmentJob !== null && ! $record->latestEnrichmentJob->success
-                        ? $record->latestEnrichmentJob->log
-                        : null),
+                    ->tooltip(function (Listing $record): ?string {
+                        $job = $record->relationLoaded('latestEnrichmentJob') ? $record->latestEnrichmentJob : $record->latestEnrichmentJob()->first();
+
+                        return match (true) {
+                            $job !== null && $job->finished_at !== null && ! $job->success => $job->log,
+                            $job !== null && $job->finished_at === null && $job->started_at === null => 'Waiting for a queue worker to pick this up. Stuck here for more than a few seconds usually means the worker (Horizon) isn\'t running.',
+                            default => null,
+                        };
+                    }),
                 Tables\Columns\TextColumn::make('last_enriched_at')
                     ->label('Last enriched')
                     ->since()
@@ -542,10 +562,10 @@ class EnrichmentResource extends Resource
                     ->requiresConfirmation()
                     ->modalDescription('Runs the full enrichment pipeline (website, structured extraction, photos, description) for this listing.')
                     ->action(function (Listing $record): void {
-                        EnrichListingJob::dispatch($record->id);
+                        EnrichListingJob::queue($record->id);
                         Notification::make()
                             ->title('Enrichment queued')
-                            ->body('Running in the background — the "Last run" column and score update automatically within ~10s of finishing.')
+                            ->body('Running in the background — the "Last run" column and Log tab update automatically within ~10s of finishing.')
                             ->success()
                             ->send();
                     }),
@@ -604,7 +624,7 @@ class EnrichmentResource extends Resource
     {
         /** @var Listing $record */
         foreach ($records as $record) {
-            EnrichListingJob::dispatch($record->id, $steps);
+            EnrichListingJob::queue($record->id, $steps);
         }
 
         Notification::make()

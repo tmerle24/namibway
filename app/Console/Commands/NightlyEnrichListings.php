@@ -40,7 +40,7 @@ class NightlyEnrichListings extends Command
         }
 
         foreach ($listings as $listing) {
-            EnrichListingJob::dispatch($listing->id);
+            EnrichListingJob::queue($listing->id);
         }
 
         $this->info("Queued {$listings->count()} listing(s) for enrichment.");
