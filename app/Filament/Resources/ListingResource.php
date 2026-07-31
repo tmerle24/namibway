@@ -14,7 +14,9 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ListingResource extends Resource
 {
@@ -28,10 +30,14 @@ class ListingResource extends Resource
     {
         return $form
             ->schema([
+                // Must be the r2 disk, not public — AI/website/Google-Places-scraped images
+                // are stored on R2 (see GooglePlacesPhotoFinder, WebsiteContentExtractor::
+                // downloadPhoto), so a FileUpload on the 'public' disk can't resolve their
+                // preview URLs at all: it silently shows no thumbnail for anything scraped.
                 Forms\Components\FileUpload::make('image')
                     ->label('Hero image')
                     ->image()
-                    ->disk('public')
+                    ->disk('r2')
                     ->directory('listings')
                     ->imageEditor()
                     ->columnSpanFull(),
@@ -39,7 +45,7 @@ class ListingResource extends Resource
                     ->image()
                     ->multiple()
                     ->reorderable()
-                    ->disk('public')
+                    ->disk('r2')
                     ->directory('listings/gallery')
                     ->columnSpanFull(),
                 Forms\Components\Select::make('type')
@@ -111,7 +117,10 @@ class ListingResource extends Resource
             ->columns([
                 Tables\Columns\ImageColumn::make('image')
                     ->disk('public')
-                    ->square(),
+                    ->square()
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(image IS NOT NULL AND image != '') desc")
+                        : $query->orderByRaw("(image IS NOT NULL AND image != '') asc")),
                 Tables\Columns\TextColumn::make('type')
                     ->badge()
                     ->sortable(),
@@ -179,9 +188,24 @@ class ListingResource extends Resource
                         'rejected' => 'Rejected',
                     ]),
                 Tables\Filters\TernaryFilter::make('is_published'),
+                Tables\Filters\TernaryFilter::make('has_image')
+                    ->label('Has image')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereNotNull('image')->where('image', '!=', ''),
+                        false: fn (Builder $query) => $query->where(fn ($q) => $q->whereNull('image')->orWhere('image', '')),
+                    ),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('view_frontend')
+                    ->label('')
+                    ->tooltip('View on namibway.com')
+                    ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->color('gray')
+                    // Unpublished listings 404 on the frontend (ListingController@show).
+                    ->visible(fn (Listing $record): bool => $record->is_published)
+                    ->url(fn (Listing $record): string => route('listings.show', $record->slug))
+                    ->openUrlInNewTab(),
                 Tables\Actions\Action::make('import_wetu')
                     ->label('Import from Wetu')
                     ->icon('heroicon-o-arrow-down-tray')
@@ -233,7 +257,7 @@ class ListingResource extends Resource
                                 ->send();
                         }
                     }),
-            ])
+            ], position: ActionsPosition::BeforeColumns)
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('publish')
