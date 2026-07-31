@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
 import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { Globe } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
@@ -141,37 +142,17 @@ const heroImage = computed(() => {
     <div class="kaia-page">
         <AdminBar :edit-url="`/admin/listings/${props.listing.id}/edit`" />
 
-        <div
-            v-if="props.is_preview"
-            :style="{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px',
-                background: '#92400e',
-                color: '#fef3c7',
-                padding: '8px 12px',
-                fontSize: '14px',
-                fontWeight: 600,
-            }"
-        >
+        <div v-if="props.is_preview" class="draft-banner">
             <span>Draft preview</span>
+            <span class="draft-banner-badge">unpublished</span>
             <button
                 v-if="props.can_publish"
                 type="button"
-                :style="{
-                    background: 'rgba(0, 0, 0, 0.25)',
-                    color: '#fef3c7',
-                    border: '1px solid rgba(254, 243, 199, 0.6)',
-                    borderRadius: '999px',
-                    padding: '2px 10px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                }"
+                class="draft-banner-publish"
                 @click="publishListing"
             >
-                unpublished
+                <Globe :size="14" />
+                Publish
             </button>
         </div>
 
@@ -596,3 +577,43 @@ const heroImage = computed(() => {
         </footer>
     </div>
 </template>
+
+<style scoped>
+.draft-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: #92400e;
+    color: #fef3c7;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.draft-banner-badge {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(254, 243, 199, 0.6);
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 13px;
+}
+
+.draft-banner-publish {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 3px 12px 3px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.draft-banner-publish:hover {
+    background: #15803d;
+}
+</style>
