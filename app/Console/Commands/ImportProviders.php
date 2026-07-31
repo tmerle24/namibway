@@ -87,7 +87,7 @@ class ImportProviders extends Command
                 'latitude' => $r['latitude'] ?? null,
                 'longitude' => $r['longitude'] ?? null,
                 'website' => $this->cleanUrl($r['website'] ?? null),
-                'contact_email' => $r['contact_email'] ?? null,
+                'contact_email' => $r['email'] ?? null,
                 'phone' => $r['phone'] ?? null,
                 'source_url' => $r['source_url'] ?? null,
                 'scrape_source' => 'ntb',

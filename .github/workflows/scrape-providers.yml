@@ -34,11 +34,16 @@ on:
         description: "How many records to print in the log for inspection"
         required: false
         default: "30"
-      commit_results:
-        description: "Commit JSON output to data/scraped/ in repo (for server import via git pull)"
+      open_pr:
+        description: "Open a review PR with the scraped JSON (data/scraped/scraped_providers.json)"
         required: false
         default: false
         type: boolean
+
+  schedule:
+    # Weekly refresh of the NTB directory. Always fetches detail pages and opens a review PR —
+    # merging the PR does NOT import into the DB by itself, see the PR body for the import step.
+    - cron: "0 4 * * 1"
 
 jobs:
   scrape:
@@ -46,6 +51,7 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -58,20 +64,32 @@ jobs:
       - name: Install dependencies
         run: pip install requests beautifulsoup4 lxml
 
+      - name: Determine run parameters
+        id: params
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "source=visitnamibia" >> "$GITHUB_OUTPUT"
+            echo "fetch_details=true" >> "$GITHUB_OUTPUT"
+            echo "open_pr=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "source=${{ github.event.inputs.source || 'visitnamibia' }}" >> "$GITHUB_OUTPUT"
+            echo "fetch_details=${{ github.event.inputs.fetch_details || 'false' }}" >> "$GITHUB_OUTPUT"
+            echo "open_pr=${{ github.event.inputs.open_pr || 'false' }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run scraper
         run: |
-          ARGS="--source ${{ github.event.inputs.source }}"
+          ARGS="--source ${{ steps.params.outputs.source }}"
           ARGS="$ARGS --detail-workers ${{ github.event.inputs.detail_workers || '8' }}"
           ARGS="$ARGS --detail-batch-size ${{ github.event.inputs.detail_batch_size || '0' }}"
           ARGS="$ARGS --detail-batch-offset ${{ github.event.inputs.detail_batch_offset || '0' }}"
-          if [ "${{ github.event.inputs.fetch_details }}" = "true" ]; then
+          if [ "${{ steps.params.outputs.fetch_details }}" = "true" ]; then
             ARGS="$ARGS --fetch-details"
           fi
           python scripts/scrape_providers.py $ARGS
 
       - name: Show results summary
         run: |
-          echo "=== Record count ==="
           python3 -c "
           import json
           with open('scripts/scraped_providers.json') as f:
@@ -84,7 +102,7 @@ jobs:
           for t, n in sorted(types.items()):
               print(f'  {t}: {n}')
 
-          with_email = sum(1 for r in records if r.get('contact_email'))
+          with_email = sum(1 for r in records if r.get('email'))
           with_website = sum(1 for r in records if r.get('website'))
           with_coords = sum(1 for r in records if r.get('latitude'))
           with_phone = sum(1 for r in records if r.get('phone'))
@@ -101,32 +119,67 @@ jobs:
                   'type': r.get('type'),
                   'region': r.get('region'),
                   'website': r.get('website'),
-                  'contact_email': r.get('contact_email'),
+                  'email': r.get('email'),
                   'phone': r.get('phone'),
               }, ensure_ascii=False))
           "
 
-      - name: Commit results to repo
-        if: ${{ github.event.inputs.commit_results == 'true' }}
+      - name: Open review PR with scraped data
+        if: steps.params.outputs.open_pr == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p data/scraped
           cp scripts/scraped_providers.json data/scraped/scraped_providers.json
+
+          if git diff --quiet -- data/scraped/scraped_providers.json; then
+            echo "No changes vs. current data/scraped/scraped_providers.json — skipping PR"
+            exit 0
+          fi
+
+          BRANCH="scrape-providers/run-${{ github.run_number }}"
           git config user.email "github-actions@github.com"
           git config user.name "GitHub Actions"
+          git checkout -b "$BRANCH"
           git add data/scraped/scraped_providers.json
-          git commit -m "data: ${{ github.event.inputs.source }} scrape run #${{ github.run_number }} ($(python3 -c \"import json; print(len(json.load(open('data/scraped/scraped_providers.json'))))\") records) [skip ci]"
-          git push
+          git commit -m "data: ${{ steps.params.outputs.source }} scrape run #${{ github.run_number }}"
+          git push origin "$BRANCH"
+
+          COUNTS=$(python3 -c "
+          import json
+          records = json.load(open('data/scraped/scraped_providers.json'))
+          w = sum(1 for r in records if r.get('website'))
+          e = sum(1 for r in records if r.get('email'))
+          p = sum(1 for r in records if r.get('phone'))
+          print(f'{len(records)} records total — website={w}, email={e}, phone={p}')
+          ")
+
+          gh pr create \
+            --title "data: NTB scrape refresh — run #${{ github.run_number }}" \
+            --body "Automated scrape of \`${{ steps.params.outputs.source }}\` (triggered by \`${{ github.event_name }}\`).
+
+          ${COUNTS}
+
+          Review the diff before merging. Merging this PR does **not** import into the database — after merging, run on the server:
+
+          \`\`\`
+          php artisan providers:import --ntb=data/scraped/scraped_providers.json --dry-run
+          \`\`\`
+
+          and once that looks right, re-run without \`--dry-run\`." \
+            --base main \
+            --head "$BRANCH"
 
       - name: Upload JSON artifact
         uses: actions/upload-artifact@v4
         with:
-          name: scraped-providers-${{ github.event.inputs.source }}-${{ github.run_number }}
+          name: scraped-providers-${{ steps.params.outputs.source }}-${{ github.run_number }}
           path: scripts/scraped_providers.json
           retention-days: 14
 
       - name: Upload CSV artifact
         uses: actions/upload-artifact@v4
         with:
-          name: scraped-providers-csv-${{ github.event.inputs.source }}-${{ github.run_number }}
+          name: scraped-providers-csv-${{ steps.params.outputs.source }}-${{ github.run_number }}
           path: scripts/scraped_providers.csv
           retention-days: 14

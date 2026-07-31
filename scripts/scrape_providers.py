@@ -180,15 +180,17 @@ def resolve_ntb_type(text: str) -> str:
 
 
 def _parse_search_result_cards(soup: "BeautifulSoup", forced_type: "str | None" = None) -> list:
-    """Parse listing cards from a GeoDirectory search-result page."""
+    """Parse listing cards from a Directorist (visitnamibia.com.na) search-result page."""
     # Try selectors from most-specific to least-specific
     selectors = [
-        # GeoDirectory post type articles
+        # Directorist listing cards (confirmed live markup, 2026-07)
+        "article.directorist-listing-card",
+        "article[class*='directorist-listing']",
+        # Legacy GeoDirectory post type articles — kept in case NTB reverts/migrates again
         "article.type-gd_place",
         "article.gd_place",
         "article[class*='gd_place']",
         "article[class*='type-gd_place']",
-        # GeoDirectory wrapper divs
         ".geodir-category-listing",
         ".gd-listing-item",
         ".gd-listings-item",
@@ -223,13 +225,14 @@ def _parse_search_result_cards(soup: "BeautifulSoup", forced_type: "str | None" 
             print(f"    <{el.name} class='{classes}'>")
         return []
 
-    if matched_selector not in ("article.type-gd_place", "article.gd_place"):
+    if matched_selector not in ("article.directorist-listing-card", "article.type-gd_place", "article.gd_place"):
         print(f"  [debug] Cards matched via fallback selector: {matched_selector!r}")
 
     records = []
     for card in cards:
         try:
             name_el = card.select_one(
+                ".directorist-listing-title a, "
                 "h2.entry-title a, h3.entry-title a, "
                 ".geodir-post-title a, .gd-post-title a, "
                 "h2 a, h3 a, h4 a"
@@ -246,29 +249,43 @@ def _parse_search_result_cards(soup: "BeautifulSoup", forced_type: "str | None" 
             if forced_type:
                 listing_type = forced_type
             else:
-                cat_el = card.select_one(".geodir-category, .gd-category, .listing-category")
+                cat_el = card.select_one(
+                    ".directorist-listing-category, "
+                    ".geodir-category, .gd-category, .listing-category"
+                )
                 raw = cat_el.get_text(strip=True) if cat_el else ""
                 listing_type = resolve_ntb_type(f"{raw} {name}")
 
             region_el = card.select_one(
+                ".directorist-listing-card-location, "
                 ".geodir-post-meta-field-address, .gd-location, "
                 ".listing-location, [class*='location'], [class*='address']"
             )
             region = region_el.get_text(strip=True) if region_el else None
 
             desc_el = card.select_one(
+                ".directorist-listing-card-content, "
                 ".geodir-post-excerpt, .entry-summary, .listing-description, p"
             )
             description = desc_el.get_text(strip=True) if desc_el else None
             if description and len(description) > 500:
                 description = description[:500]
 
-            _card_email = extract_email(card.get_text())
-            contact_email = (
-                _card_email
-                if _card_email and "visitnamibia.com.na" not in _card_email.lower()
-                else None
-            )
+            # Directorist cards render phone/email inline as <li class="directorist-listing-card-phone|email">
+            # — grabbing them here avoids depending on the (slower, one-request-per-listing) detail-page fetch.
+            phone_el = card.select_one(".directorist-listing-card-phone a[href^='tel:']")
+            phone = phone_el["href"][4:].strip() if phone_el else None
+
+            email_el = card.select_one(".directorist-listing-card-email a[href^='mailto:']")
+            if email_el:
+                contact_email = email_el["href"][7:].strip()
+            else:
+                _card_email = extract_email(card.get_text())
+                contact_email = (
+                    _card_email
+                    if _card_email and "visitnamibia.com.na" not in _card_email.lower()
+                    else None
+                )
 
             records.append({
                 "name": name,
@@ -278,7 +295,7 @@ def _parse_search_result_cards(soup: "BeautifulSoup", forced_type: "str | None" 
                 "source_url": detail_url,
                 "website": None,
                 "email": contact_email,
-                "phone": None,
+                "phone": phone,
                 "latitude": None,
                 "longitude": None,
             })
@@ -300,6 +317,9 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
     soup = BeautifulSoup(resp.text, "lxml")
     content = (
         soup.select_one(
+            # Directorist single-listing wrapper (confirmed live markup, 2026-07)
+            ".directorist-listing-details, "
+            # Legacy GeoDirectory — kept in case NTB migrates plugins again
             "article.gd_place, article.type-gd_place, "
             ".geodir-single-main, .geodir-post-body, "
             ".geodir-listing-content, .entry-content, main"
@@ -307,9 +327,11 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
         or soup
     )
 
-    # Website — GeoDirectory field only; generic links are always NTB social junk
+    # Website — dedicated Directorist/GeoDirectory field only; generic link
+    # scraping always picks up NTB's own social/nav junk scattered on the page.
     if not record.get("website"):
-        for sel in (".geodir-field-website a", ".gd-field-website a",
+        for sel in (".directorist-single-info-website a", "[class*='single-info-website'] a",
+                    ".geodir-field-website a", ".gd-field-website a",
                     "[class*='field-website'] a", "[class*='field_website'] a"):
             el = content.select_one(sel)
             if el:
@@ -321,7 +343,8 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
 
     # Email
     if not record.get("email"):
-        for sel in (".geodir-field-email a", ".gd-field-email a",
+        for sel in (".directorist-single-info-email a", "[class*='single-info-email'] a",
+                    ".geodir-field-email a", ".gd-field-email a",
                     "[class*='field-email'] a", "[href^='mailto:']"):
             el = content.select_one(sel)
             if el:
@@ -333,7 +356,8 @@ def scrape_visitnamibia_detail(record: dict) -> dict:
 
     # Phone
     if not record.get("phone"):
-        for sel in (".geodir-field-phone a", "[class*='field-phone'] a",
+        for sel in (".directorist-single-info-phone a", "[class*='single-info-phone'] a",
+                    ".geodir-field-phone a", "[class*='field-phone'] a",
                     "[href^='tel:']"):
             el = content.select_one(sel)
             if el:
