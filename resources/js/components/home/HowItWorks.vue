@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-const { t } = useI18n();
+const { t, tm } = useI18n();
 
 function scrollToId(id: string) {
     document
@@ -19,7 +19,7 @@ function scrollToId(id: string) {
             <h3 class="how-path-title">{{ t('howItWorks.ai.title') }}</h3>
             <ol class="how-path-steps">
                 <li
-                    v-for="(step, i) in t(
+                    v-for="(step, i) in tm(
                         'howItWorks.ai.steps',
                     ) as unknown as string[]"
                     :key="i"
@@ -41,7 +41,7 @@ function scrollToId(id: string) {
             <h3 class="how-path-title">{{ t('howItWorks.search.title') }}</h3>
             <ol class="how-path-steps">
                 <li
-                    v-for="(step, i) in t(
+                    v-for="(step, i) in tm(
                         'howItWorks.search.steps',
                     ) as unknown as string[]"
                     :key="i"
