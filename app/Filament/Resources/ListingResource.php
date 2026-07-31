@@ -14,6 +14,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -29,10 +30,14 @@ class ListingResource extends Resource
     {
         return $form
             ->schema([
+                // Must be the r2 disk, not public — AI/website/Google-Places-scraped images
+                // are stored on R2 (see GooglePlacesPhotoFinder, WebsiteContentExtractor::
+                // downloadPhoto), so a FileUpload on the 'public' disk can't resolve their
+                // preview URLs at all: it silently shows no thumbnail for anything scraped.
                 Forms\Components\FileUpload::make('image')
                     ->label('Hero image')
                     ->image()
-                    ->disk('public')
+                    ->disk('r2')
                     ->directory('listings')
                     ->imageEditor()
                     ->columnSpanFull(),
@@ -40,7 +45,7 @@ class ListingResource extends Resource
                     ->image()
                     ->multiple()
                     ->reorderable()
-                    ->disk('public')
+                    ->disk('r2')
                     ->directory('listings/gallery')
                     ->columnSpanFull(),
                 Forms\Components\Select::make('type')
@@ -252,7 +257,7 @@ class ListingResource extends Resource
                                 ->send();
                         }
                     }),
-            ])
+            ], position: ActionsPosition::BeforeColumns)
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('publish')

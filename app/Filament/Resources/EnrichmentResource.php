@@ -15,6 +15,7 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -168,8 +169,13 @@ class EnrichmentResource extends Resource
 
                     Forms\Components\Tabs\Tab::make('Photos')
                         ->schema([
-                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('public')->directory('listings')->imageEditor(),
-                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->disk('public')->directory('listings/gallery'),
+                            // Must be the r2 disk, not public — AI/website/Google-Places-scraped
+                            // images are stored on R2 (see GooglePlacesPhotoFinder,
+                            // WebsiteContentExtractor::downloadPhoto), so a FileUpload on the
+                            // 'public' disk can't resolve their preview URLs at all: it silently
+                            // shows no thumbnail even though has_photos correctly reads true.
+                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor(),
+                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->disk('r2')->directory('listings/gallery'),
                         ]),
 
                     Forms\Components\Tabs\Tab::make('Metadata')
@@ -697,7 +703,7 @@ class EnrichmentResource extends Resource
 
                         Notification::make()->title('Enrichment run cancelled')->success()->send();
                     }),
-            ])
+            ], position: ActionsPosition::BeforeColumns)
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('find_website')
