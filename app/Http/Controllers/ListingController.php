@@ -164,6 +164,15 @@ class ListingController extends Controller
         ]);
     }
 
+    public function publish(Listing $listing): RedirectResponse
+    {
+        abort_unless(auth()->check() && auth()->user()->is_admin, 403);
+
+        $listing->update(['is_published' => true]);
+
+        return redirect()->route('listings.show', $listing->slug);
+    }
+
     public function storeInquiry(Request $request, Listing $listing): RedirectResponse
     {
         abort_unless($listing->is_published && $listing->accepts_inquiries, 404);
