@@ -68,13 +68,19 @@ class EnrichmentPipeline
             $costEstimate += $descCost;
         }
 
+        $fieldsChanged = array_keys($updates);
+
+        if ($fieldsChanged !== []) {
+            $updates['enriched_by'] = 'AI';
+        }
+
         $updates['last_enriched_at'] = now();
         $listing->forceFill($updates)->saveQuietly();
 
         $score = $this->scoreService->recalculate($listing, $aiGeneratedFields);
 
         return [
-            'fields_updated' => array_keys($updates),
+            'fields_updated' => $fieldsChanged,
             'tokens_used' => $tokensUsed,
             'cost_estimate' => round($costEstimate, 4),
             'log' => $log,

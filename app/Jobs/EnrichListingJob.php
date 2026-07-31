@@ -54,6 +54,7 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
             'listing_id' => $listing->id,
             'started_at' => now(),
             'source' => $this->steps ? implode(',', $this->steps) : 'full',
+            'actor' => 'AI',
             'success' => false,
         ]);
 
@@ -64,6 +65,7 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
                 'finished_at' => now(),
                 'success' => true,
                 'log' => implode("\n", $result['log']) ?: 'No changes — all tracked fields already had data.',
+                'fields_changed' => $result['fields_updated'],
                 'tokens_used' => $result['tokens_used'],
                 'cost_estimate' => $result['cost_estimate'],
             ]);

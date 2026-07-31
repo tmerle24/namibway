@@ -5,9 +5,11 @@ namespace App\Filament\Resources;
 use App\Enums\ListingType;
 use App\Filament\Resources\EnrichmentResource\Pages;
 use App\Jobs\EnrichListingJob;
+use App\Models\EnrichmentJob;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Services\Enrichment\ClaimInviteService;
+use App\Services\Enrichment\CompletionScoreService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -18,6 +20,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -45,12 +48,23 @@ class EnrichmentResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+            Forms\Components\Placeholder::make('enrichment_in_progress_banner')
+                ->label('')
+                ->content(new HtmlString(
+                    '<div style="padding:8px 12px;background:#fef3c7;border-radius:6px;color:#92400e;">'
+                    .'⏳ Enrichment is currently running for this listing — fields are locked until it finishes. '
+                    .'Refresh in a moment.</div>'
+                ))
+                ->visible(fn (?Listing $record): bool => self::isEnriching($record))
+                ->columnSpanFull(),
+
             Forms\Components\Tabs::make('Enrichment')
                 ->columnSpanFull()
+                ->disabled(fn (?Listing $record): bool => self::isEnriching($record))
                 ->tabs([
                     Forms\Components\Tabs\Tab::make('Basic')
                         ->schema([
-                            Forms\Components\TextInput::make('name')->required()->maxLength(255),
+                            Forms\Components\TextInput::make('name')->required()->maxLength(255)->autofocus(),
                             Forms\Components\TextInput::make('slug')->required()->maxLength(255)->unique(ignoreRecord: true),
                             Forms\Components\TextInput::make('ntb_number')->label('NTB number'),
                             Forms\Components\Select::make('type')->label('Category')->options(ListingType::class)->required(),
@@ -106,28 +120,73 @@ class EnrichmentResource extends Resource
                                 ->content(fn (?Listing $record): string => $record ? ($record->data_source ?? '—') : '—'),
                             Forms\Components\Placeholder::make('confidence')
                                 ->content(fn (?Listing $record): string => $record && $record->confidence !== null ? "{$record->confidence}%" : '—'),
+                            Forms\Components\Placeholder::make('enriched_by')
+                                ->label('Enriched by')
+                                ->content(fn (?Listing $record): string => $record ? ($record->enriched_by ?? '—') : '—'),
                             Forms\Components\Placeholder::make('last_enriched_at')
                                 ->label('Last enrichment')
                                 ->content(fn (?Listing $record): string => $record && $record->last_enriched_at ? $record->last_enriched_at->diffForHumans() : 'never'),
                             Forms\Components\DateTimePicker::make('verified_at'),
-                            Forms\Components\Placeholder::make('history')
-                                ->label('Enrichment history')
-                                ->content(fn (?Listing $record): HtmlString => new HtmlString(
-                                    $record
-                                        ? $record->enrichmentJobs()->latest()->limit(10)->get()
-                                            ->map(fn ($job) => sprintf(
-                                                '%s — %s — %s%s',
-                                                $job->created_at->format('d M Y H:i'),
-                                                e($job->source),
-                                                $job->success ? '<span style="color:#16a34a">success</span>' : '<span style="color:#dc2626">failed</span>',
-                                                $job->tokens_used ? " — {$job->tokens_used} tokens" : ''
-                                            ))
-                                            ->implode('<br>')
-                                        : ''
-                                )),
+                        ])->columns(2),
+
+                    Forms\Components\Tabs\Tab::make('Log')
+                        ->schema([
+                            Forms\Components\Placeholder::make('activity_log')
+                                ->label('')
+                                ->content(fn (?Listing $record): HtmlString => self::activityLogHtml($record)),
                         ]),
                 ]),
         ]);
+    }
+
+    private static function isEnriching(?Listing $record): bool
+    {
+        if ($record === null) {
+            return false;
+        }
+
+        $job = $record->relationLoaded('latestEnrichmentJob') ? $record->latestEnrichmentJob : $record->latestEnrichmentJob()->first();
+
+        return $job !== null && $job->finished_at === null;
+    }
+
+    private static function activityLogHtml(?Listing $record): HtmlString
+    {
+        if ($record === null) {
+            return new HtmlString('');
+        }
+
+        $jobs = $record->enrichmentJobs()->latest()->limit(25)->get();
+
+        if ($jobs->isEmpty()) {
+            return new HtmlString('<em>No activity yet.</em>');
+        }
+
+        $rows = $jobs->map(function (EnrichmentJob $job): string {
+            $statusHtml = $job->success
+                ? '<span style="color:#16a34a">success</span>'
+                : '<span style="color:#dc2626">'.($job->finished_at === null ? 'running' : 'failed').'</span>';
+
+            $fieldsHtml = $job->fields_changed
+                ? ' — fields: '.e(implode(', ', $job->fields_changed))
+                : '';
+
+            $errorHtml = (! $job->success && $job->finished_at !== null && $job->log)
+                ? '<br><span style="color:#dc2626;font-size:12px">'.e(Str::limit($job->log, 200)).'</span>'
+                : '';
+
+            return sprintf(
+                '<div style="padding:6px 0;border-bottom:1px solid #e5e5e5;">%s — <strong>%s</strong> by %s — %s%s%s</div>',
+                $job->created_at->format('d M Y H:i'),
+                e($job->source),
+                e($job->actor ?? 'unknown'),
+                $statusHtml,
+                $fieldsHtml,
+                $errorHtml,
+            );
+        });
+
+        return new HtmlString($rows->implode(''));
     }
 
     public static function table(Table $table): Table
@@ -198,6 +257,30 @@ class EnrichmentResource extends Resource
                         'pending' => 'warning',
                         default => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('last_run_status')
+                    ->label('Last run')
+                    ->getStateUsing(fn (Listing $record): string => match (true) {
+                        $record->latestEnrichmentJob === null => 'none',
+                        $record->latestEnrichmentJob->finished_at === null => 'running',
+                        $record->latestEnrichmentJob->success => 'ok',
+                        default => 'failed',
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'ok' => 'success',
+                        'failed' => 'danger',
+                        'running' => 'warning',
+                        default => 'gray',
+                    })
+                    ->icon(fn (string $state): string => match ($state) {
+                        'ok' => 'heroicon-o-check-circle',
+                        'failed' => 'heroicon-o-x-circle',
+                        'running' => 'heroicon-o-clock',
+                        default => 'heroicon-o-minus',
+                    })
+                    ->tooltip(fn (Listing $record): ?string => $record->latestEnrichmentJob !== null && ! $record->latestEnrichmentJob->success
+                        ? $record->latestEnrichmentJob->log
+                        : null),
                 Tables\Columns\TextColumn::make('last_enriched_at')
                     ->label('Last enriched')
                     ->since()
@@ -208,6 +291,9 @@ class EnrichmentResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('latestEnrichmentJob'))
+            ->poll('10s')
+            ->recordAction('edit')
             ->defaultSort('enrichment_score', 'asc')
             ->filters([
                 Tables\Filters\SelectFilter::make('type')->label('Category')->options(ListingType::class),
@@ -271,7 +357,52 @@ class EnrichmentResource extends Resource
                     ),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()->slideOver(),
+                Tables\Actions\EditAction::make()
+                    ->slideOver()
+                    ->mutateRecordDataUsing(function (array $data, Listing $record): array {
+                        // name/description/short_description are Spatie-translatable JSON columns
+                        // (e.g. {"en": "..."}) — without this, the raw array reaches the form and
+                        // renders as "[object Object]" instead of editable text.
+                        foreach (['name', 'description', 'short_description'] as $field) {
+                            $data[$field] = $record->getTranslation($field, 'en', useFallbackLocale: false);
+                        }
+
+                        return $data;
+                    })
+                    ->using(function (Listing $record, array $data): Listing {
+                        foreach (['name', 'description', 'short_description'] as $field) {
+                            if (array_key_exists($field, $data)) {
+                                $record->setTranslation($field, 'en', (string) $data[$field]);
+                                unset($data[$field]);
+                            }
+                        }
+
+                        $record->fill($data);
+
+                        $changedFields = array_keys($record->getDirty());
+
+                        if ($changedFields !== []) {
+                            $record->enriched_by = auth()->user()->name ?? 'Admin';
+                        }
+
+                        $record->save();
+
+                        if ($changedFields !== []) {
+                            EnrichmentJob::create([
+                                'listing_id' => $record->id,
+                                'started_at' => now(),
+                                'finished_at' => now(),
+                                'source' => 'manual_edit',
+                                'actor' => $record->enriched_by,
+                                'success' => true,
+                                'fields_changed' => $changedFields,
+                            ]);
+
+                            app(CompletionScoreService::class)->recalculate($record);
+                        }
+
+                        return $record;
+                    }),
                 Tables\Actions\Action::make('ai_enrich')
                     ->label('AI Enrich')
                     ->icon('heroicon-o-sparkles')
@@ -280,7 +411,11 @@ class EnrichmentResource extends Resource
                     ->modalDescription('Runs the full enrichment pipeline (website, structured extraction, photos, description) for this listing.')
                     ->action(function (Listing $record): void {
                         EnrichListingJob::dispatch($record->id);
-                        Notification::make()->title('Enrichment queued')->success()->send();
+                        Notification::make()
+                            ->title('Enrichment queued')
+                            ->body('Running in the background — the "Last run" column and score update automatically within ~10s of finishing.')
+                            ->success()
+                            ->send();
                     }),
             ])
             ->bulkActions([
@@ -340,7 +475,11 @@ class EnrichmentResource extends Resource
             EnrichListingJob::dispatch($record->id, $steps);
         }
 
-        Notification::make()->title("Queued {$records->count()} listing(s) for enrichment")->success()->send();
+        Notification::make()
+            ->title("Queued {$records->count()} listing(s) for enrichment")
+            ->body('Running in the background — the table refreshes automatically as jobs finish; check the "Last run" column for errors.')
+            ->success()
+            ->send();
     }
 
     /** @param  Collection<int, Listing>  $records */

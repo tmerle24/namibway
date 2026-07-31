@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 use Spatie\Translatable\HasTranslations;
 
@@ -62,6 +63,7 @@ class Listing extends Model
         'enrichment_status',
         'confidence',
         'data_source',
+        'enriched_by',
         'verified_at',
         'last_enriched_at',
     ];
@@ -136,6 +138,14 @@ class Listing extends Model
     public function enrichmentJobs(): HasMany
     {
         return $this->hasMany(EnrichmentJob::class);
+    }
+
+    /**
+     * @return HasOne<EnrichmentJob, $this>
+     */
+    public function latestEnrichmentJob(): HasOne
+    {
+        return $this->hasOne(EnrichmentJob::class)->latestOfMany();
     }
 
     /**
