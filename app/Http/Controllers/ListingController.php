@@ -190,13 +190,25 @@ class ListingController extends Controller
      * listing and, if the pipeline staged any website-scraped photos awaiting consent,
      * approves those too: asking the owner to click twice (once to approve photos, once
      * to publish) is exactly the kind of extra friction that tanks completion rates.
+     *
+     * terms_accepted must be explicitly true — the frontend gates the actual publish
+     * button behind a confirmation modal requiring it, so a request without it means
+     * the button was bypassed rather than genuinely confirmed.
      */
     public function publish(Request $request, Listing $listing): RedirectResponse
     {
-        abort_unless(self::isAdmin() || self::hasValidPreviewToken($listing, $request), 403);
+        $isAdmin = self::isAdmin();
+        $isOwnerPreview = self::hasValidPreviewToken($listing, $request);
+
+        abort_unless($isAdmin || $isOwnerPreview, 403);
+        abort_unless($request->boolean('terms_accepted'), 422, 'Terms & Conditions must be accepted to publish.');
 
         $listing->approvePendingPhotos();
-        $listing->update(['is_published' => true]);
+        $listing->update([
+            'is_published' => true,
+            'terms_accepted_at' => now(),
+            'terms_accepted_by' => $isAdmin ? 'admin' : 'owner',
+        ]);
 
         return redirect()->route('listings.show', array_filter([
             'listing' => $listing->slug,
@@ -249,7 +261,10 @@ class ListingController extends Controller
 
     public function update(Request $request, Listing $listing): RedirectResponse
     {
-        abort_unless(self::isAdmin() || self::hasValidPreviewToken($listing, $request), 403);
+        $isAdmin = self::isAdmin();
+        $isOwnerPreview = self::hasValidPreviewToken($listing, $request);
+
+        abort_unless($isAdmin || $isOwnerPreview, 403);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -264,8 +279,13 @@ class ListingController extends Controller
             'price_from' => ['nullable', 'numeric', 'min:0'],
             'price_currency' => ['nullable', 'string', 'max:3'],
             'publish' => ['nullable', 'boolean'],
+            'terms_accepted' => ['nullable', 'boolean'],
             'preview' => ['nullable', 'string'],
         ]);
+
+        // Same consent requirement as the dedicated publish() endpoint — the frontend's
+        // "Save and publish" button is gated behind the same confirmation modal.
+        abort_if(! empty($validated['publish']) && empty($validated['terms_accepted']), 422, 'Terms & Conditions must be accepted to publish.');
 
         $listing->setTranslation('name', 'en', $validated['name']);
         $listing->setTranslation('description', 'en', $validated['description'] ?? '');
@@ -283,6 +303,8 @@ class ListingController extends Controller
         if (! empty($validated['publish'])) {
             $listing->approvePendingPhotos();
             $listing->is_published = true;
+            $listing->terms_accepted_at = now();
+            $listing->terms_accepted_by = $isAdmin ? 'admin' : 'owner';
         }
 
         $listing->save();

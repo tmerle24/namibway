@@ -8,6 +8,7 @@ import AdminBar from '@/components/AdminBar.vue';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
+import PublishConsentModal from '@/components/PublishConsentModal.vue';
 import { formatPrice } from '@/lib/currency';
 import { home } from '@/routes';
 import inquiries from '@/routes/listings/inquiries';
@@ -88,20 +89,23 @@ const props = defineProps<{
     preview_token?: string | null;
 }>();
 
-function publishListing() {
-    const hasPending =
-        props.listing.pending_image || props.listing.pending_gallery.length;
-    const message = hasPending
-        ? `Publish "${props.listing.name}"? It will become visible to all visitors immediately, including the photo(s) found on your website.`
-        : `Publish "${props.listing.name}"? It will become visible to all visitors immediately.`;
+const showPublishModal = ref(false);
+const pendingPhotoCount = computed(
+    () =>
+        props.listing.pending_gallery.length +
+        (props.listing.pending_image ? 1 : 0),
+);
 
-    if (!window.confirm(message)) {
-        return;
-    }
+function publishListing() {
+    showPublishModal.value = true;
+}
+
+function confirmPublish() {
+    showPublishModal.value = false;
 
     router.post(
         `/listings/${props.listing.slug}/publish`,
-        { preview: props.preview_token ?? undefined },
+        { preview: props.preview_token ?? undefined, terms_accepted: true },
         { preserveScroll: true },
     );
 }
@@ -142,6 +146,14 @@ const heroImage = computed(() => {
     <Head :title="props.listing.name" />
 
     <div class="kaia-page">
+        <PublishConsentModal
+            :show="showPublishModal"
+            :listing-name="props.listing.name"
+            :pending-photo-count="pendingPhotoCount"
+            @confirm="confirmPublish"
+            @cancel="showPublishModal = false"
+        />
+
         <AdminBar :edit-url="`/admin/listings/${props.listing.id}/edit`" />
 
         <div v-if="props.is_preview" class="draft-banner">

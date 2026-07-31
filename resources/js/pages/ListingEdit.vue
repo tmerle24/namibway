@@ -4,6 +4,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { ArrowLeft, Eye, Send, X } from '@lucide/vue';
 import { reactive, ref } from 'vue';
 import AdminBar from '@/components/AdminBar.vue';
+import PublishConsentModal from '@/components/PublishConsentModal.vue';
 import logoDark from '../../images/logo-dark.png';
 
 interface Listing {
@@ -42,6 +43,7 @@ const form = reactive({
 
 const newHighlight = ref('');
 const saving = ref<'draft' | 'preview' | 'publish' | null>(null);
+const showPublishModal = ref(false);
 const previewUrl = `/listings/${props.listing.slug}${props.preview_token ? `?preview=${props.preview_token}` : ''}`;
 
 function addHighlight() {
@@ -67,6 +69,7 @@ function submit(mode: 'draft' | 'preview' | 'publish') {
             ...form,
             preview: props.preview_token ?? undefined,
             publish: mode === 'publish' ? true : undefined,
+            terms_accepted: mode === 'publish' ? true : undefined,
             redirect: mode !== 'draft' ? 'preview' : undefined,
         },
         {
@@ -76,6 +79,22 @@ function submit(mode: 'draft' | 'preview' | 'publish') {
             },
         },
     );
+}
+
+function confirmPublish() {
+    showPublishModal.value = false;
+    submit('publish');
+}
+
+// Only a listing that isn't live yet needs the publish confirmation modal —
+// re-saving an already-published listing isn't a new publish event, so it
+// doesn't need fresh Terms & Conditions acceptance each time.
+function handlePublishClick() {
+    if (props.listing.is_published) {
+        submit('preview');
+    } else {
+        showPublishModal.value = true;
+    }
 }
 </script>
 
@@ -239,7 +258,7 @@ function submit(mode: 'draft' | 'preview' | 'publish') {
                     type="button"
                     class="edit-action edit-action--publish"
                     :disabled="saving !== null"
-                    @click="submit('publish')"
+                    @click="handlePublishClick"
                 >
                     <Send :size="14" />
                     {{
@@ -252,6 +271,13 @@ function submit(mode: 'draft' | 'preview' | 'publish') {
                 </button>
             </div>
         </form>
+
+        <PublishConsentModal
+            :show="showPublishModal"
+            :listing-name="props.listing.name"
+            @confirm="confirmPublish"
+            @cancel="showPublishModal = false"
+        />
     </div>
 </template>
 

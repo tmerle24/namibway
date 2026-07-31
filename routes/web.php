@@ -9,8 +9,14 @@ use App\Http\Controllers\SavedPlanController;
 use App\Http\Controllers\TripController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/', HomeController::class)->name('home');
+
+// Placeholder — needs real content from NamibWay's own legal review before this
+// is relied on for actual publish consent. See the publish confirmation modal,
+// which links here.
+Route::get('terms', fn () => Inertia::render('Terms'))->name('terms');
 
 Route::get('listings/search', [ListingController::class, 'search'])->name('listings.search');
 Route::get('listings/{listing:slug}', [ListingController::class, 'show'])->name('listings.show');
