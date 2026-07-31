@@ -30,6 +30,10 @@ on:
         description: "Skip N records before starting detail fetch (for batched runs)"
         required: false
         default: "0"
+      limit:
+        description: "Stop the base scrape early after N records (0 = all ~6000 — every category/page). Use e.g. 30 for a fast test run."
+        required: false
+        default: "0"
       preview_count:
         description: "How many records to print in the log for inspection"
         required: false
@@ -83,6 +87,7 @@ jobs:
           ARGS="$ARGS --detail-workers ${{ github.event.inputs.detail_workers || '8' }}"
           ARGS="$ARGS --detail-batch-size ${{ github.event.inputs.detail_batch_size || '0' }}"
           ARGS="$ARGS --detail-batch-offset ${{ github.event.inputs.detail_batch_offset || '0' }}"
+          ARGS="$ARGS --limit ${{ github.event.inputs.limit || '0' }}"
           if [ "${{ steps.params.outputs.fetch_details }}" = "true" ]; then
             ARGS="$ARGS --fetch-details"
           fi

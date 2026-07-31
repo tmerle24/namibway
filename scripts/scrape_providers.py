@@ -29,7 +29,7 @@ import argparse
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 try:
     import requests
@@ -427,7 +427,11 @@ def _ntb_discover_categories() -> list[tuple[str, str]]:
                     if name:
                         cats.append((name, full))
 
-        # Strategy 2: look for links to GeoDirectory category archive pages
+        # Strategy 2: look for links to category archive pages.
+        # Directorist (confirmed live markup, 2026-07) uses /single-category/slug/ —
+        # GeoDirectory's /gd-category/, /listing-category/ kept in case NTB migrates again.
+        # Note: a bare "/category/" substring also matches "/single-category/", so listing
+        # it separately here would be redundant; "single-category" is the one that matters.
         if not cats:
             for a in soup.select("a[href]"):
                 href = a.get("href", "")
@@ -436,8 +440,8 @@ def _ntb_discover_categories() -> list[tuple[str, str]]:
                 if parsed.netloc and "visitnamibia" not in parsed.netloc:
                     continue
                 path = parsed.path
-                # GeoDirectory category archive: /gd-category/slug/ or /listing-category/slug/
-                if any(seg in path for seg in ["/gd-category/", "/listing-category/", "/category/"]):
+                if any(seg in path for seg in
+                       ["/single-category/", "/gd-category/", "/listing-category/", "/category/"]):
                     if full not in seen:
                         seen.add(full)
                         name = a.get_text(strip=True)
@@ -507,13 +511,26 @@ def _ntb_discover_categories() -> list[tuple[str, str]]:
     return cats
 
 
-def _ntb_paginate_category(base_url: str, forced_type: str) -> list:
+def _ntb_paged_url(base_url: str, page: int) -> str:
+    """
+    Build page N of a listing/search URL. This site 301-redirects ?paged=N to a
+    /page/N/ path segment (confirmed live, 2026-07) — appending &paged= just wastes
+    a request on every page fetch, so insert /page/N/ into the path directly.
+    """
+    if page == 1:
+        return base_url
+    parsed = urlparse(base_url)
+    path = parsed.path.rstrip("/") + f"/page/{page}/"
+    return urlunparse(parsed._replace(path=path))
+
+
+def _ntb_paginate_category(base_url: str, forced_type: str, limit: int = 0) -> list:
     """Paginate through all pages of a single NTB category search URL."""
     records: list = []
     page = 1
     consecutive_empty = 0
     while True:
-        paged_url = base_url if page == 1 else f"{base_url}&paged={page}"
+        paged_url = _ntb_paged_url(base_url, page)
         resp = get(paged_url)
         if not resp:
             break
@@ -527,6 +544,9 @@ def _ntb_paginate_category(base_url: str, forced_type: str) -> list:
             consecutive_empty = 0
             records.extend(page_records)
             print(f"    page {page}: {len(page_records)} records (running total: {len(records)})")
+        if limit and len(records) >= limit:
+            print(f"    limit {limit} reached — stopping this category")
+            break
         page += 1
         time.sleep(1.5)
     return records
@@ -537,6 +557,7 @@ def scrape_visitnamibia(
     detail_workers: int = 8,
     detail_batch_size: int = 0,
     detail_batch_offset: int = 0,
+    limit: int = 0,
 ) -> list:
     print("\n=== visitnamibia.com.na (NTB Official Directory) ===")
     all_records: list = []
@@ -550,11 +571,15 @@ def scrape_visitnamibia(
         fallback_url = (
             f"{VISITNAMIBIA_BASE}/search-result/?directory_type=listing&q="
         )
-        page_records = _ntb_paginate_category(fallback_url, forced_type=None)
+        page_records = _ntb_paginate_category(fallback_url, forced_type=None, limit=limit)
         all_records.extend(page_records)
     else:
         # 2. Scrape each category, mapping name → internal type
         for cat_name, cat_url in categories:
+            if limit and len(all_records) >= limit:
+                print(f"\n  limit {limit} reached — skipping remaining categories")
+                break
+
             # Normalise category name for lookup
             normalised = cat_name.lower().strip()
             # Try exact match first, then substring
@@ -568,7 +593,8 @@ def scrape_visitnamibia(
                 forced_type = resolve_ntb_type(cat_name)
 
             print(f"\n  Category: {cat_name!r} → type={forced_type}")
-            cat_records = _ntb_paginate_category(cat_url, forced_type=forced_type)
+            remaining = (limit - len(all_records)) if limit else 0
+            cat_records = _ntb_paginate_category(cat_url, forced_type=forced_type, limit=remaining)
             print(f"  Category total: {len(cat_records)}")
             all_records.extend(cat_records)
             time.sleep(2)
@@ -915,6 +941,13 @@ def main() -> None:
         default=0,
         help="Skip this many records before starting detail fetch (for splitting across runs)",
     )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        help="Stop the visitnamibia base scrape early after N records (0 = no limit, "
+             "scrape every category/page). Use for a fast end-to-end test run.",
+    )
     args = parser.parse_args()
 
     all_records: list = []
@@ -926,6 +959,7 @@ def main() -> None:
                 detail_workers=args.detail_workers,
                 detail_batch_size=args.detail_batch_size,
                 detail_batch_offset=args.detail_batch_offset,
+                limit=args.limit,
             )
         )
 
