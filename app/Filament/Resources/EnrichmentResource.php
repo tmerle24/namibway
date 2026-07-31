@@ -458,39 +458,51 @@ class EnrichmentResource extends Resource
                     ->action($editWebsite)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->website))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('website', 'ilike', "%{$search}%"))
-                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByRaw("(website IS NOT NULL AND website != '') {$direction}")),
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(website IS NOT NULL AND website != '') desc")
+                        : $query->orderByRaw("(website IS NOT NULL AND website != '') asc")),
                 Tables\Columns\IconColumn::make('has_email')
                     ->label('Email')
                     ->boolean()
                     ->action($editEmail)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->contact_email))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('contact_email', 'ilike', "%{$search}%"))
-                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByRaw("(contact_email IS NOT NULL AND contact_email != '') {$direction}")),
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(contact_email IS NOT NULL AND contact_email != '') desc")
+                        : $query->orderByRaw("(contact_email IS NOT NULL AND contact_email != '') asc")),
                 Tables\Columns\IconColumn::make('has_phone')
                     ->label('Phone')
                     ->boolean()
                     ->action($editPhone)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->phone))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('phone', 'ilike', "%{$search}%"))
-                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByRaw("(phone IS NOT NULL AND phone != '') {$direction}")),
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(phone IS NOT NULL AND phone != '') desc")
+                        : $query->orderByRaw("(phone IS NOT NULL AND phone != '') asc")),
                 Tables\Columns\IconColumn::make('has_description')
                     ->label('Description')
                     ->boolean()
                     ->action($editDescription)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->getTranslation('description', 'en', useFallbackLocale: false)))
-                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByRaw("(description->>'en' IS NOT NULL AND description->>'en' != '') {$direction}")),
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(description->>'en' IS NOT NULL AND description->>'en' != '') desc")
+                        : $query->orderByRaw("(description->>'en' IS NOT NULL AND description->>'en' != '') asc")),
                 Tables\Columns\IconColumn::make('has_photos')
                     ->label('Photos')
                     ->boolean()
                     ->action($editPhotos)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->image))
-                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByRaw("(image IS NOT NULL AND image != '') {$direction}")),
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(image IS NOT NULL AND image != '') desc")
+                        : $query->orderByRaw("(image IS NOT NULL AND image != '') asc")),
                 Tables\Columns\IconColumn::make('has_gps')
                     ->label('GPS')
                     ->boolean()
                     ->action($editAddress)
                     ->getStateUsing(fn (Listing $record): bool => $record->latitude !== null && $record->longitude !== null)
-                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByRaw("(latitude IS NOT NULL AND longitude IS NOT NULL) {$direction}")),
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
+                        ? $query->orderByRaw("(latitude IS NOT NULL AND longitude IS NOT NULL) desc")
+                        : $query->orderByRaw("(latitude IS NOT NULL AND longitude IS NOT NULL) asc")),
                 Tables\Columns\TextColumn::make('claim_status')
                     ->label('Claimed')
                     ->badge()
