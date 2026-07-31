@@ -36,9 +36,12 @@ class EnrichmentPipeline
     /**
      * @param  list<string>|null  $steps  Restrict to a subset of ['website', 'scrape', 'ai_extract', 'images', 'description'].
      *                                    Null runs the full pipeline.
+     * @param  bool  $useGooglePlaces  Defaults to true for automated/nightly/bulk callers. The
+     *                                 "Enrich" dashboard action lets an admin opt out per run — Places
+     *                                 is a paid API, unlike the OSM lookup this otherwise falls back to.
      * @return array{fields_updated: list<string>, tokens_used: int, cost_estimate: float, places_calls: array<string, int>, places_cost_estimate: float, log: list<string>, score: int}
      */
-    public function run(Listing $listing, ?array $steps = null): array
+    public function run(Listing $listing, ?array $steps = null, bool $useGooglePlaces = true): array
     {
         $log = [];
         $tokensUsed = 0;
@@ -53,7 +56,7 @@ class EnrichmentPipeline
 
         if ($runs('website')) {
             if (blank($listing->website)) {
-                $this->findWebsite($listing, $updates, $log);
+                $this->findWebsite($listing, $updates, $log, $useGooglePlaces);
             }
 
             // Independent of whether a website was found above — OSM/Google Places are
@@ -62,7 +65,7 @@ class EnrichmentPipeline
             // Checked against $updates too, so this doesn't redundantly re-query them
             // when findWebsite() already got everything from the very same lookup.
             if (! $this->hasAllLocationFacts($listing, $updates)) {
-                $this->fillLocationFacts($listing, $updates, $log);
+                $this->fillLocationFacts($listing, $updates, $log, $useGooglePlaces);
             }
         }
 
@@ -98,7 +101,7 @@ class EnrichmentPipeline
             // No website, or its homepage didn't yield anything scrapeable — Google
             // Places Photos as a fallback source, same lookup FetchGooglePlacesPhotoJob
             // already does on its own schedule, just inline here for an immediate result.
-            if (! $listing->image && ! array_key_exists('image', $updates)) {
+            if ($useGooglePlaces && ! $listing->image && ! array_key_exists('image', $updates)) {
                 $this->fillImagesFromGooglePlaces($listing, $updates, $log);
             }
         }
@@ -160,9 +163,9 @@ class EnrichmentPipeline
 
     /** @param array<string, mixed> $updates
      *  @param list<string> $log */
-    private function findWebsite(Listing $listing, array &$updates, array &$log): void
+    private function findWebsite(Listing $listing, array &$updates, array &$log, bool $useGooglePlaces): void
     {
-        $found = $this->websiteFinder->find($listing);
+        $found = $this->websiteFinder->find($listing, $useGooglePlaces);
 
         if ($found === null) {
             $log[] = 'No website found.';
@@ -198,7 +201,7 @@ class EnrichmentPipeline
      * @param array<string, mixed> $updates
      * @param list<string> $log
      */
-    private function fillLocationFacts(Listing $listing, array &$updates, array &$log): void
+    private function fillLocationFacts(Listing $listing, array &$updates, array &$log, bool $useGooglePlaces): void
     {
         $osmFacts = $this->osmFinder->findLocationFacts($listing);
 
@@ -208,6 +211,14 @@ class EnrichmentPipeline
         }
 
         if ($this->hasAllLocationFacts($listing, $updates)) {
+            return;
+        }
+
+        if (! $useGooglePlaces) {
+            if ($osmFacts === []) {
+                $log[] = 'No OpenStreetMap match — Google Places not requested for this run.';
+            }
+
             return;
         }
 

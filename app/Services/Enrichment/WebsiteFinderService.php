@@ -41,10 +41,15 @@ class WebsiteFinderService
     /**
      * @return array{website: string, confidence: int, source: string, phone?: string, address?: string, latitude?: float, longitude?: float}|null
      */
-    public function find(Listing $listing): ?array
+    public function find(Listing $listing, bool $useGooglePlaces = true): ?array
     {
-        return $this->fromEmailDomain($listing)
-            ?? $this->fromGooglePlaces($listing, byRegion: true, confidence: 95)
+        $found = $this->fromEmailDomain($listing);
+
+        if ($found !== null || ! $useGooglePlaces) {
+            return $found;
+        }
+
+        return $this->fromGooglePlaces($listing, byRegion: true, confidence: 95)
             ?? $this->fromGooglePlaces($listing, byRegion: false, confidence: 85);
     }
 

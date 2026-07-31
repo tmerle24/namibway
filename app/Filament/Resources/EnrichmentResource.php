@@ -603,34 +603,36 @@ class EnrichmentResource extends Resource
             ])
             ->actions([
                 $editBasic,
-                Tables\Actions\Action::make('ai_enrich')
-                    ->label('AI Enrich')
+                Tables\Actions\Action::make('enrich')
+                    ->label('Enrich')
                     ->icon('heroicon-o-sparkles')
                     ->color('warning')
-                    ->requiresConfirmation()
-                    ->modalDescription('Runs the full enrichment pipeline (website, structured extraction, photos, description) for this listing.')
-                    ->action(function (Listing $record): void {
-                        EnrichListingJob::enqueue($record->id);
+                    // Google Places and Claude are both metered/paid APIs — OpenStreetMap
+                    // (GPS/address) and the listing's own website (description, contact,
+                    // photos) are free and always used. These two checkboxes are the only
+                    // way this run ever spends money, hence unchecked by default.
+                    ->form([
+                        Forms\Components\Checkbox::make('use_google_places')
+                            ->label('Use Google Places (paid — GPS, address, phone, photo fallback)')
+                            ->default(false),
+                        Forms\Components\Checkbox::make('use_claude')
+                            ->label('Use Claude AI (paid — structured data extraction & description text)')
+                            ->default(false),
+                    ])
+                    ->modalDescription('OpenStreetMap and the listing\'s own website are always used and cost nothing. Google Places and Claude are only queried if checked below.')
+                    ->action(function (Listing $record, array $data): void {
+                        $steps = ['website', 'scrape', 'images'];
+
+                        if ($data['use_claude']) {
+                            $steps[] = 'ai_extract';
+                            $steps[] = 'description';
+                        }
+
+                        EnrichListingJob::enqueue($record->id, $steps, (bool) $data['use_google_places']);
+
                         Notification::make()
                             ->title('Enrichment queued')
                             ->body('Running in the background — the "Last run" column and Log tab update automatically within ~10s of finishing.')
-                            ->success()
-                            ->send();
-                    }),
-                Tables\Actions\Action::make('scrape_website')
-                    ->label('Scrape Website')
-                    ->icon('heroicon-o-code-bracket')
-                    ->color('gray')
-                    // Only makes sense once a website is known — this reads the existing
-                    // site, it doesn't go looking for one (that's "Find Website"/"AI Enrich").
-                    ->visible(fn (Listing $record): bool => filled($record->website))
-                    ->requiresConfirmation()
-                    ->modalDescription('Reads the listing\'s own website (description, contact info, photos) and looks up GPS/address/phone on Google Places — no Claude calls, no AI cost.')
-                    ->action(function (Listing $record): void {
-                        EnrichListingJob::enqueue($record->id, ['website', 'scrape']);
-                        Notification::make()
-                            ->title('Website scrape queued')
-                            ->body('No AI involved — the "Last run" column and Log tab update automatically within ~10s of finishing.')
                             ->success()
                             ->send();
                     }),
