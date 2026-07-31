@@ -501,8 +501,8 @@ class EnrichmentResource extends Resource
                     ->action($editAddress)
                     ->getStateUsing(fn (Listing $record): bool => $record->latitude !== null && $record->longitude !== null)
                     ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
-                        ? $query->orderByRaw("(latitude IS NOT NULL AND longitude IS NOT NULL) desc")
-                        : $query->orderByRaw("(latitude IS NOT NULL AND longitude IS NOT NULL) asc")),
+                        ? $query->orderByRaw('(latitude IS NOT NULL AND longitude IS NOT NULL) desc')
+                        : $query->orderByRaw('(latitude IS NOT NULL AND longitude IS NOT NULL) asc')),
                 Tables\Columns\TextColumn::make('claim_status')
                     ->label('Claimed')
                     ->badge()
