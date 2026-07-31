@@ -58,16 +58,27 @@ const ADMIN_LINKS = [
     background: #111827;
     border-bottom: 1px solid #1f2937;
     font-size: 13px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.admin-bar::-webkit-scrollbar {
+    display: none;
 }
 
 .admin-bar-badge {
+    flex-shrink: 0;
     color: #f59e0b;
     font-weight: 700;
+    white-space: nowrap;
 }
 
 .admin-bar-link {
+    flex-shrink: 0;
     color: #9ca3af;
     text-decoration: none;
+    white-space: nowrap;
 }
 
 .admin-bar-link:hover {

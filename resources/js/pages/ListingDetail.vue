@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
-import { Form, Head, Link } from '@inertiajs/vue3';
+import { Form, Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
@@ -80,6 +80,22 @@ const props = defineProps<{
     is_preview?: boolean;
 }>();
 
+function publishListing() {
+    if (
+        !window.confirm(
+            `Publish "${props.listing.name}"? It will become visible to all visitors immediately.`,
+        )
+    ) {
+        return;
+    }
+
+    router.post(
+        `/listings/${props.listing.slug}/publish`,
+        {},
+        { preserveScroll: true },
+    );
+}
+
 const { t } = useI18n();
 
 const reviewRatingInput = ref(0);
@@ -105,16 +121,34 @@ const heroImage = computed(() => {
         <div
             v-if="props.is_preview"
             :style="{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
                 background: '#92400e',
                 color: '#fef3c7',
-                textAlign: 'center',
                 padding: '8px 12px',
                 fontSize: '14px',
                 fontWeight: 600,
             }"
         >
-            Draft preview — this listing is not published yet, only admins can
-            see this page
+            <span>Draft preview</span>
+            <button
+                type="button"
+                :style="{
+                    background: 'rgba(0, 0, 0, 0.25)',
+                    color: '#fef3c7',
+                    border: '1px solid rgba(254, 243, 199, 0.6)',
+                    borderRadius: '999px',
+                    padding: '2px 10px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                }"
+                @click="publishListing"
+            >
+                unpublished
+            </button>
         </div>
 
         <div class="detail-topbar">
