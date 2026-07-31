@@ -45,6 +45,21 @@ class EnrichmentResource extends Resource
 
     protected static ?int $navigationSort = 0;
 
+    /** 1-based tab indexes, matching the order of Tabs\Tab entries in form(). */
+    private const TAB_BASIC = 1;
+
+    private const TAB_CONTACT = 2;
+
+    private const TAB_ADDRESS = 3;
+
+    private const TAB_DESCRIPTION = 4;
+
+    private const TAB_PHOTOS = 7;
+
+    private const TAB_METADATA = 8;
+
+    private const TAB_LOG = 9;
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -61,10 +76,22 @@ class EnrichmentResource extends Resource
             Forms\Components\Tabs::make('Enrichment')
                 ->columnSpanFull()
                 ->disabled(fn (?Listing $record): bool => self::isEnriching($record))
+                // Which tab opens active depends on which table column/action was clicked
+                // (see editAction()) — falls back to Basic when opened generically (row click,
+                // pencil icon, no 'tab' argument passed).
+                ->activeTab(fn (array $arguments): int => $arguments['tab'] ?? self::TAB_BASIC)
                 ->tabs([
                     Forms\Components\Tabs\Tab::make('Basic')
                         ->schema([
-                            Forms\Components\TextInput::make('name')->required()->maxLength(255)->autofocus(),
+                            Forms\Components\TextInput::make('name')
+                                ->required()
+                                ->maxLength(255)
+                                ->autofocus()
+                                // Native autofocus is unreliable on inputs revealed by a
+                                // Livewire/Alpine modal transition (the browser's autofocus
+                                // pass often runs before the element is actually focusable) —
+                                // this retries once the slide-over has settled.
+                                ->extraInputAttributes(['x-init' => 'setTimeout(() => $el.focus(), 350)']),
                             Forms\Components\TextInput::make('slug')->required()->maxLength(255)->unique(ignoreRecord: true),
                             Forms\Components\TextInput::make('ntb_number')->label('NTB number'),
                             Forms\Components\Select::make('type')->label('Category')->options(ListingType::class)->required(),
@@ -189,13 +216,95 @@ class EnrichmentResource extends Resource
         return new HtmlString($rows->implode(''));
     }
 
+    /**
+     * A slide-over EditAction pre-armed to open on a given form tab (see the Tabs'
+     * ->activeTab() closure in form()) and to save via saveManualEdit(). $name must be
+     * unique per distinct tab across the table — reused as-is by every column bound to
+     * that tab, so e.g. website/email/phone all share one 'edit_contact' instance.
+     */
+    private static function editAction(int $tab, string $name): Tables\Actions\EditAction
+    {
+        return Tables\Actions\EditAction::make($name)
+            ->slideOver()
+            ->arguments(['tab' => $tab])
+            ->mutateRecordDataUsing(fn (array $data, Listing $record): array => self::hydrateTranslatableFields($data, $record))
+            ->using(fn (Listing $record, array $data): Listing => self::saveManualEdit($record, $data));
+    }
+
+    /**
+     * name/description/short_description are Spatie-translatable JSON columns (e.g.
+     * {"en": "..."}) — without this, the raw array reaches the form and renders as
+     * "[object Object]" instead of editable text.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private static function hydrateTranslatableFields(array $data, Listing $record): array
+    {
+        foreach (['name', 'description', 'short_description'] as $field) {
+            $data[$field] = $record->getTranslation($field, 'en', useFallbackLocale: false);
+        }
+
+        return $data;
+    }
+
+    /** @param  array<string, mixed>  $data */
+    private static function saveManualEdit(Listing $record, array $data): Listing
+    {
+        foreach (['name', 'description', 'short_description'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $record->setTranslation($field, 'en', (string) $data[$field]);
+                unset($data[$field]);
+            }
+        }
+
+        $record->fill($data);
+
+        $changedFields = array_keys($record->getDirty());
+
+        if ($changedFields !== []) {
+            $record->enriched_by = auth()->user()->name ?? 'Admin';
+        }
+
+        $record->save();
+
+        if ($changedFields !== []) {
+            EnrichmentJob::create([
+                'listing_id' => $record->id,
+                'started_at' => now(),
+                'finished_at' => now(),
+                'source' => 'manual_edit',
+                'actor' => $record->enriched_by,
+                'success' => true,
+                'fields_changed' => $changedFields,
+            ]);
+
+            app(CompletionScoreService::class)->recalculate($record);
+        }
+
+        return $record;
+    }
+
     public static function table(Table $table): Table
     {
+        // Built once and shared across every column that should open the edit modal on that
+        // tab — clicking a specific cell (e.g. the website icon) jumps straight to the tab
+        // that field lives on, instead of always landing on Basic. Row clicks that don't land
+        // on a bound column (recordAction('edit') below) still default to $editBasic.
+        $editBasic = self::editAction(self::TAB_BASIC, 'edit');
+        $editContact = self::editAction(self::TAB_CONTACT, 'edit_contact');
+        $editAddress = self::editAction(self::TAB_ADDRESS, 'edit_address');
+        $editDescription = self::editAction(self::TAB_DESCRIPTION, 'edit_description');
+        $editPhotos = self::editAction(self::TAB_PHOTOS, 'edit_photos');
+        $editMetadata = self::editAction(self::TAB_METADATA, 'edit_metadata');
+        $editLog = self::editAction(self::TAB_LOG, 'edit_log');
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('enrichment_status')
                     ->label('Status')
                     ->badge()
+                    ->action($editMetadata)
                     ->color(fn (string $state): string => match ($state) {
                         'complete' => 'success',
                         'partial' => 'warning',
@@ -204,6 +313,7 @@ class EnrichmentResource extends Resource
                 Tables\Columns\TextColumn::make('enrichment_score')
                     ->label('Completion')
                     ->sortable()
+                    ->action($editMetadata)
                     ->formatStateUsing(fn (int $state): string => "{$state}%")
                     ->color(fn (int $state): string => match (true) {
                         $state >= 90 => 'success',
@@ -213,40 +323,50 @@ class EnrichmentResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->wrap()
-                    ->limit(40),
+                    ->limit(40)
+                    ->action($editBasic),
                 Tables\Columns\TextColumn::make('ntb_number')
                     ->label('NTB #')
                     ->searchable()
+                    ->action($editBasic)
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('type')
                     ->label('Category')
                     ->badge()
+                    ->action($editBasic)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('region')
                     ->searchable()
+                    ->action($editBasic)
                     ->sortable(),
                 Tables\Columns\IconColumn::make('has_website')
                     ->label('Website')
                     ->boolean()
+                    ->action($editContact)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->website)),
                 Tables\Columns\TextColumn::make('contact_email')
                     ->label('Email')
                     ->searchable()
+                    ->action($editContact)
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('phone')
                     ->searchable()
+                    ->action($editContact)
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\IconColumn::make('has_description')
                     ->label('Description')
                     ->boolean()
+                    ->action($editDescription)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->getTranslation('description', 'en', useFallbackLocale: false))),
                 Tables\Columns\IconColumn::make('has_photos')
                     ->label('Photos')
                     ->boolean()
+                    ->action($editPhotos)
                     ->getStateUsing(fn (Listing $record): bool => filled($record->image)),
                 Tables\Columns\IconColumn::make('has_gps')
                     ->label('GPS')
                     ->boolean()
+                    ->action($editAddress)
                     ->getStateUsing(fn (Listing $record): bool => $record->latitude !== null && $record->longitude !== null),
                 Tables\Columns\TextColumn::make('claim_status')
                     ->label('Claimed')
@@ -259,6 +379,7 @@ class EnrichmentResource extends Resource
                     }),
                 Tables\Columns\TextColumn::make('last_run_status')
                     ->label('Last run')
+                    ->action($editLog)
                     ->getStateUsing(fn (Listing $record): string => match (true) {
                         $record->latestEnrichmentJob === null => 'none',
                         $record->latestEnrichmentJob->finished_at === null => 'running',
@@ -285,10 +406,12 @@ class EnrichmentResource extends Resource
                     ->label('Last enriched')
                     ->since()
                     ->sortable()
+                    ->action($editMetadata)
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->since()
                     ->sortable()
+                    ->action($editMetadata)
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->modifyQueryUsing(fn (Builder $query) => $query->with('latestEnrichmentJob'))
@@ -357,52 +480,7 @@ class EnrichmentResource extends Resource
                     ),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
-                    ->slideOver()
-                    ->mutateRecordDataUsing(function (array $data, Listing $record): array {
-                        // name/description/short_description are Spatie-translatable JSON columns
-                        // (e.g. {"en": "..."}) — without this, the raw array reaches the form and
-                        // renders as "[object Object]" instead of editable text.
-                        foreach (['name', 'description', 'short_description'] as $field) {
-                            $data[$field] = $record->getTranslation($field, 'en', useFallbackLocale: false);
-                        }
-
-                        return $data;
-                    })
-                    ->using(function (Listing $record, array $data): Listing {
-                        foreach (['name', 'description', 'short_description'] as $field) {
-                            if (array_key_exists($field, $data)) {
-                                $record->setTranslation($field, 'en', (string) $data[$field]);
-                                unset($data[$field]);
-                            }
-                        }
-
-                        $record->fill($data);
-
-                        $changedFields = array_keys($record->getDirty());
-
-                        if ($changedFields !== []) {
-                            $record->enriched_by = auth()->user()->name ?? 'Admin';
-                        }
-
-                        $record->save();
-
-                        if ($changedFields !== []) {
-                            EnrichmentJob::create([
-                                'listing_id' => $record->id,
-                                'started_at' => now(),
-                                'finished_at' => now(),
-                                'source' => 'manual_edit',
-                                'actor' => $record->enriched_by,
-                                'success' => true,
-                                'fields_changed' => $changedFields,
-                            ]);
-
-                            app(CompletionScoreService::class)->recalculate($record);
-                        }
-
-                        return $record;
-                    }),
+                $editBasic,
                 Tables\Actions\Action::make('ai_enrich')
                     ->label('AI Enrich')
                     ->icon('heroicon-o-sparkles')
