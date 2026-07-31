@@ -93,10 +93,22 @@ class SavedPlanController extends Controller
         // on the canvas, once every page actually exists.
         $pdf->render();
         $canvas = $pdf->getDomPDF()->getCanvas();
-        $font = $pdf->getDomPDF()->getFontMetrics()->getFont('DejaVu Sans');
+        $fontMetrics = $pdf->getDomPDF()->getFontMetrics();
+        $font = $fontMetrics->getFont('DejaVu Sans');
         $size = 8;
         $text = 'Page {PAGE_NUM} of {PAGE_COUNT}';
-        $width = $pdf->getDomPDF()->getFontMetrics()->getTextWidth($text, $font, $size);
+
+        // page_text() substitutes {PAGE_NUM}/{PAGE_COUNT} with the actual
+        // digits at render time, but centering has to be computed *now* —
+        // measuring the placeholder string itself (32 chars) instead of the
+        // rendered text (e.g. "Page 2 of 4", 11 chars) is what threw the
+        // centering off. Measure against the real page count instead — its
+        // digit width is what {PAGE_COUNT} will actually render as, and
+        // {PAGE_NUM} is never wider than it.
+        $pageCount = $canvas->get_page_count();
+        $sample = "Page {$pageCount} of {$pageCount}";
+        $width = $fontMetrics->getTextWidth($sample, $font, $size);
+
         $canvas->page_text(($canvas->get_width() - $width) / 2, $canvas->get_height() - 26, $text, $font, $size, [0.63, 0.44, 0.35]);
 
         $filename = Str::slug($saved->title ?: 'namibway-trip').'.pdf';
