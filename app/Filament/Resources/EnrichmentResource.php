@@ -60,6 +60,16 @@ class EnrichmentResource extends Resource
 
     private const TAB_LOG = 9;
 
+    /**
+     * Which tab the edit modal should open on, stamped by editAction()'s
+     * mutateRecordDataUsing() (which always runs before the form/Tabs render) and read by
+     * Tabs::activeTab() below. A plain request-scoped static rather than routing this
+     * through Filament's action arguments()/utility-injection: Tabs::activeTab() only
+     * receives the base Component evaluation context, not an Action's own arguments, so
+     * injecting `array $arguments` there throws (learned the hard way — 500 in production).
+     */
+    private static int $activeTab = self::TAB_BASIC;
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -77,9 +87,9 @@ class EnrichmentResource extends Resource
                 ->columnSpanFull()
                 ->disabled(fn (?Listing $record): bool => self::isEnriching($record))
                 // Which tab opens active depends on which table column/action was clicked
-                // (see editAction()) — falls back to Basic when opened generically (row click,
-                // pencil icon, no 'tab' argument passed).
-                ->activeTab(fn (array $arguments): int => $arguments['tab'] ?? self::TAB_BASIC)
+                // (see editAction()/self::$activeTab) — falls back to Basic when opened
+                // generically (row click, pencil icon).
+                ->activeTab(fn (): int => self::$activeTab)
                 ->tabs([
                     Forms\Components\Tabs\Tab::make('Basic')
                         ->schema([
@@ -226,21 +236,23 @@ class EnrichmentResource extends Resource
     {
         return Tables\Actions\EditAction::make($name)
             ->slideOver()
-            ->arguments(['tab' => $tab])
-            ->mutateRecordDataUsing(fn (array $data, Listing $record): array => self::hydrateTranslatableFields($data, $record))
+            ->mutateRecordDataUsing(fn (array $data, Listing $record): array => self::hydrateFormData($data, $record, $tab))
             ->using(fn (Listing $record, array $data): Listing => self::saveManualEdit($record, $data));
     }
 
     /**
      * name/description/short_description are Spatie-translatable JSON columns (e.g.
      * {"en": "..."}) — without this, the raw array reaches the form and renders as
-     * "[object Object]" instead of editable text.
+     * "[object Object]" instead of editable text. Also stamps self::$activeTab so the
+     * Tabs component (see form()) opens on the tab this action was bound to.
      *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    private static function hydrateTranslatableFields(array $data, Listing $record): array
+    private static function hydrateFormData(array $data, Listing $record, int $tab): array
     {
+        self::$activeTab = $tab;
+
         foreach (['name', 'description', 'short_description'] as $field) {
             $data[$field] = $record->getTranslation($field, 'en', useFallbackLocale: false);
         }
@@ -343,16 +355,20 @@ class EnrichmentResource extends Resource
                     ->label('Website')
                     ->boolean()
                     ->action($editContact)
-                    ->getStateUsing(fn (Listing $record): bool => filled($record->website)),
-                Tables\Columns\TextColumn::make('contact_email')
+                    ->getStateUsing(fn (Listing $record): bool => filled($record->website))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('website', 'ilike', "%{$search}%")),
+                Tables\Columns\IconColumn::make('has_email')
                     ->label('Email')
-                    ->searchable()
+                    ->boolean()
                     ->action($editContact)
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('phone')
-                    ->searchable()
+                    ->getStateUsing(fn (Listing $record): bool => filled($record->contact_email))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('contact_email', 'ilike', "%{$search}%")),
+                Tables\Columns\IconColumn::make('has_phone')
+                    ->label('Phone')
+                    ->boolean()
                     ->action($editContact)
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->getStateUsing(fn (Listing $record): bool => filled($record->phone))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('phone', 'ilike', "%{$search}%")),
                 Tables\Columns\IconColumn::make('has_description')
                     ->label('Description')
                     ->boolean()
