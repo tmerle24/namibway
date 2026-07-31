@@ -229,6 +229,34 @@ class ListingController extends Controller
     }
 
     /**
+     * Admin-only mirror of the "Enrich" row action on the Data Enrichment dashboard —
+     * lets an admin trigger it right from the listing's own preview page instead of
+     * navigating back to the table and searching for the row. Not extended to the
+     * owner-preview token like publish/approve-photos: Google Places and Claude are
+     * both metered/paid, so who gets to spend that money stays an admin decision.
+     */
+    public function enrich(Request $request, Listing $listing): RedirectResponse
+    {
+        abort_unless(self::isAdmin(), 403);
+
+        $validated = $request->validate([
+            'use_google_places' => ['nullable', 'boolean'],
+            'use_claude' => ['nullable', 'boolean'],
+        ]);
+
+        $steps = ['website', 'scrape', 'images'];
+
+        if (! empty($validated['use_claude'])) {
+            $steps[] = 'ai_extract';
+            $steps[] = 'description';
+        }
+
+        EnrichListingJob::enqueue($listing->id, $steps, (bool) ($validated['use_google_places'] ?? false));
+
+        return back();
+    }
+
+    /**
      * Self-service editor for the property owner (via claim_token) or an admin — a
      * lighter-weight alternative to the Filament panel, which owners have no account
      * for. Deliberately a small field set: the basics an owner would actually want to

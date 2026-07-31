@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Enums\ListingType;
 use App\Filament\Resources\EnrichmentResource\Pages;
+use App\Filament\Support\PipelineImageResolver;
 use App\Jobs\EnrichListingJob;
 use App\Models\EnrichmentJob;
 use App\Models\Listing;
@@ -171,11 +172,12 @@ class EnrichmentResource extends Resource
                         ->schema([
                             // Must be the r2 disk, not public — AI/website/Google-Places-scraped
                             // images are stored on R2 (see GooglePlacesPhotoFinder,
-                            // WebsiteContentExtractor::downloadPhoto), so a FileUpload on the
-                            // 'public' disk can't resolve their preview URLs at all: it silently
-                            // shows no thumbnail even though has_photos correctly reads true.
-                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor(),
-                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->disk('r2')->directory('listings/gallery'),
+                            // WebsiteContentExtractor::downloadPhoto). getUploadedFileUsing() is
+                            // also required on top of that: those images are stored as full R2
+                            // URLs, not disk-relative paths, and FileUpload's default resolver has
+                            // no handling for that — see PipelineImageResolver.
+                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor()->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
+                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->disk('r2')->directory('listings/gallery')->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
                         ]),
 
                     Forms\Components\Tabs\Tab::make('Metadata')

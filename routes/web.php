@@ -24,6 +24,7 @@ Route::post('listings/{listing:slug}/publish', [ListingController::class, 'publi
 Route::post('listings/{listing:slug}/approve-photos', [ListingController::class, 'approvePhotos'])->name('listings.approve-photos');
 Route::get('listings/{listing:slug}/edit', [ListingController::class, 'edit'])->name('listings.edit');
 Route::put('listings/{listing:slug}', [ListingController::class, 'update'])->name('listings.update');
+Route::post('listings/{listing:slug}/enrich', [ListingController::class, 'enrich'])->name('listings.enrich');
 
 Route::post('trip/save', [SavedPlanController::class, 'store'])
     ->middleware('throttle:20,1')
