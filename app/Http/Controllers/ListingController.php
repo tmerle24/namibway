@@ -106,7 +106,12 @@ class ListingController extends Controller
 
     public function show(Listing $listing): Response
     {
-        abort_unless($listing->is_published, 404);
+        // Admins can preview a draft listing before publishing it — same 'web' guard/User
+        // model the Filament admin panel authenticates with, so a logged-in admin's session
+        // already carries over to this plain frontend route.
+        $isPreview = ! $listing->is_published;
+
+        abort_unless($listing->is_published || (auth()->check() && auth()->user()->is_admin), 404);
 
         if ($listing->isDueForEnrichment()) {
             // Queued, not run inline — EnrichListingJob is ShouldBeUnique so a burst of
@@ -155,6 +160,7 @@ class ListingController extends Controller
                 ] : null,
             ],
             'reviews' => $reviews,
+            'is_preview' => $isPreview,
         ]);
     }
 

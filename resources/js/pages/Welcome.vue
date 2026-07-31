@@ -2,6 +2,7 @@
 import '../../css/kaia-home.css';
 import { nextTick, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import AdminBar from '@/components/AdminBar.vue';
 import AfterSalesSection from '@/components/home/AfterSalesSection.vue';
 import BookingSection from '@/components/home/BookingSection.vue';
 import ExploreSection from '@/components/home/ExploreSection.vue';
@@ -116,6 +117,7 @@ async function onGuestSubmit(details: GuestDetails) {
 
 <template>
     <div class="kaia-page">
+        <AdminBar />
         <HeroChat @plan-ready="onPlanReady" @search-intent="onSearchIntent" />
         <ItinerarySection v-if="plan" :plan="plan" @book="onBook" />
         <GuestDetailsForm
