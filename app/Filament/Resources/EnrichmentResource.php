@@ -382,7 +382,7 @@ class EnrichmentResource extends Resource
                         $changedFields = array_keys($record->getDirty());
 
                         if ($changedFields !== []) {
-                            $record->enriched_by = auth()->user()?->name ?? 'Admin';
+                            $record->enriched_by = auth()->user()->name ?? 'Admin';
                         }
 
                         $record->save();
