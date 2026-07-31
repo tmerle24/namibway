@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
 import { Form, Head, Link, router } from '@inertiajs/vue3';
-import { Globe } from '@lucide/vue';
+import { Globe, Pencil } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
+import PublishConsentModal from '@/components/PublishConsentModal.vue';
 import { formatPrice } from '@/lib/currency';
 import { home } from '@/routes';
 import inquiries from '@/routes/listings/inquiries';
@@ -88,18 +89,23 @@ const props = defineProps<{
     preview_token?: string | null;
 }>();
 
+const showPublishModal = ref(false);
+const pendingPhotoCount = computed(
+    () =>
+        props.listing.pending_gallery.length +
+        (props.listing.pending_image ? 1 : 0),
+);
+
 function publishListing() {
-    if (
-        !window.confirm(
-            `Publish "${props.listing.name}"? It will become visible to all visitors immediately.`,
-        )
-    ) {
-        return;
-    }
+    showPublishModal.value = true;
+}
+
+function confirmPublish() {
+    showPublishModal.value = false;
 
     router.post(
         `/listings/${props.listing.slug}/publish`,
-        {},
+        { preview: props.preview_token ?? undefined, terms_accepted: true },
         { preserveScroll: true },
     );
 }
@@ -140,6 +146,14 @@ const heroImage = computed(() => {
     <Head :title="props.listing.name" />
 
     <div class="kaia-page">
+        <PublishConsentModal
+            :show="showPublishModal"
+            :listing-name="props.listing.name"
+            :pending-photo-count="pendingPhotoCount"
+            @confirm="confirmPublish"
+            @cancel="showPublishModal = false"
+        />
+
         <AdminBar :edit-url="`/admin/listings/${props.listing.id}/edit`" />
 
         <div v-if="props.is_preview" class="draft-banner">
@@ -156,8 +170,45 @@ const heroImage = computed(() => {
             </button>
         </div>
 
+        <!-- Preview only — publishing (above) approves these in the same click, so
+             there's no separate action here. Once the listing is live, any *later*
+             pending photos (e.g. a re-scrape) get their own approve panel below,
+             since there's no "publish the whole listing" step to piggyback on then. -->
         <div
             v-if="
+                props.is_preview &&
+                props.can_approve_photos &&
+                (props.listing.pending_image ||
+                    props.listing.pending_gallery.length)
+            "
+            class="pending-photos-preview"
+        >
+            <p>
+                Publishing will also include
+                {{
+                    props.listing.pending_gallery.length +
+                    (props.listing.pending_image ? 1 : 0)
+                }}
+                photo(s) found on your website:
+            </p>
+            <div class="pending-photos-thumbs">
+                <img
+                    v-if="props.listing.pending_image"
+                    :src="props.listing.pending_image"
+                    alt="Pending hero image"
+                />
+                <img
+                    v-for="(src, i) in props.listing.pending_gallery"
+                    :key="i"
+                    :src="src"
+                    :alt="`Pending gallery image ${i + 1}`"
+                />
+            </div>
+        </div>
+
+        <div
+            v-if="
+                !props.is_preview &&
                 props.can_approve_photos &&
                 (props.listing.pending_image ||
                     props.listing.pending_gallery.length)
@@ -235,6 +286,24 @@ const heroImage = computed(() => {
                 ><img :src="logoDark" alt="NamibWay" class="brand-logo"
             /></Link>
             <div style="display: flex; align-items: center; gap: 8px">
+                <template v-if="props.can_publish">
+                    <Link
+                        :href="`/listings/${props.listing.slug}/edit${props.preview_token ? `?preview=${props.preview_token}` : ''}`"
+                        class="owner-header-link owner-header-link--edit"
+                    >
+                        <Pencil :size="14" />
+                        Edit
+                    </Link>
+                    <button
+                        v-if="props.is_preview"
+                        type="button"
+                        class="owner-header-link owner-header-link--publish"
+                        @click="publishListing"
+                    >
+                        <Globe :size="14" />
+                        Publish
+                    </button>
+                </template>
                 <CurrencySwitcher />
                 <LocaleSwitcher />
                 <Link :href="home()" class="detail-back">{{
@@ -615,5 +684,62 @@ const heroImage = computed(() => {
 
 .draft-banner-publish:hover {
     background: #15803d;
+}
+
+.pending-photos-preview {
+    background: #1e3a5f;
+    color: #dbeafe;
+    padding: 10px 12px;
+    font-size: 13px;
+}
+
+.pending-photos-preview p {
+    margin: 0 0 8px;
+}
+
+.pending-photos-thumbs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+}
+
+.pending-photos-thumbs img {
+    height: 56px;
+    width: 56px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.owner-header-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.owner-header-link--edit {
+    background: #f3ede0;
+    color: var(--ink, #1a1a1a);
+}
+
+.owner-header-link--edit:hover {
+    background: #e9dfc8;
+}
+
+.owner-header-link--publish {
+    background: var(--rust, #b45309);
+    color: #fff;
+}
+
+.owner-header-link--publish:hover {
+    background: var(--rust-dark, #92400e);
 }
 </style>

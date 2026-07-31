@@ -178,19 +178,42 @@ class ListingController extends Controller
             ],
             'reviews' => $reviews,
             'is_preview' => $isPreview,
-            'can_publish' => $isAdmin,
+            'can_publish' => $isAdmin || $isOwnerPreview,
             'can_approve_photos' => $canApprovePhotos,
             'preview_token' => $isOwnerPreview ? $request->input('preview') : null,
         ]);
     }
 
-    public function publish(Listing $listing): RedirectResponse
+    /**
+     * The property owner can do this themselves via their claim_token (see
+     * hasValidPreviewToken()) — no account/login required. One click publishes the
+     * listing and, if the pipeline staged any website-scraped photos awaiting consent,
+     * approves those too: asking the owner to click twice (once to approve photos, once
+     * to publish) is exactly the kind of extra friction that tanks completion rates.
+     *
+     * terms_accepted must be explicitly true — the frontend gates the actual publish
+     * button behind a confirmation modal requiring it, so a request without it means
+     * the button was bypassed rather than genuinely confirmed.
+     */
+    public function publish(Request $request, Listing $listing): RedirectResponse
     {
-        abort_unless(self::isAdmin(), 403);
+        $isAdmin = self::isAdmin();
+        $isOwnerPreview = self::hasValidPreviewToken($listing, $request);
 
-        $listing->update(['is_published' => true]);
+        abort_unless($isAdmin || $isOwnerPreview, 403);
+        abort_unless($request->boolean('terms_accepted'), 422, 'Terms & Conditions must be accepted to publish.');
 
-        return redirect()->route('listings.show', $listing->slug);
+        $listing->approvePendingPhotos();
+        $listing->update([
+            'is_published' => true,
+            'terms_accepted_at' => now(),
+            'terms_accepted_by' => $isAdmin ? 'admin' : 'owner',
+        ]);
+
+        return redirect()->route('listings.show', array_filter([
+            'listing' => $listing->slug,
+            'preview' => $request->input('preview'),
+        ]));
     }
 
     public function approvePhotos(Request $request, Listing $listing): RedirectResponse
@@ -202,6 +225,97 @@ class ListingController extends Controller
         return redirect()->route('listings.show', array_filter([
             'listing' => $listing->slug,
             'preview' => $request->input('preview'),
+        ]));
+    }
+
+    /**
+     * Self-service editor for the property owner (via claim_token) or an admin — a
+     * lighter-weight alternative to the Filament panel, which owners have no account
+     * for. Deliberately a small field set: the basics an owner would actually want to
+     * fix themselves, not the full admin surface (no photos — that's the separate
+     * approve flow — no taxonomy/GPS, which stay data-integrity-sensitive/admin-only).
+     */
+    public function edit(Request $request, Listing $listing): Response
+    {
+        abort_unless(self::isAdmin() || self::hasValidPreviewToken($listing, $request), 403);
+
+        return Inertia::render('ListingEdit', [
+            'listing' => [
+                'id' => $listing->id,
+                'slug' => $listing->slug,
+                'name' => $listing->getTranslation('name', 'en', useFallbackLocale: false),
+                'description' => $listing->getTranslation('description', 'en', useFallbackLocale: false),
+                'short_description' => $listing->getTranslation('short_description', 'en', useFallbackLocale: false),
+                'highlights' => $listing->getTranslation('highlights', 'en', useFallbackLocale: false) ?? [],
+                'phone' => $listing->phone,
+                'contact_email' => $listing->contact_email,
+                'website' => $listing->website,
+                'address' => $listing->address,
+                'price_from' => $listing->price_from,
+                'price_currency' => $listing->price_currency,
+                'is_published' => $listing->is_published,
+            ],
+            'preview_token' => self::hasValidPreviewToken($listing, $request) ? $request->input('preview') : null,
+        ]);
+    }
+
+    public function update(Request $request, Listing $listing): RedirectResponse
+    {
+        $isAdmin = self::isAdmin();
+        $isOwnerPreview = self::hasValidPreviewToken($listing, $request);
+
+        abort_unless($isAdmin || $isOwnerPreview, 403);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
+            'short_description' => ['nullable', 'string', 'max:500'],
+            'highlights' => ['nullable', 'array'],
+            'highlights.*' => ['string', 'max:100'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'contact_email' => ['nullable', 'email', 'max:255'],
+            'website' => ['nullable', 'url', 'max:255'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'price_from' => ['nullable', 'numeric', 'min:0'],
+            'price_currency' => ['nullable', 'string', 'max:3'],
+            'publish' => ['nullable', 'boolean'],
+            'terms_accepted' => ['nullable', 'boolean'],
+            'preview' => ['nullable', 'string'],
+        ]);
+
+        // Same consent requirement as the dedicated publish() endpoint — the frontend's
+        // "Save and publish" button is gated behind the same confirmation modal.
+        abort_if(! empty($validated['publish']) && empty($validated['terms_accepted']), 422, 'Terms & Conditions must be accepted to publish.');
+
+        $listing->setTranslation('name', 'en', $validated['name']);
+        $listing->setTranslation('description', 'en', $validated['description'] ?? '');
+        $listing->setTranslation('short_description', 'en', $validated['short_description'] ?? '');
+        $listing->setTranslation('highlights', 'en', $validated['highlights'] ?? []);
+        $listing->fill(array_filter([
+            'phone' => $validated['phone'] ?? null,
+            'contact_email' => $validated['contact_email'] ?? null,
+            'website' => $validated['website'] ?? null,
+            'address' => $validated['address'] ?? null,
+            'price_from' => $validated['price_from'] ?? null,
+            'price_currency' => $validated['price_currency'] ?? null,
+        ], fn ($value) => $value !== null));
+
+        if (! empty($validated['publish'])) {
+            $listing->approvePendingPhotos();
+            $listing->is_published = true;
+            $listing->terms_accepted_at = now();
+            $listing->terms_accepted_by = $isAdmin ? 'admin' : 'owner';
+        }
+
+        $listing->save();
+
+        $redirectRoute = ! empty($validated['publish']) || $request->input('redirect') === 'preview'
+            ? 'listings.show'
+            : 'listings.edit';
+
+        return redirect()->route($redirectRoute, array_filter([
+            'listing' => $listing->slug,
+            'preview' => $validated['preview'] ?? null,
         ]));
     }
 
