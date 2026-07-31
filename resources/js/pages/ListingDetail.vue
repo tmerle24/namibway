@@ -110,7 +110,8 @@ const heroImage = computed(() => {
                 fontWeight: 600,
             }"
         >
-            Draft preview — this listing is not published yet, only admins can see this page
+            Draft preview — this listing is not published yet, only admins can
+            see this page
         </div>
 
         <div class="detail-topbar">
