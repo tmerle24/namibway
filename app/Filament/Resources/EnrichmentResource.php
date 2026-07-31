@@ -672,7 +672,7 @@ class EnrichmentResource extends Resource
                         ->label('Scrape Website (no AI)')
                         ->icon('heroicon-o-code-bracket')
                         ->color('gray')
-                        ->action(fn (Collection $records) => self::queueEnrichment($records->filter(fn (Listing $r) => filled($r->website)), ['website', 'scrape'])),
+                        ->action(fn (Collection $records) => self::queueWebsiteScrape($records)),
                     Tables\Actions\BulkAction::make('ai_enrich')
                         ->label('AI Enrich')
                         ->icon('heroicon-o-sparkles')
@@ -711,6 +711,21 @@ class EnrichmentResource extends Resource
                         ->deselectRecordsAfterCompletion(),
                 ]),
             ]);
+    }
+
+    /**
+     * Separate named method (rather than an inline ->filter() in the bulk action closure)
+     * so $records carries an explicit generic type — PHPStan can't infer Collection<int,
+     * Listing> from an untyped closure parameter, which broke the filter() callback's type.
+     *
+     * @param  Collection<int, Listing>  $records
+     */
+    private static function queueWebsiteScrape(Collection $records): void
+    {
+        self::queueEnrichment(
+            $records->filter(fn (Listing $r): bool => filled($r->website)),
+            ['website', 'scrape'],
+        );
     }
 
     /**
