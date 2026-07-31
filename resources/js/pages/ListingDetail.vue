@@ -3,6 +3,7 @@ import '../../css/kaia-home.css';
 import { Form, Head, Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import AdminBar from '@/components/AdminBar.vue';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
@@ -99,6 +100,8 @@ const heroImage = computed(() => {
     <Head :title="props.listing.name" />
 
     <div class="kaia-page">
+        <AdminBar :edit-url="`/admin/listings/${props.listing.id}/edit`" />
+
         <div
             v-if="props.is_preview"
             :style="{
