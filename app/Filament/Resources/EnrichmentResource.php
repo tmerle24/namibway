@@ -664,6 +664,37 @@ class EnrichmentResource extends Resource
                         : 'Preview draft on namibway.com (not published yet — visible to admins only)')
                     ->url(fn (Listing $record): string => route('listings.show', $record->slug))
                     ->openUrlInNewTab(),
+                Tables\Actions\Action::make('copy_owner_link')
+                    ->label('')
+                    ->icon('heroicon-o-clipboard-document')
+                    ->color('gray')
+                    ->tooltip('Copy the owner preview/edit/publish link (same one the claim-invite email sends)')
+                    ->visible(fn (Listing $record): bool => $record->partner !== null)
+                    ->modalHeading('Owner Link')
+                    ->form([
+                        // Test the owner-facing flow yourself without waiting on an email —
+                        // this is the exact ?preview=<claim_token> link ClaimInviteService
+                        // sends, generating a token first if the partner doesn't have one yet.
+                        Forms\Components\TextInput::make('link')
+                            ->label('Owner preview/edit/publish link')
+                            ->readOnly()
+                            ->default(function (Listing $record, ClaimInviteService $inviter): string {
+                                $partner = $record->partner;
+
+                                if (! $partner instanceof Partner) {
+                                    return '';
+                                }
+
+                                if (blank($partner->claim_token)) {
+                                    $partner->update(['claim_token' => Str::random(48)]);
+                                }
+
+                                return $inviter->listingUrl($record, $partner);
+                            })
+                            ->helperText('Works without an account — opens the same draft preview, edit page, and publish flow the owner gets.'),
+                    ])
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close'),
                 $editBasic,
                 Tables\Actions\Action::make('enrich')
                     ->label('Enrich')
