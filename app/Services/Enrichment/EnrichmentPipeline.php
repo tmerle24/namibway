@@ -6,11 +6,13 @@ use App\Models\Listing;
 
 /**
  * Orchestrates the full VisitNamibia enrichment run for one listing:
- * normalize -> find website -> fetch homepage -> AI structured extraction ->
- * AI description generation -> import photos -> recalculate completion
- * score. Every write is additive/fill-gaps-only (never overwrites a value
- * already on the listing), matching the convention already established by
- * CrawlListingWebsiteJob/FetchGooglePlacesPhotoJob.
+ * normalize -> find website -> Google Places location facts (GPS/phone/
+ * address) -> fetch homepage -> AI structured extraction -> import photos
+ * (website scrape, falling back to Google Places Photos) -> AI description
+ * generation -> recalculate completion score. Every write is additive/
+ * fill-gaps-only (never overwrites a value already on the listing),
+ * matching the convention already established by CrawlListingWebsiteJob/
+ * FetchGooglePlacesPhotoJob.
  */
 class EnrichmentPipeline
 {
@@ -19,6 +21,7 @@ class EnrichmentPipeline
         private readonly WebsiteContentExtractor $extractor,
         private readonly AIListingExtractorService $aiExtractor,
         private readonly AIDescriptionGeneratorService $descriptionGenerator,
+        private readonly GooglePlacesPhotoFinder $photoFinder,
         private readonly CompletionScoreService $scoreService,
     ) {}
 
@@ -40,8 +43,23 @@ class EnrichmentPipeline
 
         $runs = fn (string $step): bool => $steps === null || in_array($step, $steps, true);
 
-        if ($runs('website') && blank($listing->website)) {
-            $this->findWebsite($listing, $updates, $log);
+        if ($runs('website')) {
+            if (blank($listing->website)) {
+                $this->findWebsite($listing, $updates, $log);
+            }
+
+            // Independent of whether a website was found above — Google Places is the
+            // authoritative geocoding source, and findWebsite() only carries GPS/phone/
+            // address along when the same Place happens to also have a website on file.
+            // Checked against $updates too, so this doesn't redundantly re-query Places
+            // when findWebsite() already got everything from the very same lookup.
+            $hasGps = $listing->latitude !== null || array_key_exists('latitude', $updates);
+            $hasPhone = filled($listing->phone) || array_key_exists('phone', $updates);
+            $hasAddress = filled($listing->address) || array_key_exists('address', $updates);
+
+            if (! $hasGps || ! $hasPhone || ! $hasAddress) {
+                $this->fillLocationFacts($listing, $updates, $log);
+            }
         }
 
         $website = $updates['website'] ?? $listing->website;
@@ -58,8 +76,17 @@ class EnrichmentPipeline
             }
         }
 
-        if ($runs('images') && $html !== null) {
-            $this->fillImages($listing, $html, $website, $updates, $log);
+        if ($runs('images')) {
+            if ($html !== null) {
+                $this->fillImages($listing, $html, $website, $updates, $log);
+            }
+
+            // No website, or its homepage didn't yield anything scrapeable — Google
+            // Places Photos as a fallback source, same lookup FetchGooglePlacesPhotoJob
+            // already does on its own schedule, just inline here for an immediate result.
+            if (! $listing->image && ! array_key_exists('image', $updates)) {
+                $this->fillImagesFromGooglePlaces($listing, $updates, $log);
+            }
         }
 
         if ($runs('description') && $this->needsDescription($listing)) {
@@ -139,6 +166,55 @@ class EnrichmentPipeline
         }
 
         $log[] = "Website found via {$found['source']} (confidence {$found['confidence']}%): {$found['website']}";
+    }
+
+    /** @param array<string, mixed> $updates
+     *  @param list<string> $log */
+    private function fillLocationFacts(Listing $listing, array &$updates, array &$log): void
+    {
+        $facts = $this->websiteFinder->findLocationFacts($listing);
+
+        if ($facts === []) {
+            $log[] = 'No Google Places match for GPS/phone/address.';
+
+            return;
+        }
+
+        if (blank($listing->phone) && ! array_key_exists('phone', $updates) && ! empty($facts['phone'])) {
+            $updates['phone'] = $facts['phone'];
+        }
+
+        if (blank($listing->address) && ! array_key_exists('address', $updates) && ! empty($facts['address'])) {
+            $updates['address'] = $facts['address'];
+        }
+
+        if ($listing->latitude === null && ! array_key_exists('latitude', $updates) && ! empty($facts['latitude']) && ! empty($facts['longitude'])) {
+            $updates['latitude'] = $facts['latitude'];
+            $updates['longitude'] = $facts['longitude'];
+        }
+
+        $log[] = 'Google Places location facts: '.implode(', ', array_keys($facts));
+    }
+
+    /** @param array<string, mixed> $updates
+     *  @param list<string> $log */
+    private function fillImagesFromGooglePlaces(Listing $listing, array &$updates, array &$log): void
+    {
+        $urls = $this->photoFinder->findPhotoUrls($listing);
+
+        if ($urls === []) {
+            $log[] = 'No Google Places photos found.';
+
+            return;
+        }
+
+        $updates['image'] = $urls[0];
+
+        if (empty($listing->gallery) && count($urls) > 1) {
+            $updates['gallery'] = array_slice($urls, 1);
+        }
+
+        $log[] = count($urls).' photo(s) imported from Google Places.';
     }
 
     /** @param list<string> $log */
