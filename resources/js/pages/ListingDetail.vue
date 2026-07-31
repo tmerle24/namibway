@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
 import { Form, Head, Link, router } from '@inertiajs/vue3';
-import { Globe } from '@lucide/vue';
+import { Globe, Pencil } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
@@ -274,6 +274,24 @@ const heroImage = computed(() => {
                 ><img :src="logoDark" alt="NamibWay" class="brand-logo"
             /></Link>
             <div style="display: flex; align-items: center; gap: 8px">
+                <template v-if="props.can_publish">
+                    <Link
+                        :href="`/listings/${props.listing.slug}/edit${props.preview_token ? `?preview=${props.preview_token}` : ''}`"
+                        class="owner-header-link owner-header-link--edit"
+                    >
+                        <Pencil :size="14" />
+                        Edit
+                    </Link>
+                    <button
+                        v-if="props.is_preview"
+                        type="button"
+                        class="owner-header-link owner-header-link--publish"
+                        @click="publishListing"
+                    >
+                        <Globe :size="14" />
+                        Publish
+                    </button>
+                </template>
                 <CurrencySwitcher />
                 <LocaleSwitcher />
                 <Link :href="home()" class="detail-back">{{
@@ -679,5 +697,37 @@ const heroImage = computed(() => {
     object-fit: cover;
     border-radius: 6px;
     flex-shrink: 0;
+}
+
+.owner-header-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.owner-header-link--edit {
+    background: #f3ede0;
+    color: var(--ink, #1a1a1a);
+}
+
+.owner-header-link--edit:hover {
+    background: #e9dfc8;
+}
+
+.owner-header-link--publish {
+    background: var(--rust, #b45309);
+    color: #fff;
+}
+
+.owner-header-link--publish:hover {
+    background: var(--rust-dark, #92400e);
 }
 </style>

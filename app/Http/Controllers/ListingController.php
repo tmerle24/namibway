@@ -216,6 +216,87 @@ class ListingController extends Controller
         ]));
     }
 
+    /**
+     * Self-service editor for the property owner (via claim_token) or an admin — a
+     * lighter-weight alternative to the Filament panel, which owners have no account
+     * for. Deliberately a small field set: the basics an owner would actually want to
+     * fix themselves, not the full admin surface (no photos — that's the separate
+     * approve flow — no taxonomy/GPS, which stay data-integrity-sensitive/admin-only).
+     */
+    public function edit(Request $request, Listing $listing): Response
+    {
+        abort_unless(self::isAdmin() || self::hasValidPreviewToken($listing, $request), 403);
+
+        return Inertia::render('ListingEdit', [
+            'listing' => [
+                'id' => $listing->id,
+                'slug' => $listing->slug,
+                'name' => $listing->getTranslation('name', 'en', useFallbackLocale: false),
+                'description' => $listing->getTranslation('description', 'en', useFallbackLocale: false),
+                'short_description' => $listing->getTranslation('short_description', 'en', useFallbackLocale: false),
+                'highlights' => $listing->getTranslation('highlights', 'en', useFallbackLocale: false) ?? [],
+                'phone' => $listing->phone,
+                'contact_email' => $listing->contact_email,
+                'website' => $listing->website,
+                'address' => $listing->address,
+                'price_from' => $listing->price_from,
+                'price_currency' => $listing->price_currency,
+                'is_published' => $listing->is_published,
+            ],
+            'preview_token' => self::hasValidPreviewToken($listing, $request) ? $request->input('preview') : null,
+        ]);
+    }
+
+    public function update(Request $request, Listing $listing): RedirectResponse
+    {
+        abort_unless(self::isAdmin() || self::hasValidPreviewToken($listing, $request), 403);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
+            'short_description' => ['nullable', 'string', 'max:500'],
+            'highlights' => ['nullable', 'array'],
+            'highlights.*' => ['string', 'max:100'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'contact_email' => ['nullable', 'email', 'max:255'],
+            'website' => ['nullable', 'url', 'max:255'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'price_from' => ['nullable', 'numeric', 'min:0'],
+            'price_currency' => ['nullable', 'string', 'max:3'],
+            'publish' => ['nullable', 'boolean'],
+            'preview' => ['nullable', 'string'],
+        ]);
+
+        $listing->setTranslation('name', 'en', $validated['name']);
+        $listing->setTranslation('description', 'en', $validated['description'] ?? '');
+        $listing->setTranslation('short_description', 'en', $validated['short_description'] ?? '');
+        $listing->setTranslation('highlights', 'en', $validated['highlights'] ?? []);
+        $listing->fill(array_filter([
+            'phone' => $validated['phone'] ?? null,
+            'contact_email' => $validated['contact_email'] ?? null,
+            'website' => $validated['website'] ?? null,
+            'address' => $validated['address'] ?? null,
+            'price_from' => $validated['price_from'] ?? null,
+            'price_currency' => $validated['price_currency'] ?? null,
+        ], fn ($value) => $value !== null));
+
+        if (! empty($validated['publish'])) {
+            $listing->approvePendingPhotos();
+            $listing->is_published = true;
+        }
+
+        $listing->save();
+
+        $redirectRoute = ! empty($validated['publish']) || $request->input('redirect') === 'preview'
+            ? 'listings.show'
+            : 'listings.edit';
+
+        return redirect()->route($redirectRoute, array_filter([
+            'listing' => $listing->slug,
+            'preview' => $validated['preview'] ?? null,
+        ]));
+    }
+
     private static function isAdmin(): bool
     {
         return auth()->check() && auth()->user()->is_admin;
