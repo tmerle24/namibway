@@ -126,8 +126,8 @@ class EnrichmentPipeline
 
         $score = $this->scoreService->recalculate($listing, $aiGeneratedFields);
 
-        $placesCalls = $this->mergePlacesCallCounts($this->websiteFinder->callCounts(), $this->photoFinder->callCounts());
-        $placesCost = $this->estimatePlacesCost($placesCalls);
+        $placesCalls = PlacesCostEstimator::mergeCallCounts($this->websiteFinder->callCounts(), $this->photoFinder->callCounts());
+        $placesCost = PlacesCostEstimator::estimateCost($placesCalls);
 
         return [
             'fields_updated' => $fieldsChanged,
@@ -478,35 +478,6 @@ class EnrichmentPipeline
         }
 
         return ($usage['input_tokens'] / 1000) * $pricing['input'] + ($usage['output_tokens'] / 1000) * $pricing['output'];
-    }
-
-    /**
-     * @param array<string, int> $a
-     * @param array<string, int> $b
-     * @return array<string, int>
-     */
-    private function mergePlacesCallCounts(array $a, array $b): array
-    {
-        $merged = $a;
-
-        foreach ($b as $key => $count) {
-            $merged[$key] = ($merged[$key] ?? 0) + $count;
-        }
-
-        return array_filter($merged, fn (int $count) => $count > 0);
-    }
-
-    /** @param array<string, int> $calls */
-    private function estimatePlacesCost(array $calls): float
-    {
-        $pricing = config('enrichment.places_pricing', []);
-        $cost = 0.0;
-
-        foreach ($calls as $type => $count) {
-            $cost += $count * ($pricing[$type] ?? 0.0);
-        }
-
-        return $cost;
     }
 
     private function htmlToText(string $html): string
