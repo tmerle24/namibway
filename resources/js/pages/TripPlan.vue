@@ -35,6 +35,38 @@ onMounted(async () => {
     regionCoords.value = await fetchRegionCoords();
 });
 
+// A single date per day is ambiguous about which night it covers ("28 Aug" —
+// arriving that day, or already there?) — show the check-in/check-out range
+// instead. Dates arrive as "D Mon YYYY" (e.g. "15 Aug 2026"); drop the
+// repeated month/year on the first half when they match the second, so a
+// same-month range reads as "15 – 16 Aug 2026" rather than spelling out both
+// full dates.
+function formatDateRange(day: {
+    date?: string | null;
+    date_to?: string | null;
+}): string {
+    if (!day.date) {
+        return '';
+    }
+
+    if (!day.date_to) {
+        return day.date;
+    }
+
+    const [fromDay, fromMonth, fromYear] = day.date.split(' ');
+    const [, toMonth, toYear] = day.date_to.split(' ');
+
+    if (fromMonth === toMonth && fromYear === toYear) {
+        return `${fromDay} – ${day.date_to}`;
+    }
+
+    if (fromYear === toYear) {
+        return `${fromDay} ${fromMonth} – ${day.date_to}`;
+    }
+
+    return `${day.date} – ${day.date_to}`;
+}
+
 function estimatedLabel(variant: ItineraryVariant): string | null {
     let amount = 0;
     let hasAnyPrice = false;
@@ -130,7 +162,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         <div class="day-col">
                             <div class="day-num">{{ day.day }}</div>
                             <div v-if="day.date" class="day-date">
-                                {{ day.date }}
+                                {{ formatDateRange(day) }}
                             </div>
                         </div>
                         <div class="day-detail">
@@ -211,7 +243,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 44px;
+    width: 68px;
     flex-shrink: 0;
     padding-top: 1px;
 }
@@ -222,7 +254,6 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
     text-align: center;
     margin-top: 2px;
     line-height: 1.2;
-    white-space: nowrap;
 }
 
 .day-location-label {

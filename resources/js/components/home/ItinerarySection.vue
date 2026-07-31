@@ -117,6 +117,36 @@ function formatDayDate(date: Date): string {
     });
 }
 
+// A single date per day is ambiguous about which night it covers ("28 Aug" —
+// arriving that day, or already there?) — show the check-in/check-out range
+// instead. Dates are "D Mon YYYY" (e.g. "15 Aug 2026"); drop the repeated
+// month/year on the first half when it matches the second half.
+function formatDateRange(day: {
+    date?: string | null;
+    date_to?: string | null;
+}): string {
+    if (!day.date) {
+        return '';
+    }
+
+    if (!day.date_to) {
+        return day.date;
+    }
+
+    const [fromDay, fromMonth, fromYear] = day.date.split(' ');
+    const [, toMonth, toYear] = day.date_to.split(' ');
+
+    if (fromMonth === toMonth && fromYear === toYear) {
+        return `${fromDay} – ${day.date_to}`;
+    }
+
+    if (fromYear === toYear) {
+        return `${fromDay} ${fromMonth} – ${day.date_to}`;
+    }
+
+    return `${day.date} – ${day.date_to}`;
+}
+
 function applyDates(variantIndex: number) {
     const start = startDates.value[variantIndex];
 
@@ -128,6 +158,10 @@ function applyDates(variantIndex: number) {
         const d = new Date(start);
         d.setDate(d.getDate() + i);
         day.date = formatDayDate(d);
+
+        const dTo = new Date(start);
+        dTo.setDate(dTo.getDate() + i + 1);
+        day.date_to = formatDayDate(dTo);
     });
 }
 
@@ -518,7 +552,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                 >
                                 {{ day.day }}
                                 <span v-if="day.date" class="day-date">{{
-                                    day.date
+                                    formatDateRange(day)
                                 }}</span>
                             </div>
                             <div class="day-detail">

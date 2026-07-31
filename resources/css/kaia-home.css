@@ -451,7 +451,7 @@
     font-family: 'Fraunces', serif;
     color: var(--rust);
     font-size: 15px;
-    min-width: 26px;
+    min-width: 52px;
 }
 .kaia-page .day-date {
     display: block;
@@ -459,7 +459,6 @@
     font-size: 11px;
     color: #7a6f63;
     font-weight: 400;
-    white-space: nowrap;
     margin-top: 2px;
 }
 .kaia-page .day-detail div {

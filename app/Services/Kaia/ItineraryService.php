@@ -3,9 +3,11 @@
 namespace App\Services\Kaia;
 
 use App\Models\Listing;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Throwable;
 
 class ItineraryService
 {
@@ -22,6 +24,45 @@ class ItineraryService
      * (cost + latency) even once the catalog grows to hundreds of listings.
      */
     private const MAX_CANDIDATES_PER_TYPE = 20;
+
+    /**
+     * Real one-way driving durations (hours) between the 6 political regions
+     * used on Listing::region, verified via OSRM against a representative
+     * town/waypoint per region (Windhoek, Otjiwarongo/Waterberg, Okaukuejo/
+     * Etosha, Swakopmund, Sesriem, Fish River Canyon area) — not left to the
+     * model's memory (see CLAUDE.md: Claude is not the source of truth for
+     * Namibian driving distances). Keyed alphabetically ("A|B") so lookup
+     * doesn't care about direction.
+     *
+     * @var array<string, float>
+     */
+    private const DRIVING_HOURS = [
+        'Erongo|Hardap' => 4.3,
+        'Erongo|Karas' => 10.2,
+        'Erongo|Khomas' => 3.9,
+        'Erongo|Kunene' => 5.9,
+        'Erongo|Otjozondjupa' => 4.1,
+        'Hardap|Karas' => 6.7,
+        'Hardap|Khomas' => 4.1,
+        'Hardap|Kunene' => 8.8,
+        'Hardap|Otjozondjupa' => 6.6,
+        'Karas|Khomas' => 7.3,
+        'Karas|Kunene' => 12.1,
+        'Karas|Otjozondjupa' => 9.9,
+        'Khomas|Kunene' => 4.8,
+        'Khomas|Otjozondjupa' => 2.7,
+        'Kunene|Otjozondjupa' => 2.2,
+    ];
+
+    /**
+     * Absolute hard cap the traveler asked us to enforce ("no more than 6
+     * hours") — a plan with a single-day leg longer than this is treated as
+     * unsafe and triggers a corrective retry rather than shipping as-is.
+     */
+    private const MAX_DRIVING_HOURS = 6.0;
+
+    /** Ideal target quoted in the prompt guidance; not itself enforced. */
+    private const TARGET_DRIVING_HOURS = 5.0;
 
     public function __construct(private readonly AnthropicClient $client) {}
 
@@ -41,14 +82,47 @@ class ItineraryService
      */
     public function generate(array $tripParams): array
     {
+        $plan = $this->generateWithFreshRetry($tripParams);
+        $violations = $this->validateDrivingTimes($plan);
+
+        if ($violations === []) {
+            return $plan;
+        }
+
+        Log::warning('Kaia itinerary violated the driving-time safety limit, retrying with corrective feedback', [
+            'violations' => $violations,
+        ]);
+
+        $plan = $this->generateWithFreshRetry($tripParams, $this->correctionMessage($violations));
+        $violations = $this->validateDrivingTimes($plan);
+
+        if ($violations !== []) {
+            Log::error('Kaia itinerary still violates the driving-time safety limit after retrying', [
+                'violations' => $violations,
+            ]);
+
+            throw new RuntimeException(
+                'Could not generate a safe itinerary within the driving-time limits: '.implode('; ', $violations)
+            );
+        }
+
+        return $plan;
+    }
+
+    /**
+     * @param  array<string, mixed>  $tripParams
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}
+     */
+    private function generateWithFreshRetry(array $tripParams, ?string $correction = null): array
+    {
         try {
-            return $this->attempt($tripParams);
+            return $this->attempt($tripParams, $correction);
         } catch (RuntimeException $e) {
             Log::warning('Kaia itinerary attempt failed, retrying with a fresh conversation', [
                 'reason' => $e->getMessage(),
             ]);
 
-            return $this->attempt($tripParams);
+            return $this->attempt($tripParams, $correction);
         }
     }
 
@@ -56,16 +130,22 @@ class ItineraryService
      * @param  array<string, mixed>  $tripParams
      * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}
      */
-    private function attempt(array $tripParams): array
+    private function attempt(array $tripParams, ?string $correction = null): array
     {
         $listings = $this->candidateListings($tripParams);
+
+        $userContent = 'Trip parameters: '.json_encode($tripParams)
+            .PHP_EOL.PHP_EOL.'NamibWay catalog (only use listings from here): '
+            .json_encode($this->toAiCatalog($listings));
+
+        if ($correction !== null) {
+            $userContent .= PHP_EOL.PHP_EOL.'IMPORTANT CORRECTION (from a previous attempt): '.$correction;
+        }
 
         $messages = [
             [
                 'role' => 'user',
-                'content' => 'Trip parameters: '.json_encode($tripParams)
-                    .PHP_EOL.PHP_EOL.'NamibWay catalog (only use listings from here): '
-                    .json_encode($this->toAiCatalog($listings)),
+                'content' => $userContent,
             ],
         ];
 
@@ -187,11 +267,53 @@ class ItineraryService
             }, $variant['days']);
 
             $variant['days'] = $this->backfillAccommodation($variant['days'], $listings);
+            $variant['days'] = $this->addDateRanges($variant['days']);
 
             return $variant;
         }, $plan['variants']);
 
         return $plan;
+    }
+
+    /**
+     * Claude computes each day's check-in "date" from the travel_period, but
+     * a single date per day is ambiguous about which night it covers ("28
+     * Aug" — arriving that day, or already there?). Add the checkout date
+     * too (next day's date, or +1 day for the final day) so the UI/PDF can
+     * show an unambiguous "28 Aug – 29 Aug" range instead of one date.
+     *
+     * @param  array<int, array<string, mixed>>  $days
+     * @return array<int, array<string, mixed>>
+     */
+    private function addDateRanges(array $days): array
+    {
+        $parsed = array_map(function (array $day) {
+            $date = $day['date'] ?? null;
+
+            if (! is_string($date) || $date === '') {
+                return null;
+            }
+
+            try {
+                return Carbon::createFromFormat('j M Y', $date);
+            } catch (Throwable) {
+                return null;
+            }
+        }, $days);
+
+        foreach ($days as $i => &$day) {
+            $from = $parsed[$i] ?? null;
+
+            if ($from === null) {
+                continue;
+            }
+
+            $to = $parsed[$i + 1] ?? $from->copy()->addDay();
+            $day['date_to'] = $to->format('j M Y');
+        }
+        unset($day);
+
+        return $days;
     }
 
     /**
@@ -397,28 +519,168 @@ class ItineraryService
         $loopGuidance = match ($bucket) {
             'short' => 'Keep it simple for a short trip: out from Khomas (Windhoek) to Kunene (Etosha '
                 .'safari) and back — do not try to cover the whole country.',
-            'medium' => 'Follow the classic Namibia loop: Khomas (Windhoek) north to Otjozondjupa '
-                .'(Waterberg) and Kunene (Etosha safari), west to Erongo (Damaraland / Spitzkoppe / '
-                .'Swakopmund coast), south to Hardap (Sossusvlei / Sesriem / Solitaire dunes), then back '
-                .'to Khomas (Windhoek).',
-            default => 'Follow the classic Namibia loop (Khomas -> Otjozondjupa -> Kunene -> Erongo -> '
-                .'Hardap -> Khomas) but extend it for the extra nights: add more time in Erongo for the '
-                .'Skeleton Coast, and extend south into Karas (Luderitz / Fish River Canyon) before '
-                .'looping back.',
+            'medium' => 'Follow the classic Namibia loop: Khomas (Windhoek) north toward Kunene (Etosha '
+                .'safari), optionally stopping a night in Otjozondjupa (Waterberg) on the way up or back '
+                .'if there is time for it (it is a nice-to-have, not mandatory), west to Erongo '
+                .'(Damaraland / Spitzkoppe / Swakopmund coast), south to Hardap (Sossusvlei / Sesriem / '
+                .'Solitaire dunes), then back to Khomas (Windhoek).',
+            default => 'Follow the classic Namibia loop (Khomas -> optionally Otjozondjupa -> Kunene -> '
+                .'Erongo -> Hardap -> Khomas) but extend it for the extra nights: add more time in Erongo '
+                .'for the Skeleton Coast, and extend south into Karas (Luderitz / Fish River Canyon) '
+                .'before looping back.',
         };
 
+        $safety = $this->drivingSafetyGuidance();
+
         if (mb_strtolower($start) === mb_strtolower($end)) {
+            $dayCount = $nights !== null
+                ? "DAY COUNT: this is a {$nights}-night round trip, so produce EXACTLY ".($nights + 1)
+                    .' day entries, numbered 1 to '.($nights + 1).'. Day 1 and the FINAL day (day '
+                    .($nights + 1).') must both be the region containing "'.$start.'" — the final day '
+                    .'is the return/drop-off day, so it is fine (and often correct) for it to reuse the '
+                    ."previous day's accommodation rather than needing a new one. Do not pad the ending "
+                    .'with a redundant extra night in one place just to fill the count — use the nights '
+                    .'productively for touring and let the final day be the short return leg.'
+                : '';
+
             return "ROUTE: the trip starts and ends in the same place (\"{$start}\") — day 1's location "
                 ."and the last day's location must both be the region containing \"{$start}\". "
                 ."{$loopGuidance} Never jump back and forth between distant regions; visit each region "
-                .'once, in one continuous pass.';
+                ."once, in one continuous pass.\n\n{$dayCount}\n\n{$safety}";
         }
 
         return "ROUTE: this is a ONE-WAY trip. Day 1's location must be the region containing "
             ."\"{$start}\". The LAST day's location must be the region containing \"{$end}\" — do NOT "
             ."loop back to \"{$start}\". Use this as a guide for the middle of the trip: {$loopGuidance} "
             ."— but drop the \"back to Khomas\" leg and finish in whichever region contains \"{$end}\" "
-            .'instead. Never jump back and forth between distant regions.';
+            ."instead. Never jump back and forth between distant regions.\n\n{$safety}";
+    }
+
+    /**
+     * Real per-leg driving durations (see DRIVING_HOURS) plus the traveler's
+     * hard safety rules, turned into concrete prompt guidance — Claude gets
+     * actual hours to reason with instead of guessing Namibian geography
+     * from memory (see CLAUDE.md). Backstopped by validateDrivingTimes()
+     * after generation, since a prompt instruction alone is a request, not
+     * a guarantee.
+     */
+    private function drivingSafetyGuidance(): string
+    {
+        $table = collect(self::DRIVING_HOURS)
+            ->map(fn (float $hours, string $pair) => str_replace('|', '-', $pair)." ~{$hours}h")
+            ->implode(', ');
+
+        $max = self::MAX_DRIVING_HOURS;
+        $target = self::TARGET_DRIVING_HOURS;
+
+        return <<<TEXT
+            DRIVING SAFETY (hard rules — Namibia's roads are long and this is a real, bookable plan, not
+            just a suggestion): Real one-way driving times between regions: {$table}. Never schedule more
+            than {$max} hours of driving to reach a new region in a single day — target {$target}h or
+            less. If the direct leg between two consecutive regions in your plan would take longer than
+            {$max} hours, do NOT attempt it in one day: keep the traveler ONE EXTRA NIGHT in the region
+            they are departing from (repeat the previous accommodation) before continuing, splitting the
+            drive across two days instead. Assume driving only happens between 07:30 and 18:30 — never
+            imply a leg that would require departing before dawn or arriving after dusk. Every plan with
+            a driving day must leave the traveler time to refuel before the tank runs low and to handle a
+            flat tire — never schedule long driving legs back-to-back with no rest day between them.
+            TEXT;
+    }
+
+    /**
+     * Backstop for drivingSafetyGuidance() — a prompt instruction is a
+     * request, not a guarantee. Walks each variant's days and flags any
+     * single-day region change whose real driving time exceeds the hard
+     * cap, so generate() can retry with corrective feedback instead of
+     * silently shipping a plan that would require illegal/unsafe driving.
+     *
+     * @param  array{variants: array<int, array<string, mixed>>}  $plan
+     * @return array<int, string>
+     */
+    private function validateDrivingTimes(array $plan): array
+    {
+        $violations = [];
+
+        foreach ($plan['variants'] as $variant) {
+            $prevDay = null;
+            $prevRegion = null;
+
+            foreach ($variant['days'] ?? [] as $day) {
+                $region = $this->canonicalRegion((string) ($day['location'] ?? ''));
+
+                if ($region === null) {
+                    continue;
+                }
+
+                if ($prevRegion !== null && $prevRegion !== $region) {
+                    $hours = $this->drivingHours($prevRegion, $region);
+
+                    if ($hours !== null && $hours > self::MAX_DRIVING_HOURS) {
+                        $violations[] = "Day {$prevDay}\u{2192}{$day['day']}: {$prevRegion} \u{2192} "
+                            ."{$region} is ~{$hours}h driving, over the ".self::MAX_DRIVING_HOURS
+                            .'h daily limit';
+                    }
+                }
+
+                $prevRegion = $region;
+                $prevDay = $day['day'] ?? $prevDay;
+            }
+        }
+
+        return array_values(array_unique($violations));
+    }
+
+    /**
+     * @param  array<int, string>  $violations
+     */
+    private function correctionMessage(array $violations): string
+    {
+        return 'Your previous itinerary broke the daily driving-time safety limit on these legs: '
+            .implode('; ', $violations).'. Fix this by keeping the traveler an extra night in the '
+            .'region they are departing from before continuing (splitting the drive across two days), '
+            .'not by attempting the whole distance in a single day. Re-plan the full itinerary with this '
+            .'correction — keep the total day count and start/end regions the same.';
+    }
+
+    /**
+     * Looks up the real driving time between two regions regardless of
+     * argument order (DRIVING_HOURS is keyed alphabetically). Returns null
+     * only when the pair isn't in the table (shouldn't happen for the 6
+     * known regions) — callers treat null as "can't validate, skip".
+     */
+    private function drivingHours(string $a, string $b): ?float
+    {
+        if ($a === $b) {
+            return 0.0;
+        }
+
+        $key = $a < $b ? "{$a}|{$b}" : "{$b}|{$a}";
+
+        return self::DRIVING_HOURS[$key] ?? null;
+    }
+
+    /**
+     * Maps a possibly loosely-cased/whitespaced region string from the AI's
+     * output back to the canonical spelling used as a DRIVING_HOURS key.
+     * Returns null for anything that isn't one of the 6 known regions
+     * (park/tourist-area names Claude was told not to use, typos, etc.) —
+     * we simply can't validate driving time for those.
+     */
+    private function canonicalRegion(string $name): ?string
+    {
+        $name = trim($name);
+
+        if ($name === '') {
+            return null;
+        }
+
+        foreach (config('kaia.regions', []) as $region) {
+            if (mb_strtolower($region) === mb_strtolower($name)) {
+                return $region;
+            }
+        }
+
+        return null;
     }
 
     /**

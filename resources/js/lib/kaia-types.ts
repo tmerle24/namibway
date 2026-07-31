@@ -12,6 +12,7 @@ export interface ItineraryListingRef {
 export interface ItineraryDay {
     day: number;
     date?: string | null;
+    date_to?: string | null;
     location: string;
     accommodation?: ItineraryListingRef | null;
     activity?: ItineraryListingRef | null;

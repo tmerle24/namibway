@@ -3,25 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <style>
-    @page { margin: 2cm; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Top margin budgets room for a title that wraps to 2 lines — the header
+       height + its negative top-offset below must stay in lockstep with this. */
+    @page { margin: 4.3cm 2cm 2.3cm 2cm; }
+    /* A universal `* { margin/padding: 0 }` reset breaks dompdf's position:fixed
+       header/footer entirely (verified empirically) — reset the specific tags
+       that actually carry default spacing instead. */
+    * { box-sizing: border-box; }
+    body, h1, p { margin: 0; padding: 0; }
     body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 11px; color: #2c2521; background: #fff; }
 
-    .header { border-bottom: 2px solid #c0533a; padding-bottom: 12px; margin-bottom: 20px; }
-    .header h1 { font-size: 20px; color: #2c2521; margin-bottom: 2px; }
-    .header .meta { font-size: 10px; color: #7a6a5e; }
-    .logo { font-size: 13px; font-weight: bold; color: #c0533a; letter-spacing: 0.5px; float: right; margin-top: 4px; }
+    .pdf-header { position: fixed; top: -3.9cm; left: 0; right: 0; height: 3.6cm; border-bottom: 2px solid #c0533a; padding-bottom: 10px; }
+    .pdf-header .logo-row { text-align: right; margin-bottom: 4px; }
+    .pdf-header .logo-row img { height: 26px; }
+    .pdf-header .eyebrow { font-size: 9.5px; letter-spacing: 0.5px; text-transform: uppercase; color: #c0533a; font-weight: bold; }
+    .pdf-header h1 { font-size: 16px; line-height: 1.25; color: #2c2521; margin: 2px 0 2px; }
+    .pdf-header .meta { font-size: 10px; color: #7a6a5e; }
+
+    .pdf-footer { position: fixed; bottom: -2.05cm; left: 0; right: 0; height: 1.5cm; border-top: 1px solid #e8e0d4; padding-top: 8px; font-size: 9px; color: #a09080; text-align: center; }
 
     .summary { background: #faf8f5; border-left: 3px solid #c0533a; padding: 10px 14px; margin-bottom: 20px; font-size: 11px; color: #5b5346; }
 
     .variant { margin-bottom: 28px; page-break-inside: avoid; }
     .variant-title { font-size: 14px; font-weight: bold; color: #2c2521; border-bottom: 1px solid #e8e0d4; padding-bottom: 6px; margin-bottom: 12px; }
 
-    .route-map { margin-bottom: 16px; }
-    .route-map svg { width: 100%; height: auto; display: block; }
+    .route-map { margin-bottom: 16px; text-align: center; }
+    .route-map img { width: 100%; max-width: 460px; height: auto; }
 
     .day-row { display: flex; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dotted #e8e0d4; }
-    .day-col { width: 44px; flex-shrink: 0; padding-top: 1px; }
+    .day-col { width: 70px; flex-shrink: 0; padding-top: 1px; }
     .day-num { font-weight: bold; color: #c0533a; font-size: 13px; }
     .day-date { font-size: 8px; color: #a09080; margin-top: 1px; }
     .day-location { font-weight: bold; margin-bottom: 4px; font-size: 11.5px; }
@@ -31,75 +41,36 @@
 
     .vehicle-row { margin-bottom: 14px; font-size: 11px; color: #5b5346; }
     .vehicle-row strong { color: #2c2521; }
-
-    .footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #e8e0d4; font-size: 9px; color: #a09080; text-align: center; }
 </style>
 </head>
 <body>
 
-<div class="header">
-    <span class="logo">NamibWay</span>
+<div class="pdf-header">
+    <div class="logo-row"><img src="{{ $logoDataUri }}" alt="NamibWay"></div>
+    <div class="eyebrow">Travel Itinerary</div>
     <h1>{{ $title ?: 'Your Namibia Trip Plan' }}</h1>
-    <div class="meta">Generated on {{ now()->format('d M Y') }} · namibway.com</div>
+    <div class="meta">
+        @if($dateRange) {{ $dateRange }} &middot; @endif
+        Generated {{ now()->format('d M Y') }} &middot; namibway.com
+    </div>
+</div>
+
+<div class="pdf-footer">
+    NamibWay &middot; The smartest way to experience Namibia<br>
+    View online: <strong>{{ $shareUrl }}</strong>
 </div>
 
 @if(!empty($plan['trip_summary']))
 <div class="summary">{{ $plan['trip_summary'] }}</div>
 @endif
 
-@foreach($plan['variants'] as $variant)
+@foreach($plan['variants'] as $variantIndex => $variant)
 <div class="variant">
     <div class="variant-title">{{ $variant['name'] }}</div>
 
-    @php
-        // Build ordered waypoints for this variant (deduplicated consecutive)
-        $waypoints = [];
-        $prevKey = '';
-        foreach ($variant['days'] as $day) {
-            $key = mb_strtolower(trim($day['location'] ?? ''));
-            if ($key === '' || $key === $prevKey) continue;
-            if (!isset($regionCoords[$key])) continue;
-            $waypoints[] = [
-                'label' => $day['location'],
-                'day'   => $day['day'],
-                'lat'   => $regionCoords[$key]['lat'],
-                'lng'   => $regionCoords[$key]['lng'],
-            ];
-            $prevKey = $key;
-        }
-
-        // Normalize to SVG space (Namibia bounds)
-        $svgW = 500; $svgH = 340;
-        $latMin = -17; $latMax = -30;
-        $lngMin = 11;  $lngMax = 26;
-        $pad = 30;
-
-        $points = array_map(function($wp) use ($svgW, $svgH, $latMin, $latMax, $lngMin, $lngMax, $pad) {
-            $x = $pad + ($wp['lng'] - $lngMin) / ($lngMax - $lngMin) * ($svgW - 2 * $pad);
-            $y = $pad + ($wp['lat'] - $latMin) / ($latMax - $latMin) * ($svgH - 2 * $pad);
-            return array_merge($wp, ['x' => round($x, 1), 'y' => round($y, 1)]);
-        }, $waypoints);
-    @endphp
-
-    @if(count($points) >= 2)
+    @if(!empty($routeMaps[$variantIndex]))
     <div class="route-map">
-        <svg viewBox="0 0 {{ $svgW }} {{ $svgH }}" xmlns="http://www.w3.org/2000/svg">
-            {{-- Dashed route line --}}
-            <polyline
-                points="{{ implode(' ', array_map(fn($p) => "{$p['x']},{$p['y']}", $points)) }}"
-                fill="none"
-                stroke="#c0533a"
-                stroke-width="1.5"
-                stroke-dasharray="5 4"
-                opacity="0.8"
-            />
-            {{-- Numbered markers --}}
-            @foreach($points as $i => $p)
-            <circle cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="10" fill="#c0533a" stroke="#fff" stroke-width="1.5"/>
-            <text x="{{ $p['x'] }}" y="{{ $p['y'] + 4 }}" text-anchor="middle" font-size="9" font-weight="bold" fill="#fff">{{ $i + 1 }}</text>
-            <text x="{{ $p['x'] }}" y="{{ $p['y'] + 20 }}" text-anchor="middle" font-size="8" fill="#5b5346">{{ $p['label'] }}</text>
-            @endforeach
-        </svg>
+        <img src="{{ $routeMaps[$variantIndex] }}" alt="Route map">
     </div>
     @endif
 
@@ -113,7 +84,9 @@
     <div class="day-row">
         <div class="day-col">
             <div class="day-num">{{ $day['day'] }}</div>
-            @if(!empty($day['date']))<div class="day-date">{{ $day['date'] }}</div>@endif
+            @if(!empty($day['date']))
+            <div class="day-date">{{ $day['date'] }}@if(!empty($day['date_to'])) &ndash; {{ $day['date_to'] }}@endif</div>
+            @endif
         </div>
         <div>
             <div class="day-location">{{ $day['location'] }}</div>
@@ -133,11 +106,6 @@
     @endforeach
 </div>
 @endforeach
-
-<div class="footer">
-    NamibWay · The smartest way to experience Namibia<br>
-    View online: <strong>{{ $shareUrl }}</strong>
-</div>
 
 </body>
 </html>

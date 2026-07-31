@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { savePlan } from '@/lib/kaia-client';
 import type { ItineraryPlan } from '@/lib/kaia-types';
@@ -23,10 +23,10 @@ const shareUrl = ref<string | null>(null);
 const copied = ref(false);
 const copyFailed = ref(false);
 
-// Whether this instance was mounted already pointing at an existing shared
-// plan (e.g. the /trip/{token} page), as opposed to becoming shared during
-// this session via save(). Only in that case do we offer "save to account".
-const viewingExistingShare = !!props.token;
+// Reactive so a plan saved mid-session (interactive builder, token arrives
+// later via props) also gets the "save to account" option — not just plans
+// that were already shared when this component mounted (e.g. /trip/{token}).
+const viewingExistingShare = computed(() => !!props.token);
 
 if (props.token) {
     shareUrl.value = window.location.href;
