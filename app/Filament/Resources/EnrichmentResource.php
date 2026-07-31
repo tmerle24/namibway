@@ -271,17 +271,31 @@ class EnrichmentResource extends Resource
                 ? ' — fields: '.e(implode(', ', $job->fields_changed))
                 : '';
 
+            $costParts = [];
+
+            if ($job->tokens_used) {
+                $costParts[] = "{$job->tokens_used} tokens (~\${$job->cost_estimate})";
+            }
+
+            if (! empty($job->places_calls)) {
+                $callsSummary = collect($job->places_calls)->map(fn ($n, $type) => "{$n}× {$type}")->implode(', ');
+                $costParts[] = "Places: {$callsSummary} (~\${$job->places_cost_estimate})";
+            }
+
+            $costHtml = $costParts !== [] ? ' — '.e(implode(', ', $costParts)) : '';
+
             $errorHtml = (! $job->success && $job->finished_at !== null && $job->log)
                 ? '<br><span style="color:#dc2626;font-size:12px">'.e(Str::limit($job->log, 200)).'</span>'
                 : '';
 
             return sprintf(
-                '<div style="padding:6px 0;border-bottom:1px solid #e5e5e5;">%s — <strong>%s</strong> by %s — %s%s%s</div>',
+                '<div style="padding:6px 0;border-bottom:1px solid #e5e5e5;">%s — <strong>%s</strong> by %s — %s%s%s%s</div>',
                 $job->created_at->format('d M Y H:i'),
                 e($job->source),
                 e($job->actor ?? 'unknown'),
                 $statusHtml,
                 $fieldsHtml,
+                $costHtml,
                 $errorHtml,
             );
         });
@@ -603,6 +617,23 @@ class EnrichmentResource extends Resource
                             ->success()
                             ->send();
                     }),
+                Tables\Actions\Action::make('scrape_website')
+                    ->label('Scrape Website')
+                    ->icon('heroicon-o-code-bracket')
+                    ->color('gray')
+                    // Only makes sense once a website is known — this reads the existing
+                    // site, it doesn't go looking for one (that's "Find Website"/"AI Enrich").
+                    ->visible(fn (Listing $record): bool => filled($record->website))
+                    ->requiresConfirmation()
+                    ->modalDescription('Reads the listing\'s own website (description, contact info, photos) and looks up GPS/address/phone on Google Places — no Claude calls, no AI cost.')
+                    ->action(function (Listing $record): void {
+                        EnrichListingJob::enqueue($record->id, ['website', 'scrape']);
+                        Notification::make()
+                            ->title('Website scrape queued')
+                            ->body('No AI involved — the "Last run" column and Log tab update automatically within ~10s of finishing.')
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\Action::make('cancel_enrichment')
                     ->label('Cancel')
                     ->icon('heroicon-o-x-circle')
@@ -637,6 +668,11 @@ class EnrichmentResource extends Resource
                         ->label('Find Website')
                         ->icon('heroicon-o-globe-alt')
                         ->action(fn (Collection $records) => self::queueEnrichment($records, ['website'])),
+                    Tables\Actions\BulkAction::make('scrape_website')
+                        ->label('Scrape Website (no AI)')
+                        ->icon('heroicon-o-code-bracket')
+                        ->color('gray')
+                        ->action(fn (Collection $records) => self::queueWebsiteScrape($records)),
                     Tables\Actions\BulkAction::make('ai_enrich')
                         ->label('AI Enrich')
                         ->icon('heroicon-o-sparkles')
@@ -678,11 +714,32 @@ class EnrichmentResource extends Resource
     }
 
     /**
+     * Separate named method (rather than an inline ->filter() in the bulk action closure)
+     * so $records carries an explicit generic type — PHPStan can't infer Collection<int,
+     * Listing> from an untyped closure parameter, which broke the filter() callback's type.
+     *
+     * @param  Collection<int, Listing>  $records
+     */
+    private static function queueWebsiteScrape(Collection $records): void
+    {
+        self::queueEnrichment(
+            $records->filter(fn (Listing $r): bool => filled($r->website)),
+            ['website', 'scrape'],
+        );
+    }
+
+    /**
      * @param  Collection<int, Listing>  $records
      * @param  list<string>|null  $steps
      */
     private static function queueEnrichment(Collection $records, ?array $steps): void
     {
+        if ($records->isEmpty()) {
+            Notification::make()->title('Nothing to queue')->body('None of the selected listings qualified (e.g. no website to scrape).')->warning()->send();
+
+            return;
+        }
+
         /** @var Listing $record */
         foreach ($records as $record) {
             EnrichListingJob::enqueue($record->id, $steps);

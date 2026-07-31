@@ -23,6 +23,21 @@ use Illuminate\Support\Facades\Log;
  */
 class WebsiteFinderService
 {
+    /** @var array<string, int> Google Places calls made by this instance — see callCounts(). */
+    private array $callCounts = ['find_place' => 0, 'place_details' => 0];
+
+    /**
+     * Google Places calls made since this instance was created, for cost-estimate
+     * bookkeeping (EnrichmentPipeline sums this with GooglePlacesPhotoFinder's). A fresh
+     * instance is resolved per queue job, so this only ever reflects one enrichment run.
+     *
+     * @return array<string, int>
+     */
+    public function callCounts(): array
+    {
+        return $this->callCounts;
+    }
+
     /**
      * @return array{website: string, confidence: int, source: string, phone?: string, address?: string, latitude?: float, longitude?: float}|null
      */
@@ -53,6 +68,57 @@ class WebsiteFinderService
         }
 
         return null;
+    }
+
+    /**
+     * Independent of find()/fromGooglePlaces(): those require a website in the Place
+     * Details response to return anything at all, discarding a perfectly good geocode
+     * whenever a business simply doesn't have a website on file with Google. This is
+     * for the pipeline's GPS/address/phone fill-in step, which has no such requirement.
+     *
+     * @return array{phone?: string, address?: string, latitude?: float, longitude?: float}
+     */
+    public function findLocationFacts(Listing $listing): array
+    {
+        $apiKey = config('services.google_places.key');
+
+        if (blank($apiKey)) {
+            return [];
+        }
+
+        foreach ([true, false] as $byRegion) {
+            $query = $byRegion
+                ? trim($listing->name.' '.($listing->region ?: '').' Namibia')
+                : trim($listing->name.' '.$listing->type->value.' Namibia');
+
+            $placeId = $this->findPlaceId($apiKey, $query, $listing->id);
+
+            if (! $placeId) {
+                continue;
+            }
+
+            $details = $this->fetchPlaceDetails($apiKey, $placeId, $listing->id);
+            $facts = [];
+
+            if (filled($details['formatted_phone_number'] ?? null)) {
+                $facts['phone'] = $details['formatted_phone_number'];
+            }
+
+            if (filled($details['formatted_address'] ?? null)) {
+                $facts['address'] = $details['formatted_address'];
+            }
+
+            if (($details['lat'] ?? null) !== null && ($details['lng'] ?? null) !== null) {
+                $facts['latitude'] = (float) $details['lat'];
+                $facts['longitude'] = (float) $details['lng'];
+            }
+
+            if ($facts !== []) {
+                return $facts;
+            }
+        }
+
+        return [];
     }
 
     /** @return array{website: string, confidence: int, source: string, phone?: string, address?: string, latitude?: float, longitude?: float}|null */
@@ -104,6 +170,8 @@ class WebsiteFinderService
 
     private function findPlaceId(string $apiKey, string $query, int $listingId): ?string
     {
+        $this->callCounts['find_place']++;
+
         try {
             $response = Http::timeout(15)->get('https://maps.googleapis.com/maps/api/place/findplacefromtext/json', [
                 'input' => $query,
@@ -127,6 +195,8 @@ class WebsiteFinderService
     /** @return array<string, mixed> */
     private function fetchPlaceDetails(string $apiKey, string $placeId, int $listingId): array
     {
+        $this->callCounts['place_details']++;
+
         try {
             $response = Http::timeout(15)->get('https://maps.googleapis.com/maps/api/place/details/json', [
                 'place_id' => $placeId,
