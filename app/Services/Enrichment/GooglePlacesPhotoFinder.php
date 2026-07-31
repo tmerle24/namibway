@@ -34,38 +34,49 @@ class GooglePlacesPhotoFinder
         return $this->callCounts;
     }
 
-    /** @return list<string> Public R2 URLs, hero image first. */
+    /**
+     * @return array{urls: list<string>, attribution: string|null} Public R2 URLs (hero
+     *                                                              image first) plus the
+     *                                                              combined html_attributions
+     *                                                              Google's Places API requires
+     *                                                              we credit alongside them.
+     */
     public function findPhotoUrls(Listing $listing, int $max = self::MAX_IMAGES): array
     {
         $apiKey = config('services.google_places.key');
 
         if (blank($apiKey)) {
-            return [];
+            return ['urls' => [], 'attribution' => null];
         }
 
         $placeId = $this->findPlaceId($apiKey, $listing);
 
         if (! $placeId) {
-            return [];
+            return ['urls' => [], 'attribution' => null];
         }
 
-        $references = $this->fetchPhotoReferences($apiKey, $placeId, $listing->id);
+        $photos = $this->fetchPhotoReferences($apiKey, $placeId, $listing->id);
 
-        if (empty($references)) {
-            return [];
+        if (empty($photos)) {
+            return ['urls' => [], 'attribution' => null];
         }
 
         $urls = [];
+        $attributions = [];
 
-        foreach (array_slice($references, 0, $max) as $reference) {
-            $stored = $this->downloadPhoto($apiKey, $reference, $listing->slug);
+        foreach (array_slice($photos, 0, $max) as $photo) {
+            $stored = $this->downloadPhoto($apiKey, $photo['reference'], $listing->slug);
 
             if ($stored) {
                 $urls[] = $stored;
+                $attributions = [...$attributions, ...$photo['attributions']];
             }
         }
 
-        return $urls;
+        return [
+            'urls' => $urls,
+            'attribution' => $attributions === [] ? null : implode(' · ', array_unique($attributions)),
+        ];
     }
 
     private function findPlaceId(string $apiKey, Listing $listing): ?string
@@ -94,7 +105,7 @@ class GooglePlacesPhotoFinder
         return $response->json('candidates.0.place_id');
     }
 
-    /** @return list<string> */
+    /** @return list<array{reference: string, attributions: list<string>}> */
     private function fetchPhotoReferences(string $apiKey, string $placeId, int $listingId): array
     {
         $this->callCounts['place_details']++;
@@ -125,7 +136,11 @@ class GooglePlacesPhotoFinder
 
         foreach ($photos as $photo) {
             if (is_array($photo) && isset($photo['photo_reference']) && is_string($photo['photo_reference'])) {
-                $refs[] = $photo['photo_reference'];
+                $attributions = is_array($photo['html_attributions'] ?? null)
+                    ? array_values(array_filter($photo['html_attributions'], 'is_string'))
+                    : [];
+
+                $refs[] = ['reference' => $photo['photo_reference'], 'attributions' => $attributions];
             }
         }
 

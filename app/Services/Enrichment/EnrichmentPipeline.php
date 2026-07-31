@@ -98,9 +98,10 @@ class EnrichmentPipeline
                 $this->fillImages($listing, $html, $website, $ogImage, $updates, $log);
             }
 
-            // No website, or its homepage didn't yield anything scrapeable — Google
-            // Places Photos as a fallback source, same lookup FetchGooglePlacesPhotoJob
-            // already does on its own schedule, just inline here for an immediate result.
+            // No live image yet — either nothing was scraped, or fillImages() only staged
+            // pending website photos awaiting owner/admin approval. Google Places can
+            // publish immediately (no consent issue there), so it fills the gap live in
+            // the meantime; same lookup FetchGooglePlacesPhotoJob does on its own schedule.
             if ($useGooglePlaces && ! $listing->image && ! array_key_exists('image', $updates)) {
                 $this->fillImagesFromGooglePlaces($listing, $updates, $log);
             }
@@ -297,11 +298,21 @@ class EnrichmentPipeline
         return $og['image'] ?? null;
     }
 
-    /** @param array<string, mixed> $updates
-     *  @param list<string> $log */
+    /**
+     * Google Places photos don't need the owner's separate consent the way scraping
+     * their own website's photos does — Places is a third-party directory, not the
+     * owner's own copyrighted marketing material — but Google's Maps Platform terms
+     * only permit temporarily caching them (with attribution). google_photos_expire_at
+     * is what the scheduled sweep in FetchGooglePlacesPhotos uses to enforce that: past
+     * it, the cached copy is cleared and re-fetched fresh rather than kept indefinitely.
+     *
+     * @param array<string, mixed> $updates
+     * @param list<string> $log
+     */
     private function fillImagesFromGooglePlaces(Listing $listing, array &$updates, array &$log): void
     {
-        $urls = $this->photoFinder->findPhotoUrls($listing);
+        $result = $this->photoFinder->findPhotoUrls($listing);
+        $urls = $result['urls'];
 
         if ($urls === []) {
             $log[] = 'No Google Places photos found.';
@@ -315,7 +326,11 @@ class EnrichmentPipeline
             $updates['gallery'] = array_slice($urls, 1);
         }
 
-        $log[] = count($urls).' photo(s) imported from Google Places.';
+        $updates['photos_source'] = 'google_places';
+        $updates['photos_attribution'] = $result['attribution'];
+        $updates['google_photos_expire_at'] = now()->addDays(30);
+
+        $log[] = count($urls).' photo(s) imported from Google Places (cached until '.$updates['google_photos_expire_at']->toDateString().').';
     }
 
     /** @param list<string> $log */
@@ -388,11 +403,20 @@ class EnrichmentPipeline
         return [$result['usage']['input_tokens'] + $result['usage']['output_tokens'], $this->estimateCost(config('enrichment.extraction_model'), $result['usage'])];
     }
 
-    /** @param array<string, mixed> $updates
-     *  @param list<string> $log */
+    /**
+     * Photos scraped off the listing's own website are the owner's copyrighted
+     * marketing material — we have no license to publish them just because we could
+     * download them. Staged into pending_image/pending_gallery instead of the live
+     * image/gallery columns; only Listing::approvePendingPhotos() (triggered by the
+     * owner via their claim-token preview link, or an admin on their behalf) makes
+     * them public. See EnrichmentResource/ListingController for that approval flow.
+     *
+     * @param array<string, mixed> $updates
+     * @param list<string> $log
+     */
     private function fillImages(Listing $listing, string $html, string $baseUrl, ?string $heroHint, array &$updates, array &$log): void
     {
-        if ($listing->image && ! empty($listing->gallery)) {
+        if ($listing->image || filled($listing->pending_image)) {
             return;
         }
 
@@ -402,30 +426,32 @@ class EnrichmentPipeline
             return;
         }
 
-        if (! $listing->image) {
-            $hero = $this->extractor->downloadPhoto(array_shift($images), $listing->slug, 'enrichment');
+        $hero = $this->extractor->downloadPhoto(array_shift($images), $listing->slug, 'enrichment');
 
-            if ($hero) {
-                $updates['image'] = $hero;
-                $log[] = 'Hero image imported from website.';
+        if (! $hero) {
+            return;
+        }
+
+        $updates['pending_image'] = $hero;
+        $log[] = 'Hero image imported from website — pending owner/admin approval before publishing.';
+
+        if (empty($images)) {
+            return;
+        }
+
+        $gallery = [];
+
+        foreach (array_slice($images, 0, 5) as $url) {
+            $stored = $this->extractor->downloadPhoto($url, $listing->slug, 'enrichment');
+
+            if ($stored) {
+                $gallery[] = $stored;
             }
         }
 
-        if (empty($listing->gallery) && ! empty($images)) {
-            $gallery = [];
-
-            foreach (array_slice($images, 0, 5) as $url) {
-                $stored = $this->extractor->downloadPhoto($url, $listing->slug, 'enrichment');
-
-                if ($stored) {
-                    $gallery[] = $stored;
-                }
-            }
-
-            if ($gallery !== []) {
-                $updates['gallery'] = $gallery;
-                $log[] = count($gallery).' gallery image(s) imported from website.';
-            }
+        if ($gallery !== []) {
+            $updates['pending_gallery'] = $gallery;
+            $log[] = count($gallery).' gallery image(s) imported from website — pending approval.';
         }
     }
 

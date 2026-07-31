@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
 import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { Globe } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
@@ -57,6 +58,10 @@ interface Listing {
     highlights: string[];
     image: string | null;
     gallery: string[];
+    photos_source: 'manual' | 'website_scrape' | 'google_places' | null;
+    photos_attribution: string | null;
+    pending_image: string | null;
+    pending_gallery: string[];
     region: string | null;
     price_from: string | null;
     price_currency: string;
@@ -78,6 +83,9 @@ const props = defineProps<{
     listing: Listing;
     reviews: Review[];
     is_preview?: boolean;
+    can_publish?: boolean;
+    can_approve_photos?: boolean;
+    preview_token?: string | null;
 }>();
 
 function publishListing() {
@@ -92,6 +100,22 @@ function publishListing() {
     router.post(
         `/listings/${props.listing.slug}/publish`,
         {},
+        { preserveScroll: true },
+    );
+}
+
+function approvePendingPhotos() {
+    if (
+        !window.confirm(
+            'Publish these photos on the listing? Only do this once you have the right to use them.',
+        )
+    ) {
+        return;
+    }
+
+    router.post(
+        `/listings/${props.listing.slug}/approve-photos`,
+        { preview: props.preview_token ?? undefined },
         { preserveScroll: true },
     );
 }
@@ -118,36 +142,91 @@ const heroImage = computed(() => {
     <div class="kaia-page">
         <AdminBar :edit-url="`/admin/listings/${props.listing.id}/edit`" />
 
+        <div v-if="props.is_preview" class="draft-banner">
+            <span>Draft preview</span>
+            <span class="draft-banner-badge">unpublished</span>
+            <button
+                v-if="props.can_publish"
+                type="button"
+                class="draft-banner-publish"
+                @click="publishListing"
+            >
+                <Globe :size="14" />
+                Publish
+            </button>
+        </div>
+
         <div
-            v-if="props.is_preview"
+            v-if="
+                props.can_approve_photos &&
+                (props.listing.pending_image ||
+                    props.listing.pending_gallery.length)
+            "
             :style="{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px',
-                background: '#92400e',
-                color: '#fef3c7',
-                padding: '8px 12px',
+                background: '#1e3a5f',
+                color: '#dbeafe',
+                padding: '10px 12px',
                 fontSize: '14px',
-                fontWeight: 600,
             }"
         >
-            <span>Draft preview</span>
+            <p style="margin: 0 0 8px">
+                We found
+                {{
+                    props.listing.pending_gallery.length +
+                    (props.listing.pending_image ? 1 : 0)
+                }}
+                photo(s) on the property's own website. We only publish them
+                once you confirm we have the right to use them.
+            </p>
+            <div
+                style="
+                    display: flex;
+                    gap: 8px;
+                    overflow-x: auto;
+                    margin-bottom: 8px;
+                "
+            >
+                <img
+                    v-if="props.listing.pending_image"
+                    :src="props.listing.pending_image"
+                    alt="Pending hero image"
+                    style="
+                        height: 64px;
+                        width: 64px;
+                        object-fit: cover;
+                        border-radius: 6px;
+                        flex-shrink: 0;
+                    "
+                />
+                <img
+                    v-for="(src, i) in props.listing.pending_gallery"
+                    :key="i"
+                    :src="src"
+                    :alt="`Pending gallery image ${i + 1}`"
+                    style="
+                        height: 64px;
+                        width: 64px;
+                        object-fit: cover;
+                        border-radius: 6px;
+                        flex-shrink: 0;
+                    "
+                />
+            </div>
             <button
                 type="button"
                 :style="{
-                    background: 'rgba(0, 0, 0, 0.25)',
-                    color: '#fef3c7',
-                    border: '1px solid rgba(254, 243, 199, 0.6)',
-                    borderRadius: '999px',
-                    padding: '2px 10px',
+                    background: '#2563eb',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 14px',
                     fontSize: '13px',
                     fontWeight: 600,
                     cursor: 'pointer',
                 }"
-                @click="publishListing"
+                @click="approvePendingPhotos"
             >
-                unpublished
+                Approve and publish these photos
             </button>
         </div>
 
@@ -208,6 +287,24 @@ const heroImage = computed(() => {
                 />
             </div>
         </section>
+
+        <!-- Google's Places API terms require crediting photo contributors — this HTML
+             comes straight from Google's own API response (html_attributions), not user
+             input, so v-html is safe here. -->
+        <p
+            v-if="
+                props.listing.photos_source === 'google_places' &&
+                props.listing.photos_attribution
+            "
+            style="
+                max-width: 1100px;
+                margin: -12px auto 24px;
+                padding: 0 24px;
+                font-size: 12px;
+                color: #8a8171;
+            "
+            v-html="'Photos: ' + props.listing.photos_attribution"
+        ></p>
 
         <section>
             <div class="detail-grid">
@@ -480,3 +577,43 @@ const heroImage = computed(() => {
         </footer>
     </div>
 </template>
+
+<style scoped>
+.draft-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: #92400e;
+    color: #fef3c7;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.draft-banner-badge {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(254, 243, 199, 0.6);
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 13px;
+}
+
+.draft-banner-publish {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 3px 12px 3px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.draft-banner-publish:hover {
+    background: #15803d;
+}
+</style>

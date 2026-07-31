@@ -15,6 +15,7 @@ Route::get('/', HomeController::class)->name('home');
 Route::get('listings/search', [ListingController::class, 'search'])->name('listings.search');
 Route::get('listings/{listing:slug}', [ListingController::class, 'show'])->name('listings.show');
 Route::post('listings/{listing:slug}/publish', [ListingController::class, 'publish'])->name('listings.publish');
+Route::post('listings/{listing:slug}/approve-photos', [ListingController::class, 'approvePhotos'])->name('listings.approve-photos');
 
 Route::post('trip/save', [SavedPlanController::class, 'store'])
     ->middleware('throttle:20,1')
