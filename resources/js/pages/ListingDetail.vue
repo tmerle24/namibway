@@ -373,6 +373,11 @@ const heroImage = computed(() => {
             :images="props.listing.gallery"
             :index="lightboxIndex"
             :alt="props.listing.name"
+            :attribution="
+                props.listing.photos_source === 'google_places'
+                    ? props.listing.photos_attribution
+                    : null
+            "
             @update:index="lightboxIndex = $event"
             @close="lightboxIndex = null"
         />
