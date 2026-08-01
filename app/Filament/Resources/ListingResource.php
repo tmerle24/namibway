@@ -11,6 +11,7 @@ use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
 use App\Models\Listing;
 use App\Models\Partner;
+use App\Services\Enrichment\ClaimInviteService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -20,6 +21,7 @@ use Filament\Tables;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 class ListingResource extends Resource
 {
@@ -286,6 +288,34 @@ class ListingResource extends Resource
                         : 'Preview draft on namibway.com (not published yet — visible to admins only)')
                     ->url(fn (Listing $record): string => route('listings.show', $record->slug))
                     ->openUrlInNewTab(),
+                Tables\Actions\Action::make('copy_owner_link')
+                    ->label('')
+                    ->icon('heroicon-o-clipboard-document')
+                    ->color('gray')
+                    ->tooltip('Copy the owner preview/edit/publish link (same one the claim-invite email sends)')
+                    ->visible(fn (Listing $record): bool => $record->partner !== null)
+                    ->modalHeading('Owner Link')
+                    ->form([
+                        Forms\Components\TextInput::make('link')
+                            ->label('Owner preview/edit/publish link')
+                            ->readOnly()
+                            ->default(function (Listing $record, ClaimInviteService $inviter): string {
+                                $partner = $record->partner;
+
+                                if (! $partner instanceof Partner) {
+                                    return '';
+                                }
+
+                                if (blank($partner->claim_token)) {
+                                    $partner->update(['claim_token' => Str::random(48)]);
+                                }
+
+                                return $inviter->listingUrl($record, $partner);
+                            })
+                            ->helperText('Works without an account — opens the same draft preview, edit page, and publish flow the owner gets.'),
+                    ])
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close'),
                 Tables\Actions\Action::make('import_wetu')
                     ->label('Import from Wetu')
                     ->icon('heroicon-o-arrow-down-tray')
