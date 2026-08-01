@@ -152,18 +152,18 @@ async function onGuestSubmit(details: GuestDetails) {
             :variant="bookingVariant"
             :trip-id="bookingTripId"
         />
-        <AfterSalesSection
-            :guest-name="guestName"
-            :guest-email="guestEmail"
-            :trip-id="bookingTripId"
-        />
+        <HowItWorks />
         <ExploreSection
             :listings="listings"
             :regions="regions"
             :featured-pick="featuredPick"
             :trigger-search="searchIntent"
         />
-        <HowItWorks />
+        <AfterSalesSection
+            :guest-name="guestName"
+            :guest-email="guestEmail"
+            :trip-id="bookingTripId"
+        />
 
         <footer>
             <img :src="logoDark" alt="NamibWay" class="footer-logo" />
