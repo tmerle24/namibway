@@ -12,7 +12,9 @@ use Illuminate\Support\Str;
  * lookup itself goes through GooglePlacesLookupService (shared with
  * WebsiteFinderService within one enrichment run, see that class); this class is
  * only responsible for the photo-reference -> downloaded-file step, which is
- * unique to photos and has no other caller to share with.
+ * unique to photos and has no other caller to share with. Also checks
+ * PlacesBudgetGuard before each individual photo download, not just once — a
+ * single matched listing can pull up to 4 of these.
  */
 class GooglePlacesPhotoFinder
 {
@@ -20,6 +22,8 @@ class GooglePlacesPhotoFinder
 
     /** @var array<string, int> Google Places calls made by this instance — see callCounts(). */
     private array $callCounts = ['photo' => 0];
+
+    public function __construct(private readonly PlacesBudgetGuard $budgetGuard) {}
 
     /**
      * Google Places calls made since this instance was created, for cost-estimate
@@ -60,6 +64,10 @@ class GooglePlacesPhotoFinder
         $attributions = [];
 
         foreach (array_slice($photos, 0, $max) as $photo) {
+            if (! $this->budgetGuard->hasBudget()) {
+                break;
+            }
+
             $stored = $this->downloadPhoto($apiKey, $photo['photo_reference'], $listing->slug);
 
             if ($stored) {

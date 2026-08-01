@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\Log;
  * re-queried Google Places for the *same* business — up to ~14 billed calls per listing.
  * A single EnrichmentPipeline run now shares one GooglePlacesLookupService instance
  * across all three, cutting that to at most 2 (or 4, if the by-region query variant
- * comes up empty and the by-type variant is tried).
+ * comes up empty and the by-type variant is tried). PlacesBudgetGuard is checked here
+ * too, as a second line of defense against runaway spend from any future bug.
  */
 class GooglePlacesLookupService
 {
@@ -26,6 +27,8 @@ class GooglePlacesLookupService
 
     /** @var array<int, array{place_id: string, website: string|null, formatted_phone_number: string|null, formatted_address: string|null, lat: float|null, lng: float|null, photos: list<array{photo_reference: string, html_attributions: list<string>}>}|null> Keyed by listing ID. */
     private array $cache = [];
+
+    public function __construct(private readonly PlacesBudgetGuard $budgetGuard) {}
 
     /**
      * Google Places calls made since this instance was created, for cost-estimate
@@ -50,7 +53,7 @@ class GooglePlacesLookupService
 
         $apiKey = config('services.google_places.key');
 
-        if (blank($apiKey)) {
+        if (blank($apiKey) || ! $this->budgetGuard->hasBudget()) {
             return $this->cache[$listing->id] = null;
         }
 
