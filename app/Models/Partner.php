@@ -77,4 +77,12 @@ class Partner extends Model
     {
         return $this->hasMany(Listing::class);
     }
+
+    /**
+     * @return HasMany<PartnerMessage, $this>
+     */
+    public function messages(): HasMany
+    {
+        return $this->hasMany(PartnerMessage::class);
+    }
 }

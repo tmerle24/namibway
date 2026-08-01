@@ -213,6 +213,18 @@ class Listing extends Model
     }
 
     /**
+     * Owner-contact thread, scoped to the partner (not this listing) so that
+     * an owner with several properties has one conversation, not one per
+     * listing — see PartnerMessage.
+     *
+     * @return HasMany<PartnerMessage, $this>
+     */
+    public function partnerMessages(): HasMany
+    {
+        return $this->hasMany(PartnerMessage::class, 'partner_id', 'partner_id');
+    }
+
+    /**
      * @param  Builder<Listing>  $query
      * @return Builder<Listing>
      */
