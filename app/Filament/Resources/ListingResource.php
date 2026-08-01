@@ -149,6 +149,8 @@ class ListingResource extends Resource
                                     ->image()
                                     ->multiple()
                                     ->reorderable()
+                                    ->panelLayout('grid')
+                                    ->imageEditor()
                                     ->disk('r2')
                                     ->directory('listings/gallery')
                                     ->fetchFileInformation(false)
