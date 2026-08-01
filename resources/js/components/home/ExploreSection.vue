@@ -3,7 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import 'flatpickr/dist/flatpickr.min.css';
 import flatpickr from 'flatpickr';
 import type { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatPrice } from '@/lib/currency';
 import type { SearchIntent } from '@/lib/kaia-types';
@@ -331,9 +331,11 @@ function selectRegion(region: string) {
     filterBar.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function viewAllInRow(row: IdeaRow) {
+async function viewAllInRow(row: IdeaRow) {
     filterCategory.value = row.key;
-    performSearch(1);
+    await performSearch(1);
+    await nextTick();
+    filterBar.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 watch(
