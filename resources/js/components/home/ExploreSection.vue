@@ -502,12 +502,21 @@ function floorToGridMultiple(items: IdeaCard[]): IdeaCard[] {
 
 const visibleRows = computed(() =>
     ideaRows.value
-        .map((row) => ({
-            ...row,
-            items: floorToGridMultiple(
-                row.items.filter((item) => matches(row, item)),
-            ),
-        }))
+        .map((row) => {
+            const filtered = row.items.filter((item) => matches(row, item));
+
+            // The region row is a fixed, curated list of destinations with
+            // no "view all" escape hatch elsewhere — trimming it to a
+            // multiple of 4 would silently hide whichever ones were added
+            // last, so only the listing rows (backed by search) get floored.
+            return {
+                ...row,
+                items:
+                    row.key === 'region'
+                        ? filtered
+                        : floorToGridMultiple(filtered),
+            };
+        })
         .filter((row) => row.items.length > 0),
 );
 
