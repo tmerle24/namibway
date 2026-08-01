@@ -100,10 +100,13 @@ class EnrichmentPipeline
         }
 
         if ($runs('ai_extract') && $html !== null) {
-            if ($this->budgetGuard->hasBudget('ai')) {
+            if ($this->recentlyExtracted($listing)) {
+                $log[] = 'Structured extraction skipped — already attempted recently.';
+            } elseif ($this->budgetGuard->hasBudget('ai')) {
                 [$aiTokens, $aiCost] = $this->extractStructuredData($listing, $pageText, $updates, $aiGeneratedFields, $log);
                 $tokensUsed += $aiTokens;
                 $costEstimate += $aiCost;
+                $updates['ai_extracted_at'] = now();
             } else {
                 $log[] = 'Daily AI budget exhausted — skipped structured extraction.';
             }
@@ -483,6 +486,20 @@ class EnrichmentPipeline
     {
         return blank($listing->getTranslation('description', 'en', useFallbackLocale: false))
             || blank($listing->getTranslation('short_description', 'en', useFallbackLocale: false));
+    }
+
+    /**
+     * Unlike needsDescription() — which self-resolves once description text exists and
+     * never asks again — ai_extract has no such natural stop: a page can genuinely have
+     * no facilities/activities/opening-hours to extract, and those fields would just
+     * stay empty forever, keeping the listing's score low and getting it re-selected
+     * (and Claude re-asked the same question) on every future enrichment run. This caps
+     * that to once per enrichment.refresh_days.
+     */
+    private function recentlyExtracted(Listing $listing): bool
+    {
+        return $listing->ai_extracted_at !== null
+            && $listing->ai_extracted_at->gt(now()->subDays((int) config('enrichment.refresh_days')));
     }
 
     /**
