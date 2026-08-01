@@ -139,7 +139,7 @@
             "vehicle": "Onderweg",
             "region": "Regio's om te ontdekken"
         },
-        "examples": "{count} voorbeelden",
+        "viewAll": "Alles bekijken →",
         "shortlist": {
             "toggle": "Toevoegen aan lijst",
             "count": "{count} geselecteerd",

@@ -139,7 +139,7 @@
             "vehicle": "Cómo moverte",
             "region": "Regiones para explorar"
         },
-        "examples": "{count} ejemplos",
+        "viewAll": "Ver todo →",
         "shortlist": {
             "toggle": "Añadir a la lista",
             "count": "{count} seleccionados",

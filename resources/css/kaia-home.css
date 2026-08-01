@@ -852,9 +852,19 @@
 .kaia-page .inspire-row-head h3 {
     font-size: 19px;
 }
-.kaia-page .inspire-row-head span {
-    font-size: 12.5px;
-    color: #8a7f68;
+.kaia-page .inspire-row-view-all {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--rust-dark);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    white-space: nowrap;
+}
+.kaia-page .inspire-row-view-all:hover {
+    color: var(--rust);
+    text-decoration: underline;
 }
 .kaia-page .idea-cards {
     display: grid;

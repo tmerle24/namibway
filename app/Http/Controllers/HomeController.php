@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ListingType;
 use App\Models\Listing;
 use App\Models\Region;
 use Inertia\Inertia;
@@ -9,24 +10,35 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
+    /**
+     * How many listings to feature per category on the homepage. A magazine
+     * front page curates a handful of picks per section rather than dumping
+     * the whole catalog — the full catalog stays one click away via search.
+     */
+    private const PER_CATEGORY_LIMIT = 10;
+
     public function __invoke(): Response
     {
-        // Rotate the order daily so the homepage doesn't always show the
-        // same arrangement, while still always preferring listings that
-        // have a real photo (image or gallery).
+        // Rotate the selection daily so the homepage doesn't always show the
+        // same picks, while still always preferring listings that have a
+        // real photo (image or gallery). Re-seeding once a day (rather than
+        // per request) means the picks stay stable across reloads within
+        // the same day.
         $daySeed = now()->format('Y-m-d');
 
-        $listings = Listing::query()
-            ->where('is_published', true)
-            ->orderByRaw("(image IS NOT NULL OR json_array_length(COALESCE(gallery, '[]')) > 0) DESC")
-            ->orderByDesc('is_featured')
-            ->orderByRaw('MD5(id::text || ?)', [$daySeed])
-            ->limit(300)
-            ->get([
-                'id', 'type', 'name', 'slug', 'description',
-                'image', 'region', 'address', 'latitude', 'longitude',
-                'price_from', 'price_currency', 'rating', 'rating_count',
-            ])
+        $listings = collect(ListingType::cases())
+            ->flatMap(fn (ListingType $type) => Listing::query()
+                ->where('is_published', true)
+                ->where('type', $type)
+                ->orderByRaw("(image IS NOT NULL OR json_array_length(COALESCE(gallery, '[]')) > 0) DESC")
+                ->orderByDesc('is_featured')
+                ->orderByRaw('MD5(id::text || ?)', [$daySeed])
+                ->limit(self::PER_CATEGORY_LIMIT)
+                ->get([
+                    'id', 'type', 'name', 'slug', 'description',
+                    'image', 'region', 'address', 'latitude', 'longitude',
+                    'price_from', 'price_currency', 'rating', 'rating_count',
+                ]))
             ->map(fn (Listing $listing) => [
                 'id' => $listing->id,
                 'type' => $listing->type->value,
