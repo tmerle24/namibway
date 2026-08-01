@@ -157,7 +157,9 @@ function truncate(text: string | null, length = 120): string {
 
     const decoded = decodeEntities(text);
 
-    return decoded.length > length ? decoded.slice(0, length).trim() + '…' : decoded;
+    return decoded.length > length
+        ? decoded.slice(0, length).trim() + '…'
+        : decoded;
 }
 
 const ROW_BG: Record<RowKey, string> = {
