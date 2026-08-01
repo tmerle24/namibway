@@ -36,6 +36,11 @@ export interface ChatMessage {
     role: 'ai' | 'user';
     text: string;
     recommendation?: ListingRecommendation | null;
+    // Marks a placeholder bubble shown after Kaia failed to respond (all
+    // silent retries exhausted) — rendered with a retry action instead of
+    // being treated as a real turn, and excluded from the history sent back
+    // to the API so it never pollutes the conversation Claude sees.
+    failed?: boolean;
 }
 
 export interface ListingRecommendation {

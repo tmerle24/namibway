@@ -35,7 +35,8 @@
         "recommendationIntro": "Here is my top pick for you:",
         "viewListing": "View & enquire →",
         "from": "from",
-        "error": "Something went wrong reaching the travel companion. Please try again."
+        "error": "Kaia is having trouble responding right now.",
+        "retry": "Retry"
     },
     "itinerary": {
         "eyebrow": "Your plan",

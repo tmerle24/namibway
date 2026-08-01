@@ -24,7 +24,8 @@
         "recommendationIntro": "Aquí está mi mejor recomendación para ti:",
         "viewListing": "Ver y solicitar →",
         "from": "desde",
-        "error": "Algo salió mal al conectar con el compañero de viaje. Inténtalo de nuevo."
+        "error": "Kaia está teniendo problemas para responder en este momento.",
+        "retry": "Reintentar"
     },
     "itinerary": {
         "eyebrow": "Tu plan",
