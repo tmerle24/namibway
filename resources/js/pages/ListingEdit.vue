@@ -14,6 +14,7 @@ interface Listing {
     description: string | null;
     short_description: string | null;
     highlights: string[];
+    contact_person: string | null;
     phone: string | null;
     contact_email: string | null;
     website: string | null;
@@ -33,6 +34,7 @@ const form = reactive({
     description: props.listing.description ?? '',
     short_description: props.listing.short_description ?? '',
     highlights: [...props.listing.highlights],
+    contact_person: props.listing.contact_person ?? '',
     phone: props.listing.phone ?? '',
     contact_email: props.listing.contact_email ?? '',
     website: props.listing.website ?? '',
@@ -186,6 +188,15 @@ function handlePublishClick() {
                     @keydown.enter.prevent="addHighlight"
                 />
             </div>
+
+            <label>
+                Contact person
+                <input
+                    v-model="form.contact_person"
+                    type="text"
+                    maxlength="255"
+                />
+            </label>
 
             <label>
                 Phone

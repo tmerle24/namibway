@@ -59,6 +59,7 @@ class Listing extends Model
         'claim_status',
         'website',
         'contact_email',
+        'contact_person',
         'phone',
         'address',
         'scrape_source',

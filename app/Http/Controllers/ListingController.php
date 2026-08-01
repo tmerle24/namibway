@@ -168,6 +168,7 @@ class ListingController extends Controller
                 'rating' => $listing->rating !== null ? (float) $listing->rating : null,
                 'rating_count' => $listing->rating_count,
                 'accepts_inquiries' => $listing->accepts_inquiries,
+                'contact_person' => $listing->contact_person,
                 'partner' => $listing->partner ? [
                     'name' => $listing->partner->name,
                     'logo' => $listing->partner->logo ? self::resolveMediaUrl($listing->partner->logo) : null,
@@ -275,6 +276,7 @@ class ListingController extends Controller
                 'description' => $listing->getTranslation('description', 'en', useFallbackLocale: false),
                 'short_description' => $listing->getTranslation('short_description', 'en', useFallbackLocale: false),
                 'highlights' => $listing->getTranslation('highlights', 'en', useFallbackLocale: false) ?? [],
+                'contact_person' => $listing->contact_person,
                 'phone' => $listing->phone,
                 'contact_email' => $listing->contact_email,
                 'website' => $listing->website,
@@ -300,6 +302,7 @@ class ListingController extends Controller
             'short_description' => ['nullable', 'string', 'max:500'],
             'highlights' => ['nullable', 'array'],
             'highlights.*' => ['string', 'max:100'],
+            'contact_person' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'contact_email' => ['nullable', 'email', 'max:255'],
             'website' => ['nullable', 'url', 'max:255'],
@@ -320,6 +323,7 @@ class ListingController extends Controller
         $listing->setTranslation('short_description', 'en', $validated['short_description'] ?? '');
         $listing->setTranslation('highlights', 'en', $validated['highlights'] ?? []);
         $listing->fill(array_filter([
+            'contact_person' => $validated['contact_person'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'contact_email' => $validated['contact_email'] ?? null,
             'website' => $validated['website'] ?? null,

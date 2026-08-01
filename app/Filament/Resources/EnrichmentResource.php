@@ -45,6 +45,8 @@ class EnrichmentResource extends Resource
 
     protected static ?string $modelLabel = 'listing';
 
+    protected static ?string $pluralModelLabel = 'Data Enrichment - Listings';
+
     protected static ?int $navigationSort = 0;
 
     /** 1-based tab indexes, matching the order of Tabs\Tab entries in form(). */
@@ -125,6 +127,10 @@ class EnrichmentResource extends Resource
 
                     Forms\Components\Tabs\Tab::make('Contact')
                         ->schema([
+                            Forms\Components\TextInput::make('contact_person')
+                                ->label('Contact person')
+                                ->helperText('Shown as the heading on the inquiry form on the listing\'s public page')
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('contact_person')),
                             Forms\Components\TextInput::make('phone')
                                 ->extraInputAttributes(fn (): array => self::focusAttributes('phone')),
                             Forms\Components\TextInput::make('contact_email')
@@ -413,7 +419,10 @@ class EnrichmentResource extends Resource
         // (e.g. the website icon) jumps straight to it instead of always landing on Basic.
         // Row clicks that don't land on a bound column (recordAction('edit') below) still
         // default to $editBasic.
-        $editBasic = self::editAction(self::TAB_BASIC, 'edit', 'name');
+        $editBasic = self::editAction(self::TAB_BASIC, 'edit', 'name')
+            ->icon('heroicon-o-pencil-square')
+            ->label('')
+            ->tooltip('Edit — open the full edit form for this listing');
         $editNtbNumber = self::editAction(self::TAB_BASIC, 'edit_ntb_number', 'ntb_number');
         $editRegion = self::editAction(self::TAB_BASIC, 'edit_region', 'region');
         $editWebsite = self::editAction(self::TAB_CONTACT, 'edit_website', 'website');
@@ -427,6 +436,11 @@ class EnrichmentResource extends Resource
 
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->wrap()
+                    ->limit(40)
+                    ->action($editBasic),
                 Tables\Columns\TextColumn::make('enrichment_status')
                     ->label('Status')
                     ->badge()
@@ -436,26 +450,6 @@ class EnrichmentResource extends Resource
                         'partial' => 'warning',
                         default => 'danger',
                     }),
-                Tables\Columns\TextColumn::make('enrichment_score')
-                    ->label('Completion')
-                    ->sortable()
-                    ->action($editMetadata)
-                    ->formatStateUsing(fn (int $state): string => "{$state}%")
-                    ->color(fn (int $state): string => match (true) {
-                        $state >= 90 => 'success',
-                        $state >= 60 => 'warning',
-                        default => 'danger',
-                    }),
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->wrap()
-                    ->limit(40)
-                    ->action($editBasic),
-                Tables\Columns\TextColumn::make('ntb_number')
-                    ->label('NTB #')
-                    ->searchable()
-                    ->action($editNtbNumber)
-                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('type')
                     ->label('Category')
                     ->badge()
@@ -465,6 +459,11 @@ class EnrichmentResource extends Resource
                     ->searchable()
                     ->action($editRegion)
                     ->sortable(),
+                Tables\Columns\TextColumn::make('ntb_number')
+                    ->label('NTB #')
+                    ->searchable()
+                    ->action($editNtbNumber)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\IconColumn::make('has_website')
                     ->label('Website')
                     ->boolean()
@@ -603,6 +602,16 @@ class EnrichmentResource extends Resource
                     ->sortable()
                     ->action($editMetadata)
                     ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('enrichment_score')
+                    ->label('Completion')
+                    ->sortable()
+                    ->action($editMetadata)
+                    ->formatStateUsing(fn (int $state): string => "{$state}%")
+                    ->color(fn (int $state): string => match (true) {
+                        $state >= 90 => 'success',
+                        $state >= 60 => 'warning',
+                        default => 'danger',
+                    }),
             ])
             ->modifyQueryUsing(fn (Builder $query) => $query->with('latestEnrichmentJob'))
             ->poll('10s')
@@ -684,9 +693,10 @@ class EnrichmentResource extends Resource
             ->actions([
                 $editBasic,
                 Tables\Actions\Action::make('enrich')
-                    ->label('Enrich')
+                    ->label('')
                     ->icon('heroicon-o-sparkles')
                     ->color('warning')
+                    ->tooltip('Enrich — run automated enrichment (free: website, scrape, images; optional paid: Google Places, Claude AI)')
                     // Google Places and Claude are both metered/paid APIs — OpenStreetMap
                     // (GPS/address) and the listing's own website (description, contact,
                     // photos) are free and always used. These two checkboxes are the only
@@ -757,9 +767,10 @@ class EnrichmentResource extends Resource
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Close'),
                 Tables\Actions\Action::make('cancel_enrichment')
-                    ->label('Cancel')
+                    ->label('')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
+                    ->tooltip('Cancel — mark this stuck/running enrichment job as cancelled so you can edit the listing again')
                     // Visible for queued/running/stuck alike — not just isEnriching() (fresh
                     // only), otherwise the button disappears exactly when a run goes stale and
                     // "Cancel" is what the badge/tooltip tell the admin to use.

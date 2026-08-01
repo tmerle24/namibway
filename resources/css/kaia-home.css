@@ -1251,6 +1251,13 @@
     font-size: 18px;
     margin-bottom: 6px;
 }
+.kaia-page .inquiry-contact-person {
+    font-family: 'Fraunces', serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--rust-dark);
+    margin-bottom: 8px;
+}
 .kaia-page .inquiry-subtitle {
     font-size: 13px;
     color: #5b5346;

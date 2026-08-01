@@ -194,6 +194,7 @@
         },
         "inquiry": {
             "title": "Consultar disponibilidad",
+            "contactPerson": "Tu persona de contacto: {name}",
             "subtitle": "Envía tus datos directamente a {partner} — sin pago, sin compromiso.",
             "subtitleGeneric": "Envía tus datos directamente al socio — sin pago, sin compromiso.",
             "name": "Nombre completo",

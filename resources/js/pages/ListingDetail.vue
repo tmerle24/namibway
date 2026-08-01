@@ -70,6 +70,7 @@ interface Listing {
     rating: number | null;
     rating_count: number | null;
     accepts_inquiries: boolean;
+    contact_person: string | null;
     partner: Partner | null;
 }
 
@@ -464,6 +465,16 @@ const heroImage = computed(() => {
                 <div class="inquiry-panel">
                     <template v-if="props.listing.accepts_inquiries">
                         <h3>{{ t('listing.inquiry.title') }}</h3>
+                        <p
+                            v-if="props.listing.contact_person"
+                            class="inquiry-contact-person"
+                        >
+                            {{
+                                t('listing.inquiry.contactPerson', {
+                                    name: props.listing.contact_person,
+                                })
+                            }}
+                        </p>
                         <p class="inquiry-subtitle">
                             {{
                                 props.listing.partner

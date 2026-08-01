@@ -247,6 +247,7 @@
         },
         "inquiry": {
             "title": "Request availability",
+            "contactPerson": "Your contact: {name}",
             "subtitle": "Send your details directly to {partner} — no payment, no obligation.",
             "subtitleGeneric": "Send your details directly to the partner — no payment, no obligation.",
             "name": "Full name",

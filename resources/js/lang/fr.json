@@ -194,6 +194,7 @@
         },
         "inquiry": {
             "title": "Demander la disponibilité",
+            "contactPerson": "Votre contact : {name}",
             "subtitle": "Envoyez vos coordonnées directement à {partner} — sans paiement, sans engagement.",
             "subtitleGeneric": "Envoyez vos coordonnées directement au partenaire — sans paiement, sans engagement.",
             "name": "Nom complet",

@@ -194,6 +194,7 @@
         },
         "inquiry": {
             "title": "Beschikbaarheid aanvragen",
+            "contactPerson": "Je contactpersoon: {name}",
             "subtitle": "Stuur je gegevens rechtstreeks naar {partner} — geen betaling, geen verplichting.",
             "subtitleGeneric": "Stuur je gegevens rechtstreeks naar de partner — geen betaling, geen verplichting.",
             "name": "Volledige naam",
