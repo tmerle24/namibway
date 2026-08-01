@@ -215,23 +215,19 @@
     font-style: italic;
     font-size: 13px;
 }
-.kaia-page .msg.failed {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
 .kaia-page .chat-retry-btn {
-    background: var(--rust);
-    color: var(--paper);
-    padding: 5px 14px;
-    border-radius: 8px;
+    display: inline;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--rust);
     font-weight: 600;
-    font-size: 12.5px;
-    white-space: nowrap;
-    flex-shrink: 0;
+    font-size: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
 }
 .kaia-page .chat-retry-btn:hover {
-    background: var(--rust-dark);
+    color: var(--rust-dark);
 }
 .kaia-page .chat-input-row {
     display: flex;
