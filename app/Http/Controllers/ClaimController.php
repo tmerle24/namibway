@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\PartnerDeclinedListing;
 use App\Models\Partner;
+use Filament\Notifications\Notification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -52,8 +53,19 @@ class ClaimController extends Controller
 
         $partner->listings()->update(['claim_status' => 'claimed']);
 
-        return redirect()->route('dashboard')
-            ->with('flash', ['type' => 'success', 'message' => "Welcome! You've claimed {$partner->name} on NamibWay."]);
+        // Partner.user_id above is the inverse link and doesn't grant anything by
+        // itself — User::canAccessPanel() gates Filament partner-portal access on
+        // User.partner_id, so that's the one that actually has to be set for the
+        // owner to be able to log in and connect their booking system.
+        $request->user()->update(['partner_id' => $partner->id]);
+
+        Notification::make()
+            ->title("Welcome! You've claimed {$partner->name} on NamibWay.")
+            ->body('Manage your listing, photos, and booking system connection here.')
+            ->success()
+            ->send();
+
+        return redirect()->route('filament.partner.pages.dashboard');
     }
 
     public function declineShow(string $token): Response
