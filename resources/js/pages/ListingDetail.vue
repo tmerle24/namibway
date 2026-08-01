@@ -331,7 +331,9 @@ const heroImage = computed(() => {
                 <h1>{{ props.listing.name }}</h1>
                 <p v-if="props.listing.region">
                     <Link
-                        :href="home({ query: { region: props.listing.region } })"
+                        :href="
+                            home({ query: { region: props.listing.region } })
+                        "
                         class="detail-region-link"
                         >{{ props.listing.region }}</Link
                     >
