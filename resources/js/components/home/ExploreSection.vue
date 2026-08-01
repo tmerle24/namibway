@@ -840,7 +840,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                                       ? 'button'
                                       : 'div'
                             "
-                            v-for="item in row.items"
+                            v-for="item in row.items.slice(0, 8)"
                             :key="item.title"
                             :href="
                                 item.slug
