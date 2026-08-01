@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import { Menu, X } from '@lucide/vue';
+import { Menu, Sparkles, X } from '@lucide/vue';
 import { computed, ref } from 'vue';
+import EnrichModal from '@/components/EnrichModal.vue';
 
 // Optional deep link to this page's record in the Filament admin, e.g.
-// `/admin/listings/${listing.id}/edit`. Omit on pages with no single
-// underlying record (e.g. the homepage).
+// `/admin/listings/${listing.id}/edit`, and that listing's slug (to enrich it
+// right from here). Both omitted on pages with no single underlying record
+// (e.g. the homepage).
 const props = defineProps<{
     editUrl?: string;
+    listingSlug?: string;
 }>();
 
 const page = usePage();
@@ -20,6 +23,7 @@ const page = usePage();
 const isAdmin = computed(() => Boolean(page.props.auth?.user?.is_admin));
 
 const menuOpen = ref(false);
+const showEnrichModal = ref(false);
 
 const ADMIN_LINKS = [
     { label: 'Dashboard', href: '/admin' },
@@ -43,6 +47,15 @@ const ADMIN_LINKS = [
                     class="admin-bar-link admin-bar-link--highlight"
                     >Edit this listing</a
                 >
+                <button
+                    v-if="props.listingSlug"
+                    type="button"
+                    class="admin-bar-link admin-bar-link--highlight admin-bar-link--button"
+                    @click="showEnrichModal = true"
+                >
+                    <Sparkles :size="13" />
+                    Enrich
+                </button>
                 <a
                     v-for="link in ADMIN_LINKS"
                     :key="link.href"
@@ -73,6 +86,15 @@ const ADMIN_LINKS = [
                 class="admin-bar-link admin-bar-link--highlight"
                 >Edit this listing</a
             >
+            <button
+                v-if="props.listingSlug"
+                type="button"
+                class="admin-bar-link admin-bar-link--highlight admin-bar-link--button"
+                @click="showEnrichModal = true"
+            >
+                <Sparkles :size="13" />
+                Enrich
+            </button>
             <a
                 v-for="link in ADMIN_LINKS"
                 :key="link.href"
@@ -82,6 +104,13 @@ const ADMIN_LINKS = [
             >
         </div>
     </div>
+
+    <EnrichModal
+        v-if="props.listingSlug"
+        :show="showEnrichModal"
+        :listing-slug="props.listingSlug"
+        @close="showEnrichModal = false"
+    />
 </template>
 
 <style scoped>
@@ -137,6 +166,17 @@ const ADMIN_LINKS = [
 .admin-bar-link--highlight {
     color: #e5e7eb;
     text-decoration: underline;
+}
+
+.admin-bar-link--button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    font: inherit;
+    padding: 0;
+    cursor: pointer;
 }
 
 .admin-bar-burger {

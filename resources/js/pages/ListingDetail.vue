@@ -154,7 +154,10 @@ const heroImage = computed(() => {
             @cancel="showPublishModal = false"
         />
 
-        <AdminBar :edit-url="`/admin/listings/${props.listing.id}/edit`" />
+        <AdminBar
+            :edit-url="`/admin/listings/${props.listing.id}/edit`"
+            :listing-slug="props.listing.slug"
+        />
 
         <div v-if="props.is_preview" class="draft-banner">
             <span>Draft preview</span>

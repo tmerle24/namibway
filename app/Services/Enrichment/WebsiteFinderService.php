@@ -194,6 +194,20 @@ class WebsiteFinderService
             return null;
         }
 
+        $status = $response->json('status');
+
+        // OK / ZERO_RESULTS are the only "nothing went wrong" outcomes — anything else
+        // (REQUEST_DENIED, OVER_QUERY_LIMIT, INVALID_REQUEST, ...) is a real config/quota
+        // problem that would otherwise silently look identical to "no match found" for
+        // every single listing, the way a referrer-restricted key did until this was added.
+        if (! in_array($status, ['OK', 'ZERO_RESULTS'], true)) {
+            Log::warning("WebsiteFinderService [{$listingId}]: findplacefromtext returned {$status}", [
+                'error_message' => $response->json('error_message'),
+            ]);
+
+            return null;
+        }
+
         return $response->json('candidates.0.place_id');
     }
 
@@ -215,6 +229,16 @@ class WebsiteFinderService
         }
 
         if (! $response->successful()) {
+            return [];
+        }
+
+        $status = $response->json('status');
+
+        if (! in_array($status, ['OK', 'ZERO_RESULTS'], true)) {
+            Log::warning("WebsiteFinderService [{$listingId}]: place details returned {$status}", [
+                'error_message' => $response->json('error_message'),
+            ]);
+
             return [];
         }
 

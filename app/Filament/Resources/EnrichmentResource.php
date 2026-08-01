@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Enums\ListingType;
 use App\Filament\Resources\EnrichmentResource\Pages;
+use App\Filament\Support\PipelineImageResolver;
 use App\Jobs\EnrichListingJob;
 use App\Models\EnrichmentJob;
 use App\Models\Listing;
@@ -171,11 +172,12 @@ class EnrichmentResource extends Resource
                         ->schema([
                             // Must be the r2 disk, not public — AI/website/Google-Places-scraped
                             // images are stored on R2 (see GooglePlacesPhotoFinder,
-                            // WebsiteContentExtractor::downloadPhoto), so a FileUpload on the
-                            // 'public' disk can't resolve their preview URLs at all: it silently
-                            // shows no thumbnail even though has_photos correctly reads true.
-                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor(),
-                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->disk('r2')->directory('listings/gallery'),
+                            // WebsiteContentExtractor::downloadPhoto). getUploadedFileUsing() is
+                            // also required on top of that: those images are stored as full R2
+                            // URLs, not disk-relative paths, and FileUpload's default resolver has
+                            // no handling for that — see PipelineImageResolver.
+                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor()->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
+                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->disk('r2')->directory('listings/gallery')->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
                         ]),
 
                     Forms\Components\Tabs\Tab::make('Metadata')
@@ -495,29 +497,49 @@ class EnrichmentResource extends Resource
                         : $query->orderByRaw("(description->>'en' IS NOT NULL AND description->>'en' != '') asc")),
                 Tables\Columns\IconColumn::make('has_photos')
                     ->label('Photos')
-                    ->boolean()
                     ->action($editPhotos)
-                    ->getStateUsing(fn (Listing $record): bool => filled($record->image))
+                    // Three states, not just yes/no — a plain boolean made every listing
+                    // with website-scraped photos still awaiting owner/admin approval
+                    // (see Listing::approvePendingPhotos()) look identical to one with no
+                    // photos at all, which read as "the photo pipeline isn't working" when
+                    // really a lot of it was just sitting in the pending queue.
+                    ->getStateUsing(function (Listing $record): string {
+                        if (filled($record->image)) {
+                            return 'live';
+                        }
+
+                        return $record->hasPendingPhotos() ? 'pending' : 'none';
+                    })
+                    ->icon(fn (string $state): string => match ($state) {
+                        'live' => 'heroicon-o-check-circle',
+                        'pending' => 'heroicon-o-clock',
+                        default => 'heroicon-o-x-circle',
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'live' => 'success',
+                        'pending' => 'warning',
+                        default => 'danger',
+                    })
+                    ->tooltip(fn (string $state): string => match ($state) {
+                        'live' => 'Photo is live.',
+                        'pending' => 'Photo(s) found on the listing\'s own website — awaiting owner/admin approval before going live.',
+                        default => 'No photo found yet.',
+                    })
                     ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
-                        ? $query->orderByRaw("(image IS NOT NULL AND image != '') desc")
-                        : $query->orderByRaw("(image IS NOT NULL AND image != '') asc")),
-                Tables\Columns\IconColumn::make('has_pending_photos')
-                    ->label('Photos pending approval')
-                    ->boolean()
-                    ->trueColor('warning')
-                    ->trueIcon('heroicon-o-clock')
-                    ->falseColor('gray')
-                    ->falseIcon('heroicon-o-minus')
-                    // Website-scraped photos wait here until the owner (or an admin, via
-                    // the "View on site" preview link) approves them — see
-                    // Listing::approvePendingPhotos(). Never auto-published: we don't have
-                    // the right to publish someone else's marketing photos without consent.
-                    ->tooltip('Scraped from the listing\'s own website — awaiting owner/admin approval before going live.')
-                    ->action($editPhotos)
-                    ->getStateUsing(fn (Listing $record): bool => $record->hasPendingPhotos())
-                    ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
-                        ? $query->orderByRaw("(pending_image IS NOT NULL AND pending_image != '') desc")
-                        : $query->orderByRaw("(pending_image IS NOT NULL AND pending_image != '') asc")),
+                        ? $query->orderByRaw("
+                            case
+                                when image is not null and image != '' then 2
+                                when pending_image is not null and pending_image != '' then 1
+                                else 0
+                            end desc
+                        ")
+                        : $query->orderByRaw("
+                            case
+                                when image is not null and image != '' then 2
+                                when pending_image is not null and pending_image != '' then 1
+                                else 0
+                            end asc
+                        ")),
                 Tables\Columns\IconColumn::make('has_gps')
                     ->label('GPS')
                     ->boolean()
