@@ -26,6 +26,31 @@ class ImportProviders extends Command
 
     private int $skipped = 0;
 
+    private const VEHICLE_KEYWORDS = [
+        'car rental', 'car rentals', 'car hire', 'car-hire',
+        'vehicle hire', 'vehicle rental', 'vehicle lease',
+        '4x4 hire', '4x4 rental', 'campervan hire', 'camper hire',
+        'camper rental', 'equipment rental', 'equipment rentals', 'equipment hire',
+        'rent a car',
+    ];
+
+    private const ACTIVITY_KEYWORDS = [
+        'tours and safaris', 'tours & safaris', 'transfers & tours', 'transfers and tours',
+        'safari', 'safaris',
+    ];
+
+    /** Names containing these are genuine accommodation businesses even if they also match an activity/vehicle keyword (e.g. "Etosha Safari Lodge"). */
+    private const ACCOMMODATION_OVERRIDE_KEYWORDS = [
+        'lodge', 'camp', 'guest house', 'guesthouse', 'hotel', 'resort', 'farm',
+        'backpackers', 'cottage', 'chalet', 'b&b', 'bed and breakfast',
+    ];
+
+    /** Not a travel business at all — no correct ListingType exists, so leave unpublished rather than force a wrong category. */
+    private const NON_TRAVEL_KEYWORDS = [
+        'engineering', 'marine services', 'shipwrights', 'mart', 'maintenance',
+        'service centre', 'service center',
+    ];
+
     public function handle(): int
     {
         $this->dry = (bool) $this->option('dry-run');
@@ -77,7 +102,7 @@ class ImportProviders extends Command
                 continue;
             }
 
-            $type = $this->resolveType($r['type'] ?? 'accommodation');
+            $type = $this->resolveType($r['type'] ?? '', $name);
             $slug = $this->uniqueSlug(Str::slug($name));
 
             $fields = [
@@ -157,7 +182,7 @@ class ImportProviders extends Command
                     $this->skipped++;
                 }
             } else {
-                $type = $this->resolveType($r['type'] ?? 'accommodation');
+                $type = $this->resolveType($r['type'] ?? '', $name);
                 $slug = $this->uniqueSlug(Str::slug($name));
 
                 $fields = [
@@ -237,7 +262,7 @@ class ImportProviders extends Command
         return ($bestScore >= $threshold) ? $best : null;
     }
 
-    private function resolveType(string $raw): string
+    private function resolveType(string $raw, string $name): string
     {
         $map = [
             'accommodation' => ListingType::Accommodation->value,
@@ -246,7 +271,38 @@ class ImportProviders extends Command
             'vehicle' => ListingType::Vehicle->value,
         ];
 
-        return $map[strtolower($raw)] ?? ListingType::Accommodation->value;
+        $key = strtolower(trim($raw));
+        if (isset($map[$key])) {
+            return $map[$key];
+        }
+
+        $hasAccommodationOverride = $this->matchesAny($name, self::ACCOMMODATION_OVERRIDE_KEYWORDS);
+
+        if (! $hasAccommodationOverride && $this->matchesAny($name, self::VEHICLE_KEYWORDS)) {
+            return ListingType::Vehicle->value;
+        }
+
+        if (! $hasAccommodationOverride && $this->matchesAny($name, self::ACTIVITY_KEYWORDS)) {
+            return ListingType::Activity->value;
+        }
+
+        if (! $hasAccommodationOverride && $this->matchesAny($name, self::NON_TRAVEL_KEYWORDS)) {
+            $this->warn("  No ListingType fits '{$name}' (looks non-travel) — imported as accommodation but left unpublished; review manually.");
+        }
+
+        return ListingType::Accommodation->value;
+    }
+
+    /** @param array<int, string> $keywords */
+    private function matchesAny(string $name, array $keywords): bool
+    {
+        foreach ($keywords as $keyword) {
+            if (preg_match('/\b'.preg_quote($keyword, '/').'\b/i', $name) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @return array<string, string>|null */
