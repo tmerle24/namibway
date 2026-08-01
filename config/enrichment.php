@@ -47,13 +47,14 @@ return [
         'photo' => (float) env('ENRICHMENT_PLACES_PHOTO_COST', 0.007),
     ],
 
-    // Circuit breaker (see PlacesBudgetGuard): once today's already-recorded
-    // enrichment_jobs.places_cost_estimate total reaches this, every further Google
-    // Places call is skipped for the rest of the day instead of just continuing to
-    // spend. Built after a redundant-lookup bug burned ~$840/~123,500 calls in a
-    // single day with nothing to stop it. Set to 0 to disable the cap entirely. A
-    // one-off large backfill (e.g. re-enriching thousands of listings at once) can
-    // legitimately want more than the default in a single day — raise this
-    // temporarily via env rather than disabling it outright.
+    // Circuit breakers (see EnrichmentBudgetGuard): once today's already-recorded
+    // enrichment_jobs total for a category reaches its cap, every further call in
+    // that category is skipped for the rest of the day instead of just continuing
+    // to spend. Built after a redundant-lookup bug burned ~$840/~123,500 Places
+    // calls in a single day with nothing to stop it. Set either to 0 to disable
+    // that cap entirely. A one-off large backfill (e.g. re-enriching thousands of
+    // listings at once) can legitimately want more than the default in a single
+    // day — raise these temporarily via env rather than disabling them outright.
     'places_daily_budget_usd' => (float) env('ENRICHMENT_PLACES_DAILY_BUDGET_USD', 75),
+    'ai_daily_budget_usd' => (float) env('ENRICHMENT_AI_DAILY_BUDGET_USD', 30),
 ];

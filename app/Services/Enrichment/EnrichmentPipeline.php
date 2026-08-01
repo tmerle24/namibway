@@ -25,6 +25,11 @@ use App\Models\Listing;
  * fillImagesFromGooglePlaces) share one GooglePlacesLookupService instance for
  * the run — the same business only ever gets looked up on Places once, not
  * separately by each step.
+ *
+ * Both AI steps and every Places-backed step also check EnrichmentBudgetGuard
+ * before spending anything — once a category's daily cap is hit, the affected
+ * step is skipped (logged, not thrown) rather than the run failing outright, so
+ * whatever else the run already gathered still gets saved.
  */
 class EnrichmentPipeline
 {
@@ -37,6 +42,7 @@ class EnrichmentPipeline
         private readonly GooglePlacesLookupService $placesLookup,
         private readonly OsmLocationFinder $osmFinder,
         private readonly CompletionScoreService $scoreService,
+        private readonly EnrichmentBudgetGuard $budgetGuard,
     ) {}
 
     /**
@@ -94,9 +100,13 @@ class EnrichmentPipeline
         }
 
         if ($runs('ai_extract') && $html !== null) {
-            [$aiTokens, $aiCost] = $this->extractStructuredData($listing, $pageText, $updates, $aiGeneratedFields, $log);
-            $tokensUsed += $aiTokens;
-            $costEstimate += $aiCost;
+            if ($this->budgetGuard->hasBudget('ai')) {
+                [$aiTokens, $aiCost] = $this->extractStructuredData($listing, $pageText, $updates, $aiGeneratedFields, $log);
+                $tokensUsed += $aiTokens;
+                $costEstimate += $aiCost;
+            } else {
+                $log[] = 'Daily AI budget exhausted — skipped structured extraction.';
+            }
         }
 
         if ($runs('images') || $runs('scrape')) {
@@ -114,9 +124,13 @@ class EnrichmentPipeline
         }
 
         if ($runs('description') && $this->needsDescription($listing)) {
-            [$descTokens, $descCost] = $this->generateDescription($listing, $pageText, $updates, $aiGeneratedFields, $log);
-            $tokensUsed += $descTokens;
-            $costEstimate += $descCost;
+            if ($this->budgetGuard->hasBudget('ai')) {
+                [$descTokens, $descCost] = $this->generateDescription($listing, $pageText, $updates, $aiGeneratedFields, $log);
+                $tokensUsed += $descTokens;
+                $costEstimate += $descCost;
+            } else {
+                $log[] = 'Daily AI budget exhausted — skipped description generation.';
+            }
         }
 
         $fieldsChanged = array_keys($updates);
