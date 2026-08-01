@@ -69,6 +69,7 @@ class ListingResource extends Resource
                             ->disk('public')
                             ->directory('listings')
                             ->imageEditor()
+                            ->panelAspectRatio('16:9')
                             ->fetchFileInformation(false)
                             ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
                             ->columnSpanFull(),

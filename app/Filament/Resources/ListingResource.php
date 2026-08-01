@@ -142,6 +142,7 @@ class ListingResource extends Resource
                                     ->disk('r2')
                                     ->directory('listings')
                                     ->imageEditor()
+                                    ->panelAspectRatio('16:9')
                                     ->fetchFileInformation(false)
                                     ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
                                     ->columnSpanFull(),

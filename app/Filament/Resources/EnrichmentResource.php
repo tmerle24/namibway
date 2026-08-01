@@ -187,8 +187,8 @@ class EnrichmentResource extends Resource
                             // getUploadedFileUsing() ever runs, so URLs/foreign-disk paths get
                             // silently dropped from the field's state no matter what the resolver
                             // does — disabling it is the only way to let the resolver see them.
-                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor()->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
-                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->disk('r2')->directory('listings/gallery')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
+                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor()->panelAspectRatio('16:9')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
+                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->panelLayout('grid')->imageEditor()->disk('r2')->directory('listings/gallery')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
                         ]),
 
                     Forms\Components\Tabs\Tab::make('Metadata')
