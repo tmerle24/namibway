@@ -28,6 +28,9 @@ class GooglePlacesLookupService
     /** @var array<int, array{place_id: string, website: string|null, formatted_phone_number: string|null, formatted_address: string|null, lat: float|null, lng: float|null, photos: list<array{photo_reference: string, html_attributions: list<string>}>}|null> Keyed by listing ID. */
     private array $cache = [];
 
+    /** @var array<int, true> Listing IDs a real API call was actually made for this run — see wasAttempted(). */
+    private array $attempted = [];
+
     public function __construct(private readonly EnrichmentBudgetGuard $budgetGuard) {}
 
     /**
@@ -40,6 +43,18 @@ class GooglePlacesLookupService
     public function callCounts(): array
     {
         return $this->callCounts;
+    }
+
+    /**
+     * True if a real Places call was made for this listing this run — as opposed to
+     * lookup() short-circuiting on no API key or exhausted daily budget. Lets a caller
+     * distinguish "we tried and Google has nothing" from "we never got to check", so
+     * e.g. EnrichmentPipeline only stamps google_places_checked_at (and so skips this
+     * listing on future runs) when a real attempt actually happened.
+     */
+    public function wasAttempted(int $listingId): bool
+    {
+        return isset($this->attempted[$listingId]);
     }
 
     /**
@@ -56,6 +71,8 @@ class GooglePlacesLookupService
         if (blank($apiKey) || ! $this->budgetGuard->hasBudget('places')) {
             return $this->cache[$listing->id] = null;
         }
+
+        $this->attempted[$listing->id] = true;
 
         $placeId = $this->findPlaceId($apiKey, $listing);
 

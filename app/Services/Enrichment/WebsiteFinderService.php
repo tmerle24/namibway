@@ -21,6 +21,14 @@ use Illuminate\Support\Facades\Http;
  *
  * All Places lookups go through GooglePlacesLookupService, shared with
  * GooglePlacesPhotoFinder within one enrichment run — see that class for why.
+ *
+ * find()/findLocationFacts() also skip the Places call entirely once
+ * Listing::google_places_checked_at is within enrichment.refresh_days — a business
+ * Google genuinely has no data for would otherwise get re-queried on every single
+ * future enrichment run indefinitely, since a blank website/incomplete location
+ * facts never stops looking incomplete. (Deliberately separate from
+ * google_photos_checked_at, which only governs the standalone photo job's own
+ * 30-day Places-photo caching window — unrelated concern, don't conflate them.)
  */
 class WebsiteFinderService
 {
@@ -31,7 +39,7 @@ class WebsiteFinderService
     {
         $found = $this->fromEmailDomain($listing);
 
-        if ($found !== null || ! $useGooglePlaces) {
+        if ($found !== null || ! $useGooglePlaces || $this->recentlyCheckedPlaces($listing)) {
             return $found;
         }
 
@@ -97,6 +105,10 @@ class WebsiteFinderService
      */
     public function findLocationFacts(Listing $listing, GooglePlacesLookupService $lookup): array
     {
+        if ($this->recentlyCheckedPlaces($listing)) {
+            return [];
+        }
+
         $details = $lookup->lookup($listing);
 
         if ($details === null) {
@@ -119,6 +131,12 @@ class WebsiteFinderService
         }
 
         return $facts;
+    }
+
+    private function recentlyCheckedPlaces(Listing $listing): bool
+    {
+        return $listing->google_places_checked_at !== null
+            && $listing->google_places_checked_at->gt(now()->subDays((int) config('enrichment.refresh_days')));
     }
 
     private function respondsOk(string $url): bool

@@ -142,6 +142,10 @@ class EnrichmentPipeline
             $updates['enriched_by'] = $tokensUsed > 0 ? 'AI' : 'Automated (no AI)';
         }
 
+        if ($this->placesLookup->wasAttempted($listing->id)) {
+            $updates['google_places_checked_at'] = now();
+        }
+
         $updates['last_enriched_at'] = now();
         $listing->forceFill($updates)->saveQuietly();
 
