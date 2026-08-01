@@ -5,7 +5,11 @@ const page = usePage();
 
 function switchCurrency(event: Event) {
     const currency = (event.target as HTMLSelectElement).value;
-    router.post('/currency', { currency }, { preserveScroll: true, preserveState: false });
+    router.post(
+        '/currency',
+        { currency },
+        { preserveScroll: true, preserveState: false },
+    );
 }
 </script>
 
