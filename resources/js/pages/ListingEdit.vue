@@ -158,7 +158,8 @@ function submit(mode: 'draft' | 'preview' | 'publish' | 'unpublish') {
         publish: mode === 'publish' ? true : undefined,
         unpublish: mode === 'unpublish' ? true : undefined,
         terms_accepted: mode === 'publish' ? true : undefined,
-        redirect: mode === 'preview' || mode === 'publish' ? 'preview' : undefined,
+        redirect:
+            mode === 'preview' || mode === 'publish' ? 'preview' : undefined,
     };
 
     if (heroImageFile.value) {
@@ -309,12 +310,20 @@ function handleUnpublishClick() {
 
                 <div class="edit-hero-image">
                     <div class="edit-hero-preview">
-                        <img v-if="heroImagePreview" :src="heroImagePreview" alt="" />
-                        <span v-else class="edit-hero-preview-empty">No hero image yet</span>
+                        <img
+                            v-if="heroImagePreview"
+                            :src="heroImagePreview"
+                            alt=""
+                        />
+                        <span v-else class="edit-hero-preview-empty"
+                            >No hero image yet</span
+                        >
                     </div>
                     <div class="edit-hero-actions">
                         <label class="edit-file-button">
-                            {{ heroImagePreview ? 'Change photo' : 'Add photo' }}
+                            {{
+                                heroImagePreview ? 'Change photo' : 'Add photo'
+                            }}
                             <input
                                 type="file"
                                 accept="image/*"
