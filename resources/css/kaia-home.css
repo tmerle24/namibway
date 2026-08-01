@@ -1151,6 +1151,17 @@
     position: static;
     display: inline-block;
     margin-bottom: 4px;
+    text-decoration: none;
+}
+.kaia-page .detail-hero-overlay .idea-tag:hover {
+    text-decoration: underline;
+}
+.kaia-page .detail-hero-overlay .detail-region-link {
+    color: inherit;
+    text-decoration: none;
+}
+.kaia-page .detail-hero-overlay .detail-region-link:hover {
+    text-decoration: underline;
 }
 .kaia-page .detail-gallery {
     display: grid;

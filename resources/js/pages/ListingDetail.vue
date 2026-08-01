@@ -322,11 +322,19 @@ const heroImage = computed(() => {
             :style="{ backgroundImage: `url(${heroImage})` }"
         >
             <div class="detail-hero-overlay">
-                <span class="idea-tag">{{
-                    t(`listing.types.${props.listing.type}`)
-                }}</span>
+                <Link
+                    :href="home({ query: { type: props.listing.type } })"
+                    class="idea-tag"
+                    >{{ t(`listing.types.${props.listing.type}`) }}</Link
+                >
                 <h1>{{ props.listing.name }}</h1>
-                <p v-if="props.listing.region">{{ props.listing.region }}</p>
+                <p v-if="props.listing.region">
+                    <Link
+                        :href="home({ query: { region: props.listing.region } })"
+                        class="detail-region-link"
+                        >{{ props.listing.region }}</Link
+                    >
+                </p>
                 <p v-if="props.listing.rating !== null" class="detail-rating">
                     ★ {{ props.listing.rating.toFixed(1) }}
                     <span v-if="props.listing.rating_count">

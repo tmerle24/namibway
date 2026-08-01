@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
-import { nextTick, ref } from 'vue';
+import { nextTick, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
 import AfterSalesSection from '@/components/home/AfterSalesSection.vue';
@@ -72,6 +72,25 @@ async function onSearchIntent(intent: SearchIntent) {
     searchIntent.value = intent;
     await scrollTo('explore-section');
 }
+
+const LISTING_TYPES = ['accommodation', 'activity', 'restaurant', 'vehicle'];
+
+onMounted(() => {
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get('type');
+    const region = params.get('region');
+
+    if (!type && !region) {
+        return;
+    }
+
+    onSearchIntent({
+        type: LISTING_TYPES.includes(type ?? '')
+            ? (type as SearchIntent['type'])
+            : undefined,
+        region: region ?? undefined,
+    });
+});
 
 async function onPlanReady(newPlan: ItineraryPlan) {
     plan.value = newPlan;
