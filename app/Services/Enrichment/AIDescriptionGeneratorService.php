@@ -76,14 +76,18 @@ class AIDescriptionGeneratorService
             reword phrases from the background context, it is for your understanding only.
 
             Write exactly these four pieces:
-            - short_description: about 80 words, evocative, for a listing card/preview.
+            - short_description: about 80 words, evocative, for a listing card/preview. A single
+              paragraph.
             - long_description: about 250 words, for the full listing page — cover what the place
-              offers, its setting, and what makes it worth visiting.
+              offers, its setting, and what makes it worth visiting. Write it as 3-4 short
+              paragraphs, separated by a blank line (two newline characters, "\n\n") between each
+              — not one continuous block of text.
             - seo_description: a single search-engine meta description, max 160 characters.
             - meta_title: a page title, max 60 characters, including the listing name.
 
             No marketing cliches ("nestled in", "hidden gem", "look no further"). No emoji, no
-            markdown. Respond only by calling propose_listing_copy.
+            markdown (no "**", "#", bullet points, etc. — paragraph breaks are the only
+            formatting). Respond only by calling propose_listing_copy.
             PROMPT;
     }
 
