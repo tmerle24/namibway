@@ -2,12 +2,15 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Currency\CurrencyLocator;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class SetCurrency
 {
+    public function __construct(private readonly CurrencyLocator $currencyLocator) {}
+
     /**
      * Handle an incoming request.
      *
@@ -15,22 +18,8 @@ class SetCurrency
      */
     public function handle(Request $request, Closure $next): Response
     {
-        app()->instance('currentCurrency', $this->resolveCurrency($request));
+        app()->instance('currentCurrency', $this->currencyLocator->resolve($request));
 
         return $next($request);
-    }
-
-    private function resolveCurrency(Request $request): string
-    {
-        /** @var list<string> $supported */
-        $supported = config('currencies.supported');
-
-        $cookieCurrency = $request->cookie('currency');
-
-        if (is_string($cookieCurrency) && in_array($cookieCurrency, $supported, true)) {
-            return $cookieCurrency;
-        }
-
-        return config('currencies.default', 'NAD');
     }
 }
