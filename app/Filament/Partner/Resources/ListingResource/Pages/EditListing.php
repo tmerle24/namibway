@@ -4,6 +4,7 @@ namespace App\Filament\Partner\Resources\ListingResource\Pages;
 
 use App\Filament\Partner\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
+use App\Models\Listing;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
@@ -17,7 +18,10 @@ class EditListing extends EditRecord
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $partnerId = $this->getRecord()->partner_id;
+        /** @var Listing $record */
+        $record = $this->getRecord();
+
+        $partnerId = $record->partner_id;
 
         return BookingConnectorSchema::persistPartnerFields($data, $partnerId ? (int) $partnerId : null);
     }
