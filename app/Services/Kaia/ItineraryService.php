@@ -5,7 +5,6 @@ namespace App\Services\Kaia;
 use App\Connectors\ConnectorFactory;
 use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
 use App\Models\Listing;
-use App\Models\Partner;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -511,7 +510,7 @@ class ItineraryService
                 continue;
             }
 
-            if ($this->isAvailable($listing->partner, $checkIn, $checkOut, $adults, $children)) {
+            if ($this->isAvailable($listing, $checkIn, $checkOut, $adults, $children)) {
                 continue;
             }
 
@@ -581,16 +580,21 @@ class ItineraryService
     }
 
     /**
-     * Live availability for one partner/date range. Returns true (assume
+     * Live availability for one listing/date range. Returns true (assume
      * available) whenever it can't actually be verified — no automated
-     * connector configured, or the connector call itself failed — so this
+     * connector configured on the partner, no property code set on this
+     * specific listing yet, or the connector call itself failed — so this
      * check only ever narrows down confirmed-gone stays, never blocks on an
-     * unrelated integration problem.
+     * unrelated integration problem or a listing that isn't connected yet.
      */
-    private function isAvailable(Partner $partner, Carbon $checkIn, Carbon $checkOut, int $adults, int $children): bool
+    private function isAvailable(Listing $listing, Carbon $checkIn, Carbon $checkOut, int $adults, int $children): bool
     {
+        if (blank($listing->connector_property_code) || $listing->partner === null) {
+            return true;
+        }
+
         try {
-            $connector = ConnectorFactory::makeBooking($partner);
+            $connector = ConnectorFactory::makeBooking($listing->partner);
         } catch (InvalidArgumentException) {
             return true;
         }
@@ -599,7 +603,7 @@ class ItineraryService
 
         try {
             $response = $connector->checkAvailability(new AvailabilityRequest(
-                propertyCode: $partner->connector_property_code ?? '',
+                propertyCode: $listing->connector_property_code,
                 checkIn: $checkIn,
                 checkOut: $checkOut,
                 adults: $adults,
@@ -609,7 +613,8 @@ class ItineraryService
             return $response->available;
         } catch (Throwable $e) {
             Log::warning('Kaia itinerary pre-check: availability lookup failed, assuming available', [
-                'partner_id' => $partner->id,
+                'listing_id' => $listing->id,
+                'partner_id' => $listing->partner->id,
                 'error' => $e->getMessage(),
             ]);
 
@@ -645,7 +650,7 @@ class ItineraryService
                 continue;
             }
 
-            if ($this->isAvailable($listing->partner, $checkIn, $checkOut, $adults, $children)) {
+            if ($this->isAvailable($listing, $checkIn, $checkOut, $adults, $children)) {
                 return $this->toAccommodationReference($listing);
             }
         }
