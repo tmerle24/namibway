@@ -20,6 +20,11 @@ use App\Models\Listing;
  * former gets a genuinely AI-free, zero-token enrichment pass — OSM/Places
  * location lookups and website/Places photo scraping still run, but neither
  * is billed by Anthropic (Places itself has its own separate, non-AI cost).
+ *
+ * All three Places-backed steps (findWebsite, fillLocationFacts,
+ * fillImagesFromGooglePlaces) share one GooglePlacesLookupService instance for
+ * the run — the same business only ever gets looked up on Places once, not
+ * separately by each step.
  */
 class EnrichmentPipeline
 {
@@ -29,6 +34,7 @@ class EnrichmentPipeline
         private readonly AIListingExtractorService $aiExtractor,
         private readonly AIDescriptionGeneratorService $descriptionGenerator,
         private readonly GooglePlacesPhotoFinder $photoFinder,
+        private readonly GooglePlacesLookupService $placesLookup,
         private readonly OsmLocationFinder $osmFinder,
         private readonly CompletionScoreService $scoreService,
     ) {}
@@ -127,7 +133,7 @@ class EnrichmentPipeline
 
         $score = $this->scoreService->recalculate($listing, $aiGeneratedFields);
 
-        $placesCalls = PlacesCostEstimator::mergeCallCounts($this->websiteFinder->callCounts(), $this->photoFinder->callCounts());
+        $placesCalls = PlacesCostEstimator::mergeCallCounts($this->placesLookup->callCounts(), $this->photoFinder->callCounts());
         $placesCost = PlacesCostEstimator::estimateCost($placesCalls);
 
         return [
@@ -166,7 +172,7 @@ class EnrichmentPipeline
      *  @param list<string> $log */
     private function findWebsite(Listing $listing, array &$updates, array &$log, bool $useGooglePlaces): void
     {
-        $found = $this->websiteFinder->find($listing, $useGooglePlaces);
+        $found = $this->websiteFinder->find($listing, $useGooglePlaces, $this->placesLookup);
 
         if ($found === null) {
             $log[] = 'No website found.';
@@ -223,7 +229,7 @@ class EnrichmentPipeline
             return;
         }
 
-        $placesFacts = $this->websiteFinder->findLocationFacts($listing);
+        $placesFacts = $this->websiteFinder->findLocationFacts($listing, $this->placesLookup);
 
         if ($placesFacts === []) {
             if ($osmFacts === []) {
@@ -311,7 +317,7 @@ class EnrichmentPipeline
      */
     private function fillImagesFromGooglePlaces(Listing $listing, array &$updates, array &$log): void
     {
-        $result = $this->photoFinder->findPhotoUrls($listing);
+        $result = $this->photoFinder->findPhotoUrls($listing, $this->placesLookup);
         $urls = $result['urls'];
 
         if ($urls === []) {

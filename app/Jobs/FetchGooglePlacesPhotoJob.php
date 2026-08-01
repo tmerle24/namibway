@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\EnrichmentJob;
 use App\Models\Listing;
+use App\Services\Enrichment\GooglePlacesLookupService;
 use App\Services\Enrichment\GooglePlacesPhotoFinder;
 use App\Services\Enrichment\PlacesCostEstimator;
 use Illuminate\Bus\Queueable;
@@ -43,7 +44,7 @@ class FetchGooglePlacesPhotoJob implements ShouldBeUnique, ShouldQueue
         return (string) $this->listingId;
     }
 
-    public function handle(GooglePlacesPhotoFinder $photoFinder): void
+    public function handle(GooglePlacesPhotoFinder $photoFinder, GooglePlacesLookupService $placesLookup): void
     {
         if (blank(config('services.google_places.key'))) {
             return;
@@ -63,10 +64,10 @@ class FetchGooglePlacesPhotoJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $result = $photoFinder->findPhotoUrls($listing);
+        $result = $photoFinder->findPhotoUrls($listing, $placesLookup);
         $urls = $result['urls'];
 
-        $this->recordRun($listing, $photoFinder, $urls);
+        $this->recordRun($listing, $photoFinder, $placesLookup, $urls);
 
         if (empty($urls)) {
             return;
@@ -86,9 +87,9 @@ class FetchGooglePlacesPhotoJob implements ShouldBeUnique, ShouldQueue
     }
 
     /** @param list<string> $urls */
-    private function recordRun(Listing $listing, GooglePlacesPhotoFinder $photoFinder, array $urls): void
+    private function recordRun(Listing $listing, GooglePlacesPhotoFinder $photoFinder, GooglePlacesLookupService $placesLookup, array $urls): void
     {
-        $calls = PlacesCostEstimator::mergeCallCounts($photoFinder->callCounts());
+        $calls = PlacesCostEstimator::mergeCallCounts($placesLookup->callCounts(), $photoFinder->callCounts());
 
         if ($calls === []) {
             return; // findPlaceId() never even ran — nothing was actually billed
