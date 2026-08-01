@@ -22,10 +22,13 @@ return new class extends Migration
             ['name' => 'Skeleton Coast', 'listing_region' => 'Erongo', 'lat' => -20.5000, 'lng' => 13.4000, 'blurb' => "Fog-shrouded shipwrecks and seal colonies along one of the world's most remote coastlines.", 'sort' => 26],
             ['name' => 'Swakopmund', 'listing_region' => 'Erongo', 'lat' => -22.6784, 'lng' => 14.5257, 'blurb' => 'Coastal charm, adventure sports, and the desert meeting the Atlantic.', 'sort' => 27],
             ['name' => 'Sandwich Harbour', 'listing_region' => 'Erongo', 'lat' => -23.3500, 'lng' => 14.4833, 'blurb' => "Towering dunes plunge straight into the ocean — one of Namibia's most dramatic landscapes.", 'sort' => 28],
+            ['name' => 'Cape Cross', 'listing_region' => 'Erongo', 'lat' => -21.7667, 'lng' => 13.9500, 'blurb' => "One of the world's largest Cape fur seal colonies, roaring along the Skeleton Coast.", 'sort' => 29],
             ['name' => 'Sossusvlei', 'listing_region' => 'Hardap', 'lat' => -24.7333, 'lng' => 15.3000, 'blurb' => "Namibia's iconic red dunes and the ghostly clay pans of Deadvlei.", 'sort' => 35],
             ['name' => 'Naukluft', 'listing_region' => 'Hardap', 'lat' => -24.1500, 'lng' => 16.1500, 'blurb' => 'Rugged mountains and hiking trails on the edge of the Namib.', 'sort' => 36],
+            ['name' => 'Twyfelfontein', 'listing_region' => 'Kunene', 'lat' => -20.5833, 'lng' => 14.3667, 'blurb' => "Namibia's first UNESCO World Heritage Site — thousands of ancient San rock engravings.", 'sort' => 45],
             ['name' => 'Fish River Canyon', 'listing_region' => 'Karas', 'lat' => -27.5847, 'lng' => 17.6187, 'blurb' => 'The second-largest canyon on Earth — multi-day hikes and epic sunset viewpoints.', 'sort' => 72],
             ['name' => 'Lüderitz', 'listing_region' => 'Karas', 'lat' => -26.6481, 'lng' => 15.1594, 'blurb' => 'A colonial-era port town on the edge of the Namib, gateway to the Kolmanskop ghost town.', 'sort' => 75],
+            ['name' => 'Kolmanskop', 'listing_region' => 'Karas', 'lat' => -26.6928, 'lng' => 15.2260, 'blurb' => "A diamond-boom ghost town swallowed by the dunes — Namibia's most photographed ruins.", 'sort' => 76],
         ];
 
         foreach ($destinations as $destination) {
@@ -48,8 +51,8 @@ return new class extends Migration
     {
         Region::whereIn('slug', [
             'windhoek', 'spitzkoppe', 'skeleton-coast', 'swakopmund',
-            'sandwich-harbour', 'sossusvlei', 'naukluft', 'fish-river-canyon',
-            'luderitz',
+            'sandwich-harbour', 'cape-cross', 'sossusvlei', 'naukluft',
+            'twyfelfontein', 'fish-river-canyon', 'luderitz', 'kolmanskop',
         ])->delete();
     }
 };
