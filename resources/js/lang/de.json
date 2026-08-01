@@ -149,7 +149,7 @@
             "vehicle": "Unterwegs sein",
             "region": "Regionen entdecken"
         },
-        "examples": "{count} Beispiele",
+        "viewAll": "Alle ansehen →",
         "shortlist": {
             "toggle": "Zur Merkliste hinzufügen",
             "count": "{count} ausgewählt",

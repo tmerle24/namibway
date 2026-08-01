@@ -320,6 +320,11 @@ function selectRegion(region: string) {
     filterBar.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function viewAllInRow(row: IdeaRow) {
+    filterCategory.value = row.key;
+    performSearch(1);
+}
+
 watch(
     () => props.triggerSearch,
     (intent) => {
@@ -762,9 +767,14 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                 >
                     <div class="inspire-row-head">
                         <h3>{{ t(`explore.rows.${row.key}`) }}</h3>
-                        <span>{{
-                            t('explore.examples', { count: row.items.length })
-                        }}</span>
+                        <button
+                            v-if="row.key !== 'region'"
+                            type="button"
+                            class="inspire-row-view-all"
+                            @click="viewAllInRow(row)"
+                        >
+                            {{ t('explore.viewAll') }}
+                        </button>
                     </div>
                     <div class="idea-cards">
                         <component

@@ -166,7 +166,7 @@
             "vehicle": "Getting around",
             "region": "Regions to explore"
         },
-        "examples": "{count} examples",
+        "viewAll": "View all →",
         "shortlist": {
             "toggle": "Add to shortlist",
             "count": "{count} selected",

@@ -139,7 +139,7 @@
             "vehicle": "Sur la route",
             "region": "Régions à explorer"
         },
-        "examples": "{count} exemples",
+        "viewAll": "Tout voir →",
         "shortlist": {
             "toggle": "Ajouter à la liste",
             "count": "{count} sélectionné(s)",
