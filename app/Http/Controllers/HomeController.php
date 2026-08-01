@@ -17,6 +17,12 @@ class HomeController extends Controller
      */
     private const PER_CATEGORY_LIMIT = 10;
 
+    private const LISTING_COLUMNS = [
+        'id', 'type', 'name', 'slug', 'description',
+        'image', 'region', 'address', 'latitude', 'longitude',
+        'price_from', 'price_currency', 'rating', 'rating_count',
+    ];
+
     public function __invoke(): Response
     {
         // Rotate the selection daily so the homepage doesn't always show the
@@ -26,34 +32,19 @@ class HomeController extends Controller
         // the same day.
         $daySeed = now()->format('Y-m-d');
 
+        $featuredPick = self::pickFeatured($daySeed);
+
         $listings = collect(ListingType::cases())
             ->flatMap(fn (ListingType $type) => Listing::query()
                 ->where('is_published', true)
                 ->where('type', $type)
+                ->when($featuredPick, fn ($query) => $query->whereKeyNot($featuredPick->id))
                 ->orderByRaw("(image IS NOT NULL OR json_array_length(COALESCE(gallery, '[]')) > 0) DESC")
                 ->orderByDesc('is_featured')
                 ->orderByRaw('MD5(id::text || ?)', [$daySeed])
                 ->limit(self::PER_CATEGORY_LIMIT)
-                ->get([
-                    'id', 'type', 'name', 'slug', 'description',
-                    'image', 'region', 'address', 'latitude', 'longitude',
-                    'price_from', 'price_currency', 'rating', 'rating_count',
-                ]))
-            ->map(fn (Listing $listing) => [
-                'id' => $listing->id,
-                'type' => $listing->type->value,
-                'name' => $listing->name,
-                'slug' => $listing->slug,
-                'description' => $listing->description,
-                'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
-                'region' => self::detectTown($listing->address) ?? $listing->region,
-                'latitude' => $listing->latitude !== null ? (float) $listing->latitude : null,
-                'longitude' => $listing->longitude !== null ? (float) $listing->longitude : null,
-                'price_from' => $listing->price_from,
-                'price_currency' => $listing->price_currency,
-                'rating' => $listing->rating !== null ? (float) $listing->rating : null,
-                'rating_count' => $listing->rating_count,
-            ]);
+                ->get(self::LISTING_COLUMNS))
+            ->map(fn (Listing $listing) => self::presentListing($listing));
 
         $regions = Region::query()
             ->where('is_published', true)
@@ -70,7 +61,50 @@ class HomeController extends Controller
         return Inertia::render('Welcome', [
             'listings' => $listings,
             'regions' => $regions,
+            'featuredPick' => $featuredPick ? self::presentListing($featuredPick) : null,
         ]);
+    }
+
+    /**
+     * The homepage "cover story" card. Prefers listings an admin has manually
+     * curated via Filament (rotating daily if there's more than one) so a real
+     * editor can drive what leads the magazine; falls back to the best
+     * automatic pick — highest-rated listing with a real photo — when nobody
+     * has curated anything yet.
+     */
+    private static function pickFeatured(string $daySeed): ?Listing
+    {
+        return Listing::query()
+            ->where('is_published', true)
+            ->where('is_homepage_pick', true)
+            ->orderByRaw('MD5(id::text || ?)', [$daySeed])
+            ->first(self::LISTING_COLUMNS)
+            ?? Listing::query()
+                ->where('is_published', true)
+                ->orderByRaw("(image IS NOT NULL OR json_array_length(COALESCE(gallery, '[]')) > 0) DESC")
+                ->orderByDesc('rating')
+                ->orderByRaw('MD5(id::text || ?)', [$daySeed])
+                ->first(self::LISTING_COLUMNS);
+    }
+
+    /** @return array<string, mixed> */
+    private static function presentListing(Listing $listing): array
+    {
+        return [
+            'id' => $listing->id,
+            'type' => $listing->type->value,
+            'name' => $listing->name,
+            'slug' => $listing->slug,
+            'description' => $listing->description,
+            'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
+            'region' => self::detectTown($listing->address) ?? $listing->region,
+            'latitude' => $listing->latitude !== null ? (float) $listing->latitude : null,
+            'longitude' => $listing->longitude !== null ? (float) $listing->longitude : null,
+            'price_from' => $listing->price_from,
+            'price_currency' => $listing->price_currency,
+            'rating' => $listing->rating !== null ? (float) $listing->rating : null,
+            'rating_count' => $listing->rating_count,
+        ];
     }
 
     /**

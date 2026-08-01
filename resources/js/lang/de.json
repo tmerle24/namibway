@@ -151,6 +151,9 @@
             "region": "Regionen entdecken"
         },
         "viewAll": "Alle ansehen →",
+        "featured": {
+            "eyebrow": "Redaktionstipp"
+        },
         "shortlist": {
             "toggle": "Zur Merkliste hinzufügen",
             "count": "{count} ausgewählt",

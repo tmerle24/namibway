@@ -48,6 +48,7 @@ const { t } = useI18n();
 defineProps<{
     listings: Listing[];
     regions: Region[];
+    featuredPick: Listing | null;
 }>();
 
 const plan = ref<ItineraryPlan | null>(null);
@@ -141,6 +142,7 @@ async function onGuestSubmit(details: GuestDetails) {
         <ExploreSection
             :listings="listings"
             :regions="regions"
+            :featured-pick="featuredPick"
             :trigger-search="searchIntent"
         />
 

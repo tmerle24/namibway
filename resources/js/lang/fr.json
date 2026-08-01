@@ -141,6 +141,9 @@
             "region": "Régions à explorer"
         },
         "viewAll": "Tout voir →",
+        "featured": {
+            "eyebrow": "Coup de cœur de la rédaction"
+        },
         "shortlist": {
             "toggle": "Ajouter à la liste",
             "count": "{count} sélectionné(s)",

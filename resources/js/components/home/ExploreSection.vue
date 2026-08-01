@@ -39,6 +39,7 @@ interface Region {
 const props = defineProps<{
     listings: Listing[];
     regions: Region[];
+    featuredPick: Listing | null;
     triggerSearch?: SearchIntent | null;
 }>();
 
@@ -202,6 +203,16 @@ const ideaRows = computed<IdeaRow[]>(() => {
     });
 
     return rows;
+});
+
+const featuredPickImage = computed(() => {
+    const pick = props.featuredPick;
+
+    if (!pick) {
+        return null;
+    }
+
+    return pick.image ?? CATEGORY_IMAGES[pick.type][0];
 });
 
 const availableRegions = computed(() => {
@@ -751,6 +762,50 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
 
         <!-- Inspiration / magazine mode -->
         <template v-else>
+            <Link
+                v-if="featuredPick && !hasActiveFilters"
+                :href="show({ listing: featuredPick.slug }).url"
+                class="featured-pick"
+            >
+                <div class="featured-pick-media">
+                    <img
+                        :src="featuredPickImage!"
+                        :alt="featuredPick.name"
+                        class="featured-pick-img"
+                    />
+                </div>
+                <div class="featured-pick-body">
+                    <span class="eyebrow">{{
+                        t('explore.featured.eyebrow')
+                    }}</span>
+                    <h3>{{ featuredPick.name }}</h3>
+                    <p
+                        v-if="featuredPick.rating !== null"
+                        class="featured-pick-rating"
+                    >
+                        ★ {{ featuredPick.rating.toFixed(1) }}
+                        <span v-if="featuredPick.region">
+                            · {{ featuredPick.region }}</span
+                        >
+                    </p>
+                    <p
+                        v-else-if="featuredPick.region"
+                        class="featured-pick-region"
+                    >
+                        {{ featuredPick.region }}
+                    </p>
+                    <p
+                        v-if="featuredPick.description"
+                        class="featured-pick-desc"
+                    >
+                        {{ truncate(featuredPick.description, 220) }}
+                    </p>
+                    <span class="featured-pick-cta">{{
+                        t('explore.results.viewDetails')
+                    }}</span>
+                </div>
+            </Link>
+
             <p v-if="!hasResults" class="filter-empty">
                 {{ t('explore.filters.empty') }}
             </p>
