@@ -106,6 +106,10 @@ class ListingResource extends Resource
                     ->minValue(0),
                 Forms\Components\Toggle::make('is_featured')
                     ->required(),
+                Forms\Components\Toggle::make('is_homepage_pick')
+                    ->label('Homepage featured pick')
+                    ->helperText('Eligible to appear as the magazine-style cover story at the top of the homepage explore section')
+                    ->required(),
                 Forms\Components\Toggle::make('is_published')
                     ->required(),
                 Forms\Components\Toggle::make('accepts_inquiries')
@@ -160,6 +164,10 @@ class ListingResource extends Resource
                     ->sortable(),
                 Tables\Columns\IconColumn::make('is_featured')
                     ->boolean(),
+                Tables\Columns\IconColumn::make('is_homepage_pick')
+                    ->label('Homepage pick')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\IconColumn::make('is_published')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('claim_status')
@@ -193,6 +201,8 @@ class ListingResource extends Resource
                         'rejected' => 'Rejected',
                     ]),
                 Tables\Filters\TernaryFilter::make('is_published'),
+                Tables\Filters\TernaryFilter::make('is_homepage_pick')
+                    ->label('Homepage pick'),
                 Tables\Filters\TernaryFilter::make('has_image')
                     ->label('Has image')
                     ->queries(

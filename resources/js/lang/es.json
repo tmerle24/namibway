@@ -140,6 +140,9 @@
             "region": "Regiones para explorar"
         },
         "viewAll": "Ver todo →",
+        "featured": {
+            "eyebrow": "Selección del editor"
+        },
         "shortlist": {
             "toggle": "Añadir a la lista",
             "count": "{count} seleccionados",

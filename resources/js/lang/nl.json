@@ -140,6 +140,9 @@
             "region": "Regio's om te ontdekken"
         },
         "viewAll": "Alles bekijken →",
+        "featured": {
+            "eyebrow": "Redactietip"
+        },
         "shortlist": {
             "toggle": "Toevoegen aan lijst",
             "count": "{count} geselecteerd",

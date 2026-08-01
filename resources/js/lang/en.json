@@ -167,6 +167,9 @@
             "region": "Regions to explore"
         },
         "viewAll": "View all →",
+        "featured": {
+            "eyebrow": "Editor's pick"
+        },
         "shortlist": {
             "toggle": "Add to shortlist",
             "count": "{count} selected",
