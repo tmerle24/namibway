@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\EnrichmentJob;
 use App\Models\Listing;
+use App\Services\Enrichment\EnrichmentPartialFailureException;
 use App\Services\Enrichment\EnrichmentPipeline;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -118,6 +119,21 @@ class EnrichListingJob implements ShouldBeUnique, ShouldQueue
                 'places_calls' => $result['places_calls'],
                 'places_cost_estimate' => $result['places_cost_estimate'],
             ]);
+        } catch (EnrichmentPartialFailureException $e) {
+            Log::error("EnrichListingJob [{$this->listingId}] failed partway through", ['error' => $e->getMessage()]);
+
+            $run->update([
+                'finished_at' => now(),
+                'success' => false,
+                'log' => implode("\n", $e->partialResult['log']) ?: $e->getMessage(),
+                'fields_changed' => $e->partialResult['fields_updated'],
+                'tokens_used' => $e->partialResult['tokens_used'],
+                'cost_estimate' => $e->partialResult['cost_estimate'],
+                'places_calls' => $e->partialResult['places_calls'],
+                'places_cost_estimate' => $e->partialResult['places_cost_estimate'],
+            ]);
+
+            throw $e;
         } catch (\Throwable $e) {
             Log::error("EnrichListingJob [{$this->listingId}] failed", ['error' => $e->getMessage()]);
 
