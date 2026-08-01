@@ -487,11 +487,26 @@ function matches(row: IdeaRow, item: IdeaCard): boolean {
     return true;
 }
 
+// The idea-cards grid lays out 4 columns at the container's desktop width
+// (see .idea-cards in kaia-home.css). Trimming each row down to a multiple
+// of 4 keeps every row's last line full instead of a half-empty trailing
+// row — unless that would empty the row out entirely, in which case we'd
+// rather show a partial row than hide the category.
+const GRID_COLUMNS = 4;
+
+function floorToGridMultiple(items: IdeaCard[]): IdeaCard[] {
+    const flooredCount = Math.floor(items.length / GRID_COLUMNS) * GRID_COLUMNS;
+
+    return flooredCount > 0 ? items.slice(0, flooredCount) : items;
+}
+
 const visibleRows = computed(() =>
     ideaRows.value
         .map((row) => ({
             ...row,
-            items: row.items.filter((item) => matches(row, item)),
+            items: floorToGridMultiple(
+                row.items.filter((item) => matches(row, item)),
+            ),
         }))
         .filter((row) => row.items.length > 0),
 );
