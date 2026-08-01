@@ -3,12 +3,24 @@
 namespace App\Filament\Partner\Resources\ListingResource\Pages;
 
 use App\Filament\Partner\Resources\ListingResource;
+use App\Filament\Support\BookingConnectorSchema;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
 class EditListing extends EditRecord
 {
     protected static string $resource = ListingResource::class;
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $partnerId = $this->record->partner_id;
+
+        return BookingConnectorSchema::persistPartnerFields($data, $partnerId ? (int) $partnerId : null);
+    }
 
     protected function getHeaderActions(): array
     {

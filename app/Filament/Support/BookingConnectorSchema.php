@@ -1,0 +1,275 @@
+<?php
+
+namespace App\Filament\Support;
+
+use App\Enums\ConnectorType;
+use App\Models\Listing;
+use App\Models\Partner;
+use Filament\Forms;
+use Filament\Forms\Get;
+
+/**
+ * "Booking system / API" tab content, shared by the admin and partner-portal
+ * Listing forms so both a staff editor and a property owner get the same
+ * guided setup. Shows a step-by-step wizard the first time a partner has no
+ * connector configured yet; once one exists, just the per-listing field
+ * (property code, or Wetu ID) plus a read-only status line — changing the
+ * connector type itself stays a partner-level decision, not repeated here.
+ *
+ * The wizard's connector_setup_type/credential fields are deliberately
+ * plain, un-namespaced form fields rather than a Group::relationship()
+ * binding to Partner: nesting a relationship-saved encrypted-cast field
+ * inside a Translatable resource (the admin Listing form) hits a real
+ * Filament/spatie-translatable incompatibility — the translatable content
+ * driver writes the relationship's raw state instead of routing it through
+ * the model's casts, so an already-encrypted string gets written straight
+ * into the jsonb column and Postgres rejects it. persistPartnerFields()
+ * below, called from each resource's mutateFormDataBeforeSave/Create, does
+ * the same job through a plain Partner::update() instead.
+ */
+class BookingConnectorSchema
+{
+    /** @var array<int, string> */
+    private const PSEUDO_FIELDS = [
+        'connector_setup_type',
+        'resconnect_api_key',
+        'resconnect_base_url',
+        'nightsbridge_bbid',
+        'nightsbridge_api_key',
+        'nightsbridge_base_url',
+        'hopecloud_api_key',
+        'hopecloud_account_id',
+        'hopecloud_base_url',
+        'wetu_api_key',
+    ];
+
+    /**
+     * @return array<int, Forms\Components\Component>
+     */
+    public static function schema(): array
+    {
+        return [
+            Forms\Components\Group::make()
+                ->schema(function (Get $get, ?Listing $record) {
+                    $partnerId = $get('partner_id') ?: $record?->partner_id;
+                    $partner = $partnerId ? Partner::find($partnerId) : null;
+
+                    if (! $partner instanceof Partner) {
+                        return [
+                            Forms\Components\Placeholder::make('no_partner')
+                                ->label('')
+                                ->content('Bitte zuerst einen Partner zuweisen und speichern — danach kann das Buchungssystem für diese Unterkunft verbunden werden.'),
+                        ];
+                    }
+
+                    return $partner->connector_type === null
+                        ? self::wizard()
+                        : self::statusAndField($partner);
+                }),
+        ];
+    }
+
+    /**
+     * Extracts the wizard's connector_setup_type/credential pseudo-fields
+     * out of a form's raw $data, writes them onto the given partner (if a
+     * connector type was actually chosen), and strips them from the
+     * returned array so they're never passed to Listing::create()/update().
+     * Call from mutateFormDataBeforeSave()/mutateFormDataBeforeCreate() on
+     * every Listing resource page that embeds schema() above.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function persistPartnerFields(array $data, ?int $partnerId): array
+    {
+        $type = self::connectorTypeValue($data['connector_setup_type'] ?? null);
+
+        if ($type !== null && $partnerId !== null) {
+            // Deliberately Partner::find()->fill()->save() rather than
+            // whereKey()->update(): Eloquent's query-builder update() bypasses
+            // attribute casts entirely, so connector_config's encrypted:array
+            // cast would never run and the config would be written to the
+            // database as plain, unencrypted JSON.
+            $partner = Partner::find($partnerId);
+            $partner?->fill(self::collapseConfigForSave($data))->save();
+        }
+
+        foreach (self::PSEUDO_FIELDS as $key) {
+            unset($data[$key]);
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return array<int, Forms\Components\Component>
+     */
+    private static function wizard(): array
+    {
+        return [
+            Forms\Components\Wizard::make([
+                Forms\Components\Wizard\Step::make('connector')
+                    ->label('Buchungssystem wählen')
+                    ->schema(self::connectorFields()),
+                Forms\Components\Wizard\Step::make('connect')
+                    ->label('Diese Unterkunft verbinden')
+                    ->schema(fn (Get $get) => self::propertyFields(self::connectorTypeValue($get('connector_setup_type')))),
+            ])->columnSpanFull(),
+        ];
+    }
+
+    /**
+     * @return array<int, Forms\Components\Component>
+     */
+    private static function connectorFields(): array
+    {
+        return [
+            Forms\Components\Select::make('connector_setup_type')
+                ->label('Buchungssystem')
+                ->options(collect(ConnectorType::cases())->mapWithKeys(
+                    fn (ConnectorType $c) => [$c->value => $c->label()]
+                ))
+                ->placeholder('Bitte wählen…')
+                ->live()
+                ->native(false)
+                ->dehydrated()
+                ->required(),
+
+            Forms\Components\TextInput::make('resconnect_api_key')
+                ->label('API-Key')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::ResConnect->value)
+                ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::ResConnect->value),
+            Forms\Components\TextInput::make('resconnect_base_url')
+                ->label('Basis-URL (optional)')
+                ->helperText('Nur ausfüllen, falls abweichend vom Standard.')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::ResConnect->value),
+
+            Forms\Components\TextInput::make('nightsbridge_bbid')
+                ->label('Booking-Bureau-ID (bbid)')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::NightsBridge->value)
+                ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::NightsBridge->value),
+            Forms\Components\TextInput::make('nightsbridge_api_key')
+                ->label('API-Key')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::NightsBridge->value)
+                ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::NightsBridge->value),
+            Forms\Components\TextInput::make('nightsbridge_base_url')
+                ->label('Basis-URL (optional)')
+                ->helperText('Nur ausfüllen, falls abweichend vom Standard.')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::NightsBridge->value),
+
+            Forms\Components\TextInput::make('hopecloud_api_key')
+                ->label('API-Key')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::HopeCloud->value)
+                ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::HopeCloud->value),
+            Forms\Components\TextInput::make('hopecloud_account_id')
+                ->label('Account-ID')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::HopeCloud->value)
+                ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::HopeCloud->value),
+            Forms\Components\TextInput::make('hopecloud_base_url')
+                ->label('Basis-URL (optional)')
+                ->helperText('Nur ausfüllen, falls abweichend vom Standard.')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::HopeCloud->value),
+
+            Forms\Components\TextInput::make('wetu_api_key')
+                ->label('API-Key')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Wetu->value)
+                ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Wetu->value),
+
+            Forms\Components\Placeholder::make('nwr_note')
+                ->label('')
+                ->content('Kein API-Zugang nötig — NWR hat kein System, das wir anbinden können. Jede Anfrage geht als "manuell prüfen" ans Team.')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Nwr->value),
+            Forms\Components\Placeholder::make('manual_note')
+                ->label('')
+                ->content('Kein API-Zugang — Anfragen werden als einfache E-Mail-Benachrichtigung an den Partner geschickt, ohne Live-Verfügbarkeitsprüfung.')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Manual->value),
+        ];
+    }
+
+    /**
+     * @return array<int, Forms\Components\Component>
+     */
+    private static function propertyFields(?string $type): array
+    {
+        return match ($type) {
+            ConnectorType::ResConnect->value, ConnectorType::NightsBridge->value, ConnectorType::HopeCloud->value => [
+                Forms\Components\TextInput::make('connector_property_code')
+                    ->label('Property Code')
+                    ->helperText('Die Property-/Unit-Kennung dieser Unterkunft im Buchungssystem des Partners — steht im Partnerportal des jeweiligen Anbieters.')
+                    ->maxLength(100),
+            ],
+            ConnectorType::Wetu->value => [
+                Forms\Components\TextInput::make('wetu_id')
+                    ->label('Wetu Property ID')
+                    ->helperText('Aktiviert den automatischen Content-Import aus Wetu (Name, Beschreibung, Fotos, Region).')
+                    ->maxLength(100),
+            ],
+            default => [
+                Forms\Components\Placeholder::make('nothing_needed')
+                    ->label('')
+                    ->content('Für dieses Buchungssystem ist kein weiterer Schritt nötig.'),
+            ],
+        };
+    }
+
+    /**
+     * @return array<int, Forms\Components\Component>
+     */
+    private static function statusAndField(Partner $partner): array
+    {
+        $hasCredentials = filled($partner->connector_config);
+        $status = $partner->connector_type->label().' — '
+            .($hasCredentials ? 'API-Zugangsdaten hinterlegt' : 'noch keine API-Zugangsdaten hinterlegt');
+
+        return [
+            Forms\Components\Placeholder::make('connector_status')
+                ->label('Verbundenes Buchungssystem')
+                ->content($status),
+            ...self::propertyFields($partner->connector_type->value),
+        ];
+    }
+
+    private static function connectorTypeValue(mixed $type): ?string
+    {
+        return $type instanceof ConnectorType ? $type->value : $type;
+    }
+
+    /**
+     * Collapses the flat wizard pseudo-fields into the single
+     * connector_config JSON blob + connector_type — the two real Partner
+     * columns — ready for a plain Partner::update().
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{connector_type: ?string, connector_config: array<string, mixed>}
+     */
+    private static function collapseConfigForSave(array $data): array
+    {
+        $type = self::connectorTypeValue($data['connector_setup_type'] ?? null);
+
+        $config = match ($type) {
+            ConnectorType::ResConnect->value => array_filter([
+                'api_key' => $data['resconnect_api_key'] ?? null,
+                'base_url' => $data['resconnect_base_url'] ?? null,
+            ], fn ($v) => filled($v)),
+            ConnectorType::NightsBridge->value => array_filter([
+                'bbid' => $data['nightsbridge_bbid'] ?? null,
+                'api_key' => $data['nightsbridge_api_key'] ?? null,
+                'base_url' => $data['nightsbridge_base_url'] ?? null,
+            ], fn ($v) => filled($v)),
+            ConnectorType::HopeCloud->value => array_filter([
+                'api_key' => $data['hopecloud_api_key'] ?? null,
+                'account_id' => $data['hopecloud_account_id'] ?? null,
+                'base_url' => $data['hopecloud_base_url'] ?? null,
+            ], fn ($v) => filled($v)),
+            ConnectorType::Wetu->value => array_filter([
+                'api_key' => $data['wetu_api_key'] ?? null,
+            ], fn ($v) => filled($v)),
+            default => [],
+        };
+
+        return [
+            'connector_type' => $type,
+            'connector_config' => $config,
+        ];
+    }
+}

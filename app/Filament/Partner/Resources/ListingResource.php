@@ -3,6 +3,7 @@
 namespace App\Filament\Partner\Resources;
 
 use App\Filament\Partner\Resources\ListingResource\Pages;
+use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
 use App\Models\Listing;
 use Filament\Forms;
@@ -95,6 +96,14 @@ class ListingResource extends Resource
                             ->visibleOn('edit'),
                     ])
                     ->columns(2),
+
+                Forms\Components\Tabs::make('booking_connector_tabs')
+                    ->tabs([
+                        Forms\Components\Tabs\Tab::make('Booking system')
+                            ->icon('heroicon-o-link')
+                            ->schema(BookingConnectorSchema::schema()),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 

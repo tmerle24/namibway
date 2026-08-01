@@ -7,12 +7,12 @@ use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
 use App\Enums\ConnectorType;
 use App\Enums\ListingType;
 use App\Filament\Resources\ListingResource\Pages;
+use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
 use App\Models\Listing;
 use App\Models\Partner;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
@@ -29,169 +29,156 @@ class ListingResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
+    protected static ?string $recordTitleAttribute = 'name';
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Media')
-                    ->schema([
-                        // Must be the r2 disk, not public — AI/website/Google-Places-scraped
-                        // images are stored on R2 (see GooglePlacesPhotoFinder,
-                        // WebsiteContentExtractor::downloadPhoto). getUploadedFileUsing() is
-                        // also required on top of that: those images are stored as full R2
-                        // URLs, not disk-relative paths, and FileUpload's default resolver
-                        // has no handling for that — see PipelineImageResolver. fetchFileInformation(false)
-                        // is required too: FileUpload's own state hydration runs
-                        // getDisk()->exists($file) on the raw stored value BEFORE
-                        // getUploadedFileUsing() ever runs, so URLs/foreign-disk paths get
-                        // silently dropped from the field's state no matter what the resolver
-                        // does — disabling it is the only way to let the resolver see them.
-                        Forms\Components\FileUpload::make('image')
-                            ->label('Hero image')
-                            ->image()
-                            ->disk('r2')
-                            ->directory('listings')
-                            ->imageEditor()
-                            ->fetchFileInformation(false)
-                            ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
-                            ->columnSpanFull(),
-                        Forms\Components\FileUpload::make('gallery')
-                            ->image()
-                            ->multiple()
-                            ->reorderable()
-                            ->disk('r2')
-                            ->directory('listings/gallery')
-                            ->fetchFileInformation(false)
-                            ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
-                            ->columnSpanFull(),
-                    ]),
+                Forms\Components\Tabs::make('Listing')
+                    ->columnSpanFull()
+                    ->tabs([
+                        Forms\Components\Tabs\Tab::make('Basic information')
+                            ->icon('heroicon-o-information-circle')
+                            ->schema([
+                                Forms\Components\Select::make('type')
+                                    ->options(ListingType::class)
+                                    ->required(),
+                                Forms\Components\Select::make('partner_id')
+                                    ->label('Partner')
+                                    ->relationship('partner', 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('name')->required(),
+                                        Forms\Components\TextInput::make('email')->email(),
+                                    ]),
+                                Forms\Components\TextInput::make('wetu_id')
+                                    ->label('Wetu property ID')
+                                    ->placeholder('e.g. WETU-001')
+                                    ->helperText('Set this to enable automatic content sync from Wetu'),
+                                Forms\Components\TextInput::make('slug')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->unique(ignoreRecord: true),
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->columnSpanFull(),
+                                Forms\Components\RichEditor::make('description')
+                                    ->toolbarButtons([
+                                        'bold', 'italic', 'bulletList', 'orderedList', 'link', 'undo', 'redo',
+                                    ])
+                                    // Sanitizing happens once, in Listing::setDescriptionAttribute() —
+                                    // every save of a translatable field goes through
+                                    // setTranslation(), which calls that mutator. Sanitizing again
+                                    // here would double-process the value (e.g. double-escape
+                                    // "&lt;" into "&amp;lt;" for plain-text-shaped input).
+                                    ->columnSpanFull(),
+                                Forms\Components\TagsInput::make('highlights')
+                                    ->placeholder('Add a highlight and press enter')
+                                    ->helperText('Short USPs shown on the detail page, e.g. "Free WiFi", "Waterhole views"')
+                                    ->columnSpanFull(),
 
-                Forms\Components\Section::make('Basic information')
-                    ->schema([
-                        Forms\Components\Select::make('type')
-                            ->options(ListingType::class)
-                            ->required(),
-                        Forms\Components\Select::make('partner_id')
-                            ->label('Partner')
-                            ->relationship('partner', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('name')->required(),
-                                Forms\Components\TextInput::make('email')->email(),
-                            ]),
-                        Forms\Components\TextInput::make('wetu_id')
-                            ->label('Wetu property ID')
-                            ->placeholder('e.g. WETU-001')
-                            ->helperText('Set this to enable automatic content sync from Wetu'),
-                        Forms\Components\TextInput::make('slug')
-                            ->required()
-                            ->maxLength(255)
-                            ->unique(ignoreRecord: true),
-                        Forms\Components\TextInput::make('name')
-                            ->required()
-                            ->maxLength(255)
-                            ->columnSpanFull(),
-                        Forms\Components\RichEditor::make('description')
-                            ->toolbarButtons([
-                                'bold', 'italic', 'bulletList', 'orderedList', 'link', 'undo', 'redo',
+                                Forms\Components\Section::make('Location')
+                                    ->schema([
+                                        // Free text would let editors drift from the 6-region taxonomy
+                                        // that Region.listing_region and the AI itinerary engine key off of.
+                                        Forms\Components\Select::make('region')
+                                            ->options(array_combine(config('kaia.regions'), config('kaia.regions')))
+                                            ->searchable()
+                                            ->columnSpanFull(),
+                                        Forms\Components\TextInput::make('latitude')
+                                            ->numeric(),
+                                        Forms\Components\TextInput::make('longitude')
+                                            ->numeric(),
+                                    ])
+                                    ->columns(2)
+                                    ->columnSpanFull(),
+
+                                Forms\Components\Section::make('Pricing & ratings')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('price_from')
+                                            ->numeric(),
+                                        Forms\Components\TextInput::make('price_currency')
+                                            ->required()
+                                            ->maxLength(3)
+                                            ->default('NAD'),
+                                        Forms\Components\TextInput::make('rating')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(5)
+                                            ->step(0.1)
+                                            ->helperText('Manually entered from Google/TripAdvisor etc. Once this listing has at least one approved on-site review, it is recalculated automatically from those reviews and this value is overwritten.'),
+                                        Forms\Components\TextInput::make('rating_count')
+                                            ->label('Number of ratings')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->helperText('Same as Rating: manual until on-site reviews take over.'),
+                                    ])
+                                    ->columns(2)
+                                    ->columnSpanFull(),
                             ])
-                            // Sanitizing happens once, in Listing::setDescriptionAttribute() —
-                            // every save of a translatable field goes through
-                            // setTranslation(), which calls that mutator. Sanitizing again
-                            // here would double-process the value (e.g. double-escape
-                            // "&lt;" into "&amp;lt;" for plain-text-shaped input).
-                            ->columnSpanFull(),
-                        Forms\Components\TagsInput::make('highlights')
-                            ->placeholder('Add a highlight and press enter')
-                            ->helperText('Short USPs shown on the detail page, e.g. "Free WiFi", "Waterhole views"')
-                            ->columnSpanFull(),
-                    ])
-                    ->columns(2),
+                            ->columns(2),
 
-                Forms\Components\Section::make('Location')
-                    ->schema([
-                        // Free text would let editors drift from the 6-region taxonomy that
-                        // Region.listing_region and the AI itinerary engine key off of.
-                        Forms\Components\Select::make('region')
-                            ->options(array_combine(config('kaia.regions'), config('kaia.regions')))
-                            ->searchable()
-                            ->columnSpanFull(),
-                        Forms\Components\TextInput::make('latitude')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('longitude')
-                            ->numeric(),
-                    ])
-                    ->columns(2),
+                        Forms\Components\Tabs\Tab::make('Media')
+                            ->icon('heroicon-o-photo')
+                            ->schema([
+                                // Must be the r2 disk, not public — AI/website/Google-Places-scraped
+                                // images are stored on R2 (see GooglePlacesPhotoFinder,
+                                // WebsiteContentExtractor::downloadPhoto). getUploadedFileUsing() is
+                                // also required on top of that: those images are stored as full R2
+                                // URLs, not disk-relative paths, and FileUpload's default resolver
+                                // has no handling for that — see PipelineImageResolver.
+                                // fetchFileInformation(false) is required too: FileUpload's own state
+                                // hydration runs getDisk()->exists($file) on the raw stored value
+                                // BEFORE getUploadedFileUsing() ever runs, so URLs/foreign-disk paths
+                                // get silently dropped from the field's state no matter what the
+                                // resolver does — disabling it is the only way to let the resolver
+                                // see them.
+                                Forms\Components\FileUpload::make('image')
+                                    ->label('Hero image')
+                                    ->image()
+                                    ->disk('r2')
+                                    ->directory('listings')
+                                    ->imageEditor()
+                                    ->fetchFileInformation(false)
+                                    ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
+                                    ->columnSpanFull(),
+                                Forms\Components\FileUpload::make('gallery')
+                                    ->image()
+                                    ->multiple()
+                                    ->reorderable()
+                                    ->disk('r2')
+                                    ->directory('listings/gallery')
+                                    ->fetchFileInformation(false)
+                                    ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
+                                    ->columnSpanFull(),
+                            ]),
 
-                Forms\Components\Section::make('Pricing & ratings')
-                    ->schema([
-                        Forms\Components\TextInput::make('price_from')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('price_currency')
-                            ->required()
-                            ->maxLength(3)
-                            ->default('NAD'),
-                        Forms\Components\TextInput::make('rating')
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(5)
-                            ->step(0.1)
-                            ->helperText('Manually entered from Google/TripAdvisor etc. Once this listing has at least one approved on-site review, it is recalculated automatically from those reviews and this value is overwritten.'),
-                        Forms\Components\TextInput::make('rating_count')
-                            ->label('Number of ratings')
-                            ->numeric()
-                            ->minValue(0)
-                            ->helperText('Same as Rating: manual until on-site reviews take over.'),
-                    ])
-                    ->columns(2),
+                        Forms\Components\Tabs\Tab::make('Booking system / API')
+                            ->icon('heroicon-o-link')
+                            ->schema(BookingConnectorSchema::schema()),
 
-                Forms\Components\Section::make('Booking system / API')
-                    ->description('Connect this specific listing to its partner\'s live booking system for real availability and reservations. Set up the connector type and API credentials on the Partner record first, then plug in this listing\'s own property code here — a partner can own several properties, each with its own code.')
-                    ->icon('heroicon-o-link')
-                    ->collapsible()
-                    ->collapsed()
-                    ->schema([
-                        Forms\Components\Placeholder::make('connector_status')
-                            ->label('Partner connector')
-                            ->content(function (Get $get): string {
-                                $partnerId = $get('partner_id');
-                                $partner = $partnerId ? Partner::find($partnerId) : null;
-
-                                if (! $partner instanceof Partner || $partner->connector_type === null) {
-                                    return 'No booking connector configured on this partner yet — set one on the Partner record first.';
-                                }
-
-                                $hasCredentials = filled($partner->connector_config);
-
-                                return $partner->connector_type->label().' — '
-                                    .($hasCredentials ? 'API credentials configured' : 'no API credentials entered yet');
-                            }),
-                        Forms\Components\TextInput::make('connector_property_code')
-                            ->label('Property code')
-                            ->helperText('This listing\'s property/unit identifier inside the partner\'s booking system, e.g. a ResRequest property code, NightsBridge bbid room type, or hopeCloud unit ID. Leave blank until ready to connect.')
-                            ->maxLength(100)
-                            ->visible(fn (Get $get) => filled($get('partner_id'))),
-                    ])
-                    ->columns(1),
-
-                Forms\Components\Section::make('Visibility')
-                    ->schema([
-                        Forms\Components\Toggle::make('is_featured')
-                            ->required(),
-                        Forms\Components\Toggle::make('is_homepage_pick')
-                            ->label('Homepage featured pick')
-                            ->helperText('Eligible to appear as the magazine-style cover story at the top of the homepage explore section')
-                            ->required(),
-                        Forms\Components\Toggle::make('is_published')
-                            ->required(),
-                        Forms\Components\Toggle::make('accepts_inquiries')
-                            ->label('Accepts inquiries')
-                            ->helperText('Shows the contact/inquiry form on the detail page')
-                            ->default(true)
-                            ->required(),
-                    ])
-                    ->columns(2),
+                        Forms\Components\Tabs\Tab::make('Visibility')
+                            ->icon('heroicon-o-eye')
+                            ->schema([
+                                Forms\Components\Toggle::make('is_featured')
+                                    ->required(),
+                                Forms\Components\Toggle::make('is_homepage_pick')
+                                    ->label('Homepage featured pick')
+                                    ->helperText('Eligible to appear as the magazine-style cover story at the top of the homepage explore section')
+                                    ->required(),
+                                Forms\Components\Toggle::make('is_published')
+                                    ->required(),
+                                Forms\Components\Toggle::make('accepts_inquiries')
+                                    ->label('Accepts inquiries')
+                                    ->helperText('Shows the contact/inquiry form on the detail page')
+                                    ->default(true)
+                                    ->required(),
+                            ])
+                            ->columns(2),
+                    ]),
             ]);
     }
 
