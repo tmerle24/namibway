@@ -385,13 +385,7 @@ const heroImage = computed(() => {
                 props.listing.photos_source === 'google_places' &&
                 props.listing.photos_attribution
             "
-            style="
-                max-width: 1100px;
-                margin: -12px auto 24px;
-                padding: 0 24px;
-                font-size: 12px;
-                color: #8a8171;
-            "
+            class="photo-attribution"
             v-html="'Photos: ' + props.listing.photos_attribution"
         ></p>
 
@@ -670,6 +664,14 @@ const heroImage = computed(() => {
 </template>
 
 <style scoped>
+.photo-attribution {
+    max-width: 1040px;
+    margin: -12px auto 24px;
+    padding: 0 24px;
+    font-size: 12px;
+    color: #8a8171;
+}
+
 .gallery-thumb-btn {
     padding: 0;
     border: none;
