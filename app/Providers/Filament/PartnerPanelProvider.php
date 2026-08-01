@@ -29,7 +29,7 @@ class PartnerPanelProvider extends PanelProvider
             ->login()
             ->brandLogo(asset('images/namibway-logo-dark.png'))
             ->darkModeBrandLogo(asset('images/namibway-logo-light.png'))
-            ->brandLogoHeight('59px')
+            ->brandLogoHeight('80px')
             ->favicon(asset('favicon.png'))
             ->colors([
                 'primary' => Color::Teal,
