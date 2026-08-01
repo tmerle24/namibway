@@ -175,9 +175,14 @@ class EnrichmentResource extends Resource
                             // WebsiteContentExtractor::downloadPhoto). getUploadedFileUsing() is
                             // also required on top of that: those images are stored as full R2
                             // URLs, not disk-relative paths, and FileUpload's default resolver has
-                            // no handling for that — see PipelineImageResolver.
-                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor()->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
-                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->disk('r2')->directory('listings/gallery')->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
+                            // no handling for that — see PipelineImageResolver. fetchFileInformation(false)
+                            // is required too: FileUpload's own state hydration runs
+                            // getDisk()->exists($file) on the raw stored value BEFORE
+                            // getUploadedFileUsing() ever runs, so URLs/foreign-disk paths get
+                            // silently dropped from the field's state no matter what the resolver
+                            // does — disabling it is the only way to let the resolver see them.
+                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor()->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
+                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->disk('r2')->directory('listings/gallery')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
                         ]),
 
                     Forms\Components\Tabs\Tab::make('Metadata')
@@ -677,6 +682,40 @@ class EnrichmentResource extends Resource
                     ),
             ])
             ->actions([
+                $editBasic,
+                Tables\Actions\Action::make('enrich')
+                    ->label('Enrich')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('warning')
+                    // Google Places and Claude are both metered/paid APIs — OpenStreetMap
+                    // (GPS/address) and the listing's own website (description, contact,
+                    // photos) are free and always used. These two checkboxes are the only
+                    // way this run ever spends money, hence unchecked by default.
+                    ->form([
+                        Forms\Components\Checkbox::make('use_google_places')
+                            ->label('Use Google Places (paid — GPS, address, phone, photo fallback)')
+                            ->default(false),
+                        Forms\Components\Checkbox::make('use_claude')
+                            ->label('Use Claude AI (paid — structured data extraction & description text)')
+                            ->default(false),
+                    ])
+                    ->modalDescription('OpenStreetMap and the listing\'s own website are always used and cost nothing. Google Places and Claude are only queried if checked below.')
+                    ->action(function (Listing $record, array $data): void {
+                        $steps = ['website', 'scrape', 'images'];
+
+                        if ($data['use_claude']) {
+                            $steps[] = 'ai_extract';
+                            $steps[] = 'description';
+                        }
+
+                        EnrichListingJob::enqueue($record->id, $steps, (bool) $data['use_google_places']);
+
+                        Notification::make()
+                            ->title('Enrichment queued')
+                            ->body('Running in the background — the "Last run" column and Log tab update automatically within ~10s of finishing.')
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\Action::make('view_frontend')
                     ->label('')
                     ->icon('heroicon-o-arrow-top-right-on-square')
@@ -717,40 +756,6 @@ class EnrichmentResource extends Resource
                     ])
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Close'),
-                $editBasic,
-                Tables\Actions\Action::make('enrich')
-                    ->label('Enrich')
-                    ->icon('heroicon-o-sparkles')
-                    ->color('warning')
-                    // Google Places and Claude are both metered/paid APIs — OpenStreetMap
-                    // (GPS/address) and the listing's own website (description, contact,
-                    // photos) are free and always used. These two checkboxes are the only
-                    // way this run ever spends money, hence unchecked by default.
-                    ->form([
-                        Forms\Components\Checkbox::make('use_google_places')
-                            ->label('Use Google Places (paid — GPS, address, phone, photo fallback)')
-                            ->default(false),
-                        Forms\Components\Checkbox::make('use_claude')
-                            ->label('Use Claude AI (paid — structured data extraction & description text)')
-                            ->default(false),
-                    ])
-                    ->modalDescription('OpenStreetMap and the listing\'s own website are always used and cost nothing. Google Places and Claude are only queried if checked below.')
-                    ->action(function (Listing $record, array $data): void {
-                        $steps = ['website', 'scrape', 'images'];
-
-                        if ($data['use_claude']) {
-                            $steps[] = 'ai_extract';
-                            $steps[] = 'description';
-                        }
-
-                        EnrichListingJob::enqueue($record->id, $steps, (bool) $data['use_google_places']);
-
-                        Notification::make()
-                            ->title('Enrichment queued')
-                            ->body('Running in the background — the "Last run" column and Log tab update automatically within ~10s of finishing.')
-                            ->success()
-                            ->send();
-                    }),
                 Tables\Actions\Action::make('cancel_enrichment')
                     ->label('Cancel')
                     ->icon('heroicon-o-x-circle')
