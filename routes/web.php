@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AfterSalesController;
 use App\Http\Controllers\ClaimController;
+use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListingController;
@@ -17,6 +18,10 @@ Route::get('/', HomeController::class)->name('home');
 // is relied on for actual publish consent. See the publish confirmation modal,
 // which links here.
 Route::get('terms', fn () => Inertia::render('Terms'))->name('terms');
+
+Route::post('currency', [CurrencyController::class, 'update'])
+    ->middleware('throttle:30,1')
+    ->name('currency.update');
 
 Route::get('listings/search', [ListingController::class, 'search'])->name('listings.search');
 Route::get('listings/{listing:slug}', [ListingController::class, 'show'])->name('listings.show');
