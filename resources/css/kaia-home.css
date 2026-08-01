@@ -1854,10 +1854,10 @@
         grid-template-columns: 1fr;
     }
 }
-.kaia-page .explore-section {
+.kaia-page #explore-section {
     border-top: 1px solid var(--sand-dark, #d6c9b5);
 }
-.kaia-page .after-sales-section {
+.kaia-page #after-sales-section {
     border-top: 1px solid var(--sand-dark, #d6c9b5);
 }
 
