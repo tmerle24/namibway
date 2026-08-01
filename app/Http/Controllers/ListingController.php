@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ConnectorType;
 use App\Enums\InquiryStatus;
 use App\Jobs\EnrichListingJob;
 use App\Mail\NewInquiryReceived;
@@ -13,8 +14,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 class ListingController extends Controller
 {
@@ -260,13 +263,20 @@ class ListingController extends Controller
     /**
      * Self-service editor for the property owner (via claim_token) or an admin — a
      * lighter-weight alternative to the Filament panel, which owners have no account
-     * for. Deliberately a small field set: the basics an owner would actually want to
-     * fix themselves, not the full admin surface (no photos — that's the separate
-     * approve flow — no taxonomy/GPS, which stay data-integrity-sensitive/admin-only).
+     * for. Covers the basics an owner would actually want to fix themselves: content,
+     * photos, location, publish state, and which booking system this listing connects
+     * to. Deliberately stops short of the full admin surface — no taxonomy, and no
+     * booking-system API credentials (those stay a Filament-partner-portal/admin
+     * concern, since they're account-level secrets shared across all of a partner's
+     * listings, not something to collect over an emailed preview-token link).
      */
     public function edit(Request $request, Listing $listing): Response
     {
         abort_unless(self::isAdmin() || self::hasValidPreviewToken($listing, $request), 403);
+
+        $listing->load('partner');
+
+        $connectorType = $listing->partner?->connector_type;
 
         return Inertia::render('ListingEdit', [
             'listing' => [
@@ -281,10 +291,22 @@ class ListingController extends Controller
                 'contact_email' => $listing->contact_email,
                 'website' => $listing->website,
                 'address' => $listing->address,
+                'latitude' => $listing->latitude !== null ? (float) $listing->latitude : null,
+                'longitude' => $listing->longitude !== null ? (float) $listing->longitude : null,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
                 'is_published' => $listing->is_published,
+                'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
+                'gallery' => collect($listing->gallery ?? [])
+                    ->map(fn (string $path) => self::resolveMediaUrl($path))
+                    ->values(),
+                'connector_type' => $connectorType?->value,
+                'connector_property_code' => $listing->connector_property_code,
+                'has_connector_credentials' => filled($listing->partner?->connector_config),
             ],
+            'connector_options' => collect(ConnectorType::cases())
+                ->map(fn (ConnectorType $c) => ['value' => $c->value, 'label' => $c->label()])
+                ->values(),
             'preview_token' => self::hasValidPreviewToken($listing, $request) ? $request->input('preview') : null,
         ]);
     }
@@ -307,9 +329,21 @@ class ListingController extends Controller
             'contact_email' => ['nullable', 'email', 'max:255'],
             'website' => ['nullable', 'url', 'max:255'],
             'address' => ['nullable', 'string', 'max:500'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'price_from' => ['nullable', 'numeric', 'min:0'],
             'price_currency' => ['nullable', 'string', 'max:3'],
+            'image' => ['nullable', 'image', 'max:8192'],
+            'remove_image' => ['nullable', 'boolean'],
+            'gallery_touched' => ['nullable', 'boolean'],
+            'gallery_keep' => ['nullable', 'array'],
+            'gallery_keep.*' => ['string'],
+            'gallery_new' => ['nullable', 'array', 'max:20'],
+            'gallery_new.*' => ['image', 'max:8192'],
+            'connector_type' => ['nullable', Rule::in(array_map(fn (ConnectorType $c) => $c->value, ConnectorType::cases()))],
+            'connector_property_code' => ['nullable', 'string', 'max:100'],
             'publish' => ['nullable', 'boolean'],
+            'unpublish' => ['nullable', 'boolean'],
             'terms_accepted' => ['nullable', 'boolean'],
             'preview' => ['nullable', 'string'],
         ]);
@@ -328,11 +362,44 @@ class ListingController extends Controller
             'contact_email' => $validated['contact_email'] ?? null,
             'website' => $validated['website'] ?? null,
             'address' => $validated['address'] ?? null,
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
             'price_from' => $validated['price_from'] ?? null,
             'price_currency' => $validated['price_currency'] ?? null,
+            'connector_property_code' => $validated['connector_property_code'] ?? null,
         ], fn ($value) => $value !== null));
 
-        if (! empty($validated['publish'])) {
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('listings', 'public');
+            $listing->image = $path ?: throw new RuntimeException('Failed to store hero image upload.');
+        } elseif (! empty($validated['remove_image'])) {
+            $listing->image = null;
+        }
+
+        // gallery_touched is a plain boolean flag (rather than inferring intent from
+        // gallery_keep/gallery_new being present) because an emptied multipart array
+        // sends no field at all — without the flag, "remove every photo and add none"
+        // would be indistinguishable from "gallery untouched".
+        if (! empty($validated['gallery_touched'])) {
+            $keepUrls = $validated['gallery_keep'] ?? [];
+            $kept = collect($listing->gallery ?? [])
+                ->filter(fn (string $path) => in_array(self::resolveMediaUrl($path), $keepUrls, true));
+            $newPaths = collect($request->file('gallery_new', []))
+                ->map(fn ($file) => $file->store('listings/gallery', 'public') ?: throw new RuntimeException('Failed to store gallery image upload.'));
+
+            $listing->gallery = $kept->concat($newPaths)->values()->all();
+        }
+
+        // connector_type is account-level (shared across all of this partner's
+        // listings), unlike connector_property_code above which is per-listing — see
+        // the migration that split them apart.
+        if (array_key_exists('connector_type', $validated) && $listing->partner) {
+            $listing->partner->update(['connector_type' => $validated['connector_type'] ?: null]);
+        }
+
+        if (! empty($validated['unpublish'])) {
+            $listing->is_published = false;
+        } elseif (! empty($validated['publish'])) {
             $listing->approvePendingPhotos();
             $listing->is_published = true;
             $listing->terms_accepted_at = now();
