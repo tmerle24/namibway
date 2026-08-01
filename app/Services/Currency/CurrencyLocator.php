@@ -65,6 +65,6 @@ class CurrencyLocator
 
         preg_match_all('/[a-z]{2}-([a-z]{2})\b/i', $header, $matches);
 
-        return array_map('strtoupper', $matches[1] ?? []);
+        return array_map('strtoupper', $matches[1]);
     }
 }
