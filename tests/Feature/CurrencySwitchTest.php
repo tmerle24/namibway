@@ -15,7 +15,7 @@ class CurrencySwitchTest extends TestCase
         $response = $this->post('/currency', ['currency' => 'EUR']);
 
         $response->assertRedirect();
-        $response->assertCookie('currency', 'EUR');
+        $response->assertCookie('currency', 'EUR', encrypted: false);
     }
 
     public function test_authenticated_user_switching_currency_persists_to_profile()
@@ -25,7 +25,7 @@ class CurrencySwitchTest extends TestCase
         $response = $this->actingAs($user)->post('/currency', ['currency' => 'EUR']);
 
         $response->assertRedirect();
-        $response->assertCookie('currency', 'EUR');
+        $response->assertCookie('currency', 'EUR', encrypted: false);
         $this->assertSame('EUR', $user->fresh()->preferred_currency);
     }
 
