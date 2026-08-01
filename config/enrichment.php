@@ -22,7 +22,7 @@ return [
     'description_max_tokens' => (int) env('ENRICHMENT_DESCRIPTION_MAX_TOKENS', 768),
 
     // How many of the lowest-completion listings the nightly scheduler enriches per run.
-    'nightly_batch_size' => (int) env('ENRICHMENT_NIGHTLY_BATCH_SIZE', 200),
+    'nightly_batch_size' => (int) env('ENRICHMENT_NIGHTLY_BATCH_SIZE', 500),
 
     // On-demand trigger thresholds (Listing::isDueForEnrichment mirrors these).
     'score_threshold' => (int) env('ENRICHMENT_SCORE_THRESHOLD', 80),

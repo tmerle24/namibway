@@ -38,9 +38,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // No-op if GOOGLE_PLACES_API_KEY isn't set. Batch every 15 minutes to keep API
         // usage predictable — a listing is only ever checked once (or once per
         // --refresh-days), so this naturally tapers off once the backlog of imageless
-        // listings is worked through. 20/15min (~2,000/day) clears a large initial
-        // backlog in a reasonable time; tune down again once most listings have run once.
-        $schedule->command('namibway:fetch-google-photos --limit=20')->everyFifteenMinutes()->withoutOverlapping();
+        // listings is worked through. 100/15min (~9,600/day) covers the ~7,000-listing
+        // NTB backlog within a day even without the one-off manual backfill; tune down
+        // again once most listings have run once.
+        $schedule->command('namibway:fetch-google-photos --limit=100')->everyFifteenMinutes()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'locale', 'currency']);

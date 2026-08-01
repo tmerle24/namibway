@@ -383,7 +383,9 @@ const heroImage = computed(() => {
                 <div>
                     <div v-if="props.listing.description" class="section-head">
                         <h2>{{ t('listing.about') }}</h2>
-                        <p>{{ props.listing.description }}</p>
+                        <p class="listing-description">
+                            {{ props.listing.description }}
+                        </p>
                     </div>
 
                     <div
@@ -651,6 +653,14 @@ const heroImage = computed(() => {
 </template>
 
 <style scoped>
+.listing-description {
+    /* AI-generated descriptions come as multiple paragraphs separated by blank
+       lines — pre-line preserves those line breaks (still wraps normally,
+       still collapses runs of spaces) instead of the browser default of
+       flattening every newline into one continuous block of text. */
+    white-space: pre-line;
+}
+
 .draft-banner {
     display: flex;
     align-items: center;
