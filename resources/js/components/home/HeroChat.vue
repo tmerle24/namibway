@@ -9,10 +9,51 @@ import { sendKaiaMessage } from '@/lib/kaia-client';
 import type {
     ChatMessage,
     ItineraryPlan,
+    ListingRecommendation,
     SearchIntent,
 } from '@/lib/kaia-types';
 import { dashboard, login, register } from '@/routes';
 import logoLight from '../../../images/logo-light.png';
+
+// Same per-category placeholder set used by ExploreSection/ListingDetail, so
+// a listing without a photo still shows something on-brand here instead of
+// no image at all.
+const CATEGORY_IMAGES: Record<ListingRecommendation['type'], string[]> = {
+    accommodation: [
+        '/images/explore/accommodation-1.jpg',
+        '/images/explore/accommodation-2.jpg',
+        '/images/explore/accommodation-3.jpg',
+        '/images/explore/accommodation-4.jpg',
+    ],
+    activity: [
+        '/images/explore/activity-1.jpg',
+        '/images/explore/activity-2.jpg',
+        '/images/explore/activity-3.jpg',
+        '/images/explore/activity-4.jpg',
+    ],
+    restaurant: [
+        '/images/explore/restaurant-1.jpg',
+        '/images/explore/restaurant-2.jpg',
+        '/images/explore/restaurant-3.jpg',
+        '/images/explore/restaurant-4.jpg',
+    ],
+    vehicle: [
+        '/images/explore/vehicle-1.jpg',
+        '/images/explore/vehicle-2.jpg',
+        '/images/explore/vehicle-3.jpg',
+        '/images/explore/vehicle-4.jpg',
+    ],
+};
+
+function recommendationImage(rec: ListingRecommendation): string {
+    if (rec.image) {
+        return rec.image;
+    }
+
+    const fallbacks = CATEGORY_IMAGES[rec.type];
+
+    return fallbacks[rec.id % fallbacks.length];
+}
 
 const emit = defineEmits<{
     (e: 'plan-ready', plan: ItineraryPlan): void;
@@ -288,8 +329,7 @@ async function retryLastMessage() {
                             class="chat-rec-card"
                         >
                             <img
-                                v-if="msg.recommendation.image"
-                                :src="msg.recommendation.image"
+                                :src="recommendationImage(msg.recommendation)"
                                 :alt="msg.recommendation.name"
                                 class="chat-rec-img"
                             />
