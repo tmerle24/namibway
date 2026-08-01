@@ -6,6 +6,11 @@ const props = defineProps<{
     images: string[];
     index: number;
     alt?: string;
+    // Google's Places API terms require crediting photo contributors wherever the
+    // photo itself is shown — the gallery grid already credits it below the
+    // thumbnails, but the lightbox covers that up as a fullscreen overlay, so it
+    // needs its own copy of the same attribution while a photo is actually open.
+    attribution?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -82,9 +87,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <ChevronRight :size="28" />
         </button>
 
-        <p v-if="images.length > 1" class="lightbox-counter">
-            {{ index + 1 }} / {{ images.length }}
-        </p>
+        <div class="lightbox-footer">
+            <p v-if="images.length > 1" class="lightbox-counter">
+                {{ index + 1 }} / {{ images.length }}
+            </p>
+            <!-- Straight from Google's own API response (html_attributions), not user
+                 input, so v-html is safe here — see ListingDetail.vue's own copy of
+                 this same attribution below the gallery grid. -->
+            <p
+                v-if="attribution"
+                class="lightbox-attribution"
+                v-html="'Photo: ' + attribution"
+            ></p>
+        </div>
     </div>
 </template>
 
@@ -155,13 +170,31 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     right: 20px;
 }
 
-.lightbox-counter {
+.lightbox-footer {
     position: absolute;
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    max-width: 90vw;
+    text-align: center;
+}
+
+.lightbox-counter {
     color: rgba(255, 255, 255, 0.8);
     font-size: 13px;
+}
+
+.lightbox-attribution {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 12px;
+}
+
+.lightbox-attribution :deep(a) {
+    color: rgba(255, 255, 255, 0.75);
 }
 
 @media (max-width: 640px) {

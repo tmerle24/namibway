@@ -30,6 +30,12 @@ use App\Models\Listing;
  * before spending anything — once a category's daily cap is hit, the affected
  * step is skipped (logged, not thrown) rather than the run failing outright, so
  * whatever else the run already gathered still gets saved.
+ *
+ * A step throwing mid-run (e.g. Claude erroring) is caught, and whatever was
+ * already found/spent is still saved and reported — see
+ * EnrichmentPartialFailureException, which carries that partial result back to
+ * the caller instead of it just vanishing into a swallowed exception the way it
+ * used to.
  */
 class EnrichmentPipeline
 {
@@ -66,74 +72,86 @@ class EnrichmentPipeline
 
         $runs = fn (string $step): bool => $steps === null || in_array($step, $steps, true);
 
-        if ($runs('website')) {
-            if (blank($listing->website)) {
-                $this->findWebsite($listing, $updates, $log, $useGooglePlaces);
+        // Wrapped so a step failing partway through (e.g. Claude erroring mid-run) still
+        // saves whatever was already found and still records whatever was already spent
+        // — see EnrichmentPartialFailureException. $caught is rethrown, wrapped with the
+        // partial result, only after that's done — the alternative (letting it propagate
+        // immediately) is what used to silently discard both.
+        $caught = null;
+
+        try {
+            if ($runs('website')) {
+                if (blank($listing->website)) {
+                    $this->findWebsite($listing, $updates, $log, $useGooglePlaces);
+                }
+
+                // Independent of whether a website was found above — OSM/Google Places are
+                // authoritative geocoding sources, and findWebsite() only carries GPS/phone/
+                // address along when the same Place happens to also have a website on file.
+                // Checked against $updates too, so this doesn't redundantly re-query them
+                // when findWebsite() already got everything from the very same lookup.
+                if (! $this->hasAllLocationFacts($listing, $updates)) {
+                    $this->fillLocationFacts($listing, $updates, $log, $useGooglePlaces);
+                }
             }
 
-            // Independent of whether a website was found above — OSM/Google Places are
-            // authoritative geocoding sources, and findWebsite() only carries GPS/phone/
-            // address along when the same Place happens to also have a website on file.
-            // Checked against $updates too, so this doesn't redundantly re-query them
-            // when findWebsite() already got everything from the very same lookup.
-            if (! $this->hasAllLocationFacts($listing, $updates)) {
-                $this->fillLocationFacts($listing, $updates, $log, $useGooglePlaces);
-            }
-        }
+            $website = $updates['website'] ?? $listing->website;
+            $html = null;
+            $ogImage = null;
 
-        $website = $updates['website'] ?? $listing->website;
-        $html = null;
-        $ogImage = null;
+            // Fetched once and shared: 'scrape' (non-AI OG-tag/contact fill) and 'ai_extract'
+            // (Claude structured extraction) both work from the same homepage fetch.
+            if (($runs('scrape') || $runs('ai_extract')) && filled($website)) {
+                $html = $this->fetchHomepage($website, $log);
 
-        // Fetched once and shared: 'scrape' (non-AI OG-tag/contact fill) and 'ai_extract'
-        // (Claude structured extraction) both work from the same homepage fetch.
-        if (($runs('scrape') || $runs('ai_extract')) && filled($website)) {
-            $html = $this->fetchHomepage($website, $log);
-
-            if ($html !== null) {
-                $pageText = $this->htmlToText($html);
-            }
-        }
-
-        if ($runs('scrape') && $html !== null) {
-            $ogImage = $this->fillFromOgTags($listing, $html, $website, $updates, $log);
-        }
-
-        if ($runs('ai_extract') && $html !== null) {
-            if ($this->recentlyExtracted($listing)) {
-                $log[] = 'Structured extraction skipped — already attempted recently.';
-            } elseif ($this->budgetGuard->hasBudget('ai')) {
-                [$aiTokens, $aiCost] = $this->extractStructuredData($listing, $pageText, $updates, $aiGeneratedFields, $log);
-                $tokensUsed += $aiTokens;
-                $costEstimate += $aiCost;
-                $updates['ai_extracted_at'] = now();
-            } else {
-                $log[] = 'Daily AI budget exhausted — skipped structured extraction.';
-            }
-        }
-
-        if ($runs('images') || $runs('scrape')) {
-            if ($html !== null) {
-                $this->fillImages($listing, $html, $website, $ogImage, $updates, $log);
+                if ($html !== null) {
+                    $pageText = $this->htmlToText($html);
+                }
             }
 
-            // No live image yet — either nothing was scraped, or fillImages() only staged
-            // pending website photos awaiting owner/admin approval. Google Places can
-            // publish immediately (no consent issue there), so it fills the gap live in
-            // the meantime; same lookup FetchGooglePlacesPhotoJob does on its own schedule.
-            if ($useGooglePlaces && ! $listing->image && ! array_key_exists('image', $updates)) {
-                $this->fillImagesFromGooglePlaces($listing, $updates, $log);
+            if ($runs('scrape') && $html !== null) {
+                $ogImage = $this->fillFromOgTags($listing, $html, $website, $updates, $log);
             }
-        }
 
-        if ($runs('description') && $this->needsDescription($listing)) {
-            if ($this->budgetGuard->hasBudget('ai')) {
-                [$descTokens, $descCost] = $this->generateDescription($listing, $pageText, $updates, $aiGeneratedFields, $log);
-                $tokensUsed += $descTokens;
-                $costEstimate += $descCost;
-            } else {
-                $log[] = 'Daily AI budget exhausted — skipped description generation.';
+            if ($runs('ai_extract') && $html !== null) {
+                if ($this->recentlyExtracted($listing)) {
+                    $log[] = 'Structured extraction skipped — already attempted recently.';
+                } elseif ($this->budgetGuard->hasBudget('ai')) {
+                    [$aiTokens, $aiCost] = $this->extractStructuredData($listing, $pageText, $updates, $aiGeneratedFields, $log);
+                    $tokensUsed += $aiTokens;
+                    $costEstimate += $aiCost;
+                    $updates['ai_extracted_at'] = now();
+                } else {
+                    $log[] = 'Daily AI budget exhausted — skipped structured extraction.';
+                }
             }
+
+            if ($runs('images') || $runs('scrape')) {
+                if ($html !== null) {
+                    $this->fillImages($listing, $html, $website, $ogImage, $updates, $log);
+                }
+
+                // No live image yet — either nothing was scraped, or fillImages() only staged
+                // pending website photos awaiting owner/admin approval. Google Places can
+                // publish immediately (no consent issue there), so it fills the gap live in
+                // the meantime; same lookup FetchGooglePlacesPhotoJob does on its own schedule.
+                if ($useGooglePlaces && ! $listing->image && ! array_key_exists('image', $updates)) {
+                    $this->fillImagesFromGooglePlaces($listing, $updates, $log);
+                }
+            }
+
+            if ($runs('description') && $this->needsDescription($listing)) {
+                if ($this->budgetGuard->hasBudget('ai')) {
+                    [$descTokens, $descCost] = $this->generateDescription($listing, $pageText, $updates, $aiGeneratedFields, $log);
+                    $tokensUsed += $descTokens;
+                    $costEstimate += $descCost;
+                } else {
+                    $log[] = 'Daily AI budget exhausted — skipped description generation.';
+                }
+            }
+        } catch (\Throwable $e) {
+            $log[] = 'Run interrupted: '.$e->getMessage();
+            $caught = $e;
         }
 
         $fieldsChanged = array_keys($updates);
@@ -157,7 +175,7 @@ class EnrichmentPipeline
         $placesCalls = PlacesCostEstimator::mergeCallCounts($this->placesLookup->callCounts(), $this->photoFinder->callCounts());
         $placesCost = PlacesCostEstimator::estimateCost($placesCalls);
 
-        return [
+        $result = [
             'fields_updated' => $fieldsChanged,
             'tokens_used' => $tokensUsed,
             'cost_estimate' => round($costEstimate, 4),
@@ -166,6 +184,12 @@ class EnrichmentPipeline
             'log' => $log,
             'score' => $score,
         ];
+
+        if ($caught !== null) {
+            throw new EnrichmentPartialFailureException($caught->getMessage(), $result, $caught);
+        }
+
+        return $result;
     }
 
     private function normalize(Listing $listing): void
