@@ -272,14 +272,16 @@ async function retryLastMessage() {
                         :class="['msg', msg.role, { failed: msg.failed }]"
                     >
                         {{ msg.text }}
-                        <button
-                            v-if="msg.failed"
-                            type="button"
-                            class="chat-retry-btn"
-                            @click="retryLastMessage"
-                        >
-                            {{ t('chat.retry') }}
-                        </button>
+                        <template v-if="msg.failed">
+                            <br />
+                            <button
+                                type="button"
+                                class="chat-retry-btn"
+                                @click="retryLastMessage"
+                            >
+                                {{ t('chat.retry') }}
+                            </button>
+                        </template>
                         <a
                             v-if="msg.recommendation"
                             :href="`/listings/${msg.recommendation.slug}`"
