@@ -26,6 +26,9 @@ class Listing extends Model
         'type',
         'name',
         'slug',
+        'wetu_id',
+        'content_synced_at',
+        'connector_property_code',
         'description',
         'short_description',
         'seo_description',
@@ -124,6 +127,40 @@ class Listing extends Model
                 $listing->slug = Str::slug($listing->name);
             }
         });
+    }
+
+    /**
+     * description is rendered as raw HTML on the public listing page (to support the
+     * admin panel's rich-text editor), but it's written from several places that only
+     * ever produce plain text: the partner panel's plain textarea, the public
+     * claim-token self-service editor, Wetu import, and the AI enrichment pipeline.
+     * Routing every write through here — Spatie's translatable setTranslation() calls
+     * this exact set*Attribute($value, $locale) signature — means plain text always
+     * gets HTML-escaped rather than passed through HTMLPurifier: purifying plain text
+     * would silently eat stray "<"/">" characters that were never meant as markup —
+     * e.g. plain text like "children <12 free" is a realistic, entirely non-malicious
+     * value here. Only genuine markup goes through the purifier's allow-list (which
+     * strips scripts/handlers/etc); anything else is HTML-escaped as-is. Detection is
+     * a real-tag-shape regex rather than strip_tags(): strip_tags() treats a "<" with
+     * no later ">" as an unterminated tag and silently eats everything after it,
+     * which misclassified exactly that "children <12 free" kind of value as markup.
+     */
+    public function setDescriptionAttribute(?string $value, string $locale): void
+    {
+        $this->attributes['description'] = self::sanitizeRichText($value);
+    }
+
+    public static function sanitizeRichText(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        if (! preg_match('/<\/?[a-z][a-z0-9]*(?:\s[^<>]*)?>/i', $value)) {
+            return e($value);
+        }
+
+        return clean($value);
     }
 
     /**
