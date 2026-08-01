@@ -11,7 +11,7 @@ function scrollToId(id: string) {
 </script>
 
 <template>
-    <div class="how-it-works">
+    <section class="how-it-works">
         <div class="how-path how-path--ai">
             <span class="how-path-badge how-path-badge--ai">{{
                 t('howItWorks.ai.badge')
@@ -56,5 +56,5 @@ function scrollToId(id: string) {
                 {{ t('howItWorks.search.cta') }}
             </button>
         </div>
-    </div>
+    </section>
 </template>
