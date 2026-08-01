@@ -6,6 +6,7 @@ import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
+import ImageLightbox from '@/components/ImageLightbox.vue';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import PublishConsentModal from '@/components/PublishConsentModal.vue';
@@ -90,6 +91,7 @@ const props = defineProps<{
 }>();
 
 const showPublishModal = ref(false);
+const lightboxIndex = ref<number | null>(null);
 const pendingPhotoCount = computed(
     () =>
         props.listing.pending_gallery.length +
@@ -350,15 +352,30 @@ const heroImage = computed(() => {
                 <h2>{{ t('listing.gallery') }}</h2>
             </div>
             <div class="detail-gallery">
-                <img
+                <button
                     v-for="(src, i) in props.listing.gallery"
                     :key="i"
-                    :src="src"
-                    :alt="`${props.listing.name} ${i + 1}`"
-                    loading="lazy"
-                />
+                    type="button"
+                    class="gallery-thumb-btn"
+                    @click="lightboxIndex = i"
+                >
+                    <img
+                        :src="src"
+                        :alt="`${props.listing.name} ${i + 1}`"
+                        loading="lazy"
+                    />
+                </button>
             </div>
         </section>
+
+        <ImageLightbox
+            v-if="lightboxIndex !== null"
+            :images="props.listing.gallery"
+            :index="lightboxIndex"
+            :alt="props.listing.name"
+            @update:index="lightboxIndex = $event"
+            @close="lightboxIndex = null"
+        />
 
         <!-- Google's Places API terms require crediting photo contributors — this HTML
              comes straight from Google's own API response (html_attributions), not user
@@ -653,6 +670,14 @@ const heroImage = computed(() => {
 </template>
 
 <style scoped>
+.gallery-thumb-btn {
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    display: block;
+}
+
 .listing-description {
     /* AI-generated descriptions come as multiple paragraphs separated by blank
        lines — pre-line preserves those line breaks (still wraps normally,
