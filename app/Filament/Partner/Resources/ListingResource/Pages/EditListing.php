@@ -6,9 +6,12 @@ use App\Filament\Partner\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Resources\Pages\EditRecord\Concerns\Translatable;
 
 class EditListing extends EditRecord
 {
+    use Translatable;
+
     protected static string $resource = ListingResource::class;
 
     /**
@@ -25,6 +28,7 @@ class EditListing extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\LocaleSwitcher::make(),
             Actions\Action::make('back')
                 ->label('Back to listings')
                 ->url(ListingResource::getUrl())

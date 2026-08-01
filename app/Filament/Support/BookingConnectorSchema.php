@@ -132,8 +132,7 @@ class BookingConnectorSchema
                 ->placeholder('Please select…')
                 ->live()
                 ->native(false)
-                ->dehydrated()
-                ->required(),
+                ->dehydrated(),
 
             Forms\Components\TextInput::make('resconnect_api_key')
                 ->label('API key')

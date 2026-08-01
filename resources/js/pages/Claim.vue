@@ -23,6 +23,9 @@ const auth = computed(
     () => page.props.auth as { user: { name: string } | null },
 );
 const isLoggedIn = computed(() => auth.value?.user !== null);
+const loginUrl = computed(
+    () => `/login/start?redirect=${encodeURIComponent(page.url)}`,
+);
 
 const form = useForm({});
 
@@ -148,15 +151,11 @@ const typeLabel: Record<string, string> = {
                         Create free account
                     </a>
                     <a
-                        href="/login"
+                        :href="loginUrl"
                         class="block w-full rounded-xl border border-stone-300 px-4 py-3 text-center font-semibold text-stone-700 transition hover:bg-stone-50 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-700"
                     >
                         Sign in
                     </a>
-                    <p class="mt-4 text-center text-xs text-stone-400">
-                        After signing in, come back to the link in your email to
-                        complete the claim.
-                    </p>
                 </template>
 
                 <p class="mt-6 text-center text-xs text-stone-400">

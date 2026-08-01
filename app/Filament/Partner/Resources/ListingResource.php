@@ -8,6 +8,7 @@ use App\Filament\Support\PipelineImageResolver;
 use App\Models\Listing;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ListingResource extends Resource
 {
+    use Translatable;
+
     protected static ?string $model = Listing::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
@@ -40,8 +43,14 @@ class ListingResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\Textarea::make('description')
-                            ->rows(5)
+                        Forms\Components\RichEditor::make('description')
+                            ->toolbarButtons([
+                                'bold', 'italic', 'bulletList', 'orderedList', 'link', 'undo', 'redo',
+                            ])
+                            // Sanitizing happens once, in Listing::setDescriptionAttribute() — see
+                            // the equivalent field in the admin ListingResource. A plain Textarea
+                            // would show the stored value's HTML-escaped entities (e.g. "&#039;")
+                            // as literal text, and re-saving would escape them a second time.
                             ->columnSpanFull(),
                         Forms\Components\TagsInput::make('highlights')
                             ->placeholder('Add a highlight...')
