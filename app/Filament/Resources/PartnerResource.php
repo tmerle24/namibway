@@ -80,7 +80,7 @@ class PartnerResource extends Resource
                     ->columnSpanFull(),
 
                 Forms\Components\Section::make('Booking Connector')
-                    ->description('Connect this partner to their property management system for live availability and reservations.')
+                    ->description('Connect this partner\'s account to their property management system (API credentials). Once set here, connect each individual listing to its property code on the listing\'s own "Booking system" section.')
                     ->collapsed()
                     ->schema([
                         Forms\Components\Select::make('connector_type')
@@ -91,12 +91,6 @@ class PartnerResource extends Resource
                             ->placeholder('None (manual handling)')
                             ->live()
                             ->native(false),
-
-                        Forms\Components\TextInput::make('connector_property_code')
-                            ->label('Property Code')
-                            ->helperText('The property identifier in the partner\'s PMS (e.g. ResRequest property code).')
-                            ->maxLength(100)
-                            ->visible(fn (Get $get) => filled($get('connector_type'))),
 
                         Forms\Components\KeyValue::make('connector_config')
                             ->label('Connector Config')

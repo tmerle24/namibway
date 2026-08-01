@@ -26,7 +26,6 @@ use Spatie\Translatable\HasTranslations;
  * @property Carbon|null $claimed_at
  * @property Carbon|null $claim_rejected_at
  * @property ConnectorType|null $connector_type
- * @property string|null $connector_property_code
  * @property array<string, mixed>|null $connector_config
  */
 class Partner extends Model
@@ -52,7 +51,6 @@ class Partner extends Model
         'claimed_at',
         'claim_rejected_at',
         'connector_type',
-        'connector_property_code',
         'connector_config',
     ];
 
