@@ -2,15 +2,31 @@
 
 namespace App\Services\Kaia;
 
+use App\Connectors\ConnectorFactory;
+use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
 use App\Models\Listing;
+use App\Models\Partner;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
 
 class ItineraryService
 {
+    /**
+     * Hard ceiling on live connector calls per generate() invocation — this
+     * runs inline on the traveler's interactive chat request, not in a queued
+     * job like ProcessInquiry, so a pathological plan (many distinct stays,
+     * several connector-backed partners) can't turn one chat turn into a
+     * multi-minute wait. Once the cap is hit, remaining stays are left
+     * unchecked (assumed available) rather than blocking the response.
+     */
+    private const MAX_AVAILABILITY_CHECKS_PER_GENERATE = 6;
+
+    private int $availabilityChecksUsed = 0;
+
     /**
      * Ordered so adjacent tiers can be included alongside an exact match —
      * a "budget" trip still sees "mid-range" candidates, just not "premium".
@@ -85,28 +101,26 @@ class ItineraryService
         $plan = $this->generateWithFreshRetry($tripParams);
         $violations = $this->validateDrivingTimes($plan);
 
-        if ($violations === []) {
-            return $plan;
-        }
-
-        Log::warning('Kaia itinerary violated the driving-time safety limit, retrying with corrective feedback', [
-            'violations' => $violations,
-        ]);
-
-        $plan = $this->generateWithFreshRetry($tripParams, $this->correctionMessage($violations));
-        $violations = $this->validateDrivingTimes($plan);
-
         if ($violations !== []) {
-            Log::error('Kaia itinerary still violates the driving-time safety limit after retrying', [
+            Log::warning('Kaia itinerary violated the driving-time safety limit, retrying with corrective feedback', [
                 'violations' => $violations,
             ]);
 
-            throw new RuntimeException(
-                'Could not generate a safe itinerary within the driving-time limits: '.implode('; ', $violations)
-            );
+            $plan = $this->generateWithFreshRetry($tripParams, $this->correctionMessage($violations));
+            $violations = $this->validateDrivingTimes($plan);
+
+            if ($violations !== []) {
+                Log::error('Kaia itinerary still violates the driving-time safety limit after retrying', [
+                    'violations' => $violations,
+                ]);
+
+                throw new RuntimeException(
+                    'Could not generate a safe itinerary within the driving-time limits: '.implode('; ', $violations)
+                );
+            }
         }
 
-        return $plan;
+        return $this->applyAvailabilityChecks($plan, $tripParams);
     }
 
     /**
@@ -429,6 +443,235 @@ class ItineraryService
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Pre-checks real-time availability for each accommodation stay against
+     * its partner's live connector (ResConnect/NightsBridge/hopeCloud) and
+     * swaps in a rule-based alternative — same type, same region, adjacent
+     * budget tier, via alternatives() — when a stay is no longer bookable.
+     * Listings whose partner has no automated connector (Manual/Wetu/NWR, or
+     * simply not configured yet) can't be verified live and are left as-is,
+     * exactly like today. Every connector call is wrapped to fail OPEN: any
+     * error, timeout, or missing date just leaves the original suggestion in
+     * place rather than breaking itinerary generation over a flaky external
+     * API or a plan the AI left too vague to compute exact stay dates for.
+     *
+     * @param  array{trip_summary: string, variants: array<int, array<string, mixed>>}  $plan
+     * @param  array<string, mixed>  $tripParams
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>}
+     */
+    private function applyAvailabilityChecks(array $plan, array $tripParams): array
+    {
+        $this->availabilityChecksUsed = 0;
+
+        $adults = is_numeric($tripParams['adults'] ?? null) ? (int) $tripParams['adults'] : 1;
+        $children = is_numeric($tripParams['children_under_13'] ?? null) ? (int) $tripParams['children_under_13'] : 0;
+
+        $plan['variants'] = array_map(
+            function (array $variant) use ($adults, $children) {
+                $variant['days'] = $this->checkVariantAvailability($variant['days'] ?? [], $adults, $children);
+
+                return $variant;
+            },
+            $plan['variants']
+        );
+
+        return $plan;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $days
+     * @return array<int, array<string, mixed>>
+     */
+    private function checkVariantAvailability(array $days, int $adults, int $children): array
+    {
+        foreach ($this->groupConsecutiveStays($days) as [$startIdx, $endIdx]) {
+            if ($this->availabilityChecksUsed >= self::MAX_AVAILABILITY_CHECKS_PER_GENERATE) {
+                break;
+            }
+
+            $accommodation = $days[$startIdx]['accommodation'] ?? null;
+            $listingId = $accommodation['id'] ?? null;
+
+            if ($listingId === null) {
+                continue;
+            }
+
+            $checkIn = $this->parseStayDate($days[$startIdx]['date'] ?? null);
+            $checkOut = $this->parseStayDate($days[$endIdx]['date_to'] ?? null);
+
+            if ($checkIn === null || $checkOut === null) {
+                continue;
+            }
+
+            $listing = Listing::with('partner')->find($listingId);
+
+            if ($listing === null || $listing->partner === null) {
+                continue;
+            }
+
+            if ($this->isAvailable($listing->partner, $checkIn, $checkOut, $adults, $children)) {
+                continue;
+            }
+
+            $replacement = $this->findAvailableAlternative($listingId, $checkIn, $checkOut, $adults, $children);
+
+            if ($replacement === null) {
+                continue;
+            }
+
+            for ($i = $startIdx; $i <= $endIdx; $i++) {
+                $days[$i]['accommodation'] = $replacement;
+                $days[$i]['accommodation_substituted'] = true;
+                $days[$i]['accommodation_original_name'] = $accommodation['name'] ?? null;
+            }
+        }
+
+        return $days;
+    }
+
+    /**
+     * Groups a variant's days into [startIdx, endIdx] runs of consecutive
+     * days sharing the same accommodation id — a multi-night stay only needs
+     * one availability check for the whole stay, not one per night.
+     *
+     * @param  array<int, array<string, mixed>>  $days
+     * @return array<int, array{0: int, 1: int}>
+     */
+    private function groupConsecutiveStays(array $days): array
+    {
+        $groups = [];
+        $count = count($days);
+        $i = 0;
+
+        while ($i < $count) {
+            $id = $days[$i]['accommodation']['id'] ?? null;
+
+            if ($id === null) {
+                $i++;
+
+                continue;
+            }
+
+            $j = $i;
+
+            while ($j + 1 < $count && ($days[$j + 1]['accommodation']['id'] ?? null) === $id) {
+                $j++;
+            }
+
+            $groups[] = [$i, $j];
+            $i = $j + 1;
+        }
+
+        return $groups;
+    }
+
+    private function parseStayDate(mixed $date): ?Carbon
+    {
+        if (! is_string($date) || $date === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::createFromFormat('j M Y', $date);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Live availability for one partner/date range. Returns true (assume
+     * available) whenever it can't actually be verified — no automated
+     * connector configured, or the connector call itself failed — so this
+     * check only ever narrows down confirmed-gone stays, never blocks on an
+     * unrelated integration problem.
+     */
+    private function isAvailable(Partner $partner, Carbon $checkIn, Carbon $checkOut, int $adults, int $children): bool
+    {
+        try {
+            $connector = ConnectorFactory::makeBooking($partner);
+        } catch (InvalidArgumentException) {
+            return true;
+        }
+
+        $this->availabilityChecksUsed++;
+
+        try {
+            $response = $connector->checkAvailability(new AvailabilityRequest(
+                propertyCode: $partner->connector_property_code ?? '',
+                checkIn: $checkIn,
+                checkOut: $checkOut,
+                adults: $adults,
+                children: $children,
+            ));
+
+            return $response->available;
+        } catch (Throwable $e) {
+            Log::warning('Kaia itinerary pre-check: availability lookup failed, assuming available', [
+                'partner_id' => $partner->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return true;
+        }
+    }
+
+    /**
+     * Rule-based swap: walks alternatives() (same type/region/budget tier)
+     * and returns the first one that is itself verifiably available, falling
+     * back to the first alternative at all if none could be verified (still
+     * a same-region/budget match — better than leaving a confirmed-gone
+     * listing in the plan) or null if there's no alternative in the catalog.
+     *
+     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, lat: float|null, lng: float|null}|null
+     */
+    private function findAvailableAlternative(int $excludeId, Carbon $checkIn, Carbon $checkOut, int $adults, int $children): ?array
+    {
+        $candidates = $this->alternatives('accommodation', $excludeId);
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        foreach ($candidates as $candidate) {
+            if ($this->availabilityChecksUsed >= self::MAX_AVAILABILITY_CHECKS_PER_GENERATE) {
+                break;
+            }
+
+            $listing = Listing::with('partner')->find($candidate['id']);
+
+            if ($listing?->partner === null) {
+                continue;
+            }
+
+            if ($this->isAvailable($listing->partner, $checkIn, $checkOut, $adults, $children)) {
+                return $this->toAccommodationReference($listing);
+            }
+        }
+
+        return $this->toAccommodationReference(Listing::find($candidates[0]['id']));
+    }
+
+    /**
+     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, lat: float|null, lng: float|null}|null
+     */
+    private function toAccommodationReference(?Listing $listing): ?array
+    {
+        if ($listing === null) {
+            return null;
+        }
+
+        return [
+            'id' => $listing->id,
+            'slug' => $listing->slug,
+            'name' => $listing->getTranslation('name', 'en', useFallbackLocale: true),
+            'type' => $listing->type->value,
+            'price_from' => $listing->price_from,
+            'price_currency' => $listing->price_currency,
+            'lat' => $listing->latitude ? (float) $listing->latitude : null,
+            'lng' => $listing->longitude ? (float) $listing->longitude : null,
+        ];
     }
 
     /**
