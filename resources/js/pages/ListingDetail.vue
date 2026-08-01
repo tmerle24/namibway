@@ -407,9 +407,12 @@ const heroImage = computed(() => {
                 <div>
                     <div v-if="props.listing.description" class="section-head">
                         <h2>{{ t('listing.about') }}</h2>
-                        <p class="listing-description">
-                            {{ props.listing.description }}
-                        </p>
+                        <!-- description is sanitized server-side on every write path — see
+                             Listing::setDescriptionAttribute() — before it ever reaches here. -->
+                        <div
+                            class="listing-description"
+                            v-html="props.listing.description"
+                        ></div>
                     </div>
 
                     <div
@@ -694,11 +697,32 @@ const heroImage = computed(() => {
 }
 
 .listing-description {
-    /* AI-generated descriptions come as multiple paragraphs separated by blank
-       lines — pre-line preserves those line breaks (still wraps normally,
-       still collapses runs of spaces) instead of the browser default of
-       flattening every newline into one continuous block of text. */
+    /* Plain-text descriptions (AI-generated, Wetu import, partner-entered) come as
+       multiple paragraphs separated by blank lines with no markup — pre-line
+       preserves those line breaks (still wraps normally, still collapses runs of
+       spaces) instead of the browser default of flattening every newline into one
+       continuous block of text. Rich-text descriptions from the admin editor bring
+       their own <p> tags, which pre-line leaves alone. */
     white-space: pre-line;
+}
+
+.listing-description :deep(p) {
+    margin: 0 0 1em;
+}
+
+.listing-description :deep(p:last-child) {
+    margin-bottom: 0;
+}
+
+.listing-description :deep(ul),
+.listing-description :deep(ol) {
+    margin: 0 0 1em;
+    padding-left: 1.25em;
+}
+
+.listing-description :deep(a) {
+    color: inherit;
+    text-decoration: underline;
 }
 
 .draft-banner {
