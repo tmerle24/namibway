@@ -33,6 +33,30 @@ function statusClass(status: string): string {
     return 'status-sending';
 }
 
+// ✓ green = booked and confirmed, ✕ = no longer available, everything else is still in flight.
+function statusIcon(status: string): string {
+    if (status === 'confirmed') {
+        return '✓';
+    }
+
+    if (status === 'cancelled' || status === 'failed') {
+        return '✕';
+    }
+
+    if (status === 'on_request' || status === 'nwr_pending') {
+        return '⏳';
+    }
+
+    return '…';
+}
+
+function statusLabel(status: string, fallback: string): string {
+    const key = `booking.status.${status}`;
+    const translated = t(key);
+
+    return translated === key ? fallback : translated;
+}
+
 function allTerminal(items: TripInquiryStatus[]): boolean {
     return (
         items.length > 0 && items.every((i) => TERMINAL_STATUSES.has(i.status))
@@ -87,9 +111,12 @@ onUnmounted(() => {
                 class="queue-item"
             >
                 <span>{{ item.listing_name }}</span>
-                <span :class="['status-pill', statusClass(item.status)]">{{
-                    item.label
-                }}</span>
+                <span :class="['status-pill', statusClass(item.status)]">
+                    <span class="status-icon" aria-hidden="true">{{
+                        statusIcon(item.status)
+                    }}</span>
+                    <span>{{ statusLabel(item.status, item.label) }}</span>
+                </span>
             </div>
             <div
                 v-if="inquiries.length === 0"

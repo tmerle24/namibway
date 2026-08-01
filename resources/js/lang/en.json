@@ -82,7 +82,16 @@
         "sending": "Sending request…",
         "confirmed": "Confirmed",
         "loadingStatus": "Loading status…",
-        "note": "Only one request is active at a time — this protects partners from being flooded with speculative enquiries, and mirrors how a good travel agency would work a booking."
+        "note": "Only one request is active at a time — this protects partners from being flooded with speculative enquiries, and mirrors how a good travel agency would work a booking.",
+        "status": {
+            "pending": "Preparing…",
+            "processing": "Sending request…",
+            "on_request": "Requested — awaiting partner",
+            "nwr_pending": "Manual check by our team",
+            "confirmed": "Confirmed & booked",
+            "cancelled": "Cancelled",
+            "failed": "No longer available"
+        }
     },
     "afterSales": {
         "eyebrow": "After your trip",

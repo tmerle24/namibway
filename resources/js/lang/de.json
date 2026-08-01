@@ -70,7 +70,17 @@
         "waiting": "Wartet",
         "sending": "Anfrage wird gesendet…",
         "confirmed": "Bestätigt",
-        "note": "Es ist immer nur eine Anfrage aktiv — das schützt Partner davor, mit unverbindlichen Anfragen überflutet zu werden, und funktioniert wie bei einem guten Reisebüro."
+        "loadingStatus": "Status wird geladen…",
+        "note": "Es ist immer nur eine Anfrage aktiv — das schützt Partner davor, mit unverbindlichen Anfragen überflutet zu werden, und funktioniert wie bei einem guten Reisebüro.",
+        "status": {
+            "pending": "Wird vorbereitet…",
+            "processing": "Anfrage wird gesendet…",
+            "on_request": "Angefragt — wartet auf Partner",
+            "nwr_pending": "Wird vom Team manuell geprüft",
+            "confirmed": "Bestätigt & gebucht",
+            "cancelled": "Storniert",
+            "failed": "Nicht mehr verfügbar"
+        }
     },
     "afterSales": {
         "eyebrow": "Nach deiner Reise",
