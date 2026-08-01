@@ -1020,6 +1020,18 @@
     max-height: 70px;
     margin-left: -20px;
 }
+.kaia-page .detail-topbar-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+@media (max-width: 480px) {
+    .kaia-page .detail-topbar-actions {
+        justify-content: flex-start;
+    }
+}
 .kaia-page .detail-back {
     color: var(--ink);
     font-size: 13px;

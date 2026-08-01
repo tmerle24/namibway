@@ -290,7 +290,7 @@ const heroImage = computed(() => {
             <Link :href="home()" class="brand"
                 ><img :src="logoDark" alt="NamibWay" class="brand-logo"
             /></Link>
-            <div style="display: flex; align-items: center; gap: 8px">
+            <div class="detail-topbar-actions">
                 <template v-if="props.can_publish">
                     <Link
                         :href="`/listings/${props.listing.slug}/edit${props.preview_token ? `?preview=${props.preview_token}` : ''}`"
