@@ -95,45 +95,70 @@ async function scrollToBottom() {
     requestAnimationFrame(() => requestAnimationFrame(syncScroll));
 }
 
-async function sendMessage() {
-    const text = inputText.value.trim();
+// Silent retries: most failures (timeouts, a dropped connection, a 5xx that
+// slips past the backend's own retry) resolve themselves within a couple of
+// seconds, so we retry quietly — with the "thinking" indicator still
+// showing — before ever telling the user anything went wrong.
+const MAX_SILENT_RETRIES = 2;
 
-    if (!text || isTyping.value) {
-        return;
+function wait(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function applyResult(
+    result: Awaited<ReturnType<typeof sendKaiaMessage>>,
+): boolean {
+    if (result.type === 'question') {
+        messages.value.push({ role: 'ai', text: result.text });
+    } else if (result.type === 'itinerary') {
+        messages.value.push({ role: 'ai', text: t('chat.itineraryReady') });
+        emit('plan-ready', result.plan);
+    } else if (result.type === 'search_intent') {
+        messages.value.push({ role: 'ai', text: t('chat.searchTriggered') });
+        emit('search-intent', result.intent);
+    } else if (result.type === 'recommendation') {
+        messages.value.push({
+            role: 'ai',
+            text: result.intro || t('chat.recommendationIntro'),
+            recommendation: result.listing,
+        });
+    } else if (result.type === 'error') {
+        return false;
     }
 
-    messages.value.push({ role: 'user', text });
-    inputText.value = '';
+    return true;
+}
+
+async function requestKaiaReply() {
+    // History Kaia should actually see — a previous failed-attempt bubble
+    // never happened as far as the conversation is concerned.
+    const history = messages.value.filter((m) => !m.failed);
+
+    for (let attempt = 0; attempt <= MAX_SILENT_RETRIES; attempt++) {
+        try {
+            const result = await sendKaiaMessage(history);
+
+            if (applyResult(result)) {
+                return;
+            }
+        } catch {
+            // network error — fall through to retry/backoff below
+        }
+
+        if (attempt < MAX_SILENT_RETRIES) {
+            await wait(1000 * (attempt + 1));
+        }
+    }
+
+    messages.value.push({ role: 'ai', text: t('chat.error'), failed: true });
+}
+
+async function runKaiaRequest() {
     isTyping.value = true;
     startThinking();
     await scrollToBottom();
 
-    try {
-        const result = await sendKaiaMessage(messages.value);
-
-        if (result.type === 'question') {
-            messages.value.push({ role: 'ai', text: result.text });
-        } else if (result.type === 'itinerary') {
-            messages.value.push({ role: 'ai', text: t('chat.itineraryReady') });
-            emit('plan-ready', result.plan);
-        } else if (result.type === 'search_intent') {
-            messages.value.push({
-                role: 'ai',
-                text: t('chat.searchTriggered'),
-            });
-            emit('search-intent', result.intent);
-        } else if (result.type === 'recommendation') {
-            messages.value.push({
-                role: 'ai',
-                text: result.intro || t('chat.recommendationIntro'),
-                recommendation: result.listing,
-            });
-        } else {
-            messages.value.push({ role: 'ai', text: result.text });
-        }
-    } catch {
-        messages.value.push({ role: 'ai', text: t('chat.error') });
-    }
+    await requestKaiaReply();
 
     stopThinking();
     isTyping.value = false;
@@ -144,6 +169,33 @@ async function sendMessage() {
     // bring it back so the user can keep typing without reaching for the mouse.
     await nextTick();
     chatInput.value?.focus();
+}
+
+async function sendMessage() {
+    const text = inputText.value.trim();
+
+    if (!text || isTyping.value) {
+        return;
+    }
+
+    messages.value.push({ role: 'user', text });
+    inputText.value = '';
+
+    await runKaiaRequest();
+}
+
+async function retryLastMessage() {
+    if (isTyping.value) {
+        return;
+    }
+
+    const last = messages.value[messages.value.length - 1];
+
+    if (last?.failed) {
+        messages.value.pop();
+    }
+
+    await runKaiaRequest();
 }
 </script>
 
@@ -217,9 +269,17 @@ async function sendMessage() {
                     <div
                         v-for="(msg, i) in messages"
                         :key="i"
-                        :class="['msg', msg.role]"
+                        :class="['msg', msg.role, { failed: msg.failed }]"
                     >
                         {{ msg.text }}
+                        <button
+                            v-if="msg.failed"
+                            type="button"
+                            class="chat-retry-btn"
+                            @click="retryLastMessage"
+                        >
+                            {{ t('chat.retry') }}
+                        </button>
                         <a
                             v-if="msg.recommendation"
                             :href="`/listings/${msg.recommendation.slug}`"

@@ -24,7 +24,8 @@
         "recommendationIntro": "Dit is mijn topkeuze voor jou:",
         "viewListing": "Bekijk & vraag aan →",
         "from": "vanaf",
-        "error": "Er ging iets mis bij het bereiken van de reisgezel. Probeer het opnieuw."
+        "error": "Kaia heeft momenteel moeite om te reageren.",
+        "retry": "Opnieuw proberen"
     },
     "itinerary": {
         "eyebrow": "Jouw plan",

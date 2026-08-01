@@ -24,7 +24,8 @@
         "recommendationIntro": "Hier ist mein Top-Tipp für dich:",
         "viewListing": "Ansehen & anfragen →",
         "from": "ab",
-        "error": "Bei der Verbindung zum Reisebegleiter ist etwas schiefgelaufen. Bitte versuch es erneut."
+        "error": "Kaia hat gerade Schwierigkeiten zu antworten.",
+        "retry": "Erneut versuchen"
     },
     "itinerary": {
         "eyebrow": "Dein Plan",
