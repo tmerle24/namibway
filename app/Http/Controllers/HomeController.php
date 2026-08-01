@@ -87,6 +87,7 @@ class HomeController extends Controller
                 ->first(self::LISTING_COLUMNS);
     }
 
+    /** @return array<string, mixed> */
     private static function presentListing(Listing $listing): array
     {
         return [
