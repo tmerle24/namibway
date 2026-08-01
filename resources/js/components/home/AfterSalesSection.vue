@@ -86,7 +86,7 @@ function printChecklist() {
 </script>
 
 <template>
-    <section>
+    <section id="after-sales-section">
         <div class="section-head">
             <div class="eyebrow">{{ t('afterSales.eyebrow') }}</div>
             <h2>{{ t('afterSales.title') }}</h2>

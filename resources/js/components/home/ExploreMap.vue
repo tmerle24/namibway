@@ -131,6 +131,8 @@ watch(() => props.markers, renderMarkers);
 
 <style scoped>
 .explore-map-wrapper {
+    position: relative;
+    z-index: 0;
     margin: 20px 0 32px;
     border-radius: 12px;
     overflow: hidden;

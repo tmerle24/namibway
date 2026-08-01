@@ -1854,6 +1854,12 @@
         grid-template-columns: 1fr;
     }
 }
+.kaia-page .explore-section {
+    border-top: 1px solid var(--sand-dark, #d6c9b5);
+}
+.kaia-page .after-sales-section {
+    border-top: 1px solid var(--sand-dark, #d6c9b5);
+}
 
 /* ── How it works — two-path separator ── */
 .kaia-page .how-it-works {
@@ -1862,7 +1868,6 @@
     align-items: start;
     gap: 0 24px;
     padding: 56px 0 48px;
-    border-top: 1px solid var(--sand-dark, #d6c9b5);
     margin-top: 16px;
 }
 @media (max-width: 680px) {

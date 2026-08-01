@@ -334,6 +334,8 @@ watch(() => [props.variant, props.regionCoords] as const, renderRoute, {
 
 <style scoped>
 .trip-map-wrapper {
+    position: relative;
+    z-index: 0;
     margin: 20px auto 4px;
     border-radius: 12px;
     overflow: hidden;
