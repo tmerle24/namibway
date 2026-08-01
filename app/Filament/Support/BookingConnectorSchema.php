@@ -58,7 +58,7 @@ class BookingConnectorSchema
                         return [
                             Forms\Components\Placeholder::make('no_partner')
                                 ->label('')
-                                ->content('Bitte zuerst einen Partner zuweisen und speichern — danach kann das Buchungssystem für diese Unterkunft verbunden werden.'),
+                                ->content('Please assign and save a partner first — the booking system for this listing can then be connected.'),
                         ];
                     }
 
@@ -109,10 +109,10 @@ class BookingConnectorSchema
         return [
             Forms\Components\Wizard::make([
                 Forms\Components\Wizard\Step::make('connector')
-                    ->label('Buchungssystem wählen')
+                    ->label('Choose booking system')
                     ->schema(self::connectorFields()),
                 Forms\Components\Wizard\Step::make('connect')
-                    ->label('Diese Unterkunft verbinden')
+                    ->label('Connect this listing')
                     ->schema(fn (Get $get) => self::propertyFields(self::connectorTypeValue($get('connector_setup_type')))),
             ])->columnSpanFull(),
         ];
@@ -125,63 +125,63 @@ class BookingConnectorSchema
     {
         return [
             Forms\Components\Select::make('connector_setup_type')
-                ->label('Buchungssystem')
+                ->label('Booking system')
                 ->options(collect(ConnectorType::cases())->mapWithKeys(
                     fn (ConnectorType $c) => [$c->value => $c->label()]
                 ))
-                ->placeholder('Bitte wählen…')
+                ->placeholder('Please select…')
                 ->live()
                 ->native(false)
                 ->dehydrated()
                 ->required(),
 
             Forms\Components\TextInput::make('resconnect_api_key')
-                ->label('API-Key')
+                ->label('API key')
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::ResConnect->value)
                 ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::ResConnect->value),
             Forms\Components\TextInput::make('resconnect_base_url')
-                ->label('Basis-URL (optional)')
-                ->helperText('Nur ausfüllen, falls abweichend vom Standard.')
+                ->label('Base URL (optional)')
+                ->helperText('Only fill in if it differs from the default.')
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::ResConnect->value),
 
             Forms\Components\TextInput::make('nightsbridge_bbid')
-                ->label('Booking-Bureau-ID (bbid)')
+                ->label('Booking Bureau ID (bbid)')
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::NightsBridge->value)
                 ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::NightsBridge->value),
             Forms\Components\TextInput::make('nightsbridge_api_key')
-                ->label('API-Key')
+                ->label('API key')
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::NightsBridge->value)
                 ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::NightsBridge->value),
             Forms\Components\TextInput::make('nightsbridge_base_url')
-                ->label('Basis-URL (optional)')
-                ->helperText('Nur ausfüllen, falls abweichend vom Standard.')
+                ->label('Base URL (optional)')
+                ->helperText('Only fill in if it differs from the default.')
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::NightsBridge->value),
 
             Forms\Components\TextInput::make('hopecloud_api_key')
-                ->label('API-Key')
+                ->label('API key')
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::HopeCloud->value)
                 ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::HopeCloud->value),
             Forms\Components\TextInput::make('hopecloud_account_id')
-                ->label('Account-ID')
+                ->label('Account ID')
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::HopeCloud->value)
                 ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::HopeCloud->value),
             Forms\Components\TextInput::make('hopecloud_base_url')
-                ->label('Basis-URL (optional)')
-                ->helperText('Nur ausfüllen, falls abweichend vom Standard.')
+                ->label('Base URL (optional)')
+                ->helperText('Only fill in if it differs from the default.')
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::HopeCloud->value),
 
             Forms\Components\TextInput::make('wetu_api_key')
-                ->label('API-Key')
+                ->label('API key')
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Wetu->value)
                 ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Wetu->value),
 
             Forms\Components\Placeholder::make('nwr_note')
                 ->label('')
-                ->content('Kein API-Zugang nötig — NWR hat kein System, das wir anbinden können. Jede Anfrage geht als "manuell prüfen" ans Team.')
+                ->content('No API access needed — NWR has no system we can connect to. Every request goes to the team as "manual review".')
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Nwr->value),
             Forms\Components\Placeholder::make('manual_note')
                 ->label('')
-                ->content('Kein API-Zugang — Anfragen werden als einfache E-Mail-Benachrichtigung an den Partner geschickt, ohne Live-Verfügbarkeitsprüfung.')
+                ->content('No API access — requests are sent to the partner as a plain email notification, without live availability checks.')
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Manual->value),
         ];
     }
@@ -195,19 +195,19 @@ class BookingConnectorSchema
             ConnectorType::ResConnect->value, ConnectorType::NightsBridge->value, ConnectorType::HopeCloud->value => [
                 Forms\Components\TextInput::make('connector_property_code')
                     ->label('Property Code')
-                    ->helperText('Die Property-/Unit-Kennung dieser Unterkunft im Buchungssystem des Partners — steht im Partnerportal des jeweiligen Anbieters.')
+                    ->helperText('The property/unit identifier for this listing in the partner\'s booking system — found in that provider\'s partner portal.')
                     ->maxLength(100),
             ],
             ConnectorType::Wetu->value => [
                 Forms\Components\TextInput::make('wetu_id')
                     ->label('Wetu Property ID')
-                    ->helperText('Aktiviert den automatischen Content-Import aus Wetu (Name, Beschreibung, Fotos, Region).')
+                    ->helperText('Enables automatic content import from Wetu (name, description, photos, region).')
                     ->maxLength(100),
             ],
             default => [
                 Forms\Components\Placeholder::make('nothing_needed')
                     ->label('')
-                    ->content('Für dieses Buchungssystem ist kein weiterer Schritt nötig.'),
+                    ->content('No further step is needed for this booking system.'),
             ],
         };
     }
@@ -219,11 +219,11 @@ class BookingConnectorSchema
     {
         $hasCredentials = filled($partner->connector_config);
         $status = $partner->connector_type->label().' — '
-            .($hasCredentials ? 'API-Zugangsdaten hinterlegt' : 'noch keine API-Zugangsdaten hinterlegt');
+            .($hasCredentials ? 'API credentials on file' : 'no API credentials yet');
 
         return [
             Forms\Components\Placeholder::make('connector_status')
-                ->label('Verbundenes Buchungssystem')
+                ->label('Connected booking system')
                 ->content($status),
             ...self::propertyFields($partner->connector_type->value),
         ];
