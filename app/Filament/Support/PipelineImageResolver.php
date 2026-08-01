@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Storage;
 class PipelineImageResolver
 {
     /** Disks that Listing image/gallery values have been observed to be relative to. */
-    private const FALLBACK_DISKS = ['public'];
+    private const FALLBACK_DISKS = ['public', 'r2'];
 
     /** @return array{name: string, size: int, type: ?string, url: string}|null */
     public static function resolve(BaseFileUpload $component, string $file): ?array

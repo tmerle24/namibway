@@ -40,13 +40,19 @@ class ListingResource extends Resource
                         // WebsiteContentExtractor::downloadPhoto). getUploadedFileUsing() is
                         // also required on top of that: those images are stored as full R2
                         // URLs, not disk-relative paths, and FileUpload's default resolver
-                        // has no handling for that — see PipelineImageResolver.
+                        // has no handling for that — see PipelineImageResolver. fetchFileInformation(false)
+                        // is required too: FileUpload's own state hydration runs
+                        // getDisk()->exists($file) on the raw stored value BEFORE
+                        // getUploadedFileUsing() ever runs, so URLs/foreign-disk paths get
+                        // silently dropped from the field's state no matter what the resolver
+                        // does — disabling it is the only way to let the resolver see them.
                         Forms\Components\FileUpload::make('image')
                             ->label('Hero image')
                             ->image()
                             ->disk('r2')
                             ->directory('listings')
                             ->imageEditor()
+                            ->fetchFileInformation(false)
                             ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
                             ->columnSpanFull(),
                         Forms\Components\FileUpload::make('gallery')
@@ -55,6 +61,7 @@ class ListingResource extends Resource
                             ->reorderable()
                             ->disk('r2')
                             ->directory('listings/gallery')
+                            ->fetchFileInformation(false)
                             ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
                             ->columnSpanFull(),
                     ]),

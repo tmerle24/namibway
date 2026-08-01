@@ -3,6 +3,7 @@
 namespace App\Filament\Partner\Resources;
 
 use App\Filament\Partner\Resources\ListingResource\Pages;
+use App\Filament\Support\PipelineImageResolver;
 use App\Models\Listing;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -55,12 +56,20 @@ class ListingResource extends Resource
 
                 Forms\Components\Section::make('Photos')
                     ->schema([
+                        // fetchFileInformation(false) + getUploadedFileUsing() together: see
+                        // the comment on the equivalent fields in the admin ListingResource —
+                        // partner-owned listings' image/gallery values can just as easily be
+                        // full R2 URLs or paths relative to a different disk (set via the
+                        // admin panel or the enrichment pipeline), which the default resolver
+                        // silently drops before it's even reached.
                         Forms\Components\FileUpload::make('image')
                             ->label('Hero image')
                             ->image()
                             ->disk('public')
                             ->directory('listings')
                             ->imageEditor()
+                            ->fetchFileInformation(false)
+                            ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
                             ->columnSpanFull(),
                         Forms\Components\FileUpload::make('gallery')
                             ->image()
@@ -68,6 +77,8 @@ class ListingResource extends Resource
                             ->reorderable()
                             ->disk('public')
                             ->directory('listings/gallery')
+                            ->fetchFileInformation(false)
+                            ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
                             ->columnSpanFull(),
                     ]),
 
