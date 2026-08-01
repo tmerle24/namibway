@@ -221,6 +221,64 @@ class Listing extends Model
         return $query->orderByRaw('enrichment_score ASC, last_enriched_at ASC NULLS FIRST');
     }
 
+    /**
+     * Shared by the internal Explore search endpoint (ListingController::search)
+     * and the public listings API (Api\ListingController::index) so the two
+     * don't drift apart on what "type", "region", "keyword" etc. mean.
+     *
+     * @param  Builder<Listing>  $query
+     * @param  array<string, mixed>  $filters
+     * @return Builder<Listing>
+     */
+    public function scopeFilterBy(Builder $query, array $filters): Builder
+    {
+        $type = $filters['type'] ?? null;
+
+        if (is_string($type) && $type !== '') {
+            $query->where('type', $type);
+        }
+
+        $region = $filters['region'] ?? null;
+
+        if (is_string($region) && $region !== '') {
+            $query->where('region', 'ilike', '%'.$region.'%');
+        }
+
+        $keyword = $filters['keyword'] ?? null;
+
+        if (is_string($keyword) && $keyword !== '') {
+            $kw = '%'.mb_strtolower($keyword).'%';
+            $query->where(function ($q) use ($kw) {
+                $q->whereRaw('lower(cast(name as text)) like ?', [$kw])
+                    ->orWhereRaw('lower(cast(description as text)) like ?', [$kw])
+                    ->orWhereRaw('lower(cast(region as text)) like ?', [$kw])
+                    ->orWhereRaw('lower(cast(type as text)) like ?', [$kw]);
+            });
+        }
+
+        $budget = $filters['budget'] ?? null;
+
+        if (is_string($budget)) {
+            if ($budget === 'budget') {
+                $query->where(function ($q) {
+                    $q->where('price_from', '<', 150)->orWhereNull('price_from');
+                });
+            } elseif ($budget === 'mid-range') {
+                $query->whereBetween('price_from', [150, 400]);
+            } elseif ($budget === 'premium') {
+                $query->where('price_from', '>', 400);
+            }
+        }
+
+        $minRating = $filters['min_rating'] ?? null;
+
+        if (is_string($minRating) && $minRating !== '') {
+            $query->where('rating', '>=', (float) $minRating);
+        }
+
+        return $query;
+    }
+
     public function isDueForEnrichment(): bool
     {
         return $this->enrichment_score < self::ENRICHMENT_SCORE_THRESHOLD

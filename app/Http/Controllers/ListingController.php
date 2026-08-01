@@ -23,51 +23,7 @@ class ListingController extends Controller
 {
     public function search(Request $request): JsonResponse
     {
-        $query = Listing::query()->where('is_published', true);
-
-        $type = $request->query('type');
-
-        if (is_string($type) && $type !== '') {
-            $query->where('type', $type);
-        }
-
-        $region = $request->query('region');
-
-        if (is_string($region) && $region !== '') {
-            $query->where('region', 'ilike', '%'.$region.'%');
-        }
-
-        $keyword = $request->query('keyword');
-
-        if (is_string($keyword) && $keyword !== '') {
-            $kw = '%'.mb_strtolower($keyword).'%';
-            $query->where(function ($q) use ($kw) {
-                $q->whereRaw('lower(cast(name as text)) like ?', [$kw])
-                    ->orWhereRaw('lower(cast(description as text)) like ?', [$kw])
-                    ->orWhereRaw('lower(cast(region as text)) like ?', [$kw])
-                    ->orWhereRaw('lower(cast(type as text)) like ?', [$kw]);
-            });
-        }
-
-        $budget = $request->query('budget');
-
-        if (is_string($budget)) {
-            if ($budget === 'budget') {
-                $query->where(function ($q) {
-                    $q->where('price_from', '<', 150)->orWhereNull('price_from');
-                });
-            } elseif ($budget === 'mid-range') {
-                $query->whereBetween('price_from', [150, 400]);
-            } elseif ($budget === 'premium') {
-                $query->where('price_from', '>', 400);
-            }
-        }
-
-        $minRating = $request->query('min_rating');
-
-        if (is_string($minRating) && $minRating !== '') {
-            $query->where('rating', '>=', (float) $minRating);
-        }
+        $query = Listing::query()->where('is_published', true)->filterBy($request->query());
 
         $sort = $request->query('sort', 'featured');
 
