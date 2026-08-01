@@ -81,19 +81,22 @@ function formatDrivingTime(seconds: number): string {
 
 function drivingTimeBetween(
     variantIndex: number,
-    fromLocation: string,
-    toLocation: string,
+    fromLocation: string | null | undefined,
+    toLocation: string | null | undefined,
 ): string | null {
     const legs = drivingLegsPerVariant.value[variantIndex];
 
-    if (!legs) {
+    if (!legs || !fromLocation || !toLocation) {
         return null;
     }
 
+    const from = fromLocation.toLowerCase().trim();
+    const to = toLocation.toLowerCase().trim();
+
     const leg = legs.find(
         (l) =>
-            l.from.toLowerCase().trim() === fromLocation.toLowerCase().trim() &&
-            l.to.toLowerCase().trim() === toLocation.toLowerCase().trim(),
+            l.from?.toLowerCase().trim() === from &&
+            l.to?.toLowerCase().trim() === to,
     );
 
     return leg ? formatDrivingTime(leg.seconds) : null;
