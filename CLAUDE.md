@@ -22,6 +22,10 @@ Full context (concept doc, product vision, business plan, tech decision rational
 - **Multilingual:** reuse pattern from RentalHandover (DE/NL/EN/FR); MVP ships English-only, but model content as localizable from day one
 - **Deploy:** every push to `main` auto-deploys — a GitHub Actions workflow (`.github/workflows/deploy.yml`) SSHes into the server, `git pull origin main`, then runs `deploy.sh` (composer, npm build, migrations, cache rebuild, permissions, queue restart). There is no separate manual deploy step; merging/pushing to `main` immediately ships to production.
 
+### Deploy incidents — fix `deploy.sh` itself, don't just patch the server by hand
+When a production outage traces back to a flaw in the deploy process (not just a code bug), fix `deploy.sh` and note it here — don't only walk the user through one-off manual recovery commands.
+- **2026-08-01:** site-wide 500 (`Class "view" does not exist"`, root cause `Class "Laravel\Sanctum\Sanctum" not found`). `deploy.sh` decided whether to run `composer install` by checking `git diff HEAD@{1} HEAD` (the reflog) instead of the commit range actually just pulled — an unreliable check that skipped `composer install` on the deploy that added `laravel/sanctum`, leaving `vendor/laravel/sanctum` missing, which broke package discovery and cascaded into every service provider (including `view`) failing to register. Fixed by diffing `$OLD_COMMIT`..`$NEW_COMMIT` (captured directly around the `git reset --hard` in the deploy script) instead of the reflog, for both the composer.lock and package.json/package-lock.json checks.
+
 Rejected alternative: Next.js/Payload — would require re-solving problems (AI integration, multi-tenancy, i18n, storage, PDF, payments, deploy) already solved in the team's proven Laravel stack. Not worth it for a solo 3-month build.
 
 ## The core product mechanic — read before building the booking flow
