@@ -22,7 +22,7 @@ class EditListing extends EditRecord
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $partnerId = $data['partner_id'] ?? $this->record->partner_id;
+        $partnerId = $data['partner_id'] ?? $this->getRecord()->partner_id;
 
         return BookingConnectorSchema::persistPartnerFields($data, $partnerId ? (int) $partnerId : null);
     }
