@@ -775,7 +775,9 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                     />
                 </div>
                 <div class="featured-pick-body">
-                    <span class="eyebrow">{{ t('explore.featured.eyebrow') }}</span>
+                    <span class="eyebrow">{{
+                        t('explore.featured.eyebrow')
+                    }}</span>
                     <h3>{{ featuredPick.name }}</h3>
                     <p
                         v-if="featuredPick.rating !== null"
@@ -786,10 +788,16 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                             · {{ featuredPick.region }}</span
                         >
                     </p>
-                    <p v-else-if="featuredPick.region" class="featured-pick-region">
+                    <p
+                        v-else-if="featuredPick.region"
+                        class="featured-pick-region"
+                    >
                         {{ featuredPick.region }}
                     </p>
-                    <p v-if="featuredPick.description" class="featured-pick-desc">
+                    <p
+                        v-if="featuredPick.description"
+                        class="featured-pick-desc"
+                    >
                         {{ truncate(featuredPick.description, 220) }}
                     </p>
                     <span class="featured-pick-cta">{{
