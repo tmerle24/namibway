@@ -23,11 +23,15 @@ return [
         'source' => [
             'files' => [
                 /*
-                 * The list of directories and files that will be included in the backup.
+                 * Only .env is included here, not the whole app: the codebase is already
+                 * durably backed up via GitHub (main) and media via Cloudflare R2 — .env
+                 * is the one thing that exists only on this server and holds every secret
+                 * (DB password, ANTHROPIC_API_KEY, R2/OAuth credentials, APP_KEY). Without
+                 * it in the backup, a server loss would be unrecoverable even with the DB
+                 * dump in hand. See restore.sh for how this is used to rebuild a new server.
                  */
                 'include' => [
-                    base_path(),
-                    // storage_path(),  // Include if you use zero downtime deployments and don't follow symlinks
+                    base_path('.env'),
                 ],
 
                 /*
@@ -221,12 +225,14 @@ return [
      */
     'notifications' => [
         'notifications' => [
+            // Only failure-shaped events mail out — a nightly "backup was successful"
+            // email is just noise to filter past; silence means it worked.
             BackupHasFailedNotification::class => ['mail'],
             UnhealthyBackupWasFoundNotification::class => ['mail'],
             CleanupHasFailedNotification::class => ['mail'],
-            BackupWasSuccessfulNotification::class => ['mail'],
-            HealthyBackupWasFoundNotification::class => ['mail'],
-            CleanupWasSuccessfulNotification::class => ['mail'],
+            BackupWasSuccessfulNotification::class => [],
+            HealthyBackupWasFoundNotification::class => [],
+            CleanupWasSuccessfulNotification::class => [],
         ],
 
         /*

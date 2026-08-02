@@ -11,7 +11,9 @@ use App\Observers\ReviewObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -42,6 +44,16 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(function (Login $event) {
             if ($event->user instanceof User) {
                 $event->user->forceFill(['last_login_at' => now()])->save();
+            }
+        });
+
+        // Backup notification mails must be English regardless of config('app.locale')
+        // (production's is 'de', a leftover from the RentalHandover scaffold — see
+        // CLAUDE.md). Console commands don't run the SetLocale/ForceAdminLocale HTTP
+        // middleware, so without this the spatie/laravel-backup mails render in German.
+        Event::listen(function (CommandStarting $event) {
+            if (in_array($event->command, ['backup:run', 'backup:clean', 'backup:monitor'], true)) {
+                App::setLocale('en');
             }
         });
 
