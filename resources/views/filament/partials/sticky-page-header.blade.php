@@ -14,7 +14,15 @@
      that gap (e.g. a form section's top border) showed through behind the
      sticky header. Moving that spacing into the header's own padding
      (and zeroing the section's competing padding-top/gap) keeps it inside
-     the opaque box instead. --}}
+     the opaque box instead.
+
+     .fi-header's own box still doesn't reliably reach the true left/right
+     edge of the content column (some fields render slightly wider than
+     the header, e.g. a rich-text preview), leaving a sliver where content
+     peeked through at the sides. Rather than chase that per field, the
+     box-shadow + clip-path pair below bleeds the header's background out
+     to any width — a solid color painted 100vmax past the box on each
+     side, clipped back so it doesn't create a horizontal scrollbar. --}}
 <style>
     .fi-page > section {
         padding-top: 0;
@@ -33,9 +41,12 @@
         padding-top: 10px;
         padding-bottom: 10px;
         background-color: #fff;
+        box-shadow: 0 0 0 100vmax #fff;
+        clip-path: inset(0 -100vmax);
     }
 
     .dark .fi-header {
         background-color: #000;
+        box-shadow: 0 0 0 100vmax #000;
     }
 </style>
