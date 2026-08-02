@@ -456,9 +456,9 @@ class ItineraryService
      * place rather than breaking itinerary generation over a flaky external
      * API or a plan the AI left too vague to compute exact stay dates for.
      *
-     * @param  array{trip_summary: string, variants: array<int, array<string, mixed>>}  $plan
+     * @param  array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}  $plan
      * @param  array<string, mixed>  $tripParams
-     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>}
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}
      */
     private function applyAvailabilityChecks(array $plan, array $tripParams): array
     {
@@ -491,7 +491,7 @@ class ItineraryService
             }
 
             $accommodation = $days[$startIdx]['accommodation'] ?? null;
-            $listingId = $accommodation['id'] ?? null;
+            $listingId = is_numeric($accommodation['id'] ?? null) ? (int) $accommodation['id'] : null;
 
             if ($listingId === null) {
                 continue;
