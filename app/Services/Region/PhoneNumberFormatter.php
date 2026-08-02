@@ -104,7 +104,7 @@ class PhoneNumberFormatter
             return $groups;
         }
 
-        return array_values(array_filter(str_split($digits, $size), fn (string $g) => $g !== ''));
+        return str_split($digits, $size);
     }
 
     /**
