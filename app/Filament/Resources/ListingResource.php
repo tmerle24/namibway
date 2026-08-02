@@ -85,6 +85,27 @@ class ListingResource extends Resource
                                     ->helperText('Short USPs shown on the detail page, e.g. "Free WiFi", "Waterhole views"')
                                     ->columnSpanFull(),
 
+                                Forms\Components\Section::make('Contact')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('contact_person')
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('phone')
+                                            ->tel()
+                                            ->maxLength(50),
+                                        Forms\Components\TextInput::make('contact_email')
+                                            ->label('Email')
+                                            ->email()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('website')
+                                            ->url()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('address')
+                                            ->maxLength(500)
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(2)
+                                    ->columnSpanFull(),
+
                                 Forms\Components\Section::make('Location')
                                     ->schema([
                                         // Free text would let editors drift from the 6-region taxonomy
@@ -97,6 +118,10 @@ class ListingResource extends Resource
                                             ->numeric(),
                                         Forms\Components\TextInput::make('longitude')
                                             ->numeric(),
+                                        Forms\Components\Placeholder::make('geocode_hint')
+                                            ->label('')
+                                            ->content('Leave latitude/longitude blank to have them calculated automatically from the name and address on save.')
+                                            ->columnSpanFull(),
                                     ])
                                     ->columns(2)
                                     ->columnSpanFull(),

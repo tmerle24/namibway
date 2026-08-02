@@ -9,6 +9,7 @@ use App\Mail\NewInquiryReceived;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Review;
+use App\Services\Enrichment\OsmLocationFinder;
 use App\Services\Region\PhoneNumberFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -289,7 +290,7 @@ class ListingController extends Controller
         ]);
     }
 
-    public function update(Request $request, Listing $listing): RedirectResponse
+    public function update(Request $request, Listing $listing, OsmLocationFinder $osmFinder): RedirectResponse
     {
         $isAdmin = self::isAdmin();
         $isOwnerPreview = self::hasValidPreviewToken($listing, $request);
@@ -334,6 +335,7 @@ class ListingController extends Controller
         $listing->setTranslation('description', 'en', $validated['description'] ?? '');
         $listing->setTranslation('short_description', 'en', $validated['short_description'] ?? '');
         $listing->setTranslation('highlights', 'en', $validated['highlights'] ?? []);
+        $validated = $osmFinder->fillMissingCoordinates($validated, $validated['name']);
         $listing->fill(array_filter([
             'contact_person' => $validated['contact_person'] ?? null,
             'phone' => $validated['phone'] ?? null,

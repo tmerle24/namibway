@@ -57,6 +57,27 @@ class ListingResource extends Resource
                     ])
                     ->columns(2),
 
+                Forms\Components\Section::make('Contact')
+                    ->schema([
+                        Forms\Components\TextInput::make('contact_person')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('phone')
+                            ->tel()
+                            ->maxLength(50),
+                        Forms\Components\TextInput::make('contact_email')
+                            ->label('Email')
+                            ->email()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('website')
+                            ->url()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('address')
+                            ->maxLength(500)
+                            ->columnSpanFull()
+                            ->helperText('Used to place this listing on the map automatically.'),
+                    ])
+                    ->columns(2),
+
                 Forms\Components\Section::make('Photos')
                     ->schema([
                         // fetchFileInformation(false) + getUploadedFileUsing() together: see

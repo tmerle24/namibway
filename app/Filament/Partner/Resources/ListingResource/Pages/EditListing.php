@@ -5,6 +5,7 @@ namespace App\Filament\Partner\Resources\ListingResource\Pages;
 use App\Filament\Partner\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Models\Listing;
+use App\Services\Enrichment\OsmLocationFinder;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
@@ -22,6 +23,8 @@ class EditListing extends EditRecord
         $record = $this->getRecord();
 
         $partnerId = $record->partner_id;
+
+        $data = app(OsmLocationFinder::class)->fillMissingCoordinates($data, $data['name'] ?? $record->name);
 
         return BookingConnectorSchema::persistPartnerFields($data, $partnerId ? (int) $partnerId : null);
     }
