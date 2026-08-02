@@ -15,9 +15,9 @@ denselben Posteingang parallel.
 
 - DNS: `webmail.namibway.com` als A- oder CNAME-Eintrag auf die Server-IP (beim jeweiligen
   DNS-Provider, z.B. Cloudflare).
-- IMAP- und SMTP-Zugangsdaten des bestehenden Mailproviders — meist derselbe Host wie
-  `POP3_HOST` in der Produktions-`.env`, ggf. mit eigenem IMAP-Port (Standard: 993 SSL) und
-  SMTP-Port (587 STARTTLS oder 465 SSL). Beim Provider nachfragen, falls unklar.
+- Mailprovider ist OVH — IMAP `imap.mail.ovh.net:993` (SSL/TLS), SMTP `smtp.mail.ovh.net:465`
+  (SSL/TLS), Login = volle E-Mail-Adresse + deren Passwort (identisch mit dem, was hinter
+  `POP3_USERNAME`/`POP3_PASSWORD` in der Produktions-`.env` steckt). Siehe Schritt 3.
 - nginx + Certbot bereits vorhanden (wie für `namibway.com`, siehe `DEPLOYMENT.md`).
 
 ## 1. Installation
@@ -100,24 +100,29 @@ wurde (ältere Certbot-Versionen fragen das explizit ab), lässt sich das mit
 
 ## 3. Roundcube mit der Mailbox verbinden
 
+Mailprovider ist OVH — Server laut [OVH-Doku](https://docs.ovhcloud.com/fr/guides/web-cloud/email-and-collaborative-solutions/mx-plan/how-to-configure-outlook-2016):
+IMAP `imap.mail.ovh.net:993` (SSL/TLS), SMTP `smtp.mail.ovh.net:465` (SSL/TLS). Alternativ
+`ssl0.ovh.net` für beides, falls die spezifischen Hostnamen mal nicht auflösen.
+
 In `config.inc.php` (Distro-Paket: `/etc/roundcube/config.inc.php`; Variante B:
-`/var/www/webmail/config/config.inc.php`):
+`/var/www/webmail/config/config.inc.php`) — Achtung: die Config-Keys heißen seit Roundcube 1.5
+`imap_host`/`smtp_host`, nicht mehr `default_host`/`smtp_server`/`smtp_port` (ältere
+Anleitungen im Netz nutzen noch die alten Namen):
 
 ```php
-$config['default_host'] = 'ssl://<imap-host>';   // Port 993, oder tls://... auf Port 143
-$config['default_port'] = 993;
+// Port + SSL/TLS stecken direkt im Host-String, kein separater *_port-Key mehr.
+$config['imap_host'] = ['imap.mail.ovh.net:993'];
 
-$config['smtp_server'] = 'tls://<smtp-host>';    // Port 587, oder ssl://... auf Port 465
-$config['smtp_port'] = 587;
-$config['smtp_user'] = '%u';                      // übernimmt den Login-Benutzernamen
-$config['smtp_pass'] = '%p';
+$config['smtp_host'] = 'smtp.mail.ovh.net:465';
+$config['smtp_user'] = '%u';   // übernimmt den Login-Benutzernamen
+$config['smtp_pass'] = '%p';   // übernimmt das Login-Passwort
 
 $config['product_name'] = 'NamibWay Webmail';
 ```
 
 Da es eine **geteilte Mailbox** ist (kein Multi-User-Setup), am Login-Screen einfach mit dem
-`POP3_USERNAME`/`POP3_PASSWORD`-Paar (bzw. dessen IMAP-Äquivalent) anmelden — Roundcube fragt
-Login/Passwort interaktiv ab, es muss nichts davon fest im Code stehen.
+`POP3_USERNAME`/`POP3_PASSWORD`-Paar (identisch mit dem IMAP/SMTP-Login bei OVH) anmelden —
+Roundcube fragt Login/Passwort interaktiv ab, es muss nichts davon fest im Code stehen.
 
 ## Test
 
@@ -133,10 +138,11 @@ und prüfen, dass Posteingang + Versand funktionieren.
 **502 Bad Gateway:** falscher PHP-FPM-Socket-Pfad in der nginx-Config — mit
 `systemctl list-units --type=service | grep php` die tatsächlich laufende Version prüfen.
 
-**TLS-Fehler beim IMAP/SMTP-Connect:** Port und Schema (`ssl://` vs. `tls://`) müssen zum
-Provider passen — 993/`ssl://` (implizites TLS) ist nicht dasselbe wie 143/`tls://`
-(STARTTLS), ebenso 465 vs. 587 bei SMTP.
+**TLS-Fehler beim IMAP/SMTP-Connect:** die in Schritt 3 hinterlegten OVH-Ports (993 IMAP, 465
+SMTP) sind beides implizite SSL/TLS-Ports — falls stattdessen STARTTLS-Varianten nötig sind
+(z.B. bei einem anderen Provider), braucht `imap_host`/`smtp_host` ein explizites `tls://`
+vor dem Hostnamen und einen anderen Port (typischerweise 143 bzw. 587).
 
 **Login schlägt fehl, Zugangsdaten sind aber korrekt:** IMAP könnte beim Provider separat vom
-POP3-Zugang aktiviert/erlaubt werden müssen — beim Hoster nachfragen, falls POP3 funktioniert,
-IMAP aber nicht.
+POP3-Zugang aktiviert/erlaubt werden müssen — bei OVH sollte das über dasselbe Postfach-Konto
+laufen, im Zweifel im OVH-Kundencenter prüfen, ob IMAP für diese Adresse freigeschaltet ist.
