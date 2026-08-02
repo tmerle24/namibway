@@ -122,11 +122,11 @@ class ListingResource extends Resource
 
                                 Forms\Components\Section::make('Location')
                                     ->schema([
-                                        // Free text would let editors drift from the 6-region taxonomy
-                                        // that Region.listing_region and the AI itinerary engine key off of.
-                                        Forms\Components\Select::make('region')
-                                            ->options(array_combine(config('kaia.regions'), config('kaia.regions')))
+                                        Forms\Components\Select::make('city_id')
+                                            ->label('City')
+                                            ->relationship('city', 'name')
                                             ->searchable()
+                                            ->preload()
                                             ->columnSpanFull(),
                                         Forms\Components\TextInput::make('latitude')
                                             ->numeric(),
@@ -321,7 +321,8 @@ class ListingResource extends Resource
                 Tables\Columns\TextColumn::make('slug')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('region')
+                Tables\Columns\TextColumn::make('city.name')
+                    ->label('City')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('latitude')
                     ->numeric()
@@ -465,11 +466,13 @@ class ListingResource extends Resource
 
                             $content = ConnectorFactory::makeContent($partner)->fetchPropertyContent($wetuId);
 
+                            // $content->region (a free-text string from Wetu) has no reliable
+                            // match against a City — city_id is left for an admin to assign
+                            // manually, same as any other Wetu-imported listing.
                             $record->update(array_filter([
                                 'name' => $content->name ?: null,
                                 'description' => $content->description,
                                 'highlights' => $content->highlights ?: null,
-                                'region' => $content->region,
                                 'latitude' => $content->latitude,
                                 'longitude' => $content->longitude,
                             ], fn ($v) => $v !== null));

@@ -45,7 +45,7 @@ class Listing extends Model
         'google_photos_expire_at',
         'terms_accepted_at',
         'terms_accepted_by',
-        'region',
+        'city_id',
         'latitude',
         'longitude',
         'price_from',
@@ -182,6 +182,27 @@ class Listing extends Model
     }
 
     /**
+     * @return BelongsTo<City, $this>
+     */
+    public function city(): BelongsTo
+    {
+        return $this->belongsTo(City::class);
+    }
+
+    /**
+     * The political region this listing belongs to, derived from its city —
+     * kept as a plain string here (rather than requiring every caller to
+     * chain ->city->region->name) so the AI itinerary engine, JSON API
+     * responses, and admin filters that already read Listing::region as a
+     * string keep working unchanged after city_id replaced the old free-text
+     * region column.
+     */
+    public function getRegionAttribute(): ?string
+    {
+        return $this->city?->region?->name;
+    }
+
+    /**
      * @return HasMany<Inquiry, $this>
      */
     public function inquiries(): HasMany
@@ -270,7 +291,8 @@ class Listing extends Model
         $region = $filters['region'] ?? null;
 
         if (is_string($region) && $region !== '') {
-            $query->where('region', 'ilike', '%'.$region.'%');
+            $query->whereHas('city', fn ($q) => $q->where('name', 'ilike', '%'.$region.'%')
+                ->orWhereHas('region', fn ($q2) => $q2->where('name', 'ilike', '%'.$region.'%')));
         }
 
         $keyword = $filters['keyword'] ?? null;
@@ -280,8 +302,9 @@ class Listing extends Model
             $query->where(function ($q) use ($kw) {
                 $q->whereRaw('lower(cast(name as text)) like ?', [$kw])
                     ->orWhereRaw('lower(cast(description as text)) like ?', [$kw])
-                    ->orWhereRaw('lower(cast(region as text)) like ?', [$kw])
-                    ->orWhereRaw('lower(cast(type as text)) like ?', [$kw]);
+                    ->orWhereRaw('lower(cast(type as text)) like ?', [$kw])
+                    ->orWhereHas('city', fn ($q2) => $q2->whereRaw('lower(cast(name as text)) like ?', [$kw])
+                        ->orWhereHas('region', fn ($q3) => $q3->whereRaw('lower(cast(name as text)) like ?', [$kw])));
             });
         }
 

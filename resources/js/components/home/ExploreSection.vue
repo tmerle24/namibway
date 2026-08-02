@@ -32,17 +32,17 @@ interface Listing {
     rating_count: number | null;
 }
 
-interface Region {
+interface Destination {
     name: string;
     slug: string;
     blurb: string | null;
     image: string | null;
-    listing_region: string;
+    region_name: string;
 }
 
 const props = defineProps<{
     listings: Listing[];
-    regions: Region[];
+    destinations: Destination[];
     featuredPick: Listing | null;
     triggerSearch?: SearchIntent | null;
 }>();
@@ -192,13 +192,13 @@ const ideaRows = computed<IdeaRow[]>(() => {
     rows.push({
         key: 'region',
         bg: ROW_BG.region,
-        items: props.regions.map((region) => ({
+        items: props.destinations.map((destination) => ({
             id: null,
-            title: region.name,
-            description: region.blurb ?? '',
-            region: region.listing_region,
+            title: destination.name,
+            description: destination.blurb ?? '',
+            region: destination.region_name,
             budget: null,
-            image: region.image ?? '/images/explore/region-khomas.jpg',
+            image: destination.image ?? '/images/explore/region-khomas.jpg',
             slug: null,
             latitude: null,
             longitude: null,

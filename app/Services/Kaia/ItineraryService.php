@@ -413,12 +413,13 @@ class ItineraryService
      */
     public function alternatives(string $type, ?int $excludeId = null): array
     {
-        $excluded = $excludeId !== null ? Listing::find($excludeId) : null;
+        $excluded = $excludeId !== null ? Listing::with('city.region')->find($excludeId) : null;
 
         $pool = Listing::query()
             ->where('is_published', true)
             ->where('type', $type)
             ->when($excludeId !== null, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->with('city.region')
             ->get();
 
         if ($pool->isEmpty()) {
@@ -1092,6 +1093,7 @@ class ItineraryService
 
         return Listing::query()
             ->where('is_published', true)
+            ->with('city.region')
             ->get()
             ->groupBy(fn (Listing $listing) => $listing->type->value)
             ->flatMap(function ($listings, string $type) use ($requestedTier, $vehicleType) {

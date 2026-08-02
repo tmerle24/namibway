@@ -48,8 +48,11 @@ class ListingResource extends Resource
                         Forms\Components\TagsInput::make('highlights')
                             ->placeholder('Add a highlight...')
                             ->columnSpanFull(),
-                        Forms\Components\TextInput::make('region')
-                            ->maxLength(255),
+                        Forms\Components\Select::make('city_id')
+                            ->label('City')
+                            ->relationship('city', 'name')
+                            ->searchable()
+                            ->preload(),
                         Forms\Components\TextInput::make('price_from')
                             ->numeric()
                             ->prefix('NAD')
@@ -186,7 +189,8 @@ class ListingResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('type')
                     ->badge(),
-                Tables\Columns\TextColumn::make('region')
+                Tables\Columns\TextColumn::make('city.name')
+                    ->label('City')
                     ->sortable(),
                 Tables\Columns\IconColumn::make('accepts_inquiries')
                     ->label('Accepts inquiries')

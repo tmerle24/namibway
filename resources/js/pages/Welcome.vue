@@ -37,19 +37,19 @@ interface Listing {
     rating_count: number | null;
 }
 
-interface Region {
+interface Destination {
     name: string;
     slug: string;
     blurb: string | null;
     image: string | null;
-    listing_region: string;
+    region_name: string;
 }
 
 const { t } = useI18n();
 
 defineProps<{
     listings: Listing[];
-    regions: Region[];
+    destinations: Destination[];
     featuredPick: Listing | null;
 }>();
 
@@ -162,7 +162,7 @@ async function onGuestSubmit(details: GuestDetails) {
         <AdminBar />
         <HeroChat @plan-ready="onPlanReady" @search-intent="onSearchIntent" />
         <TopDestinations
-            :destinations="regions"
+            :destinations="destinations"
             @select="(region) => onSearchIntent({ region })"
         />
         <ItinerarySection v-if="plan" :plan="plan" @book="onBook" />
@@ -181,7 +181,7 @@ async function onGuestSubmit(details: GuestDetails) {
         <HowItWorks />
         <ExploreSection
             :listings="listings"
-            :regions="regions"
+            :destinations="destinations"
             :featured-pick="featuredPick"
             :trigger-search="searchIntent"
         />

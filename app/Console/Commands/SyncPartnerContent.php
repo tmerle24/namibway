@@ -62,7 +62,6 @@ class SyncPartnerContent extends Command
                     'name' => $content->name,
                     'description' => $content->description,
                     'highlights' => $content->highlights ?: null,
-                    'region' => $content->region ?? $listing->region,
                     'latitude' => $content->latitude ?? $listing->latitude,
                     'longitude' => $content->longitude ?? $listing->longitude,
                     'content_synced_at' => now(),

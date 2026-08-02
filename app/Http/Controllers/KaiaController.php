@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Destination;
 use App\Models\Listing;
 use App\Models\Region;
 use App\Models\SavedPlan;
@@ -17,47 +18,46 @@ class KaiaController extends Controller
 {
     public function regions(): JsonResponse
     {
-        $regions = Listing::query()
-            ->where('is_published', true)
-            ->whereNotNull('region')
-            ->distinct()
-            ->orderBy('region')
-            ->pluck('region');
+        $regions = Region::query()
+            ->whereHas('cities.listings', fn ($q) => $q->where('is_published', true))
+            ->orderBy('name')
+            ->pluck('name');
 
         return response()->json(['regions' => $regions]);
     }
 
     public function regionCoords(): JsonResponse
     {
-        $regions = Region::query()
+        $destinations = Destination::query()
             ->whereNotNull('lat')
             ->whereNotNull('lng')
             ->orderBy('sort_order')
-            ->get(['name', 'lat', 'lng', 'image', 'listing_region']);
+            ->with('region:id,name')
+            ->get(['id', 'name', 'lat', 'lng', 'image', 'region_id']);
 
-        $coords = $regions->mapWithKeys(fn (Region $r) => [
-            mb_strtolower($r->getTranslation('name', 'en')) => [
-                'lat' => $r->lat,
-                'lng' => $r->lng,
-                'image' => $r->image ? self::resolveMediaUrl($r->image) : null,
+        $coords = $destinations->mapWithKeys(fn (Destination $d) => [
+            mb_strtolower($d->getTranslation('name', 'en')) => [
+                'lat' => $d->lat,
+                'lng' => $d->lng,
+                'image' => $d->image ? self::resolveMediaUrl($d->image) : null,
             ],
         ]);
 
         // Also key by the political region itself (Listing::region / a day's
-        // "location") — a day's location is always one of the 6 political
+        // "location") — a day's location is always one of the political
         // regions, never a destination name, so it otherwise never gets an
-        // image for the itinerary day thumbnail fallback. First region row
-        // per political region (by sort_order above) wins; never overrides a
-        // destination-name key since no seeded destination shares its name
-        // with its own political region.
-        foreach ($regions->groupBy('listing_region') as $politicalRegion => $group) {
+        // image for the itinerary day thumbnail fallback. First destination
+        // row per political region (by sort_order above) wins; never
+        // overrides a destination-name key since no seeded destination
+        // shares its name with its own political region.
+        foreach ($destinations->groupBy(fn (Destination $d) => $d->region->name) as $politicalRegion => $group) {
             $key = mb_strtolower((string) $politicalRegion);
 
             if ($coords->has($key)) {
                 continue;
             }
 
-            /** @var Region $first */
+            /** @var Destination $first */
             $first = $group->first();
             $coords[$key] = [
                 'lat' => $first->lat,
@@ -142,7 +142,9 @@ class KaiaController extends Controller
                 }
 
                 if (isset($intent['region']) && is_string($intent['region'])) {
-                    $query->where('region', 'ilike', '%'.$intent['region'].'%');
+                    $region = $intent['region'];
+                    $query->whereHas('city', fn ($q) => $q->where('name', 'ilike', '%'.$region.'%')
+                        ->orWhereHas('region', fn ($q2) => $q2->where('name', 'ilike', '%'.$region.'%')));
                 }
 
                 $listing = $query->orderByDesc('is_featured')->orderByDesc('rating')->first();

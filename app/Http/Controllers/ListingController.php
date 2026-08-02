@@ -27,7 +27,7 @@ class ListingController extends Controller
 {
     public function search(Request $request): JsonResponse
     {
-        $query = Listing::query()->where('is_published', true)->filterBy($request->query());
+        $query = Listing::query()->where('is_published', true)->with('city.region')->filterBy($request->query());
 
         $sort = $request->query('sort', 'featured');
 

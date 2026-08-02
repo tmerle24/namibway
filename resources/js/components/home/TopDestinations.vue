@@ -7,7 +7,7 @@ interface Destination {
     slug: string;
     blurb: string | null;
     image: string | null;
-    listing_region: string;
+    region_name: string;
 }
 
 const props = defineProps<{
@@ -55,7 +55,7 @@ function scrollByPage(direction: 1 | -1) {
                     :key="destination.slug"
                     type="button"
                     class="destination-card"
-                    @click="emit('select', destination.listing_region)"
+                    @click="emit('select', destination.region_name)"
                 >
                     <div class="destination-thumb">
                         <img

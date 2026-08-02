@@ -4,8 +4,10 @@ namespace Tests\Feature\Api;
 
 use App\Enums\ConnectorType;
 use App\Models\ApiClient;
+use App\Models\City;
 use App\Models\Listing;
 use App\Models\Partner;
+use App\Models\Region;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -37,9 +39,12 @@ class ListingApiTest extends TestCase
     {
         $client = ApiClient::create(['name' => 'OTA One']);
 
-        Listing::factory()->create(['is_published' => true, 'region' => 'Erongo', 'name' => 'Published Lodge']);
-        Listing::factory()->create(['is_published' => false, 'region' => 'Erongo', 'name' => 'Draft Lodge']);
-        Listing::factory()->create(['is_published' => true, 'region' => 'Khomas', 'name' => 'Other Region Lodge']);
+        $erongoCity = City::factory()->create(['region_id' => Region::where('name', 'Erongo')->value('id')]);
+        $khomasCity = City::factory()->create(['region_id' => Region::where('name', 'Khomas')->value('id')]);
+
+        Listing::factory()->create(['is_published' => true, 'city_id' => $erongoCity->id, 'name' => 'Published Lodge']);
+        Listing::factory()->create(['is_published' => false, 'city_id' => $erongoCity->id, 'name' => 'Draft Lodge']);
+        Listing::factory()->create(['is_published' => true, 'city_id' => $khomasCity->id, 'name' => 'Other Region Lodge']);
 
         $response = $this->withToken($this->tokenFor($client))
             ->getJson('/api/v1/listings?region=Erongo')

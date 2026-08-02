@@ -56,6 +56,7 @@ class ListingController extends Controller
 
         $listings = Listing::query()
             ->where('is_published', true)
+            ->with('city.region')
             ->filterBy($request->query())
             ->orderByDesc('is_featured')
             ->orderByDesc('rating')

@@ -124,8 +124,12 @@ class EnrichmentResource extends Resource
                                 ->label('NTB number')
                                 ->extraInputAttributes(fn (): array => self::focusAttributes('ntb_number')),
                             Forms\Components\Select::make('type')->label('Category')->options(ListingType::class)->required(),
-                            Forms\Components\TextInput::make('region')
-                                ->extraInputAttributes(fn (): array => self::focusAttributes('region')),
+                            Forms\Components\Select::make('city_id')
+                                ->label('City')
+                                ->relationship('city', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('city_id')),
                         ])->columns(2),
 
                     Forms\Components\Tabs\Tab::make('Contact')
@@ -459,7 +463,7 @@ class EnrichmentResource extends Resource
             ->label('')
             ->tooltip('Edit — open the full edit form for this listing');
         $editNtbNumber = self::editAction(self::TAB_BASIC, 'edit_ntb_number', 'ntb_number');
-        $editRegion = self::editAction(self::TAB_BASIC, 'edit_region', 'region');
+        $editRegion = self::editAction(self::TAB_BASIC, 'edit_region', 'city_id');
         $editWebsite = self::editAction(self::TAB_CONTACT, 'edit_website', 'website');
         $editEmail = self::editAction(self::TAB_CONTACT, 'edit_email', 'contact_email');
         $editPhone = self::editAction(self::TAB_CONTACT, 'edit_phone', 'phone');
@@ -490,7 +494,8 @@ class EnrichmentResource extends Resource
                     ->badge()
                     ->action($editBasic)
                     ->sortable(),
-                Tables\Columns\TextColumn::make('region')
+                Tables\Columns\TextColumn::make('city.name')
+                    ->label('City')
                     ->searchable()
                     ->action($editRegion)
                     ->sortable(),
@@ -654,8 +659,9 @@ class EnrichmentResource extends Resource
             ->defaultSort('enrichment_score', 'asc')
             ->filters([
                 Tables\Filters\SelectFilter::make('type')->label('Category')->options(ListingType::class),
-                Tables\Filters\SelectFilter::make('region')
-                    ->options(fn (): array => Listing::query()->whereNotNull('region')->distinct()->orderBy('region')->pluck('region', 'region')->all()),
+                Tables\Filters\SelectFilter::make('city_id')
+                    ->label('City')
+                    ->relationship('city', 'name'),
                 Tables\Filters\SelectFilter::make('completion')
                     ->label('Completion %')
                     ->options(['green' => '90–100% (green)', 'yellow' => '60–89% (yellow)', 'red' => '0–59% (red)'])

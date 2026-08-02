@@ -1,16 +1,16 @@
 <?php
 
-namespace App\Filament\Resources\RegionResource\Pages;
+namespace App\Filament\Resources\CityResource\Pages;
 
 use App\Filament\Concerns\HasCreateFormActionsInHeader;
-use App\Filament\Resources\RegionResource;
+use App\Filament\Resources\CityResource;
 use Filament\Resources\Pages\CreateRecord;
 
-class CreateRegion extends CreateRecord
+class CreateCity extends CreateRecord
 {
     use HasCreateFormActionsInHeader;
 
-    protected static string $resource = RegionResource::class;
+    protected static string $resource = CityResource::class;
 
     protected function getHeaderActions(): array
     {
