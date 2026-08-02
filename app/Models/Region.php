@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
  * @property int $id
  * @property string $name
  * @property string $slug
+ * @property string|null $image
  */
 class Region extends Model
 {
@@ -23,6 +24,7 @@ class Region extends Model
     protected $fillable = [
         'name',
         'slug',
+        'image',
     ];
 
     protected static function booted(): void

@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Enums\SettlementType;
 use App\Filament\Resources\CityResource\Pages;
+use App\Filament\Support\PipelineImageResolver;
+use App\Http\Controllers\Controller;
 use App\Models\City;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -26,6 +28,14 @@ class CityResource extends Resource
     {
         return $form
             ->schema([
+                Forms\Components\FileUpload::make('image')
+                    ->image()
+                    ->disk('r2')
+                    ->directory('cities')
+                    ->imageEditor()
+                    ->fetchFileInformation(false)
+                    ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
+                    ->columnSpanFull(),
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255)
@@ -66,6 +76,9 @@ class CityResource extends Resource
         return $table
             ->defaultSort('name')
             ->columns([
+                Tables\Columns\ImageColumn::make('image')
+                    ->getStateUsing(fn (City $record): ?string => $record->image ? Controller::resolveMediaUrl($record->image) : null)
+                    ->square(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),

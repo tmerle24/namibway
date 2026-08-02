@@ -3,6 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\RegionResource\Pages;
+use App\Filament\Support\PipelineImageResolver;
+use App\Http\Controllers\Controller;
 use App\Models\Region;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -25,6 +27,14 @@ class RegionResource extends Resource
     {
         return $form
             ->schema([
+                Forms\Components\FileUpload::make('image')
+                    ->image()
+                    ->disk('r2')
+                    ->directory('political-regions')
+                    ->imageEditor()
+                    ->fetchFileInformation(false)
+                    ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
+                    ->columnSpanFull(),
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255)
@@ -43,6 +53,9 @@ class RegionResource extends Resource
             ->defaultSort('name')
             ->modifyQueryUsing(fn (Builder $query) => $query->withCount('cities'))
             ->columns([
+                Tables\Columns\ImageColumn::make('image')
+                    ->getStateUsing(fn (Region $record): ?string => $record->image ? Controller::resolveMediaUrl($record->image) : null)
+                    ->square(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),

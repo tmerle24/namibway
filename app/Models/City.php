@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
  * @property int $region_id
  * @property string $name
  * @property string $slug
+ * @property string|null $image
  * @property SettlementType $type
  * @property int|null $population
  * @property float|null $area_km2
@@ -34,6 +35,7 @@ class City extends Model
         'region_id',
         'name',
         'slug',
+        'image',
         'type',
         'population',
         'area_km2',
