@@ -19,6 +19,7 @@ class EnsureApiClientActive
      */
     public function handle(Request $request, Closure $next): Response
     {
+        /** @var ApiClient|null $client */
         $client = $request->user();
 
         if (! $client instanceof ApiClient || ! $client->is_active) {

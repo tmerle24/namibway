@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\ApiClient;
 use App\Models\Inquiry;
 use App\Models\Review;
 use App\Models\User;
@@ -44,9 +45,14 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(60)
-            ->by($request->user()?->currentAccessToken()?->id ?: $request->ip())
-        );
+        RateLimiter::for('api', function (Request $request) {
+            /** @var ApiClient|null $user */
+            $user = $request->user();
+
+            $tokenId = $user instanceof ApiClient ? $user->currentAccessToken()->id : null;
+
+            return Limit::perMinute(60)->by($tokenId ?: $request->ip());
+        });
     }
 
     /**
