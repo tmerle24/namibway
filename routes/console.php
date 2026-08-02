@@ -8,7 +8,8 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('backup:run --only-db')->dailyAt('02:00')->onOneServer();
+// No --only-db: also picks up .env per config/backup.php (see restore.sh).
+Schedule::command('backup:run')->dailyAt('02:00')->onOneServer();
 Schedule::command('backup:clean')->dailyAt('03:00')->onOneServer();
 Schedule::command('backup:monitor')->dailyAt('04:00')->onOneServer();
 

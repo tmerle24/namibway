@@ -69,6 +69,7 @@ interface Listing {
     region: string | null;
     address: string | null;
     phone: string | null;
+    phone_href: string | null;
     website: string | null;
     latitude: number | null;
     longitude: number | null;
@@ -530,7 +531,7 @@ const websiteUrl = computed(
                         <div class="contact-links">
                             <a
                                 v-if="props.listing.phone"
-                                :href="`tel:${props.listing.phone}`"
+                                :href="props.listing.phone_href ?? `tel:${props.listing.phone}`"
                                 >{{ props.listing.phone }}</a
                             >
                             <a
