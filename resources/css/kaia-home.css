@@ -460,7 +460,7 @@
     border-top: 1px solid var(--sand-dark);
     font-size: 13.5px;
 }
-.kaia-page .day-row:first-of-type {
+.kaia-page .day-item:first-child > .day-row {
     border-top: none;
 }
 .kaia-page .day-num {
