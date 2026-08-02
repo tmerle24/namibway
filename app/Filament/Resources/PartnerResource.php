@@ -72,7 +72,11 @@ class PartnerResource extends Resource
                                     ->placeholder('No portal access')
                                     ->helperText('Assigning a user here grants them access to /partner for this property.')
                                     ->dehydrated(false)
-                                    ->afterStateHydrated(function ($component, Partner $record) {
+                                    ->afterStateHydrated(function ($component, ?Partner $record) {
+                                        if (! $record) {
+                                            return;
+                                        }
+
                                         $user = User::where('partner_id', $record->id)->first();
                                         $component->state($user?->id);
                                     })
