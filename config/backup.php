@@ -23,15 +23,20 @@ return [
         'source' => [
             'files' => [
                 /*
-                 * Only .env is included here, not the whole app: the codebase is already
-                 * durably backed up via GitHub (main) and media via Cloudflare R2 — .env
-                 * is the one thing that exists only on this server and holds every secret
-                 * (DB password, ANTHROPIC_API_KEY, R2/OAuth credentials, APP_KEY). Without
-                 * it in the backup, a server loss would be unrecoverable even with the DB
-                 * dump in hand. See restore.sh for how this is used to rebuild a new server.
+                 * Not the whole app: the codebase is already durably backed up via GitHub
+                 * (main). Two things aren't, though:
+                 * - .env — the only place secrets live (DB password, ANTHROPIC_API_KEY,
+                 *   R2/OAuth credentials, APP_KEY). Without it, a server loss isn't
+                 *   recoverable even with the DB dump in hand. See restore.sh.
+                 * - storage/app/public — most listing/partner/region images are on the
+                 *   'r2' disk (durable, off-server), but some FileUpload fields still
+                 *   wrote to local 'public' storage before 2026-08-02 (see
+                 *   Controller::resolveMediaUrl) — this is a safety net for whatever's
+                 *   still there, not the primary place new uploads land.
                  */
                 'include' => [
                     base_path('.env'),
+                    storage_path('app/public'),
                 ],
 
                 /*

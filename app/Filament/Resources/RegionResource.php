@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\RegionResource\Pages;
+use App\Http\Controllers\Controller;
 use App\Models\Region;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -25,7 +26,7 @@ class RegionResource extends Resource
             ->schema([
                 Forms\Components\FileUpload::make('image')
                     ->image()
-                    ->disk('public')
+                    ->disk('r2')
                     ->directory('regions')
                     ->imageEditor()
                     ->columnSpanFull(),
@@ -70,7 +71,10 @@ class RegionResource extends Resource
             ->defaultSort('sort_order')
             ->columns([
                 Tables\Columns\ImageColumn::make('image')
-                    ->disk('public')
+                    // Not disk('public'): image can be on either 'r2' (current default)
+                    // or 'public' (rows uploaded before the r2 switch) — resolveMediaUrl
+                    // already knows how to check both.
+                    ->getStateUsing(fn (Region $record): ?string => $record->image ? Controller::resolveMediaUrl($record->image) : null)
                     ->square(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),

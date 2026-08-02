@@ -91,6 +91,10 @@ echo "═══ 3/6 Entpacke (AES-256-verschlüsselt) ═══"
 
 ENV_FILE=$(find "$WORK_DIR/extracted" -type f -name ".env" | head -n1)
 DB_DUMP=$(find "$WORK_DIR/extracted" -type d -name "db-dumps" -exec find {} -type f \; | head -n1)
+# Nur ein Sicherheitsnetz für Dateien, die vor dem Wechsel auf disk('r2') lokal
+# hochgeladen wurden (siehe config/backup.php) — kann im Backup fehlen, wenn es nie
+# etwas Lokales gab, das ist kein Fehler.
+PUBLIC_STORAGE_DIR=$(find "$WORK_DIR/extracted" -type d -path "*/storage/app/public" | head -n1)
 
 if [ -z "$ENV_FILE" ]; then
     echo "❌ Keine .env im Backup gefunden — Backup ist älter als der Wechsel auf 'backup:run' ohne --only-db?"
@@ -102,6 +106,11 @@ if [ -z "$DB_DUMP" ]; then
 fi
 echo "  → .env gefunden: $ENV_FILE"
 echo "  → DB-Dump gefunden: $DB_DUMP"
+if [ -n "$PUBLIC_STORAGE_DIR" ]; then
+    echo "  → storage/app/public gefunden: $PUBLIC_STORAGE_DIR"
+else
+    echo "  → Kein storage/app/public im Backup (nichts Lokales zu restaurieren, ok)."
+fi
 
 # ── 4/6 .env an Ort und Stelle bringen ──────────────────────────────
 echo "═══ 4/6 .env nach $APP_DIR/.env ═══"
@@ -112,6 +121,12 @@ if [ -f "$APP_DIR/.env" ]; then
 fi
 cp "$ENV_FILE" "$APP_DIR/.env"
 echo "  → Geschrieben. APP_URL/DB_HOST ggf. anpassen, falls sich Hostname/Netzwerk auf dem neuen Server ändern."
+
+if [ -n "$PUBLIC_STORAGE_DIR" ]; then
+    echo "  → Stelle storage/app/public wieder her (lokale Uploads von vor dem r2-Wechsel)."
+    mkdir -p "$APP_DIR/storage/app"
+    cp -r "$PUBLIC_STORAGE_DIR" "$APP_DIR/storage/app/public"
+fi
 
 # ── 5/6 Datenbank restaurieren ───────────────────────────────────────
 echo "═══ 5/6 Datenbank restaurieren ═══"

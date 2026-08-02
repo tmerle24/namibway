@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Enums\ConnectorType;
 use App\Filament\Resources\PartnerResource\Pages;
+use App\Http\Controllers\Controller;
 use App\Livewire\PartnerMessagesPanel;
 use App\Models\Partner;
 use App\Models\User;
@@ -35,7 +36,7 @@ class PartnerResource extends Resource
                             ->schema([
                                 Forms\Components\FileUpload::make('logo')
                                     ->image()
-                                    ->disk('public')
+                                    ->disk('r2')
                                     ->directory('partners')
                                     ->imageEditor()
                                     ->columnSpanFull(),
@@ -131,7 +132,10 @@ class PartnerResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\ImageColumn::make('logo')
-                    ->disk('public')
+                    // Not disk('public'): logo can be on either 'r2' (current default)
+                    // or 'public' (rows uploaded before the r2 switch) — resolveMediaUrl
+                    // already knows how to check both.
+                    ->getStateUsing(fn (Partner $record): ?string => $record->logo ? Controller::resolveMediaUrl($record->logo) : null)
                     ->circular(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),

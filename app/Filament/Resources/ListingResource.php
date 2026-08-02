@@ -272,7 +272,12 @@ class ListingResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\ImageColumn::make('image')
-                    ->disk('public')
+                    // Not disk('public'): a manually-uploaded image can be on either 'r2'
+                    // (the form field's disk) or 'public' (rows from before the r2 switch,
+                    // or a stale legacy value) — resolveMediaUrl already knows how to check
+                    // both, and also transparently handles the full-URL values the AI
+                    // enrichment pipeline writes directly.
+                    ->getStateUsing(fn (Listing $record): ?string => $record->image ? Controller::resolveMediaUrl($record->image) : null)
                     ->square()
                     ->sortable(query: fn (Builder $query, string $direction): Builder => $direction === 'desc'
                         ? $query->orderByRaw("(image IS NOT NULL AND image != '') desc")
