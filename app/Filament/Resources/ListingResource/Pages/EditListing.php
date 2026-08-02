@@ -17,6 +17,8 @@ class EditListing extends EditRecord
 
     protected static string $resource = ListingResource::class;
 
+    protected static bool $formActionsAreSticky = true;
+
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
