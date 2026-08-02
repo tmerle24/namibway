@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\ListingResource\RelationManagers;
+namespace App\Livewire;
 
 use App\Mail\PartnerContactMail;
 use App\Models\Listing;
@@ -8,38 +8,34 @@ use App\Models\Partner;
 use App\Models\PartnerMessage;
 use App\Services\Enrichment\ClaimInviteService;
 use Filament\Forms;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
-use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Mail;
+use Livewire\Component;
 
-class PartnerMessagesRelationManager extends RelationManager
+/**
+ * The Listing edit page's "Messages" tab. A plain Livewire component (rather
+ * than a Filament RelationManager) so it can sit as a peer of Basic
+ * information/Media/etc. in the same top-level Tabs component instead of
+ * Filament's relation-manager tabs, which only combine at the whole-form
+ * level (see ListingResource::form()).
+ */
+class ListingMessagesPanel extends Component implements HasForms, HasTable
 {
-    protected static string $relationship = 'partnerMessages';
+    use InteractsWithForms;
+    use InteractsWithTable;
 
-    protected static ?string $title = 'Messages';
-
-    protected static ?string $icon = 'heroicon-o-envelope';
-
-    // Always show the tab (rather than hiding it) so editors know it exists —
-    // it's just greyed out via the badge below until there's someone to
-    // actually email.
-    public static function getBadge(Model $ownerRecord, string $pageClass): ?string
-    {
-        /** @var Listing $ownerRecord */
-        return $ownerRecord->partner?->email === null ? 'No email' : null;
-    }
-
-    public static function getBadgeColor(Model $ownerRecord, string $pageClass): ?string
-    {
-        return 'gray';
-    }
+    public Listing $record;
 
     /**
-     * IDs that were unread when the tab was opened — captured before marking
+     * IDs that were unread when the tab was mounted — captured before marking
      * them read below, so the "new since last visit" bolding in table() still
      * has something to key off during this same page view.
      *
@@ -49,8 +45,6 @@ class PartnerMessagesRelationManager extends RelationManager
 
     public function mount(): void
     {
-        parent::mount();
-
         $partner = $this->getPartner();
 
         if ($partner === null) {
@@ -72,6 +66,7 @@ class PartnerMessagesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->query(fn () => $this->record->partnerMessages())
             ->recordTitleAttribute('subject')
             ->emptyStateHeading($this->getPartner()?->email !== null
                 ? 'No messages yet'
@@ -140,7 +135,7 @@ class PartnerMessagesRelationManager extends RelationManager
                         Forms\Components\TextInput::make('subject')
                             ->required()
                             ->maxLength(255)
-                            ->default(fn (): string => "About your listing on NamibWay: {$this->getListing()->name}"),
+                            ->default(fn (): string => "About your listing on NamibWay: {$this->record->name}"),
                         Forms\Components\Textarea::make('body')
                             ->label('Message')
                             ->required()
@@ -154,7 +149,7 @@ class PartnerMessagesRelationManager extends RelationManager
 
                         PartnerMessage::create([
                             'partner_id' => $partner->id,
-                            'listing_id' => $this->getListing()->id,
+                            'listing_id' => $this->record->id,
                             'sent_by' => auth()->id(),
                             'direction' => PartnerMessage::DIRECTION_OUTBOUND,
                             'subject' => $data['subject'],
@@ -172,16 +167,13 @@ class PartnerMessagesRelationManager extends RelationManager
             ->bulkActions([]);
     }
 
-    private function getListing(): Listing
+    public function render(): View
     {
-        /** @var Listing $listing */
-        $listing = $this->getOwnerRecord();
-
-        return $listing;
+        return view('livewire.listing-messages-panel');
     }
 
     private function getPartner(): ?Partner
     {
-        return $this->getListing()->partner;
+        return $this->record->partner;
     }
 }
