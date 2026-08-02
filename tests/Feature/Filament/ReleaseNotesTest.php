@@ -21,7 +21,10 @@ class ReleaseNotesTest extends TestCase
         $path = storage_path('app/release/version.json');
         File::ensureDirectoryExists(dirname($path));
         File::put($path, json_encode([
-            'version' => 'abc1234',
+            'version' => '1.0.187',
+            'build' => 187,
+            'hash' => 'abc1234',
+            'date' => now()->toDateString(),
             'deployed_at' => now()->toIso8601String(),
             'commits' => [
                 ['hash' => 'abc1234', 'date' => now()->toDateString(), 'subject' => 'Add release notes page'],
@@ -36,7 +39,7 @@ class ReleaseNotesTest extends TestCase
         $this->actingAs($this->admin())
             ->get('/admin')
             ->assertOk()
-            ->assertSee('abc1234')
+            ->assertSee('v1.0.187 ('.now()->toDateString().')')
             ->assertSee('/admin/release-notes', escape: false);
     }
 
@@ -48,6 +51,7 @@ class ReleaseNotesTest extends TestCase
             ->get('/admin/release-notes')
             ->assertOk()
             ->assertSee('Release Notes')
+            ->assertSee('v1.0.187')
             ->assertSee('abc1234')
             ->assertSee('Add release notes page');
     }

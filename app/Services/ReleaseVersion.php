@@ -16,13 +16,16 @@ class ReleaseVersion
         $path = storage_path('app/release/version.json');
 
         if (! File::exists($path)) {
-            return ['version' => null, 'deployed_at' => null, 'commits' => []];
+            return ['version' => null, 'build' => null, 'hash' => null, 'date' => null, 'deployed_at' => null, 'commits' => []];
         }
 
         $data = json_decode(File::get($path), associative: true);
 
         return [
             'version' => $data['version'] ?? null,
+            'build' => $data['build'] ?? null,
+            'hash' => $data['hash'] ?? null,
+            'date' => $data['date'] ?? null,
             'deployed_at' => $data['deployed_at'] ?? null,
             'commits' => $data['commits'] ?? [],
         ];

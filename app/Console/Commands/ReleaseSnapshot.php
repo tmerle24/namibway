@@ -42,15 +42,26 @@ class ReleaseSnapshot extends Command
             ->values()
             ->all();
 
+        // Build number = total commit count on this branch. No git tags are maintained
+        // in this repo, so this is the only value that's both a "real" looking version
+        // (v1.0.<n>) and guaranteed to strictly increase on every deploy without any
+        // manual tagging step.
+        $buildNumber = (int) trim(Process::path(base_path())->run('git rev-list --count HEAD')->output());
+        $headDate = $commits[0]['date'] ?? now()->toDateString();
+        $version = "1.0.{$buildNumber}";
+
         $path = storage_path('app/release/version.json');
         File::ensureDirectoryExists(dirname($path));
         File::put($path, json_encode([
-            'version' => $hash,
+            'version' => $version,
+            'build' => $buildNumber,
+            'hash' => $hash,
+            'date' => $headDate,
             'deployed_at' => now()->toIso8601String(),
             'commits' => $commits,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
-        $this->info("Release snapshot written: {$hash}");
+        $this->info("Release snapshot written: v{$version} ({$hash})");
 
         return self::SUCCESS;
     }

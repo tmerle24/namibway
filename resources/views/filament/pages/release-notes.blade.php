@@ -60,9 +60,12 @@
 
         @if ($release['version'])
             <div class="current">
-                <span class="hash">{{ $release['version'] }}</span>
+                <span class="hash">v{{ $release['version'] }}</span>
                 <span class="meta">
-                    currently live
+                    currently live ({{ $release['date'] }})
+                    @if ($release['hash'])
+                        &middot; {{ $release['hash'] }}
+                    @endif
                     @if ($release['deployed_at'])
                         &middot; deployed {{ \Illuminate\Support\Carbon::parse($release['deployed_at'])->diffForHumans() }}
                     @endif
