@@ -7,12 +7,12 @@ use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
 use App\Enums\ConnectorType;
 use App\Enums\ListingType;
 use App\Filament\Resources\ListingResource\Pages;
-use App\Filament\Resources\ListingResource\RelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
 use App\Models\Listing;
 use App\Models\Partner;
+use App\Models\PartnerMessage;
 use App\Services\Enrichment\ClaimInviteService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -272,6 +272,11 @@ class ListingResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->withCount([
+                'partnerMessages as unread_messages_count' => fn (Builder $messagesQuery): Builder => $messagesQuery
+                    ->where('direction', PartnerMessage::DIRECTION_INBOUND)
+                    ->whereNull('read_at'),
+            ]))
             ->columns([
                 Tables\Columns\ImageColumn::make('image')
                     // Not disk('public'): a manually-uploaded image can be on either 'r2'
@@ -333,6 +338,17 @@ class ListingResource extends Resource
                         'unclaimed' => 'warning',
                         default => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('unread_messages_count')
+                    ->label('Messages')
+                    ->badge()
+                    ->icon('heroicon-o-envelope')
+                    ->formatStateUsing(fn (int $state): string => $state > 0 ? (string) $state : '')
+                    ->color(fn (int $state): string => $state > 0 ? 'danger' : 'gray')
+                    ->tooltip(fn (int $state): string => $state > 0
+                        ? "{$state} unread message(s) — click to view"
+                        : 'View messages')
+                    ->url(fn (Listing $record): string => static::getUrl('messages', ['record' => $record]))
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('scrape_source')
                     ->label('Source')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -362,6 +378,16 @@ class ListingResource extends Resource
                     ->queries(
                         true: fn (Builder $query) => $query->whereNotNull('image')->where('image', '!=', ''),
                         false: fn (Builder $query) => $query->where(fn ($q) => $q->whereNull('image')->orWhere('image', '')),
+                    ),
+                Tables\Filters\TernaryFilter::make('has_unread_messages')
+                    ->label('Unread messages')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereHas('partnerMessages', fn (Builder $q) => $q
+                            ->where('direction', PartnerMessage::DIRECTION_INBOUND)
+                            ->whereNull('read_at')),
+                        false: fn (Builder $query) => $query->whereDoesntHave('partnerMessages', fn (Builder $q) => $q
+                            ->where('direction', PartnerMessage::DIRECTION_INBOUND)
+                            ->whereNull('read_at')),
                     ),
             ])
             ->actions([
@@ -525,9 +551,7 @@ class ListingResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            RelationManagers\PartnerMessagesRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array
@@ -536,6 +560,7 @@ class ListingResource extends Resource
             'index' => Pages\ListListings::route('/'),
             'create' => Pages\CreateListing::route('/create'),
             'edit' => Pages\EditListing::route('/{record}/edit'),
+            'messages' => Pages\ListingMessages::route('/{record}/messages'),
         ];
     }
 }

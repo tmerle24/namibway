@@ -52,17 +52,4 @@ class EditListing extends EditRecord
             Actions\DeleteAction::make(),
         ]);
     }
-
-    // Puts "Messages" in the same top tab bar as Basic information/Media/etc.
-    // instead of rendering the relation manager as its own block below the
-    // form (Filament's default).
-    public function hasCombinedRelationManagerTabsWithContent(): bool
-    {
-        return true;
-    }
-
-    public function getContentTabLabel(): ?string
-    {
-        return 'Listing details';
-    }
 }

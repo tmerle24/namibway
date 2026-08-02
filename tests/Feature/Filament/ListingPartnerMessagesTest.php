@@ -2,8 +2,7 @@
 
 namespace Tests\Feature\Filament;
 
-use App\Filament\Resources\ListingResource\Pages\EditListing;
-use App\Filament\Resources\ListingResource\RelationManagers\PartnerMessagesRelationManager;
+use App\Filament\Resources\ListingResource\Pages\ListingMessages;
 use App\Mail\PartnerContactMail;
 use App\Models\Listing;
 use App\Models\Partner;
@@ -23,25 +22,7 @@ class ListingPartnerMessagesTest extends TestCase
         return User::factory()->create(['is_admin' => true]);
     }
 
-    public function test_messages_tab_is_badged_for_a_listing_without_a_partner_email(): void
-    {
-        $listing = Listing::factory()->create(['partner_id' => null]);
-
-        $this->assertTrue(
-            PartnerMessagesRelationManager::canViewForRecord($listing, EditListing::class)
-        );
-        $this->assertSame('No email', PartnerMessagesRelationManager::getBadge($listing, EditListing::class));
-    }
-
-    public function test_messages_tab_is_not_badged_once_the_partner_has_an_email(): void
-    {
-        $partner = Partner::create(['name' => 'Lodge', 'email' => 'owner@example.com']);
-        $listing = Listing::factory()->create(['partner_id' => $partner->id]);
-
-        $this->assertNull(PartnerMessagesRelationManager::getBadge($listing, EditListing::class));
-    }
-
-    public function test_edit_page_renders_with_messages_tab_for_a_listing_with_a_partner(): void
+    public function test_edit_page_no_longer_shows_a_messages_tab(): void
     {
         $partner = Partner::create(['name' => 'Lodge', 'email' => 'owner@example.com']);
         $listing = Listing::factory()->create(['partner_id' => $partner->id]);
@@ -49,7 +30,17 @@ class ListingPartnerMessagesTest extends TestCase
         $this->actingAs($this->admin())
             ->get("/admin/listings/{$listing->id}/edit")
             ->assertOk()
-            ->assertSee('Messages');
+            ->assertDontSee('No email');
+    }
+
+    public function test_messages_page_renders_for_a_listing_with_a_partner(): void
+    {
+        $partner = Partner::create(['name' => 'Lodge', 'email' => 'owner@example.com']);
+        $listing = Listing::factory()->create(['partner_id' => $partner->id]);
+
+        $this->actingAs($this->admin())
+            ->get("/admin/listings/{$listing->id}/messages")
+            ->assertOk();
     }
 
     public function test_contact_owner_action_sends_mail_and_logs_message(): void
@@ -60,10 +51,7 @@ class ListingPartnerMessagesTest extends TestCase
         $listing = Listing::factory()->create(['partner_id' => $partner->id]);
 
         Livewire::actingAs($this->admin())
-            ->test(PartnerMessagesRelationManager::class, [
-                'ownerRecord' => $listing,
-                'pageClass' => EditListing::class,
-            ])
+            ->test(ListingMessages::class, ['record' => $listing->getKey()])
             ->callTableAction('contact_owner', data: [
                 'subject' => 'Test subject',
                 'body' => 'Test body',
@@ -84,10 +72,7 @@ class ListingPartnerMessagesTest extends TestCase
         $listing = Listing::factory()->create(['partner_id' => $partner->id]);
 
         Livewire::actingAs($this->admin())
-            ->test(PartnerMessagesRelationManager::class, [
-                'ownerRecord' => $listing,
-                'pageClass' => EditListing::class,
-            ])
+            ->test(ListingMessages::class, ['record' => $listing->getKey()])
             ->assertTableActionHidden('send_claim_email');
     }
 
@@ -99,10 +84,7 @@ class ListingPartnerMessagesTest extends TestCase
         $listing = Listing::factory()->create(['partner_id' => $partner->id]);
 
         Livewire::actingAs($this->admin())
-            ->test(PartnerMessagesRelationManager::class, [
-                'ownerRecord' => $listing,
-                'pageClass' => EditListing::class,
-            ])
+            ->test(ListingMessages::class, ['record' => $listing->getKey()])
             ->callTableAction('send_claim_email');
 
         $this->assertDatabaseHas('partner_messages', [
@@ -111,7 +93,7 @@ class ListingPartnerMessagesTest extends TestCase
         ]);
     }
 
-    public function test_opening_the_tab_marks_unread_inbound_messages_as_read(): void
+    public function test_opening_the_page_marks_unread_inbound_messages_as_read(): void
     {
         $partner = Partner::create(['name' => 'Lodge', 'email' => 'owner@example.com']);
         $listing = Listing::factory()->create(['partner_id' => $partner->id]);
@@ -128,10 +110,7 @@ class ListingPartnerMessagesTest extends TestCase
         $this->assertNull($message->fresh()->read_at);
 
         Livewire::actingAs($this->admin())
-            ->test(PartnerMessagesRelationManager::class, [
-                'ownerRecord' => $listing,
-                'pageClass' => EditListing::class,
-            ]);
+            ->test(ListingMessages::class, ['record' => $listing->getKey()]);
 
         $this->assertNotNull($message->fresh()->read_at);
     }
@@ -151,11 +130,36 @@ class ListingPartnerMessagesTest extends TestCase
         ]);
 
         Livewire::actingAs($this->admin())
-            ->test(PartnerMessagesRelationManager::class, [
-                'ownerRecord' => $listing,
-                'pageClass' => EditListing::class,
-            ])
+            ->test(ListingMessages::class, ['record' => $listing->getKey()])
             ->mountTableAction('view', $message)
             ->assertSee("Sounds good, let's proceed.");
+    }
+
+    public function test_index_table_shows_unread_message_count(): void
+    {
+        $partner = Partner::create(['name' => 'Lodge', 'email' => 'owner@example.com']);
+        $listing = Listing::factory()->create(['partner_id' => $partner->id, 'name' => 'Test Lodge']);
+
+        PartnerMessage::create([
+            'partner_id' => $partner->id,
+            'listing_id' => $listing->id,
+            'direction' => PartnerMessage::DIRECTION_INBOUND,
+            'subject' => 'Re: your listing',
+            'body' => 'Hi',
+            'sent_at' => now(),
+        ]);
+        PartnerMessage::create([
+            'partner_id' => $partner->id,
+            'listing_id' => $listing->id,
+            'direction' => PartnerMessage::DIRECTION_INBOUND,
+            'subject' => 'Follow-up',
+            'body' => 'Hi again',
+            'sent_at' => now(),
+        ]);
+
+        $this->actingAs($this->admin())
+            ->get('/admin/listings')
+            ->assertOk()
+            ->assertSee('2');
     }
 }

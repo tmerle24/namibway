@@ -4,9 +4,9 @@ namespace App\Filament\Resources;
 
 use App\Enums\ConnectorType;
 use App\Filament\Resources\PartnerResource\Pages;
-use App\Filament\Resources\PartnerResource\RelationManagers;
 use App\Http\Controllers\Controller;
 use App\Models\Partner;
+use App\Models\PartnerMessage;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -15,6 +15,7 @@ use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PartnerResource extends Resource
 {
@@ -120,6 +121,11 @@ class PartnerResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->withCount([
+                'messages as unread_messages_count' => fn (Builder $messagesQuery): Builder => $messagesQuery
+                    ->where('direction', PartnerMessage::DIRECTION_INBOUND)
+                    ->whereNull('read_at'),
+            ]))
             ->columns([
                 Tables\Columns\ImageColumn::make('logo')
                     // Not disk('public'): logo can be on either 'r2' (current default)
@@ -170,9 +176,29 @@ class PartnerResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('unread_messages_count')
+                    ->label('Messages')
+                    ->badge()
+                    ->icon('heroicon-o-envelope')
+                    ->formatStateUsing(fn (int $state): string => $state > 0 ? (string) $state : '')
+                    ->color(fn (int $state): string => $state > 0 ? 'danger' : 'gray')
+                    ->tooltip(fn (int $state): string => $state > 0
+                        ? "{$state} unread message(s) — click to view"
+                        : 'View messages')
+                    ->url(fn (Partner $record): string => static::getUrl('messages', ['record' => $record]))
+                    ->sortable(),
             ])
             ->filters([
-                //
+                Tables\Filters\TernaryFilter::make('has_unread_messages')
+                    ->label('Unread messages')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereHas('messages', fn (Builder $q) => $q
+                            ->where('direction', PartnerMessage::DIRECTION_INBOUND)
+                            ->whereNull('read_at')),
+                        false: fn (Builder $query) => $query->whereDoesntHave('messages', fn (Builder $q) => $q
+                            ->where('direction', PartnerMessage::DIRECTION_INBOUND)
+                            ->whereNull('read_at')),
+                    ),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -186,9 +212,7 @@ class PartnerResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            RelationManagers\MessagesRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array
@@ -197,6 +221,7 @@ class PartnerResource extends Resource
             'index' => Pages\ListPartners::route('/'),
             'create' => Pages\CreatePartner::route('/create'),
             'edit' => Pages\EditPartner::route('/{record}/edit'),
+            'messages' => Pages\PartnerMessages::route('/{record}/messages'),
         ];
     }
 }
