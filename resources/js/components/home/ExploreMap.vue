@@ -116,9 +116,15 @@ function renderMarkers() {
 
                 if (item.slug) {
                     const slug = item.slug;
-                    marker.on('click', () =>
-                        router.visit(show({ listing: slug }).url),
-                    );
+                    const goToListing = () =>
+                        router.visit(show({ listing: slug }).url);
+
+                    marker.on('click', goToListing);
+                    marker.on('popupopen', () => {
+                        const el = marker.getPopup()?.getElement();
+                        el?.querySelector('.explore-map-popup')
+                            ?.addEventListener('click', goToListing);
+                    });
                 }
 
                 markerLayers.push(marker);
@@ -219,6 +225,7 @@ watch(() => props.markers, renderMarkers);
     align-items: center;
     font-family: inherit;
     min-width: 160px;
+    cursor: pointer;
 }
 
 .explore-map-popup-img {
