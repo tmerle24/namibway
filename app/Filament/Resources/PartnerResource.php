@@ -26,80 +26,86 @@ class PartnerResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\FileUpload::make('logo')
-                    ->image()
-                    ->disk('public')
-                    ->directory('partners')
-                    ->imageEditor()
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Textarea::make('bio')
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('email')
-                    ->email()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('phone')
-                    ->tel()
-                    ->maxLength(50),
-                Forms\Components\TextInput::make('website')
-                    ->url()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('instagram')
-                    ->url()
-                    ->maxLength(255)
-                    ->helperText('Full profile URL, e.g. https://instagram.com/yourlodge'),
-                Forms\Components\TextInput::make('facebook')
-                    ->url()
-                    ->maxLength(255),
+                Forms\Components\Tabs::make('Partner')
+                    ->columnSpanFull()
+                    ->tabs([
+                        Forms\Components\Tabs\Tab::make('Basic information')
+                            ->icon('heroicon-o-information-circle')
+                            ->schema([
+                                Forms\Components\FileUpload::make('logo')
+                                    ->image()
+                                    ->disk('public')
+                                    ->directory('partners')
+                                    ->imageEditor()
+                                    ->columnSpanFull(),
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\Textarea::make('bio')
+                                    ->columnSpanFull(),
+                                Forms\Components\TextInput::make('email')
+                                    ->email()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('phone')
+                                    ->tel()
+                                    ->maxLength(50),
+                                Forms\Components\TextInput::make('website')
+                                    ->url()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('instagram')
+                                    ->url()
+                                    ->maxLength(255)
+                                    ->helperText('Full profile URL, e.g. https://instagram.com/yourlodge'),
+                                Forms\Components\TextInput::make('facebook')
+                                    ->url()
+                                    ->maxLength(255),
+                            ])
+                            ->columns(2),
 
-                Forms\Components\Section::make('Partner Portal Access')
-                    ->description('Link a user account so this partner can log in to manage their listings.')
-                    ->collapsed()
-                    ->schema([
-                        Forms\Components\Select::make('portal_user_id')
-                            ->label('Portal user')
-                            ->options(User::whereNull('partner_id')->orWhereHas('partner', fn ($q) => $q->whereKey(0))->pluck('email', 'id'))
-                            ->searchable()
-                            ->placeholder('No portal access')
-                            ->helperText('Assigning a user here grants them access to /partner for this property.')
-                            ->dehydrated(false)
-                            ->afterStateHydrated(function ($component, Partner $record) {
-                                $user = User::where('partner_id', $record->id)->first();
-                                $component->state($user?->id);
-                            })
-                            ->saveRelationshipsUsing(function (?int $state, Partner $record) {
-                                User::where('partner_id', $record->id)->whereKeyNot($state ?? 0)->update(['partner_id' => null]);
+                        Forms\Components\Tabs\Tab::make('Portal Access')
+                            ->icon('heroicon-o-key')
+                            ->schema([
+                                Forms\Components\Select::make('portal_user_id')
+                                    ->label('Portal user')
+                                    ->options(User::whereNull('partner_id')->orWhereHas('partner', fn ($q) => $q->whereKey(0))->pluck('email', 'id'))
+                                    ->searchable()
+                                    ->placeholder('No portal access')
+                                    ->helperText('Assigning a user here grants them access to /partner for this property.')
+                                    ->dehydrated(false)
+                                    ->afterStateHydrated(function ($component, Partner $record) {
+                                        $user = User::where('partner_id', $record->id)->first();
+                                        $component->state($user?->id);
+                                    })
+                                    ->saveRelationshipsUsing(function (?int $state, Partner $record) {
+                                        User::where('partner_id', $record->id)->whereKeyNot($state ?? 0)->update(['partner_id' => null]);
 
-                                if ($state) {
-                                    User::whereKey($state)->update(['partner_id' => $record->id]);
-                                }
-                            }),
-                    ])
-                    ->columnSpanFull(),
+                                        if ($state) {
+                                            User::whereKey($state)->update(['partner_id' => $record->id]);
+                                        }
+                                    }),
+                            ]),
 
-                Forms\Components\Section::make('Booking Connector')
-                    ->description('Connect this partner\'s account to their property management system (API credentials). Once set here, connect each individual listing to its property code on the listing\'s own "Booking system" section.')
-                    ->collapsed()
-                    ->schema([
-                        Forms\Components\Select::make('connector_type')
-                            ->label('Connector')
-                            ->options(collect(ConnectorType::cases())->mapWithKeys(
-                                fn (ConnectorType $c) => [$c->value => $c->label()]
-                            ))
-                            ->placeholder('None (manual handling)')
-                            ->live()
-                            ->native(false),
+                        Forms\Components\Tabs\Tab::make('Booking system / API')
+                            ->icon('heroicon-o-link')
+                            ->schema([
+                                Forms\Components\Select::make('connector_type')
+                                    ->label('Connector')
+                                    ->options(collect(ConnectorType::cases())->mapWithKeys(
+                                        fn (ConnectorType $c) => [$c->value => $c->label()]
+                                    ))
+                                    ->placeholder('None (manual handling)')
+                                    ->helperText('Connect this partner\'s account to their property management system (API credentials). Once set here, connect each individual listing to its property code on the listing\'s own "Booking system" section.')
+                                    ->live()
+                                    ->native(false),
 
-                        Forms\Components\KeyValue::make('connector_config')
-                            ->label('Connector Config')
-                            ->helperText('Key/value pairs stored encrypted. ResConnect: api_key, base_url (opt). NightsBridge: bbid, api_key. hopeCloud: api_key, account_id. Wetu: api_key.')
-                            ->keyLabel('Key')
-                            ->valueLabel('Value')
-                            ->visible(fn (Get $get) => filled($get('connector_type'))),
-                    ])
-                    ->columnSpanFull(),
+                                Forms\Components\KeyValue::make('connector_config')
+                                    ->label('Connector Config')
+                                    ->helperText('Key/value pairs stored encrypted. ResConnect: api_key, base_url (opt). NightsBridge: bbid, api_key. hopeCloud: api_key, account_id. Wetu: api_key.')
+                                    ->keyLabel('Key')
+                                    ->valueLabel('Value')
+                                    ->visible(fn (Get $get) => filled($get('connector_type'))),
+                            ]),
+                    ]),
             ]);
     }
 
