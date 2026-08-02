@@ -4,7 +4,8 @@
         "login": "Log in",
         "register": "Register",
         "currency": "Currency",
-        "language": "Language"
+        "language": "Language",
+        "more": "More options"
     },
     "dashboard": {
         "title": "My trips",

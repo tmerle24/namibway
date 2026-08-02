@@ -4,6 +4,8 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { SYMBOLS } from '@/lib/currency';
 
+const { variant = 'icon' } = defineProps<{ variant?: 'icon' | 'full' }>();
+
 const page = usePage();
 const { t } = useI18n();
 
@@ -22,7 +24,24 @@ function switchCurrency(event: Event) {
 </script>
 
 <template>
-    <span class="icon-switcher">
+    <span v-if="variant === 'full'" class="full-switcher">
+        <span class="full-switcher-label">{{ t('nav.currency') }}</span>
+        <select
+            :value="page.props.currency"
+            class="full-switcher-select"
+            :aria-label="t('nav.currency')"
+            @change="switchCurrency"
+        >
+            <option
+                v-for="(label, code) in page.props.availableCurrencies"
+                :key="code"
+                :value="code"
+            >
+                {{ label }}
+            </option>
+        </select>
+    </span>
+    <span v-else class="icon-switcher">
         <span class="icon-switcher-glyph" aria-hidden="true">{{ glyph }}</span>
         <select
             :value="page.props.currency"

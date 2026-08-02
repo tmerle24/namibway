@@ -5,6 +5,7 @@ import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
+import NavMoreMenu from '@/components/NavMoreMenu.vue';
 import { formatPrice } from '@/lib/currency';
 import { sendKaiaMessage } from '@/lib/kaia-client';
 import type {
@@ -247,7 +248,9 @@ async function retryLastMessage() {
             <img :src="logoLight" alt="NamibWay" class="brand-logo" />
         </Link>
         <div class="hero-nav-actions">
-            <CurrencySwitcher />
+            <NavMoreMenu>
+                <CurrencySwitcher variant="full" />
+            </NavMoreMenu>
             <LocaleSwitcher />
             <Link
                 v-if="page.props.auth?.user"
