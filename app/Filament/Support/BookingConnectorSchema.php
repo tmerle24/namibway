@@ -85,13 +85,17 @@ class BookingConnectorSchema
         $type = self::connectorTypeValue($data['connector_setup_type'] ?? null);
 
         if ($type !== null && $partnerId !== null) {
-            // Deliberately Partner::find()->fill()->save() rather than
-            // whereKey()->update(): Eloquent's query-builder update() bypasses
-            // attribute casts entirely, so connector_config's encrypted:array
-            // cast would never run and the config would be written to the
-            // database as plain, unencrypted JSON.
             $partner = Partner::find($partnerId);
-            $partner?->fill(self::collapseConfigForSave($data))->save();
+
+            // setConnectorSetup(), not a plain fill()->save() of
+            // collapseConfigForSave()'s output: whoever is filling in this
+            // wizard (admin panel vs. partner portal) decides whether the
+            // credentials are trusted immediately or need staff review first
+            // — see Partner::setConnectorSetup() and ConnectorFactory's gate.
+            $config = self::collapseConfigForSave($data);
+            $isAdmin = auth()->check() && auth()->user()->is_admin;
+            $partner?->setConnectorSetup($config['connector_type'], $config['connector_config'], $isAdmin);
+            $partner?->save();
         }
 
         foreach (self::PSEUDO_FIELDS as $key) {
@@ -254,6 +258,14 @@ class BookingConnectorSchema
         };
     }
 
+    /** @var array<int, ConnectorType> */
+    private const CREDENTIALED_TYPES = [
+        ConnectorType::ResConnect,
+        ConnectorType::NightsBridge,
+        ConnectorType::HopeCloud,
+        ConnectorType::Wetu,
+    ];
+
     /**
      * @return array<int, Forms\Components\Component>
      */
@@ -262,6 +274,12 @@ class BookingConnectorSchema
         $hasCredentials = filled($partner->connector_config);
         $status = $partner->connector_type->label().' — '
             .($hasCredentials ? 'API credentials on file' : 'no API credentials yet');
+
+        if (in_array($partner->connector_type, self::CREDENTIALED_TYPES, true)) {
+            $status .= ' — '.($partner->connector_verified_at !== null
+                ? 'verified '.$partner->connector_verified_at->diffForHumans()
+                : 'pending staff review before it goes live');
+        }
 
         return [
             Forms\Components\Placeholder::make('connector_status')

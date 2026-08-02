@@ -54,8 +54,25 @@ class ConnectorFactory
         return self::makeBooking($partner);
     }
 
+    /**
+     * Owner-submitted credentials (partner portal or the token-based listing
+     * editor) are stored immediately but stay unusable for real bookings
+     * until staff verifies them — see Partner::setConnectorSetup(). Admin-
+     * entered credentials are verified the moment they're saved.
+     */
+    private static function requireVerified(Partner $partner): void
+    {
+        if ($partner->connector_verified_at === null) {
+            throw new InvalidArgumentException(
+                "Partner [{$partner->id}]'s {$partner->connector_type?->label()} credentials haven't been verified yet."
+            );
+        }
+    }
+
     private static function makeResConnect(Partner $partner): ResConnectConnector
     {
+        self::requireVerified($partner);
+
         $config = $partner->connector_config ?? [];
         $apiKey = $config['api_key'] ?? '';
         $baseUrl = $config['base_url'] ?? config('connectors.resconnect.default_base_url');
@@ -73,6 +90,8 @@ class ConnectorFactory
 
     private static function makeNightsBridge(Partner $partner): NightsBridgeConnector
     {
+        self::requireVerified($partner);
+
         $config = $partner->connector_config ?? [];
         $bbid = $config['bbid'] ?? '';
         $apiKey = $config['api_key'] ?? '';
@@ -91,6 +110,8 @@ class ConnectorFactory
 
     private static function makeHopeCloud(Partner $partner): HopeCloudConnector
     {
+        self::requireVerified($partner);
+
         $config = $partner->connector_config ?? [];
         $apiKey = $config['api_key'] ?? '';
         $accountId = $config['account_id'] ?? '';
@@ -109,6 +130,8 @@ class ConnectorFactory
 
     private static function makeWetu(Partner $partner): WetuConnector
     {
+        self::requireVerified($partner);
+
         $config = $partner->connector_config ?? [];
         $apiKey = $config['api_key'] ?? '';
 

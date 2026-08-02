@@ -113,6 +113,19 @@ class PartnerResource extends Resource
                                     ->keyLabel('Key')
                                     ->valueLabel('Value')
                                     ->visible(fn (Get $get) => filled($get('connector_type'))),
+
+                                Forms\Components\Placeholder::make('connector_verified_status')
+                                    ->label('Verification status')
+                                    ->content(function (?Partner $record): string {
+                                        if (! $record?->connector_type) {
+                                            return '—';
+                                        }
+
+                                        return $record->connector_verified_at !== null
+                                            ? 'Verified '.$record->connector_verified_at->diffForHumans()
+                                            : 'Pending review — this may have been submitted by the partner themselves. Check the credentials work, then save this tab to mark it verified.';
+                                    })
+                                    ->visible(fn (Get $get) => filled($get('connector_type'))),
                             ]),
                     ]),
             ]);

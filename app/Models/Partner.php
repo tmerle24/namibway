@@ -27,6 +27,7 @@ use Spatie\Translatable\HasTranslations;
  * @property Carbon|null $claim_rejected_at
  * @property ConnectorType|null $connector_type
  * @property array<string, mixed>|null $connector_config
+ * @property Carbon|null $connector_verified_at
  */
 class Partner extends Model
 {
@@ -52,6 +53,7 @@ class Partner extends Model
         'claim_rejected_at',
         'connector_type',
         'connector_config',
+        'connector_verified_at',
     ];
 
     protected $casts = [
@@ -60,6 +62,7 @@ class Partner extends Model
         'claim_token_sent_at' => 'datetime',
         'claimed_at' => 'datetime',
         'claim_rejected_at' => 'datetime',
+        'connector_verified_at' => 'datetime',
     ];
 
     /**
@@ -84,5 +87,41 @@ class Partner extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(PartnerMessage::class);
+    }
+
+    /**
+     * Applies a connector type/credential change, whether it came from staff
+     * (admin Filament panel — trusted immediately, since they've reviewed
+     * what they typed) or from the owner themselves (partner portal or the
+     * token-based /listings/{slug}/edit page — credentials go in, but stay
+     * unverified until staff actually checks them). Doesn't save(); caller
+     * does that once other attributes are set too.
+     *
+     * ConnectorFactory refuses to build a live connector until
+     * connector_verified_at is set, so an owner-submitted typo can't reach
+     * real guest bookings before someone here has looked at it.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    public function setConnectorSetup(?string $type, array $config, bool $trustedSource): void
+    {
+        $changed = $this->connector_type?->value !== $type
+            || ($this->connector_config ?? []) !== $config;
+
+        $verifiedAt = match (true) {
+            $trustedSource => $type !== null ? now() : null,
+            $changed => null,
+            default => $this->connector_verified_at,
+        };
+
+        // fill() rather than direct property assignment: connector_type/
+        // connector_verified_at go through Eloquent's enum/datetime casts on
+        // write this way, so callers can pass the plain scalar values
+        // collapseConfigForSave()/collapseConnectorConfig() already produce.
+        $this->fill([
+            'connector_type' => $type,
+            'connector_config' => $config,
+            'connector_verified_at' => $verifiedAt,
+        ]);
     }
 }
