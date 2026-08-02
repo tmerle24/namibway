@@ -94,6 +94,27 @@
             }
 
             .nwh footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 12.5px; }
+
+            .nwh .layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 40px; align-items: start; }
+            .nwh nav.toc { position: sticky; top: 32px; display: flex; flex-direction: column; gap: 2px; }
+            .nwh nav.toc .navlabel {
+                font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+                color: var(--ink-soft); margin-bottom: 8px;
+            }
+            .nwh nav.toc a {
+                text-decoration: none; color: var(--ink-soft); font-size: 13.5px; font-weight: 600;
+                padding: 7px 10px; border-radius: 7px;
+            }
+            .nwh nav.toc a:hover { color: var(--ink); background: var(--paper-2); }
+            .nwh main { min-width: 0; }
+            .nwh section { scroll-margin-top: 28px; }
+
+            @media (max-width: 760px) {
+                .nwh .layout { grid-template-columns: 1fr; gap: 20px; }
+                .nwh nav.toc { position: static; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+                .nwh nav.toc .navlabel { display: none; }
+                .nwh nav.toc a { background: var(--paper-2); }
+            }
         </style>
 
         <p class="eyebrow">NamibWay — Working Handbook</p>
@@ -107,7 +128,19 @@
             <div><dt>Start with</dt><dd>Accommodation, then Activities &amp; Vehicles</dd></div>
         </div>
 
-        <section>
+        <div class="layout">
+        <nav class="toc" aria-label="Sections">
+            <span class="navlabel">On this page</span>
+            <a href="#getting-started">Getting started</a>
+            <a href="#job-1">Complete a listing</a>
+            <a href="#job-2">Contact owners</a>
+            <a href="#priorities">Priorities</a>
+            <a href="#reporting">Reporting</a>
+            <a href="#rules">What not to do</a>
+        </nav>
+
+        <main>
+        <section id="getting-started">
             <div class="step-head"><span class="num">1</span><h2>Getting started</h2></div>
             <p class="section-note">NamibWay is an AI travel-planning site for Namibia. Travelers chat with "Kaia," our AI trip assistant, and get a bookable day-by-day itinerary — pulled together from real accommodation, activities, restaurants and vehicle rentals in our database. Your work directly improves what Kaia can recommend.</p>
 
@@ -118,7 +151,7 @@
             </div>
         </section>
 
-        <section>
+        <section id="job-1">
             <div class="step-head"><span class="num">2</span><h2>Job 1 — Complete a listing profile</h2></div>
             <p class="section-note">Every listing (a lodge, tour, restaurant, or rental vehicle) has a completion score out of 100. Your job is to raise it by filling in what's missing — using the business's own website, Google, Facebook, TripAdvisor, or a phone call when nothing is online.</p>
 
@@ -152,7 +185,7 @@
             <p><strong>Definition of "done":</strong> a listing is in good shape once its score is <strong>90% or higher</strong>. You don't need to chase 100% — some fields (like "activities on offer") genuinely don't apply to every place.</p>
         </section>
 
-        <section>
+        <section id="job-2">
             <div class="step-head"><span class="num">3</span><h2>Job 2 — Contact the owners</h2></div>
             <p class="section-note">Most of these businesses don't know they're listed on NamibWay yet. We want to let them know, invite them to take over (claim) their own page, and — where they use a booking system — get that connected.</p>
 
@@ -177,7 +210,7 @@
             <p>If an owner tells you they use a booking system — ResRequest, NightsBridge, hopeCloud, Wetu, or Namibia Wildlife Resorts' own system — just note which one on their Partner record (<em>Connector Type</em> field; see the <a href="{{ \App\Filament\Pages\BookingConnectorGuide::getUrl() }}">Booking Connector Guide</a> for details). You don't need to configure logins or API access yourself; that's a technical step we'll follow up on once we know which system is involved. If they don't use any booking software at all, that's completely normal for smaller operators — mark it "Manual" and move on.</p>
         </section>
 
-        <section>
+        <section id="priorities">
             <div class="step-head"><span class="num">4</span><h2>What to work on first</h2></div>
             <p class="section-note">276 listings need work in total. Not all matter equally: accommodation and activities are what Kaia actually builds itineraries around, so a well-documented lodge helps far more than a well-documented restaurant. Work in this order:</p>
 
@@ -193,7 +226,7 @@
             <p>Treat the first three rows (113 listings) as the first milestone — get those to 90%+ and their owners contacted before working through the restaurant list, which is larger but individually lower-stakes.</p>
         </section>
 
-        <section>
+        <section id="reporting">
             <div class="step-head"><span class="num">5</span><h2>Keeping us posted</h2></div>
             <p class="section-note">No formal reporting tool needed — a short weekly note is enough. Include:</p>
             <ul class="checklist">
@@ -204,7 +237,7 @@
             </ul>
         </section>
 
-        <section>
+        <section id="rules">
             <div class="step-head"><span class="num">6</span><h2>What not to do</h2></div>
             <ul class="checklist">
                 <li>Don't unpublish, delete, or merge listings — flag duplicates or clearly wrong entries instead of removing them yourself</li>
@@ -213,6 +246,8 @@
                 <li>Don't promise commission rates, pricing, or contract terms to a partner — pass those questions on</li>
             </ul>
         </section>
+        </main>
+        </div>
 
         <footer>
             Questions any time — reach out to Adriano or Till directly. This handbook covers the day-to-day; anything unusual is always fine to ask about rather than guess.

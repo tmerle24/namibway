@@ -138,7 +138,7 @@
     <div class="nw-guide">
         <div class="page">
             <header class="header">
-                <div class="eyebrow">Filament Admin · Partner &amp; Listings</div>
+                <div class="eyebrow">NamibWay Admin · Partner &amp; Listings</div>
                 <p>Which fields need to be filled in where so a listing gets real availability &amp; reservations
                     via ResConnect, NightsBridge, hopeCloud, NamibWay's own booking system, Wetu, or NWR —
                     partner by partner, listing by listing.</p>
