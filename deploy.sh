@@ -60,20 +60,20 @@ php artisan down --retry=15 || true
 
 if [ "$FIRST_INSTALL" = false ]; then
    echo "═══ 2/11 Git Pull ($BRANCH) ═══"
-   OLD_COMMIT=$(git rev-parse HEAD)
    git fetch origin "$BRANCH"
    git reset --hard "origin/$BRANCH"
-   NEW_COMMIT=$(git rev-parse HEAD)
 else
    echo "═══ 2/11 Erstinstallation — kein Pull nötig (frisch geklont) ═══"
 fi
 
 echo "═══ 3/11 Composer ═══"
-if [ "$FIRST_INSTALL" = true ] || ! git diff --quiet "$OLD_COMMIT" "$NEW_COMMIT" -- composer.lock; then
-    composer install --no-dev --optimize-autoloader
-else
-    echo "  → composer.lock unverändert, übersprungen"
-fi
+# Immer installieren, nicht nur bei geändertem composer.lock: ein Diff gegen den
+# letzten HEAD geht davon aus, dass der letzte Deploy-Lauf vollständig durchlief.
+# Ist er das nicht (z.B. Abbruch nach dem Pull, aber vor/während composer install),
+# hat sich composer.lock bereits "bewegt" und der Diff sieht keine Änderung mehr —
+# das install wird dann dauerhaft übersprungen, obwohl vendor/ nie aktualisiert wurde.
+# composer install ist bei unveränderten Dependencies ohnehin schnell (paar Sekunden).
+composer install --no-dev --optimize-autoloader
 
 if [ "$SKIP_NPM" = false ]; then
     echo "═══ 4/11 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
@@ -81,9 +81,8 @@ if [ "$SKIP_NPM" = false ]; then
     php artisan route:clear
 
     echo "═══ 5/11 npm install + build ═══"
-    if [ "$FIRST_INSTALL" = true ] || ! git diff --quiet "$OLD_COMMIT" "$NEW_COMMIT" -- package-lock.json package.json; then
-        npm ci
-    fi
+    # Gleiches Argument wie bei composer oben: immer installieren, nicht per Diff überspringen.
+    npm ci
     export NODE_OPTIONS="--max-old-space-size=3072"
     npm run build
 else
