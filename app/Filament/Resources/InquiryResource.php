@@ -20,7 +20,9 @@ class InquiryResource extends Resource
 
     protected static ?string $navigationGroup = 'Messaging';
 
-    protected static ?string $navigationLabel = 'Customers';
+    protected static ?string $navigationLabel = 'Inquiries';
+
+    protected static ?int $navigationSort = 3;
 
     public static function getNavigationBadge(): ?string
     {

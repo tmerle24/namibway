@@ -52,10 +52,11 @@ class AdminPanelProvider extends PanelProvider
                 Pages\Dashboard::class,
             ])
             ->navigationGroups([
-                NavigationGroup::make('Content')->collapsed(),
+                NavigationGroup::make('Content'),
                 NavigationGroup::make('Messaging')->collapsed(),
                 NavigationGroup::make('Documentation')->collapsed(),
                 NavigationGroup::make('Interfaces')->collapsed(),
+                NavigationGroup::make('Settings')->collapsed(),
             ])
             ->navigationItems([
                 // Links out to the Scribe-generated static docs (see config/scribe.php,

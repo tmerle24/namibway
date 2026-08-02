@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\DestinationResource\Pages;
+use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
 use App\Models\Destination;
 use Filament\Forms;
@@ -20,7 +21,9 @@ class DestinationResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-map-pin';
 
-    protected static ?string $navigationGroup = 'Content';
+    protected static ?string $navigationGroup = 'Settings';
+
+    protected static ?int $navigationSort = 10;
 
     public static function form(Form $form): Form
     {
@@ -31,6 +34,8 @@ class DestinationResource extends Resource
                     ->disk('r2')
                     ->directory('regions')
                     ->imageEditor()
+                    ->fetchFileInformation(false)
+                    ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('name')
                     ->required()

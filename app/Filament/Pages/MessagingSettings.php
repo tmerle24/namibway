@@ -23,9 +23,11 @@ class MessagingSettings extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
 
-    protected static ?string $navigationGroup = 'Messaging';
+    protected static ?string $navigationGroup = 'Settings';
 
-    protected static ?string $navigationLabel = 'Settings';
+    protected static ?string $navigationLabel = 'Message Settings';
+
+    protected static ?int $navigationSort = 50;
 
     protected static ?string $title = 'Messaging settings';
 
