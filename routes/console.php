@@ -15,6 +15,13 @@ Schedule::command('backup:monitor')->dailyAt('04:00')->onOneServer();
 
 Schedule::command('listings:nightly-enrich')->dailyAt('01:00')->onOneServer();
 
+// One-off backlog of ~7000 listings with an address but no lat/lng (older data
+// predating ListingController::show()'s on-view geocode fallback). Cheap once the
+// backlog clears — the underlying query is a fast no-op — so it's fine to leave
+// running nightly as a safety net for new listings that slip through with an
+// address but no coordinates.
+Schedule::command('namibway:backfill-listing-coordinates')->dailyAt('01:30')->onOneServer()->withoutOverlapping();
+
 // withoutOverlapping isn't used elsewhere in this file, but two concurrent
 // POP3 sessions against the same mailbox risk double-processing a message.
 Schedule::command('namibway:fetch-partner-emails')->everyTwoMinutes()->onOneServer()->withoutOverlapping();
