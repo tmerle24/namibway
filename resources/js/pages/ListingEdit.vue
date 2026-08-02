@@ -30,6 +30,7 @@ interface Listing {
     gallery: string[];
     connector_type: string | null;
     connector_property_code: string | null;
+    wetu_id: string | null;
     has_connector_credentials: boolean;
 }
 
@@ -61,7 +62,15 @@ const form = reactive({
     price_currency: props.listing.price_currency ?? 'NAD',
     connector_type: props.listing.connector_type ?? '',
     connector_property_code: props.listing.connector_property_code ?? '',
+    wetu_id: props.listing.wetu_id ?? '',
 });
+
+// Mirrors the per-system field visibility in the admin Filament wizard
+// (BookingConnectorSchema::propertyFields) — API-key connectors share the
+// generic property/unit code, Wetu uses its own id column, and Native/Manual/
+// NWR need no per-listing identifier entered here at all.
+const PROPERTY_CODE_TYPES = ['resconnect', 'nightsbridge', 'hopecloud'];
+const CREDENTIALED_TYPES = ['resconnect', 'nightsbridge', 'hopecloud', 'wetu'];
 
 const newHighlight = ref('');
 const saving = ref<'draft' | 'preview' | 'publish' | 'unpublish' | null>(null);
@@ -155,6 +164,10 @@ function submit(mode: 'draft' | 'preview' | 'publish' | 'unpublish') {
     const payload: Record<string, FormDataConvertible> = {
         ...form,
         connector_type: form.connector_type === '' ? null : form.connector_type,
+        connector_property_code: PROPERTY_CODE_TYPES.includes(form.connector_type)
+            ? form.connector_property_code
+            : '',
+        wetu_id: form.connector_type === 'wetu' ? form.wetu_id : '',
         preview: props.preview_token ?? undefined,
         publish: mode === 'publish' ? true : undefined,
         unpublish: mode === 'unpublish' ? true : undefined,
@@ -495,16 +508,46 @@ function handleUnpublishClick() {
                         </option>
                     </select>
                 </label>
-                <label>
+                <label v-if="PROPERTY_CODE_TYPES.includes(form.connector_type)">
                     Property code
                     <input
                         v-model="form.connector_property_code"
                         type="text"
                         maxlength="100"
-                        placeholder="Property/unit ID in that system, if applicable"
+                        placeholder="Property/unit ID in that system"
                     />
                 </label>
-                <p v-if="form.connector_type" class="edit-section-hint">
+
+                <label v-else-if="form.connector_type === 'wetu'">
+                    Wetu Property ID
+                    <input
+                        v-model="form.wetu_id"
+                        type="text"
+                        maxlength="100"
+                        placeholder="Enables automatic content import from Wetu"
+                    />
+                </label>
+
+                <p v-else-if="form.connector_type === 'native'" class="edit-section-hint">
+                    No API access needed — bookings are checked and held live
+                    against NamibWay's own availability. Room types are
+                    managed for you in the admin panel.
+                </p>
+
+                <p v-else-if="form.connector_type === 'nwr'" class="edit-section-hint">
+                    NWR has no system we can connect to. Every request goes to
+                    our team as a manual review.
+                </p>
+
+                <p v-else-if="form.connector_type === 'manual'" class="edit-section-hint">
+                    Requests are sent to you as a plain email notification,
+                    without live availability checks.
+                </p>
+
+                <p
+                    v-if="form.connector_type && CREDENTIALED_TYPES.includes(form.connector_type)"
+                    class="edit-section-hint"
+                >
                     <template v-if="props.listing.has_connector_credentials">
                         API credentials are already connected for this booking
                         system.

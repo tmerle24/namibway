@@ -315,6 +315,7 @@ class ListingController extends Controller
                     ->values(),
                 'connector_type' => $connectorType?->value,
                 'connector_property_code' => $listing->connector_property_code,
+                'wetu_id' => $listing->wetu_id,
                 'has_connector_credentials' => filled($listing->partner?->connector_config),
             ],
             'connector_options' => collect(ConnectorType::cases())
@@ -356,6 +357,7 @@ class ListingController extends Controller
             'gallery_new.*' => ['image', 'max:8192'],
             'connector_type' => ['nullable', Rule::in(array_map(fn (ConnectorType $c) => $c->value, ConnectorType::cases()))],
             'connector_property_code' => ['nullable', 'string', 'max:100'],
+            'wetu_id' => ['nullable', 'string', 'max:100'],
             'publish' => ['nullable', 'boolean'],
             'unpublish' => ['nullable', 'boolean'],
             'terms_accepted' => ['nullable', 'boolean'],
@@ -382,6 +384,7 @@ class ListingController extends Controller
             'price_from' => $validated['price_from'] ?? null,
             'price_currency' => $validated['price_currency'] ?? null,
             'connector_property_code' => $validated['connector_property_code'] ?? null,
+            'wetu_id' => $validated['wetu_id'] ?? null,
         ], fn ($value) => $value !== null));
 
         if ($request->hasFile('image')) {
