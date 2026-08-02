@@ -49,6 +49,20 @@
             }
             .nwrn li.entry .subject { font-size: 14.5px; }
             .nwrn .empty { color: var(--ink-soft); font-size: 14px; }
+
+            .nwrn .release { margin: 0 0 30px; }
+            .nwrn .release:last-child { margin-bottom: 0; }
+            .nwrn .release-head {
+                display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;
+                padding-bottom: 8px; border-bottom: 1px solid var(--line);
+            }
+            .nwrn .release-head .hash {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 13px; font-weight: 700; color: var(--accent);
+                background: var(--accent-soft); border-radius: 6px; padding: 2px 8px;
+            }
+            .nwrn .release-head .when { color: var(--ink-soft); font-size: 13px; }
+            .nwrn .release .empty { padding: 4px 0; }
         </style>
 
         <p class="eyebrow">Documentation</p>
@@ -73,22 +87,40 @@
             </div>
         @endif
 
-        @if (empty($release['commits']))
+        @if (empty($release['releases']))
             <p class="empty">No release snapshot yet — this appears after the next deploy.</p>
         @else
-            <ul>
-                @php $lastDay = null; @endphp
-                @foreach ($release['commits'] as $commit)
-                    @if ($commit['date'] !== $lastDay)
-                        <li class="day">{{ \Illuminate\Support\Carbon::parse($commit['date'])->translatedFormat('j F Y') }}</li>
-                        @php $lastDay = $commit['date']; @endphp
+            @foreach ($release['releases'] as $pastRelease)
+                <div class="release">
+                    <div class="release-head">
+                        <span class="hash">v{{ $pastRelease['version'] }}</span>
+                        <span class="when">
+                            {{ $pastRelease['date'] }} {{ $pastRelease['time'] }}
+                            @if ($pastRelease['hash'])
+                                &middot; {{ $pastRelease['hash'] }}
+                            @endif
+                        </span>
+                    </div>
+
+                    @if (empty($pastRelease['commits']))
+                        <p class="empty">No new commits in this release.</p>
+                    @else
+                        <ul>
+                            @php $lastDay = null; @endphp
+                            @foreach ($pastRelease['commits'] as $commit)
+                                @if ($commit['date'] !== $lastDay)
+                                    <li class="day">{{ \Illuminate\Support\Carbon::parse($commit['date'])->translatedFormat('j F Y') }}</li>
+                                    @php $lastDay = $commit['date']; @endphp
+                                @endif
+                                <li class="entry">
+                                    <span class="hash">{{ $commit['hash'] }}</span>
+                                    <span class="subject">{{ $commit['subject'] }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
                     @endif
-                    <li class="entry">
-                        <span class="hash">{{ $commit['hash'] }}</span>
-                        <span class="subject">{{ $commit['subject'] }}</span>
-                    </li>
-                @endforeach
-            </ul>
+                </div>
+            @endforeach
         @endif
     </div>
 </x-filament-panels::page>

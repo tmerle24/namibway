@@ -16,10 +16,24 @@ class ReleaseVersion
         $path = storage_path('app/release/version.json');
 
         if (! File::exists($path)) {
-            return ['version' => null, 'build' => null, 'hash' => null, 'date' => null, 'time' => null, 'deployed_at' => null, 'commits' => []];
+            return ['version' => null, 'build' => null, 'hash' => null, 'date' => null, 'time' => null, 'deployed_at' => null, 'commits' => [], 'releases' => []];
         }
 
         $data = json_decode(File::get($path), associative: true);
+
+        // Older snapshots (written before release history existed) have no "releases"
+        // key — fall back to a single release built from the flat top-level fields.
+        $releases = $data['releases'] ?? (
+            isset($data['version']) ? [[
+                'version' => $data['version'] ?? null,
+                'build' => $data['build'] ?? null,
+                'hash' => $data['hash'] ?? null,
+                'date' => $data['date'] ?? null,
+                'time' => $data['time'] ?? null,
+                'deployed_at' => $data['deployed_at'] ?? null,
+                'commits' => $data['commits'] ?? [],
+            ]] : []
+        );
 
         return [
             'version' => $data['version'] ?? null,
@@ -29,6 +43,7 @@ class ReleaseVersion
             'time' => $data['time'] ?? null,
             'deployed_at' => $data['deployed_at'] ?? null,
             'commits' => $data['commits'] ?? [],
+            'releases' => $releases,
         ];
     }
 }

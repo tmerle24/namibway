@@ -30,6 +30,30 @@ class ReleaseNotesTest extends TestCase
             'commits' => [
                 ['hash' => 'abc1234', 'date' => now()->toDateString(), 'subject' => 'Add release notes page'],
             ],
+            'releases' => [
+                [
+                    'version' => '1.0.187',
+                    'build' => 187,
+                    'hash' => 'abc1234',
+                    'date' => now()->toDateString(),
+                    'time' => '14:23',
+                    'deployed_at' => now()->toIso8601String(),
+                    'commits' => [
+                        ['hash' => 'abc1234', 'date' => now()->toDateString(), 'subject' => 'Add release notes page'],
+                    ],
+                ],
+                [
+                    'version' => '1.0.180',
+                    'build' => 180,
+                    'hash' => 'def5678',
+                    'date' => now()->subDay()->toDateString(),
+                    'time' => '09:10',
+                    'deployed_at' => now()->subDay()->toIso8601String(),
+                    'commits' => [
+                        ['hash' => 'def5678', 'date' => now()->subDay()->toDateString(), 'subject' => 'Fix earlier bug'],
+                    ],
+                ],
+            ],
         ]));
     }
 
@@ -55,6 +79,18 @@ class ReleaseNotesTest extends TestCase
             ->assertSee('v1.0.187')
             ->assertSee('abc1234')
             ->assertSee('Add release notes page');
+    }
+
+    public function test_release_notes_page_shows_past_releases_too(): void
+    {
+        $this->writeSnapshot();
+
+        $this->actingAs($this->admin())
+            ->get('/admin/release-notes')
+            ->assertOk()
+            ->assertSee('v1.0.180')
+            ->assertSee('def5678')
+            ->assertSee('Fix earlier bug');
     }
 
     public function test_release_notes_page_handles_missing_snapshot_gracefully(): void
