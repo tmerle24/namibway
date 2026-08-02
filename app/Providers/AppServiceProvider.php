@@ -49,7 +49,7 @@ class AppServiceProvider extends ServiceProvider
             /** @var ApiClient|null $user */
             $user = $request->user();
 
-            $tokenId = $user instanceof ApiClient ? $user->currentAccessToken()?->id : null;
+            $tokenId = $user instanceof ApiClient ? $user->currentAccessToken()->id : null;
 
             return Limit::perMinute(60)->by($tokenId ?: $request->ip());
         });
