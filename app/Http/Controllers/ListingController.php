@@ -9,6 +9,7 @@ use App\Mail\NewInquiryReceived;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Review;
+use App\Services\Region\PhoneNumberFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -108,6 +109,8 @@ class ListingController extends Controller
         // phone number.
         $coordinatesFromAddress = $listing->address ? self::parseCoordinateAddress($listing->address) : null;
 
+        $phone = app(PhoneNumberFormatter::class)->format($listing->phone);
+
         return Inertia::render('ListingDetail', [
             'listing' => [
                 'id' => $listing->id,
@@ -130,7 +133,8 @@ class ListingController extends Controller
                     : [],
                 'region' => $listing->region,
                 'address' => $coordinatesFromAddress ? null : $listing->address,
-                'phone' => $listing->phone,
+                'phone' => $phone['display'] ?? null,
+                'phone_href' => $phone['href'] ?? null,
                 'website' => $listing->website,
                 'latitude' => $listing->latitude !== null
                     ? (float) $listing->latitude
