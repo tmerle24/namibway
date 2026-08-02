@@ -368,37 +368,6 @@
     font-size: 11.5px;
     font-style: italic;
 }
-.kaia-page .trip-summary-text {
-    color: #5b5346;
-    font-size: 14px;
-    line-height: 1.55;
-    margin-top: 10px;
-}
-.kaia-page .trip-meta-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 14px;
-}
-.kaia-page .trip-meta-chip {
-    display: flex;
-    align-items: baseline;
-    gap: 5px;
-    background: var(--sand);
-    border: 1px solid var(--sand-dark);
-    border-radius: 999px;
-    padding: 5px 12px;
-    font-size: 12px;
-    color: #4a4438;
-    line-height: 1.3;
-}
-.kaia-page .trip-meta-icon {
-    font-size: 12px;
-}
-.kaia-page .trip-meta-text strong {
-    font-weight: 600;
-    color: var(--rust-dark);
-}
 
 /* ---------- ITINERARY VARIANTS ---------- */
 .kaia-page .variants {
@@ -491,7 +460,7 @@
     border-top: 1px solid var(--sand-dark);
     font-size: 13.5px;
 }
-.kaia-page .day-item:first-child > .day-row {
+.kaia-page .day-row:first-of-type {
     border-top: none;
 }
 .kaia-page .day-num {
@@ -507,15 +476,6 @@
     color: #7a6f63;
     font-weight: 400;
     margin-top: 2px;
-}
-.kaia-page .day-thumb {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    border-radius: 8px;
-    object-fit: cover;
-    border: 1px solid var(--sand-dark);
-    flex-shrink: 0;
 }
 .kaia-page .day-detail div {
     margin-bottom: 2px;
@@ -542,9 +502,6 @@
     align-items: baseline;
     gap: 6px;
     flex-wrap: wrap;
-}
-.kaia-page .line-item-value {
-    display: contents;
 }
 .kaia-page .item-price {
     color: #8a7f68;
@@ -914,8 +871,7 @@
 }
 .kaia-page .featured-pick-media {
     position: relative;
-    height: 320px;
-    align-self: center;
+    min-height: 260px;
 }
 .kaia-page .featured-pick-img {
     width: 100%;
@@ -1078,105 +1034,6 @@
     margin-bottom: 4px;
 }
 
-/* ---------- TOP DESTINATIONS (hero showcase) ---------- */
-.kaia-page .destinations-scroll-wrap {
-    position: relative;
-}
-.kaia-page .destinations-scroll {
-    display: flex;
-    gap: 16px;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    padding: 4px 2px 12px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-.kaia-page .destinations-scroll::-webkit-scrollbar {
-    display: none;
-}
-.kaia-page .destinations-arrow {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 1px solid var(--sand-dark);
-    background: var(--paper);
-    color: var(--ink);
-    font-size: 18px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(36, 28, 21, 0.15);
-}
-.kaia-page .destinations-arrow:hover {
-    background: var(--sand);
-}
-.kaia-page .destinations-arrow--prev {
-    left: -18px;
-}
-.kaia-page .destinations-arrow--next {
-    right: -18px;
-}
-@media (max-width: 640px) {
-    .kaia-page .destinations-arrow {
-        display: none;
-    }
-}
-.kaia-page .destination-card {
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-    width: 220px;
-    display: block;
-    padding: 0;
-    text-align: left;
-    background: var(--paper);
-    border: 1px solid var(--sand-dark);
-    border-radius: 14px;
-    overflow: hidden;
-    font: inherit;
-    color: inherit;
-    transition: transform 0.15s ease;
-}
-.kaia-page .destination-card:hover {
-    transform: translateY(-3px);
-}
-.kaia-page .destination-thumb {
-    aspect-ratio: 4 / 3;
-    overflow: hidden;
-    background: var(--sand);
-}
-.kaia-page .destination-thumb-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-.kaia-page .destination-body {
-    padding: 12px 14px 16px;
-}
-.kaia-page .destination-body h3 {
-    font-size: 16px;
-    margin-bottom: 4px;
-}
-.kaia-page .destination-body p {
-    font-size: 12.5px;
-    color: #5b5346;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-@media (max-width: 640px) {
-    .kaia-page .destination-card {
-        width: 180px;
-    }
-}
-
 .kaia-page footer {
     max-width: 1040px;
     margin: 0 auto;
@@ -1330,15 +1187,13 @@
     }
 }
 .kaia-page .steckbrief,
-.kaia-page .contact-card,
-.kaia-page .location-card {
+.kaia-page .contact-card {
     margin-top: 28px;
     padding-top: 24px;
     border-top: 1px solid var(--sand-dark);
 }
 .kaia-page .steckbrief h3,
-.kaia-page .contact-card h3,
-.kaia-page .location-card h3 {
+.kaia-page .contact-card h3 {
     font-size: 16px;
     margin-bottom: 12px;
 }
@@ -2012,6 +1867,10 @@
 .kaia-page #after-sales-section {
     border-top: 1px solid var(--sand-dark, #d6c9b5);
 }
+.kaia-page .how-it-works {
+    border-top: 1px solid var(--sand-dark, #d6c9b5);
+}
+
 
 /* ── How it works — two-path separator ── */
 .kaia-page .how-it-works {
@@ -2019,7 +1878,6 @@
     grid-template-columns: 1fr auto 1fr;
     align-items: start;
     gap: 0 24px;
-    padding: 56px 0 48px;
     margin-top: 16px;
 }
 @media (max-width: 680px) {
