@@ -55,18 +55,18 @@ fi
 
 # ── Ab hier: normaler Update-/Deploy-Flow ───────────────────────────
 
-echo "═══ 1/11 Maintenance-Mode AN ═══"
+echo "═══ 1/12 Maintenance-Mode AN ═══"
 php artisan down --retry=15 || true
 
 if [ "$FIRST_INSTALL" = false ]; then
-   echo "═══ 2/11 Git Pull ($BRANCH) ═══"
+   echo "═══ 2/12 Git Pull ($BRANCH) ═══"
    git fetch origin "$BRANCH"
    git reset --hard "origin/$BRANCH"
 else
-   echo "═══ 2/11 Erstinstallation — kein Pull nötig (frisch geklont) ═══"
+   echo "═══ 2/12 Erstinstallation — kein Pull nötig (frisch geklont) ═══"
 fi
 
-echo "═══ 3/11 Composer ═══"
+echo "═══ 3/12 Composer ═══"
 # Immer installieren, nicht nur bei geändertem composer.lock: ein Diff gegen den
 # letzten HEAD geht davon aus, dass der letzte Deploy-Lauf vollständig durchlief.
 # Ist er das nicht (z.B. Abbruch nach dem Pull, aber vor/während composer install),
@@ -76,45 +76,45 @@ echo "═══ 3/11 Composer ═══"
 composer install --no-dev --optimize-autoloader
 
 if [ "$SKIP_NPM" = false ]; then
-    echo "═══ 4/11 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
+    echo "═══ 4/12 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
     php artisan config:clear
     php artisan route:clear
 
-    echo "═══ 5/11 npm install + build ═══"
+    echo "═══ 5/12 npm install + build ═══"
     # Gleiches Argument wie bei composer oben: immer installieren, nicht per Diff überspringen.
     npm ci
     export NODE_OPTIONS="--max-old-space-size=3072"
     npm run build
 else
-    echo "═══ 4-5/11 npm build übersprungen (--no-npm) ═══"
+    echo "═══ 4-5/12 npm build übersprungen (--no-npm) ═══"
 fi
 
 if [ "$SKIP_MIGRATE" = false ]; then
-    echo "═══ 6/11 Migrationen ═══"
+    echo "═══ 6/12 Migrationen ═══"
     php artisan migrate --force
 else
-    echo "═══ 6/11 Migrationen übersprungen (--no-migrate) ═══"
+    echo "═══ 6/12 Migrationen übersprungen (--no-migrate) ═══"
 fi
 
-echo "═══ 7/11 Storage-Link ═══"
+echo "═══ 7/12 Storage-Link ═══"
 php artisan storage:link 2>/dev/null || true
 
-echo "═══ 8/11 API-Doku generieren (Scribe) ═══"
+echo "═══ 8/12 API-Doku generieren (Scribe) ═══"
 php artisan scribe:generate --force
 
-echo "═══ 9/11 Caches neu aufbauen ═══"
+echo "═══ 9/12 Caches neu aufbauen ═══"
 php artisan config:cache
 php artisan route:cache
 php artisan view:clear
 php artisan view:cache
 php artisan event:cache
 
-echo "═══ 10/11 Laravel-Scheduler-Cron sicherstellen (Backups u.a. laufen darüber) ═══"
+echo "═══ 10/12 Laravel-Scheduler-Cron sicherstellen (Backups u.a. laufen darüber) ═══"
 CRON_LINE="* * * * * cd $APP_DIR && php artisan schedule:run >> /dev/null 2>&1"
 (crontab -l 2>/dev/null | grep -qF "$APP_DIR" && echo "  → Cron-Eintrag bereits vorhanden") || \
     (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
 
-echo "═══ 11/11 Verzeichnis-Rechte, Horizon neu starten, Maintenance-Mode AUS ═══"
+echo "═══ 11/12 Verzeichnis-Rechte, Horizon neu starten, Maintenance-Mode AUS ═══"
 sudo chown -R "$(whoami):www-data" "$APP_DIR"
 sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
@@ -123,6 +123,28 @@ sudo find "$APP_DIR/bootstrap/cache" -type f -exec chmod 664 {} \;
 
 sudo supervisorctl restart "${QUEUE_WORKER_NAME}:*" 2>/dev/null || echo "  → Supervisor-Worker '$QUEUE_WORKER_NAME' noch nicht eingerichtet, übersprungen"
 php artisan up
+
+echo "═══ 12/12 Health-Check ═══"
+HEALTH_URL="https://www.namibway.com/up"
+HEALTH_OK=false
+for i in 1 2 3 4 5; do
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$HEALTH_URL" || echo "000")
+    if [ "$HTTP_CODE" = "200" ]; then
+        HEALTH_OK=true
+        break
+    fi
+    echo "  → Versuch $i/5: HTTP $HTTP_CODE, warte 3s..."
+    sleep 3
+done
+
+if [ "$HEALTH_OK" = false ]; then
+    echo ""
+    echo "❌ Health-Check fehlgeschlagen: $HEALTH_URL antwortet nicht mit 200 (zuletzt: HTTP $HTTP_CODE)."
+    echo "   Deploy ist technisch durchgelaufen, aber die Seite scheint kaputt zu sein — bitte prüfen:"
+    echo "   tail -100 $APP_DIR/storage/logs/laravel.log"
+    exit 1
+fi
+echo "  → $HEALTH_URL antwortet mit 200"
 
 echo ""
 if [ "$FIRST_INSTALL" = true ]; then
