@@ -50,13 +50,20 @@
                 padding: 16px 18px; margin: 14px 0;
             }
 
-            .nwh .quickfacts {
-                display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px;
-                background: var(--paper-2); border: 1px solid var(--line); border-radius: 10px;
-                padding: 20px 22px; margin-bottom: 8px;
+            .nwh .quickfacts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 8px; }
+            .nwh .quickfacts > div {
+                background: var(--paper-2); border: 1px solid var(--line); border-radius: 12px;
+                padding: 16px 16px 18px;
             }
-            .nwh .quickfacts dt { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); font-weight: 700; margin: 0; }
-            .nwh .quickfacts dd { margin: 2px 0 0; font-size: 14.5px; }
+            .nwh .quickfacts dt { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--gold); font-weight: 700; margin: 0; }
+            .nwh .quickfacts dd { margin: 6px 0 0; font-size: 14.5px; }
+
+            @media (max-width: 900px) {
+                .nwh .quickfacts { grid-template-columns: 1fr 1fr; }
+            }
+            @media (max-width: 520px) {
+                .nwh .quickfacts { grid-template-columns: 1fr; }
+            }
 
             .nwh ol.steps { list-style: none; margin: 0; padding: 0; }
             .nwh ol.steps li { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px dashed var(--line); }
@@ -118,7 +125,6 @@
         </style>
 
         <p class="eyebrow">NamibWay — Working Handbook</p>
-        <h1>Listings &amp; Partner Outreach</h1>
         <p class="subtitle">A practical guide for building out NamibWay's property listings and getting the businesses behind them onto the platform. No coding, no technical background needed — just careful research and friendly phone/email work.</p>
 
         <div class="quickfacts">
