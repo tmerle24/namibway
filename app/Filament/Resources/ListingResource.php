@@ -72,7 +72,16 @@ class ListingResource extends Resource
                                 Forms\Components\TextInput::make('name')
                                     ->required()
                                     ->maxLength(255)
-                                    ->live(onBlur: true)
+                                    // Only needed live on 'create' — the auto-slug callback below
+                                    // is a no-op on 'edit'. Forcing wire:model.blur unconditionally
+                                    // fired a separate sync request on every blur, which could race
+                                    // the header Save button's own submit request and silently save
+                                    // a stale value (confirmed via a captured request payload where
+                                    // updates.data.name lagged behind the field actually on screen).
+                                    // Deferred (plain wire:model, no modifier) on 'edit' bundles the
+                                    // latest value into the save request itself — no separate request,
+                                    // no race.
+                                    ->live(onBlur: true, condition: fn (string $operation): bool => $operation === 'create')
                                     ->afterStateUpdated(fn (string $operation, ?string $state, Forms\Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null)
                                     ->columnSpanFull(),
                                 Forms\Components\RichEditor::make('description')
