@@ -101,6 +101,13 @@ class ListingController extends Controller
         // right to publish them without consent (see Listing::approvePendingPhotos()).
         $canApprovePhotos = $isAdmin || $isOwnerPreview;
 
+        // Some partner websites publish only GPS coordinates, not a street address —
+        // the AI extractor then faithfully saves that coordinate text into `address`
+        // (see AIListingExtractorService). Detect that case so the public page shows
+        // a working map instead of a raw "S20°47.482 E016°42.704" string next to the
+        // phone number.
+        $coordinatesFromAddress = $listing->address ? self::parseCoordinateAddress($listing->address) : null;
+
         return Inertia::render('ListingDetail', [
             'listing' => [
                 'id' => $listing->id,
@@ -122,11 +129,15 @@ class ListingController extends Controller
                     ? collect($listing->pending_gallery ?? [])->map(fn (string $path) => self::resolveMediaUrl($path))->values()
                     : [],
                 'region' => $listing->region,
-                'address' => $listing->address,
+                'address' => $coordinatesFromAddress ? null : $listing->address,
                 'phone' => $listing->phone,
                 'website' => $listing->website,
-                'latitude' => $listing->latitude !== null ? (float) $listing->latitude : null,
-                'longitude' => $listing->longitude !== null ? (float) $listing->longitude : null,
+                'latitude' => $listing->latitude !== null
+                    ? (float) $listing->latitude
+                    : $coordinatesFromAddress[0] ?? null,
+                'longitude' => $listing->longitude !== null
+                    ? (float) $listing->longitude
+                    : $coordinatesFromAddress[1] ?? null,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
                 'rating' => $listing->rating !== null ? (float) $listing->rating : null,
@@ -146,6 +157,7 @@ class ListingController extends Controller
             'can_publish' => $isAdmin || $isOwnerPreview,
             'can_approve_photos' => $canApprovePhotos,
             'preview_token' => $isOwnerPreview ? $request->input('preview') : null,
+            'claim_url' => self::claimUrl($listing, $isOwnerPreview),
         ]);
     }
 
@@ -269,6 +281,7 @@ class ListingController extends Controller
                 ->map(fn (ConnectorType $c) => ['value' => $c->value, 'label' => $c->label()])
                 ->values(),
             'preview_token' => self::hasValidPreviewToken($listing, $request) ? $request->input('preview') : null,
+            'claim_url' => self::claimUrl($listing, self::hasValidPreviewToken($listing, $request)),
         ]);
     }
 
@@ -382,6 +395,45 @@ class ListingController extends Controller
     private static function isAdmin(): bool
     {
         return auth()->check() && auth()->user()->is_admin;
+    }
+
+    /**
+     * Matches degrees-decimal-minutes GPS text like "S20°47.482 E016°42.704", the
+     * format Namibian lodge sites tend to publish in place of a street address.
+     *
+     * @return array{0: float, 1: float}|null [latitude, longitude]
+     */
+    private static function parseCoordinateAddress(string $address): ?array
+    {
+        $pattern = '/^([NS])\s*(\d{1,2})°\s*(\d{1,2}(?:\.\d+)?)[\'′]?\s*([EW])\s*(\d{1,3})°\s*(\d{1,2}(?:\.\d+)?)[\'′]?/i';
+
+        if (! preg_match($pattern, trim($address), $m)) {
+            return null;
+        }
+
+        $latitude = ((float) $m[2]) + ((float) $m[3]) / 60;
+        $longitude = ((float) $m[5]) + ((float) $m[6]) / 60;
+
+        return [
+            strtoupper($m[1]) === 'S' ? -$latitude : $latitude,
+            strtoupper($m[4]) === 'W' ? -$longitude : $longitude,
+        ];
+    }
+
+    /**
+     * The self-service preview/edit link only gets someone as far as editing content —
+     * it was never wired to the actual "create an account" step (a separate /claim/{token}
+     * URL only ever sent as a second link in the invite email). Surface it here too, but
+     * only while there's still an account worth creating: once claimed, the owner already
+     * has one and should use the Filament partner portal instead.
+     */
+    private static function claimUrl(Listing $listing, bool $isOwnerPreview): ?string
+    {
+        if (! $isOwnerPreview || ! $listing->partner || $listing->partner->claimed_at !== null) {
+            return null;
+        }
+
+        return url("/claim/{$listing->partner->claim_token}");
     }
 
     /** The property owner's claim_token, already emailed to them, doubles as a preview key. */

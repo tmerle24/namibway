@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
 import { Form, Head, Link, router } from '@inertiajs/vue3';
-import { Globe, Pencil } from '@lucide/vue';
+import { Globe, Pencil, UserPlus } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
@@ -96,6 +96,7 @@ const props = defineProps<{
     can_publish?: boolean;
     can_approve_photos?: boolean;
     preview_token?: string | null;
+    claim_url?: string | null;
 }>();
 
 const showPublishModal = ref(false);
@@ -377,6 +378,14 @@ const websiteUrl = computed(
                         Publish
                     </button>
                 </template>
+                <a
+                    v-if="props.claim_url"
+                    :href="props.claim_url"
+                    class="owner-header-link owner-header-link--claim"
+                >
+                    <UserPlus :size="14" />
+                    Claim account
+                </a>
                 <CurrencySwitcher />
                 <LocaleSwitcher />
                 <Link :href="backHref" class="detail-back">{{
@@ -958,5 +967,15 @@ const websiteUrl = computed(
 
 .owner-header-link--publish:hover {
     background: var(--rust-dark, #92400e);
+}
+
+.owner-header-link--claim {
+    background: transparent;
+    color: var(--rust, #b45309);
+    border: 1px solid var(--rust, #b45309);
+}
+
+.owner-header-link--claim:hover {
+    background: #fdf6ec;
 }
 </style>

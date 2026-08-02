@@ -2,7 +2,7 @@
 import '../../css/kaia-home.css';
 import type { FormDataConvertible } from '@inertiajs/core';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ArrowLeft, Eye, EyeOff, Send, X } from '@lucide/vue';
+import { ArrowLeft, Eye, EyeOff, Send, UserPlus, X } from '@lucide/vue';
 import { reactive, ref } from 'vue';
 import AdminBar from '@/components/AdminBar.vue';
 import LocationPicker from '@/components/LocationPicker.vue';
@@ -42,6 +42,7 @@ const props = defineProps<{
     listing: Listing;
     connector_options: ConnectorOption[];
     preview_token?: string | null;
+    claim_url?: string | null;
 }>();
 
 const form = reactive({
@@ -226,14 +227,24 @@ function handleUnpublishClick() {
             <Link :href="previewUrl" class="brand"
                 ><img :src="logoDark" alt="NamibWay" class="brand-logo"
             /></Link>
-            <Link
-                :href="previewUrl"
-                class="detail-back"
-                style="display: inline-flex; align-items: center; gap: 5px"
-            >
-                <ArrowLeft :size="14" />
-                Back to preview
-            </Link>
+            <div class="detail-topbar-actions">
+                <a
+                    v-if="props.claim_url"
+                    :href="props.claim_url"
+                    class="owner-header-link owner-header-link--claim"
+                >
+                    <UserPlus :size="14" />
+                    Claim account
+                </a>
+                <Link
+                    :href="previewUrl"
+                    class="detail-back"
+                    style="display: inline-flex; align-items: center; gap: 5px"
+                >
+                    <ArrowLeft :size="14" />
+                    Back to preview
+                </Link>
+            </div>
         </div>
 
         <div class="edit-header">
@@ -561,6 +572,28 @@ function handleUnpublishClick() {
 </template>
 
 <style scoped>
+.owner-header-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.owner-header-link--claim {
+    background: transparent;
+    color: var(--rust, #b45309);
+    border: 1px solid var(--rust, #b45309);
+}
+
+.owner-header-link--claim:hover {
+    background: #fdf6ec;
+}
+
 .edit-header {
     max-width: 640px;
     margin: 32px auto 0;
