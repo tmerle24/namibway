@@ -23,6 +23,19 @@ class HomeController extends Controller
         'price_from', 'price_currency', 'rating', 'rating_count',
     ];
 
+    /**
+     * Types eligible for the homepage "cover story" pick. Restricted to
+     * categories that reliably have attractive photos — e.g. vehicle rental
+     * listings tend to have flat product/lot shots, not the kind of hero
+     * image a magazine front page wants. Revisit once the section is
+     * curated manually with vetted photos rather than picked automatically.
+     */
+    private const FEATURED_TYPES = [
+        ListingType::Accommodation,
+        ListingType::Activity,
+        ListingType::Restaurant,
+    ];
+
     public function __invoke(): Response
     {
         // Rotate the selection daily so the homepage doesn't always show the
@@ -77,10 +90,12 @@ class HomeController extends Controller
         return Listing::query()
             ->where('is_published', true)
             ->where('is_homepage_pick', true)
+            ->whereIn('type', self::FEATURED_TYPES)
             ->orderByRaw('MD5(id::text || ?)', [$daySeed])
             ->first(self::LISTING_COLUMNS)
             ?? Listing::query()
                 ->where('is_published', true)
+                ->whereIn('type', self::FEATURED_TYPES)
                 ->orderByRaw("(image IS NOT NULL OR json_array_length(COALESCE(gallery, '[]')) > 0) DESC")
                 ->orderByDesc('rating')
                 ->orderByRaw('MD5(id::text || ?)', [$daySeed])
