@@ -111,7 +111,7 @@
             <div class="step-head"><span class="num">1</span><h2>Getting started</h2></div>
             <p class="section-note">NamibWay is an AI travel-planning site for Namibia. Travelers chat with "Kaia," our AI trip assistant, and get a bookable day-by-day itinerary — pulled together from real accommodation, activities, restaurants and vehicle rentals in our database. Your work directly improves what Kaia can recommend.</p>
 
-            <p>You have your own login here — a username/email and a temporary password, sent separately. Please don't share this login with anyone or reuse a co-founder's account; each person needs their own so we can tell whose changes are whose, and so we can turn off access cleanly if your role ever changes.</p>
+            <p>You have your own login here — a username/email and a temporary password, sent separately. Please don't share this login with anyone or reuse Adriano's account; each person needs their own so we can tell whose changes are whose, and so we can turn off access cleanly if your role ever changes.</p>
 
             <div class="callout good">
                 <strong>First 10 minutes:</strong> click <em>Data Enrichment</em> in the left-hand menu. You'll land on a table of every listing with a completion score. That table and the stat tiles above it are your dashboard for everything in Section 2.
@@ -170,7 +170,7 @@
             <p>Small operators often won't respond to a first email. For accommodation, activity operators and vehicle rental companies especially, a short follow-up call 5–7 days later is worth it — these listings matter most to trip quality (see priorities below). For restaurants, one email is usually enough; a mass follow-up call round isn't a good use of time there.</p>
 
             <div class="callout">
-                <strong>If a partner asks about money, contracts, or commission terms:</strong> don't negotiate or promise anything — note what they asked and pass it to Till or your co-founder contact. Your role is data and relationships, not deal terms.
+                <strong>If a partner asks about money, contracts, or commission terms:</strong> don't negotiate or promise anything — note what they asked and pass it to Adriano or Till. Your role is data and relationships, not deal terms.
             </div>
 
             <h3>3.4 — Booking systems (if they mention one)</h3>
@@ -215,7 +215,7 @@
         </section>
 
         <footer>
-            Questions any time — reach out to your co-founder contact or Till directly. This handbook covers the day-to-day; anything unusual is always fine to ask about rather than guess.
+            Questions any time — reach out to Adriano or Till directly. This handbook covers the day-to-day; anything unusual is always fine to ask about rather than guess.
         </footer>
     </div>
 </x-filament-panels::page>
