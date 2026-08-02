@@ -6,6 +6,8 @@ import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
+import ExploreMap from '@/components/home/ExploreMap.vue';
+import type { ExploreMapMarker } from '@/components/home/ExploreMap.vue';
 import ImageLightbox from '@/components/ImageLightbox.vue';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
@@ -65,6 +67,9 @@ interface Listing {
     pending_image: string | null;
     pending_gallery: string[];
     region: string | null;
+    address: string | null;
+    latitude: number | null;
+    longitude: number | null;
     price_from: string | null;
     price_currency: string;
     rating: number | null;
@@ -142,6 +147,36 @@ const heroImage = computed(() => {
     const fallbacks = FALLBACK_HERO_IMAGES[props.listing.type];
 
     return fallbacks[props.listing.id % fallbacks.length];
+});
+
+const hasLocation = computed(
+    () =>
+        props.listing.latitude !== null && props.listing.longitude !== null,
+);
+
+const locationMarkers = computed<ExploreMapMarker[]>(() => {
+    if (props.listing.latitude === null || props.listing.longitude === null) {
+        return [];
+    }
+
+    return [
+        {
+            title: props.listing.name,
+            typeLabel: t(`listing.types.${props.listing.type}`),
+            image: heroImage.value,
+            slug: null,
+            latitude: props.listing.latitude,
+            longitude: props.listing.longitude,
+        },
+    ];
+});
+
+const directionsUrl = computed(() => {
+    if (props.listing.latitude === null || props.listing.longitude === null) {
+        return null;
+    }
+
+    return `https://www.google.com/maps/search/?api=1&query=${props.listing.latitude},${props.listing.longitude}`;
 });
 </script>
 
@@ -404,6 +439,28 @@ const heroImage = computed(() => {
             class="photo-attribution"
             v-html="'Photos: ' + props.listing.photos_attribution"
         ></p>
+
+        <section v-if="hasLocation || props.listing.address">
+            <div class="section-head">
+                <h2>{{ t('listing.location.title') }}</h2>
+            </div>
+            <p v-if="props.listing.address" class="detail-address">
+                {{ props.listing.address }}
+            </p>
+            <ExploreMap
+                v-if="hasLocation"
+                :markers="locationMarkers"
+                :map-id="`listing-map-${props.listing.id}`"
+            />
+            <a
+                v-if="directionsUrl"
+                :href="directionsUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="detail-directions-link"
+                >{{ t('listing.location.directions') }}</a
+            >
+        </section>
 
         <section>
             <div class="detail-grid">
@@ -699,6 +756,21 @@ const heroImage = computed(() => {
     padding: 0 24px;
     font-size: 12px;
     color: #8a8171;
+}
+
+.detail-address {
+    margin: 0 0 4px;
+    color: var(--ink-light, #5c5347);
+    font-size: 15px;
+}
+
+.detail-directions-link {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--rust, #b45309);
+    text-decoration: underline;
 }
 
 .gallery-thumb-btn {

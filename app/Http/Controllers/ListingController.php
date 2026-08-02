@@ -122,6 +122,9 @@ class ListingController extends Controller
                     ? collect($listing->pending_gallery ?? [])->map(fn (string $path) => self::resolveMediaUrl($path))->values()
                     : [],
                 'region' => $listing->region,
+                'address' => $listing->address,
+                'latitude' => $listing->latitude !== null ? (float) $listing->latitude : null,
+                'longitude' => $listing->longitude !== null ? (float) $listing->longitude : null,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
                 'rating' => $listing->rating !== null ? (float) $listing->rating : null,

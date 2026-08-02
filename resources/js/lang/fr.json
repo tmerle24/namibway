@@ -193,6 +193,10 @@
         "gallery": "Galerie",
         "about": "À propos",
         "steckbrief": "En un coup d'œil",
+        "location": {
+            "title": "Emplacement",
+            "directions": "Obtenir l'itinéraire →"
+        },
         "contact": {
             "title": "Contact",
             "website": "Site web",

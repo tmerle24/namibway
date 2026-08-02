@@ -229,6 +229,10 @@
         "gallery": "Galerie",
         "about": "Über",
         "steckbrief": "Auf einen Blick",
+        "location": {
+            "title": "Lage",
+            "directions": "Route anzeigen →"
+        },
         "contact": {
             "title": "Kontakt",
             "website": "Webseite",

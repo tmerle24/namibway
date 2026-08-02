@@ -193,6 +193,10 @@
         "gallery": "Galerij",
         "about": "Over",
         "steckbrief": "In het kort",
+        "location": {
+            "title": "Locatie",
+            "directions": "Routebeschrijving →"
+        },
         "contact": {
             "title": "Contact",
             "website": "Website",
