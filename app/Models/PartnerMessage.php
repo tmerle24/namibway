@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -13,9 +14,11 @@ use Illuminate\Support\Carbon;
  * @property int|null $sent_by
  * @property string $direction
  * @property string|null $template
+ * @property string|null $source_uid
  * @property string $subject
  * @property string $body
  * @property Carbon|null $sent_at
+ * @property Carbon|null $read_at
  */
 class PartnerMessage extends Model
 {
@@ -29,13 +32,16 @@ class PartnerMessage extends Model
         'sent_by',
         'direction',
         'template',
+        'source_uid',
         'subject',
         'body',
         'sent_at',
+        'read_at',
     ];
 
     protected $casts = [
         'sent_at' => 'datetime',
+        'read_at' => 'datetime',
     ];
 
     /**
@@ -60,5 +66,23 @@ class PartnerMessage extends Model
     public function sentBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'sent_by');
+    }
+
+    /**
+     * @param  Builder<PartnerMessage>  $query
+     * @return Builder<PartnerMessage>
+     */
+    public function scopeInbound(Builder $query): Builder
+    {
+        return $query->where('direction', self::DIRECTION_INBOUND);
+    }
+
+    /**
+     * @param  Builder<PartnerMessage>  $query
+     * @return Builder<PartnerMessage>
+     */
+    public function scopeUnread(Builder $query): Builder
+    {
+        return $query->whereNull('read_at');
     }
 }

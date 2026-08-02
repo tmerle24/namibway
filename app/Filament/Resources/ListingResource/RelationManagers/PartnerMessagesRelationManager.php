@@ -10,6 +10,7 @@ use App\Services\Enrichment\ClaimInviteService;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,37 @@ class PartnerMessagesRelationManager extends RelationManager
         return 'gray';
     }
 
+    /**
+     * IDs that were unread when the tab was opened — captured before marking
+     * them read below, so the "new since last visit" bolding in table() still
+     * has something to key off during this same page view.
+     *
+     * @var array<int, int>
+     */
+    public array $justReadMessageIds = [];
+
+    public function mount(): void
+    {
+        parent::mount();
+
+        $partner = $this->getPartner();
+
+        if ($partner === null) {
+            return;
+        }
+
+        $unread = PartnerMessage::query()
+            ->where('partner_id', $partner->id)
+            ->inbound()
+            ->unread();
+
+        $this->justReadMessageIds = $unread->pluck('id')->all();
+
+        if ($this->justReadMessageIds !== []) {
+            PartnerMessage::whereIn('id', $this->justReadMessageIds)->update(['read_at' => now()]);
+        }
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -60,7 +92,10 @@ class PartnerMessagesRelationManager extends RelationManager
                         : 'gray'),
                 Tables\Columns\TextColumn::make('subject')
                     ->wrap()
-                    ->searchable(),
+                    ->searchable()
+                    ->weight(fn (PartnerMessage $record): ?FontWeight => in_array($record->id, $this->justReadMessageIds, true)
+                        ? FontWeight::Bold
+                        : null),
                 Tables\Columns\TextColumn::make('template')
                     ->badge()
                     ->placeholder('—')

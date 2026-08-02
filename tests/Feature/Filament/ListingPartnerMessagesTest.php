@@ -7,6 +7,7 @@ use App\Filament\Resources\ListingResource\RelationManagers\PartnerMessagesRelat
 use App\Mail\PartnerContactMail;
 use App\Models\Listing;
 use App\Models\Partner;
+use App\Models\PartnerMessage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -108,5 +109,30 @@ class ListingPartnerMessagesTest extends TestCase
             'partner_id' => $partner->id,
             'template' => 'claim_invite',
         ]);
+    }
+
+    public function test_opening_the_tab_marks_unread_inbound_messages_as_read(): void
+    {
+        $partner = Partner::create(['name' => 'Lodge', 'email' => 'owner@example.com']);
+        $listing = Listing::factory()->create(['partner_id' => $partner->id]);
+
+        $message = PartnerMessage::create([
+            'partner_id' => $partner->id,
+            'listing_id' => $listing->id,
+            'direction' => PartnerMessage::DIRECTION_INBOUND,
+            'subject' => 'Re: your listing',
+            'body' => 'Sounds good.',
+            'sent_at' => now(),
+        ]);
+
+        $this->assertNull($message->fresh()->read_at);
+
+        Livewire::actingAs($this->admin())
+            ->test(PartnerMessagesRelationManager::class, [
+                'ownerRecord' => $listing,
+                'pageClass' => EditListing::class,
+            ]);
+
+        $this->assertNotNull($message->fresh()->read_at);
     }
 }
