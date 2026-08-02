@@ -146,6 +146,12 @@ class ListingResource extends Resource
                                     ->directory('listings')
                                     ->imageEditor()
                                     ->panelAspectRatio('16:9')
+                                    // Without this, FilePond rasterizes the preview canvas at its own
+                                    // small default resolution and CSS-stretches it to fill the panel
+                                    // (which spans the full form width via columnSpanFull) — the result
+                                    // is a pixelated preview. Filament's docs pair panelAspectRatio()
+                                    // with an explicit imagePreviewHeight() for this exact reason.
+                                    ->imagePreviewHeight('640')
                                     ->fetchFileInformation(false)
                                     ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
                                     ->columnSpanFull(),

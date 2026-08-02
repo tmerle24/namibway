@@ -70,6 +70,7 @@ class ListingResource extends Resource
                             ->directory('listings')
                             ->imageEditor()
                             ->panelAspectRatio('16:9')
+                            ->imagePreviewHeight('640')
                             ->fetchFileInformation(false)
                             ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
                             ->columnSpanFull(),
