@@ -7,6 +7,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -44,6 +45,16 @@ class AdminPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Pages\Dashboard::class,
+            ])
+            ->navigationItems([
+                // Links out to the Scribe-generated static docs (see config/scribe.php,
+                // routes/api.php) rather than a Filament page — there's no in-app content
+                // to render, just the public /docs site partners/OTAs already use.
+                NavigationItem::make('API Documentation')
+                    ->url(rtrim(config('scribe.base_url'), '/').'/docs', shouldOpenInNewTab: true)
+                    ->icon('heroicon-o-code-bracket')
+                    ->group('Documentation')
+                    ->sort(2),
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([

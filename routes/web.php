@@ -6,6 +6,7 @@ use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListingController;
+use App\Http\Controllers\PartnerApiGuideController;
 use App\Http\Controllers\SavedPlanController;
 use App\Http\Controllers\TripController;
 use Illuminate\Http\Request;
@@ -18,6 +19,8 @@ Route::get('/', HomeController::class)->name('home');
 // is relied on for actual publish consent. See the publish confirmation modal,
 // which links here.
 Route::get('terms', fn () => Inertia::render('Terms'))->name('terms');
+
+Route::get('partner-api-guide.pdf', PartnerApiGuideController::class)->name('partner-api-guide');
 
 Route::post('currency', [CurrencyController::class, 'update'])
     ->middleware('throttle:30,1')
