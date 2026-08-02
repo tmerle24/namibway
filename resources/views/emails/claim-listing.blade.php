@@ -44,6 +44,15 @@
     set your rates, and decide how enquiries reach you.
 </p>
 
+<p>
+    Claiming takes a minute: you'll sign in (or create a free NamibWay account), and
+    you're taken straight to your own <strong>partner dashboard</strong>. From there you can
+    edit your listing and, if you'd like bookings confirmed automatically instead of
+    by email, <strong>connect your booking system</strong> — we support ResConnect,
+    NightsBridge, hopeCloud, or a simple no-setup email option. You can always add this
+    later; it's entirely optional.
+</p>
+
 @if($listing)
 <p><strong>What we've listed so far:</strong></p>
 <ul>

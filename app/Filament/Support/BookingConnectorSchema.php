@@ -175,6 +175,10 @@ class BookingConnectorSchema
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Wetu->value)
                 ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Wetu->value),
 
+            Forms\Components\Placeholder::make('native_note')
+                ->label('')
+                ->content('No API access needed — bookings are checked and held live against NamibWay\'s own availability, using the room types you set up in the next step.')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Native->value),
             Forms\Components\Placeholder::make('nwr_note')
                 ->label('')
                 ->content('No API access needed — NWR has no system we can connect to. Every request goes to the team as "manual review".')
@@ -203,6 +207,45 @@ class BookingConnectorSchema
                     ->label('Wetu Property ID')
                     ->helperText('Enables automatic content import from Wetu (name, description, photos, region).')
                     ->maxLength(100),
+            ],
+            ConnectorType::Native->value => [
+                Forms\Components\Repeater::make('roomTypes')
+                    ->relationship()
+                    ->label('Room types')
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('code')
+                            ->required()
+                            ->maxLength(50)
+                            ->helperText('Stable identifier, e.g. "standard-double" — don\'t change once bookings exist.'),
+                        Forms\Components\TextInput::make('total_units')
+                            ->label('Units available')
+                            ->numeric()
+                            ->required()
+                            ->minValue(1),
+                        Forms\Components\TextInput::make('rate_per_night')
+                            ->numeric()
+                            ->required()
+                            ->prefix('NAD')
+                            ->minValue(0),
+                        Forms\Components\TextInput::make('max_adults')
+                            ->numeric()
+                            ->default(2)
+                            ->minValue(1),
+                        Forms\Components\TextInput::make('max_children')
+                            ->numeric()
+                            ->default(0)
+                            ->minValue(0),
+                        Forms\Components\Textarea::make('description')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2)
+                    ->addActionLabel('Add room type')
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
+                    ->columnSpanFull(),
             ],
             default => [
                 Forms\Components\Placeholder::make('nothing_needed')

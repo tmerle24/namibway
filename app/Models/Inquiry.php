@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $room_type_code
  * @property float|null $total_amount
  * @property string|null $currency
+ * @property Carbon|null $hold_expires_at
  * @property string|null $notes
  */
 class Inquiry extends Model
@@ -46,6 +47,7 @@ class Inquiry extends Model
         'room_type_code',
         'total_amount',
         'currency',
+        'hold_expires_at',
         'notes',
     ];
 
@@ -57,6 +59,7 @@ class Inquiry extends Model
         'children' => 'integer',
         'total_amount' => 'float',
         'trip_id' => 'integer',
+        'hold_expires_at' => 'datetime',
     ];
 
     /**

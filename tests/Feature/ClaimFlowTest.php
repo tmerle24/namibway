@@ -22,7 +22,7 @@ class ClaimFlowTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('claim.store', 'test-token'))
-            ->assertRedirect(route('dashboard'));
+            ->assertRedirect(route('filament.partner.pages.dashboard'));
 
         $partner->refresh();
         $this->assertNotNull($partner->claimed_at);

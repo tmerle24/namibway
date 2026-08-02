@@ -7,6 +7,7 @@ use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
 use App\Enums\ConnectorType;
 use App\Enums\ListingType;
 use App\Filament\Resources\ListingResource\Pages;
+use App\Filament\Resources\ListingResource\RelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
 use App\Models\Listing;
@@ -153,6 +154,7 @@ class ListingResource extends Resource
                                     ->multiple()
                                     ->reorderable()
                                     ->panelLayout('grid')
+                                    ->itemPanelAspectRatio(1)
                                     ->imageEditor()
                                     ->disk('r2')
                                     ->directory('listings/gallery')
@@ -439,7 +441,7 @@ class ListingResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\PartnerMessagesRelationManager::class,
         ];
     }
 

@@ -69,7 +69,7 @@ else
 fi
 
 echo "═══ 3/10 Composer ═══"
-if [ "$FIRST_INSTALL" = true ] || git diff HEAD@{1} HEAD --name-only 2>/dev/null | grep -q "composer.lock"; then
+if [ "$FIRST_INSTALL" = true ] || ! git diff --quiet "$OLD_COMMIT" "$NEW_COMMIT" -- composer.lock; then
     composer install --no-dev --optimize-autoloader
 else
     echo "  → composer.lock unverändert, übersprungen"
@@ -81,7 +81,7 @@ if [ "$SKIP_NPM" = false ]; then
     php artisan route:clear
 
     echo "═══ 5/10 npm install + build ═══"
-    if [ "$FIRST_INSTALL" = true ] || git diff HEAD@{1} HEAD --name-only 2>/dev/null | grep -qE "package-lock\.json|package\.json"; then
+    if [ "$FIRST_INSTALL" = true ] || ! git diff --quiet "$OLD_COMMIT" "$NEW_COMMIT" -- package-lock.json package.json; then
         npm ci
     fi
     export NODE_OPTIONS="--max-old-space-size=3072"

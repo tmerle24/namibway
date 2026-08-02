@@ -4,6 +4,7 @@ namespace App\Services\Enrichment;
 
 use App\Models\Listing;
 use App\Models\Partner;
+use App\Models\PartnerMessage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -45,6 +46,17 @@ class ClaimInviteService
         );
 
         $partner->update(['claim_token_sent_at' => now()]);
+
+        PartnerMessage::create([
+            'partner_id' => $partner->id,
+            'listing_id' => $listing?->id,
+            'sent_by' => auth()->id(),
+            'direction' => PartnerMessage::DIRECTION_OUTBOUND,
+            'template' => 'claim_invite',
+            'subject' => 'Your property on NamibWay — claim your free listing',
+            'body' => "Claim link: {$this->claimUrl($partner)}",
+            'sent_at' => now(),
+        ]);
 
         return true;
     }

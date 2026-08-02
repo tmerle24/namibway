@@ -12,7 +12,7 @@ import type {
     ListingRecommendation,
     SearchIntent,
 } from '@/lib/kaia-types';
-import { dashboard, login, register } from '@/routes';
+import { dashboard, home, login, register } from '@/routes';
 import logoLight from '../../../images/logo-light.png';
 
 // Same per-category placeholder set used by ExploreSection/ListingDetail, so
@@ -285,9 +285,9 @@ async function retryLastMessage() {
         </svg>
         <div class="hero-content">
             <div class="hero-nav">
-                <div class="brand">
+                <Link :href="home()" class="brand">
                     <img :src="logoLight" alt="NamibWay" class="brand-logo" />
-                </div>
+                </Link>
                 <div style="display: flex; align-items: center; gap: 8px">
                     <CurrencySwitcher />
                     <LocaleSwitcher />

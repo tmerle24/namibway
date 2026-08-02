@@ -8,6 +8,7 @@ enum ConnectorType: string
     case NightsBridge = 'nightsbridge';
     case HopeCloud = 'hopecloud';
     case Nwr = 'nwr';
+    case Native = 'native';
     case Wetu = 'wetu';
     case Manual = 'manual';
 
@@ -18,6 +19,7 @@ enum ConnectorType: string
             self::NightsBridge => 'NightsBridge',
             self::HopeCloud => 'hopeCloud',
             self::Nwr => 'NWR — Concierge (manual)',
+            self::Native => 'NamibWay Native Booking',
             self::Wetu => 'Wetu (content only)',
             self::Manual => 'Manual (email/Filament)',
         };
@@ -26,7 +28,7 @@ enum ConnectorType: string
     public function isBookingConnector(): bool
     {
         return match ($this) {
-            self::ResConnect, self::NightsBridge, self::HopeCloud, self::Nwr => true,
+            self::ResConnect, self::NightsBridge, self::HopeCloud, self::Nwr, self::Native => true,
             default => false,
         };
     }
