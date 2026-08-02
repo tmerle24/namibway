@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ConnectorType;
 use App\Enums\ListingType;
 use Database\Factories\ListingFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -127,6 +128,14 @@ class Listing extends Model
             if (blank($listing->slug) && filled($listing->name)) {
                 $listing->slug = Str::slug($listing->name);
             }
+
+            // Native listings have no external property code to enter — the
+            // slug doubles as the identifier NativeConnector resolves the
+            // Listing from (see App\Connectors\Native\NativeConnector).
+            if (blank($listing->connector_property_code)
+                && $listing->partner?->connector_type === ConnectorType::Native) {
+                $listing->connector_property_code = $listing->slug;
+            }
         });
     }
 
@@ -186,6 +195,14 @@ class Listing extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
+    }
+
+    /**
+     * @return HasMany<RoomType, $this>
+     */
+    public function roomTypes(): HasMany
+    {
+        return $this->hasMany(RoomType::class);
     }
 
     /**

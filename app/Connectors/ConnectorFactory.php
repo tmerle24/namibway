@@ -6,6 +6,7 @@ use App\Connectors\Contracts\BookingConnector;
 use App\Connectors\Contracts\ContentConnector;
 use App\Connectors\HopeCloud\HopeCloudClient;
 use App\Connectors\HopeCloud\HopeCloudConnector;
+use App\Connectors\Native\NativeConnector;
 use App\Connectors\NightsBridge\NightsBridgeClient;
 use App\Connectors\NightsBridge\NightsBridgeConnector;
 use App\Connectors\Nwr\NwrConnector;
@@ -28,6 +29,7 @@ class ConnectorFactory
             ConnectorType::NightsBridge => self::makeNightsBridge($partner),
             ConnectorType::HopeCloud => self::makeHopeCloud($partner),
             ConnectorType::Nwr => new NwrConnector,
+            ConnectorType::Native => new NativeConnector,
             null, ConnectorType::Manual, ConnectorType::Wetu => throw new InvalidArgumentException(
                 "Partner [{$partner->id}] has no automated booking connector configured."
             ),
