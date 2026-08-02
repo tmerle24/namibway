@@ -55,18 +55,18 @@ fi
 
 # ── Ab hier: normaler Update-/Deploy-Flow ───────────────────────────
 
-echo "═══ 1/12 Maintenance-Mode AN ═══"
+echo "═══ 1/13 Maintenance-Mode AN ═══"
 php artisan down --retry=15 || true
 
 if [ "$FIRST_INSTALL" = false ]; then
-   echo "═══ 2/12 Git Pull ($BRANCH) ═══"
+   echo "═══ 2/13 Git Pull ($BRANCH) ═══"
    git fetch origin "$BRANCH"
    git reset --hard "origin/$BRANCH"
 else
-   echo "═══ 2/12 Erstinstallation — kein Pull nötig (frisch geklont) ═══"
+   echo "═══ 2/13 Erstinstallation — kein Pull nötig (frisch geklont) ═══"
 fi
 
-echo "═══ 3/12 Composer ═══"
+echo "═══ 3/13 Composer ═══"
 # Immer installieren, nicht nur bei geändertem composer.lock: ein Diff gegen den
 # letzten HEAD geht davon aus, dass der letzte Deploy-Lauf vollständig durchlief.
 # Ist er das nicht (z.B. Abbruch nach dem Pull, aber vor/während composer install),
@@ -75,46 +75,63 @@ echo "═══ 3/12 Composer ═══"
 # composer install ist bei unveränderten Dependencies ohnehin schnell (paar Sekunden).
 composer install --no-dev --optimize-autoloader
 
+echo "═══ 4/13 Storage-Rechte + View-Cache früh aufbauen ═══"
+# Während der Wartung (php artisan down läuft seit Schritt 1 bis fast zum Schluss)
+# kompiliert PHP-FPM (als www-data) neue Blade-Views live bei jedem Request, die noch
+# nicht im Cache liegen — z.B. die neue errors/503.blade.php. touch() verlangt aber
+# Eigentümerschaft der Datei (Schreibrecht über die Gruppe reicht nicht), und
+# `php artisan view:cache` läuft als Deploy-User (z.B. ubuntu). Kompiliert also www-data
+# zuerst und danach ubuntu (oder umgekehrt), schlägt touch() mit EPERM fehl — das war der
+# kurze "touch(): Utime failed" 500er direkt nach Deploy-Start. Fix: Storage-Rechte +
+# View-Cache so früh wie möglich (direkt nach composer install) statt erst am Schluss,
+# damit das Zeitfenster für einen Live-Request von www-data auf eine noch nicht
+# gecachte View minimal ist.
+sudo chown -R "$(whoami):www-data" "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
+sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
+sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
+sudo find "$APP_DIR/bootstrap/cache" -type d -exec chmod 775 {} \;
+sudo find "$APP_DIR/bootstrap/cache" -type f -exec chmod 664 {} \;
+php artisan view:clear
+php artisan view:cache
+
 if [ "$SKIP_NPM" = false ]; then
-    echo "═══ 4/12 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
+    echo "═══ 5/13 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
     php artisan config:clear
     php artisan route:clear
 
-    echo "═══ 5/12 npm install + build ═══"
+    echo "═══ 6/13 npm install + build ═══"
     # Gleiches Argument wie bei composer oben: immer installieren, nicht per Diff überspringen.
     npm ci
     export NODE_OPTIONS="--max-old-space-size=3072"
     npm run build
 else
-    echo "═══ 4-5/12 npm build übersprungen (--no-npm) ═══"
+    echo "═══ 5-6/13 npm build übersprungen (--no-npm) ═══"
 fi
 
 if [ "$SKIP_MIGRATE" = false ]; then
-    echo "═══ 6/12 Migrationen ═══"
+    echo "═══ 7/13 Migrationen ═══"
     php artisan migrate --force
 else
-    echo "═══ 6/12 Migrationen übersprungen (--no-migrate) ═══"
+    echo "═══ 7/13 Migrationen übersprungen (--no-migrate) ═══"
 fi
 
-echo "═══ 7/12 Storage-Link ═══"
+echo "═══ 8/13 Storage-Link ═══"
 php artisan storage:link 2>/dev/null || true
 
-echo "═══ 8/12 API-Doku generieren (Scribe) ═══"
+echo "═══ 9/13 API-Doku generieren (Scribe) ═══"
 php artisan scribe:generate --force
 
-echo "═══ 9/12 Caches neu aufbauen ═══"
+echo "═══ 10/13 Caches neu aufbauen ═══"
 php artisan config:cache
 php artisan route:cache
-php artisan view:clear
-php artisan view:cache
 php artisan event:cache
 
-echo "═══ 10/12 Laravel-Scheduler-Cron sicherstellen (Backups u.a. laufen darüber) ═══"
+echo "═══ 11/13 Laravel-Scheduler-Cron sicherstellen (Backups u.a. laufen darüber) ═══"
 CRON_LINE="* * * * * cd $APP_DIR && php artisan schedule:run >> /dev/null 2>&1"
 (crontab -l 2>/dev/null | grep -qF "$APP_DIR" && echo "  → Cron-Eintrag bereits vorhanden") || \
     (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
 
-echo "═══ 11/12 Verzeichnis-Rechte, Horizon neu starten, Maintenance-Mode AUS ═══"
+echo "═══ 12/13 Verzeichnis-Rechte, Horizon neu starten, Maintenance-Mode AUS ═══"
 sudo chown -R "$(whoami):www-data" "$APP_DIR"
 sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
@@ -124,7 +141,7 @@ sudo find "$APP_DIR/bootstrap/cache" -type f -exec chmod 664 {} \;
 sudo supervisorctl restart "${QUEUE_WORKER_NAME}:*" 2>/dev/null || echo "  → Supervisor-Worker '$QUEUE_WORKER_NAME' noch nicht eingerichtet, übersprungen"
 php artisan up
 
-echo "═══ 12/12 Health-Check ═══"
+echo "═══ 13/13 Health-Check ═══"
 HEALTH_URL="https://www.namibway.com/up"
 HEALTH_OK=false
 for i in 1 2 3 4 5; do
