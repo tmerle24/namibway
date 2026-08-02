@@ -35,7 +35,7 @@
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
         <link rel="manifest" href="/manifest.webmanifest">
-        <meta name="theme-color" content="#e4ac6b">
+        <meta name="theme-color" content="#3b2418">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
