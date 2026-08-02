@@ -508,6 +508,15 @@
     font-weight: 400;
     margin-top: 2px;
 }
+.kaia-page .day-thumb {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid var(--sand-dark);
+    flex-shrink: 0;
+}
 .kaia-page .day-detail div {
     margin-bottom: 2px;
     color: #4a4438;

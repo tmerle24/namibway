@@ -68,6 +68,21 @@ function formatDateRange(day: {
     return `${day.date} – ${day.date_to}`;
 }
 
+// Accommodation photo first, region photo as fallback — see the identical
+// helper in ItinerarySection.vue for why regionCoords resolves both.
+function dayThumbnail(day: {
+    location: string;
+    accommodation?: { image?: string | null } | null;
+}): string | null {
+    if (day.accommodation?.image) {
+        return day.accommodation.image;
+    }
+
+    const key = day.location?.toLowerCase().trim();
+
+    return (key && regionCoords.value[key]?.image) || null;
+}
+
 function estimatedLabel(variant: ItineraryVariant): string | null {
     let amount = 0;
     let hasAnyPrice = false;
@@ -167,6 +182,12 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                 {{ formatDateRange(day) }}
                             </div>
                         </div>
+                        <img
+                            v-if="dayThumbnail(day)"
+                            :src="dayThumbnail(day)!"
+                            alt=""
+                            class="day-thumb"
+                        />
                         <div class="day-detail">
                             <div class="day-location-label">
                                 {{ day.location }}

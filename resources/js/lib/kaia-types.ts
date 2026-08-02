@@ -7,6 +7,7 @@ export interface ItineraryListingRef {
     price_currency: string;
     lat?: number | null;
     lng?: number | null;
+    image?: string | null;
 }
 
 export interface ItineraryDay {

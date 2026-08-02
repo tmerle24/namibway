@@ -29,13 +29,42 @@ class KaiaController extends Controller
 
     public function regionCoords(): JsonResponse
     {
-        $coords = Region::query()
+        $regions = Region::query()
             ->whereNotNull('lat')
             ->whereNotNull('lng')
-            ->get(['name', 'lat', 'lng'])
-            ->mapWithKeys(fn (Region $r) => [
-                mb_strtolower($r->getTranslation('name', 'en')) => ['lat' => $r->lat, 'lng' => $r->lng],
-            ]);
+            ->orderBy('sort_order')
+            ->get(['name', 'lat', 'lng', 'image', 'listing_region']);
+
+        $coords = $regions->mapWithKeys(fn (Region $r) => [
+            mb_strtolower($r->getTranslation('name', 'en')) => [
+                'lat' => $r->lat,
+                'lng' => $r->lng,
+                'image' => $r->image ? self::resolveMediaUrl($r->image) : null,
+            ],
+        ]);
+
+        // Also key by the political region itself (Listing::region / a day's
+        // "location") — a day's location is always one of the 6 political
+        // regions, never a destination name, so it otherwise never gets an
+        // image for the itinerary day thumbnail fallback. First region row
+        // per political region (by sort_order above) wins; never overrides a
+        // destination-name key since no seeded destination shares its name
+        // with its own political region.
+        foreach ($regions->groupBy('listing_region') as $politicalRegion => $group) {
+            $key = mb_strtolower((string) $politicalRegion);
+
+            if ($coords->has($key)) {
+                continue;
+            }
+
+            /** @var Region $first */
+            $first = $group->first();
+            $coords[$key] = [
+                'lat' => $first->lat,
+                'lng' => $first->lng,
+                'image' => $first->image ? self::resolveMediaUrl($first->image) : null,
+            ];
+        }
 
         return response()->json(['coords' => $coords]);
     }

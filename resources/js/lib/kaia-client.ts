@@ -38,6 +38,7 @@ export async function fetchRegions(): Promise<string[]> {
 export interface RegionCoords {
     lat: number;
     lng: number;
+    image?: string | null;
 }
 
 // Static fallback so the map renders even when DB has no lat/lng rows yet.

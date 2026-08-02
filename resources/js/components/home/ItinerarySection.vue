@@ -151,6 +151,24 @@ function formatDateRange(day: {
     return `${day.date} – ${day.date_to}`;
 }
 
+// Accommodation photo first (what the traveler is actually booking), falling
+// back to a representative photo for the day's region — regionCoords is
+// keyed by both destination name and, since fetchRegionCoords()'s backing
+// endpoint was extended for this, the plain political region name too (the
+// only thing a day's `location` ever is).
+function dayThumbnail(day: {
+    location: string;
+    accommodation?: { image?: string | null } | null;
+}): string | null {
+    if (day.accommodation?.image) {
+        return day.accommodation.image;
+    }
+
+    const key = day.location?.toLowerCase().trim();
+
+    return (key && regionCoords.value[key]?.image) || null;
+}
+
 function applyDates(variantIndex: number) {
     const start = startDates.value[variantIndex];
 
@@ -565,6 +583,12 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                         formatDateRange(day)
                                     }}</span>
                                 </div>
+                                <img
+                                    v-if="dayThumbnail(day)"
+                                    :src="dayThumbnail(day)!"
+                                    alt=""
+                                    class="day-thumb"
+                                />
                                 <div class="day-detail">
                                     <div>
                                         <LocationPicker
