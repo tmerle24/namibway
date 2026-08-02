@@ -515,27 +515,14 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     @end="renumberDays(variantIndex)"
                 >
                     <template #item="{ element: day, index: dayIndex }">
-                        <div
-                            v-if="
-                                dayIndex > 0 &&
-                                day.location !==
-                                    editableVariants[variantIndex].days[
-                                        dayIndex - 1
-                                    ].location &&
-                                drivingTimeBetween(
-                                    variantIndex,
-                                    editableVariants[variantIndex].days[
-                                        dayIndex - 1
-                                    ].location,
-                                    day.location,
-                                )
-                            "
-                            class="drive-time-row"
-                        >
-                            <span class="drive-time-icon">🚗</span>
-                            <span class="drive-time-label">
-                                {{ t('itinerary.drivingTime') }}:
-                                {{
+                        <div class="day-item">
+                            <div
+                                v-if="
+                                    dayIndex > 0 &&
+                                    day.location !==
+                                        editableVariants[variantIndex].days[
+                                            dayIndex - 1
+                                        ].location &&
                                     drivingTimeBetween(
                                         variantIndex,
                                         editableVariants[variantIndex].days[
@@ -543,163 +530,184 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                         ].location,
                                         day.location,
                                     )
-                                }}
-                            </span>
-                        </div>
-                        <div class="day-row">
-                            <div class="day-num">
-                                <span
-                                    class="drag-handle"
-                                    :title="t('itinerary.dragToReorder')"
-                                    >⠿</span
-                                >
-                                {{ day.day }}
-                                <span v-if="day.date" class="day-date">{{
-                                    formatDateRange(day)
-                                }}</span>
-                            </div>
-                            <div class="day-detail">
-                                <div>
-                                    <LocationPicker
-                                        :model-value="day.location"
-                                        :suggestions="locationSuggestions"
-                                        @update:model-value="
+                                "
+                                class="drive-time-row"
+                            >
+                                <span class="drive-time-icon">🚗</span>
+                                <span class="drive-time-label">
+                                    {{ t('itinerary.drivingTime') }}:
+                                    {{
+                                        drivingTimeBetween(
+                                            variantIndex,
                                             editableVariants[variantIndex].days[
-                                                dayIndex
-                                            ].location = $event
+                                                dayIndex - 1
+                                            ].location,
+                                            day.location,
+                                        )
+                                    }}
+                                </span>
+                            </div>
+                            <div class="day-row">
+                                <div class="day-num">
+                                    <span
+                                        class="drag-handle"
+                                        :title="t('itinerary.dragToReorder')"
+                                        >⠿</span
+                                    >
+                                    {{ day.day }}
+                                    <span v-if="day.date" class="day-date">{{
+                                        formatDateRange(day)
+                                    }}</span>
+                                </div>
+                                <div class="day-detail">
+                                    <div>
+                                        <LocationPicker
+                                            :model-value="day.location"
+                                            :suggestions="locationSuggestions"
+                                            @update:model-value="
+                                                editableVariants[
+                                                    variantIndex
+                                                ].days[dayIndex].location =
+                                                    $event
+                                            "
+                                        />
+                                        <button
+                                            type="button"
+                                            class="remove-btn"
+                                            :aria-label="
+                                                t('itinerary.removeDay')
+                                            "
+                                            @click="
+                                                removeDay(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                )
+                                            "
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+
+                                    <ItineraryLineItem
+                                        keypath="itinerary.stay"
+                                        :item-ref="day.accommodation"
+                                        @remove="
+                                            removeItem(
+                                                variantIndex,
+                                                dayIndex,
+                                                'accommodation',
+                                            )
+                                        "
+                                        @swap="
+                                            openSwap(
+                                                variantIndex,
+                                                dayIndex,
+                                                'accommodation',
+                                                day.accommodation!,
+                                            )
+                                        "
+                                        @add="
+                                            openSwap(
+                                                variantIndex,
+                                                dayIndex,
+                                                'accommodation',
+                                            )
                                         "
                                     />
-                                    <button
-                                        type="button"
-                                        class="remove-btn"
-                                        :aria-label="t('itinerary.removeDay')"
-                                        @click="
-                                            removeDay(variantIndex, dayIndex)
+                                    <AlternativesPanel
+                                        v-if="
+                                            swap?.key ===
+                                            swapKey(
+                                                variantIndex,
+                                                dayIndex,
+                                                'accommodation',
+                                            )
                                         "
-                                    >
-                                        ×
-                                    </button>
+                                        :loading="swap.loading"
+                                        :alternatives="swap.alternatives"
+                                        @select="applySwap"
+                                    />
+
+                                    <ItineraryLineItem
+                                        keypath="itinerary.activity"
+                                        :item-ref="day.activity"
+                                        @remove="
+                                            removeItem(
+                                                variantIndex,
+                                                dayIndex,
+                                                'activity',
+                                            )
+                                        "
+                                        @swap="
+                                            openSwap(
+                                                variantIndex,
+                                                dayIndex,
+                                                'activity',
+                                                day.activity!,
+                                            )
+                                        "
+                                        @add="
+                                            openSwap(
+                                                variantIndex,
+                                                dayIndex,
+                                                'activity',
+                                            )
+                                        "
+                                    />
+                                    <AlternativesPanel
+                                        v-if="
+                                            swap?.key ===
+                                            swapKey(
+                                                variantIndex,
+                                                dayIndex,
+                                                'activity',
+                                            )
+                                        "
+                                        :loading="swap.loading"
+                                        :alternatives="swap.alternatives"
+                                        @select="applySwap"
+                                    />
+
+                                    <ItineraryLineItem
+                                        keypath="itinerary.dinner"
+                                        :item-ref="day.restaurant"
+                                        @remove="
+                                            removeItem(
+                                                variantIndex,
+                                                dayIndex,
+                                                'restaurant',
+                                            )
+                                        "
+                                        @swap="
+                                            openSwap(
+                                                variantIndex,
+                                                dayIndex,
+                                                'restaurant',
+                                                day.restaurant!,
+                                            )
+                                        "
+                                        @add="
+                                            openSwap(
+                                                variantIndex,
+                                                dayIndex,
+                                                'restaurant',
+                                            )
+                                        "
+                                    />
+                                    <AlternativesPanel
+                                        v-if="
+                                            swap?.key ===
+                                            swapKey(
+                                                variantIndex,
+                                                dayIndex,
+                                                'restaurant',
+                                            )
+                                        "
+                                        :loading="swap.loading"
+                                        :alternatives="swap.alternatives"
+                                        @select="applySwap"
+                                    />
                                 </div>
-
-                                <ItineraryLineItem
-                                    keypath="itinerary.stay"
-                                    :item-ref="day.accommodation"
-                                    @remove="
-                                        removeItem(
-                                            variantIndex,
-                                            dayIndex,
-                                            'accommodation',
-                                        )
-                                    "
-                                    @swap="
-                                        openSwap(
-                                            variantIndex,
-                                            dayIndex,
-                                            'accommodation',
-                                            day.accommodation!,
-                                        )
-                                    "
-                                    @add="
-                                        openSwap(
-                                            variantIndex,
-                                            dayIndex,
-                                            'accommodation',
-                                        )
-                                    "
-                                />
-                                <AlternativesPanel
-                                    v-if="
-                                        swap?.key ===
-                                        swapKey(
-                                            variantIndex,
-                                            dayIndex,
-                                            'accommodation',
-                                        )
-                                    "
-                                    :loading="swap.loading"
-                                    :alternatives="swap.alternatives"
-                                    @select="applySwap"
-                                />
-
-                                <ItineraryLineItem
-                                    keypath="itinerary.activity"
-                                    :item-ref="day.activity"
-                                    @remove="
-                                        removeItem(
-                                            variantIndex,
-                                            dayIndex,
-                                            'activity',
-                                        )
-                                    "
-                                    @swap="
-                                        openSwap(
-                                            variantIndex,
-                                            dayIndex,
-                                            'activity',
-                                            day.activity!,
-                                        )
-                                    "
-                                    @add="
-                                        openSwap(
-                                            variantIndex,
-                                            dayIndex,
-                                            'activity',
-                                        )
-                                    "
-                                />
-                                <AlternativesPanel
-                                    v-if="
-                                        swap?.key ===
-                                        swapKey(
-                                            variantIndex,
-                                            dayIndex,
-                                            'activity',
-                                        )
-                                    "
-                                    :loading="swap.loading"
-                                    :alternatives="swap.alternatives"
-                                    @select="applySwap"
-                                />
-
-                                <ItineraryLineItem
-                                    keypath="itinerary.dinner"
-                                    :item-ref="day.restaurant"
-                                    @remove="
-                                        removeItem(
-                                            variantIndex,
-                                            dayIndex,
-                                            'restaurant',
-                                        )
-                                    "
-                                    @swap="
-                                        openSwap(
-                                            variantIndex,
-                                            dayIndex,
-                                            'restaurant',
-                                            day.restaurant!,
-                                        )
-                                    "
-                                    @add="
-                                        openSwap(
-                                            variantIndex,
-                                            dayIndex,
-                                            'restaurant',
-                                        )
-                                    "
-                                />
-                                <AlternativesPanel
-                                    v-if="
-                                        swap?.key ===
-                                        swapKey(
-                                            variantIndex,
-                                            dayIndex,
-                                            'restaurant',
-                                        )
-                                    "
-                                    :loading="swap.loading"
-                                    :alternatives="swap.alternatives"
-                                    @select="applySwap"
-                                />
                             </div>
                         </div>
                     </template>

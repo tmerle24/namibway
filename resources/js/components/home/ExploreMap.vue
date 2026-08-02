@@ -122,8 +122,9 @@ function renderMarkers() {
                     marker.on('click', goToListing);
                     marker.on('popupopen', () => {
                         const el = marker.getPopup()?.getElement();
-                        el?.querySelector('.explore-map-popup')
-                            ?.addEventListener('click', goToListing);
+                        el?.querySelector(
+                            '.explore-map-popup',
+                        )?.addEventListener('click', goToListing);
                     });
                 }
 
