@@ -71,6 +71,7 @@ export interface ListingRecommendation {
 export interface SearchIntent {
     type?: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
     region?: string;
+    city?: string;
     keyword?: string;
     budget?: 'budget' | 'mid-range' | 'premium';
     min_rating?: string;

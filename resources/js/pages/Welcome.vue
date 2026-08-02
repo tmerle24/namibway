@@ -29,6 +29,7 @@ interface Listing {
     description: string | null;
     image: string | null;
     region: string | null;
+    city: string | null;
     latitude: number | null;
     longitude: number | null;
     price_from: string | null;
@@ -87,12 +88,21 @@ onMounted(() => {
     const params = new URLSearchParams(window.location.search);
     const type = params.get('type');
     const region = params.get('region');
+    const city = params.get('city');
     const budget = params.get('budget');
     const keyword = params.get('keyword');
     const minRating = params.get('min_rating');
     const sort = params.get('sort');
 
-    if (!type && !region && !budget && !keyword && !minRating && !sort) {
+    if (
+        !type &&
+        !region &&
+        !city &&
+        !budget &&
+        !keyword &&
+        !minRating &&
+        !sort
+    ) {
         return;
     }
 
@@ -105,6 +115,7 @@ onMounted(() => {
                 ? (type as SearchIntent['type'])
                 : undefined,
             region: region ?? undefined,
+            city: city ?? undefined,
             budget: (budget as SearchIntent['budget']) ?? undefined,
             keyword: keyword ?? undefined,
             min_rating: minRating ?? undefined,

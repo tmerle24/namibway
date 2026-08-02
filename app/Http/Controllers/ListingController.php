@@ -52,6 +52,7 @@ class ListingController extends Controller
                 'description' => $l->description,
                 'image' => $l->image ? self::resolveMediaUrl($l->image) : null,
                 'region' => $l->region,
+                'city' => $l->city?->name,
                 'price_from' => $l->price_from,
                 'price_currency' => $l->price_currency,
                 'rating' => $l->rating !== null ? (float) $l->rating : null,
@@ -166,6 +167,7 @@ class ListingController extends Controller
                     ? collect($listing->pending_gallery ?? [])->map(fn (string $path) => self::resolveMediaUrl($path))->values()
                     : [],
                 'region' => $listing->region,
+                'city' => $listing->city?->name,
                 'address' => $parsedCoordinates ? null : $listing->address,
                 'phone' => $phone['display'] ?? null,
                 'phone_href' => $phone['href'] ?? null,

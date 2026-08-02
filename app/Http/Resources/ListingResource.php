@@ -27,6 +27,7 @@ class ListingResource extends JsonResource
             'image' => $this->image ? Controller::resolveMediaUrl($this->image) : null,
             'gallery' => collect($this->gallery ?? [])->map(fn (string $path) => Controller::resolveMediaUrl($path))->values(),
             'region' => $this->region,
+            'city' => $this->city?->name,
             'latitude' => $this->latitude !== null ? (float) $this->latitude : null,
             'longitude' => $this->longitude !== null ? (float) $this->longitude : null,
             'price_from' => $this->price_from !== null ? (float) $this->price_from : null,

@@ -57,6 +57,28 @@ class ListingApiTest extends TestCase
         $this->assertFalse($names->contains('Other Region Lodge'));
     }
 
+    public function test_index_filters_by_city_distinctly_from_region(): void
+    {
+        $client = ApiClient::create(['name' => 'OTA Two']);
+
+        $erongoRegionId = Region::where('name', 'Erongo')->value('id');
+        $swakopmund = City::factory()->create(['region_id' => $erongoRegionId, 'name' => 'Swakopmund']);
+        $walvisBay = City::factory()->create(['region_id' => $erongoRegionId, 'name' => 'Walvis Bay']);
+
+        Listing::factory()->create(['is_published' => true, 'city_id' => $swakopmund->id, 'name' => 'Swakopmund Lodge']);
+        Listing::factory()->create(['is_published' => true, 'city_id' => $walvisBay->id, 'name' => 'Walvis Bay Lodge']);
+
+        // Same region for both — only the city filter should tell them apart.
+        $response = $this->withToken($this->tokenFor($client))
+            ->getJson('/api/v1/listings?city=Swakopmund')
+            ->assertOk();
+
+        $names = collect($response->json('data'))->pluck('name');
+
+        $this->assertTrue($names->contains('Swakopmund Lodge'));
+        $this->assertFalse($names->contains('Walvis Bay Lodge'));
+    }
+
     public function test_show_404s_for_unpublished_listing(): void
     {
         $client = ApiClient::create(['name' => 'OTA One']);

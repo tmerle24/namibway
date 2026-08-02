@@ -171,6 +171,7 @@
             "hideFilters": "Hide filters ▲",
             "note": "Dates are captured for when live partner availability is connected — this catalog isn't date-checked yet.",
             "allRegions": "All regions & towns",
+            "allCities": "All cities",
             "anyBudget": "Any budget",
             "budget": "Budget",
             "midRange": "Mid-range",

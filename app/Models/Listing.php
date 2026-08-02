@@ -295,6 +295,15 @@ class Listing extends Model
                 ->orWhereHas('region', fn ($q2) => $q2->where('name', 'ilike', '%'.$region.'%')));
         }
 
+        // Separate from $region above (which also matches city names, for the
+        // AI chat's free-text "region" intent) — this is the classic Explore
+        // page's dedicated City select, an exact-ish match on city name only.
+        $city = $filters['city'] ?? null;
+
+        if (is_string($city) && $city !== '') {
+            $query->whereHas('city', fn ($q) => $q->where('name', 'ilike', '%'.$city.'%'));
+        }
+
         $keyword = $filters['keyword'] ?? null;
 
         if (is_string($keyword) && $keyword !== '') {
