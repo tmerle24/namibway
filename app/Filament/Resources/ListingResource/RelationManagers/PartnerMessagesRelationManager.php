@@ -23,18 +23,32 @@ class PartnerMessagesRelationManager extends RelationManager
 
     protected static ?string $icon = 'heroicon-o-envelope';
 
-    // Nothing to talk to yet — the listing needs a partner (with an email
-    // address) attached before the owner-contact thread means anything.
-    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+    // Always show the tab (rather than hiding it) so editors know it exists —
+    // it's just greyed out via the badge below until there's someone to
+    // actually email.
+    public static function getBadge(Model $ownerRecord, string $pageClass): ?string
     {
         /** @var Listing $ownerRecord */
-        return $ownerRecord->partner_id !== null;
+        return $ownerRecord->partner?->email === null ? 'No email' : null;
+    }
+
+    public static function getBadgeColor(Model $ownerRecord, string $pageClass): ?string
+    {
+        return 'gray';
     }
 
     public function table(Table $table): Table
     {
         return $table
             ->recordTitleAttribute('subject')
+            ->emptyStateHeading($this->getPartner()?->email !== null
+                ? 'No messages yet'
+                : ($this->getPartner() !== null ? 'Partner has no email on file' : 'No partner assigned'))
+            ->emptyStateDescription($this->getPartner()?->email !== null
+                ? 'Use "Contact owner" or "Send claim email" above to start the conversation.'
+                : ($this->getPartner() !== null
+                    ? 'Add an email address to this partner to enable owner contact.'
+                    : 'Assign a partner to this listing to enable owner contact.'))
             ->columns([
                 Tables\Columns\IconColumn::make('direction')
                     ->label('')

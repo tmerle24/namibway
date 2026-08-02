@@ -22,13 +22,22 @@ class ListingPartnerMessagesTest extends TestCase
         return User::factory()->create(['is_admin' => true]);
     }
 
-    public function test_messages_tab_is_hidden_for_a_listing_without_a_partner(): void
+    public function test_messages_tab_is_shown_but_badged_for_a_listing_without_a_partner(): void
     {
         $listing = Listing::factory()->create(['partner_id' => null]);
 
-        $this->assertFalse(
+        $this->assertTrue(
             PartnerMessagesRelationManager::canViewForRecord($listing, EditListing::class)
         );
+        $this->assertSame('No email', PartnerMessagesRelationManager::getBadge($listing, EditListing::class));
+    }
+
+    public function test_messages_tab_is_not_badged_once_the_partner_has_an_email(): void
+    {
+        $partner = Partner::create(['name' => 'Lodge', 'email' => 'owner@example.com']);
+        $listing = Listing::factory()->create(['partner_id' => $partner->id]);
+
+        $this->assertNull(PartnerMessagesRelationManager::getBadge($listing, EditListing::class));
     }
 
     public function test_edit_page_renders_with_messages_tab_for_a_listing_with_a_partner(): void
