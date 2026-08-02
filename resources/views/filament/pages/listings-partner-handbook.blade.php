@@ -102,6 +102,14 @@
 
             .nwh footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 12.5px; }
 
+            .nwh .pdf-download {
+                display: inline-flex; align-items: center; gap: 7px;
+                background: var(--accent); color: var(--paper-2) !important;
+                font-size: 13px; font-weight: 700; text-decoration: none;
+                padding: 8px 14px; border-radius: 8px; margin-bottom: 24px;
+            }
+            .nwh .pdf-download:hover { opacity: .9; }
+
             .nwh .layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 40px; align-items: start; }
             .nwh nav.toc { position: sticky; top: 32px; display: flex; flex-direction: column; gap: 2px; }
             .nwh nav.toc .navlabel {
@@ -127,6 +135,8 @@
         <p class="eyebrow">NamibWay — Working Handbook</p>
         <p class="subtitle">A practical guide for building out NamibWay's property listings and getting the businesses behind them onto the platform. No coding, no technical background needed — just careful research and friendly phone/email work.</p>
 
+        <a href="{{ route('listings-partner-handbook-pdf') }}" class="pdf-download">⬇ Download as PDF</a>
+
         <div class="quickfacts">
             <div><dt>Where you'll work</dt><dd><em>Data Enrichment</em> &amp; <em>Partners</em> (left menu)</dd></div>
             <div><dt>Your account</dt><dd>Your own login — see Section 1</dd></div>
@@ -151,6 +161,11 @@
             <p class="section-note">NamibWay is an AI travel-planning site for Namibia. Travelers chat with "Kaia," our AI trip assistant, and get a bookable day-by-day itinerary — pulled together from real accommodation, activities, restaurants and vehicle rentals in our database. Your work directly improves what Kaia can recommend.</p>
 
             <p>You have your own login here — a username/email and a temporary password, sent separately. Please don't share this login with anyone or reuse Adriano's account; each person needs their own so we can tell whose changes are whose, and so we can turn off access cleanly if your role ever changes.</p>
+
+            <div class="card">
+                <p><strong>Admin dashboard</strong> — <code>namibway.com/admin</code>, your own login (above). Where you'll do the work in Sections 2–4.</p>
+                <p><strong>Team webmail (for emailing partners, customers &amp; businesses directly)</strong> — <a href="https://webmail.namibway.com">webmail.namibway.com</a>, log in as <code>team@namibway.com</code>; the password will be shared with you separately. Use this for any direct correspondence — replies, manual outreach, follow-ups — that isn't sent automatically by the "Invite Owner" action.</p>
+            </div>
 
             <div class="callout good">
                 <strong>First 10 minutes:</strong> click <em>Data Enrichment</em> in the left-hand menu. You'll land on a table of every listing with a completion score. That table and the stat tiles above it are your dashboard for everything in Section 2.

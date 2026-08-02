@@ -6,6 +6,7 @@ use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListingController;
+use App\Http\Controllers\ListingsPartnerHandbookPdfController;
 use App\Http\Controllers\PartnerApiGuideController;
 use App\Http\Controllers\SavedPlanController;
 use App\Http\Controllers\TripController;
@@ -21,6 +22,10 @@ Route::get('/', HomeController::class)->name('home');
 Route::get('terms', fn () => Inertia::render('Terms'))->name('terms');
 
 Route::get('partner-api-guide.pdf', PartnerApiGuideController::class)->name('partner-api-guide');
+
+Route::get('admin/listings-partner-handbook.pdf', ListingsPartnerHandbookPdfController::class)
+    ->middleware('auth')
+    ->name('listings-partner-handbook-pdf');
 
 Route::post('currency', [CurrencyController::class, 'update'])
     ->middleware('throttle:30,1')
