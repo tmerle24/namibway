@@ -1,219 +1,221 @@
 <x-filament-panels::page>
-    <div class="space-y-8 max-w-4xl">
-        <p class="text-sm text-gray-600 dark:text-gray-400">
-            Working guide for completing listing profiles and contacting the businesses behind them —
-            written for whoever is doing that research day to day (no coding background assumed).
-        </p>
+    <div class="nwh">
+        <style>
+            .nwh {
+                --ink: #2A2317; --ink-soft: #6B6350; --line: #E4D9BE; --paper-2: #F5F0E3;
+                --accent: #2C3E5C; --accent-soft: #DCE2EA; --gold: #B9812E;
+                --good: #3F6B4A; --good-bg: #E4EBDF; --flag: #A23E28; --flag-bg: #F2E2D9;
+                color: var(--ink);
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+                line-height: 1.55;
+                max-width: 62rem;
+            }
+            .dark .nwh {
+                --ink: #EDE6D6; --ink-soft: #B3A98E; --line: #3B3526; --paper-2: #242019;
+                --accent: #8FA6CC; --accent-soft: #2A3345; --gold: #D9A54F;
+                --good: #8FBF9B; --good-bg: #243527; --flag: #E08A6F; --flag-bg: #3A2620;
+            }
+            .nwh h1, .nwh h2, .nwh h3 {
+                font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+                font-weight: 600; text-wrap: balance; color: var(--ink); margin: 0;
+            }
+            .nwh .eyebrow {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                font-size: 12px; letter-spacing: .11em; text-transform: uppercase;
+                color: var(--gold); font-weight: 700; margin: 0 0 8px;
+            }
+            .nwh h1 { font-size: 30px; line-height: 1.15; margin-bottom: 6px; }
+            .nwh .subtitle { color: var(--ink-soft); font-size: 15.5px; margin: 0 0 28px; max-width: 60ch; }
+            .nwh h2 { font-size: 20px; }
+            .nwh .section-note { color: var(--ink-soft); font-size: 14px; margin: 4px 0 16px; max-width: 62ch; }
+            .nwh h3 { font-size: 15px; margin: 18px 0 6px; color: var(--accent); }
+            .nwh p { margin: 0 0 12px; max-width: 68ch; }
+            .nwh p:last-child { margin-bottom: 0; }
+            .nwh a { color: var(--accent); }
 
-        {{-- The two jobs --}}
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div class="rounded-xl bg-gray-50 p-4 dark:bg-white/5">
-                <span class="text-2xl font-semibold text-primary-600 dark:text-primary-400">1</span>
-                <h3 class="mt-1 text-sm font-semibold text-gray-950 dark:text-white">Complete a listing profile</h3>
-                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                    <em>Data Enrichment</em> (left menu). Raise each listing's completion score by filling in
-                    what's missing, using the business's own website/socials or a phone call.
-                </p>
-            </div>
-            <div class="rounded-xl bg-gray-50 p-4 dark:bg-white/5">
-                <span class="text-2xl font-semibold text-primary-600 dark:text-primary-400">2</span>
-                <h3 class="mt-1 text-sm font-semibold text-gray-950 dark:text-white">Contact the owners</h3>
-                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                    <em>Partners</em> table &rarr; <strong>"Invite Owner"</strong>. Sends a passwordless link
-                    letting them claim and edit their own listing.
-                </p>
-            </div>
+            .nwh section { padding: 28px 0; border-top: 1px solid var(--line); }
+            .nwh section:first-of-type { border-top: none; padding-top: 0; }
+
+            .nwh .num {
+                display: inline-flex; align-items: center; justify-content: center;
+                width: 24px; height: 24px; border-radius: 50%;
+                background: var(--accent); color: var(--paper-2);
+                font-family: Georgia, serif; font-size: 12.5px; font-weight: 700;
+                margin-right: 10px; flex-shrink: 0;
+            }
+            .nwh .step-head { display: flex; align-items: center; margin-bottom: 2px; }
+
+            .nwh .card {
+                background: var(--paper-2); border: 1px solid var(--line); border-radius: 10px;
+                padding: 16px 18px; margin: 14px 0;
+            }
+
+            .nwh .quickfacts {
+                display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px;
+                background: var(--paper-2); border: 1px solid var(--line); border-radius: 10px;
+                padding: 20px 22px; margin-bottom: 8px;
+            }
+            .nwh .quickfacts dt { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); font-weight: 700; margin: 0; }
+            .nwh .quickfacts dd { margin: 2px 0 0; font-size: 14.5px; }
+
+            .nwh ol.steps { list-style: none; margin: 0; padding: 0; }
+            .nwh ol.steps li { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px dashed var(--line); }
+            .nwh ol.steps li:last-child { border-bottom: none; }
+            .nwh ol.steps li .n { font-family: Georgia, serif; font-weight: 700; color: var(--gold); flex-shrink: 0; width: 18px; }
+
+            .nwh .checklist { list-style: none; margin: 0; padding: 0; }
+            .nwh .checklist li { position: relative; padding: 5px 0 5px 28px; font-size: 14.5px; }
+            .nwh .checklist li::before {
+                content: ""; position: absolute; left: 0; top: 7px; width: 15px; height: 15px;
+                border: 1.5px solid var(--ink-soft); border-radius: 4px;
+            }
+
+            .nwh table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
+            .nwh th, .nwh td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+            .nwh th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); font-weight: 700; }
+            .nwh td.num-cell, .nwh th.num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+            .nwh .table-wrap { overflow-x: auto; }
+
+            .nwh .tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .03em; padding: 2px 9px; border-radius: 100px; }
+            .nwh .tag.priority { background: var(--flag-bg); color: var(--flag); }
+            .nwh .tag.later { background: var(--good-bg); color: var(--good); }
+
+            .nwh .callout {
+                border-left: 3px solid var(--flag); background: var(--flag-bg);
+                border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 14px 0; font-size: 14px;
+            }
+            .nwh .callout strong { color: var(--flag); }
+            .nwh .callout.good { border-left-color: var(--good); background: var(--good-bg); }
+            .nwh .callout.good strong { color: var(--good); }
+
+            .nwh code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px;
+                background: var(--paper-2); border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px;
+            }
+
+            .nwh footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 12.5px; }
+        </style>
+
+        <p class="eyebrow">NamibWay — Working Handbook</p>
+        <h1>Listings &amp; Partner Outreach</h1>
+        <p class="subtitle">A practical guide for building out NamibWay's property listings and getting the businesses behind them onto the platform. No coding, no technical background needed — just careful research and friendly phone/email work.</p>
+
+        <div class="quickfacts">
+            <div><dt>Where you'll work</dt><dd><em>Data Enrichment</em> &amp; <em>Partners</em> (left menu)</dd></div>
+            <div><dt>Your account</dt><dd>Your own login — see Section 1</dd></div>
+            <div><dt>Two jobs</dt><dd>Complete listings · Contact owners</dd></div>
+            <div><dt>Start with</dt><dd>Accommodation, then Activities &amp; Vehicles</dd></div>
         </div>
 
-        {{-- Job 1 detail --}}
-        <div class="rounded-xl border border-gray-200 p-5 dark:border-white/10">
-            <h2 class="text-base font-semibold text-gray-950 dark:text-white">Job 1 — Complete a listing profile</h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Every listing has a completion score out of 100, made up of these weighted fields:
-            </p>
+        <section>
+            <div class="step-head"><span class="num">1</span><h2>Getting started</h2></div>
+            <p class="section-note">NamibWay is an AI travel-planning site for Namibia. Travelers chat with "Kaia," our AI trip assistant, and get a bookable day-by-day itinerary — pulled together from real accommodation, activities, restaurants and vehicle rentals in our database. Your work directly improves what Kaia can recommend.</p>
 
-            <div class="mt-4 overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="text-xs uppercase text-gray-500 dark:text-gray-400">
-                        <tr>
-                            <th class="py-1.5 pr-4">Field</th>
-                            <th class="py-1.5 pr-4">Weight</th>
-                            <th class="py-1.5">Where to find it</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-white/5">
-                        <tr>
-                            <td class="py-1.5 pr-4">Description (2–4 sentences, English)</td>
-                            <td class="py-1.5 pr-4">20%</td>
-                            <td class="py-1.5">Their site's "About" page — write it in your own words, don't copy-paste</td>
-                        </tr>
-                        <tr>
-                            <td class="py-1.5 pr-4">Photos (1 hero + gallery)</td>
-                            <td class="py-1.5 pr-4">20%</td>
-                            <td class="py-1.5">Their own site/social media only — see photo rights note below</td>
-                        </tr>
-                        <tr>
-                            <td class="py-1.5 pr-4">Website</td>
-                            <td class="py-1.5 pr-4">10%</td>
-                            <td class="py-1.5">Search the business name + "Namibia"</td>
-                        </tr>
-                        <tr>
-                            <td class="py-1.5 pr-4">Email</td>
-                            <td class="py-1.5 pr-4">10%</td>
-                            <td class="py-1.5">Their contact page, or ask by phone</td>
-                        </tr>
-                        <tr>
-                            <td class="py-1.5 pr-4">Phone</td>
-                            <td class="py-1.5 pr-4">10%</td>
-                            <td class="py-1.5">Usually already on file</td>
-                        </tr>
-                        <tr>
-                            <td class="py-1.5 pr-4">Address</td>
-                            <td class="py-1.5 pr-4">10%</td>
-                            <td class="py-1.5">Their site / Google Maps</td>
-                        </tr>
-                        <tr>
-                            <td class="py-1.5 pr-4">GPS pin</td>
-                            <td class="py-1.5 pr-4">10%</td>
-                            <td class="py-1.5">Google Maps &rarr; right-click the pin &rarr; coordinates</td>
-                        </tr>
-                        <tr>
-                            <td class="py-1.5 pr-4">Facilities / activities on offer</td>
-                            <td class="py-1.5 pr-4">10%</td>
-                            <td class="py-1.5">Their site, brochures</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <p>You have your own login here — a username/email and a temporary password, sent separately. Please don't share this login with anyone or reuse a co-founder's account; each person needs their own so we can tell whose changes are whose, and so we can turn off access cleanly if your role ever changes.</p>
+
+            <div class="callout good">
+                <strong>First 10 minutes:</strong> click <em>Data Enrichment</em> in the left-hand menu. You'll land on a table of every listing with a completion score. That table and the stat tiles above it are your dashboard for everything in Section 2.
+            </div>
+        </section>
+
+        <section>
+            <div class="step-head"><span class="num">2</span><h2>Job 1 — Complete a listing profile</h2></div>
+            <p class="section-note">Every listing (a lodge, tour, restaurant, or rental vehicle) has a completion score out of 100. Your job is to raise it by filling in what's missing — using the business's own website, Google, Facebook, TripAdvisor, or a phone call when nothing is online.</p>
+
+            <div class="table-wrap">
+            <table>
+                <tr><th>Field</th><th class="num-cell">Weight</th><th>Where to find it</th></tr>
+                <tr><td>Description (2–4 sentences, in English)</td><td class="num-cell">20%</td><td>Their website "About" page, or write it yourself from what you learn about them</td></tr>
+                <tr><td>Photos (1 hero + a few gallery shots)</td><td class="num-cell">20%</td><td>Their own website/social media — <strong>see photo rules below</strong></td></tr>
+                <tr><td>Website</td><td class="num-cell">10%</td><td>Google the business name + "Namibia"</td></tr>
+                <tr><td>Email</td><td class="num-cell">10%</td><td>Their website contact page, or ask by phone</td></tr>
+                <tr><td>Phone</td><td class="num-cell">10%</td><td>Usually already filled in</td></tr>
+                <tr><td>Address</td><td class="num-cell">10%</td><td>Website / Google Maps listing</td></tr>
+                <tr><td>GPS pin</td><td class="num-cell">10%</td><td>Search the name in Google Maps, right-click → coordinates</td></tr>
+                <tr><td>Facilities / activities on offer</td><td class="num-cell">10%</td><td>Their website, brochures</td></tr>
+            </table>
             </div>
 
-            <ol class="mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                <li><strong>1.</strong> In <em>Data Enrichment</em>, sort by completion score to find the lowest first.</li>
-                <li><strong>2.</strong> Click a row — it opens in tabs: <em>Basic, Contact, Address, Description, Photos, Metadata</em>.</li>
-                <li><strong>3.</strong> Research the business and fill in whichever tab matches what you found.</li>
-                <li><strong>4.</strong> Save — the score updates automatically.</li>
+            <h3>Step by step</h3>
+            <ol class="steps">
+                <li><span class="n">1</span>In <em>Data Enrichment</em>, sort or filter by completion score to find the lowest-scoring listings first.</li>
+                <li><span class="n">2</span>Click a row to open it. It opens in tabs: <em>Basic, Contact, Address, Description, Photos, Metadata</em>.</li>
+                <li><span class="n">3</span>Research the business (website, Google, socials). Fill in whatever tab matches what you found — you don't have to do every tab in one sitting.</li>
+                <li><span class="n">4</span>Write the description in your own words from what you find — don't copy-paste text wholesale from their website.</li>
+                <li><span class="n">5</span>Save. The completion score updates automatically.</li>
             </ol>
 
-            <div class="mt-4 rounded-lg bg-warning-50 px-4 py-3 text-xs text-warning-800 dark:bg-warning-500/10 dark:text-warning-300">
-                <strong>Photo rights:</strong> only use a photo the business published themselves (their own site
-                or official social page), or that they've explicitly OK'd. Never pull from Google Images,
-                TripAdvisor, or other travelers' posts. If in doubt, leave it blank rather than guess.
+            <div class="callout">
+                <strong>Photo rights — please don't skip this:</strong> only use a photo if the business itself published it (their own site or official social page), or if you have their explicit OK to use it. Don't pull random photos from Google Images, TripAdvisor reviews, or other travelers' posts. If in doubt, leave the photo blank and flag it rather than guess — a wrongly-used photo is a bigger problem for us than a missing one.
             </div>
 
-            <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
-                <strong>Definition of "done":</strong> score of 90% or higher. Not every field applies to every
-                listing (e.g. "activities on offer" for a restaurant) — 100% isn't the bar.
-            </p>
-        </div>
+            <p><strong>Definition of "done":</strong> a listing is in good shape once its score is <strong>90% or higher</strong>. You don't need to chase 100% — some fields (like "activities on offer") genuinely don't apply to every place.</p>
+        </section>
 
-        {{-- Job 2 detail --}}
-        <div class="rounded-xl border border-gray-200 p-5 dark:border-white/10">
-            <h2 class="text-base font-semibold text-gray-950 dark:text-white">Job 2 — Contact the owners</h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Most listed businesses don't yet know they're on NamibWay. Goal: let them know, invite them to
-                claim their page, and note their booking system if they have one.
-            </p>
+        <section>
+            <div class="step-head"><span class="num">3</span><h2>Job 2 — Contact the owners</h2></div>
+            <p class="section-note">Most of these businesses don't know they're listed on NamibWay yet. We want to let them know, invite them to take over (claim) their own page, and — where they use a booking system — get that connected.</p>
 
-            <div class="mt-4 space-y-3 text-sm text-gray-700 dark:text-gray-300">
-                <p>
-                    <strong>Have an email on file?</strong> Open the <em>Partner</em> record &rarr;
-                    <strong>"Invite Owner"</strong>. It sends a personal link so they can log in without a
-                    password and edit their own page. The Partners table tracks who's been invited, replied,
-                    or declined — no separate spreadsheet needed.
-                </p>
-                <p>
-                    <strong>No email on file?</strong> This is most of the outreach work. Find a contact channel
-                    first (site contact form, listed phone number, Facebook page), then either send the claim
-                    link or — if they're not comfortable online — offer to fill in confirmed details yourself
-                    over the phone.
-                </p>
-                <p>
-                    <strong>No response?</strong> For accommodation, activities and vehicle rentals, a follow-up
-                    call after 5–7 days is worth it — these matter most to trip quality. For restaurants, one
-                    email is usually enough.
-                </p>
-                <p>
-                    <strong>Booking system mentioned?</strong> Note it on the Partner's <em>Connector Type</em>
-                    field (ResRequest / NightsBridge / hopeCloud / Wetu / NWR / Manual) — see the
-                    <a href="{{ \App\Filament\Pages\BookingConnectorGuide::getUrl() }}" class="text-primary-600 dark:text-primary-400">Booking Connector Guide</a>
-                    for what happens next. No API credentials to configure yourself; that's a separate technical
-                    step once we know which system is involved.
-                </p>
+            <h3>3.1 — Send the claim invite</h3>
+            <ol class="steps">
+                <li><span class="n">1</span>Once a listing has a working email address on file, open its <strong>Partner</strong> record and use the <strong>"Invite Owner"</strong> action.</li>
+                <li><span class="n">2</span>This sends an email with a personal link letting them log in (no password needed) and edit their own page: fix details, upload their own photos, tell us what booking system they use.</li>
+                <li><span class="n">3</span>The system tracks who's been invited, who's replied, and who's declined — no spreadsheet needed, it's all visible on the Partner list.</li>
+            </ol>
+
+            <h3>3.2 — When there's no email on file yet</h3>
+            <p>This is likely the bulk of the outreach work. For these, find a contact channel first (their website contact form, a listed phone number, Facebook page) — then either email them directly with the claim link, or call and offer to fill in the confirmed details yourself over the phone if they're not comfortable online. Both are fine — the goal is a real human confirming their details, not a specific channel.</p>
+
+            <h3>3.3 — Following up</h3>
+            <p>Small operators often won't respond to a first email. For accommodation, activity operators and vehicle rental companies especially, a short follow-up call 5–7 days later is worth it — these listings matter most to trip quality (see priorities below). For restaurants, one email is usually enough; a mass follow-up call round isn't a good use of time there.</p>
+
+            <div class="callout">
+                <strong>If a partner asks about money, contracts, or commission terms:</strong> don't negotiate or promise anything — note what they asked and pass it to Till or your co-founder contact. Your role is data and relationships, not deal terms.
             </div>
 
-            <div class="mt-4 rounded-lg bg-danger-50 px-4 py-3 text-xs text-danger-800 dark:bg-danger-500/10 dark:text-danger-300">
-                If a partner asks about money, contracts, or commission — don't negotiate or promise anything.
-                Note the question and pass it along.
-            </div>
-        </div>
+            <h3>3.4 — Booking systems (if they mention one)</h3>
+            <p>If an owner tells you they use a booking system — ResRequest, NightsBridge, hopeCloud, Wetu, or Namibia Wildlife Resorts' own system — just note which one on their Partner record (<em>Connector Type</em> field; see the <a href="{{ \App\Filament\Pages\BookingConnectorGuide::getUrl() }}">Booking Connector Guide</a> for details). You don't need to configure logins or API access yourself; that's a technical step we'll follow up on once we know which system is involved. If they don't use any booking software at all, that's completely normal for smaller operators — mark it "Manual" and move on.</p>
+        </section>
 
-        {{-- Priorities --}}
-        <div class="rounded-xl border border-gray-200 p-5 dark:border-white/10">
-            <h2 class="text-base font-semibold text-gray-950 dark:text-white">What to work on first</h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Accommodation and activities are what the itinerary engine actually builds trips around —
-                prioritize those over the (larger) restaurant list.
-            </p>
+        <section>
+            <div class="step-head"><span class="num">4</span><h2>What to work on first</h2></div>
+            <p class="section-note">276 listings need work in total. Not all matter equally: accommodation and activities are what Kaia actually builds itineraries around, so a well-documented lodge helps far more than a well-documented restaurant. Work in this order:</p>
 
-            <div class="mt-4 overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="text-xs uppercase text-gray-500 dark:text-gray-400">
-                        <tr>
-                            <th class="py-1.5 pr-4">Type</th>
-                            <th class="py-1.5 pr-4">Count</th>
-                            <th class="py-1.5">Priority</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-white/5">
-                        <tr>
-                            <td class="py-1.5 pr-4">Accommodation</td>
-                            <td class="py-1.5 pr-4">37</td>
-                            <td class="py-1.5"><x-filament::badge color="danger">Do first</x-filament::badge></td>
-                        </tr>
-                        <tr>
-                            <td class="py-1.5 pr-4">Activities &amp; tours</td>
-                            <td class="py-1.5 pr-4">69</td>
-                            <td class="py-1.5"><x-filament::badge color="danger">Do first</x-filament::badge></td>
-                        </tr>
-                        <tr>
-                            <td class="py-1.5 pr-4">Vehicle rental</td>
-                            <td class="py-1.5 pr-4">7</td>
-                            <td class="py-1.5"><x-filament::badge color="danger">Do first</x-filament::badge></td>
-                        </tr>
-                        <tr>
-                            <td class="py-1.5 pr-4">Restaurants</td>
-                            <td class="py-1.5 pr-4">163</td>
-                            <td class="py-1.5"><x-filament::badge color="success">Steady, ongoing</x-filament::badge></td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="table-wrap">
+            <table>
+                <tr><th>Type</th><th class="num-cell">Count</th><th>Priority</th></tr>
+                <tr><td>Accommodation (lodges, guesthouses, campsites)</td><td class="num-cell">37</td><td><span class="tag priority">Do first</span></td></tr>
+                <tr><td>Activities &amp; tours</td><td class="num-cell">69</td><td><span class="tag priority">Do first</span></td></tr>
+                <tr><td>Vehicle rental</td><td class="num-cell">7</td><td><span class="tag priority">Do first</span></td></tr>
+                <tr><td>Restaurants</td><td class="num-cell">163</td><td><span class="tag later">Steady, ongoing</span></td></tr>
+            </table>
             </div>
-        </div>
+            <p>Treat the first three rows (113 listings) as the first milestone — get those to 90%+ and their owners contacted before working through the restaurant list, which is larger but individually lower-stakes.</p>
+        </section>
 
-        {{-- Reporting & rules --}}
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div class="rounded-xl border border-gray-200 p-5 dark:border-white/10">
-                <h3 class="text-sm font-semibold text-gray-950 dark:text-white">Weekly check-in</h3>
-                <ul class="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400 list-disc list-inside">
-                    <li>Listings brought to 90%+ this week</li>
-                    <li>Owners invited / reached by phone</li>
-                    <li>Claims and declines (with reason, if given)</li>
-                    <li>Anything you got stuck on, or any money/contract question raised</li>
-                </ul>
-            </div>
-            <div class="rounded-xl border border-gray-200 p-5 dark:border-white/10">
-                <h3 class="text-sm font-semibold text-gray-950 dark:text-white">What not to do</h3>
-                <ul class="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400 list-disc list-inside">
-                    <li>Don't unpublish, delete, or merge listings — flag duplicates instead</li>
-                    <li>Don't enter or discuss payment details</li>
-                    <li>Don't use a photo without confirmed rights</li>
-                    <li>Don't promise commission rates or contract terms</li>
-                </ul>
-            </div>
-        </div>
+        <section>
+            <div class="step-head"><span class="num">5</span><h2>Keeping us posted</h2></div>
+            <p class="section-note">No formal reporting tool needed — a short weekly note is enough. Include:</p>
+            <ul class="checklist">
+                <li>How many listings you brought to 90%+ this week</li>
+                <li>How many owners you invited / reached by phone</li>
+                <li>How many claimed their listing, and how many declined (and why, if they said)</li>
+                <li>Anything you got stuck on, or any business that raised a money/contract question</li>
+            </ul>
+        </section>
 
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-            Questions any time — this covers the day-to-day; anything unusual is always fine to ask about
-            rather than guess.
-        </p>
+        <section>
+            <div class="step-head"><span class="num">6</span><h2>What not to do</h2></div>
+            <ul class="checklist">
+                <li>Don't unpublish, delete, or merge listings — flag duplicates or clearly wrong entries instead of removing them yourself</li>
+                <li>Don't enter or discuss any payment details, ever</li>
+                <li>Don't use a photo unless you're sure the business published it themselves or gave permission</li>
+                <li>Don't promise commission rates, pricing, or contract terms to a partner — pass those questions on</li>
+            </ul>
+        </section>
+
+        <footer>
+            Questions any time — reach out to your co-founder contact or Till directly. This handbook covers the day-to-day; anything unusual is always fine to ask about rather than guess.
+        </footer>
     </div>
 </x-filament-panels::page>
