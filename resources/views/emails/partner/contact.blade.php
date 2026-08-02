@@ -1,6 +1,5 @@
 <x-mail::message>
 {!! nl2br(e($bodyText)) !!}
 
-Thanks,<br>
-{{ config('app.name') }}
+{!! nl2br(e($signature)) !!}
 </x-mail::message>

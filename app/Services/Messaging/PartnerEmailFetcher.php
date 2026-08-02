@@ -7,13 +7,21 @@ use App\Models\Partner;
 use App\Models\PartnerMessage;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
-use IMAP\Connection;
+use Throwable;
+use ZBateson\MailMimeParser\Header\AddressHeader;
+use ZBateson\MailMimeParser\Header\HeaderConsts;
+use ZBateson\MailMimeParser\IMessage;
+use ZBateson\MailMimeParser\Message;
 
 /**
  * Polls the shared POP3 mailbox (team@namibway.com) for partner/listing
- * replies and stores them as inbound PartnerMessage rows. Uses PHP's
- * built-in ext-imap (which also speaks POP3) rather than a Composer
- * package — no mail-parsing library was already in use in this codebase.
+ * replies and stores them as inbound PartnerMessage rows.
+ *
+ * Talks raw POP3S via Pop3Client (plain PHP streams, no extension) rather
+ * than ext-imap: PHP 8.4 dropped imap from core, and it isn't guaranteed to
+ * be installed on the server. Message parsing (MIME, encodings, charsets)
+ * is handled by zbateson/mail-mime-parser, a pure-PHP library — hand-rolling
+ * that part reliably across real-world mail clients isn't worth it.
  *
  * POP3 has no reliable server-side "seen" flag across separate polls, and
  * deleting a partner's email off the server automatically is not something
@@ -35,21 +43,27 @@ class PartnerEmailFetcher
             'rows' => [],
         ];
 
-        $connection = $this->connect();
+        $client = $this->connect();
 
-        if ($connection === null) {
+        if ($client === null) {
             return $stats;
         }
 
         try {
-            $count = imap_num_msg($connection);
+            $count = $client->countMessages();
 
             for ($messageNumber = 1; $messageNumber <= $count; $messageNumber++) {
                 $stats['fetched']++;
 
                 try {
-                    $this->processMessage($connection, $messageNumber, $dryRun, $stats);
-                } catch (\Throwable $e) {
+                    $raw = $client->retrieve($messageNumber);
+
+                    if ($raw === null) {
+                        continue;
+                    }
+
+                    $this->processMessage($raw, $dryRun, $stats);
+                } catch (Throwable $e) {
                     Log::warning('namibway:fetch-partner-emails failed to process message', [
                         'message_number' => $messageNumber,
                         'error' => $e->getMessage(),
@@ -57,14 +71,14 @@ class PartnerEmailFetcher
                 }
             }
         } finally {
-            imap_close($connection);
+            $client->quit();
         }
 
         return $stats;
     }
 
     /**
-     * Pure matching logic, split out from the IMAP/POP3 plumbing so it can be
+     * Pure matching logic, split out from the mailbox plumbing so it can be
      * unit-tested without a real mailbox connection.
      *
      * Resolution order:
@@ -103,7 +117,7 @@ class PartnerEmailFetcher
         ];
     }
 
-    private function connect(): ?Connection
+    private function connect(): ?Pop3Client
     {
         $host = config('services.pop3.host');
         $username = config('services.pop3.username');
@@ -115,40 +129,39 @@ class PartnerEmailFetcher
             return null;
         }
 
-        $port = config('services.pop3.port', 995);
-        $encryption = config('services.pop3.encryption', 'ssl');
-        $validateCert = config('services.pop3.validate_cert', true);
+        $client = new Pop3Client;
 
-        $flags = '/pop3/'.$encryption.($validateCert ? '' : '/novalidate-cert');
-        $mailbox = "{{$host}:{$port}{$flags}}INBOX";
-
-        $connection = @imap_open($mailbox, (string) $username, (string) $password);
-
-        if ($connection === false) {
-            Log::error('namibway:fetch-partner-emails: could not connect to POP3 mailbox', [
-                'error' => imap_last_error() ?: 'unknown error',
-            ]);
+        if (! $client->connect((string) $host, (int) config('services.pop3.port', 995), (bool) config('services.pop3.validate_cert', true))) {
+            Log::error('namibway:fetch-partner-emails: could not connect to POP3 mailbox', ['error' => $client->getLastError()]);
 
             return null;
         }
 
-        return $connection;
+        if (! $client->login((string) $username, (string) $password)) {
+            Log::error('namibway:fetch-partner-emails: POP3 login failed', ['error' => $client->getLastError()]);
+            $client->quit();
+
+            return null;
+        }
+
+        return $client;
     }
 
     /**
+     * Parses and ingests one already-fetched raw RFC822 message. Public (not
+     * just an implementation detail of fetch()) so the parsing/matching
+     * pipeline is testable with a crafted raw message string, without a live
+     * mailbox connection.
+     *
      * @param  array{fetched: int, matched: int, unmatched: int, skipped_duplicate: int, rows: array<int, array{from: string, partner: string|null, listing: string|null, subject: string, status: string}>}  &$stats
      */
-    private function processMessage(Connection $connection, int $messageNumber, bool $dryRun, array &$stats): void
+    public function processMessage(string $raw, bool $dryRun, array &$stats): void
     {
-        $header = imap_headerinfo($connection, $messageNumber);
+        $message = Message::from($raw, false);
 
-        if ($header === false) {
-            return;
-        }
-
-        $fromAddress = $this->extractFromAddress($header);
-        $subject = mb_decode_mimeheader($header->subject ?? '(no subject)');
-        $sourceUid = $this->extractSourceUid($header, $fromAddress);
+        $fromAddress = $this->extractFromAddress($message);
+        $subject = $message->getSubject() ?? '(no subject)';
+        $sourceUid = $this->extractSourceUid($message, $fromAddress, $subject);
 
         if (PartnerMessage::where('source_uid', $sourceUid)->exists()) {
             $stats['skipped_duplicate']++;
@@ -174,7 +187,10 @@ class PartnerEmailFetcher
             return;
         }
 
-        $sentAt = isset($header->udate) ? Carbon::createFromTimestamp($header->udate) : now();
+        $dateHeader = $message->getHeaderValue(HeaderConsts::DATE);
+        $sentAt = filled($dateHeader) ? Carbon::parse($dateHeader) : now();
+
+        $body = $message->getTextContent() ?? strip_tags($message->getHtmlContent() ?? '');
 
         PartnerMessage::create([
             'partner_id' => $partner->id,
@@ -182,97 +198,30 @@ class PartnerEmailFetcher
             'direction' => PartnerMessage::DIRECTION_INBOUND,
             'source_uid' => $sourceUid,
             'subject' => $subject,
-            'body' => $this->extractBody($connection, $messageNumber),
+            'body' => trim($body),
             'sent_at' => $sentAt,
         ]);
     }
 
-    private function extractFromAddress(object $header): string
+    private function extractFromAddress(IMessage $message): string
     {
-        if (empty($header->from[0])) {
+        $header = $message->getHeader(HeaderConsts::FROM);
+
+        if (! $header instanceof AddressHeader) {
             return '';
         }
 
-        $from = $header->from[0];
-
-        return ($from->mailbox ?? '').'@'.($from->host ?? '');
+        return strtolower(trim($header->getEmail() ?? ''));
     }
 
-    private function extractSourceUid(object $header, string $fromAddress): string
+    private function extractSourceUid(IMessage $message, string $fromAddress, string $subject): string
     {
-        $messageId = $header->message_id ?? null;
+        $messageId = $message->getMessageId();
 
         if (filled($messageId)) {
-            return trim((string) $messageId, "<> \t\n\r\0\x0B");
+            return trim($messageId, "<> \t\n\r\0\x0B");
         }
 
-        return hash('sha256', $fromAddress.'|'.($header->subject ?? '').'|'.($header->date ?? ''));
-    }
-
-    private function extractBody(Connection $connection, int $messageNumber): string
-    {
-        $structure = imap_fetchstructure($connection, $messageNumber);
-
-        if ($structure === false) {
-            return '';
-        }
-
-        $plain = $this->findTextPart($structure, 'PLAIN');
-
-        if ($plain !== null) {
-            $fetched = imap_fetchbody($connection, $messageNumber, $plain['section']);
-
-            return trim($this->decodeEncodedPart($fetched === false ? '' : $fetched, $plain['encoding']));
-        }
-
-        $html = $this->findTextPart($structure, 'HTML');
-
-        if ($html !== null) {
-            $fetched = imap_fetchbody($connection, $messageNumber, $html['section']);
-            $decoded = $this->decodeEncodedPart($fetched === false ? '' : $fetched, $html['encoding']);
-
-            return trim(html_entity_decode(strip_tags($decoded)));
-        }
-
-        // Not multipart and no explicit TEXT part found — the whole body is the message.
-        $body = imap_body($connection, $messageNumber);
-
-        return trim($this->decodeEncodedPart($body === false ? '' : $body, $structure->encoding ?? 0));
-    }
-
-    /**
-     * Walks a MIME structure (as returned by imap_fetchstructure) looking for a
-     * TEXT/$subtype part, returning its section path (e.g. "1.1") for
-     * imap_fetchbody. type 0 = TEXT, type 1 = MULTIPART per the imap extension.
-     *
-     * @return array{section: string, encoding: int}|null
-     */
-    private function findTextPart(object $structure, string $subtype, string $sectionPrefix = ''): ?array
-    {
-        if (($structure->type ?? null) === 0 && strtoupper($structure->subtype ?? '') === $subtype) {
-            return ['section' => $sectionPrefix !== '' ? $sectionPrefix : '1', 'encoding' => $structure->encoding ?? 0];
-        }
-
-        if (($structure->type ?? null) === 1 && ! empty($structure->parts)) {
-            foreach ($structure->parts as $index => $part) {
-                $section = $sectionPrefix !== '' ? $sectionPrefix.'.'.($index + 1) : (string) ($index + 1);
-                $found = $this->findTextPart($part, $subtype, $section);
-
-                if ($found !== null) {
-                    return $found;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private function decodeEncodedPart(string $data, int $encoding): string
-    {
-        return match ($encoding) {
-            3 => base64_decode($data), // ENCBASE64
-            4 => quoted_printable_decode($data), // ENCQUOTEDPRINTABLE
-            default => $data,
-        };
+        return hash('sha256', $fromAddress.'|'.$subject.'|'.($message->getHeaderValue(HeaderConsts::DATE) ?? ''));
     }
 }

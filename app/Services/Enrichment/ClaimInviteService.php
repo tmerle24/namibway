@@ -40,7 +40,10 @@ class ClaimInviteService
             function ($message) use ($partner) {
                 $message
                     ->to($partner->email, $partner->name)
-                    ->from(config('mail.from.address'), 'NamibWay')
+                    // Same address the POP3 fetcher polls (services.pop3.username) —
+                    // a reply naturally lands back in the mailbox
+                    // namibway:fetch-partner-emails reads from.
+                    ->from(config('services.pop3.username') ?: config('mail.from.address'), 'NamibWay')
                     ->subject('Your property on NamibWay — claim your free listing');
             }
         );
