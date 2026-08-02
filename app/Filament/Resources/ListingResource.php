@@ -7,10 +7,10 @@ use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
 use App\Enums\ConnectorType;
 use App\Enums\ListingType;
 use App\Filament\Resources\ListingResource\Pages;
+use App\Filament\Resources\ListingResource\RelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
-use App\Livewire\ListingMessagesPanel;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Services\Enrichment\ClaimInviteService;
@@ -256,18 +256,6 @@ class ListingResource extends Resource
                                     ->required(),
                             ])
                             ->columns(2),
-
-                        // Only meaningful once the listing exists (there's no partner
-                        // thread to show on the Create page) — hidden until then.
-                        Forms\Components\Tabs\Tab::make('Messages')
-                            ->icon('heroicon-o-envelope')
-                            ->visible(fn (?Listing $record): bool => $record !== null)
-                            ->badge(fn (?Listing $record): ?string => $record?->partner?->email === null ? 'No email' : null)
-                            ->badgeColor('gray')
-                            ->schema([
-                                Forms\Components\Livewire::make(ListingMessagesPanel::class)
-                                    ->key('listing-messages-panel'),
-                            ]),
                     ]),
             ]);
     }
@@ -529,7 +517,7 @@ class ListingResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\PartnerMessagesRelationManager::class,
         ];
     }
 

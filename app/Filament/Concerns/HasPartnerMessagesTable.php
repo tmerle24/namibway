@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire;
+namespace App\Filament\Concerns;
 
 use App\Mail\PartnerContactMail;
 use App\Models\Listing;
@@ -8,31 +8,32 @@ use App\Models\Partner;
 use App\Models\PartnerMessage;
 use App\Services\Enrichment\ClaimInviteService;
 use Filament\Forms;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
-use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
-use Livewire\Component;
 
 /**
- * Shared table/actions/mark-as-read behavior for the "Messages" tab, used on
- * both the Listing edit page (ListingMessagesPanel, scoped to one listing's
- * partner) and the Partner edit page (PartnerMessagesPanel, scoped to the
- * partner's full cumulated thread across all their listings).
+ * Shared table/actions/mark-as-read behavior for the "Messages" tab, used by
+ * both PartnerMessagesRelationManager (on the Listing edit page, scoped to
+ * that listing's partner) and MessagesRelationManager (on the Partner edit
+ * page, scoped to the partner's full cumulated thread across all their
+ * listings).
+ *
+ * A trait, not a shared base Livewire component: Filament tables always
+ * render their action-modal wrappers as <form> elements unconditionally
+ * (see vendor/filament/actions/resources/views/components/modals.blade.php)
+ * — embedding one inside the record's own edit <form> (which an earlier
+ * version of this did, via Forms\Components\Livewire, to get a flat tab bar
+ * instead of relation managers' extra wrapping tab) produces invalid nested
+ * <form> tags, which silently breaks form submission in the browser. Relation
+ * managers render as siblings of the edit form specifically to avoid this.
  */
-abstract class AbstractPartnerContactPanel extends Component implements HasForms, HasTable
+trait HasPartnerMessagesTable
 {
-    use InteractsWithForms;
-    use InteractsWithTable;
-
     /**
      * IDs that were unread when the tab was mounted — captured before marking
      * them read below, so the "new since last visit" bolding in table() still
@@ -64,7 +65,7 @@ abstract class AbstractPartnerContactPanel extends Component implements HasForms
         return $this->getContactListing()?->id;
     }
 
-    public function mount(): void
+    protected function markUnreadMessagesAsRead(): void
     {
         $partner = $this->getPartner();
 
@@ -196,10 +197,5 @@ abstract class AbstractPartnerContactPanel extends Component implements HasForms
                     ->label('Remove log entry'),
             ])
             ->bulkActions([]);
-    }
-
-    public function render(): View
-    {
-        return view('livewire.partner-contact-panel');
     }
 }

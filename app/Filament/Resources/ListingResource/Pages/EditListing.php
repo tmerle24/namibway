@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ListingResource\Pages;
 
+use App\Filament\Concerns\HasFormActionsInHeader;
 use App\Filament\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Models\Listing;
@@ -13,11 +14,10 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class EditListing extends EditRecord
 {
+    use HasFormActionsInHeader;
     use Translatable;
 
     protected static string $resource = ListingResource::class;
-
-    public static bool $formActionsAreSticky = true;
 
     /**
      * @param  array<string, mixed>  $data
@@ -47,9 +47,22 @@ class EditListing extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
+        return $this->withFormActions([
             Actions\LocaleSwitcher::make(),
             Actions\DeleteAction::make(),
-        ];
+        ]);
+    }
+
+    // Puts "Messages" in the same top tab bar as Basic information/Media/etc.
+    // instead of rendering the relation manager as its own block below the
+    // form (Filament's default).
+    public function hasCombinedRelationManagerTabsWithContent(): bool
+    {
+        return true;
+    }
+
+    public function getContentTabLabel(): ?string
+    {
+        return 'Listing details';
     }
 }

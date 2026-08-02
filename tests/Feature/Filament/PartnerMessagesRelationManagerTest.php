@@ -2,7 +2,8 @@
 
 namespace Tests\Feature\Filament;
 
-use App\Livewire\PartnerMessagesPanel;
+use App\Filament\Resources\PartnerResource\Pages\EditPartner;
+use App\Filament\Resources\PartnerResource\RelationManagers\MessagesRelationManager;
 use App\Mail\PartnerContactMail;
 use App\Models\Listing;
 use App\Models\Partner;
@@ -13,21 +14,13 @@ use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-class PartnerMessagesPanelTest extends TestCase
+class PartnerMessagesRelationManagerTest extends TestCase
 {
     use RefreshDatabase;
 
     private function admin(): User
     {
         return User::factory()->create(['is_admin' => true]);
-    }
-
-    public function test_messages_tab_is_hidden_on_the_create_page(): void
-    {
-        $this->actingAs($this->admin())
-            ->get('/admin/partners/create')
-            ->assertOk()
-            ->assertDontSee('Messages');
     }
 
     public function test_shows_the_cumulated_thread_across_more_than_one_listing(): void
@@ -55,7 +48,10 @@ class PartnerMessagesPanelTest extends TestCase
         ]);
 
         Livewire::actingAs($this->admin())
-            ->test(PartnerMessagesPanel::class, ['record' => $partner])
+            ->test(MessagesRelationManager::class, [
+                'ownerRecord' => $partner,
+                'pageClass' => EditPartner::class,
+            ])
             ->assertCanSeeTableRecords(PartnerMessage::all());
     }
 
@@ -68,7 +64,10 @@ class PartnerMessagesPanelTest extends TestCase
         Listing::factory()->create(['partner_id' => $partner->id]);
 
         Livewire::actingAs($this->admin())
-            ->test(PartnerMessagesPanel::class, ['record' => $partner])
+            ->test(MessagesRelationManager::class, [
+                'ownerRecord' => $partner,
+                'pageClass' => EditPartner::class,
+            ])
             ->callTableAction('contact_owner', data: [
                 'subject' => 'Test subject',
                 'body' => 'Test body',
@@ -88,7 +87,10 @@ class PartnerMessagesPanelTest extends TestCase
         $partner = Partner::create(['name' => 'Lodge', 'email' => 'owner@example.com', 'claimed_at' => now()]);
 
         Livewire::actingAs($this->admin())
-            ->test(PartnerMessagesPanel::class, ['record' => $partner])
+            ->test(MessagesRelationManager::class, [
+                'ownerRecord' => $partner,
+                'pageClass' => EditPartner::class,
+            ])
             ->assertTableActionHidden('send_claim_email');
     }
 
@@ -109,8 +111,21 @@ class PartnerMessagesPanelTest extends TestCase
         $this->assertNull($message->fresh()->read_at);
 
         Livewire::actingAs($this->admin())
-            ->test(PartnerMessagesPanel::class, ['record' => $partner]);
+            ->test(MessagesRelationManager::class, [
+                'ownerRecord' => $partner,
+                'pageClass' => EditPartner::class,
+            ]);
 
         $this->assertNotNull($message->fresh()->read_at);
+    }
+
+    public function test_edit_page_renders_with_messages_tab(): void
+    {
+        $partner = Partner::create(['name' => 'Lodge', 'email' => 'owner@example.com']);
+
+        $this->actingAs($this->admin())
+            ->get("/admin/partners/{$partner->id}/edit")
+            ->assertOk()
+            ->assertSee('Messages');
     }
 }
