@@ -2,6 +2,7 @@
 import type * as Leaflet from 'leaflet';
 import type { Map as LeafletMap, Marker } from 'leaflet';
 import { onMounted, onUnmounted, watch } from 'vue';
+import { createBrandPinIcon } from '@/lib/map-icons';
 
 const props = defineProps<{
     mapId: string;
@@ -65,7 +66,10 @@ function placeMarker(latlng: [number, number], L: typeof Leaflet) {
     if (marker) {
         marker.setLatLng(latlng);
     } else {
-        marker = L.marker(latlng, { draggable: true }).addTo(map);
+        marker = L.marker(latlng, {
+            draggable: true,
+            icon: createBrandPinIcon(L),
+        }).addTo(map);
         marker.on('dragend', () => {
             const pos = marker!.getLatLng();
             emit('update:latitude', round(pos.lat));
@@ -133,5 +137,23 @@ onUnmounted(() => {
     margin: 6px 0 0;
     font-size: 12px;
     color: #6b6355;
+}
+</style>
+
+<style>
+.brand-map-pin {
+    width: 30px;
+    height: 42px;
+    cursor: grab;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='42' viewBox='0 0 30 42'%3E%3Cpath d='M15 1C7.268 1 1 7.268 1 15c0 10.5 14 25 14 25s14-14.5 14-25C29 7.268 22.732 1 15 1z' fill='%23c0533a' stroke='%23fff' stroke-width='2'/%3E%3Ccircle cx='15' cy='15' r='5.5' fill='%23fff'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-size: contain;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+    transition: transform 0.15s ease;
+}
+
+.brand-map-pin:active {
+    cursor: grabbing;
+    transform: scale(1.08);
 }
 </style>
