@@ -78,15 +78,29 @@ class MessagingPagesTest extends TestCase
 
     public function test_sidebar_shows_the_messaging_group_with_only_inquiries_and_emails(): void
     {
-        $this->actingAs($this->admin())
+        $response = $this->actingAs($this->admin())
             ->get('/admin/inquiries')
             ->assertOk()
             ->assertSee('Messaging')
             ->assertSee('/admin/inquiries', false)
             ->assertSee('https://webmail.namibway.com', false)
             ->assertDontSee('/admin/messaging-listings', false)
-            ->assertDontSee('/admin/messaging-partners', false)
-            ->assertDontSee('/admin/messaging-settings', false);
+            ->assertDontSee('/admin/messaging-partners', false);
+
+        // The sidebar renders every navigation group's items into the page on every
+        // load (collapsed groups are hidden with Alpine's x-show, not left out of the
+        // DOM), so messaging-settings — which now lives under "Settings" — legitimately
+        // appears *somewhere* on the page. Scope the check to just the Messaging
+        // group's markup (it sits between its own and the next group's data-group-label
+        // marker) to actually verify it moved out of Messaging specifically.
+        $html = $response->getContent();
+        $messagingStart = strpos($html, 'data-group-label="Messaging"');
+        $this->assertIsInt($messagingStart, 'Messaging navigation group not found in sidebar.');
+        $documentationStart = strpos($html, 'data-group-label="Documentation"', $messagingStart);
+        $this->assertIsInt($documentationStart, 'Documentation navigation group not found in sidebar.');
+        $messagingGroupHtml = substr($html, $messagingStart, $documentationStart - $messagingStart);
+
+        $this->assertStringNotContainsString('/admin/messaging-settings', $messagingGroupHtml);
     }
 
     public function test_listings_and_partners_pages_are_hidden_from_navigation_but_still_reachable(): void
