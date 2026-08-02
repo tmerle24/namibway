@@ -150,9 +150,17 @@ echo "═══ 14/15 PHP-FPM neu laden (OPcache) ═══"
 # aber nie im tatsächlich ausgeführten Prozess, bis FPM neu lädt. Traf uns am
 # 2026-08-02: ein bestätigt korrekter Fix (Save-Button-Bindung ans Formular)
 # blieb nach dem Deploy wirkungslos, bis genau das hier fehlte.
-PHP_FPM_SERVICE=$(systemctl list-units --type=service --state=running --no-legend 2>/dev/null | awk '{print $1}' | grep -E '^php[0-9.]*-fpm\.service$' | head -1)
-if [ -n "$PHP_FPM_SERVICE" ]; then
-    sudo systemctl reload "$PHP_FPM_SERVICE" && echo "  → $PHP_FPM_SERVICE neu geladen" || echo "  → Neuladen von $PHP_FPM_SERVICE fehlgeschlagen — bitte manuell prüfen"
+#
+# Alle laufenden php*-fpm-Units neu laden, nicht nur die erste gefundene: auf
+# diesem Server laufen php8.3-fpm UND php8.4-fpm gleichzeitig (vermutlich ein
+# Rest einer PHP-Versions-Migration) — welche davon nginx tatsächlich anspricht,
+# entscheidet sich in der nginx-Config, nicht hier, und ein Reload der falschen
+# Version lässt den Bug scheinbar unverändert weiterbestehen.
+PHP_FPM_SERVICES=$(systemctl list-units --type=service --state=running --no-legend 2>/dev/null | awk '{print $1}' | grep -E '^php[0-9.]*-fpm\.service$')
+if [ -n "$PHP_FPM_SERVICES" ]; then
+    for service in $PHP_FPM_SERVICES; do
+        sudo systemctl reload "$service" && echo "  → $service neu geladen" || echo "  → Neuladen von $service fehlgeschlagen — bitte manuell prüfen"
+    done
 else
     echo "  → Kein laufender php*-fpm-Service gefunden — übersprungen (bitte manuell prüfen, falls Code-Änderungen nicht ankommen)"
 fi
