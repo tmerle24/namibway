@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import type { Map as LeafletMap, Marker } from 'leaflet';
+import type { Map as LeafletMap, Marker, MarkerClusterGroup } from 'leaflet';
 import { onMounted, onUnmounted, watch } from 'vue';
 import { show } from '@/routes/listings';
 
@@ -19,6 +19,7 @@ const props = defineProps<{
 }>();
 
 let map: LeafletMap | null = null;
+let clusterGroup: MarkerClusterGroup | null = null;
 let markerLayers: Marker[] = [];
 
 const NAMIBIA_CENTER: [number, number] = [-22.0, 17.5];
@@ -35,6 +36,8 @@ function escapeHtml(value: string): string {
 async function initMap() {
     const L = (await import('leaflet')).default;
     await import('leaflet/dist/leaflet.css');
+    await import('leaflet.markercluster');
+    await import('leaflet.markercluster/dist/MarkerCluster.css');
 
     map = L.map(props.mapId, {
         center: NAMIBIA_CENTER,
@@ -57,58 +60,84 @@ function renderMarkers() {
         return;
     }
 
-    import('leaflet').then(({ default: L }) => {
-        markerLayers.forEach((m) => m.remove());
-        markerLayers = [];
+    Promise.all([import('leaflet'), import('leaflet.markercluster')]).then(
+        ([{ default: L }]) => {
+            markerLayers.forEach((m) => m.remove());
+            markerLayers = [];
 
-        if (props.markers.length === 0) {
-            return;
-        }
-
-        props.markers.forEach((item) => {
-            const icon = L.divIcon({
-                className: '',
-                html: '<div class="explore-map-marker"></div>',
-                iconSize: [16, 16],
-                iconAnchor: [8, 8],
-            });
-
-            const popupLines = [
-                '<div class="explore-map-popup">',
-                `<img src="${escapeHtml(item.image)}" alt="" class="explore-map-popup-img" />`,
-                '<div class="explore-map-popup-body">',
-                `<div class="explore-map-popup-tag">${escapeHtml(item.typeLabel)}</div>`,
-                `<div class="explore-map-popup-title">${escapeHtml(item.title)}</div>`,
-                '</div>',
-                '</div>',
-            ].join('');
-
-            const marker = L.marker([item.latitude, item.longitude], { icon })
-                .addTo(map!)
-                .bindPopup(popupLines, { maxWidth: 220 });
-
-            marker.on('mouseover', () => marker.openPopup());
-
-            if (item.slug) {
-                const slug = item.slug;
-                marker.on('click', () =>
-                    router.visit(show({ listing: slug }).url),
-                );
+            if (clusterGroup) {
+                clusterGroup.remove();
+                clusterGroup = null;
             }
 
-            markerLayers.push(marker);
-        });
+            if (props.markers.length === 0) {
+                return;
+            }
 
-        const latlngs = props.markers.map(
-            (item) => [item.latitude, item.longitude] as [number, number],
-        );
+            clusterGroup = L.markerClusterGroup({
+                showCoverageOnHover: false,
+                maxClusterRadius: 50,
+                iconCreateFunction: (cluster) => {
+                    const count = cluster.getChildCount();
+                    const size = count >= 25 ? 40 : count >= 10 ? 34 : 28;
 
-        if (latlngs.length === 1) {
-            map!.setView(latlngs[0], 10);
-        } else {
-            map!.fitBounds(L.latLngBounds(latlngs), { padding: [32, 32] });
-        }
-    });
+                    return L.divIcon({
+                        className: '',
+                        html: `<div class="explore-map-cluster" style="width:${size}px;height:${size}px">${count}</div>`,
+                        iconSize: [size, size],
+                        iconAnchor: [size / 2, size / 2],
+                    });
+                },
+            });
+
+            props.markers.forEach((item) => {
+                const icon = L.divIcon({
+                    className: '',
+                    html: '<div class="explore-map-marker"></div>',
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8],
+                });
+
+                const popupLines = [
+                    '<div class="explore-map-popup">',
+                    `<img src="${escapeHtml(item.image)}" alt="" class="explore-map-popup-img" />`,
+                    '<div class="explore-map-popup-body">',
+                    `<div class="explore-map-popup-tag">${escapeHtml(item.typeLabel)}</div>`,
+                    `<div class="explore-map-popup-title">${escapeHtml(item.title)}</div>`,
+                    '</div>',
+                    '</div>',
+                ].join('');
+
+                const marker = L.marker([item.latitude, item.longitude], {
+                    icon,
+                }).bindPopup(popupLines, { maxWidth: 220 });
+
+                marker.on('mouseover', () => marker.openPopup());
+
+                if (item.slug) {
+                    const slug = item.slug;
+                    marker.on('click', () =>
+                        router.visit(show({ listing: slug }).url),
+                    );
+                }
+
+                markerLayers.push(marker);
+                clusterGroup!.addLayer(marker);
+            });
+
+            map!.addLayer(clusterGroup!);
+
+            const latlngs = props.markers.map(
+                (item) => [item.latitude, item.longitude] as [number, number],
+            );
+
+            if (latlngs.length === 1) {
+                map!.setView(latlngs[0], 10);
+            } else {
+                map!.fitBounds(L.latLngBounds(latlngs), { padding: [32, 32] });
+            }
+        },
+    );
 }
 
 onMounted(() => {
@@ -163,6 +192,25 @@ watch(() => props.markers, renderMarkers);
 .explore-map-marker:hover {
     transform: scale(1.3);
     box-shadow: 0 2px 8px rgba(192, 83, 58, 0.5);
+}
+
+.explore-map-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #c0533a;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+.explore-map-cluster:hover {
+    transform: scale(1.08);
 }
 
 .explore-map-popup {
