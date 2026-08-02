@@ -25,11 +25,22 @@ export interface ItineraryVariant {
     days: ItineraryDay[];
 }
 
+export interface TripParams {
+    nights: number | null;
+    travel_period: string;
+    interests: string;
+    adults: number;
+    children_under_13: number;
+    vehicle_type: string;
+    budget_tier: string;
+}
+
 export interface ItineraryPlan {
     trip_summary: string;
     variants: ItineraryVariant[];
     start_location?: string;
     end_location?: string;
+    trip_params?: TripParams | null;
 }
 
 export interface ChatMessage {

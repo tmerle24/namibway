@@ -62,7 +62,22 @@
         "savedToAccount": "Gespeichert ✓",
         "copyFailed": "Kopieren nicht möglich — bitte den Link manuell markieren und kopieren.",
         "setStartDate": "Startdatum festlegen",
-        "drivingTime": "Fahrzeit"
+        "drivingTime": "Fahrzeit",
+        "meta": {
+            "travelPeriod": "Reisezeit",
+            "duration": "Dauer",
+            "travelers": "Personen",
+            "preferences": "Präferenzen",
+            "budget": "Budget",
+            "nights": "{count} Nacht | {count} Nächte",
+            "adults": "{count} Erwachsener | {count} Erwachsene",
+            "children": "{count} Kind | {count} Kinder",
+            "budgetTiers": {
+                "budget": "Budget",
+                "mid-range": "Mittelklasse",
+                "premium": "Premium"
+            }
+        }
     },
     "booking": {
         "eyebrow": "Buchungsassistent",

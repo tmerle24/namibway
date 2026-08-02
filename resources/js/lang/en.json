@@ -73,7 +73,22 @@
         "savedToAccount": "Saved ✓",
         "copyFailed": "Couldn't copy automatically — the link is selected, copy it manually.",
         "setStartDate": "Set start date",
-        "drivingTime": "Driving"
+        "drivingTime": "Driving",
+        "meta": {
+            "travelPeriod": "Travel dates",
+            "duration": "Duration",
+            "travelers": "Travelers",
+            "preferences": "Preferences",
+            "budget": "Budget",
+            "nights": "{count} night | {count} nights",
+            "adults": "{count} adult | {count} adults",
+            "children": "{count} child | {count} children",
+            "budgetTiers": {
+                "budget": "Budget",
+                "mid-range": "Mid-range",
+                "premium": "Premium"
+            }
+        }
     },
     "booking": {
         "eyebrow": "Booking assistant",

@@ -93,7 +93,7 @@ class ItineraryService
      * self-corrects rather than surfacing a one-off glitch to the traveler.
      *
      * @param  array<string, mixed>  $tripParams
-     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string, trip_params: array<string, mixed>}
      */
     public function generate(array $tripParams): array
     {
@@ -124,7 +124,7 @@ class ItineraryService
 
     /**
      * @param  array<string, mixed>  $tripParams
-     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string, trip_params: array<string, mixed>}
      */
     private function generateWithFreshRetry(array $tripParams, ?string $correction = null): array
     {
@@ -141,7 +141,7 @@ class ItineraryService
 
     /**
      * @param  array<string, mixed>  $tripParams
-     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string, trip_params: array<string, mixed>}
      */
     private function attempt(array $tripParams, ?string $correction = null): array
     {
@@ -182,6 +182,13 @@ class ItineraryService
                 // re-derive from the model.
                 $plan['start_location'] = $this->stringParam($tripParams, 'start_location', 'Windhoek');
                 $plan['end_location'] = $this->stringParam($tripParams, 'end_location', $plan['start_location']);
+
+                // Same reasoning as start/end above: dates, party size and
+                // travel style were already collected as ground truth during
+                // the interview — echo them straight through instead of
+                // making the frontend parse them back out of trip_summary's
+                // free-text prose.
+                $plan['trip_params'] = $this->extractTripParams($tripParams);
 
                 return $plan;
             }
@@ -456,9 +463,9 @@ class ItineraryService
      * place rather than breaking itinerary generation over a flaky external
      * API or a plan the AI left too vague to compute exact stay dates for.
      *
-     * @param  array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}  $plan
+     * @param  array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string, trip_params: array<string, mixed>}  $plan
      * @param  array<string, mixed>  $tripParams
-     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string, trip_params: array<string, mixed>}
      */
     private function applyAvailabilityChecks(array $plan, array $tripParams): array
     {
@@ -939,6 +946,23 @@ class ItineraryService
         $value = $tripParams[$key] ?? null;
 
         return is_string($value) && $value !== '' ? $value : $default;
+    }
+
+    /**
+     * @param  array<string, mixed>  $tripParams
+     * @return array{nights: int|null, travel_period: string, interests: string, adults: int, children_under_13: int, vehicle_type: string, budget_tier: string}
+     */
+    private function extractTripParams(array $tripParams): array
+    {
+        return [
+            'nights' => is_numeric($tripParams['nights'] ?? null) ? (int) $tripParams['nights'] : null,
+            'travel_period' => $this->stringParam($tripParams, 'travel_period', ''),
+            'interests' => $this->stringParam($tripParams, 'interests', ''),
+            'adults' => is_numeric($tripParams['adults'] ?? null) ? (int) $tripParams['adults'] : 1,
+            'children_under_13' => is_numeric($tripParams['children_under_13'] ?? null) ? (int) $tripParams['children_under_13'] : 0,
+            'vehicle_type' => $this->stringParam($tripParams, 'vehicle_type', ''),
+            'budget_tier' => $this->stringParam($tripParams, 'budget_tier', ''),
+        ];
     }
 
     /**

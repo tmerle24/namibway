@@ -23,6 +23,7 @@ import SaveLoginModal from './SaveLoginModal.vue';
 import SaveShareBar from './SaveShareBar.vue';
 import TripMap from './TripMap.vue';
 import type { DrivingLeg } from './TripMap.vue';
+import TripMeta from './TripMeta.vue';
 
 const props = defineProps<{
     plan: ItineraryPlan;
@@ -363,6 +364,7 @@ async function saveAllVariants() {
                 variants: [variant],
                 start_location: routeStart.value,
                 end_location: routeEnd.value,
+                trip_params: props.plan.trip_params,
             }).then((result) => {
                 savedTokens.value[i] = result.token;
             }),
@@ -408,6 +410,10 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
             <div class="eyebrow">{{ t('itinerary.eyebrow') }}</div>
             <h2>{{ t('itinerary.title') }}</h2>
             <p>{{ t('itinerary.subtitle') }}</p>
+            <p v-if="plan.trip_summary" class="trip-summary-text">
+                {{ plan.trip_summary }}
+            </p>
+            <TripMeta :trip-params="plan.trip_params" />
             <div class="route-summary">
                 <span class="route-label">{{ t('itinerary.route') }}:</span>
                 <LocationPicker
@@ -731,6 +737,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         variants: [variant],
                         start_location: routeStart,
                         end_location: routeEnd,
+                        trip_params: plan.trip_params,
                     }"
                     :token="savedTokens[variantIndex] ?? null"
                     :is-logged-in="isLoggedIn"

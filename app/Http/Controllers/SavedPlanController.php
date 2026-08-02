@@ -21,6 +21,9 @@ class SavedPlanController extends Controller
             'plan' => ['required', 'array'],
             'plan.trip_summary' => ['required', 'string', 'max:500'],
             'plan.variants' => ['required', 'array', 'min:1'],
+            'plan.start_location' => ['sometimes', 'string', 'max:255'],
+            'plan.end_location' => ['sometimes', 'string', 'max:255'],
+            'plan.trip_params' => ['sometimes', 'array'],
         ]);
 
         $plan = $validated['plan'];
