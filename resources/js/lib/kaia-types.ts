@@ -61,6 +61,7 @@ export interface SearchIntent {
     region?: string;
     keyword?: string;
     budget?: 'budget' | 'mid-range' | 'premium';
+    min_rating?: string;
 }
 
 export interface GuestDetails {

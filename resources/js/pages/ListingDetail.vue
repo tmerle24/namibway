@@ -149,6 +149,32 @@ const heroImage = computed(() => {
     return fallbacks[props.listing.id % fallbacks.length];
 });
 
+// Carries forward whatever explore filters were active when this listing
+// was opened (see ExploreSection.vue's listingUrl()), so "back" restores
+// the previous search instead of dropping the user on a blank homepage.
+const FORWARDED_FILTER_KEYS = [
+    'type',
+    'region',
+    'budget',
+    'keyword',
+    'min_rating',
+];
+
+const backHref = computed(() => {
+    const forwarded = new URLSearchParams(window.location.search);
+    const query: Record<string, string> = {};
+
+    for (const key of FORWARDED_FILTER_KEYS) {
+        const value = forwarded.get(key);
+
+        if (value) {
+            query[key] = value;
+        }
+    }
+
+    return Object.keys(query).length > 0 ? home({ query }) : home();
+});
+
 const hasLocation = computed(
     () =>
         props.listing.latitude !== null && props.listing.longitude !== null,
@@ -347,7 +373,7 @@ const directionsUrl = computed(() => {
                 </template>
                 <CurrencySwitcher />
                 <LocaleSwitcher />
-                <Link :href="home()" class="detail-back">{{
+                <Link :href="backHref" class="detail-back">{{
                     t('listing.backToHome')
                 }}</Link>
             </div>

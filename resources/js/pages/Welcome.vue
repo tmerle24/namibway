@@ -80,8 +80,11 @@ onMounted(() => {
     const params = new URLSearchParams(window.location.search);
     const type = params.get('type');
     const region = params.get('region');
+    const budget = params.get('budget');
+    const keyword = params.get('keyword');
+    const minRating = params.get('min_rating');
 
-    if (!type && !region) {
+    if (!type && !region && !budget && !keyword && !minRating) {
         return;
     }
 
@@ -90,6 +93,9 @@ onMounted(() => {
             ? (type as SearchIntent['type'])
             : undefined,
         region: region ?? undefined,
+        budget: (budget as SearchIntent['budget']) ?? undefined,
+        keyword: keyword ?? undefined,
+        min_rating: minRating ?? undefined,
     });
 });
 

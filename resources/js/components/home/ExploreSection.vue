@@ -349,10 +349,44 @@ watch(
         filterRegion.value = intent.region ?? '';
         filterKeyword.value = intent.keyword ?? '';
         filterBudget.value = intent.budget ?? '';
+        filterMinRating.value = intent.min_rating ?? '';
 
         performSearch(1);
     },
 );
+
+const listingBackQuery = computed(() => {
+    const query: Record<string, string> = {};
+
+    if (filterCategory.value) {
+        query.type = filterCategory.value;
+    }
+
+    if (filterRegion.value) {
+        query.region = filterRegion.value;
+    }
+
+    if (filterBudget.value) {
+        query.budget = filterBudget.value;
+    }
+
+    if (filterMinRating.value) {
+        query.min_rating = filterMinRating.value;
+    }
+
+    if (filterKeyword.value) {
+        query.keyword = filterKeyword.value;
+    }
+
+    return query;
+});
+
+function listingUrl(slug: string): string {
+    return show(
+        { listing: slug },
+        hasActiveFilters.value ? { query: listingBackQuery.value } : undefined,
+    ).url;
+}
 
 const SHORTLIST_KEY = 'namibway_shortlist';
 
@@ -686,7 +720,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                 <Link
                     v-for="item in searchResults"
                     :key="item.id"
-                    :href="show({ listing: item.slug }).url"
+                    :href="listingUrl(item.slug)"
                     class="result-card"
                 >
                     <div class="result-card-thumb">
@@ -845,9 +879,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                             v-for="item in row.items.slice(0, 8)"
                             :key="item.title"
                             :href="
-                                item.slug
-                                    ? show({ listing: item.slug }).url
-                                    : undefined
+                                item.slug ? listingUrl(item.slug) : undefined
                             "
                             class="idea-card"
                             @click="
