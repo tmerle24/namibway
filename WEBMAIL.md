@@ -188,20 +188,22 @@ im Repo, wird über `namibway.com` mitdeployt). Direkt am selben Pfad ersetzen, 
 Datei-Upload nötig — referenziert einfach die schon live gehostete Datei:
 
 ```bash
-sudo tee /etc/roundcube/skins/elastic/images/logo.svg > /dev/null <<'EOF'
+sudo tee /usr/share/roundcube/skins/elastic/images/logo.svg > /dev/null <<'EOF'
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 103 100">
   <image href="https://namibway.com/images/namibway-compass-white.png" width="103" height="100"/>
 </svg>
 EOF
 ```
 
-(Pfad bei Variante B: `/var/www/webmail/skins/elastic/images/logo.svg`.) Kein
-php-fpm-Reload nötig, das ist eine statische Datei.
+Pfad bestätigt per `sudo find / -path "*/skins/elastic/images/logo.svg"` (Distro-Paket legt die
+Skin-Dateien unter `/usr/share/roundcube/`, nicht unter `/etc/roundcube/` — dort liegt nur die
+Config). Bei Variante B (Tarball-Install) stattdessen `/var/www/webmail/skins/elastic/images/logo.svg`.
+Kein php-fpm-Reload nötig, das ist eine statische Datei.
 
 ### Favicon
 
 Kein Config-Wert, sondern eine Datei im Skin-Ordner — direkt ersetzen:
-`/etc/roundcube/skins/elastic/images/favicon.ico` (bzw.
+`/usr/share/roundcube/skins/elastic/images/favicon.ico` (bzw.
 `.../webmail/skins/elastic/images/favicon.ico` bei Variante B) mit einer NamibWay-Favicon-Datei
 überschreiben.
 
