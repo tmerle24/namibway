@@ -35,8 +35,8 @@ class ListingMessagesPanel extends AbstractPartnerContactPanel
         return "About your listing on NamibWay: {$this->record->name}";
     }
 
-    protected function getContactListingId(): ?int
+    protected function getContactListing(): ?Listing
     {
-        return $this->record->id;
+        return $this->record;
     }
 }

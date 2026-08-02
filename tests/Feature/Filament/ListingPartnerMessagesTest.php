@@ -124,4 +124,24 @@ class ListingPartnerMessagesTest extends TestCase
 
         $this->assertNotNull($message->fresh()->read_at);
     }
+
+    public function test_view_action_shows_the_full_message_body(): void
+    {
+        $partner = Partner::create(['name' => 'Lodge', 'email' => 'owner@example.com']);
+        $listing = Listing::factory()->create(['partner_id' => $partner->id]);
+
+        $message = PartnerMessage::create([
+            'partner_id' => $partner->id,
+            'listing_id' => $listing->id,
+            'direction' => PartnerMessage::DIRECTION_INBOUND,
+            'subject' => 'Re: your listing',
+            'body' => "Sounds good, let's proceed.",
+            'sent_at' => now(),
+        ]);
+
+        Livewire::actingAs($this->admin())
+            ->test(ListingMessagesPanel::class, ['record' => $listing])
+            ->mountTableAction('view', $message)
+            ->assertSee("Sounds good, let's proceed.");
+    }
 }

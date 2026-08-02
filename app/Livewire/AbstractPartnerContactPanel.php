@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Mail\PartnerContactMail;
+use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\PartnerMessage;
 use App\Services\Enrichment\ClaimInviteService;
@@ -18,6 +19,7 @@ use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\HtmlString;
 use Livewire\Component;
 
 /**
@@ -52,9 +54,14 @@ abstract class AbstractPartnerContactPanel extends Component implements HasForms
         return 'Message from NamibWay';
     }
 
-    protected function getContactListingId(): ?int
+    protected function getContactListing(): ?Listing
     {
         return null;
+    }
+
+    private function getContactListingId(): ?int
+    {
+        return $this->getContactListing()?->id;
     }
 
     public function mount(): void
@@ -121,6 +128,8 @@ abstract class AbstractPartnerContactPanel extends Component implements HasForms
                     ->sortable(),
             ])
             ->defaultSort('sent_at', 'desc')
+            // Clicking anywhere on a row opens the same "view" modal as the action below.
+            ->recordAction('view')
             ->headerActions([
                 Tables\Actions\Action::make('send_claim_email')
                     ->label('Send claim email')
@@ -159,7 +168,7 @@ abstract class AbstractPartnerContactPanel extends Component implements HasForms
                         $partner = $this->getPartner();
 
                         Mail::to($partner->email, $partner->name)
-                            ->send(new PartnerContactMail($data['subject'], $data['body']));
+                            ->send(new PartnerContactMail($partner, $data['subject'], $data['body'], $this->getContactListing()));
 
                         PartnerMessage::create([
                             'partner_id' => $partner->id,
@@ -175,6 +184,14 @@ abstract class AbstractPartnerContactPanel extends Component implements HasForms
                     }),
             ])
             ->actions([
+                Tables\Actions\Action::make('view')
+                    ->label('View')
+                    ->icon('heroicon-o-eye')
+                    ->modalHeading(fn (PartnerMessage $record): string => $record->subject)
+                    ->modalDescription(fn (PartnerMessage $record): string => ($record->direction === PartnerMessage::DIRECTION_INBOUND ? 'Received ' : 'Sent ').($record->sent_at?->format('d M Y, H:i') ?? '—'))
+                    ->modalContent(fn (PartnerMessage $record): HtmlString => new HtmlString(nl2br(e($record->body))))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close'),
                 Tables\Actions\DeleteAction::make()
                     ->label('Remove log entry'),
             ])
