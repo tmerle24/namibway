@@ -75,4 +75,15 @@ class MessagingPagesTest extends TestCase
             ->get('/admin/inquiries')
             ->assertOk();
     }
+
+    public function test_sidebar_shows_the_messaging_group_with_all_three_sub_items(): void
+    {
+        $this->actingAs($this->admin())
+            ->get('/admin/messaging-listings')
+            ->assertOk()
+            ->assertSee('Messaging')
+            ->assertSee('Listings')
+            ->assertSee('Partners')
+            ->assertSee('Customers');
+    }
 }
