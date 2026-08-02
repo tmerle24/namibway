@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Enums\ConnectorType;
 use App\Filament\Resources\PartnerResource\Pages;
+use App\Livewire\PartnerMessagesPanel;
 use App\Models\Partner;
 use App\Models\User;
 use Filament\Forms;
@@ -108,6 +109,18 @@ class PartnerResource extends Resource
                                     ->keyLabel('Key')
                                     ->valueLabel('Value')
                                     ->visible(fn (Get $get) => filled($get('connector_type'))),
+                            ]),
+
+                        // Cumulated thread across all of this partner's listings — only
+                        // meaningful once the partner exists, hidden on the Create page.
+                        Forms\Components\Tabs\Tab::make('Messages')
+                            ->icon('heroicon-o-envelope')
+                            ->visible(fn (?Partner $record): bool => $record !== null)
+                            ->badge(fn (?Partner $record): ?string => $record?->email === null ? 'No email' : null)
+                            ->badgeColor('gray')
+                            ->schema([
+                                Forms\Components\Livewire::make(PartnerMessagesPanel::class)
+                                    ->key('partner-messages-panel'),
                             ]),
                     ]),
             ]);

@@ -18,6 +18,10 @@ class InquiryResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-envelope';
 
+    protected static ?string $navigationGroup = 'Messaging';
+
+    protected static ?string $navigationLabel = 'Customers';
+
     public static function getNavigationBadge(): ?string
     {
         $count = Inquiry::where('status', InquiryStatus::NwrPending)->count();
