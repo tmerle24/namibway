@@ -8,10 +8,19 @@
      area. `sticky` stays inside the normal flex layout, so it already
      respects the sidebar's width with no extra left/width math needed.
 
-     Background matches the white/gray-900 card surface color that table
-     rows and form sections use (not the page body color) since that's
-     what's actually behind the header most of the time while scrolling. --}}
+     The gap between .fi-header and the content below it (Tailwind's
+     gap-y-8 on the parent <section>) sits *outside* the header's own box,
+     so it was never covered by its background — whatever scrolled into
+     that gap (e.g. a form section's top border) showed through behind the
+     sticky header. Moving that spacing into the header's own padding
+     (and zeroing the section's competing padding-top/gap) keeps it inside
+     the opaque box instead. --}}
 <style>
+    .fi-page > section {
+        padding-top: 0;
+        row-gap: 0;
+    }
+
     .fi-main {
         margin-left: 0;
         margin-right: 0;
@@ -21,10 +30,12 @@
         position: sticky;
         top: 4rem; /* height of .fi-topbar (h-16) */
         z-index: 10;
-        background-color: rgb(255 255 255);
+        padding-top: 10px;
+        padding-bottom: 10px;
+        background-color: #fff;
     }
 
     .dark .fi-header {
-        background-color: rgb(17 24 39);
+        background-color: #000;
     }
 </style>
