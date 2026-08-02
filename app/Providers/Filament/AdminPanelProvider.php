@@ -66,10 +66,6 @@ class AdminPanelProvider extends PanelProvider
                 \Filament\View\PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn (): string => view('filament.partials.release-version-badge')->render(),
             )
-            ->renderHook(
-                \Filament\View\PanelsRenderHook::HEAD_END,
-                fn (): string => view('filament.partials.sticky-page-header')->render(),
-            )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,

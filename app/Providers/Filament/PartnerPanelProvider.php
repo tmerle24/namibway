@@ -34,10 +34,6 @@ class PartnerPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Teal,
             ])
-            ->renderHook(
-                \Filament\View\PanelsRenderHook::HEAD_END,
-                fn (): string => view('filament.partials.sticky-page-header')->render(),
-            )
             ->discoverResources(in: app_path('Filament/Partner/Resources'), for: 'App\\Filament\\Partner\\Resources')
             ->discoverPages(in: app_path('Filament/Partner/Pages'), for: 'App\\Filament\\Partner\\Pages')
             ->pages([
