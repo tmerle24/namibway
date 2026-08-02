@@ -18,8 +18,29 @@ trait HasFormActionsInHeader
     protected function withFormActions(array $actions = []): array
     {
         $actions[] = $this->getCancelFormAction();
-        $actions[] = $this->getSubmitFormAction();
+        $actions[] = $this->linkToMainForm($this->getSubmitFormAction());
 
         return $actions;
+    }
+
+    /**
+     * Filament's own submit actions (e.g. EditRecord::getSaveFormAction())
+     * render as <button type="submit"> with no explicit `form` attribute,
+     * because they're normally placed *inside* the <form> by Filament's
+     * default layout — native submit-button-to-form association then just
+     * comes from being a descendant of it. Header actions render in the page
+     * header, outside the <form> entirely, so without pointing the button
+     * at the form's id explicitly it's a submit button attached to nothing:
+     * clicking it (or pressing Enter in a field) does nothing, silently —
+     * no request, no JS error. Filament's own edit/create form partials
+     * hardcode id="form" (see vendor .../resources/pages/edit-record.blade.php).
+     */
+    protected function linkToMainForm(Action $action): Action
+    {
+        if ($action->canSubmitForm() && $action->getFormId() === null) {
+            $action->formId('form');
+        }
+
+        return $action;
     }
 }
