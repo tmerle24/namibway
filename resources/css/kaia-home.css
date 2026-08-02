@@ -109,40 +109,83 @@
     }
 }
 .kaia-page .hero-nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--night);
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     gap: 12px;
-    margin-bottom: 24px;
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 12px 24px;
 }
-.kaia-page .hero-nav a:not(.brand) {
+.kaia-page .hero-nav .brand {
+    margin-bottom: 0;
+}
+.kaia-page .hero-nav .brand-logo {
+    max-height: 40px;
+    margin-left: 0;
+}
+.kaia-page .hero-nav-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+.kaia-page .icon-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
     color: var(--sand);
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    white-space: nowrap;
     border: 1px solid rgba(251, 248, 241, 0.35);
     border-radius: 8px;
-    padding: 7px 14px;
 }
-.kaia-page .hero-nav a:not(.brand):hover {
+.kaia-page .icon-link:hover {
     border-color: var(--paper);
 }
-.kaia-page .hero-nav .locale-switcher {
-    color: var(--sand);
-    background: transparent;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: 'Inter', sans-serif;
-    border: 1px solid rgba(251, 248, 241, 0.35);
+.kaia-page .icon-switcher {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
     border-radius: 8px;
-    padding: 7px 10px;
-    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
 }
-.kaia-page .hero-nav .locale-switcher option {
+.kaia-page .icon-switcher-glyph {
+    pointer-events: none;
+}
+.kaia-page .icon-switcher-native {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    border: 0;
+    cursor: pointer;
+    appearance: none;
+}
+.kaia-page .icon-switcher-native option {
     color: var(--ink);
     background: var(--paper);
+}
+.kaia-page .hero-nav .icon-switcher {
+    color: var(--sand);
+    border: 1px solid rgba(251, 248, 241, 0.35);
+}
+@media (max-width: 640px) {
+    .kaia-page .hero-nav {
+        padding: 10px 16px;
+    }
 }
 .kaia-page .hero-head {
     max-width: 640px;
@@ -1227,6 +1270,10 @@
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 8px;
+}
+.kaia-page .detail-topbar-actions .icon-switcher {
+    color: var(--ink);
+    border: 1px solid var(--sand-dark);
 }
 @media (max-width: 480px) {
     .kaia-page .detail-topbar-actions {

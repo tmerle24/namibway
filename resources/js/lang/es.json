@@ -2,7 +2,9 @@
     "nav": {
         "dashboard": "Panel",
         "login": "Iniciar sesión",
-        "register": "Registrarse"
+        "register": "Registrarse",
+        "currency": "Moneda",
+        "language": "Idioma"
     },
     "hero": {
         "title": "La forma más inteligente de vivir Namibia.",

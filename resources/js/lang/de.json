@@ -2,7 +2,9 @@
     "nav": {
         "dashboard": "Dashboard",
         "login": "Anmelden",
-        "register": "Registrieren"
+        "register": "Registrieren",
+        "currency": "Währung",
+        "language": "Sprache"
     },
     "hero": {
         "title": "Der klügste Weg, Namibia zu erleben.",

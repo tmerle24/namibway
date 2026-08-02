@@ -2,7 +2,9 @@
     "nav": {
         "dashboard": "Dashboard",
         "login": "Inloggen",
-        "register": "Registreren"
+        "register": "Registreren",
+        "currency": "Valuta",
+        "language": "Taal"
     },
     "hero": {
         "title": "De slimste manier om Namibië te beleven.",
