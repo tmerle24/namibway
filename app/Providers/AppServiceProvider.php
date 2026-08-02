@@ -46,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('api', function (Request $request) {
+            /** @var ApiClient|null $user */
             $user = $request->user();
 
             $tokenId = $user instanceof ApiClient ? $user->currentAccessToken()?->id : null;
