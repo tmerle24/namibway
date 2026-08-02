@@ -284,9 +284,11 @@ class ListingResource extends Resource
                     ->icon(fn (Listing $record): ?string => $record->partner?->email !== null
                         ? 'heroicon-o-envelope'
                         : null)
-                    ->formatStateUsing(fn (int $state, Listing $record): string => $record->partner?->email !== null && $state > 0
-                        ? (string) $state
-                        : '')
+                    ->formatStateUsing(fn (int $state, Listing $record): string => match (true) {
+                        $record->partner?->email === null => '',
+                        $state > 0 => (string) $state,
+                        default => "\u{00A0}",
+                    })
                     ->color(fn (int $state): string => $state > 0 ? 'danger' : 'gray')
                     ->tooltip(fn (int $state, Listing $record): ?string => match (true) {
                         $record->partner?->email === null => null,

@@ -133,9 +133,11 @@ class PartnerResource extends Resource
                     ->icon(fn (Partner $record): ?string => $record->email !== null
                         ? 'heroicon-o-envelope'
                         : null)
-                    ->formatStateUsing(fn (int $state, Partner $record): string => $record->email !== null && $state > 0
-                        ? (string) $state
-                        : '')
+                    ->formatStateUsing(fn (int $state, Partner $record): string => match (true) {
+                        $record->email === null => '',
+                        $state > 0 => (string) $state,
+                        default => "\u{00A0}",
+                    })
                     ->color(fn (int $state): string => $state > 0 ? 'danger' : 'gray')
                     ->tooltip(fn (int $state, Partner $record): ?string => match (true) {
                         $record->email === null => null,
