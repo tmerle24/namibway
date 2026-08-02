@@ -278,10 +278,11 @@ class ListingController extends Controller
      * lighter-weight alternative to the Filament panel, which owners have no account
      * for. Covers the basics an owner would actually want to fix themselves: content,
      * photos, location, publish state, and which booking system this listing connects
-     * to. Deliberately stops short of the full admin surface — no taxonomy, and no
-     * booking-system API credentials (those stay a Filament-partner-portal/admin
-     * concern, since they're account-level secrets shared across all of a partner's
-     * listings, not something to collect over an emailed preview-token link).
+     * to — including the API credentials themselves, so the owner doesn't have to be
+     * chased down separately for them. Those credentials go live only once staff has
+     * verified them (see Partner::setConnectorSetup() and ConnectorFactory's gate) —
+     * never sent back down here once saved, so this only ever shows the setup form
+     * while unverified, and a locked status line afterwards.
      */
     public function edit(Request $request, Listing $listing): Response
     {
@@ -289,7 +290,8 @@ class ListingController extends Controller
 
         $listing->load('partner');
 
-        $connectorType = $listing->partner?->connector_type;
+        $partner = $listing->partner;
+        $connectorType = $partner?->connector_type;
 
         return Inertia::render('ListingEdit', [
             'listing' => [
@@ -315,7 +317,9 @@ class ListingController extends Controller
                     ->values(),
                 'connector_type' => $connectorType?->value,
                 'connector_property_code' => $listing->connector_property_code,
-                'has_connector_credentials' => filled($listing->partner?->connector_config),
+                'wetu_id' => $listing->wetu_id,
+                'has_connector_credentials' => filled($partner?->connector_config),
+                'connector_verified' => $partner?->connector_verified_at !== null,
             ],
             'connector_options' => collect(ConnectorType::cases())
                 ->map(fn (ConnectorType $c) => ['value' => $c->value, 'label' => $c->label()])
@@ -356,6 +360,16 @@ class ListingController extends Controller
             'gallery_new.*' => ['image', 'max:8192'],
             'connector_type' => ['nullable', Rule::in(array_map(fn (ConnectorType $c) => $c->value, ConnectorType::cases()))],
             'connector_property_code' => ['nullable', 'string', 'max:100'],
+            'wetu_id' => ['nullable', 'string', 'max:100'],
+            'resconnect_api_key' => ['nullable', 'string', 'max:500'],
+            'resconnect_base_url' => ['nullable', 'string', 'max:255'],
+            'nightsbridge_bbid' => ['nullable', 'string', 'max:255'],
+            'nightsbridge_api_key' => ['nullable', 'string', 'max:500'],
+            'nightsbridge_base_url' => ['nullable', 'string', 'max:255'],
+            'hopecloud_api_key' => ['nullable', 'string', 'max:500'],
+            'hopecloud_account_id' => ['nullable', 'string', 'max:255'],
+            'hopecloud_base_url' => ['nullable', 'string', 'max:255'],
+            'wetu_api_key' => ['nullable', 'string', 'max:500'],
             'publish' => ['nullable', 'boolean'],
             'unpublish' => ['nullable', 'boolean'],
             'terms_accepted' => ['nullable', 'boolean'],
@@ -382,6 +396,7 @@ class ListingController extends Controller
             'price_from' => $validated['price_from'] ?? null,
             'price_currency' => $validated['price_currency'] ?? null,
             'connector_property_code' => $validated['connector_property_code'] ?? null,
+            'wetu_id' => $validated['wetu_id'] ?? null,
         ], fn ($value) => $value !== null));
 
         if ($request->hasFile('image')) {
@@ -405,11 +420,23 @@ class ListingController extends Controller
             $listing->gallery = $kept->concat($newPaths)->values()->all();
         }
 
-        // connector_type is account-level (shared across all of this partner's
-        // listings), unlike connector_property_code above which is per-listing — see
-        // the migration that split them apart.
-        if (array_key_exists('connector_type', $validated) && $listing->partner) {
-            $listing->partner->update(['connector_type' => $validated['connector_type'] ?: null]);
+        // connector_type/credentials are account-level (shared across all of this
+        // partner's listings), unlike connector_property_code above which is
+        // per-listing — see the migration that split them apart. Once staff has
+        // verified the current connector, this lightweight editor stops touching it
+        // at all — the frontend already hides the credential fields at that point
+        // (ListingEdit.vue), so a change here can only mean setting it up for the
+        // first time or fixing it while still pending review.
+        if (
+            array_key_exists('connector_type', $validated)
+            && $listing->partner
+            && $listing->partner->connector_verified_at === null
+        ) {
+            $type = $validated['connector_type'] ?: null;
+            $config = self::collapseConnectorConfig($type, $validated);
+
+            $listing->partner->setConnectorSetup($type, $config, $isAdmin);
+            $listing->partner->save();
         }
 
         if (! empty($validated['unpublish'])) {
@@ -436,6 +463,41 @@ class ListingController extends Controller
     private static function isAdmin(): bool
     {
         return auth()->check() && auth()->user()->is_admin;
+    }
+
+    /**
+     * Collapses the type-specific credential fields validated in update() into
+     * the single connector_config blob, mirroring
+     * BookingConnectorSchema::collapseConfigForSave() for the admin/partner-
+     * portal wizard — kept separate rather than shared since that one reads
+     * off raw Filament form state and this one off already-validated request
+     * data.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private static function collapseConnectorConfig(?string $type, array $validated): array
+    {
+        return match ($type) {
+            ConnectorType::ResConnect->value => array_filter([
+                'api_key' => $validated['resconnect_api_key'] ?? null,
+                'base_url' => $validated['resconnect_base_url'] ?? null,
+            ], fn ($v) => filled($v)),
+            ConnectorType::NightsBridge->value => array_filter([
+                'bbid' => $validated['nightsbridge_bbid'] ?? null,
+                'api_key' => $validated['nightsbridge_api_key'] ?? null,
+                'base_url' => $validated['nightsbridge_base_url'] ?? null,
+            ], fn ($v) => filled($v)),
+            ConnectorType::HopeCloud->value => array_filter([
+                'api_key' => $validated['hopecloud_api_key'] ?? null,
+                'account_id' => $validated['hopecloud_account_id'] ?? null,
+                'base_url' => $validated['hopecloud_base_url'] ?? null,
+            ], fn ($v) => filled($v)),
+            ConnectorType::Wetu->value => array_filter([
+                'api_key' => $validated['wetu_api_key'] ?? null,
+            ], fn ($v) => filled($v)),
+            default => [],
+        };
     }
 
     /**

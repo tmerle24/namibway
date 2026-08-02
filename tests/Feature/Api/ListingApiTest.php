@@ -142,6 +142,7 @@ class ListingApiTest extends TestCase
             'name' => 'Connected Lodge',
             'connector_type' => ConnectorType::ResConnect->value,
             'connector_config' => ['api_key' => 'test-key'],
+            'connector_verified_at' => now(),
         ]);
         $listing = Listing::factory()->create([
             'is_published' => true,

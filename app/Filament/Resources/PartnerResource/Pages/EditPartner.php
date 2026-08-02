@@ -22,4 +22,21 @@ class EditPartner extends EditRecord
             Actions\DeleteAction::make(),
         ]);
     }
+
+    /**
+     * Staff editing this tab directly counts as reviewing whatever
+     * connector_config holds (including credentials the partner submitted
+     * themselves via the portal or the token-based listing editor) — so
+     * saving here always (re-)verifies it. See Partner::setConnectorSetup()
+     * and ConnectorFactory's gate.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['connector_verified_at'] = filled($data['connector_type'] ?? null) ? now() : null;
+
+        return $data;
+    }
 }

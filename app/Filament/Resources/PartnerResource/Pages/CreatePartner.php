@@ -21,4 +21,13 @@ class CreatePartner extends CreateRecord
             Actions\LocaleSwitcher::make(),
         ]);
     }
+
+    /** @param  array<string, mixed>  $data
+     * @return array<string, mixed> */
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['connector_verified_at'] = filled($data['connector_type'] ?? null) ? now() : null;
+
+        return $data;
+    }
 }
