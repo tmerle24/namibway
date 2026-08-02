@@ -5,6 +5,9 @@ namespace App\Filament\Pages;
 use App\Services\ReleaseVersion;
 use Filament\Pages\Page;
 
+/**
+ * @phpstan-import-type ReleaseData from ReleaseVersion
+ */
 class ReleaseNotes extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-sparkles';
@@ -19,6 +22,7 @@ class ReleaseNotes extends Page
 
     protected static string $view = 'filament.pages.release-notes';
 
+    /** @var ReleaseData */
     public array $release;
 
     public function mount(): void
