@@ -55,18 +55,18 @@ fi
 
 # ── Ab hier: normaler Update-/Deploy-Flow ───────────────────────────
 
-echo "═══ 1/14 Maintenance-Mode AN ═══"
+echo "═══ 1/15 Maintenance-Mode AN ═══"
 php artisan down --retry=15 || true
 
 if [ "$FIRST_INSTALL" = false ]; then
-   echo "═══ 2/14 Git Pull ($BRANCH) ═══"
+   echo "═══ 2/15 Git Pull ($BRANCH) ═══"
    git fetch origin "$BRANCH"
    git reset --hard "origin/$BRANCH"
 else
-   echo "═══ 2/14 Erstinstallation — kein Pull nötig (frisch geklont) ═══"
+   echo "═══ 2/15 Erstinstallation — kein Pull nötig (frisch geklont) ═══"
 fi
 
-echo "═══ 3/14 Composer ═══"
+echo "═══ 3/15 Composer ═══"
 # Immer installieren, nicht nur bei geändertem composer.lock: ein Diff gegen den
 # letzten HEAD geht davon aus, dass der letzte Deploy-Lauf vollständig durchlief.
 # Ist er das nicht (z.B. Abbruch nach dem Pull, aber vor/während composer install),
@@ -75,10 +75,10 @@ echo "═══ 3/14 Composer ═══"
 # composer install ist bei unveränderten Dependencies ohnehin schnell (paar Sekunden).
 composer install --no-dev --optimize-autoloader
 
-echo "═══ 4/14 Release-Version snapshotten (Admin-Header + Release-Notes-Seite) ═══"
+echo "═══ 4/15 Release-Version snapshotten (Admin-Header + Release-Notes-Seite) ═══"
 php artisan release:snapshot
 
-echo "═══ 5/14 Storage-Rechte + View-Cache früh aufbauen ═══"
+echo "═══ 5/15 Storage-Rechte + View-Cache früh aufbauen ═══"
 # Während der Wartung (php artisan down läuft seit Schritt 1 bis fast zum Schluss)
 # kompiliert PHP-FPM (als www-data) neue Blade-Views live bei jedem Request, die noch
 # nicht im Cache liegen — z.B. die neue errors/503.blade.php. touch() verlangt aber
@@ -98,43 +98,43 @@ php artisan view:clear
 php artisan view:cache
 
 if [ "$SKIP_NPM" = false ]; then
-    echo "═══ 6/14 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
+    echo "═══ 6/15 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
     php artisan config:clear
     php artisan route:clear
 
-    echo "═══ 7/14 npm install + build ═══"
+    echo "═══ 7/15 npm install + build ═══"
     # Gleiches Argument wie bei composer oben: immer installieren, nicht per Diff überspringen.
     npm ci
     export NODE_OPTIONS="--max-old-space-size=3072"
     npm run build
 else
-    echo "═══ 6-7/14 npm build übersprungen (--no-npm) ═══"
+    echo "═══ 6-7/15 npm build übersprungen (--no-npm) ═══"
 fi
 
 if [ "$SKIP_MIGRATE" = false ]; then
-    echo "═══ 8/14 Migrationen ═══"
+    echo "═══ 8/15 Migrationen ═══"
     php artisan migrate --force
 else
-    echo "═══ 8/14 Migrationen übersprungen (--no-migrate) ═══"
+    echo "═══ 8/15 Migrationen übersprungen (--no-migrate) ═══"
 fi
 
-echo "═══ 9/14 Storage-Link ═══"
+echo "═══ 9/15 Storage-Link ═══"
 php artisan storage:link 2>/dev/null || true
 
-echo "═══ 10/14 API-Doku generieren (Scribe) ═══"
+echo "═══ 10/15 API-Doku generieren (Scribe) ═══"
 php artisan scribe:generate --force
 
-echo "═══ 11/14 Caches neu aufbauen ═══"
+echo "═══ 11/15 Caches neu aufbauen ═══"
 php artisan config:cache
 php artisan route:cache
 php artisan event:cache
 
-echo "═══ 12/14 Laravel-Scheduler-Cron sicherstellen (Backups u.a. laufen darüber) ═══"
+echo "═══ 12/15 Laravel-Scheduler-Cron sicherstellen (Backups u.a. laufen darüber) ═══"
 CRON_LINE="* * * * * cd $APP_DIR && php artisan schedule:run >> /dev/null 2>&1"
 (crontab -l 2>/dev/null | grep -qF "$APP_DIR" && echo "  → Cron-Eintrag bereits vorhanden") || \
     (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
 
-echo "═══ 13/14 Verzeichnis-Rechte, Horizon neu starten, Maintenance-Mode AUS ═══"
+echo "═══ 13/15 Verzeichnis-Rechte, Horizon neu starten, Maintenance-Mode AUS ═══"
 sudo chown -R "$(whoami):www-data" "$APP_DIR"
 sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
@@ -142,9 +142,24 @@ sudo find "$APP_DIR/bootstrap/cache" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/bootstrap/cache" -type f -exec chmod 664 {} \;
 
 sudo supervisorctl restart "${QUEUE_WORKER_NAME}:*" 2>/dev/null || echo "  → Supervisor-Worker '$QUEUE_WORKER_NAME' noch nicht eingerichtet, übersprungen"
+
+echo "═══ 14/15 PHP-FPM neu laden (OPcache) ═══"
+# Ohne das hier laufen die bestehenden FPM-Worker mit dem Bytecode-Stand von vor
+# dem Deploy weiter, falls opcache.validate_timestamps=0 gesetzt ist (übliche
+# Prod-Härtung) — ein Code-Fix landet dann im Repo und im Composer-Autoloader,
+# aber nie im tatsächlich ausgeführten Prozess, bis FPM neu lädt. Traf uns am
+# 2026-08-02: ein bestätigt korrekter Fix (Save-Button-Bindung ans Formular)
+# blieb nach dem Deploy wirkungslos, bis genau das hier fehlte.
+PHP_FPM_SERVICE=$(systemctl list-units --type=service --state=running --no-legend 2>/dev/null | awk '{print $1}' | grep -E '^php[0-9.]*-fpm\.service$' | head -1)
+if [ -n "$PHP_FPM_SERVICE" ]; then
+    sudo systemctl reload "$PHP_FPM_SERVICE" && echo "  → $PHP_FPM_SERVICE neu geladen" || echo "  → Neuladen von $PHP_FPM_SERVICE fehlgeschlagen — bitte manuell prüfen"
+else
+    echo "  → Kein laufender php*-fpm-Service gefunden — übersprungen (bitte manuell prüfen, falls Code-Änderungen nicht ankommen)"
+fi
+
 php artisan up
 
-echo "═══ 14/14 Health-Check ═══"
+echo "═══ 15/15 Health-Check ═══"
 HEALTH_URL="https://www.namibway.com/up"
 HEALTH_OK=false
 for i in 1 2 3 4 5; do
