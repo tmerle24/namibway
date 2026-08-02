@@ -46,6 +46,12 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Pages\Dashboard::class,
             ])
+            ->navigationGroups([
+                'Content',
+                'Messaging',
+                'Documentation',
+                'Interfaces',
+            ])
             ->navigationItems([
                 // Links out to the Scribe-generated static docs (see config/scribe.php,
                 // routes/api.php) rather than a Filament page — there's no in-app content
