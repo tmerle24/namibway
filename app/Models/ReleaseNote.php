@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property string $version
- * @property \Illuminate\Support\Carbon $released_at
+ * @property Carbon $released_at
  * @property string $title
  * @property string|null $summary
  * @property string $body
