@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ListingResource\Pages;
 
+use App\Filament\Concerns\HasCreateFormActionsInHeader;
 use App\Filament\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Services\Enrichment\OsmLocationFinder;
@@ -11,6 +12,7 @@ use Filament\Resources\Pages\CreateRecord\Concerns\Translatable;
 
 class CreateListing extends CreateRecord
 {
+    use HasCreateFormActionsInHeader;
     use Translatable;
 
     protected static string $resource = ListingResource::class;
@@ -30,8 +32,8 @@ class CreateListing extends CreateRecord
 
     protected function getHeaderActions(): array
     {
-        return [
+        return $this->withFormActions([
             Actions\LocaleSwitcher::make(),
-        ];
+        ]);
     }
 }
