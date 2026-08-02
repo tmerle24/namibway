@@ -68,6 +68,8 @@ interface Listing {
     pending_gallery: string[];
     region: string | null;
     address: string | null;
+    phone: string | null;
+    website: string | null;
     latitude: number | null;
     longitude: number | null;
     price_from: string | null;
@@ -204,6 +206,10 @@ const directionsUrl = computed(() => {
 
     return `https://www.google.com/maps/search/?api=1&query=${props.listing.latitude},${props.listing.longitude}`;
 });
+
+const websiteUrl = computed(
+    () => props.listing.partner?.website || props.listing.website,
+);
 </script>
 
 <template>
@@ -466,28 +472,6 @@ const directionsUrl = computed(() => {
             v-html="'Photos: ' + props.listing.photos_attribution"
         ></p>
 
-        <section v-if="hasLocation || props.listing.address">
-            <div class="section-head">
-                <h2>{{ t('listing.location.title') }}</h2>
-            </div>
-            <p v-if="props.listing.address" class="detail-address">
-                {{ props.listing.address }}
-            </p>
-            <ExploreMap
-                v-if="hasLocation"
-                :markers="locationMarkers"
-                :map-id="`listing-map-${props.listing.id}`"
-            />
-            <a
-                v-if="directionsUrl"
-                :href="directionsUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="detail-directions-link"
-                >{{ t('listing.location.directions') }}</a
-            >
-        </section>
-
         <section>
             <div class="detail-grid">
                 <div>
@@ -516,28 +500,50 @@ const directionsUrl = computed(() => {
                         </ul>
                     </div>
 
-                    <div v-if="props.listing.partner" class="contact-card">
+                    <div
+                        v-if="
+                            props.listing.partner ||
+                            props.listing.address ||
+                            props.listing.phone ||
+                            websiteUrl
+                        "
+                        class="contact-card"
+                    >
                         <h3>{{ t('listing.contact.title') }}</h3>
-                        <p class="contact-partner-name">
+                        <p
+                            v-if="props.listing.partner"
+                            class="contact-partner-name"
+                        >
                             {{ props.listing.partner.name }}
+                        </p>
+                        <p
+                            v-if="props.listing.address"
+                            class="contact-address"
+                        >
+                            {{ props.listing.address }}
                         </p>
                         <div class="contact-links">
                             <a
-                                v-if="props.listing.partner.website"
-                                :href="props.listing.partner.website"
+                                v-if="props.listing.phone"
+                                :href="`tel:${props.listing.phone}`"
+                                >{{ props.listing.phone }}</a
+                            >
+                            <a
+                                v-if="websiteUrl"
+                                :href="websiteUrl"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 >{{ t('listing.contact.website') }}</a
                             >
                             <a
-                                v-if="props.listing.partner.instagram"
+                                v-if="props.listing.partner?.instagram"
                                 :href="props.listing.partner.instagram"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 >{{ t('listing.contact.instagram') }}</a
                             >
                             <a
-                                v-if="props.listing.partner.facebook"
+                                v-if="props.listing.partner?.facebook"
                                 :href="props.listing.partner.facebook"
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -670,6 +676,21 @@ const directionsUrl = computed(() => {
                     <p v-else class="inquiry-subtitle">
                         {{ t('listing.inquiry.unavailable') }}
                     </p>
+
+                    <div v-if="hasLocation" class="sidebar-map">
+                        <ExploreMap
+                            :markers="locationMarkers"
+                            :map-id="`listing-map-${props.listing.id}`"
+                        />
+                        <a
+                            v-if="directionsUrl"
+                            :href="directionsUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="detail-directions-link"
+                            >{{ t('listing.location.directions') }}</a
+                        >
+                    </div>
                 </div>
             </div>
         </section>
@@ -784,15 +805,23 @@ const directionsUrl = computed(() => {
     color: #8a8171;
 }
 
-.detail-address {
-    margin: 0 0 4px;
+.contact-address {
+    margin: -4px 0 12px;
     color: var(--ink-light, #5c5347);
-    font-size: 15px;
+    font-size: 14px;
+}
+
+.sidebar-map {
+    margin-top: 20px;
+}
+
+.sidebar-map :deep(.explore-map-wrapper) {
+    margin: 0;
 }
 
 .detail-directions-link {
     display: inline-block;
-    margin-top: 12px;
+    margin-top: 10px;
     font-size: 14px;
     font-weight: 600;
     color: var(--rust, #b45309);

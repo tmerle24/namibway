@@ -123,6 +123,8 @@ class ListingController extends Controller
                     : [],
                 'region' => $listing->region,
                 'address' => $listing->address,
+                'phone' => $listing->phone,
+                'website' => $listing->website,
                 'latitude' => $listing->latitude !== null ? (float) $listing->latitude : null,
                 'longitude' => $listing->longitude !== null ? (float) $listing->longitude : null,
                 'price_from' => $listing->price_from,
