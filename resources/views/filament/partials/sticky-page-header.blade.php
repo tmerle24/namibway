@@ -16,21 +16,18 @@
      (and zeroing the section's competing padding-top/gap) keeps it inside
      the opaque box instead.
 
-     .fi-header's own box still doesn't reliably reach the true left/right
+     .fi-header's own box also doesn't reliably reach the true left/right
      edge of the content column (some fields render slightly wider than
      the header, e.g. a rich-text preview), leaving a sliver where content
-     peeked through at the sides. Rather than chase that per field, the
-     box-shadow + clip-path pair below bleeds the header's background out
-     to any width — a solid color painted 100vmax past the box on each
-     side, clipped back so it doesn't create a horizontal scrollbar.
-
-     The drop-shadow (for a bit of visible depth below the header) has to
-     be listed *before* that opaque bleed shadow in the box-shadow list —
-     CSS paints earlier shadows on top of later ones, so listing it after
-     would leave it fully hidden behind the opaque fill. clip-path's
-     vertical inset is widened slightly (-16px instead of 0) so the
-     drop-shadow's blur has room to actually render below the box instead
-     of being clipped off flush with the edge. --}}
+     peeked through at the sides. A first attempt at this used a
+     `box-shadow: 0 0 0 100vmax` bleed to paint past the box on both
+     sides — but that bleeds across the *entire* viewport width, including
+     over the sidebar, which sits at a lower z-index (Filament's own
+     sidebar CSS: z-0 on desktop) than this header (z-10), so the shadow
+     painted right over the sidebar logo. Widening the box itself by a
+     small, bounded amount (negative margin balanced by matching padding,
+     so the visible content position doesn't shift) fixes the same sliver
+     without ever reaching that far. --}}
 <style>
     .fi-page > section {
         padding-top: 0;
@@ -48,13 +45,13 @@
         z-index: 10;
         padding-top: 10px;
         padding-bottom: 10px;
+        margin-inline: -20px;
+        padding-inline: 20px;
         background-color: #fff;
-        box-shadow: 0 2px 4px 0 rgb(0 0 0 / 0.1), 0 0 0 100vmax #fff;
-        clip-path: inset(-16px -100vmax);
+        box-shadow: 0 2px 4px 0 rgb(0 0 0 / 0.1);
     }
 
     .dark .fi-header {
         background-color: #000;
-        box-shadow: 0 2px 4px 0 rgb(0 0 0 / 0.1), 0 0 0 100vmax #000;
     }
 </style>
