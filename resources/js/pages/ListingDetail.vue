@@ -531,7 +531,10 @@ const websiteUrl = computed(
                         <div class="contact-links">
                             <a
                                 v-if="props.listing.phone"
-                                :href="props.listing.phone_href ?? `tel:${props.listing.phone}`"
+                                :href="
+                                    props.listing.phone_href ??
+                                    `tel:${props.listing.phone}`
+                                "
                                 >{{ props.listing.phone }}</a
                             >
                             <a
