@@ -148,29 +148,55 @@ Elastic-Skin-Header.) Danach `sudo systemctl reload php8.3-fpm` und neu laden.
 
 Bereits gesetzt in Schritt 3: `$config['product_name'] = 'NamibWay Webmail';`.
 
-### Akzentfarbe (Amber, wie `Color::Amber` im Filament-Admin)
+### Farben (Braun, aus dem Logo — `#804a1c`)
 
 ```php
 $config['additional_css'] = ['plugins/namibway_brand/custom.css'];
 ```
 
-Datei `plugins/namibway_brand/custom.css` (Ordner ggf. anlegen) mit z.B.:
+Datei `plugins/namibway_brand/custom.css` (Ordner ggf. anlegen):
 
 ```css
-:root {
-    --color-highlight: #f59e0b;      /* NamibWay-Amber */
-    --color-list-selection-bg: #fef3c7;
+/* Linke Menüleiste (Schreiben / E-Mail / Kontakte / Einstellungen) —
+   Selektor #layout-menu per Browser-DevTools am echten Element bestätigt. */
+#layout-menu {
+    background-color: #804a1c !important;
 }
-a.button-primary, .btn-primary {
-    background-color: #f59e0b !important;
-    border-color: #f59e0b !important;
+
+/* Login-Button ("Anmelden") — mehrere Selektoren, da ungetestet, welcher
+   in der installierten Elastic-Version tatsächlich greift. */
+#login-form button[type="submit"],
+#login-form .button-primary,
+.formbuttons button.primary,
+#rcmloginsubmit {
+    background-color: #804a1c !important;
+    border-color: #804a1c !important;
 }
 ```
 
-**Vorbehalt:** anders als der `ssl://`-Fix ist das kein garantiert 1:1 passender Wert — Elastics
-exakte CSS-Variablennamen unterscheiden sich je nach Roundcube-Version. Startpunkt; am
-zuverlässigsten per Browser-DevTools ("Untersuchen" auf einem farbigen Button) die tatsächlich
-verwendete Variable/Klasse ablesen und die Selektoren oben anpassen.
+**Vorbehalt:** `#layout-menu` ist per DevTools an der echten Seite verifiziert, die
+Login-Button-Selektoren nicht — je nachdem, welcher tatsächlich greift, per
+Browser-DevTools ("Untersuchen" auf dem Anmelden-Button) den echten Klassen-/ID-Namen
+prüfen und ggf. ergänzen.
+
+### Watermark (leere Vorschau ohne ausgewählte Nachricht)
+
+Das große blasse Symbol im leeren Vorschaufenster ist `skins/elastic/images/logo.svg`
+(mit `background-blend-mode: luminosity` gegen Weiß geblendet — deshalb der isolierte
+Kompass in Weiß/transparent statt in Braun, siehe `public/images/namibway-compass-white.png`
+im Repo, wird über `namibway.com` mitdeployt). Direkt am selben Pfad ersetzen, kein
+Datei-Upload nötig — referenziert einfach die schon live gehostete Datei:
+
+```bash
+sudo tee /etc/roundcube/skins/elastic/images/logo.svg > /dev/null <<'EOF'
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 103 100">
+  <image href="https://namibway.com/images/namibway-compass-white.png" width="103" height="100"/>
+</svg>
+EOF
+```
+
+(Pfad bei Variante B: `/var/www/webmail/skins/elastic/images/logo.svg`.) Kein
+php-fpm-Reload nötig, das ist eine statische Datei.
 
 ### Favicon
 
