@@ -2,9 +2,11 @@
 /bootstrap/ssr
 /node_modules
 /public/build
+/public/docs
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
+/.scribe
 /storage/*.key
 /storage/pail
 /resources/js/actions
