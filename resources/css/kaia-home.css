@@ -1039,22 +1039,53 @@
 }
 
 /* ---------- TOP DESTINATIONS (hero showcase) ---------- */
-.kaia-page .destinations-section {
-    max-width: none;
-    padding-left: 0;
-    padding-right: 0;
-}
-.kaia-page .destinations-section .section-head {
-    max-width: 600px;
-    padding: 0 24px;
+.kaia-page .destinations-scroll-wrap {
+    position: relative;
 }
 .kaia-page .destinations-scroll {
     display: flex;
     gap: 16px;
     overflow-x: auto;
     scroll-snap-type: x proximity;
-    padding: 4px 24px 12px;
+    padding: 4px 2px 12px;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.kaia-page .destinations-scroll::-webkit-scrollbar {
+    display: none;
+}
+.kaia-page .destinations-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--sand-dark);
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(36, 28, 21, 0.15);
+}
+.kaia-page .destinations-arrow:hover {
+    background: var(--sand);
+}
+.kaia-page .destinations-arrow--prev {
+    left: -18px;
+}
+.kaia-page .destinations-arrow--next {
+    right: -18px;
+}
+@media (max-width: 640px) {
+    .kaia-page .destinations-arrow {
+        display: none;
+    }
 }
 .kaia-page .destination-card {
     flex: 0 0 auto;

@@ -48,7 +48,7 @@ class HomeController extends Controller
 
         $regions = Region::query()
             ->where('is_published', true)
-            ->orderBy('sort_order')
+            ->orderByRaw('MD5(id::text || ?)', [$daySeed])
             ->get(['id', 'name', 'slug', 'blurb', 'image', 'listing_region'])
             ->map(fn (Region $region) => [
                 'name' => $region->name,

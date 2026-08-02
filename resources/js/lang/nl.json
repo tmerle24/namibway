@@ -106,7 +106,9 @@
     "destinations": {
         "eyebrow": "Hoogtepunten van Namibië",
         "title": "De plekken waar elke reisroute om draait",
-        "subtitle": "Tik op een bestemming om accommodatie, activiteiten en restaurants in de buurt te zien."
+        "subtitle": "Tik op een bestemming om accommodatie, activiteiten en restaurants in de buurt te zien.",
+        "prev": "Vorige bestemmingen",
+        "next": "Volgende bestemmingen"
     },
     "explore": {
         "eyebrow": "Ontdekken",

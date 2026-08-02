@@ -116,7 +116,9 @@
     "destinations": {
         "eyebrow": "Namibias Highlights",
         "title": "Die Orte, um die sich jede Reiseroute dreht",
-        "subtitle": "Auf ein Ziel tippen, um Unterkünfte, Aktivitäten und Restaurants in der Nähe zu sehen."
+        "subtitle": "Auf ein Ziel tippen, um Unterkünfte, Aktivitäten und Restaurants in der Nähe zu sehen.",
+        "prev": "Vorherige Ziele",
+        "next": "Weitere Ziele"
     },
     "explore": {
         "eyebrow": "Entdecken",

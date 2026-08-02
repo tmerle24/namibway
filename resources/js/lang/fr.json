@@ -106,7 +106,9 @@
     "destinations": {
         "eyebrow": "Incontournables de Namibie",
         "title": "Les lieux autour desquels chaque itinéraire se construit",
-        "subtitle": "Touchez une destination pour voir les hébergements, activités et restaurants à proximité."
+        "subtitle": "Touchez une destination pour voir les hébergements, activités et restaurants à proximité.",
+        "prev": "Destinations précédentes",
+        "next": "Destinations suivantes"
     },
     "explore": {
         "eyebrow": "Explorer",

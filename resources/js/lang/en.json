@@ -133,7 +133,9 @@
     "destinations": {
         "eyebrow": "Namibia highlights",
         "title": "The places every itinerary is built around",
-        "subtitle": "Tap a destination to see accommodation, activities and restaurants nearby."
+        "subtitle": "Tap a destination to see accommodation, activities and restaurants nearby.",
+        "prev": "Previous destinations",
+        "next": "Next destinations"
     },
     "explore": {
         "eyebrow": "Explore",
