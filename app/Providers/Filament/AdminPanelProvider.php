@@ -7,6 +7,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
 use Filament\Pages;
 use Filament\Panel;
@@ -34,6 +35,10 @@ class AdminPanelProvider extends PanelProvider
             ->darkModeBrandLogo(asset('images/namibway-logo-light.png'))
             ->brandLogoHeight('59px')
             ->favicon(asset('favicon.png'))
+            // Tailwind's max-w scale stops at 7xl (80rem); '8xl' isn't a real
+            // utility class, so it generates no CSS rule at all — which is
+            // exactly what's wanted here, an uncapped-width <main>.
+            ->maxContentWidth('max-w-8xl')
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -47,10 +52,10 @@ class AdminPanelProvider extends PanelProvider
                 Pages\Dashboard::class,
             ])
             ->navigationGroups([
-                'Content',
-                'Messaging',
-                'Documentation',
-                'Interfaces',
+                NavigationGroup::make('Content')->collapsed(),
+                NavigationGroup::make('Messaging')->collapsed(),
+                NavigationGroup::make('Documentation')->collapsed(),
+                NavigationGroup::make('Interfaces')->collapsed(),
             ])
             ->navigationItems([
                 // Links out to the Scribe-generated static docs (see config/scribe.php,
