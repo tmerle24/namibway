@@ -67,10 +67,13 @@ class ListingResource extends Resource
                                 Forms\Components\TextInput::make('slug')
                                     ->required()
                                     ->maxLength(255)
-                                    ->unique(ignoreRecord: true),
+                                    ->unique(ignoreRecord: true)
+                                    ->helperText('Auto-filled from the name when creating. Change with care afterwards — the URL breaks unless a redirect is set up.'),
                                 Forms\Components\TextInput::make('name')
                                     ->required()
                                     ->maxLength(255)
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(fn (string $operation, ?string $state, Forms\Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null)
                                     ->columnSpanFull(),
                                 Forms\Components\RichEditor::make('description')
                                     ->toolbarButtons([
