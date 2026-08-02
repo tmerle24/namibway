@@ -62,15 +62,15 @@ class ClaimInviteService
     }
 
     /**
-     * Unpublished listings 404 for anyone else, but the owner should still be able to
-     * see how their own draft looks — the claim_token already emailed to them doubles
-     * as a preview key (see ListingController::hasValidPreviewToken()).
+     * The claim_token doubles as a preview key (see ListingController::hasValidPreviewToken())
+     * that does two things: bypasses the "unpublished listings 404" gate for drafts, and — for
+     * published listings too — is what grants the owner's Edit/Publish/Unpublish controls
+     * (ListingController::show()'s can_publish). Always include it, or a claimed/published
+     * listing's owner link silently loses all edit access.
      */
     public function listingUrl(Listing $listing, Partner $partner): string
     {
-        return $listing->is_published
-            ? route('listings.show', $listing->slug)
-            : route('listings.show', $listing->slug).'?preview='.$partner->claim_token;
+        return route('listings.show', $listing->slug).'?preview='.$partner->claim_token;
     }
 
     public function claimUrl(Partner $partner): string
