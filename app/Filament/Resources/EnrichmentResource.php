@@ -44,6 +44,8 @@ class EnrichmentResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-sparkles';
 
+    protected static ?string $navigationGroup = 'Content';
+
     protected static ?string $modelLabel = 'listing';
 
     protected static ?string $pluralModelLabel = 'Data Enrichment - Listings';

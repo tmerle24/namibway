@@ -17,6 +17,8 @@ class ReviewResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-star';
 
+    protected static ?string $navigationGroup = 'Content';
+
     public static function getNavigationBadge(): ?string
     {
         $count = Review::where('is_approved', false)->count();

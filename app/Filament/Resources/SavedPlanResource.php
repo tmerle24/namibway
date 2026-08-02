@@ -16,6 +16,8 @@ class SavedPlanResource extends Resource
 
     protected static ?string $navigationLabel = 'Saved Plans';
 
+    protected static ?string $navigationGroup = 'Content';
+
     public static function table(Table $table): Table
     {
         return $table
