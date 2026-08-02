@@ -16,7 +16,10 @@ export interface ExploreMapMarker {
 const props = defineProps<{
     markers: ExploreMapMarker[];
     mapId: string;
+    backQuery?: Record<string, string>;
 }>();
+
+const emit = defineEmits<{ navigate: [] }>();
 
 let map: LeafletMap | null = null;
 let clusterGroup: MarkerClusterGroup | null = null;
@@ -116,8 +119,17 @@ function renderMarkers() {
 
                 if (item.slug) {
                     const slug = item.slug;
-                    const goToListing = () =>
-                        router.visit(show({ listing: slug }).url);
+                    const goToListing = () => {
+                        emit('navigate');
+                        const query = props.backQuery;
+                        const url = show(
+                            { listing: slug },
+                            query && Object.keys(query).length > 0
+                                ? { query }
+                                : undefined,
+                        ).url;
+                        router.visit(url);
+                    };
 
                     marker.on('click', goToListing);
                     marker.on('popupopen', () => {

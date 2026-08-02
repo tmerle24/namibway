@@ -11,6 +11,7 @@ import HeroChat from '@/components/home/HeroChat.vue';
 import HowItWorks from '@/components/home/HowItWorks.vue';
 import ItinerarySection from '@/components/home/ItinerarySection.vue';
 import TopDestinations from '@/components/home/TopDestinations.vue';
+import { hasSavedExploreScroll } from '@/lib/explore-scroll';
 import { createTrip } from '@/lib/kaia-client';
 import type {
     GuestDetails,
@@ -69,9 +70,15 @@ async function scrollTo(id: string) {
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-async function onSearchIntent(intent: SearchIntent) {
+async function onSearchIntent(
+    intent: SearchIntent,
+    opts?: { skipScroll?: boolean },
+) {
     searchIntent.value = intent;
-    await scrollTo('explore-section');
+
+    if (!opts?.skipScroll) {
+        await scrollTo('explore-section');
+    }
 }
 
 const LISTING_TYPES = ['accommodation', 'activity', 'restaurant', 'vehicle'];
@@ -83,20 +90,28 @@ onMounted(() => {
     const budget = params.get('budget');
     const keyword = params.get('keyword');
     const minRating = params.get('min_rating');
+    const sort = params.get('sort');
 
-    if (!type && !region && !budget && !keyword && !minRating) {
+    if (!type && !region && !budget && !keyword && !minRating && !sort) {
         return;
     }
 
-    onSearchIntent({
-        type: LISTING_TYPES.includes(type ?? '')
-            ? (type as SearchIntent['type'])
-            : undefined,
-        region: region ?? undefined,
-        budget: (budget as SearchIntent['budget']) ?? undefined,
-        keyword: keyword ?? undefined,
-        min_rating: minRating ?? undefined,
-    });
+    // Returning from a listing's "back to overview" link: ExploreSection
+    // restores the exact scroll position once its results are ready, so
+    // skip the smooth scroll-into-view we'd otherwise do here.
+    onSearchIntent(
+        {
+            type: LISTING_TYPES.includes(type ?? '')
+                ? (type as SearchIntent['type'])
+                : undefined,
+            region: region ?? undefined,
+            budget: (budget as SearchIntent['budget']) ?? undefined,
+            keyword: keyword ?? undefined,
+            min_rating: minRating ?? undefined,
+            sort: sort ?? undefined,
+        },
+        { skipScroll: hasSavedExploreScroll() },
+    );
 });
 
 async function onPlanReady(newPlan: ItineraryPlan) {

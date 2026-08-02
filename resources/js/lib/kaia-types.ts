@@ -73,6 +73,7 @@ export interface SearchIntent {
     keyword?: string;
     budget?: 'budget' | 'mid-range' | 'premium';
     min_rating?: string;
+    sort?: string;
 }
 
 export interface GuestDetails {

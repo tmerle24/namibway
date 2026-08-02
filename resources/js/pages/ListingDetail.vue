@@ -162,6 +162,7 @@ const FORWARDED_FILTER_KEYS = [
     'budget',
     'keyword',
     'min_rating',
+    'sort',
 ];
 
 const backHref = computed(() => {

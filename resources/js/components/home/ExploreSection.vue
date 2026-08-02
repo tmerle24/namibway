@@ -6,6 +6,10 @@ import type { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instanc
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatPrice } from '@/lib/currency';
+import {
+    consumeExploreScroll,
+    saveExploreScroll,
+} from '@/lib/explore-scroll';
 import type { SearchIntent } from '@/lib/kaia-types';
 import { show } from '@/routes/listings';
 import ExploreMap from './ExploreMap.vue';
@@ -340,7 +344,7 @@ async function viewAllInRow(row: IdeaRow) {
 
 watch(
     () => props.triggerSearch,
-    (intent) => {
+    async (intent) => {
         if (!intent) {
             return;
         }
@@ -350,10 +354,40 @@ watch(
         filterKeyword.value = intent.keyword ?? '';
         filterBudget.value = intent.budget ?? '';
         filterMinRating.value = intent.min_rating ?? '';
+        sortBy.value = intent.sort ?? 'featured';
 
-        performSearch(1);
+        await performSearch(1);
+        await nextTick();
+        restoreScroll();
     },
 );
+
+function restoreScroll() {
+    const y = consumeExploreScroll();
+
+    if (y !== null) {
+        window.scrollTo(0, y);
+    }
+}
+
+const EXPLORE_QUERY_KEYS = [
+    'type',
+    'region',
+    'budget',
+    'keyword',
+    'min_rating',
+    'sort',
+];
+
+function hasUrlFilters(): boolean {
+    const params = new URLSearchParams(window.location.search);
+
+    return EXPLORE_QUERY_KEYS.some((key) => params.get(key));
+}
+
+function saveScrollPosition() {
+    saveExploreScroll();
+}
 
 const listingBackQuery = computed(() => {
     const query: Record<string, string> = {};
@@ -378,14 +412,32 @@ const listingBackQuery = computed(() => {
         query.keyword = filterKeyword.value;
     }
 
+    if (searchMode.value && sortBy.value !== 'featured') {
+        query.sort = sortBy.value;
+    }
+
     return query;
 });
 
 function listingUrl(slug: string): string {
+    const query = listingBackQuery.value;
+
     return show(
         { listing: slug },
-        hasActiveFilters.value ? { query: listingBackQuery.value } : undefined,
+        Object.keys(query).length > 0 ? { query } : undefined,
     ).url;
+}
+
+function onIdeaCardClick(row: IdeaRow, item: IdeaCard) {
+    if (row.key === 'region' && item.region) {
+        selectRegion(item.region);
+
+        return;
+    }
+
+    if (item.slug) {
+        saveScrollPosition();
+    }
 }
 
 const SHORTLIST_KEY = 'namibway_shortlist';
@@ -465,6 +517,13 @@ onMounted(() => {
             dateFormat: 'd M',
             minDate: 'today',
         });
+    }
+
+    // No incoming filters means no async search to wait for (see the
+    // triggerSearch watcher above, which restores scroll once its results
+    // are rendered instead) — the inspiration rows are already in the DOM.
+    if (!hasUrlFilters()) {
+        nextTick(() => restoreScroll());
     }
 });
 
@@ -722,6 +781,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                     :key="item.id"
                     :href="listingUrl(item.slug)"
                     class="result-card"
+                    @click="saveScrollPosition"
                 >
                     <div class="result-card-thumb">
                         <span class="idea-tag">{{
@@ -802,6 +862,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                 v-if="featuredPick && !hasActiveFilters"
                 :href="show({ listing: featuredPick.slug }).url"
                 class="featured-pick"
+                @click="saveScrollPosition"
             >
                 <div class="featured-pick-media">
                     <img
@@ -848,7 +909,9 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
             <ExploreMap
                 v-if="mapMarkers.length > 0"
                 :markers="mapMarkers"
+                :back-query="listingBackQuery"
                 map-id="explore-map"
+                @navigate="saveScrollPosition"
             />
             <div>
                 <div
@@ -882,11 +945,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                                 item.slug ? listingUrl(item.slug) : undefined
                             "
                             class="idea-card"
-                            @click="
-                                row.key === 'region' && item.region
-                                    ? selectRegion(item.region)
-                                    : undefined
-                            "
+                            @click="onIdeaCardClick(row, item)"
                         >
                             <div
                                 class="idea-thumb"
