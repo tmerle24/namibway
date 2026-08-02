@@ -10,6 +10,7 @@ use App\Filament\Resources\ListingResource\Pages;
 use App\Filament\Resources\ListingResource\RelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
+use App\Http\Controllers\Controller;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Services\Enrichment\ClaimInviteService;
@@ -22,6 +23,7 @@ use Filament\Tables;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 class ListingResource extends Resource
@@ -139,21 +141,53 @@ class ListingResource extends Resource
                                 // get silently dropped from the field's state no matter what the
                                 // resolver does — disabling it is the only way to let the resolver
                                 // see them.
+                                // FilePond's own in-panel preview rasterizes to a small internal
+                                // canvas and CSS-stretches it to fill the panel — that's intrinsic
+                                // to its crop/zoom-capable renderer, not something any Filament
+                                // FileUpload option controls (imagePreviewHeight is discarded
+                                // whenever panelAspectRatio is set on a non-multiple field). The
+                                // stored file itself is full resolution — these Placeholders render
+                                // it directly so the tab shows the real quality.
+                                Forms\Components\Placeholder::make('image_preview')
+                                    ->label('Current hero image')
+                                    ->content(function (?Listing $record): HtmlString {
+                                        if (! $record?->image) {
+                                            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">No image set yet.</span>');
+                                        }
+
+                                        $url = e(Controller::resolveMediaUrl($record->image));
+
+                                        return new HtmlString("<img src=\"{$url}\" style=\"max-width: 100%; max-height: 420px; border-radius: 0.5rem; object-fit: cover;\" />");
+                                    })
+                                    ->visibleOn('edit')
+                                    ->columnSpanFull(),
                                 Forms\Components\FileUpload::make('image')
                                     ->label('Hero image')
                                     ->image()
                                     ->disk('r2')
                                     ->directory('listings')
                                     ->imageEditor()
+                                    ->openable()
                                     ->panelAspectRatio('16:9')
-                                    // Without this, FilePond rasterizes the preview canvas at its own
-                                    // small default resolution and CSS-stretches it to fill the panel
-                                    // (which spans the full form width via columnSpanFull) — the result
-                                    // is a pixelated preview. Filament's docs pair panelAspectRatio()
-                                    // with an explicit imagePreviewHeight() for this exact reason.
-                                    ->imagePreviewHeight('640')
                                     ->fetchFileInformation(false)
                                     ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
+                                    ->columnSpanFull(),
+                                Forms\Components\Placeholder::make('gallery_preview')
+                                    ->label('Current gallery')
+                                    ->content(function (?Listing $record): HtmlString {
+                                        $images = $record?->gallery ?? [];
+
+                                        if (empty($images)) {
+                                            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">No gallery images yet.</span>');
+                                        }
+
+                                        $thumbs = collect($images)
+                                            ->map(fn (string $path) => '<img src="'.e(Controller::resolveMediaUrl($path)).'" style="height: 120px; border-radius: 0.5rem; object-fit: cover;" />')
+                                            ->implode('');
+
+                                        return new HtmlString('<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">'.$thumbs.'</div>');
+                                    })
+                                    ->visibleOn('edit')
                                     ->columnSpanFull(),
                                 Forms\Components\FileUpload::make('gallery')
                                     ->image()
@@ -162,6 +196,7 @@ class ListingResource extends Resource
                                     ->panelLayout('grid')
                                     ->itemPanelAspectRatio(1)
                                     ->imageEditor()
+                                    ->openable()
                                     ->disk('r2')
                                     ->directory('listings/gallery')
                                     ->fetchFileInformation(false)

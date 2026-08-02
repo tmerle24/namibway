@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Enums\ListingType;
 use App\Filament\Resources\EnrichmentResource\Pages;
 use App\Filament\Support\PipelineImageResolver;
+use App\Http\Controllers\Controller;
 use App\Jobs\EnrichListingJob;
 use App\Models\EnrichmentJob;
 use App\Models\Listing;
@@ -187,8 +188,40 @@ class EnrichmentResource extends Resource
                             // getUploadedFileUsing() ever runs, so URLs/foreign-disk paths get
                             // silently dropped from the field's state no matter what the resolver
                             // does — disabling it is the only way to let the resolver see them.
-                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor()->panelAspectRatio('16:9')->imagePreviewHeight('640')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
-                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->panelLayout('grid')->itemPanelAspectRatio(1)->imageEditor()->disk('r2')->directory('listings/gallery')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
+                            //
+                            // FilePond's own in-panel preview rasterizes to a small internal
+                            // canvas and CSS-stretches it to fill the panel — intrinsic to its
+                            // crop/zoom-capable renderer, not something any Filament FileUpload
+                            // option controls. These Placeholders render the stored file directly
+                            // so the tab shows the real quality.
+                            Forms\Components\Placeholder::make('image_preview')
+                                ->label('Current hero image')
+                                ->content(function (?Listing $record): HtmlString {
+                                    if (! $record?->image) {
+                                        return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">No image set yet.</span>');
+                                    }
+
+                                    $url = e(Controller::resolveMediaUrl($record->image));
+
+                                    return new HtmlString("<img src=\"{$url}\" style=\"max-width: 100%; max-height: 420px; border-radius: 0.5rem; object-fit: cover;\" />");
+                                }),
+                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor()->openable()->panelAspectRatio('16:9')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
+                            Forms\Components\Placeholder::make('gallery_preview')
+                                ->label('Current gallery')
+                                ->content(function (?Listing $record): HtmlString {
+                                    $images = $record?->gallery ?? [];
+
+                                    if (empty($images)) {
+                                        return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">No gallery images yet.</span>');
+                                    }
+
+                                    $thumbs = collect($images)
+                                        ->map(fn (string $path) => '<img src="'.e(Controller::resolveMediaUrl($path)).'" style="height: 120px; border-radius: 0.5rem; object-fit: cover;" />')
+                                        ->implode('');
+
+                                    return new HtmlString('<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">'.$thumbs.'</div>');
+                                }),
+                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->panelLayout('grid')->itemPanelAspectRatio(1)->imageEditor()->openable()->disk('r2')->directory('listings/gallery')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
                         ]),
 
                     Forms\Components\Tabs\Tab::make('Metadata')

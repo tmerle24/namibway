@@ -5,6 +5,7 @@ namespace App\Filament\Partner\Resources;
 use App\Filament\Partner\Resources\ListingResource\Pages;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
+use App\Http\Controllers\Controller;
 use App\Models\Listing;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -12,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class ListingResource extends Resource
 {
@@ -63,16 +65,52 @@ class ListingResource extends Resource
                         // full R2 URLs or paths relative to a different disk (set via the
                         // admin panel or the enrichment pipeline), which the default resolver
                         // silently drops before it's even reached.
+                        //
+                        // FilePond's own in-panel preview rasterizes to a small internal canvas
+                        // and CSS-stretches it to fill the panel — intrinsic to its crop/zoom-
+                        // capable renderer, not something any Filament FileUpload option
+                        // controls. These Placeholders render the stored file directly so the
+                        // tab shows the real quality.
+                        Forms\Components\Placeholder::make('image_preview')
+                            ->label('Current hero image')
+                            ->content(function (?Listing $record): HtmlString {
+                                if (! $record?->image) {
+                                    return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">No image set yet.</span>');
+                                }
+
+                                $url = e(Controller::resolveMediaUrl($record->image));
+
+                                return new HtmlString("<img src=\"{$url}\" style=\"max-width: 100%; max-height: 420px; border-radius: 0.5rem; object-fit: cover;\" />");
+                            })
+                            ->visibleOn('edit')
+                            ->columnSpanFull(),
                         Forms\Components\FileUpload::make('image')
                             ->label('Hero image')
                             ->image()
                             ->disk('public')
                             ->directory('listings')
                             ->imageEditor()
+                            ->openable()
                             ->panelAspectRatio('16:9')
-                            ->imagePreviewHeight('640')
                             ->fetchFileInformation(false)
                             ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
+                            ->columnSpanFull(),
+                        Forms\Components\Placeholder::make('gallery_preview')
+                            ->label('Current gallery')
+                            ->content(function (?Listing $record): HtmlString {
+                                $images = $record?->gallery ?? [];
+
+                                if (empty($images)) {
+                                    return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">No gallery images yet.</span>');
+                                }
+
+                                $thumbs = collect($images)
+                                    ->map(fn (string $path) => '<img src="'.e(Controller::resolveMediaUrl($path)).'" style="height: 120px; border-radius: 0.5rem; object-fit: cover;" />')
+                                    ->implode('');
+
+                                return new HtmlString('<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">'.$thumbs.'</div>');
+                            })
+                            ->visibleOn('edit')
                             ->columnSpanFull(),
                         Forms\Components\FileUpload::make('gallery')
                             ->image()
@@ -81,6 +119,7 @@ class ListingResource extends Resource
                             ->panelLayout('grid')
                             ->itemPanelAspectRatio(1)
                             ->imageEditor()
+                            ->openable()
                             ->disk('public')
                             ->directory('listings/gallery')
                             ->fetchFileInformation(false)
