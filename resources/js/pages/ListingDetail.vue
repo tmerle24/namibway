@@ -561,152 +561,8 @@ const websiteUrl = computed(
                             >
                         </div>
                     </div>
-                </div>
 
-                <div class="sidebar-column">
-                    <div class="inquiry-panel">
-                        <template v-if="props.listing.accepts_inquiries">
-                            <h3>{{ t('listing.inquiry.title') }}</h3>
-                            <p
-                                v-if="props.listing.contact_person"
-                                class="inquiry-contact-person"
-                            >
-                                {{
-                                    t('listing.inquiry.contactPerson', {
-                                        name: props.listing.contact_person,
-                                    })
-                                }}
-                            </p>
-                            <p class="inquiry-subtitle">
-                                {{
-                                    props.listing.partner
-                                        ? t('listing.inquiry.subtitle', {
-                                              partner:
-                                                  props.listing.partner.name,
-                                          })
-                                        : t('listing.inquiry.subtitleGeneric')
-                                }}
-                            </p>
-                            <Form
-                                v-bind="
-                                    inquiries.store.form({
-                                        listing: props.listing.slug,
-                                    })
-                                "
-                                reset-on-success
-                                v-slot="{
-                                    errors,
-                                    processing,
-                                    recentlySuccessful,
-                                }"
-                                class="inquiry-form"
-                            >
-                                <label>
-                                    {{ t('listing.inquiry.name') }}
-                                    <input name="name" type="text" required />
-                                    <InputError :message="errors.name" />
-                                </label>
-                                <label>
-                                    {{ t('listing.inquiry.email') }}
-                                    <input name="email" type="email" required />
-                                    <InputError :message="errors.email" />
-                                </label>
-                                <label>
-                                    {{ t('listing.inquiry.phone') }}
-                                    <input name="phone" type="text" />
-                                    <InputError :message="errors.phone" />
-                                </label>
-                                <div class="inquiry-dates-row">
-                                    <label class="inquiry-date-field">
-                                        {{ t('listing.inquiry.checkIn') }}
-                                        <input
-                                            name="check_in"
-                                            type="date"
-                                            :min="
-                                                new Date()
-                                                    .toISOString()
-                                                    .slice(0, 10)
-                                            "
-                                        />
-                                        <InputError
-                                            :message="errors.check_in"
-                                        />
-                                    </label>
-                                    <label class="inquiry-date-field">
-                                        {{ t('listing.inquiry.checkOut') }}
-                                        <input
-                                            name="check_out"
-                                            type="date"
-                                            :min="
-                                                new Date()
-                                                    .toISOString()
-                                                    .slice(0, 10)
-                                            "
-                                        />
-                                        <InputError
-                                            :message="errors.check_out"
-                                        />
-                                    </label>
-                                </div>
-                                <div class="inquiry-guests-row">
-                                    <label class="inquiry-guest-field">
-                                        {{ t('listing.inquiry.adults') }}
-                                        <input
-                                            name="adults"
-                                            type="number"
-                                            min="1"
-                                            max="20"
-                                            value="2"
-                                        />
-                                        <InputError :message="errors.adults" />
-                                    </label>
-                                    <label class="inquiry-guest-field">
-                                        {{ t('listing.inquiry.children') }}
-                                        <input
-                                            name="children"
-                                            type="number"
-                                            min="0"
-                                            max="20"
-                                            value="0"
-                                        />
-                                        <InputError
-                                            :message="errors.children"
-                                        />
-                                    </label>
-                                </div>
-                                <label>
-                                    {{ t('listing.inquiry.message') }}
-                                    <textarea
-                                        name="message"
-                                        rows="3"
-                                    ></textarea>
-                                    <InputError :message="errors.message" />
-                                </label>
-                                <button
-                                    type="submit"
-                                    class="cta"
-                                    :disabled="processing"
-                                >
-                                    {{
-                                        processing
-                                            ? t('listing.inquiry.sending')
-                                            : t('listing.inquiry.send')
-                                    }}
-                                </button>
-                                <p
-                                    v-if="recentlySuccessful"
-                                    class="confirm-note"
-                                >
-                                    {{ t('listing.inquiry.success') }}
-                                </p>
-                            </Form>
-                        </template>
-                        <p v-else class="inquiry-subtitle">
-                            {{ t('listing.inquiry.unavailable') }}
-                        </p>
-                    </div>
-
-                    <div v-if="hasLocation" class="sidebar-map-card">
+                    <div v-if="hasLocation" class="location-card">
                         <h3>{{ t('listing.location.title') }}</h3>
                         <ExploreMap
                             :markers="locationMarkers"
@@ -721,6 +577,131 @@ const websiteUrl = computed(
                             >{{ t('listing.location.directions') }}</a
                         >
                     </div>
+                </div>
+
+                <div class="inquiry-panel">
+                    <template v-if="props.listing.accepts_inquiries">
+                        <h3>{{ t('listing.inquiry.title') }}</h3>
+                        <p
+                            v-if="props.listing.contact_person"
+                            class="inquiry-contact-person"
+                        >
+                            {{
+                                t('listing.inquiry.contactPerson', {
+                                    name: props.listing.contact_person,
+                                })
+                            }}
+                        </p>
+                        <p class="inquiry-subtitle">
+                            {{
+                                props.listing.partner
+                                    ? t('listing.inquiry.subtitle', {
+                                          partner: props.listing.partner.name,
+                                      })
+                                    : t('listing.inquiry.subtitleGeneric')
+                            }}
+                        </p>
+                        <Form
+                            v-bind="
+                                inquiries.store.form({
+                                    listing: props.listing.slug,
+                                })
+                            "
+                            reset-on-success
+                            v-slot="{ errors, processing, recentlySuccessful }"
+                            class="inquiry-form"
+                        >
+                            <label>
+                                {{ t('listing.inquiry.name') }}
+                                <input name="name" type="text" required />
+                                <InputError :message="errors.name" />
+                            </label>
+                            <label>
+                                {{ t('listing.inquiry.email') }}
+                                <input name="email" type="email" required />
+                                <InputError :message="errors.email" />
+                            </label>
+                            <label>
+                                {{ t('listing.inquiry.phone') }}
+                                <input name="phone" type="text" />
+                                <InputError :message="errors.phone" />
+                            </label>
+                            <div class="inquiry-dates-row">
+                                <label class="inquiry-date-field">
+                                    {{ t('listing.inquiry.checkIn') }}
+                                    <input
+                                        name="check_in"
+                                        type="date"
+                                        :min="
+                                            new Date()
+                                                .toISOString()
+                                                .slice(0, 10)
+                                        "
+                                    />
+                                    <InputError :message="errors.check_in" />
+                                </label>
+                                <label class="inquiry-date-field">
+                                    {{ t('listing.inquiry.checkOut') }}
+                                    <input
+                                        name="check_out"
+                                        type="date"
+                                        :min="
+                                            new Date()
+                                                .toISOString()
+                                                .slice(0, 10)
+                                        "
+                                    />
+                                    <InputError :message="errors.check_out" />
+                                </label>
+                            </div>
+                            <div class="inquiry-guests-row">
+                                <label class="inquiry-guest-field">
+                                    {{ t('listing.inquiry.adults') }}
+                                    <input
+                                        name="adults"
+                                        type="number"
+                                        min="1"
+                                        max="20"
+                                        value="2"
+                                    />
+                                    <InputError :message="errors.adults" />
+                                </label>
+                                <label class="inquiry-guest-field">
+                                    {{ t('listing.inquiry.children') }}
+                                    <input
+                                        name="children"
+                                        type="number"
+                                        min="0"
+                                        max="20"
+                                        value="0"
+                                    />
+                                    <InputError :message="errors.children" />
+                                </label>
+                            </div>
+                            <label>
+                                {{ t('listing.inquiry.message') }}
+                                <textarea name="message" rows="3"></textarea>
+                                <InputError :message="errors.message" />
+                            </label>
+                            <button
+                                type="submit"
+                                class="cta"
+                                :disabled="processing"
+                            >
+                                {{
+                                    processing
+                                        ? t('listing.inquiry.sending')
+                                        : t('listing.inquiry.send')
+                                }}
+                            </button>
+                            <p v-if="recentlySuccessful" class="confirm-note">
+                                {{ t('listing.inquiry.success') }}
+                            </p>
+                        </Form>
+                    </template>
+                    <p v-else class="inquiry-subtitle">
+                        {{ t('listing.inquiry.unavailable') }}
+                    </p>
                 </div>
             </div>
         </section>
@@ -841,25 +822,7 @@ const websiteUrl = computed(
     font-size: 14px;
 }
 
-.sidebar-column {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.sidebar-map-card {
-    background: #fff;
-    border-radius: 16px;
-    padding: 20px;
-    border: 1px solid var(--sand-dark, #d6c9b5);
-}
-
-.sidebar-map-card h3 {
-    font-size: 16px;
-    margin-bottom: 12px;
-}
-
-.sidebar-map-card :deep(.explore-map-wrapper) {
+.location-card :deep(.explore-map-wrapper) {
     margin: 0;
 }
 
