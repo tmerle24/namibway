@@ -47,8 +47,14 @@ class ReleaseSnapshot extends Command
         // (v1.0.<n>) and guaranteed to strictly increase on every deploy without any
         // manual tagging step.
         $buildNumber = (int) trim(Process::path(base_path())->run('git rev-list --count HEAD')->output());
-        $headDate = $commits[0]['date'] ?? now()->toDateString();
         $version = "1.0.{$buildNumber}";
+
+        $headDateTime = trim(Process::path(base_path())
+            ->run(['git', 'log', '-1', '--pretty=format:%ad', '--date=format:%Y-%m-%d %H:%M'])
+            ->output());
+        [$headDate, $headTime] = $headDateTime !== ''
+            ? array_pad(explode(' ', $headDateTime, 2), 2, '')
+            : [now()->toDateString(), now()->format('H:i')];
 
         $path = storage_path('app/release/version.json');
         File::ensureDirectoryExists(dirname($path));
@@ -57,6 +63,7 @@ class ReleaseSnapshot extends Command
             'build' => $buildNumber,
             'hash' => $hash,
             'date' => $headDate,
+            'time' => $headTime,
             'deployed_at' => now()->toIso8601String(),
             'commits' => $commits,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));

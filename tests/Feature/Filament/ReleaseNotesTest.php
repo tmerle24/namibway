@@ -25,6 +25,7 @@ class ReleaseNotesTest extends TestCase
             'build' => 187,
             'hash' => 'abc1234',
             'date' => now()->toDateString(),
+            'time' => '14:23',
             'deployed_at' => now()->toIso8601String(),
             'commits' => [
                 ['hash' => 'abc1234', 'date' => now()->toDateString(), 'subject' => 'Add release notes page'],
@@ -39,7 +40,7 @@ class ReleaseNotesTest extends TestCase
         $this->actingAs($this->admin())
             ->get('/admin')
             ->assertOk()
-            ->assertSee('v1.0.187 ('.now()->toDateString().')')
+            ->assertSee('v1.0.187 ('.now()->toDateString().' 14:23)')
             ->assertSee('/admin/release-notes', escape: false);
     }
 

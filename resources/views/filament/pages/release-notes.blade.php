@@ -62,7 +62,7 @@
             <div class="current">
                 <span class="hash">v{{ $release['version'] }}</span>
                 <span class="meta">
-                    currently live ({{ $release['date'] }})
+                    currently live ({{ $release['date'] }} {{ $release['time'] }})
                     @if ($release['hash'])
                         &middot; {{ $release['hash'] }}
                     @endif
