@@ -110,10 +110,15 @@ In `config.inc.php` (Distro-Paket: `/etc/roundcube/config.inc.php`; Variante B:
 Anleitungen im Netz nutzen noch die alten Namen):
 
 ```php
-// Port + SSL/TLS stecken direkt im Host-String, kein separater *_port-Key mehr.
-$config['imap_host'] = ['imap.mail.ovh.net:993'];
+// Port + Schema stecken direkt im Host-String, kein separater *_port-Key mehr.
+// Das ssl://-Präfix ist Pflicht: 993/465 sind implizites TLS — der Server
+// erwartet den TLS-Handshake sofort nach dem Connect. Ohne das Präfix
+// verbindet Roundcube im Klartext, der Server antwortet nie darauf, und der
+// Login hängt bis zum nginx-Timeout (siehe Troubleshooting unten — genau
+// dieser Fehler ist uns beim ersten Setup passiert).
+$config['imap_host'] = ['ssl://imap.mail.ovh.net:993'];
 
-$config['smtp_host'] = 'smtp.mail.ovh.net:465';
+$config['smtp_host'] = 'ssl://smtp.mail.ovh.net:465';
 $config['smtp_user'] = '%u';   // übernimmt den Login-Benutzernamen
 $config['smtp_pass'] = '%p';   // übernimmt das Login-Passwort
 
@@ -135,13 +140,22 @@ und prüfen, dass Posteingang + Versand funktionieren.
 
 ## Troubleshooting
 
-**502 Bad Gateway:** falscher PHP-FPM-Socket-Pfad in der nginx-Config — mit
+**502 Bad Gateway sofort:** falscher PHP-FPM-Socket-Pfad in der nginx-Config — mit
 `systemctl list-units --type=service | grep php` die tatsächlich laufende Version prüfen.
 
-**TLS-Fehler beim IMAP/SMTP-Connect:** die in Schritt 3 hinterlegten OVH-Ports (993 IMAP, 465
-SMTP) sind beides implizite SSL/TLS-Ports — falls stattdessen STARTTLS-Varianten nötig sind
-(z.B. bei einem anderen Provider), braucht `imap_host`/`smtp_host` ein explizites `tls://`
-vor dem Hostnamen und einen anderen Port (typischerweise 143 bzw. 587).
+**502 Bad Gateway erst nach dem Login-Klick, nginx-Log zeigt "upstream timed out ... while
+reading response header":** `imap_host`/`smtp_host` fehlt das `ssl://`-Präfix. 993/465 sind
+implizites TLS — der Server erwartet den TLS-Handshake direkt nach dem Connect; ohne `ssl://`
+verbindet Roundcube im Klartext, der Server antwortet nicht, und PHP-FPM hängt bis zum
+nginx-`fastcgi_read_timeout` (Standard 60s). Diagnose: `sudo -u www-data php -r
+'$s=@stream_socket_client("ssl://imap.mail.ovh.net:993",$e,$s2,5); var_dump($s!==false);'`
+— läuft das sofort (`bool(true)`), aber der echte Login trotzdem in einen Timeout, ist
+`ssl://` in der Config das Erste, was zu prüfen ist. Nach dem Fix `sudo systemctl reload
+php8.3-fpm` nicht vergessen (OPcache hält sonst den alten Config-Stand fest).
+
+**TLS-Fehler beim IMAP/SMTP-Connect trotz `ssl://`-Präfix:** falls der Provider stattdessen
+STARTTLS erwartet (z.B. bei einem anderen Provider als OVH), braucht `imap_host`/`smtp_host`
+`tls://` statt `ssl://` und einen anderen Port (typischerweise 143 bzw. 587).
 
 **Login schlägt fehl, Zugangsdaten sind aber korrekt:** IMAP könnte beim Provider separat vom
 POP3-Zugang aktiviert/erlaubt werden müssen — bei OVH sollte das über dasselbe Postfach-Konto
