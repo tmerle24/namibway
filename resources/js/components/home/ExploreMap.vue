@@ -9,6 +9,7 @@ export interface ExploreMapMarker {
     typeLabel: string;
     image: string;
     slug: string | null;
+    address?: string | null;
     latitude: number;
     longitude: number;
 }
@@ -107,13 +108,16 @@ function renderMarkers() {
                     '<div class="explore-map-popup-body">',
                     `<div class="explore-map-popup-tag">${escapeHtml(item.typeLabel)}</div>`,
                     `<div class="explore-map-popup-title">${escapeHtml(item.title)}</div>`,
+                    item.address
+                        ? `<div class="explore-map-popup-address">${escapeHtml(item.address)}</div>`
+                        : '',
                     '</div>',
                     '</div>',
                 ].join('');
 
                 const marker = L.marker([item.latitude, item.longitude], {
                     icon,
-                }).bindPopup(popupLines, { maxWidth: 220 });
+                }).bindPopup(popupLines, { maxWidth: 260 });
 
                 marker.on('mouseover', () => marker.openPopup());
 
@@ -262,5 +266,11 @@ watch(() => props.markers, renderMarkers);
     font-size: 13px;
     font-weight: 700;
     color: #2c2521;
+}
+
+.explore-map-popup-address {
+    font-size: 11px;
+    color: #6b6255;
+    margin-top: 2px;
 }
 </style>

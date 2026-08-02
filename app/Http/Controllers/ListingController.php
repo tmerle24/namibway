@@ -9,11 +9,13 @@ use App\Mail\NewInquiryReceived;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Review;
+use App\Services\Enrichment\CoordinateTextParser;
 use App\Services\Enrichment\OsmLocationFinder;
 use App\Services\Region\PhoneNumberFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
@@ -103,12 +105,43 @@ class ListingController extends Controller
         // right to publish them without consent (see Listing::approvePendingPhotos()).
         $canApprovePhotos = $isAdmin || $isOwnerPreview;
 
-        // Some partner websites publish only GPS coordinates, not a street address —
-        // the AI extractor then faithfully saves that coordinate text into `address`
-        // (see AIListingExtractorService). Detect that case so the public page shows
-        // a working map instead of a raw "S20°47.482 E016°42.704" string next to the
-        // phone number.
-        $coordinatesFromAddress = $listing->address ? self::parseCoordinateAddress($listing->address) : null;
+        // Detect coordinate text saved into `address` so the public page shows a
+        // working map instead of a raw "S20°47.482 E016°42.704" string next to the
+        // phone number — see CoordinateTextParser's docblock for why this happens.
+        $parsedCoordinates = $listing->address ? CoordinateTextParser::parse($listing->address) : null;
+
+        // No coordinates in the DB and no coordinate text to parse, but there's a real
+        // address — geocode it via the same Nominatim lookup EnrichmentPipeline uses,
+        // cached by address (so repeat views, or listings sharing an address, never
+        // re-query) and persisted onto the listing so this only ever runs once. Without
+        // this, any listing whose enrichment job hasn't run yet would show no map at
+        // all despite having a perfectly good address. Unlike $parsedCoordinates, this
+        // case keeps the address visible — it's a real, human-readable address, not raw
+        // coordinate text, so the map popup can show it alongside the listing name.
+        $geocodedCoordinates = null;
+
+        if (
+            $listing->latitude === null
+            && $listing->longitude === null
+            && $parsedCoordinates === null
+            && filled($listing->address)
+        ) {
+            $geocoded = Cache::remember(
+                'listing-address-geocode:'.md5($listing->address),
+                now()->addMonths(6),
+                fn () => app(OsmLocationFinder::class)->fillMissingCoordinates(['address' => $listing->address], $listing->name),
+            );
+
+            if (isset($geocoded['latitude'], $geocoded['longitude'])) {
+                $geocodedCoordinates = [$geocoded['latitude'], $geocoded['longitude']];
+                $listing->forceFill([
+                    'latitude' => $geocoded['latitude'],
+                    'longitude' => $geocoded['longitude'],
+                ])->saveQuietly();
+            }
+        }
+
+        $resolvedCoordinates = $parsedCoordinates ?? $geocodedCoordinates;
 
         $phone = app(PhoneNumberFormatter::class)->format($listing->phone);
 
@@ -133,16 +166,16 @@ class ListingController extends Controller
                     ? collect($listing->pending_gallery ?? [])->map(fn (string $path) => self::resolveMediaUrl($path))->values()
                     : [],
                 'region' => $listing->region,
-                'address' => $coordinatesFromAddress ? null : $listing->address,
+                'address' => $parsedCoordinates ? null : $listing->address,
                 'phone' => $phone['display'] ?? null,
                 'phone_href' => $phone['href'] ?? null,
                 'website' => $listing->website,
                 'latitude' => $listing->latitude !== null
                     ? (float) $listing->latitude
-                    : $coordinatesFromAddress[0] ?? null,
+                    : $resolvedCoordinates[0] ?? null,
                 'longitude' => $listing->longitude !== null
                     ? (float) $listing->longitude
-                    : $coordinatesFromAddress[1] ?? null,
+                    : $resolvedCoordinates[1] ?? null,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
                 'rating' => $listing->rating !== null ? (float) $listing->rating : null,
@@ -401,29 +434,6 @@ class ListingController extends Controller
     private static function isAdmin(): bool
     {
         return auth()->check() && auth()->user()->is_admin;
-    }
-
-    /**
-     * Matches degrees-decimal-minutes GPS text like "S20°47.482 E016°42.704", the
-     * format Namibian lodge sites tend to publish in place of a street address.
-     *
-     * @return array{0: float, 1: float}|null [latitude, longitude]
-     */
-    private static function parseCoordinateAddress(string $address): ?array
-    {
-        $pattern = '/^([NS])\s*(\d{1,2})°\s*(\d{1,2}(?:\.\d+)?)[\'′]?\s*([EW])\s*(\d{1,3})°\s*(\d{1,2}(?:\.\d+)?)[\'′]?/i';
-
-        if (! preg_match($pattern, trim($address), $m)) {
-            return null;
-        }
-
-        $latitude = ((float) $m[2]) + ((float) $m[3]) / 60;
-        $longitude = ((float) $m[5]) + ((float) $m[6]) / 60;
-
-        return [
-            strtoupper($m[1]) === 'S' ? -$latitude : $latitude,
-            strtoupper($m[4]) === 'W' ? -$longitude : $longitude,
-        ];
     }
 
     /**

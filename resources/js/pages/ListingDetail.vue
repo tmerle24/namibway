@@ -195,6 +195,7 @@ const locationMarkers = computed<ExploreMapMarker[]>(() => {
             typeLabel: t(`listing.types.${props.listing.type}`),
             image: heroImage.value,
             slug: null,
+            address: props.listing.address,
             latitude: props.listing.latitude,
             longitude: props.listing.longitude,
         },
