@@ -278,6 +278,25 @@ class ListingResource extends Resource
                     ->whereNull('read_at'),
             ]))
             ->columns([
+                Tables\Columns\TextColumn::make('unread_messages_count')
+                    ->label('Messages')
+                    ->badge(fn (Listing $record): bool => $record->partner?->email !== null)
+                    ->icon(fn (Listing $record): ?string => $record->partner?->email !== null
+                        ? 'heroicon-o-envelope'
+                        : null)
+                    ->formatStateUsing(fn (int $state, Listing $record): string => $record->partner?->email !== null && $state > 0
+                        ? (string) $state
+                        : '')
+                    ->color(fn (int $state): string => $state > 0 ? 'danger' : 'gray')
+                    ->tooltip(fn (int $state, Listing $record): ?string => match (true) {
+                        $record->partner?->email === null => null,
+                        $state > 0 => "{$state} unread message(s) — click to view",
+                        default => 'View messages',
+                    })
+                    ->url(fn (Listing $record): ?string => $record->partner?->email !== null
+                        ? static::getUrl('messages', ['record' => $record])
+                        : null)
+                    ->sortable(),
                 Tables\Columns\ImageColumn::make('image')
                     // Not disk('public'): a manually-uploaded image can be on either 'r2'
                     // (the form field's disk) or 'public' (rows from before the r2 switch,
@@ -338,17 +357,6 @@ class ListingResource extends Resource
                         'unclaimed' => 'warning',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('unread_messages_count')
-                    ->label('Messages')
-                    ->badge()
-                    ->icon('heroicon-o-envelope')
-                    ->formatStateUsing(fn (int $state): string => $state > 0 ? (string) $state : '')
-                    ->color(fn (int $state): string => $state > 0 ? 'danger' : 'gray')
-                    ->tooltip(fn (int $state): string => $state > 0
-                        ? "{$state} unread message(s) — click to view"
-                        : 'View messages')
-                    ->url(fn (Listing $record): string => static::getUrl('messages', ['record' => $record]))
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('scrape_source')
                     ->label('Source')
                     ->toggleable(isToggledHiddenByDefault: true),

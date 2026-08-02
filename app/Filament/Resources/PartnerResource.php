@@ -127,6 +127,25 @@ class PartnerResource extends Resource
                     ->whereNull('read_at'),
             ]))
             ->columns([
+                Tables\Columns\TextColumn::make('unread_messages_count')
+                    ->label('Messages')
+                    ->badge(fn (Partner $record): bool => $record->email !== null)
+                    ->icon(fn (Partner $record): ?string => $record->email !== null
+                        ? 'heroicon-o-envelope'
+                        : null)
+                    ->formatStateUsing(fn (int $state, Partner $record): string => $record->email !== null && $state > 0
+                        ? (string) $state
+                        : '')
+                    ->color(fn (int $state): string => $state > 0 ? 'danger' : 'gray')
+                    ->tooltip(fn (int $state, Partner $record): ?string => match (true) {
+                        $record->email === null => null,
+                        $state > 0 => "{$state} unread message(s) — click to view",
+                        default => 'View messages',
+                    })
+                    ->url(fn (Partner $record): ?string => $record->email !== null
+                        ? static::getUrl('messages', ['record' => $record])
+                        : null)
+                    ->sortable(),
                 Tables\Columns\ImageColumn::make('logo')
                     // Not disk('public'): logo can be on either 'r2' (current default)
                     // or 'public' (rows uploaded before the r2 switch) — resolveMediaUrl
@@ -176,17 +195,6 @@ class PartnerResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('unread_messages_count')
-                    ->label('Messages')
-                    ->badge()
-                    ->icon('heroicon-o-envelope')
-                    ->formatStateUsing(fn (int $state): string => $state > 0 ? (string) $state : '')
-                    ->color(fn (int $state): string => $state > 0 ? 'danger' : 'gray')
-                    ->tooltip(fn (int $state): string => $state > 0
-                        ? "{$state} unread message(s) — click to view"
-                        : 'View messages')
-                    ->url(fn (Partner $record): string => static::getUrl('messages', ['record' => $record]))
-                    ->sortable(),
             ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('has_unread_messages')
