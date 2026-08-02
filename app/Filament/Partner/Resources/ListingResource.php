@@ -98,7 +98,7 @@ class ListingResource extends Resource
                         Forms\Components\Placeholder::make('gallery_preview')
                             ->label('Current gallery')
                             ->content(function (?Listing $record): HtmlString {
-                                $images = $record?->gallery ?? [];
+                                $images = $record->gallery ?? [];
 
                                 if (empty($images)) {
                                     return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">No gallery images yet.</span>');

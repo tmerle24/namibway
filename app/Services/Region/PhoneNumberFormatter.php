@@ -55,7 +55,7 @@ class PhoneNumberFormatter
         }
 
         $default = $this->defaultCountry();
-        $trunkPrefix = $default['trunk_prefix'] ?? '';
+        $trunkPrefix = $default['trunk_prefix'];
 
         if ($trunkPrefix !== '' && str_starts_with($digits, $trunkPrefix)) {
             $digits = substr($digits, strlen($trunkPrefix));
@@ -92,6 +92,7 @@ class PhoneNumberFormatter
      * digit into the final group instead of leaving it on its own (e.g. a
      * 9-digit Namibian mobile number groups as "XXX XXXX", not "XXX X").
      *
+     * @param  positive-int  $size
      * @return list<string>
      */
     private function groupDigits(string $digits, int $size = 3): array
