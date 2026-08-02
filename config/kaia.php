@@ -29,5 +29,9 @@ return [
     // Namibia's 14 political regions used in the Listing.region column —
     // Claude naturally thinks in tourist-area names (Etosha, Sossusvlei...),
     // so the ones we actually seed data for need to be spelled out.
-    'regions' => ['Khomas', 'Erongo', 'Hardap', 'Kunene', 'Otjozondjupa', 'Karas'],
+    'regions' => [
+        'Khomas', 'Erongo', 'Hardap', 'Kunene', 'Otjozondjupa', 'Karas',
+        'Ohangwena', 'Omusati', 'Oshana', 'Oshikoto', 'Kavango East',
+        'Kavango West', 'Zambezi', 'Omaheke',
+    ],
 ];

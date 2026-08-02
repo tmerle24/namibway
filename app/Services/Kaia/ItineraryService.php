@@ -44,32 +44,112 @@ class ItineraryService
     private const MAX_CANDIDATES_PER_TYPE = 20;
 
     /**
-     * Real one-way driving durations (hours) between the 6 political regions
-     * used on Listing::region, verified via OSRM against a representative
-     * town/waypoint per region (Windhoek, Otjiwarongo/Waterberg, Okaukuejo/
-     * Etosha, Swakopmund, Sesriem, Fish River Canyon area) — not left to the
-     * model's memory (see CLAUDE.md: Claude is not the source of truth for
-     * Namibian driving distances). Keyed alphabetically ("A|B") so lookup
-     * doesn't care about direction.
+     * Real one-way driving durations (hours) between Namibia's 14 political
+     * regions used on Listing::region, verified via OSRM against a
+     * representative town/waypoint per region (Windhoek, Otjiwarongo,
+     * Okaukuejo/Etosha, Swakopmund, Sesriem, Fish River Canyon area, Eenhana,
+     * Outapi, Oshakati, Tsumeb, Rundu, Nkurenkuru, Katima Mulilo, Gobabis) —
+     * not left to the model's memory (see CLAUDE.md: Claude is not the
+     * source of truth for Namibian driving distances). Keyed alphabetically
+     * ("A|B") so lookup doesn't care about direction. The original 6-region
+     * loop's pairs are hand-verified; the 8 later-added northern/eastern
+     * regions are OSRM-only (no current partner content there — see
+     * routingGuidance(), which still only recommends the original loop).
      *
      * @var array<string, float>
      */
     private const DRIVING_HOURS = [
         'Erongo|Hardap' => 4.3,
         'Erongo|Karas' => 10.2,
+        'Erongo|Kavango East' => 9.1,
+        'Erongo|Kavango West' => 8.7,
         'Erongo|Khomas' => 3.9,
         'Erongo|Kunene' => 5.9,
+        'Erongo|Ohangwena' => 9.4,
+        'Erongo|Omaheke' => 6.1,
+        'Erongo|Omusati' => 8.5,
+        'Erongo|Oshana' => 9.0,
+        'Erongo|Oshikoto' => 6.1,
         'Erongo|Otjozondjupa' => 4.1,
+        'Erongo|Zambezi' => 14.5,
         'Hardap|Karas' => 6.7,
+        'Hardap|Kavango East' => 11.6,
+        'Hardap|Kavango West' => 11.2,
         'Hardap|Khomas' => 4.1,
         'Hardap|Kunene' => 8.8,
+        'Hardap|Ohangwena' => 11.9,
+        'Hardap|Omaheke' => 6.0,
+        'Hardap|Omusati' => 12.6,
+        'Hardap|Oshana' => 11.7,
+        'Hardap|Oshikoto' => 8.6,
         'Hardap|Otjozondjupa' => 6.6,
+        'Hardap|Zambezi' => 16.9,
+        'Karas|Kavango East' => 14.8,
+        'Karas|Kavango West' => 14.5,
         'Karas|Khomas' => 7.3,
         'Karas|Kunene' => 12.1,
+        'Karas|Ohangwena' => 15.2,
+        'Karas|Omaheke' => 8.1,
+        'Karas|Omusati' => 15.9,
+        'Karas|Oshana' => 15.0,
+        'Karas|Oshikoto' => 11.9,
         'Karas|Otjozondjupa' => 9.9,
+        'Karas|Zambezi' => 20.2,
+        'Kavango East|Kavango West' => 1.6,
+        'Kavango East|Khomas' => 7.6,
+        'Kavango East|Kunene' => 6.7,
+        'Kavango East|Ohangwena' => 4.2,
+        'Kavango East|Omaheke' => 7.0,
+        'Kavango East|Omusati' => 5.8,
+        'Kavango East|Oshana' => 5.2,
+        'Kavango East|Oshikoto' => 3.5,
+        'Kavango East|Otjozondjupa' => 5.0,
+        'Kavango East|Zambezi' => 5.4,
+        'Kavango West|Khomas' => 7.3,
+        'Kavango West|Kunene' => 6.3,
+        'Kavango West|Ohangwena' => 2.9,
+        'Kavango West|Omaheke' => 7.4,
+        'Kavango West|Omusati' => 4.4,
+        'Kavango West|Oshana' => 3.8,
+        'Kavango West|Oshikoto' => 2.7,
+        'Kavango West|Otjozondjupa' => 4.6,
+        'Kavango West|Zambezi' => 7.0,
         'Khomas|Kunene' => 4.8,
+        'Khomas|Ohangwena' => 7.9,
+        'Khomas|Omaheke' => 2.2,
+        'Khomas|Omusati' => 8.7,
+        'Khomas|Oshana' => 7.7,
+        'Khomas|Oshikoto' => 4.7,
         'Khomas|Otjozondjupa' => 2.7,
+        'Khomas|Zambezi' => 13.0,
+        'Kunene|Ohangwena' => 5.6,
+        'Kunene|Omaheke' => 6.7,
+        'Kunene|Omusati' => 5.9,
+        'Kunene|Oshana' => 5.4,
+        'Kunene|Oshikoto' => 3.7,
         'Kunene|Otjozondjupa' => 2.2,
+        'Kunene|Zambezi' => 12.1,
+        'Ohangwena|Omaheke' => 8.1,
+        'Ohangwena|Omusati' => 1.6,
+        'Ohangwena|Oshana' => 1.1,
+        'Ohangwena|Oshikoto' => 3.5,
+        'Ohangwena|Otjozondjupa' => 5.3,
+        'Ohangwena|Zambezi' => 9.6,
+        'Omaheke|Omusati' => 8.9,
+        'Omaheke|Oshana' => 7.9,
+        'Omaheke|Oshikoto' => 4.9,
+        'Omaheke|Otjozondjupa' => 4.6,
+        'Omaheke|Zambezi' => 12.5,
+        'Omusati|Oshana' => 0.9,
+        'Omusati|Oshikoto' => 4.3,
+        'Omusati|Otjozondjupa' => 6.0,
+        'Omusati|Zambezi' => 11.2,
+        'Oshana|Oshikoto' => 3.3,
+        'Oshana|Otjozondjupa' => 5.1,
+        'Oshana|Zambezi' => 10.6,
+        'Oshikoto|Otjozondjupa' => 2.0,
+        'Oshikoto|Zambezi' => 8.9,
+        'Otjozondjupa|Zambezi' => 10.4,
     ];
 
     /**
@@ -965,8 +1045,8 @@ class ItineraryService
     /**
      * Looks up the real driving time between two regions regardless of
      * argument order (DRIVING_HOURS is keyed alphabetically). Returns null
-     * only when the pair isn't in the table (shouldn't happen for the 6
-     * known regions) — callers treat null as "can't validate, skip".
+     * only when the pair isn't in the table (shouldn't happen for any of
+     * the 14 known regions) — callers treat null as "can't validate, skip".
      */
     private function drivingHours(string $a, string $b): ?float
     {
@@ -982,7 +1062,7 @@ class ItineraryService
     /**
      * Maps a possibly loosely-cased/whitespaced region string from the AI's
      * output back to the canonical spelling used as a DRIVING_HOURS key.
-     * Returns null for anything that isn't one of the 6 known regions
+     * Returns null for anything that isn't one of the 14 known regions
      * (park/tourist-area names Claude was told not to use, typos, etc.) —
      * we simply can't validate driving time for those.
      */

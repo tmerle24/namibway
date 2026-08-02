@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>You're offline — NamibWay</title>
+        <link rel="icon" href="/favicon.ico" sizes="any">
+        <style>
+            html, body {
+                height: 100%;
+                margin: 0;
+            }
+
+            body {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                background: #ffffff;
+                color: #171717;
+                text-align: center;
+                padding: 1.5rem;
+            }
+
+            .card {
+                max-width: 26rem;
+            }
+
+            img {
+                width: 72px;
+                height: 72px;
+                margin-bottom: 1.25rem;
+            }
+
+            h1 {
+                font-size: 1.25rem;
+                margin: 0 0 0.5rem;
+            }
+
+            p {
+                color: #525252;
+                line-height: 1.5;
+                margin: 0 0 1.5rem;
+            }
+
+            button {
+                appearance: none;
+                border: none;
+                border-radius: 0.5rem;
+                background: #e4ac6b;
+                color: #171717;
+                font-weight: 600;
+                font-size: 0.9375rem;
+                padding: 0.625rem 1.25rem;
+                cursor: pointer;
+            }
+
+            @media (prefers-color-scheme: dark) {
+                body {
+                    background: #0a0a0a;
+                    color: #fafafa;
+                }
+
+                p {
+                    color: #a3a3a3;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <img src="/images/pwa/icon-192.png" alt="">
+            <h1>You're offline</h1>
+            <p>NamibWay needs an internet connection to plan and book your Namibia trip. Please check your connection and try again.</p>
+            <button onclick="location.reload()">Try again</button>
+        </div>
+    </body>
+</html>
