@@ -129,6 +129,59 @@ Da es eine **geteilte Mailbox** ist (kein Multi-User-Setup), am Login-Screen ein
 `POP3_USERNAME`/`POP3_PASSWORD`-Paar (identisch mit dem IMAP/SMTP-Login bei OVH) anmelden —
 Roundcube fragt Login/Passwort interaktiv ab, es muss nichts davon fest im Code stehen.
 
+## 4. Branding
+
+### Logo
+
+`skin_logo` akzeptiert auch eine externe URL — kein Datei-Upload auf den Mailserver nötig,
+einfach das schon live gehostete NamibWay-Logo verlinken (dieselbe Datei, die im
+Filament-Admin als `brandLogo` läuft, siehe `AdminPanelProvider.php`):
+
+```php
+$config['skin_logo'] = 'https://namibway.com/images/namibway-logo-dark.png';
+```
+
+(`-dark` im Dateinamen = dunkles Logo für hellen Hintergrund, passend zum standardmäßig hellen
+Elastic-Skin-Header.) Danach `sudo systemctl reload php8.3-fpm` und neu laden.
+
+### Produktname (Tab-Titel)
+
+Bereits gesetzt in Schritt 3: `$config['product_name'] = 'NamibWay Webmail';`.
+
+### Akzentfarbe (Amber, wie `Color::Amber` im Filament-Admin)
+
+```php
+$config['additional_css'] = ['plugins/namibway_brand/custom.css'];
+```
+
+Datei `plugins/namibway_brand/custom.css` (Ordner ggf. anlegen) mit z.B.:
+
+```css
+:root {
+    --color-highlight: #f59e0b;      /* NamibWay-Amber */
+    --color-list-selection-bg: #fef3c7;
+}
+a.button-primary, .btn-primary {
+    background-color: #f59e0b !important;
+    border-color: #f59e0b !important;
+}
+```
+
+**Vorbehalt:** anders als der `ssl://`-Fix ist das kein garantiert 1:1 passender Wert — Elastics
+exakte CSS-Variablennamen unterscheiden sich je nach Roundcube-Version. Startpunkt; am
+zuverlässigsten per Browser-DevTools ("Untersuchen" auf einem farbigen Button) die tatsächlich
+verwendete Variable/Klasse ablesen und die Selektoren oben anpassen.
+
+### Favicon
+
+Kein Config-Wert, sondern eine Datei im Skin-Ordner — direkt ersetzen:
+`/etc/roundcube/skins/elastic/images/favicon.ico` (bzw.
+`.../webmail/skins/elastic/images/favicon.ico` bei Variante B) mit einer NamibWay-Favicon-Datei
+überschreiben.
+
+Sitzt die Logo-Größe nach alldem nicht, lässt sich `.header-logo` ebenfalls über die
+`custom.css` von oben nachjustieren.
+
 ## Test
 
 ```bash
