@@ -82,13 +82,21 @@ server {
 }
 ```
 
-Danach TLS wie gewohnt:
+Bewusst nur ein reiner Port-80-vhost — **kein** eigener `listen 443`-Block und keine manuelle
+Weiterleitung nötig. Das übernimmt Certbot im nächsten Schritt automatisch:
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/webmail.namibway.com /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d webmail.namibway.com
 ```
+
+Das `--nginx`-Plugin bearbeitet die vhost-Datei danach selbst: es ergänzt einen
+`listen 443 ssl`-Block mit den Zertifikatspfaden und richtet eine Weiterleitung von Port 80 auf
+443 ein. Mit `sudo cat /etc/nginx/sites-available/webmail.namibway.com` danach kurz prüfen, ob
+beides drinsteht — falls die interaktive Certbot-Frage nach der Weiterleitung übersprungen
+wurde (ältere Certbot-Versionen fragen das explizit ab), lässt sich das mit
+`sudo certbot install --nginx -d webmail.namibway.com` bzw. `sudo certbot enhance --nginx --redirect` nachholen.
 
 ## 3. Roundcube mit der Mailbox verbinden
 
