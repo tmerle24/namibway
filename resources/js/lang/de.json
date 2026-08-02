@@ -113,6 +113,11 @@
             "confirm": "Danke — in der Community veröffentlicht."
         }
     },
+    "destinations": {
+        "eyebrow": "Namibias Highlights",
+        "title": "Die Orte, um die sich jede Reiseroute dreht",
+        "subtitle": "Auf ein Ziel tippen, um Unterkünfte, Aktivitäten und Restaurants in der Nähe zu sehen."
+    },
     "explore": {
         "eyebrow": "Entdecken",
         "title": "Lass dich inspirieren, jederzeit stöbern",

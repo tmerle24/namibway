@@ -103,6 +103,11 @@
             "confirm": "Bedankt — gepubliceerd voor de community."
         }
     },
+    "destinations": {
+        "eyebrow": "Hoogtepunten van Namibië",
+        "title": "De plekken waar elke reisroute om draait",
+        "subtitle": "Tik op een bestemming om accommodatie, activiteiten en restaurants in de buurt te zien."
+    },
     "explore": {
         "eyebrow": "Ontdekken",
         "title": "Laat je inspireren, blader wanneer je wilt",

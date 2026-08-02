@@ -103,6 +103,11 @@
             "confirm": "Gracias — publicado para la comunidad."
         }
     },
+    "destinations": {
+        "eyebrow": "Lo más destacado de Namibia",
+        "title": "Los lugares en torno a los que gira cada itinerario",
+        "subtitle": "Toca un destino para ver alojamiento, actividades y restaurantes cercanos."
+    },
     "explore": {
         "eyebrow": "Explorar",
         "title": "Inspírate, explora cuando quieras",

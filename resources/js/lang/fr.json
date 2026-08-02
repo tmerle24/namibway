@@ -103,6 +103,11 @@
             "confirm": "Merci — publié auprès de la communauté."
         }
     },
+    "destinations": {
+        "eyebrow": "Incontournables de Namibie",
+        "title": "Les lieux autour desquels chaque itinéraire se construit",
+        "subtitle": "Touchez une destination pour voir les hébergements, activités et restaurants à proximité."
+    },
     "explore": {
         "eyebrow": "Explorer",
         "title": "Laissez-vous inspirer, parcourez à tout moment",

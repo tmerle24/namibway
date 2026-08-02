@@ -10,6 +10,7 @@ import GuestDetailsForm from '@/components/home/GuestDetailsForm.vue';
 import HeroChat from '@/components/home/HeroChat.vue';
 import HowItWorks from '@/components/home/HowItWorks.vue';
 import ItinerarySection from '@/components/home/ItinerarySection.vue';
+import TopDestinations from '@/components/home/TopDestinations.vue';
 import { createTrip } from '@/lib/kaia-client';
 import type {
     GuestDetails,
@@ -139,6 +140,10 @@ async function onGuestSubmit(details: GuestDetails) {
     <div class="kaia-page">
         <AdminBar />
         <HeroChat @plan-ready="onPlanReady" @search-intent="onSearchIntent" />
+        <TopDestinations
+            :destinations="regions"
+            @select="(region) => onSearchIntent({ region })"
+        />
         <ItinerarySection v-if="plan" :plan="plan" @book="onBook" />
         <GuestDetailsForm
             v-if="bookingVariant && !bookingActive"

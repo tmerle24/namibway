@@ -130,6 +130,11 @@
             "error": "Something went wrong. Please try again."
         }
     },
+    "destinations": {
+        "eyebrow": "Namibia highlights",
+        "title": "The places every itinerary is built around",
+        "subtitle": "Tap a destination to see accommodation, activities and restaurants nearby."
+    },
     "explore": {
         "eyebrow": "Explore",
         "title": "Get inspired, browse anytime",
