@@ -22,7 +22,15 @@
      peeked through at the sides. Rather than chase that per field, the
      box-shadow + clip-path pair below bleeds the header's background out
      to any width — a solid color painted 100vmax past the box on each
-     side, clipped back so it doesn't create a horizontal scrollbar. --}}
+     side, clipped back so it doesn't create a horizontal scrollbar.
+
+     The drop-shadow (for a bit of visible depth below the header) has to
+     be listed *before* that opaque bleed shadow in the box-shadow list —
+     CSS paints earlier shadows on top of later ones, so listing it after
+     would leave it fully hidden behind the opaque fill. clip-path's
+     vertical inset is widened slightly (-16px instead of 0) so the
+     drop-shadow's blur has room to actually render below the box instead
+     of being clipped off flush with the edge. --}}
 <style>
     .fi-page > section {
         padding-top: 0;
@@ -41,12 +49,12 @@
         padding-top: 10px;
         padding-bottom: 10px;
         background-color: #fff;
-        box-shadow: 0 0 0 100vmax #fff;
-        clip-path: inset(0 -100vmax);
+        box-shadow: 0 2px 4px 0 rgb(0 0 0 / 0.1), 0 0 0 100vmax #fff;
+        clip-path: inset(-16px -100vmax);
     }
 
     .dark .fi-header {
         background-color: #000;
-        box-shadow: 0 0 0 100vmax #000;
+        box-shadow: 0 2px 4px 0 rgb(0 0 0 / 0.1), 0 0 0 100vmax #000;
     }
 </style>
