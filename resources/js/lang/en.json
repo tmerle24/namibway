@@ -247,6 +247,7 @@
         "about": "About",
         "steckbrief": "At a glance",
         "location": {
+            "title": "Location",
             "directions": "Get directions →"
         },
         "contact": {

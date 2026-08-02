@@ -230,6 +230,7 @@
         "about": "Über",
         "steckbrief": "Auf einen Blick",
         "location": {
+            "title": "Standort",
             "directions": "Route anzeigen →"
         },
         "contact": {
