@@ -61,6 +61,14 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-code-bracket')
                     ->group('Documentation')
                     ->sort(2),
+                // Opens the Roundcube webmail client (separate install, see WEBMAIL.md)
+                // rather than an in-app inbox — real IMAP mailbox with attachments,
+                // folders, and search instead of reimplementing those in Filament.
+                NavigationItem::make('Emails')
+                    ->url('https://webmail.namibway.com', shouldOpenInNewTab: true)
+                    ->icon('heroicon-o-envelope')
+                    ->group('Messaging')
+                    ->sort(0),
             ])
             ->renderHook(
                 \Filament\View\PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
