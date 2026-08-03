@@ -2619,8 +2619,7 @@
     text-decoration: none;
 }
 .kaia-page .mobile-footer-nav-item.active {
-    background: var(--rust-dark);
-    color: var(--gold);
+    color: var(--sand);
 }
 .kaia-page .mobile-footer-nav-compass {
     display: flex;
@@ -2631,14 +2630,14 @@
     height: 56px;
     margin-top: -28px;
     border-radius: 50%;
-    background: var(--rust-dark);
-    color: var(--sand);
+    background: var(--rust);
+    color: var(--paper);
     border: 4px solid var(--paper);
     box-shadow: 0 6px 16px rgba(16, 26, 48, 0.35);
 }
 .kaia-page .mobile-footer-nav-compass.active {
-    background: var(--rust);
-    color: var(--paper);
+    background: var(--rust-dark);
+    color: var(--gold);
 }
 .kaia-page .mobile-footer-nav-compass-icon {
     width: 30px;
