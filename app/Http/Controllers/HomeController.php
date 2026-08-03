@@ -14,8 +14,11 @@ class HomeController extends Controller
      * How many listings to feature per category on the homepage. A magazine
      * front page curates a handful of picks per section rather than dumping
      * the whole catalog — the full catalog stays one click away via search.
+     * Kept a multiple of the frontend's 4-column grid (see GRID_COLUMNS in
+     * ExploreSection.vue) so a category with enough listings fills complete
+     * rows instead of being trimmed down by the frontend's gap-avoidance.
      */
-    private const PER_CATEGORY_LIMIT = 10;
+    private const PER_CATEGORY_LIMIT = 12;
 
     private const LISTING_COLUMNS = [
         'id', 'type', 'name', 'slug', 'description',
