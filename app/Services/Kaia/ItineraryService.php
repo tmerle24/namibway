@@ -587,7 +587,7 @@ class ItineraryService
             }
 
             $accommodation = $days[$startIdx]['accommodation'] ?? null;
-            $listingId = $accommodation['id'] ?? null;
+            $listingId = is_numeric($accommodation['id'] ?? null) ? (int) $accommodation['id'] : null;
 
             if ($listingId === null) {
                 continue;

@@ -9,10 +9,12 @@ use App\Models\Listing;
 use App\Services\Enrichment\OsmLocationFinder;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Resources\Pages\EditRecord\Concerns\Translatable;
 
 class EditListing extends EditRecord
 {
     use HasFormActionsInHeader;
+    use Translatable;
 
     protected static string $resource = ListingResource::class;
 
@@ -35,6 +37,7 @@ class EditListing extends EditRecord
     protected function getHeaderActions(): array
     {
         return $this->withFormActions([
+            Actions\LocaleSwitcher::make(),
             Actions\Action::make('back')
                 ->label('Back to listings')
                 ->url(ListingResource::getUrl())

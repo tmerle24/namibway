@@ -143,12 +143,27 @@ function budgetBucket(price: string | null): Budget {
     return 'premium';
 }
 
+// `description` is stored HTML-escaped (see Listing::setDescriptionAttribute) so it
+// can be rendered as raw HTML on the listing detail page. These cards render it as
+// plain text instead, so it must be decoded first or entities like "&#039;" show up
+// literally (Vue's text interpolation escapes them a second time).
+function decodeEntities(text: string): string {
+    const el = document.createElement('textarea');
+    el.innerHTML = text;
+
+    return el.value;
+}
+
 function truncate(text: string | null, length = 120): string {
     if (!text) {
         return '';
     }
 
-    return text.length > length ? text.slice(0, length).trim() + '…' : text;
+    const decoded = decodeEntities(text);
+
+    return decoded.length > length
+        ? decoded.slice(0, length).trim() + '…'
+        : decoded;
 }
 
 const ROW_BG: Record<RowKey, string> = {

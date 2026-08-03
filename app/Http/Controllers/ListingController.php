@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Enums\ConnectorType;
 use App\Enums\InquiryStatus;
 use App\Jobs\EnrichListingJob;
-use App\Mail\NewInquiryReceived;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Review;
@@ -17,7 +16,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -580,11 +578,7 @@ class ListingController extends Controller
             ]);
         }
 
-        $inquiry = $listing->inquiries()->create($validated);
-
-        if ($listing->partner?->email) {
-            Mail::to($listing->partner->email)->send(new NewInquiryReceived($inquiry));
-        }
+        $listing->inquiries()->create($validated);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Inquiry sent.')]);
 
