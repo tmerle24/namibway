@@ -319,9 +319,9 @@ async function retryLastMessage() {
                 <img :src="logoLight" alt="NamibWay" class="brand-logo" />
             </Link>
             <div class="hero-nav-actions">
+                <LocaleSwitcher />
                 <NavMoreMenu>
                     <CurrencySwitcher variant="full" />
-                    <LocaleSwitcher variant="full" />
                     <div class="nav-more-divider"></div>
                     <Link
                         v-if="page.props.auth?.user"
