@@ -395,9 +395,9 @@ const websiteUrl = computed(
                     class="detail-back"
                     >{{ t('listing.backToHome') }}</Link
                 >
+                <LocaleSwitcher />
                 <NavMoreMenu>
                     <CurrencySwitcher variant="full" />
-                    <LocaleSwitcher variant="full" />
                 </NavMoreMenu>
             </div>
         </div>
