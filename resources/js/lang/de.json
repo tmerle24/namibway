@@ -353,5 +353,8 @@
             ],
             "cta": "Listings durchsuchen ↓"
         }
+    },
+    "errors": {
+        "bookingFailed": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
     }
 }

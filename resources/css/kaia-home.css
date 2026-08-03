@@ -2802,3 +2802,45 @@
         width: 100%;
     }
 }
+
+/* Print styles for the shared /trip/{token} page — global, not scoped to
+   TripPlan.vue, since the elements they target (.variant-card, .save-share-bar,
+   .trip-map-frame, the params-edit affordances) now render inside the shared
+   ItinerarySection component rather than TripPlan.vue's own template. */
+@media print {
+    .trip-plan-page .trip-plan-content {
+        padding: 0;
+    }
+    .trip-plan-page .trip-plan-header {
+        padding-top: 0;
+    }
+    .trip-plan-page .login-banner {
+        display: none !important;
+    }
+    .trip-plan-page .save-share-bar {
+        display: none !important;
+    }
+    .trip-plan-page .trip-map-frame {
+        display: none !important;
+    }
+    .trip-plan-page .trip-meta-edit-btn,
+    .trip-plan-page .reverse-route-btn,
+    .trip-plan-page .dismiss-variant-btn,
+    .trip-plan-page .swap-btn,
+    .trip-plan-page .remove-btn,
+    .trip-plan-page .add-item-btn,
+    .trip-plan-page .add-day-btn,
+    .trip-plan-page .room-selection-row,
+    .trip-plan-page .drag-handle,
+    .trip-plan-page .cta {
+        display: none !important;
+    }
+    .trip-plan-page .variant-card {
+        border: none;
+        padding: 0;
+        break-inside: avoid;
+    }
+    .trip-plan-page footer {
+        display: none;
+    }
+}

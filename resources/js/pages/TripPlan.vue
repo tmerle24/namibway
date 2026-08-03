@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
 import { usePage } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import ItineraryLineItem from '@/components/home/ItineraryLineItem.vue';
-import SaveShareBar from '@/components/home/SaveShareBar.vue';
-import TripMap from '@/components/home/TripMap.vue';
-import TripMeta from '@/components/home/TripMeta.vue';
-import { formatPrice } from '@/lib/currency';
-import { fetchRegionCoords } from '@/lib/kaia-client';
-import type { RegionCoords } from '@/lib/kaia-client';
-import type { ItineraryPlan, ItineraryVariant } from '@/lib/kaia-types';
+import BookingSection from '@/components/home/BookingSection.vue';
+import GuestDetailsForm from '@/components/home/GuestDetailsForm.vue';
+import ItinerarySection from '@/components/home/ItinerarySection.vue';
+import { createTrip } from '@/lib/kaia-client';
+import type {
+    GuestDetails,
+    ItineraryPlan,
+    ItineraryVariant,
+} from '@/lib/kaia-types';
 import logoDark from '../../images/logo-dark.png';
 
 const props = defineProps<{
@@ -30,82 +31,55 @@ function loginUrl(): string {
 
 const { t } = useI18n();
 
-const regionCoords = ref<Record<string, RegionCoords>>({});
+// Same identity ItinerarySection already manages for the live Kaia session
+// (see Welcome.vue) — a local ref rather than the raw prop so a future
+// token swap (shouldn't normally happen here, since the URL already
+// carries a real one) still flows through the same update:token contract.
+const tripToken = ref<string | null>(props.token);
 
-onMounted(async () => {
-    regionCoords.value = await fetchRegionCoords();
-});
+const bookingVariant = ref<ItineraryVariant | null>(null);
+const bookingActive = ref(false);
+const bookingLoading = ref(false);
+const bookingError = ref<string | null>(null);
+const bookingTripId = ref<number | null>(null);
 
-// A single date per day is ambiguous about which night it covers ("28 Aug" —
-// arriving that day, or already there?) — show the check-in/check-out range
-// instead. Dates arrive as "D Mon YYYY" (e.g. "15 Aug 2026"); drop the
-// repeated month/year on the first half when they match the second, so a
-// same-month range reads as "15 – 16 Aug 2026" rather than spelling out both
-// full dates.
-function formatDateRange(day: {
-    date?: string | null;
-    date_to?: string | null;
-}): string {
-    if (!day.date) {
-        return '';
-    }
-
-    if (!day.date_to) {
-        return day.date;
-    }
-
-    const [fromDay, fromMonth, fromYear] = day.date.split(' ');
-    const [, toMonth, toYear] = day.date_to.split(' ');
-
-    if (fromMonth === toMonth && fromYear === toYear) {
-        return `${fromDay} – ${day.date_to}`;
-    }
-
-    if (fromYear === toYear) {
-        return `${fromDay} ${fromMonth} – ${day.date_to}`;
-    }
-
-    return `${day.date} – ${day.date_to}`;
+function scrollTo(id: string) {
+    document
+        .getElementById(id)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// Accommodation photo first, region photo as fallback — see the identical
-// helper in ItinerarySection.vue for why regionCoords resolves both.
-function dayThumbnail(day: {
-    location: string;
-    accommodation?: { image?: string | null } | null;
-}): string | null {
-    if (day.accommodation?.image) {
-        return day.accommodation.image;
-    }
-
-    const key = day.location?.toLowerCase().trim();
-
-    return (key && regionCoords.value[key]?.image) || null;
+function onBook(variant: ItineraryVariant) {
+    bookingVariant.value = variant;
+    bookingActive.value = false;
+    bookingError.value = null;
+    scrollTo('guest-form-section');
 }
 
-function estimatedLabel(variant: ItineraryVariant): string | null {
-    let amount = 0;
-    let hasAnyPrice = false;
-
-    for (const day of variant.days) {
-        for (const item of [day.accommodation, day.activity, day.restaurant]) {
-            if (item?.price_from) {
-                amount += Number(item.price_from);
-                hasAnyPrice = true;
-            }
-        }
+async function onGuestSubmit(details: GuestDetails) {
+    if (!bookingVariant.value) {
+        return;
     }
 
-    if (variant.vehicle?.price_from) {
-        amount += Number(variant.vehicle.price_from) * variant.days.length;
-        hasAnyPrice = true;
-    }
+    bookingLoading.value = true;
+    bookingError.value = null;
 
-    if (!hasAnyPrice) {
-        return null;
+    try {
+        const result = await createTrip(
+            details,
+            bookingVariant.value.name,
+            props.plan,
+            bookingVariant.value.days,
+        );
+        bookingTripId.value = result.trip_id;
+        bookingActive.value = true;
+        scrollTo('booking-section');
+    } catch (e) {
+        bookingError.value =
+            e instanceof Error ? e.message : t('errors.bookingFailed');
+    } finally {
+        bookingLoading.value = false;
     }
-
-    return t('itinerary.estimated', { price: formatPrice(amount) });
 }
 </script>
 
@@ -124,10 +98,6 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                 <div class="trip-plan-meta">
                     <div class="eyebrow">{{ t('itinerary.eyebrow') }}</div>
                     <h1>{{ title || t('itinerary.title') }}</h1>
-                    <p v-if="plan.trip_summary" class="trip-summary">
-                        {{ plan.trip_summary }}
-                    </p>
-                    <TripMeta :trip-params="plan.trip_params" />
                 </div>
             </header>
 
@@ -146,84 +116,25 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                 </div>
             </div>
 
-            <div class="variants">
-                <div
-                    v-for="(variant, variantIndex) in plan.variants"
-                    :key="variant.name"
-                    class="variant-card"
-                >
-                    <h3>{{ variant.name }}</h3>
-                    <div v-if="estimatedLabel(variant)" class="variant-price">
-                        {{ estimatedLabel(variant) }}
-                    </div>
+            <ItinerarySection
+                :plan="plan"
+                :token="tripToken"
+                @book="onBook"
+                @update:token="tripToken = $event"
+            />
 
-                    <TripMap
-                        :map-id="`trip-map-${variantIndex}`"
-                        :variant="variant"
-                        :region-coords="regionCoords"
-                    />
-
-                    <template v-if="variant.vehicle">
-                        <ItineraryLineItem
-                            keypath="itinerary.vehicle"
-                            :item-ref="variant.vehicle"
-                            :readonly="true"
-                        />
-                    </template>
-
-                    <div
-                        v-for="day in variant.days"
-                        :key="day.day"
-                        class="day-row"
-                    >
-                        <div class="day-col">
-                            <div class="day-num">{{ day.day }}</div>
-                            <div v-if="day.date" class="day-date">
-                                {{ formatDateRange(day) }}
-                            </div>
-                        </div>
-                        <img
-                            v-if="dayThumbnail(day)"
-                            :src="dayThumbnail(day)!"
-                            alt=""
-                            class="day-thumb"
-                        />
-                        <div class="day-detail">
-                            <div class="day-location-label">
-                                {{ day.location }}
-                            </div>
-                            <ItineraryLineItem
-                                v-if="day.accommodation"
-                                keypath="itinerary.stay"
-                                :item-ref="day.accommodation"
-                                :readonly="true"
-                            />
-                            <ItineraryLineItem
-                                v-if="day.activity"
-                                keypath="itinerary.activity"
-                                :item-ref="day.activity"
-                                :readonly="true"
-                            />
-                            <ItineraryLineItem
-                                v-if="day.restaurant"
-                                keypath="itinerary.dinner"
-                                :item-ref="day.restaurant"
-                                :readonly="true"
-                            />
-                        </div>
-                    </div>
-
-                    <SaveShareBar
-                        :plan="{
-                            trip_summary: plan.trip_summary,
-                            variants: [variant],
-                            trip_params: plan.trip_params,
-                        }"
-                        :token="token"
-                        :is-logged-in="isLoggedIn"
-                    />
-                </div>
-            </div>
+            <GuestDetailsForm
+                v-if="bookingVariant && !bookingActive"
+                :variant="bookingVariant"
+                :loading="bookingLoading"
+                :error="bookingError"
+                @submit="onGuestSubmit"
+            />
+            <BookingSection
+                v-if="bookingActive && bookingVariant && bookingTripId"
+                :variant="bookingVariant"
+                :trip-id="bookingTripId"
+            />
 
             <footer>
                 <img :src="logoDark" alt="NamibWay" class="footer-logo" />
@@ -254,37 +165,6 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
 .trip-plan-meta h1 {
     font-size: 26px;
     margin-bottom: 6px;
-}
-
-.trip-summary {
-    color: #5b5346;
-    font-size: 14px;
-    max-width: 600px;
-    line-height: 1.5;
-}
-
-.day-col {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 68px;
-    flex-shrink: 0;
-    padding-top: 1px;
-}
-
-.day-date {
-    font-size: 11px;
-    color: #7a6f63;
-    text-align: center;
-    margin-top: 2px;
-    line-height: 1.2;
-}
-
-.day-location-label {
-    font-weight: 600;
-    font-size: 13px;
-    margin-bottom: 6px;
-    color: #2c2521;
 }
 
 .login-banner {
@@ -348,28 +228,5 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
 
 .register-btn:hover {
     background: #fdf0ed;
-}
-
-@media print {
-    .trip-plan-content {
-        padding: 0;
-    }
-    .trip-plan-header {
-        padding-top: 0;
-    }
-    .save-share-bar {
-        display: none !important;
-    }
-    .trip-map-frame {
-        display: none !important;
-    }
-    .variant-card {
-        border: none;
-        padding: 0;
-        break-inside: avoid;
-    }
-    footer {
-        display: none;
-    }
 }
 </style>
