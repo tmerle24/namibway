@@ -393,9 +393,12 @@ const websiteUrl = computed(
                     <CurrencySwitcher variant="full" />
                 </NavMoreMenu>
                 <LocaleSwitcher />
-                <Link :href="backHref" class="detail-back">{{
-                    t('listing.backToHome')
-                }}</Link>
+                <Link
+                    v-if="!props.claim_url"
+                    :href="backHref"
+                    class="detail-back"
+                    >{{ t('listing.backToHome') }}</Link
+                >
             </div>
         </div>
 
