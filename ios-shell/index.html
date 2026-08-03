@@ -30,13 +30,8 @@
                 width: 96px;
                 height: 96px;
             }
-            .spinner {
-                width: 28px;
-                height: 28px;
-                border-radius: 50%;
-                border: 3px solid rgba(243, 230, 216, 0.25);
-                border-top-color: #e2ab6c;
-                animation: spin 0.8s linear infinite;
+            img.mark.spinning {
+                animation: spin 1.4s linear infinite;
             }
             @keyframes spin {
                 to {
@@ -73,8 +68,7 @@
         </style>
     </head>
     <body>
-        <img class="mark" src="icon-512.png" alt="NamibWay" />
-        <div id="loading" class="spinner" aria-label="Loading"></div>
+        <img id="mark" class="mark" src="icon-512.png" alt="NamibWay" />
         <div id="offline" class="offline">
             <p>No internet connection.<br />Check your connection and try again.</p>
             <button class="retry" id="retryBtn" type="button">Retry</button>
@@ -83,19 +77,19 @@
             (function () {
                 var TARGET_URL = 'https://namibway.com/';
                 var PROBE_TIMEOUT_MS = 6000;
-                var loadingEl = document.getElementById('loading');
+                var markEl = document.getElementById('mark');
                 var offlineEl = document.getElementById('offline');
                 var retryBtn = document.getElementById('retryBtn');
                 var checking = false;
 
                 function showOffline() {
-                    loadingEl.style.display = 'none';
+                    markEl.classList.remove('spinning');
                     offlineEl.style.display = 'flex';
                 }
 
                 function showLoading() {
                     offlineEl.style.display = 'none';
-                    loadingEl.style.display = 'block';
+                    markEl.classList.add('spinning');
                 }
 
                 function checkAndLoad() {
