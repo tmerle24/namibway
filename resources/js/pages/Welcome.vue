@@ -95,6 +95,12 @@ async function onSearchIntent(
     opts?: { skipScroll?: boolean },
 ) {
     searchIntent.value = intent;
+    // On mobile, the Explore section is only in the DOM's visible flow when
+    // this tab is active (see kaia-home.css's data-mobile-section rules) —
+    // without this, scrollTo('explore-section') below is scrolling to a
+    // display:none element and nothing visibly happens. No-op on desktop,
+    // where mobileSection never gates anything.
+    mobileSection.value = 'explore';
 
     if (!opts?.skipScroll) {
         await scrollTo('explore-section');
