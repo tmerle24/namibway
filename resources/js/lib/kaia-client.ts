@@ -167,6 +167,41 @@ export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
     return { token, url: `${window.location.origin}/trip/${token}` };
 }
 
+export async function loadPlan(token: string): Promise<ItineraryPlan> {
+    const response = await fetch(`/kaia/plans/${token}`, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to load plan');
+    }
+
+    const data = await response.json();
+
+    return data.variant as ItineraryPlan;
+}
+
+export async function updatePlan(
+    token: string,
+    plan: ItineraryPlan,
+): Promise<void> {
+    const response = await fetch(`/kaia/plans/${token}`, {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify({ variant: plan }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to update plan');
+    }
+}
+
 export async function createTrip(
     details: GuestDetails,
     variantName: string,

@@ -71,6 +71,7 @@
         "vehicle": "Vehicle: {value}",
         "remove": "Remove",
         "removeDay": "Remove day",
+        "dismissPlan": "Dismiss this plan",
         "bookCta": "Request availability & book",
         "swap": "Swap",
         "alternatives": "Alternatives",

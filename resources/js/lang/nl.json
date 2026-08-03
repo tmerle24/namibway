@@ -49,6 +49,7 @@
         "vehicle": "Voertuig: {value}",
         "remove": "Verwijderen",
         "removeDay": "Dag verwijderen",
+        "dismissPlan": "Dit plan verwerpen",
         "bookCta": "Beschikbaarheid aanvragen & boeken",
         "swap": "Ruilen",
         "alternatives": "Alternatieven",

@@ -49,6 +49,7 @@
         "vehicle": "Vehículo: {value}",
         "remove": "Eliminar",
         "removeDay": "Eliminar día",
+        "dismissPlan": "Descartar este plan",
         "bookCta": "Consultar disponibilidad y reservar",
         "swap": "Cambiar",
         "alternatives": "Alternativas",

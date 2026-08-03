@@ -26,3 +26,7 @@ Route::post('kaia/plans', [KaiaController::class, 'savePlan'])
 Route::get('kaia/plans/{token}', [KaiaController::class, 'loadPlan'])
     ->middleware('throttle:60,1')
     ->name('kaia.plans.load');
+
+Route::patch('kaia/plans/{token}', [KaiaController::class, 'updatePlan'])
+    ->middleware('throttle:60,1')
+    ->name('kaia.plans.update');

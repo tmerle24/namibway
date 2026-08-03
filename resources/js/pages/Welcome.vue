@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
-import { nextTick, onMounted, ref } from 'vue';
+import { nextTick, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
 import AfterSalesSection from '@/components/home/AfterSalesSection.vue';
@@ -15,7 +15,7 @@ import MobileFooterNav from '@/components/home/MobileFooterNav.vue';
 import TopDestinations from '@/components/home/TopDestinations.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import { hasSavedExploreScroll } from '@/lib/explore-scroll';
-import { createTrip } from '@/lib/kaia-client';
+import { createTrip, loadPlan } from '@/lib/kaia-client';
 import type {
     GuestDetails,
     ItineraryPlan,
@@ -57,6 +57,7 @@ defineProps<{
 }>();
 
 const plan = ref<ItineraryPlan | null>(null);
+const tripToken = ref<string | null>(null);
 const searchIntent = ref<SearchIntent | null>(null);
 const bookingVariant = ref<ItineraryVariant | null>(null);
 const bookingActive = ref(false);
@@ -74,6 +75,21 @@ async function scrollTo(id: string) {
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// Keeps the address bar in sync with the in-progress plan (ItinerarySection
+// mints/updates the token) so reloading or revisiting the URL restores it —
+// replaceState, not a real navigation, since the page itself never changes.
+watch(tripToken, (token) => {
+    const url = new URL(window.location.href);
+
+    if (token) {
+        url.searchParams.set('trip', token);
+    } else {
+        url.searchParams.delete('trip');
+    }
+
+    window.history.replaceState(window.history.state, '', url);
+});
+
 async function onSearchIntent(
     intent: SearchIntent,
     opts?: { skipScroll?: boolean },
@@ -87,7 +103,20 @@ async function onSearchIntent(
 
 const LISTING_TYPES = ['accommodation', 'activity', 'restaurant', 'vehicle'];
 
-onMounted(() => {
+onMounted(async () => {
+    const tripParam = new URLSearchParams(window.location.search).get(
+        'trip',
+    );
+
+    if (tripParam) {
+        try {
+            plan.value = await loadPlan(tripParam);
+            tripToken.value = tripParam;
+        } catch {
+            // Unknown/expired token — fall through to a normal fresh visit.
+        }
+    }
+
     const params = new URLSearchParams(window.location.search);
     const type = params.get('type');
     const region = params.get('region');
@@ -129,6 +158,7 @@ onMounted(() => {
 });
 
 async function onPlanReady(newPlan: ItineraryPlan) {
+    tripToken.value = null;
     plan.value = newPlan;
     bookingVariant.value = null;
     bookingActive.value = false;
@@ -175,7 +205,13 @@ async function onGuestSubmit(details: GuestDetails) {
     <div class="kaia-page" :data-mobile-section="mobileSection">
         <AdminBar />
         <HeroChat @plan-ready="onPlanReady" @search-intent="onSearchIntent" />
-        <ItinerarySection v-if="plan" :plan="plan" @book="onBook" />
+        <ItinerarySection
+            v-if="plan"
+            :plan="plan"
+            :token="tripToken"
+            @book="onBook"
+            @update:token="tripToken = $event"
+        />
         <TopDestinations
             :destinations="destinations"
             @select="(region) => onSearchIntent({ region })"

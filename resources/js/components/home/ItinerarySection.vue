@@ -9,6 +9,7 @@ import {
     fetchRegionCoords,
     fetchRegions,
     savePlan,
+    updatePlan,
 } from '@/lib/kaia-client';
 import type { RegionCoords } from '@/lib/kaia-client';
 import type {
@@ -27,10 +28,12 @@ import TripMeta from './TripMeta.vue';
 
 const props = defineProps<{
     plan: ItineraryPlan;
+    token: string | null;
 }>();
 
 const emit = defineEmits<{
     (e: 'book', variant: ItineraryVariant): void;
+    (e: 'update:token', token: string): void;
 }>();
 
 const { t } = useI18n();
@@ -46,6 +49,12 @@ const dbRegions = ref<string[]>([]);
 const regionCoords = ref<Record<string, RegionCoords>>({});
 const savedTokens = ref<Record<number, string>>({});
 const drivingLegsPerVariant = ref<Record<number, DrivingLeg[]>>({});
+
+// Whole-session token (all surviving variants together) — distinct from
+// savedTokens above, which are per-variant tokens minted by the manual
+// "Save & share" button. This one drives the ?trip= URL param so reloading
+// or revisiting the link restores exactly what's in editableVariants now.
+const currentToken = ref<string | null>(props.token);
 
 // Trip-level start/end — same for every variant, editable inline like a
 // day's location. Reversing a variant's direction (below) doesn't touch
@@ -202,6 +211,66 @@ function onStartDateInput(variantIndex: number, value: string) {
     applyDates(variantIndex);
 }
 
+// --- Auto-persist (whole-session token behind the ?trip= URL param) ---
+// Declared ahead of the plan watcher below since that watcher runs
+// synchronously (immediate: true) during setup and references these.
+
+let skipNextPersist = false;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let persistInFlight = false;
+let persistPending = false;
+
+function schedulePersist() {
+    if (skipNextPersist) {
+        skipNextPersist = false;
+
+        return;
+    }
+
+    if (persistTimer) {
+        clearTimeout(persistTimer);
+    }
+
+    persistTimer = setTimeout(runPersist, 600);
+}
+
+async function runPersist() {
+    if (persistInFlight) {
+        persistPending = true;
+
+        return;
+    }
+
+    persistInFlight = true;
+
+    const combined: ItineraryPlan = {
+        trip_summary: props.plan.trip_summary,
+        variants: editableVariants.value,
+        start_location: routeStart.value,
+        end_location: routeEnd.value,
+        trip_params: props.plan.trip_params,
+    };
+
+    try {
+        if (currentToken.value) {
+            await updatePlan(currentToken.value, combined);
+        } else {
+            const result = await savePlan(combined);
+            currentToken.value = result.token;
+            emit('update:token', result.token);
+        }
+    } catch (e) {
+        console.warn('Failed to auto-save plan:', e);
+    } finally {
+        persistInFlight = false;
+
+        if (persistPending) {
+            persistPending = false;
+            schedulePersist();
+        }
+    }
+}
+
 watch(
     () => props.plan,
     (plan) => {
@@ -217,9 +286,64 @@ watch(
         // normalize all days from day 1's date right away rather than only
         // after the traveler drags/adds/removes something.
         plan.variants.forEach((_, i) => applyDates(i));
+
+        // The persist watcher below would otherwise immediately re-save the
+        // plan it was just hydrated from (new Kaia result, or restored via
+        // ?trip=token) — skip that one, redundant round-trip.
+        skipNextPersist = true;
     },
     { immediate: true },
 );
+
+watch(
+    () => props.token,
+    (token) => {
+        if (token !== currentToken.value) {
+            currentToken.value = token;
+        }
+    },
+);
+
+watch([editableVariants, routeStart, routeEnd], schedulePersist, {
+    deep: true,
+});
+
+// Shifts the keys of an index-keyed record down by one past the removed
+// index — savedTokens/drivingLegsPerVariant would otherwise point at the
+// wrong (shifted) variant after a dismiss.
+function reindexAfterRemoval<T>(
+    record: Record<number, T>,
+    removedIndex: number,
+): Record<number, T> {
+    const result: Record<number, T> = {};
+
+    Object.entries(record).forEach(([key, value]) => {
+        const i = Number(key);
+
+        if (i < removedIndex) {
+            result[i] = value;
+        } else if (i > removedIndex) {
+            result[i - 1] = value;
+        }
+    });
+
+    return result;
+}
+
+function dismissVariant(variantIndex: number) {
+    if (editableVariants.value.length <= 1) {
+        return;
+    }
+
+    editableVariants.value.splice(variantIndex, 1);
+    startDates.value.splice(variantIndex, 1);
+    savedTokens.value = reindexAfterRemoval(savedTokens.value, variantIndex);
+    drivingLegsPerVariant.value = reindexAfterRemoval(
+        drivingLegsPerVariant.value,
+        variantIndex,
+    );
+    swap.value = null;
+}
 
 onMounted(async () => {
     [dbRegions.value, regionCoords.value] = await Promise.all([
@@ -458,13 +582,25 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
             >
                 <div class="variant-head">
                     <h3>{{ variant.name }}</h3>
-                    <button
-                        type="button"
-                        class="reverse-route-btn"
-                        @click="reverseVariant(variantIndex)"
-                    >
-                        ⇄ {{ t('itinerary.reverseRoute') }}
-                    </button>
+                    <div class="variant-head-actions">
+                        <button
+                            type="button"
+                            class="reverse-route-btn"
+                            @click="reverseVariant(variantIndex)"
+                        >
+                            ⇄ {{ t('itinerary.reverseRoute') }}
+                        </button>
+                        <button
+                            v-if="editableVariants.length > 1"
+                            type="button"
+                            class="dismiss-variant-btn"
+                            :aria-label="t('itinerary.dismissPlan')"
+                            :title="t('itinerary.dismissPlan')"
+                            @click="dismissVariant(variantIndex)"
+                        >
+                            ×
+                        </button>
+                    </div>
                 </div>
                 <div v-if="estimatedLabel(variant)" class="variant-price">
                     {{ estimatedLabel(variant) }}

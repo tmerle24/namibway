@@ -109,6 +109,25 @@ class KaiaController extends Controller
         return response()->json(['variant' => $plan->plan_json]);
     }
 
+    // Re-saves an existing token's plan in place (edits made after the
+    // itinerary was first generated — swapped items, dismissed variants,
+    // reordered days) rather than minting a new token for every change.
+    public function updatePlan(Request $request, string $token): JsonResponse
+    {
+        $request->validate(['variant' => 'required|array']);
+
+        $saved = SavedPlan::where('token', $token)->firstOrFail();
+
+        $planData = $request->input('variant');
+
+        $saved->update([
+            'title' => Str::limit($planData['trip_summary'] ?? '', 80, ''),
+            'plan_json' => $planData,
+        ]);
+
+        return response()->json(['token' => $saved->token]);
+    }
+
     public function message(Request $request, InterviewService $interview, ItineraryService $itinerary): JsonResponse
     {
         $validated = $request->validate([

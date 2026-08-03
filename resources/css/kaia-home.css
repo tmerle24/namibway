@@ -584,6 +584,26 @@
     border-color: var(--rust);
     color: var(--rust);
 }
+.kaia-page .variant-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.kaia-page .dismiss-variant-btn {
+    background: none;
+    border: none;
+    color: #8a7f68;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 2px;
+    cursor: pointer;
+    opacity: 0.6;
+}
+.kaia-page .dismiss-variant-btn:hover {
+    opacity: 1;
+    color: var(--rust-dark);
+}
 .kaia-page .variant-price {
     color: var(--rust-dark);
     font-weight: 600;
