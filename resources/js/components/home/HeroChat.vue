@@ -98,8 +98,9 @@ const SpeechRecognitionCtor =
         : undefined;
 const isVoiceSupported = !!SpeechRecognitionCtor;
 const isListening = ref(false);
-let recognition: InstanceType<NonNullable<typeof SpeechRecognitionCtor>> | null =
-    null;
+let recognition: InstanceType<
+    NonNullable<typeof SpeechRecognitionCtor>
+> | null = null;
 
 const speechLocales: Record<string, string> = {
     en: 'en-US',
@@ -122,6 +123,7 @@ function toggleVoiceInput() {
 
     if (isListening.value) {
         stopListening();
+
         return;
     }
 
