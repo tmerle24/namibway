@@ -940,6 +940,14 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
 
         <!-- Inspiration / magazine mode -->
         <template v-else>
+            <ExploreMap
+                v-if="mapOpen && mapMarkers.length > 0"
+                :markers="mapMarkers"
+                :back-query="listingBackQuery"
+                map-id="explore-map"
+                @navigate="saveScrollPosition"
+            />
+
             <Link
                 v-if="featuredPick && !hasActiveFilters"
                 :href="show({ listing: featuredPick.slug }).url"
@@ -989,13 +997,6 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
             <p v-if="!hasResults" class="filter-empty">
                 {{ t('explore.filters.empty') }}
             </p>
-            <ExploreMap
-                v-if="mapOpen && mapMarkers.length > 0"
-                :markers="mapMarkers"
-                :back-query="listingBackQuery"
-                map-id="explore-map"
-                @navigate="saveScrollPosition"
-            />
             <div>
                 <div
                     v-for="row in visibleRows"
