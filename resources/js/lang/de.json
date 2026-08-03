@@ -328,6 +328,12 @@
             "success": "Danke! Deine Bewertung erscheint, sobald sie geprüft wurde."
         }
     },
+    "listingPreview": {
+        "close": "Schließen",
+        "loading": "Wird geladen…",
+        "error": "Dieser Eintrag konnte nicht geladen werden.",
+        "viewFullPage": "Ganze Seite ansehen ↗"
+    },
     "localeSwitcher": {
         "label": "Sprache"
     },

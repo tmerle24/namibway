@@ -757,6 +757,22 @@
 .kaia-page .variant-vehicle a:hover {
     text-decoration-color: currentColor;
 }
+.kaia-page .line-item-link {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: var(--rust-dark);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--sand-dark);
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+.kaia-page .line-item-link:hover {
+    text-decoration-color: currentColor;
+}
 .kaia-page .line-item,
 .kaia-page .day-detail > div:first-child {
     display: flex;

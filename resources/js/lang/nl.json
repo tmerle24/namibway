@@ -247,6 +247,12 @@
             "success": "Bedankt! Je beoordeling verschijnt zodra deze is gecontroleerd."
         }
     },
+    "listingPreview": {
+        "close": "Sluiten",
+        "loading": "Laden…",
+        "error": "Deze vermelding kon niet worden geladen.",
+        "viewFullPage": "Volledige pagina bekijken ↗"
+    },
     "localeSwitcher": {
         "label": "Taal"
     },

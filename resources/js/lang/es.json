@@ -247,6 +247,12 @@
             "success": "¡Gracias! Tu valoración aparecerá una vez verificada."
         }
     },
+    "listingPreview": {
+        "close": "Cerrar",
+        "loading": "Cargando…",
+        "error": "No se pudo cargar este alojamiento.",
+        "viewFullPage": "Ver página completa ↗"
+    },
     "localeSwitcher": {
         "label": "Idioma"
     },

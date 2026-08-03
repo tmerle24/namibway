@@ -131,6 +131,46 @@ export async function fetchRegionCoords(): Promise<
     }
 }
 
+export interface ListingPreview {
+    id: number;
+    type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
+    name: string;
+    slug: string;
+    description: string | null;
+    short_description: string | null;
+    highlights: string[];
+    image: string | null;
+    gallery: string[];
+    region: string | null;
+    city: string | null;
+    address: string | null;
+    phone: string | null;
+    phone_href: string | null;
+    website: string | null;
+    price_from: string | null;
+    price_currency: string;
+    rating: number | null;
+    rating_count: number | null;
+    accepts_inquiries: boolean;
+}
+
+export async function fetchListingPreview(
+    slug: string,
+): Promise<ListingPreview> {
+    const response = await fetch(`/listings/${slug}/preview`, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to load listing preview');
+    }
+
+    const data = await response.json();
+
+    return data.listing as ListingPreview;
+}
+
 export async function fetchAlternatives(
     type: string,
     excludeId?: number,

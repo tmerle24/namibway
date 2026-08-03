@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatPrice } from '@/lib/currency';
 import type { ItineraryListingRef } from '@/lib/kaia-types';
-import { show } from '@/routes/listings';
+import ListingPreviewModal from './ListingPreviewModal.vue';
 
 const props = defineProps<{
     keypath: string;
@@ -18,9 +19,9 @@ defineEmits<{
 
 const { t } = useI18n();
 
-function refUrl(ref: ItineraryListingRef): string {
-    return show({ listing: ref.slug ?? '' }).url;
-}
+// Listing names open a preview modal rather than navigating away — on a
+// phone, leaving the page loses the traveler's place in the itinerary.
+const previewSlug = ref<string | null>(null);
 </script>
 
 <template>
@@ -28,13 +29,14 @@ function refUrl(ref: ItineraryListingRef): string {
         <template #value>
             <span class="line-item-value">
                 <template v-if="props.itemRef">
-                    <a
+                    <button
                         v-if="props.itemRef.slug"
-                        :href="refUrl(props.itemRef)"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        >{{ props.itemRef.name }}</a
+                        type="button"
+                        class="line-item-link"
+                        @click="previewSlug = props.itemRef.slug"
                     >
+                        {{ props.itemRef.name }}
+                    </button>
                     <template v-else>{{ props.itemRef.name }}</template>
                     <span
                         v-if="formatPrice(props.itemRef.price_from)"
@@ -75,4 +77,10 @@ function refUrl(ref: ItineraryListingRef): string {
             </span>
         </template>
     </i18n-t>
+
+    <ListingPreviewModal
+        v-if="previewSlug"
+        :slug="previewSlug"
+        @close="previewSlug = null"
+    />
 </template>

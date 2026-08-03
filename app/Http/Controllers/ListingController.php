@@ -66,6 +66,49 @@ class ListingController extends Controller
         ]);
     }
 
+    /**
+     * Lightweight JSON summary for the itinerary's listing preview modal — lets
+     * a traveler glance at a stop's photos/description/contact without leaving
+     * the trip plan (see ListingPreviewModal.vue). Deliberately a stripped-down
+     * subset of show(): no reviews, no inquiry form, no owner/admin preview
+     * paths — those still require the full listing page.
+     */
+    public function preview(Listing $listing): JsonResponse
+    {
+        abort_unless($listing->is_published, 404);
+
+        $listing->load('city');
+
+        $phone = app(PhoneNumberFormatter::class)->format($listing->phone);
+
+        return response()->json([
+            'listing' => [
+                'id' => $listing->id,
+                'type' => $listing->type->value,
+                'name' => $listing->name,
+                'slug' => $listing->slug,
+                'description' => $listing->description,
+                'short_description' => $listing->short_description,
+                'highlights' => $listing->highlights ?? [],
+                'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
+                'gallery' => collect($listing->gallery ?? [])
+                    ->map(fn (string $path) => self::resolveMediaUrl($path))
+                    ->values(),
+                'region' => $listing->region,
+                'city' => $listing->city?->name,
+                'address' => $listing->address,
+                'phone' => $phone['display'] ?? null,
+                'phone_href' => $phone['href'] ?? null,
+                'website' => $listing->website,
+                'price_from' => $listing->price_from,
+                'price_currency' => $listing->price_currency,
+                'rating' => $listing->rating !== null ? (float) $listing->rating : null,
+                'rating_count' => $listing->rating_count,
+                'accepts_inquiries' => $listing->accepts_inquiries,
+            ],
+        ]);
+    }
+
     public function show(Request $request, Listing $listing): Response
     {
         $listing->load('partner');

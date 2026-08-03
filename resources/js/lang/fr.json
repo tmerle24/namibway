@@ -247,6 +247,12 @@
             "success": "Merci ! Votre avis apparaîtra une fois vérifié."
         }
     },
+    "listingPreview": {
+        "close": "Fermer",
+        "loading": "Chargement…",
+        "error": "Impossible de charger cette fiche.",
+        "viewFullPage": "Voir la page complète ↗"
+    },
     "localeSwitcher": {
         "label": "Langue"
     },

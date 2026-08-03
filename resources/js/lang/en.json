@@ -381,6 +381,12 @@
             "success": "Thanks! Your review will appear once it has been checked."
         }
     },
+    "listingPreview": {
+        "close": "Close",
+        "loading": "Loading…",
+        "error": "Couldn't load this listing.",
+        "viewFullPage": "View full page ↗"
+    },
     "guestForm": {
         "eyebrow": "Almost there",
         "title": "Who's travelling?",
