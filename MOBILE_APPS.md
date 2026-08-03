@@ -1,15 +1,18 @@
 # iOS / Android apps (Capacitor wrapper)
 
 NamibWay ships as a server-rendered Laravel/Inertia app, not a static SPA — Inertia
-navigation depends on hitting the Laravel backend for every page. So instead of bundling
-`public/build` as an offline app, the native shell (Capacitor) points its WebView straight
-at the live site:
+navigation depends on hitting the Laravel backend for every page, so there's nothing
+meaningful to bundle from `public/build` for offline use. Instead the native shell loads a
+small bootstrap page first:
 
-- `capacitor.config.ts` — `server.url` is hardcoded to `https://namibway.com`. Shared by
-  both platforms.
-- `ios-shell/` — a one-file branded splash (`#3b2418` background + compass icon) shown for
-  the brief moment before the WebView swaps to the live URL. This is Capacitor's `webDir`,
-  not the app's real UI.
+- `capacitor.config.ts` — no `server.url`; `webDir` (`ios-shell/`) is the app's real entry
+  point. Shared by both platforms.
+- `ios-shell/index.html` — on launch, probes for a live connection to `namibway.com`
+  (`fetch(..., {mode: 'no-cors'})` with a 6s timeout) and only then navigates the WebView
+  there via `location.replace`. If the probe fails, it shows a branded "No internet
+  connection" screen with a Retry button, and auto-retries on the browser's `online`
+  event. This is the one place both platforms share, so the offline/retry logic isn't
+  duplicated in native code.
 - `ios/` — the generated Xcode project (`App.xcodeproj`). Uses Swift Package Manager for
   Capacitor's runtime, not CocoaPods, so there's no `pod install` step.
 - `android/` — the generated Android Studio/Gradle project.
@@ -38,6 +41,23 @@ If the compass mark ever changes, regenerate all of these from the new
 `public/images/pwa/icon-512.png` rather than hand-editing — the Android foreground was
 produced by chroma-keying out the brown background and re-centering the mark at a smaller
 scale, which isn't a simple resize.
+
+## Splash screens
+
+The native launch screen (shown instantly on cold start, before the WebView/bootstrap page
+even initializes) is also branded to match:
+
+- **iOS**: `ios/App/App/Assets.xcassets/Splash.imageset` — a 2732x2732 brown/compass image
+  used for all three scale variants.
+- **Android**: `android/app/src/main/res/drawable{,-land-*,-port-*}/splash.png` — one PNG
+  per density/orientation, referenced by `AppTheme.NoActionBarLaunch` in `values/styles.xml`.
+  Capacitor's default template ships this theme without an app-level `values/colors.xml`
+  at all (`@color/colorPrimary` etc. in `styles.xml` would fail to resolve at build time) —
+  added one, using the same brown/tan palette, fixing that and giving the status bar a
+  matching color.
+
+Both were regenerated the same way as the app icons: the compass mark from
+`public/images/pwa/icon-512.png`, centered on the brand brown.
 
 ## Steps on the Mac (iOS)
 
