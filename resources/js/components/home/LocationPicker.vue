@@ -4,6 +4,7 @@ import { ref, computed } from 'vue';
 const props = defineProps<{
     modelValue: string;
     suggestions: string[];
+    label?: string;
 }>();
 
 const emit = defineEmits<{
@@ -69,8 +70,12 @@ function handleBlur() {
                 </li>
             </ul>
         </template>
-        <b v-else class="location-editable" @click="openPicker">{{
-            modelValue || '—'
-        }}</b>
+        <b
+            v-else
+            class="location-editable"
+            :title="modelValue"
+            @click="openPicker"
+            >{{ label || modelValue || '—' }}</b
+        >
     </div>
 </template>

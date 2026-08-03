@@ -351,6 +351,7 @@ class ItineraryService
                 'lat' => $listing->latitude ? (float) $listing->latitude : null,
                 'lng' => $listing->longitude ? (float) $listing->longitude : null,
                 'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
+                'city' => $listing->city?->name,
             ];
         }
 
@@ -359,7 +360,7 @@ class ItineraryService
                 return null;
             }
 
-            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'lat' => null, 'lng' => null, 'image' => null];
+            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'lat' => null, 'lng' => null, 'image' => null, 'city' => null];
         };
 
         $plan['variants'] = array_map(function (array $variant) use ($resolve, $listings) {
@@ -477,6 +478,7 @@ class ItineraryService
                 'lat' => $fallback->latitude ? (float) $fallback->latitude : null,
                 'lng' => $fallback->longitude ? (float) $fallback->longitude : null,
                 'image' => $fallback->image ? Controller::resolveMediaUrl($fallback->image) : null,
+                'city' => $fallback->city?->name,
             ];
         }
 
@@ -535,6 +537,7 @@ class ItineraryService
                 'type' => $listing->type->value,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                'city' => $listing->city?->name,
             ])
             ->values()
             ->all();

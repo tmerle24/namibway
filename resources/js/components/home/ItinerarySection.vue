@@ -6,6 +6,7 @@ import draggable from 'vuedraggable';
 import { formatPrice } from '@/lib/currency';
 import {
     fetchAlternatives,
+    fetchCities,
     fetchRegionCoords,
     fetchRegions,
     regeneratePlan,
@@ -53,6 +54,7 @@ const editableVariants = ref<ItineraryVariant[]>([]);
 const swap = ref<SwapState | null>(null);
 const roomPickerKey = ref<string | null>(null);
 const dbRegions = ref<string[]>([]);
+const dbCities = ref<string[]>([]);
 const regionCoords = ref<Record<string, RegionCoords>>({});
 const savedTokens = ref<Record<number, string>>({});
 const drivingLegsPerVariant = ref<Record<number, DrivingLeg[]>>({});
@@ -278,6 +280,52 @@ function dayThumbnail(day: {
     return (key && regionCoords.value[key]?.image) || null;
 }
 
+// `day.location` is always a political region (never shown to travelers
+// directly — see the AI contract). Prefer the actual city of the day's
+// accommodation for display; older saved plans without a `city` on their
+// listing refs fall back to the region.
+function dayCity(day: {
+    location: string;
+    accommodation?: { city?: string | null } | null;
+}): string {
+    return day.accommodation?.city || day.location;
+}
+
+// A day starts a new "stage" (Etappe) when it's the first day, or its
+// location differs from the previous day's — consecutive days sharing a
+// location are one stage and only show the city heading once.
+function isStageStart(variantIndex: number, dayIndex: number): boolean {
+    if (dayIndex === 0) {
+        return true;
+    }
+
+    const days = editableVariants.value[variantIndex].days;
+
+    return days[dayIndex].location !== days[dayIndex - 1].location;
+}
+
+// The LocationPicker only renders on stage-start days, so `dayIndex` is
+// always that run's first day — editing the city there moves every day in
+// the stage together, keeping the (now-hidden) headings of days 2+ in sync.
+function setStageLocation(
+    variantIndex: number,
+    dayIndex: number,
+    newLocation: string,
+) {
+    const days = editableVariants.value[variantIndex].days;
+    const oldLocation = days[dayIndex].location;
+
+    for (
+        let i = dayIndex;
+        i < days.length && days[i].location === oldLocation;
+        i++
+    ) {
+        days[i].location = newLocation;
+    }
+
+    swap.value = null;
+}
+
 function applyDates(variantIndex: number) {
     const start = startDates.value[variantIndex];
 
@@ -454,13 +502,14 @@ function dismissVariant(variantIndex: number) {
 }
 
 onMounted(async () => {
-    [dbRegions.value, regionCoords.value] = await Promise.all([
-        fetchRegions(),
-        fetchRegionCoords(),
-    ]);
+    [dbRegions.value, regionCoords.value, dbCities.value] = await Promise.all(
+        [fetchRegions(), fetchRegionCoords(), fetchCities()],
+    );
 });
 
-// Combine DB regions with locations already in the plan — deduplicated
+// Combine DB regions with locations already in the plan — deduplicated.
+// Used for per-day location editing, where the underlying value must stay a
+// political region (see dayCity()/LocationPicker's `label` prop).
 const locationSuggestions = computed(() => {
     const planLocations = editableVariants.value
         .flatMap((v) => v.days.map((d) => d.location))
@@ -468,6 +517,11 @@ const locationSuggestions = computed(() => {
 
     return [...new Set([...planLocations, ...dbRegions.value])].sort();
 });
+
+// Real city names (not regions) for the trip-wide Startort/Zielort fields.
+const startEndLocationSuggestions = computed(() =>
+    [...new Set([routeStart.value, routeEnd.value, ...dbCities.value])].sort(),
+);
 
 function renumberDays(variantIndex: number) {
     editableVariants.value[variantIndex].days.forEach((day, index) => {
@@ -876,16 +930,33 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                     alt=""
                                     class="day-thumb"
                                 />
-                                <div class="day-detail">
+                                <div
+                                    class="day-detail"
+                                    :class="{
+                                        'day-detail--continuation':
+                                            !isStageStart(
+                                                variantIndex,
+                                                dayIndex,
+                                            ),
+                                    }"
+                                >
                                     <div>
                                         <LocationPicker
+                                            v-if="
+                                                isStageStart(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                )
+                                            "
                                             :model-value="day.location"
+                                            :label="dayCity(day)"
                                             :suggestions="locationSuggestions"
                                             @update:model-value="
-                                                editableVariants[
-                                                    variantIndex
-                                                ].days[dayIndex].location =
-                                                    $event
+                                                setStageLocation(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                    $event,
+                                                )
                                             "
                                         />
                                         <button
@@ -1164,7 +1235,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
             :start-location="routeStart"
             :end-location="routeEnd"
             :reference-start-date="startDates[0] ?? null"
-            :location-suggestions="locationSuggestions"
+            :location-suggestions="startEndLocationSuggestions"
             :saving="regenerating"
             :error="regenerateError"
             @close="paramsModalOpen = false"

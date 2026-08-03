@@ -8,6 +8,7 @@ export interface ItineraryListingRef {
     lat?: number | null;
     lng?: number | null;
     image?: string | null;
+    city?: string | null;
 }
 
 // Placeholder room-type content — not backed by RoomType/live availability
