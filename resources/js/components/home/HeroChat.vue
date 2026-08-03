@@ -324,11 +324,19 @@ async function retryLastMessage() {
                 d="M0 330 Q220 280 480 320 T1040 325 V340 H0 Z"
                 fill="#8C4A15"
             />
-            <!-- A Deadvlei-style dead camel thorn tree — bare, gnarled
-                 branches with no foliage, the classic silhouette of
-                 Namibia's most photographed landmark. -->
+        </svg>
+        <!-- A Deadvlei-style dead camel thorn tree — bare, gnarled branches
+             with no foliage, the classic silhouette of Namibia's most
+             photographed landmark. Its own SVG with a normal
+             (aspect-ratio-preserving) viewBox, separate from hero-bg above:
+             hero-bg deliberately stretches non-uniformly to fill the hero
+             at any height, which is fine for the abstract dune shapes but
+             warps a recognizable silhouette like this into a squashed mess
+             whenever the hero gets much taller than its 340-unit viewBox
+             (e.g. the mobile full-height state). -->
+        <svg class="hero-tree" viewBox="0 0 100 135" aria-hidden="true">
             <g
-                transform="translate(130,280)"
+                transform="translate(50,130)"
                 fill="none"
                 stroke="#1c130c"
                 stroke-linecap="round"

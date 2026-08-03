@@ -73,6 +73,13 @@
     height: 60%;
     display: block;
 }
+.kaia-page .hero svg.hero-tree {
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    width: 78px;
+    height: 105px;
+}
 .kaia-page .hero-content {
     position: relative;
     z-index: 2;
