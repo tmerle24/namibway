@@ -1,17 +1,24 @@
 name: Remote SSH Deployment
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - tests # Nur deployen, wenn die Tests auf main gelaufen sind
+    types:
+      - completed
     branches:
-      - main # Startet das Deployment bei jedem Push auf den main-Branch
+      - main
 
 jobs:
   deploy:
+    if: github.event.workflow_run.conclusion == 'success' # ...und erfolgreich waren
     runs-on: ubuntu-latest
 
     steps:
       - name: Code auschecken
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Skript über SSH ausführen
         uses: appleboy/ssh-action@v1.2.5
