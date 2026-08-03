@@ -10,6 +10,8 @@ import GuestDetailsForm from '@/components/home/GuestDetailsForm.vue';
 import HeroChat from '@/components/home/HeroChat.vue';
 import HowItWorks from '@/components/home/HowItWorks.vue';
 import ItinerarySection from '@/components/home/ItinerarySection.vue';
+import type { MobileSection } from '@/components/home/MobileFooterNav.vue';
+import MobileFooterNav from '@/components/home/MobileFooterNav.vue';
 import TopDestinations from '@/components/home/TopDestinations.vue';
 import { hasSavedExploreScroll } from '@/lib/explore-scroll';
 import { createTrip } from '@/lib/kaia-client';
@@ -63,6 +65,7 @@ const bookingError = ref<string | null>(null);
 const bookingTripId = ref<number | null>(null);
 const guestName = ref<string | null>(null);
 const guestEmail = ref<string | null>(null);
+const mobileSection = ref<MobileSection>('kaia');
 
 async function scrollTo(id: string) {
     await nextTick();
@@ -169,7 +172,7 @@ async function onGuestSubmit(details: GuestDetails) {
 </script>
 
 <template>
-    <div class="kaia-page">
+    <div class="kaia-page" :data-mobile-section="mobileSection">
         <AdminBar />
         <HeroChat @plan-ready="onPlanReady" @search-intent="onSearchIntent" />
         <ItinerarySection v-if="plan" :plan="plan" @book="onBook" />
@@ -206,5 +209,7 @@ async function onGuestSubmit(details: GuestDetails) {
             <img :src="logoDark" alt="NamibWay" class="footer-logo" />
             <p>{{ t('footer.tagline') }}</p>
         </footer>
+
+        <MobileFooterNav v-model:active="mobileSection" />
     </div>
 </template>

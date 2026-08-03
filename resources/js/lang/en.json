@@ -7,7 +7,12 @@
         "language": "Language",
         "more": "More options",
         "backToWebsite": "Back to website",
-        "logout": "Log out"
+        "logout": "Log out",
+        "mobileSearch": "Search",
+        "mobileDiscover": "Discover",
+        "mobileKaia": "Kaia",
+        "mobileSupport": "Support",
+        "mobileAccount": "Account"
     },
     "dashboard": {
         "title": "My trips",
