@@ -23,6 +23,7 @@
     background: var(--paper);
     color: var(--ink);
     font-family: 'Inter', sans-serif;
+    min-height: 100vh;
 }
 .kaia-page * {
     box-sizing: border-box;
@@ -110,7 +111,7 @@
 }
 .kaia-page .hero-nav {
     position: sticky;
-    top: 0;
+    top: var(--admin-bar-height, 0px);
     z-index: 20;
     width: 100%;
     background: var(--night);
