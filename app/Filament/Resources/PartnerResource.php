@@ -4,7 +4,9 @@ namespace App\Filament\Resources;
 
 use App\Enums\ConnectorType;
 use App\Filament\Resources\PartnerResource\Pages;
+use App\Http\Controllers\Controller;
 use App\Models\Partner;
+use App\Models\PartnerMessage;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -13,6 +15,7 @@ use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PartnerResource extends Resource
 {
@@ -22,93 +25,147 @@ class PartnerResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
 
+    protected static ?string $navigationGroup = 'Content';
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\FileUpload::make('logo')
-                    ->image()
-                    ->disk('public')
-                    ->directory('partners')
-                    ->imageEditor()
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Textarea::make('bio')
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('email')
-                    ->email()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('phone')
-                    ->tel()
-                    ->maxLength(50),
-                Forms\Components\TextInput::make('website')
-                    ->url()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('instagram')
-                    ->url()
-                    ->maxLength(255)
-                    ->helperText('Full profile URL, e.g. https://instagram.com/yourlodge'),
-                Forms\Components\TextInput::make('facebook')
-                    ->url()
-                    ->maxLength(255),
+                Forms\Components\Tabs::make('Partner')
+                    ->columnSpanFull()
+                    ->tabs([
+                        Forms\Components\Tabs\Tab::make('Basic information')
+                            ->icon('heroicon-o-information-circle')
+                            ->schema([
+                                Forms\Components\FileUpload::make('logo')
+                                    ->image()
+                                    ->disk('r2')
+                                    ->directory('partners')
+                                    ->imageEditor()
+                                    ->columnSpanFull(),
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\Textarea::make('bio')
+                                    ->columnSpanFull(),
+                                Forms\Components\TextInput::make('email')
+                                    ->email()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('phone')
+                                    ->tel()
+                                    ->maxLength(50),
+                                Forms\Components\TextInput::make('website')
+                                    ->url()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('instagram')
+                                    ->url()
+                                    ->maxLength(255)
+                                    ->helperText('Full profile URL, e.g. https://instagram.com/yourlodge'),
+                                Forms\Components\TextInput::make('facebook')
+                                    ->url()
+                                    ->maxLength(255),
+                            ])
+                            ->columns(2),
 
-                Forms\Components\Section::make('Partner Portal Access')
-                    ->description('Link a user account so this partner can log in to manage their listings.')
-                    ->collapsed()
-                    ->schema([
-                        Forms\Components\Select::make('portal_user_id')
-                            ->label('Portal user')
-                            ->options(User::whereNull('partner_id')->orWhereHas('partner', fn ($q) => $q->whereKey(0))->pluck('email', 'id'))
-                            ->searchable()
-                            ->placeholder('No portal access')
-                            ->helperText('Assigning a user here grants them access to /partner for this property.')
-                            ->dehydrated(false)
-                            ->afterStateHydrated(function ($component, Partner $record) {
-                                $user = User::where('partner_id', $record->id)->first();
-                                $component->state($user?->id);
-                            })
-                            ->saveRelationshipsUsing(function (?int $state, Partner $record) {
-                                User::where('partner_id', $record->id)->whereKeyNot($state ?? 0)->update(['partner_id' => null]);
+                        Forms\Components\Tabs\Tab::make('Portal Access')
+                            ->icon('heroicon-o-key')
+                            ->schema([
+                                Forms\Components\Select::make('portal_user_id')
+                                    ->label('Portal user')
+                                    ->options(User::whereNull('partner_id')->orWhereHas('partner', fn ($q) => $q->whereKey(0))->pluck('email', 'id'))
+                                    ->searchable()
+                                    ->placeholder('No portal access')
+                                    ->helperText('Assigning a user here grants them access to /partner for this property.')
+                                    ->dehydrated(false)
+                                    ->afterStateHydrated(function ($component, ?Partner $record) {
+                                        if (! $record) {
+                                            return;
+                                        }
 
-                                if ($state) {
-                                    User::whereKey($state)->update(['partner_id' => $record->id]);
-                                }
-                            }),
-                    ])
-                    ->columnSpanFull(),
+                                        $user = User::where('partner_id', $record->id)->first();
+                                        $component->state($user?->id);
+                                    })
+                                    ->saveRelationshipsUsing(function (?int $state, Partner $record) {
+                                        User::where('partner_id', $record->id)->whereKeyNot($state ?? 0)->update(['partner_id' => null]);
 
-                Forms\Components\Section::make('Booking Connector')
-                    ->description('Connect this partner\'s account to their property management system (API credentials). Once set here, connect each individual listing to its property code on the listing\'s own "Booking system" section.')
-                    ->collapsed()
-                    ->schema([
-                        Forms\Components\Select::make('connector_type')
-                            ->label('Connector')
-                            ->options(collect(ConnectorType::cases())->mapWithKeys(
-                                fn (ConnectorType $c) => [$c->value => $c->label()]
-                            ))
-                            ->placeholder('None (manual handling)')
-                            ->live()
-                            ->native(false),
+                                        if ($state) {
+                                            User::whereKey($state)->update(['partner_id' => $record->id]);
+                                        }
+                                    }),
+                            ]),
 
-                        Forms\Components\KeyValue::make('connector_config')
-                            ->label('Connector Config')
-                            ->helperText('Key/value pairs stored encrypted. ResConnect: api_key, base_url (opt). NightsBridge: bbid, api_key. hopeCloud: api_key, account_id. Wetu: api_key.')
-                            ->keyLabel('Key')
-                            ->valueLabel('Value')
-                            ->visible(fn (Get $get) => filled($get('connector_type'))),
-                    ])
-                    ->columnSpanFull(),
+                        Forms\Components\Tabs\Tab::make('Booking system / API')
+                            ->icon('heroicon-o-link')
+                            ->schema([
+                                Forms\Components\Select::make('connector_type')
+                                    ->label('Connector')
+                                    ->options(collect(ConnectorType::cases())->mapWithKeys(
+                                        fn (ConnectorType $c) => [$c->value => $c->label()]
+                                    ))
+                                    ->placeholder('None (manual handling)')
+                                    ->helperText('Connect this partner\'s account to their property management system (API credentials). Once set here, connect each individual listing to its property code on the listing\'s own "Booking system" section.')
+                                    ->live()
+                                    ->native(false),
+
+                                Forms\Components\KeyValue::make('connector_config')
+                                    ->label('Connector Config')
+                                    ->helperText('Key/value pairs stored encrypted. ResConnect: api_key, base_url (opt). NightsBridge: bbid, api_key. hopeCloud: api_key, account_id. Wetu: api_key.')
+                                    ->keyLabel('Key')
+                                    ->valueLabel('Value')
+                                    ->visible(fn (Get $get) => filled($get('connector_type'))),
+
+                                Forms\Components\Placeholder::make('connector_verified_status')
+                                    ->label('Verification status')
+                                    ->content(function (?Partner $record): string {
+                                        if (! $record?->connector_type) {
+                                            return '—';
+                                        }
+
+                                        return $record->connector_verified_at !== null
+                                            ? 'Verified '.$record->connector_verified_at->diffForHumans()
+                                            : 'Pending review — this may have been submitted by the partner themselves. Check the credentials work, then save this tab to mark it verified.';
+                                    })
+                                    ->visible(fn (Get $get) => filled($get('connector_type'))),
+                            ]),
+                    ]),
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->withCount([
+                'messages as unread_messages_count' => fn (Builder $messagesQuery): Builder => $messagesQuery
+                    ->where('direction', PartnerMessage::DIRECTION_INBOUND)
+                    ->whereNull('read_at'),
+            ]))
             ->columns([
+                Tables\Columns\TextColumn::make('unread_messages_count')
+                    ->label('Messages')
+                    ->badge(fn (Partner $record): bool => $record->email !== null)
+                    ->icon(fn (Partner $record): ?string => $record->email !== null
+                        ? 'heroicon-o-envelope'
+                        : null)
+                    ->formatStateUsing(fn (int $state, Partner $record): string => match (true) {
+                        $record->email === null => '',
+                        $state > 0 => (string) $state,
+                        default => "\u{00A0}",
+                    })
+                    ->color(fn (int $state): string => $state > 0 ? 'danger' : 'gray')
+                    ->tooltip(fn (int $state, Partner $record): ?string => match (true) {
+                        $record->email === null => null,
+                        $state > 0 => "{$state} unread message(s) — click to view",
+                        default => 'View messages',
+                    })
+                    ->url(fn (Partner $record): ?string => $record->email !== null
+                        ? static::getUrl('messages', ['record' => $record])
+                        : null)
+                    ->sortable(),
                 Tables\Columns\ImageColumn::make('logo')
-                    ->disk('public')
+                    // Not disk('public'): logo can be on either 'r2' (current default)
+                    // or 'public' (rows uploaded before the r2 switch) — resolveMediaUrl
+                    // already knows how to check both.
+                    ->getStateUsing(fn (Partner $record): ?string => $record->logo ? Controller::resolveMediaUrl($record->logo) : null)
                     ->circular(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
@@ -155,7 +212,16 @@ class PartnerResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\TernaryFilter::make('has_unread_messages')
+                    ->label('Unread messages')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereHas('messages', fn (Builder $q) => $q
+                            ->where('direction', PartnerMessage::DIRECTION_INBOUND)
+                            ->whereNull('read_at')),
+                        false: fn (Builder $query) => $query->whereDoesntHave('messages', fn (Builder $q) => $q
+                            ->where('direction', PartnerMessage::DIRECTION_INBOUND)
+                            ->whereNull('read_at')),
+                    ),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -169,9 +235,7 @@ class PartnerResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
@@ -180,6 +244,7 @@ class PartnerResource extends Resource
             'index' => Pages\ListPartners::route('/'),
             'create' => Pages\CreatePartner::route('/create'),
             'edit' => Pages\EditPartner::route('/{record}/edit'),
+            'messages' => Pages\PartnerMessages::route('/{record}/messages'),
         ];
     }
 }

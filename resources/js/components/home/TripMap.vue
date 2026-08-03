@@ -327,19 +327,114 @@ watch(() => [props.variant, props.regionCoords] as const, renderRoute, {
 </script>
 
 <template>
-    <div class="trip-map-wrapper">
-        <div :id="mapId" class="trip-map-container" />
+    <div class="trip-map-frame">
+        <svg
+            class="trip-map-bg"
+            viewBox="0 0 1040 340"
+            preserveAspectRatio="xMidYMax slice"
+            aria-hidden="true"
+        >
+            <circle
+                cx="520"
+                cy="90"
+                r="46"
+                fill="var(--gold, #e3a857)"
+                opacity="0.22"
+            />
+            <path
+                d="M0 210 Q140 160 300 205 T620 195 T1040 208 V340 H0 Z"
+                fill="var(--rust, #b5651d)"
+                opacity="0.1"
+            />
+            <path
+                d="M0 250 Q180 200 400 240 T780 232 T1040 250 V340 H0 Z"
+                fill="var(--rust, #b5651d)"
+                opacity="0.14"
+            />
+            <path
+                d="M0 290 Q220 250 480 280 T1040 285 V340 H0 Z"
+                fill="var(--rust-dark, #8c4a15)"
+                opacity="0.16"
+            />
+            <g opacity="0.2" transform="translate(130,205) scale(0.9)">
+                <line
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="46"
+                    stroke="var(--ink, #241c15)"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                />
+                <path
+                    d="M0 6 C -26 -4, -38 -22, -30 -30 C -22 -22, -8 -14, 0 6 Z"
+                    fill="var(--ink, #241c15)"
+                />
+                <path
+                    d="M0 10 C 26 0, 40 -16, 32 -26 C 22 -18, 8 -10, 0 10 Z"
+                    fill="var(--ink, #241c15)"
+                />
+            </g>
+            <g opacity="0.14" transform="translate(900,225) scale(0.6)">
+                <line
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="46"
+                    stroke="var(--ink, #241c15)"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                />
+                <path
+                    d="M0 6 C -26 -4, -38 -22, -30 -30 C -22 -22, -8 -14, 0 6 Z"
+                    fill="var(--ink, #241c15)"
+                />
+                <path
+                    d="M0 10 C 26 0, 40 -16, 32 -26 C 22 -18, 8 -10, 0 10 Z"
+                    fill="var(--ink, #241c15)"
+                />
+            </g>
+        </svg>
+        <div class="trip-map-wrapper">
+            <div :id="mapId" class="trip-map-container" />
+        </div>
     </div>
 </template>
 
 <style scoped>
+.trip-map-frame {
+    position: relative;
+    z-index: 0;
+    margin: 20px 0 4px;
+    padding: 22px 0;
+    border-radius: 14px;
+    overflow: hidden;
+    background: linear-gradient(
+        180deg,
+        var(--paper, #fbf8f1) 0%,
+        var(--sand, #ede6d6) 100%
+    );
+    border: 1px solid var(--sand-dark, #d6c9b5);
+}
+
+.trip-map-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+}
+
 .trip-map-wrapper {
-    margin: 20px auto 4px;
+    position: relative;
+    z-index: 1;
+    margin: 0 auto;
     border-radius: 12px;
     overflow: hidden;
     border: 1px solid var(--sand-dark, #d6c9b5);
     max-width: 420px;
     aspect-ratio: 3 / 4;
+    box-shadow: 0 8px 22px rgba(36, 28, 21, 0.14);
 }
 
 .trip-map-container {

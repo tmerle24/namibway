@@ -4,6 +4,7 @@ namespace App\Services\Enrichment;
 
 use App\Models\Listing;
 use App\Models\Partner;
+use App\Models\PartnerMessage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -39,26 +40,40 @@ class ClaimInviteService
             function ($message) use ($partner) {
                 $message
                     ->to($partner->email, $partner->name)
-                    ->from(config('mail.from.address'), 'NamibWay')
+                    // Same address the POP3 fetcher polls (services.pop3.username) —
+                    // a reply naturally lands back in the mailbox
+                    // namibway:fetch-partner-emails reads from.
+                    ->from(config('services.pop3.username') ?: config('mail.from.address'), 'NamibWay')
                     ->subject('Your property on NamibWay — claim your free listing');
             }
         );
 
         $partner->update(['claim_token_sent_at' => now()]);
 
+        PartnerMessage::create([
+            'partner_id' => $partner->id,
+            'listing_id' => $listing?->id,
+            'sent_by' => auth()->id(),
+            'direction' => PartnerMessage::DIRECTION_OUTBOUND,
+            'template' => 'claim_invite',
+            'subject' => 'Your property on NamibWay — claim your free listing',
+            'body' => "Claim link: {$this->claimUrl($partner)}",
+            'sent_at' => now(),
+        ]);
+
         return true;
     }
 
     /**
-     * Unpublished listings 404 for anyone else, but the owner should still be able to
-     * see how their own draft looks — the claim_token already emailed to them doubles
-     * as a preview key (see ListingController::hasValidPreviewToken()).
+     * The claim_token doubles as a preview key (see ListingController::hasValidPreviewToken())
+     * that does two things: bypasses the "unpublished listings 404" gate for drafts, and — for
+     * published listings too — is what grants the owner's Edit/Publish/Unpublish controls
+     * (ListingController::show()'s can_publish). Always include it, or a claimed/published
+     * listing's owner link silently loses all edit access.
      */
     public function listingUrl(Listing $listing, Partner $partner): string
     {
-        return $listing->is_published
-            ? route('listings.show', $listing->slug)
-            : route('listings.show', $listing->slug).'?preview='.$partner->claim_token;
+        return route('listings.show', $listing->slug).'?preview='.$partner->claim_token;
     }
 
     public function claimUrl(Partner $partner): string

@@ -55,64 +55,86 @@ fi
 
 # ── Ab hier: normaler Update-/Deploy-Flow ───────────────────────────
 
-echo "═══ 1/10 Maintenance-Mode AN ═══"
+echo "═══ 1/15 Maintenance-Mode AN ═══"
 php artisan down --retry=15 || true
 
 if [ "$FIRST_INSTALL" = false ]; then
-   echo "═══ 2/10 Git Pull ($BRANCH) ═══"
-   OLD_COMMIT=$(git rev-parse HEAD)
+   echo "═══ 2/15 Git Pull ($BRANCH) ═══"
    git fetch origin "$BRANCH"
    git reset --hard "origin/$BRANCH"
-   NEW_COMMIT=$(git rev-parse HEAD)
 else
-   echo "═══ 2/10 Erstinstallation — kein Pull nötig (frisch geklont) ═══"
+   echo "═══ 2/15 Erstinstallation — kein Pull nötig (frisch geklont) ═══"
 fi
 
-echo "═══ 3/10 Composer ═══"
-if [ "$FIRST_INSTALL" = true ] || git diff HEAD@{1} HEAD --name-only 2>/dev/null | grep -q "composer.lock"; then
-    composer install --no-dev --optimize-autoloader
-else
-    echo "  → composer.lock unverändert, übersprungen"
-fi
+echo "═══ 3/15 Composer ═══"
+# Immer installieren, nicht nur bei geändertem composer.lock: ein Diff gegen den
+# letzten HEAD geht davon aus, dass der letzte Deploy-Lauf vollständig durchlief.
+# Ist er das nicht (z.B. Abbruch nach dem Pull, aber vor/während composer install),
+# hat sich composer.lock bereits "bewegt" und der Diff sieht keine Änderung mehr —
+# das install wird dann dauerhaft übersprungen, obwohl vendor/ nie aktualisiert wurde.
+# composer install ist bei unveränderten Dependencies ohnehin schnell (paar Sekunden).
+composer install --no-dev --optimize-autoloader
+
+echo "═══ 4/15 Release-Version snapshotten (Admin-Header + Release-Notes-Seite) ═══"
+php artisan release:snapshot
+
+echo "═══ 5/15 Storage-Rechte + View-Cache früh aufbauen ═══"
+# Während der Wartung (php artisan down läuft seit Schritt 1 bis fast zum Schluss)
+# kompiliert PHP-FPM (als www-data) neue Blade-Views live bei jedem Request, die noch
+# nicht im Cache liegen — z.B. die neue errors/503.blade.php. touch() verlangt aber
+# Eigentümerschaft der Datei (Schreibrecht über die Gruppe reicht nicht), und
+# `php artisan view:cache` läuft als Deploy-User (z.B. ubuntu). Kompiliert also www-data
+# zuerst und danach ubuntu (oder umgekehrt), schlägt touch() mit EPERM fehl — das war der
+# kurze "touch(): Utime failed" 500er direkt nach Deploy-Start. Fix: Storage-Rechte +
+# View-Cache so früh wie möglich (direkt nach composer install) statt erst am Schluss,
+# damit das Zeitfenster für einen Live-Request von www-data auf eine noch nicht
+# gecachte View minimal ist.
+sudo chown -R "$(whoami):www-data" "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
+sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
+sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
+sudo find "$APP_DIR/bootstrap/cache" -type d -exec chmod 775 {} \;
+sudo find "$APP_DIR/bootstrap/cache" -type f -exec chmod 664 {} \;
+php artisan view:clear
+php artisan view:cache
 
 if [ "$SKIP_NPM" = false ]; then
-    echo "═══ 4/10 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
+    echo "═══ 6/15 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
     php artisan config:clear
     php artisan route:clear
 
-    echo "═══ 5/10 npm install + build ═══"
-    if [ "$FIRST_INSTALL" = true ] || git diff HEAD@{1} HEAD --name-only 2>/dev/null | grep -qE "package-lock\.json|package\.json"; then
-        npm ci
-    fi
+    echo "═══ 7/15 npm install + build ═══"
+    # Gleiches Argument wie bei composer oben: immer installieren, nicht per Diff überspringen.
+    npm ci
     export NODE_OPTIONS="--max-old-space-size=3072"
     npm run build
 else
-    echo "═══ 4-5/10 npm build übersprungen (--no-npm) ═══"
+    echo "═══ 6-7/15 npm build übersprungen (--no-npm) ═══"
 fi
 
 if [ "$SKIP_MIGRATE" = false ]; then
-    echo "═══ 6/10 Migrationen ═══"
+    echo "═══ 8/15 Migrationen ═══"
     php artisan migrate --force
 else
-    echo "═══ 6/10 Migrationen übersprungen (--no-migrate) ═══"
+    echo "═══ 8/15 Migrationen übersprungen (--no-migrate) ═══"
 fi
 
-echo "═══ 7/10 Storage-Link ═══"
+echo "═══ 9/15 Storage-Link ═══"
 php artisan storage:link 2>/dev/null || true
 
-echo "═══ 8/10 Caches neu aufbauen ═══"
+echo "═══ 10/15 API-Doku generieren (Scribe) ═══"
+php artisan scribe:generate --force
+
+echo "═══ 11/15 Caches neu aufbauen ═══"
 php artisan config:cache
 php artisan route:cache
-php artisan view:clear
-php artisan view:cache
 php artisan event:cache
 
-echo "═══ 9/10 Laravel-Scheduler-Cron sicherstellen (Backups u.a. laufen darüber) ═══"
+echo "═══ 12/15 Laravel-Scheduler-Cron sicherstellen (Backups u.a. laufen darüber) ═══"
 CRON_LINE="* * * * * cd $APP_DIR && php artisan schedule:run >> /dev/null 2>&1"
 (crontab -l 2>/dev/null | grep -qF "$APP_DIR" && echo "  → Cron-Eintrag bereits vorhanden") || \
     (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
 
-echo "═══ 10/10 Verzeichnis-Rechte, Horizon neu starten, Maintenance-Mode AUS ═══"
+echo "═══ 13/15 Verzeichnis-Rechte, Horizon neu starten, Maintenance-Mode AUS ═══"
 sudo chown -R "$(whoami):www-data" "$APP_DIR"
 sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
@@ -120,7 +142,52 @@ sudo find "$APP_DIR/bootstrap/cache" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/bootstrap/cache" -type f -exec chmod 664 {} \;
 
 sudo supervisorctl restart "${QUEUE_WORKER_NAME}:*" 2>/dev/null || echo "  → Supervisor-Worker '$QUEUE_WORKER_NAME' noch nicht eingerichtet, übersprungen"
+
+echo "═══ 14/15 PHP-FPM neu laden (OPcache) ═══"
+# Ohne das hier laufen die bestehenden FPM-Worker mit dem Bytecode-Stand von vor
+# dem Deploy weiter, falls opcache.validate_timestamps=0 gesetzt ist (übliche
+# Prod-Härtung) — ein Code-Fix landet dann im Repo und im Composer-Autoloader,
+# aber nie im tatsächlich ausgeführten Prozess, bis FPM neu lädt. Traf uns am
+# 2026-08-02: ein bestätigt korrekter Fix (Save-Button-Bindung ans Formular)
+# blieb nach dem Deploy wirkungslos, bis genau das hier fehlte.
+#
+# Alle laufenden php*-fpm-Units neu laden, nicht nur die erste gefundene: auf
+# diesem Server laufen php8.3-fpm UND php8.4-fpm gleichzeitig (vermutlich ein
+# Rest einer PHP-Versions-Migration) — welche davon nginx tatsächlich anspricht,
+# entscheidet sich in der nginx-Config, nicht hier, und ein Reload der falschen
+# Version lässt den Bug scheinbar unverändert weiterbestehen.
+PHP_FPM_SERVICES=$(systemctl list-units --type=service --state=running --no-legend 2>/dev/null | awk '{print $1}' | grep -E '^php[0-9.]*-fpm\.service$')
+if [ -n "$PHP_FPM_SERVICES" ]; then
+    for service in $PHP_FPM_SERVICES; do
+        sudo systemctl reload "$service" && echo "  → $service neu geladen" || echo "  → Neuladen von $service fehlgeschlagen — bitte manuell prüfen"
+    done
+else
+    echo "  → Kein laufender php*-fpm-Service gefunden — übersprungen (bitte manuell prüfen, falls Code-Änderungen nicht ankommen)"
+fi
+
 php artisan up
+
+echo "═══ 15/15 Health-Check ═══"
+HEALTH_URL="https://www.namibway.com/up"
+HEALTH_OK=false
+for i in 1 2 3 4 5; do
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$HEALTH_URL" || echo "000")
+    if [ "$HTTP_CODE" = "200" ]; then
+        HEALTH_OK=true
+        break
+    fi
+    echo "  → Versuch $i/5: HTTP $HTTP_CODE, warte 3s..."
+    sleep 3
+done
+
+if [ "$HEALTH_OK" = false ]; then
+    echo ""
+    echo "❌ Health-Check fehlgeschlagen: $HEALTH_URL antwortet nicht mit 200 (zuletzt: HTTP $HTTP_CODE)."
+    echo "   Deploy ist technisch durchgelaufen, aber die Seite scheint kaputt zu sein — bitte prüfen:"
+    echo "   tail -100 $APP_DIR/storage/logs/laravel.log"
+    exit 1
+fi
+echo "  → $HEALTH_URL antwortet mit 200"
 
 echo ""
 if [ "$FIRST_INSTALL" = true ]; then

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
 import { Menu, Sparkles, X } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import EnrichModal from '@/components/EnrichModal.vue';
 
 // Optional deep link to this page's record in the Filament admin, e.g.
@@ -25,6 +25,43 @@ const isAdmin = computed(() => Boolean(page.props.auth?.user?.is_admin));
 const menuOpen = ref(false);
 const showEnrichModal = ref(false);
 
+// The bar is sticky at the top of the page, and so is the site header below
+// it (.hero-nav in kaia-home.css) — without coordination they'd both stick to
+// viewport top:0 and overlap. Publish our actual rendered height (which
+// varies with the mobile dropdown being open/closed) as a CSS variable so the
+// header can offset its own sticky `top` by it.
+const rootEl = ref<HTMLElement | null>(null);
+let resizeObserver: ResizeObserver | null = null;
+
+function setAdminBarHeightVar(height: number) {
+    document.documentElement.style.setProperty(
+        '--admin-bar-height',
+        `${height}px`,
+    );
+}
+
+watch(rootEl, (el) => {
+    resizeObserver?.disconnect();
+    resizeObserver = null;
+
+    if (!el) {
+        setAdminBarHeightVar(0);
+
+        return;
+    }
+
+    resizeObserver = new ResizeObserver(() => {
+        setAdminBarHeightVar(el.getBoundingClientRect().height);
+    });
+    resizeObserver.observe(el);
+    setAdminBarHeightVar(el.getBoundingClientRect().height);
+});
+
+onBeforeUnmount(() => {
+    resizeObserver?.disconnect();
+    setAdminBarHeightVar(0);
+});
+
 const ADMIN_LINKS = [
     { label: 'Dashboard', href: '/admin' },
     { label: 'Listings', href: '/admin/listings' },
@@ -35,7 +72,7 @@ const ADMIN_LINKS = [
 </script>
 
 <template>
-    <div v-if="isAdmin" class="admin-bar">
+    <div v-if="isAdmin" ref="rootEl" class="admin-bar">
         <div class="admin-bar-row">
             <span class="admin-bar-badge">Admin</span>
 

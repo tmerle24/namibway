@@ -23,6 +23,7 @@
     background: var(--paper);
     color: var(--ink);
     font-family: 'Inter', sans-serif;
+    min-height: 100vh;
 }
 .kaia-page * {
     box-sizing: border-box;
@@ -109,40 +110,156 @@
     }
 }
 .kaia-page .hero-nav {
+    position: sticky;
+    top: var(--admin-bar-height, 0px);
+    z-index: 20;
+    width: 100%;
+    background: var(--night);
+}
+.kaia-page .hero-nav-inner {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     gap: 12px;
-    margin-bottom: 24px;
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 12px 24px;
 }
-.kaia-page .hero-nav a {
+.kaia-page .hero-nav .brand {
+    margin-bottom: 0;
+}
+.kaia-page .hero-nav .brand-logo {
+    max-height: 40px;
+    margin-left: 0;
+}
+.kaia-page .hero-nav-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+.kaia-page .icon-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
     color: var(--sand);
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    white-space: nowrap;
     border: 1px solid rgba(251, 248, 241, 0.35);
     border-radius: 8px;
-    padding: 7px 14px;
 }
-.kaia-page .hero-nav a:hover {
+.kaia-page .icon-link:hover {
     border-color: var(--paper);
 }
-.kaia-page .hero-nav .locale-switcher {
+.kaia-page .icon-switcher {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    font-size: 15px;
+    line-height: 1;
+}
+.kaia-page .icon-switcher-glyph {
+    pointer-events: none;
+}
+.kaia-page .icon-switcher-native {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    border: 0;
+    cursor: pointer;
+    appearance: none;
+}
+.kaia-page .icon-switcher-native option {
+    color: var(--ink);
+    background: var(--paper);
+}
+.kaia-page .hero-nav .icon-switcher {
     color: var(--sand);
-    background: transparent;
+    border: 1px solid rgba(251, 248, 241, 0.35);
+}
+.kaia-page .nav-more {
+    position: relative;
+    display: inline-flex;
+}
+.kaia-page .nav-more-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 30;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    color: var(--sand);
+    background: var(--night);
+    border: 1px solid rgba(251, 248, 241, 0.35);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 12px 30px rgba(16, 26, 48, 0.35);
+}
+.kaia-page .nav-more-divider {
+    height: 1px;
+    background: rgba(251, 248, 241, 0.2);
+}
+.kaia-page .nav-more-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--sand);
     font-size: 13px;
     font-weight: 600;
     font-family: 'Inter', sans-serif;
-    border: 1px solid rgba(251, 248, 241, 0.35);
+    text-decoration: none;
+    background: transparent;
+    border: none;
+    padding: 6px 2px;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+}
+.kaia-page .nav-more-link:hover {
+    color: var(--paper);
+}
+.kaia-page .nav-more-link--button {
+    font: inherit;
+}
+.kaia-page .full-switcher {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.kaia-page .full-switcher-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: inherit;
+    opacity: 0.75;
+}
+.kaia-page .full-switcher-select {
+    color: var(--ink);
+    background: var(--paper);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    border: 1px solid var(--sand-dark);
     border-radius: 8px;
     padding: 7px 10px;
     cursor: pointer;
 }
-.kaia-page .hero-nav .locale-switcher option {
-    color: var(--ink);
-    background: var(--paper);
+@media (max-width: 640px) {
+    .kaia-page .hero-nav-inner {
+        padding: 10px 16px;
+    }
 }
 .kaia-page .hero-head {
     max-width: 640px;
@@ -266,6 +383,35 @@
 .kaia-page .chat-input-row button:hover:not(:disabled) {
     background: var(--rust-dark);
 }
+.kaia-page .chat-input-row .chat-mic-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 42px;
+    padding: 0;
+    background: var(--paper);
+    color: var(--rust);
+    border: 1px solid var(--sand-dark);
+}
+.kaia-page .chat-input-row .chat-mic-btn:hover:not(:disabled) {
+    background: var(--sand);
+}
+.kaia-page .chat-input-row .chat-mic-btn.listening {
+    background: var(--rust);
+    color: var(--paper);
+    border-color: var(--rust);
+    animation: kaia-mic-pulse 1.4s ease-in-out infinite;
+}
+@keyframes kaia-mic-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(197, 90, 17, 0.35);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(197, 90, 17, 0);
+    }
+}
 .kaia-page .chat-rec-card {
     display: flex;
     gap: 10px;
@@ -337,6 +483,9 @@
     margin-bottom: 28px;
     max-width: 600px;
 }
+.kaia-page #itinerary-section .section-head {
+    max-width: 100%;
+}
 .kaia-page .section-head h2 {
     font-size: 28px;
     margin-bottom: 8px;
@@ -345,28 +494,65 @@
     color: #5b5346;
     font-size: 15px;
 }
-.kaia-page .route-summary {
+.kaia-page .trip-summary-text {
+    color: #5b5346;
+    font-size: 14px;
+    line-height: 1.55;
+    margin-top: 10px;
+}
+.kaia-page .trip-meta-row {
     display: flex;
-    align-items: center;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 12px;
-    font-size: 13.5px;
+    gap: 8px;
+    margin-top: 14px;
 }
-.kaia-page .route-label {
-    color: #8a7f68;
+.kaia-page .trip-meta-chip {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    background: var(--sand);
+    border: 1px solid var(--sand-dark);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: #4a4438;
+    line-height: 1.3;
+}
+.kaia-page .trip-meta-icon {
+    font-size: 12px;
+}
+.kaia-page .trip-meta-text strong {
     font-weight: 600;
-    text-transform: uppercase;
-    font-size: 11px;
-    letter-spacing: 0.05em;
+    color: var(--rust-dark);
 }
-.kaia-page .route-arrow {
-    color: var(--rust);
+.kaia-page .trip-meta-row--editable {
+    cursor: pointer;
+    border-radius: 10px;
+    padding: 4px;
+    margin: -4px;
+    transition: background 0.12s;
 }
-.kaia-page .route-roundtrip-tag {
-    color: #8a7f68;
-    font-size: 11.5px;
-    font-style: italic;
+.kaia-page .trip-meta-row--editable:hover,
+.kaia-page .trip-meta-row--editable:focus-visible {
+    background: var(--sand);
+    outline: none;
+}
+.kaia-page .trip-meta-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: 1px dashed var(--sand-dark);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: var(--rust-dark);
+    font-weight: 600;
+    cursor: pointer;
+}
+.kaia-page .trip-meta-edit-btn:hover {
+    border-color: var(--rust);
+    background: var(--rust-light);
 }
 
 /* ---------- ITINERARY VARIANTS ---------- */
@@ -407,11 +593,41 @@
     border-color: var(--rust);
     color: var(--rust);
 }
+.kaia-page .variant-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.kaia-page .dismiss-variant-btn {
+    background: none;
+    border: none;
+    color: #8a7f68;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 2px;
+    cursor: pointer;
+    opacity: 0.6;
+}
+.kaia-page .dismiss-variant-btn:hover {
+    opacity: 1;
+    color: var(--rust-dark);
+}
 .kaia-page .variant-price {
     color: var(--rust-dark);
     font-weight: 600;
     font-size: 14px;
     margin-bottom: 4px;
+}
+.kaia-page .variant-card .trip-meta-row {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+.kaia-page .params-regenerating-note {
+    font-size: 12.5px;
+    color: var(--rust-dark);
+    font-style: italic;
+    margin: -8px 0 16px;
 }
 .kaia-page .variant-vehicle {
     color: #5b5346;
@@ -460,14 +676,28 @@
     border-top: 1px solid var(--sand-dark);
     font-size: 13.5px;
 }
-.kaia-page .day-row:first-of-type {
+.kaia-page .day-item:first-child > .day-row {
     border-top: none;
 }
 .kaia-page .day-num {
-    font-family: 'Fraunces', serif;
-    color: var(--rust);
-    font-size: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
     min-width: 52px;
+}
+.kaia-page .day-num-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.kaia-page .day-num-badge {
+    font-family: 'Inter', sans-serif;
+    cursor: default;
+}
+.kaia-page .day-num-badge:hover {
+    transform: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 .kaia-page .day-date {
     display: block;
@@ -475,7 +705,15 @@
     font-size: 11px;
     color: #7a6f63;
     font-weight: 400;
-    margin-top: 2px;
+}
+.kaia-page .day-thumb {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid var(--sand-dark);
+    flex-shrink: 0;
 }
 .kaia-page .day-detail div {
     margin-bottom: 2px;
@@ -502,6 +740,9 @@
     align-items: baseline;
     gap: 6px;
     flex-wrap: wrap;
+}
+.kaia-page .line-item-value {
+    display: contents;
 }
 .kaia-page .item-price {
     color: #8a7f68;
@@ -871,7 +1112,8 @@
 }
 .kaia-page .featured-pick-media {
     position: relative;
-    min-height: 260px;
+    height: 320px;
+    align-self: center;
 }
 .kaia-page .featured-pick-img {
     width: 100%;
@@ -1034,6 +1276,105 @@
     margin-bottom: 4px;
 }
 
+/* ---------- TOP DESTINATIONS (hero showcase) ---------- */
+.kaia-page .destinations-scroll-wrap {
+    position: relative;
+}
+.kaia-page .destinations-scroll {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    padding: 4px 2px 12px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.kaia-page .destinations-scroll::-webkit-scrollbar {
+    display: none;
+}
+.kaia-page .destinations-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--sand-dark);
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(36, 28, 21, 0.15);
+}
+.kaia-page .destinations-arrow:hover {
+    background: var(--sand);
+}
+.kaia-page .destinations-arrow--prev {
+    left: -18px;
+}
+.kaia-page .destinations-arrow--next {
+    right: -18px;
+}
+@media (max-width: 640px) {
+    .kaia-page .destinations-arrow {
+        display: none;
+    }
+}
+.kaia-page .destination-card {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    width: 220px;
+    display: block;
+    padding: 0;
+    text-align: left;
+    background: var(--paper);
+    border: 1px solid var(--sand-dark);
+    border-radius: 14px;
+    overflow: hidden;
+    font: inherit;
+    color: inherit;
+    transition: transform 0.15s ease;
+}
+.kaia-page .destination-card:hover {
+    transform: translateY(-3px);
+}
+.kaia-page .destination-thumb {
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: var(--sand);
+}
+.kaia-page .destination-thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.kaia-page .destination-body {
+    padding: 12px 14px 16px;
+}
+.kaia-page .destination-body h3 {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+.kaia-page .destination-body p {
+    font-size: 12.5px;
+    color: #5b5346;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+@media (max-width: 640px) {
+    .kaia-page .destination-card {
+        width: 180px;
+    }
+}
+
 .kaia-page footer {
     max-width: 1040px;
     margin: 0 auto;
@@ -1085,6 +1426,16 @@
     justify-content: flex-end;
     gap: 8px;
 }
+.kaia-page .detail-topbar-actions .icon-switcher,
+.kaia-page .detail-topbar-actions .icon-link {
+    color: var(--ink);
+    border: 1px solid var(--sand-dark);
+}
+.kaia-page .detail-topbar-actions .nav-more-panel {
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--sand-dark);
+}
 @media (max-width: 480px) {
     .kaia-page .detail-topbar-actions {
         justify-content: flex-start;
@@ -1102,6 +1453,43 @@
 }
 .kaia-page .detail-back:hover {
     border-color: var(--rust);
+}
+/* Mobile/tablet only — reuses the same header as Welcome instead of this
+   page's own light desktop topbar, and moves the back link next to the
+   listing title. Desktop is untouched: .detail-mobile-header/.detail-back
+   stay hidden, .detail-title-row is a plain block, .detail-topbar keeps
+   showing exactly as before. */
+.kaia-page .detail-mobile-header {
+    display: none;
+}
+.kaia-page .detail-title-back {
+    display: none;
+}
+@media (hover: none), (pointer: coarse) {
+    .kaia-page .detail-topbar {
+        display: none;
+    }
+    .kaia-page .detail-mobile-header {
+        display: block;
+    }
+    .kaia-page .detail-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        width: 100%;
+    }
+    .kaia-page .detail-title-back {
+        display: inline-flex;
+        flex-shrink: 0;
+        color: var(--sand);
+        border-color: rgba(251, 248, 241, 0.35);
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    .kaia-page .detail-title-back:hover {
+        border-color: var(--paper);
+    }
 }
 .kaia-page .detail-hero {
     position: relative;
@@ -1151,6 +1539,17 @@
     position: static;
     display: inline-block;
     margin-bottom: 4px;
+    text-decoration: none;
+}
+.kaia-page .detail-hero-overlay .idea-tag:hover {
+    text-decoration: underline;
+}
+.kaia-page .detail-hero-overlay .detail-region-link {
+    color: inherit;
+    text-decoration: none;
+}
+.kaia-page .detail-hero-overlay .detail-region-link:hover {
+    text-decoration: underline;
 }
 .kaia-page .detail-gallery {
     display: grid;
@@ -1176,13 +1575,15 @@
     }
 }
 .kaia-page .steckbrief,
-.kaia-page .contact-card {
+.kaia-page .contact-card,
+.kaia-page .location-card {
     margin-top: 28px;
     padding-top: 24px;
     border-top: 1px solid var(--sand-dark);
 }
 .kaia-page .steckbrief h3,
-.kaia-page .contact-card h3 {
+.kaia-page .contact-card h3,
+.kaia-page .location-card h3 {
     font-size: 16px;
     margin-bottom: 12px;
 }
@@ -1239,6 +1640,13 @@
 .kaia-page .inquiry-panel h3 {
     font-size: 18px;
     margin-bottom: 6px;
+}
+.kaia-page .inquiry-contact-person {
+    font-family: 'Fraunces', serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--rust-dark);
+    margin-bottom: 8px;
 }
 .kaia-page .inquiry-subtitle {
     font-size: 13px;
@@ -1652,6 +2060,23 @@
     }
 }
 
+.kaia-page .map-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--rust-dark);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: underline;
+    padding: 9px 2px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.12s;
+}
+.kaia-page .map-toggle-btn:hover,
+.kaia-page .map-toggle-btn[aria-pressed='true'] {
+    color: var(--night);
+}
+
 /* ── Search results mode ── */
 .kaia-page .search-results-header {
     display: flex;
@@ -1843,6 +2268,16 @@
         grid-template-columns: 1fr;
     }
 }
+.kaia-page #explore-section {
+    border-top: 1px solid var(--sand-dark, #d6c9b5);
+}
+.kaia-page #after-sales-section {
+    border-top: 1px solid var(--sand-dark, #d6c9b5);
+}
+
+.kaia-page .how-it-works {
+    border-top: 1px solid var(--sand-dark, #d6c9b5);
+}
 
 /* ── How it works — two-path separator ── */
 .kaia-page .how-it-works {
@@ -1850,8 +2285,6 @@
     grid-template-columns: 1fr auto 1fr;
     align-items: start;
     gap: 0 24px;
-    padding: 56px 0 48px;
-    border-top: 1px solid var(--sand-dark, #d6c9b5);
     margin-top: 16px;
 }
 @media (max-width: 680px) {
@@ -1988,5 +2421,323 @@
         height: 1px;
         background: var(--sand-dark, #d6c9b5);
         margin: 0 12px;
+    }
+}
+
+/* iOS Safari auto-zooms the whole page when a focused input/select/textarea has
+   font-size below 16px, and the zoomed-in viewport sticks around after the
+   keyboard closes. Force 16px on all form controls on mobile widths to prevent it. */
+@media (max-width: 768px) {
+    .kaia-page input,
+    .kaia-page textarea,
+    .kaia-page select {
+        font-size: 16px;
+    }
+}
+
+/* ---------- MOBILE FOOTER NAV ---------- */
+/* Touch devices only (phones and tablets, regardless of viewport width — an
+   iPad's viewport is desktop-sized, so this keys off input capability rather
+   than a max-width breakpoint). Below this size/capability the page keeps
+   working as a single scrolling magazine layout; nothing here applies. */
+@media (hover: none), (pointer: coarse) {
+    .kaia-page {
+        padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Takes up too much vertical space on a phone screen under the Kaia tab —
+       never shown on mobile at all, regardless of which tab is active. */
+    .kaia-page .how-it-works {
+        display: none;
+    }
+
+    /* Only ever hide the inactive groups — never force a `display` on the
+       active one, so each section keeps whatever display value (grid, flex,
+       block…) its own rules already give it. */
+    .kaia-page[data-mobile-section='kaia']
+        :is(#destinations-section, #explore-section, #after-sales-section),
+    .kaia-page[data-mobile-section='discover']
+        :is(
+            #kaia-hero,
+            #itinerary-section,
+            #guest-form-section,
+            #booking-section,
+            #explore-section,
+            #after-sales-section
+        ),
+    .kaia-page[data-mobile-section='explore']
+        :is(
+            #kaia-hero,
+            #itinerary-section,
+            #guest-form-section,
+            #booking-section,
+            #destinations-section,
+            #after-sales-section
+        ),
+    .kaia-page[data-mobile-section='support']
+        :is(
+            #kaia-hero,
+            #itinerary-section,
+            #guest-form-section,
+            #booking-section,
+            #destinations-section,
+            #explore-section
+        ) {
+        display: none;
+    }
+}
+
+.kaia-page .mobile-footer-nav {
+    display: none;
+}
+@media (hover: none), (pointer: coarse) {
+    .kaia-page .mobile-footer-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 100;
+        height: 64px;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        background: var(--night);
+        border-top: 1px solid rgba(251, 248, 241, 0.15);
+    }
+}
+.kaia-page .mobile-footer-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    flex: 1;
+    height: 100%;
+    background: none;
+    border: none;
+    color: rgba(237, 230, 214, 0.65);
+    font-size: 10px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    text-decoration: none;
+}
+.kaia-page .mobile-footer-nav-item.active {
+    color: var(--sand);
+}
+.kaia-page .mobile-footer-nav-compass {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    margin-top: -28px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--night);
+    border: 4px solid var(--paper);
+    box-shadow: 0 6px 16px rgba(16, 26, 48, 0.35);
+}
+.kaia-page .mobile-footer-nav-compass.active {
+    background: var(--rust);
+    color: var(--paper);
+}
+
+/* ---------- DASHBOARD ("personal area") ---------- */
+.kaia-page .dashboard-section {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+}
+.kaia-page .dashboard-sidebar {
+    flex: 0 0 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.kaia-page .dashboard-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    text-decoration: none;
+    background: none;
+}
+.kaia-page .dashboard-nav-link:hover {
+    background: var(--sand);
+}
+.kaia-page .dashboard-nav-link.active {
+    background: var(--sand);
+    color: var(--rust-dark);
+}
+.kaia-page .dashboard-nav-link.disabled {
+    color: #a89d8a;
+    cursor: default;
+}
+.kaia-page .dashboard-nav-link.disabled:hover {
+    background: none;
+}
+.kaia-page .dashboard-nav-badge {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #a89d8a;
+    background: var(--sand);
+    padding: 2px 6px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.kaia-page .dashboard-content {
+    flex: 1;
+    min-width: 0;
+}
+.kaia-page .dashboard-content h1 {
+    font-size: 28px;
+    margin-bottom: 4px;
+}
+.kaia-page .dashboard-subtitle {
+    color: #5b5346;
+    font-size: 14px;
+    margin-bottom: 28px;
+}
+.kaia-page .dashboard-empty {
+    border: 1px solid var(--sand-dark);
+    border-radius: 14px;
+    padding: 48px 24px;
+    text-align: center;
+    color: #5b5346;
+    font-size: 14px;
+}
+.kaia-page .dashboard-empty a {
+    color: var(--rust);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.kaia-page .dashboard-table-wrap {
+    border: 1px solid var(--sand-dark);
+    border-radius: 14px;
+    overflow: hidden;
+}
+.kaia-page .dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+}
+.kaia-page .dashboard-table thead {
+    background: var(--sand);
+}
+.kaia-page .dashboard-table th {
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 600;
+    color: #4a4438;
+}
+.kaia-page .dashboard-table td {
+    padding: 12px 16px;
+    border-top: 1px solid var(--sand-dark);
+}
+.kaia-page .dashboard-table tr:hover td {
+    background: rgba(237, 230, 214, 0.35);
+}
+.kaia-page .dashboard-table-actions a {
+    color: var(--rust);
+    font-weight: 600;
+    text-decoration: none;
+}
+.kaia-page .dashboard-table-actions a:hover {
+    text-decoration: underline;
+}
+.kaia-page .dashboard-table-actions a + a {
+    margin-left: 12px;
+}
+.kaia-page .dashboard-action-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--rust);
+    font-weight: 600;
+    font-size: inherit;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+}
+.kaia-page .dashboard-action-link:hover:not(:disabled) {
+    text-decoration: underline;
+}
+.kaia-page .dashboard-action-link:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+.kaia-page .dashboard-action-link + .dashboard-action-link {
+    margin-left: 12px;
+}
+.kaia-page .dashboard-action-link--danger {
+    color: var(--danger);
+}
+.kaia-page .dashboard-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.kaia-page .dashboard-status-pill::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+.kaia-page .dashboard-status-pill--pending,
+.kaia-page .dashboard-status-pill--processing,
+.kaia-page .dashboard-status-pill--on_request {
+    color: var(--rust);
+}
+.kaia-page .dashboard-status-pill--nwr_pending,
+.kaia-page .dashboard-status-pill--failed {
+    color: var(--danger);
+}
+.kaia-page .dashboard-status-pill--confirmed {
+    color: var(--sage);
+}
+.kaia-page .dashboard-status-pill--cancelled {
+    color: #a89d8a;
+}
+.kaia-page .dashboard-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+.kaia-page .dashboard-badge--published {
+    background: var(--sage-light);
+    color: #3c4a37;
+}
+.kaia-page .dashboard-badge--unpublished {
+    background: var(--sand);
+    color: #8a7d6e;
+}
+@media (max-width: 720px) {
+    .kaia-page .dashboard-section {
+        flex-direction: column;
+    }
+    .kaia-page .dashboard-sidebar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        width: 100%;
     }
 }

@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 import ItineraryLineItem from '@/components/home/ItineraryLineItem.vue';
 import SaveShareBar from '@/components/home/SaveShareBar.vue';
 import TripMap from '@/components/home/TripMap.vue';
+import TripMeta from '@/components/home/TripMeta.vue';
 import { formatPrice } from '@/lib/currency';
 import { fetchRegionCoords } from '@/lib/kaia-client';
 import type { RegionCoords } from '@/lib/kaia-client';
@@ -67,6 +68,21 @@ function formatDateRange(day: {
     return `${day.date} – ${day.date_to}`;
 }
 
+// Accommodation photo first, region photo as fallback — see the identical
+// helper in ItinerarySection.vue for why regionCoords resolves both.
+function dayThumbnail(day: {
+    location: string;
+    accommodation?: { image?: string | null } | null;
+}): string | null {
+    if (day.accommodation?.image) {
+        return day.accommodation.image;
+    }
+
+    const key = day.location?.toLowerCase().trim();
+
+    return (key && regionCoords.value[key]?.image) || null;
+}
+
 function estimatedLabel(variant: ItineraryVariant): string | null {
     let amount = 0;
     let hasAnyPrice = false;
@@ -111,6 +127,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     <p v-if="plan.trip_summary" class="trip-summary">
                         {{ plan.trip_summary }}
                     </p>
+                    <TripMeta :trip-params="plan.trip_params" />
                 </div>
             </header>
 
@@ -165,6 +182,12 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                 {{ formatDateRange(day) }}
                             </div>
                         </div>
+                        <img
+                            v-if="dayThumbnail(day)"
+                            :src="dayThumbnail(day)!"
+                            alt=""
+                            class="day-thumb"
+                        />
                         <div class="day-detail">
                             <div class="day-location-label">
                                 {{ day.location }}
@@ -194,6 +217,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         :plan="{
                             trip_summary: plan.trip_summary,
                             variants: [variant],
+                            trip_params: plan.trip_params,
                         }"
                         :token="token"
                         :is-logged-in="isLoggedIn"
@@ -336,7 +360,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
     .save-share-bar {
         display: none !important;
     }
-    .trip-map-wrapper {
+    .trip-map-frame {
         display: none !important;
     }
     .variant-card {

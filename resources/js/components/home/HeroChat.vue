@@ -1,25 +1,61 @@
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
-import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
+import SiteHeader from '@/components/SiteHeader.vue';
 import { formatPrice } from '@/lib/currency';
 import { sendKaiaMessage } from '@/lib/kaia-client';
 import type {
     ChatMessage,
     ItineraryPlan,
+    ListingRecommendation,
     SearchIntent,
 } from '@/lib/kaia-types';
-import { dashboard, login, register } from '@/routes';
-import logoLight from '../../../images/logo-light.png';
+
+// Same per-category placeholder set used by ExploreSection/ListingDetail, so
+// a listing without a photo still shows something on-brand here instead of
+// no image at all.
+const CATEGORY_IMAGES: Record<ListingRecommendation['type'], string[]> = {
+    accommodation: [
+        '/images/explore/accommodation-1.jpg',
+        '/images/explore/accommodation-2.jpg',
+        '/images/explore/accommodation-3.jpg',
+        '/images/explore/accommodation-4.jpg',
+    ],
+    activity: [
+        '/images/explore/activity-1.jpg',
+        '/images/explore/activity-2.jpg',
+        '/images/explore/activity-3.jpg',
+        '/images/explore/activity-4.jpg',
+    ],
+    restaurant: [
+        '/images/explore/restaurant-1.jpg',
+        '/images/explore/restaurant-2.jpg',
+        '/images/explore/restaurant-3.jpg',
+        '/images/explore/restaurant-4.jpg',
+    ],
+    vehicle: [
+        '/images/explore/vehicle-1.jpg',
+        '/images/explore/vehicle-2.jpg',
+        '/images/explore/vehicle-3.jpg',
+        '/images/explore/vehicle-4.jpg',
+    ],
+};
+
+function recommendationImage(rec: ListingRecommendation): string {
+    if (rec.image) {
+        return rec.image;
+    }
+
+    const fallbacks = CATEGORY_IMAGES[rec.type];
+
+    return fallbacks[rec.id % fallbacks.length];
+}
 
 const emit = defineEmits<{
     (e: 'plan-ready', plan: ItineraryPlan): void;
     (e: 'search-intent', intent: SearchIntent): void;
 }>();
 
-const page = usePage();
 const { t, tm, locale } = useI18n();
 
 const thinkingStatuses = computed(
@@ -45,6 +81,69 @@ const chatPanel = ref<HTMLDivElement | null>(null);
 const chatInput = ref<HTMLInputElement | null>(null);
 let thinkingTimer: ReturnType<typeof setInterval> | null = null;
 
+// Web Speech API today; once the Capacitor wrapper lands this is the spot to
+// swap in a native STT plugin (the WebView implementation is unreliable on
+// iOS) — everything else just consumes `inputText`, so the swap is isolated
+// here.
+const SpeechRecognitionCtor =
+    typeof window !== 'undefined'
+        ? (window.SpeechRecognition ?? window.webkitSpeechRecognition)
+        : undefined;
+const isVoiceSupported = !!SpeechRecognitionCtor;
+const isListening = ref(false);
+let recognition: InstanceType<
+    NonNullable<typeof SpeechRecognitionCtor>
+> | null = null;
+
+const speechLocales: Record<string, string> = {
+    en: 'en-US',
+    de: 'de-DE',
+    nl: 'nl-NL',
+    fr: 'fr-FR',
+    es: 'es-ES',
+};
+
+function stopListening() {
+    isListening.value = false;
+    recognition?.stop();
+    recognition = null;
+}
+
+function toggleVoiceInput() {
+    if (!SpeechRecognitionCtor || isTyping.value) {
+        return;
+    }
+
+    if (isListening.value) {
+        stopListening();
+
+        return;
+    }
+
+    recognition = new SpeechRecognitionCtor();
+    recognition.lang = speechLocales[locale.value] ?? 'en-US';
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+        let transcript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+        }
+
+        inputText.value = transcript;
+    };
+    recognition.onend = () => {
+        isListening.value = false;
+    };
+    recognition.onerror = () => {
+        isListening.value = false;
+    };
+
+    isListening.value = true;
+    recognition.start();
+}
+
 function startThinking() {
     thinkingIndex.value = 0;
     thinkingTimer = setInterval(() => {
@@ -60,7 +159,10 @@ function stopThinking() {
     }
 }
 
-onUnmounted(stopThinking);
+onUnmounted(() => {
+    stopThinking();
+    stopListening();
+});
 
 function syncScroll() {
     if (chatLog.value) {
@@ -200,6 +302,7 @@ async function retryLastMessage() {
 </script>
 
 <template>
+    <SiteHeader />
     <div id="kaia-hero" class="hero">
         <svg
             class="hero-bg"
@@ -243,22 +346,6 @@ async function retryLastMessage() {
             </g>
         </svg>
         <div class="hero-content">
-            <div class="hero-nav">
-                <div class="brand">
-                    <img :src="logoLight" alt="NamibWay" class="brand-logo" />
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px">
-                    <CurrencySwitcher />
-                    <LocaleSwitcher />
-                    <Link v-if="page.props.auth?.user" :href="dashboard()">{{
-                        t('nav.dashboard')
-                    }}</Link>
-                    <template v-else>
-                        <Link :href="login()">{{ t('nav.login') }}</Link>
-                        <Link :href="register()">{{ t('nav.register') }}</Link>
-                    </template>
-                </div>
-            </div>
             <div class="hero-head">
                 <h1>{{ t('hero.title') }}</h1>
                 <p>{{ t('hero.subtitle') }}</p>
@@ -288,8 +375,7 @@ async function retryLastMessage() {
                             class="chat-rec-card"
                         >
                             <img
-                                v-if="msg.recommendation.image"
-                                :src="msg.recommendation.image"
+                                :src="recommendationImage(msg.recommendation)"
                                 :alt="msg.recommendation.name"
                                 class="chat-rec-img"
                             />
@@ -343,11 +429,49 @@ async function retryLastMessage() {
                         ref="chatInput"
                         v-model="inputText"
                         type="text"
-                        :placeholder="t('chat.placeholder')"
+                        :placeholder="
+                            isListening
+                                ? t('chat.listening')
+                                : t('chat.placeholder')
+                        "
                         autocomplete="off"
                         :readonly="isTyping"
                         @keydown.enter="sendMessage"
                     />
+                    <button
+                        v-if="isVoiceSupported"
+                        type="button"
+                        class="chat-mic-btn"
+                        :class="{ listening: isListening }"
+                        :disabled="isTyping"
+                        :aria-label="
+                            isListening
+                                ? t('chat.stopListening')
+                                : t('chat.voiceInput')
+                        "
+                        :title="
+                            isListening
+                                ? t('chat.stopListening')
+                                : t('chat.voiceInput')
+                        "
+                        @click="toggleVoiceInput"
+                    >
+                        <svg
+                            viewBox="0 0 24 24"
+                            width="18"
+                            height="18"
+                            aria-hidden="true"
+                        >
+                            <path
+                                fill="currentColor"
+                                d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"
+                            />
+                            <path
+                                fill="currentColor"
+                                d="M19 11a1 1 0 0 0-2 0 5 5 0 0 1-10 0 1 1 0 0 0-2 0 7 7 0 0 0 6 6.92V20H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2h-2v-2.08A7 7 0 0 0 19 11Z"
+                            />
+                        </svg>
+                    </button>
                     <button
                         :disabled="isTyping || !inputText.trim()"
                         @click="sendMessage"

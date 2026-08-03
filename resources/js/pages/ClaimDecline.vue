@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
+import logoDark from '../../images/logo-dark.png';
+import logoLight from '../../images/logo-light.png';
 
 interface Props {
     partner: {
@@ -33,11 +35,17 @@ function decline() {
         <div
             class="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm dark:bg-stone-800"
         >
-            <div class="mb-8 text-center">
-                <span
-                    class="text-xl font-semibold tracking-tight text-stone-900 dark:text-white"
-                    >NamibWay</span
-                >
+            <div class="mb-8 flex justify-center">
+                <img
+                    :src="logoDark"
+                    alt="NamibWay"
+                    class="h-10 w-auto dark:hidden"
+                />
+                <img
+                    :src="logoLight"
+                    alt="NamibWay"
+                    class="hidden h-10 w-auto dark:block"
+                />
             </div>
 
             <template v-if="partner.claimed_at">

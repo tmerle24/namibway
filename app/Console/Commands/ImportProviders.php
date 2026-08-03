@@ -107,7 +107,8 @@ class ImportProviders extends Command
 
             $fields = [
                 'type' => $type,
-                'region' => $r['region'] ?? null,
+                // $r['region'] (free text) has no reliable match against a City —
+                // city_id is left for an admin to assign manually after import.
                 'description' => $this->localise($r['description'] ?? null),
                 'latitude' => $r['latitude'] ?? null,
                 'longitude' => $r['longitude'] ?? null,
@@ -187,7 +188,8 @@ class ImportProviders extends Command
 
                 $fields = [
                     'type' => $type,
-                    'region' => $r['region'] ?? null,
+                    // $r['region'] (free text) has no reliable match against a City —
+                    // city_id is left for an admin to assign manually after import.
                     'latitude' => $r['latitude'] ?? null,
                     'longitude' => $r['longitude'] ?? null,
                     'website' => $this->cleanUrl($r['website'] ?? null),

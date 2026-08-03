@@ -1,15 +1,21 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
 import { Form, Head, Link, router } from '@inertiajs/vue3';
-import { Globe, Pencil } from '@lucide/vue';
+import { Globe, Pencil, UserPlus } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
+import ExploreMap from '@/components/home/ExploreMap.vue';
+import type { ExploreMapMarker } from '@/components/home/ExploreMap.vue';
+import MobileFooterNav from '@/components/home/MobileFooterNav.vue';
 import ImageLightbox from '@/components/ImageLightbox.vue';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
+import NavMoreMenu from '@/components/NavMoreMenu.vue';
 import PublishConsentModal from '@/components/PublishConsentModal.vue';
+import SiteFooter from '@/components/SiteFooter.vue';
+import SiteHeader from '@/components/SiteHeader.vue';
 import { formatPrice } from '@/lib/currency';
 import { home } from '@/routes';
 import inquiries from '@/routes/listings/inquiries';
@@ -65,11 +71,18 @@ interface Listing {
     pending_image: string | null;
     pending_gallery: string[];
     region: string | null;
+    address: string | null;
+    phone: string | null;
+    phone_href: string | null;
+    website: string | null;
+    latitude: number | null;
+    longitude: number | null;
     price_from: string | null;
     price_currency: string;
     rating: number | null;
     rating_count: number | null;
     accepts_inquiries: boolean;
+    contact_person: string | null;
     partner: Partner | null;
 }
 
@@ -88,6 +101,7 @@ const props = defineProps<{
     can_publish?: boolean;
     can_approve_photos?: boolean;
     preview_token?: string | null;
+    claim_url?: string | null;
 }>();
 
 const showPublishModal = ref(false);
@@ -142,6 +156,67 @@ const heroImage = computed(() => {
 
     return fallbacks[props.listing.id % fallbacks.length];
 });
+
+// Carries forward whatever explore filters were active when this listing
+// was opened (see ExploreSection.vue's listingUrl()), so "back" restores
+// the previous search instead of dropping the user on a blank homepage.
+const FORWARDED_FILTER_KEYS = [
+    'type',
+    'region',
+    'budget',
+    'keyword',
+    'min_rating',
+    'sort',
+];
+
+const backHref = computed(() => {
+    const forwarded = new URLSearchParams(window.location.search);
+    const query: Record<string, string> = {};
+
+    for (const key of FORWARDED_FILTER_KEYS) {
+        const value = forwarded.get(key);
+
+        if (value) {
+            query[key] = value;
+        }
+    }
+
+    return Object.keys(query).length > 0 ? home({ query }) : home();
+});
+
+const hasLocation = computed(
+    () => props.listing.latitude !== null && props.listing.longitude !== null,
+);
+
+const locationMarkers = computed<ExploreMapMarker[]>(() => {
+    if (props.listing.latitude === null || props.listing.longitude === null) {
+        return [];
+    }
+
+    return [
+        {
+            title: props.listing.name,
+            typeLabel: t(`listing.types.${props.listing.type}`),
+            image: heroImage.value,
+            slug: null,
+            address: props.listing.address,
+            latitude: props.listing.latitude,
+            longitude: props.listing.longitude,
+        },
+    ];
+});
+
+const directionsUrl = computed(() => {
+    if (props.listing.latitude === null || props.listing.longitude === null) {
+        return null;
+    }
+
+    return `https://www.google.com/maps/dir/?api=1&destination=${props.listing.latitude},${props.listing.longitude}`;
+});
+
+const websiteUrl = computed(
+    () => props.listing.partner?.website || props.listing.website,
+);
 </script>
 
 <template>
@@ -160,6 +235,12 @@ const heroImage = computed(() => {
             :edit-url="`/admin/listings/${props.listing.id}/edit`"
             :listing-slug="props.listing.slug"
         />
+
+        <!-- Touch devices only — the desktop topbar below (.detail-topbar)
+             stays exactly as-is; see kaia-home.css. -->
+        <div class="detail-mobile-header">
+            <SiteHeader />
+        </div>
 
         <div v-if="props.is_preview" class="draft-banner">
             <span>Draft preview</span>
@@ -309,11 +390,24 @@ const heroImage = computed(() => {
                         Publish
                     </button>
                 </template>
-                <CurrencySwitcher />
+                <a
+                    v-if="props.claim_url"
+                    :href="props.claim_url"
+                    class="owner-header-link owner-header-link--claim"
+                >
+                    <UserPlus :size="14" />
+                    Claim account
+                </a>
+                <Link
+                    v-if="!props.claim_url"
+                    :href="backHref"
+                    class="detail-back"
+                    >{{ t('listing.backToHome') }}</Link
+                >
                 <LocaleSwitcher />
-                <Link :href="home()" class="detail-back">{{
-                    t('listing.backToHome')
-                }}</Link>
+                <NavMoreMenu>
+                    <CurrencySwitcher variant="full" />
+                </NavMoreMenu>
             </div>
         </div>
 
@@ -322,11 +416,29 @@ const heroImage = computed(() => {
             :style="{ backgroundImage: `url(${heroImage})` }"
         >
             <div class="detail-hero-overlay">
-                <span class="idea-tag">{{
-                    t(`listing.types.${props.listing.type}`)
-                }}</span>
-                <h1>{{ props.listing.name }}</h1>
-                <p v-if="props.listing.region">{{ props.listing.region }}</p>
+                <Link
+                    :href="home({ query: { type: props.listing.type } })"
+                    class="idea-tag"
+                    >{{ t(`listing.types.${props.listing.type}`) }}</Link
+                >
+                <div class="detail-title-row">
+                    <h1>{{ props.listing.name }}</h1>
+                    <Link
+                        v-if="!props.claim_url"
+                        :href="backHref"
+                        class="detail-back detail-title-back"
+                        >{{ t('listing.backToHome') }}</Link
+                    >
+                </div>
+                <p v-if="props.listing.region">
+                    <Link
+                        :href="
+                            home({ query: { region: props.listing.region } })
+                        "
+                        class="detail-region-link"
+                        >{{ props.listing.region }}</Link
+                    >
+                </p>
                 <p v-if="props.listing.rating !== null" class="detail-rating">
                     ★ {{ props.listing.rating.toFixed(1) }}
                     <span v-if="props.listing.rating_count">
@@ -399,9 +511,12 @@ const heroImage = computed(() => {
                 <div>
                     <div v-if="props.listing.description" class="section-head">
                         <h2>{{ t('listing.about') }}</h2>
-                        <p class="listing-description">
-                            {{ props.listing.description }}
-                        </p>
+                        <!-- description is sanitized server-side on every write path — see
+                             Listing::setDescriptionAttribute() — before it ever reaches here. -->
+                        <div
+                            class="listing-description"
+                            v-html="props.listing.description"
+                        ></div>
                     </div>
 
                     <div
@@ -419,28 +534,50 @@ const heroImage = computed(() => {
                         </ul>
                     </div>
 
-                    <div v-if="props.listing.partner" class="contact-card">
+                    <div
+                        v-if="
+                            props.listing.partner ||
+                            props.listing.address ||
+                            props.listing.phone ||
+                            websiteUrl
+                        "
+                        class="contact-card"
+                    >
                         <h3>{{ t('listing.contact.title') }}</h3>
-                        <p class="contact-partner-name">
+                        <p
+                            v-if="props.listing.partner"
+                            class="contact-partner-name"
+                        >
                             {{ props.listing.partner.name }}
+                        </p>
+                        <p v-if="props.listing.address" class="contact-address">
+                            {{ props.listing.address }}
                         </p>
                         <div class="contact-links">
                             <a
-                                v-if="props.listing.partner.website"
-                                :href="props.listing.partner.website"
+                                v-if="props.listing.phone"
+                                :href="
+                                    props.listing.phone_href ??
+                                    `tel:${props.listing.phone}`
+                                "
+                                >{{ props.listing.phone }}</a
+                            >
+                            <a
+                                v-if="websiteUrl"
+                                :href="websiteUrl"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 >{{ t('listing.contact.website') }}</a
                             >
                             <a
-                                v-if="props.listing.partner.instagram"
+                                v-if="props.listing.partner?.instagram"
                                 :href="props.listing.partner.instagram"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 >{{ t('listing.contact.instagram') }}</a
                             >
                             <a
-                                v-if="props.listing.partner.facebook"
+                                v-if="props.listing.partner?.facebook"
                                 :href="props.listing.partner.facebook"
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -448,11 +585,37 @@ const heroImage = computed(() => {
                             >
                         </div>
                     </div>
+
+                    <div v-if="hasLocation" class="location-card">
+                        <h3>{{ t('listing.location.title') }}</h3>
+                        <ExploreMap
+                            :markers="locationMarkers"
+                            :map-id="`listing-map-${props.listing.id}`"
+                        />
+                        <a
+                            v-if="directionsUrl"
+                            :href="directionsUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="detail-directions-link"
+                            >{{ t('listing.location.directions') }}</a
+                        >
+                    </div>
                 </div>
 
                 <div class="inquiry-panel">
                     <template v-if="props.listing.accepts_inquiries">
                         <h3>{{ t('listing.inquiry.title') }}</h3>
+                        <p
+                            v-if="props.listing.contact_person"
+                            class="inquiry-contact-person"
+                        >
+                            {{
+                                t('listing.inquiry.contactPerson', {
+                                    name: props.listing.contact_person,
+                                })
+                            }}
+                        </p>
                         <p class="inquiry-subtitle">
                             {{
                                 props.listing.partner
@@ -661,10 +824,8 @@ const heroImage = computed(() => {
             </div>
         </section>
 
-        <footer>
-            <img :src="logoDark" alt="NamibWay" class="footer-logo" />
-            <p>{{ t('footer.tagline') }}</p>
-        </footer>
+        <SiteFooter />
+        <MobileFooterNav />
     </div>
 </template>
 
@@ -677,6 +838,25 @@ const heroImage = computed(() => {
     color: #8a8171;
 }
 
+.contact-address {
+    margin: -4px 0 12px;
+    color: var(--ink-light, #5c5347);
+    font-size: 14px;
+}
+
+.location-card :deep(.explore-map-wrapper) {
+    margin: 0;
+}
+
+.detail-directions-link {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--rust, #b45309);
+    text-decoration: underline;
+}
+
 .gallery-thumb-btn {
     padding: 0;
     border: none;
@@ -686,11 +866,32 @@ const heroImage = computed(() => {
 }
 
 .listing-description {
-    /* AI-generated descriptions come as multiple paragraphs separated by blank
-       lines — pre-line preserves those line breaks (still wraps normally,
-       still collapses runs of spaces) instead of the browser default of
-       flattening every newline into one continuous block of text. */
+    /* Plain-text descriptions (AI-generated, Wetu import, partner-entered) come as
+       multiple paragraphs separated by blank lines with no markup — pre-line
+       preserves those line breaks (still wraps normally, still collapses runs of
+       spaces) instead of the browser default of flattening every newline into one
+       continuous block of text. Rich-text descriptions from the admin editor bring
+       their own <p> tags, which pre-line leaves alone. */
     white-space: pre-line;
+}
+
+.listing-description :deep(p) {
+    margin: 0 0 1em;
+}
+
+.listing-description :deep(p:last-child) {
+    margin-bottom: 0;
+}
+
+.listing-description :deep(ul),
+.listing-description :deep(ol) {
+    margin: 0 0 1em;
+    padding-left: 1.25em;
+}
+
+.listing-description :deep(a) {
+    color: inherit;
+    text-decoration: underline;
 }
 
 .draft-banner {
@@ -786,5 +987,15 @@ const heroImage = computed(() => {
 
 .owner-header-link--publish:hover {
     background: var(--rust-dark, #92400e);
+}
+
+.owner-header-link--claim {
+    background: transparent;
+    color: var(--rust, #b45309);
+    border: 1px solid var(--rust, #b45309);
+}
+
+.owner-header-link--claim:hover {
+    background: #fdf6ec;
 }
 </style>

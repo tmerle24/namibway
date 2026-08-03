@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Enums\ListingType;
 use App\Filament\Resources\EnrichmentResource\Pages;
 use App\Filament\Support\PipelineImageResolver;
+use App\Http\Controllers\Controller;
 use App\Jobs\EnrichListingJob;
 use App\Models\EnrichmentJob;
 use App\Models\Listing;
@@ -43,7 +44,11 @@ class EnrichmentResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-sparkles';
 
+    protected static ?string $navigationGroup = 'Content';
+
     protected static ?string $modelLabel = 'listing';
+
+    protected static ?string $pluralModelLabel = 'Data Enrichment - Listings';
 
     protected static ?int $navigationSort = 0;
 
@@ -119,12 +124,20 @@ class EnrichmentResource extends Resource
                                 ->label('NTB number')
                                 ->extraInputAttributes(fn (): array => self::focusAttributes('ntb_number')),
                             Forms\Components\Select::make('type')->label('Category')->options(ListingType::class)->required(),
-                            Forms\Components\TextInput::make('region')
-                                ->extraInputAttributes(fn (): array => self::focusAttributes('region')),
+                            Forms\Components\Select::make('city_id')
+                                ->label('City')
+                                ->relationship('city', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('city_id')),
                         ])->columns(2),
 
                     Forms\Components\Tabs\Tab::make('Contact')
                         ->schema([
+                            Forms\Components\TextInput::make('contact_person')
+                                ->label('Contact person')
+                                ->helperText('Shown as the heading on the inquiry form on the listing\'s public page')
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('contact_person')),
                             Forms\Components\TextInput::make('phone')
                                 ->extraInputAttributes(fn (): array => self::focusAttributes('phone')),
                             Forms\Components\TextInput::make('contact_email')
@@ -175,9 +188,46 @@ class EnrichmentResource extends Resource
                             // WebsiteContentExtractor::downloadPhoto). getUploadedFileUsing() is
                             // also required on top of that: those images are stored as full R2
                             // URLs, not disk-relative paths, and FileUpload's default resolver has
-                            // no handling for that — see PipelineImageResolver.
-                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor()->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
-                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->disk('r2')->directory('listings/gallery')->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
+                            // no handling for that — see PipelineImageResolver. fetchFileInformation(false)
+                            // is required too: FileUpload's own state hydration runs
+                            // getDisk()->exists($file) on the raw stored value BEFORE
+                            // getUploadedFileUsing() ever runs, so URLs/foreign-disk paths get
+                            // silently dropped from the field's state no matter what the resolver
+                            // does — disabling it is the only way to let the resolver see them.
+                            //
+                            // FilePond's own in-panel preview rasterizes to a small internal
+                            // canvas and CSS-stretches it to fill the panel — intrinsic to its
+                            // crop/zoom-capable renderer, not something any Filament FileUpload
+                            // option controls. These Placeholders render the stored file directly
+                            // so the tab shows the real quality.
+                            Forms\Components\Placeholder::make('image_preview')
+                                ->label('Current hero image')
+                                ->content(function (?Listing $record): HtmlString {
+                                    if (! $record?->image) {
+                                        return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">No image set yet.</span>');
+                                    }
+
+                                    $url = e(Controller::resolveMediaUrl($record->image));
+
+                                    return new HtmlString("<img src=\"{$url}\" style=\"max-width: 100%; max-height: 420px; border-radius: 0.5rem; object-fit: cover;\" />");
+                                }),
+                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor()->openable()->panelAspectRatio('16:9')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
+                            Forms\Components\Placeholder::make('gallery_preview')
+                                ->label('Current gallery')
+                                ->content(function (?Listing $record): HtmlString {
+                                    $images = $record->gallery ?? [];
+
+                                    if (empty($images)) {
+                                        return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">No gallery images yet.</span>');
+                                    }
+
+                                    $thumbs = collect($images)
+                                        ->map(fn (string $path) => '<img src="'.e(Controller::resolveMediaUrl($path)).'" style="height: 120px; border-radius: 0.5rem; object-fit: cover;" />')
+                                        ->implode('');
+
+                                    return new HtmlString('<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">'.$thumbs.'</div>');
+                                }),
+                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->panelLayout('grid')->itemPanelAspectRatio(1)->imageEditor()->openable()->disk('r2')->directory('listings/gallery')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
                         ]),
 
                     Forms\Components\Tabs\Tab::make('Metadata')
@@ -408,9 +458,12 @@ class EnrichmentResource extends Resource
         // (e.g. the website icon) jumps straight to it instead of always landing on Basic.
         // Row clicks that don't land on a bound column (recordAction('edit') below) still
         // default to $editBasic.
-        $editBasic = self::editAction(self::TAB_BASIC, 'edit', 'name');
+        $editBasic = self::editAction(self::TAB_BASIC, 'edit', 'name')
+            ->icon('heroicon-o-pencil-square')
+            ->label('')
+            ->tooltip('Edit — open the full edit form for this listing');
         $editNtbNumber = self::editAction(self::TAB_BASIC, 'edit_ntb_number', 'ntb_number');
-        $editRegion = self::editAction(self::TAB_BASIC, 'edit_region', 'region');
+        $editRegion = self::editAction(self::TAB_BASIC, 'edit_region', 'city_id');
         $editWebsite = self::editAction(self::TAB_CONTACT, 'edit_website', 'website');
         $editEmail = self::editAction(self::TAB_CONTACT, 'edit_email', 'contact_email');
         $editPhone = self::editAction(self::TAB_CONTACT, 'edit_phone', 'phone');
@@ -422,6 +475,11 @@ class EnrichmentResource extends Resource
 
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->wrap()
+                    ->limit(40)
+                    ->action($editBasic),
                 Tables\Columns\TextColumn::make('enrichment_status')
                     ->label('Status')
                     ->badge()
@@ -431,35 +489,21 @@ class EnrichmentResource extends Resource
                         'partial' => 'warning',
                         default => 'danger',
                     }),
-                Tables\Columns\TextColumn::make('enrichment_score')
-                    ->label('Completion')
-                    ->sortable()
-                    ->action($editMetadata)
-                    ->formatStateUsing(fn (int $state): string => "{$state}%")
-                    ->color(fn (int $state): string => match (true) {
-                        $state >= 90 => 'success',
-                        $state >= 60 => 'warning',
-                        default => 'danger',
-                    }),
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->wrap()
-                    ->limit(40)
-                    ->action($editBasic),
-                Tables\Columns\TextColumn::make('ntb_number')
-                    ->label('NTB #')
-                    ->searchable()
-                    ->action($editNtbNumber)
-                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('type')
                     ->label('Category')
                     ->badge()
                     ->action($editBasic)
                     ->sortable(),
-                Tables\Columns\TextColumn::make('region')
+                Tables\Columns\TextColumn::make('city.name')
+                    ->label('City')
                     ->searchable()
                     ->action($editRegion)
                     ->sortable(),
+                Tables\Columns\TextColumn::make('ntb_number')
+                    ->label('NTB #')
+                    ->searchable()
+                    ->action($editNtbNumber)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\IconColumn::make('has_website')
                     ->label('Website')
                     ->boolean()
@@ -598,6 +642,16 @@ class EnrichmentResource extends Resource
                     ->sortable()
                     ->action($editMetadata)
                     ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('enrichment_score')
+                    ->label('Completion')
+                    ->sortable()
+                    ->action($editMetadata)
+                    ->formatStateUsing(fn (int $state): string => "{$state}%")
+                    ->color(fn (int $state): string => match (true) {
+                        $state >= 90 => 'success',
+                        $state >= 60 => 'warning',
+                        default => 'danger',
+                    }),
             ])
             ->modifyQueryUsing(fn (Builder $query) => $query->with('latestEnrichmentJob'))
             ->poll('10s')
@@ -605,8 +659,9 @@ class EnrichmentResource extends Resource
             ->defaultSort('enrichment_score', 'asc')
             ->filters([
                 Tables\Filters\SelectFilter::make('type')->label('Category')->options(ListingType::class),
-                Tables\Filters\SelectFilter::make('region')
-                    ->options(fn (): array => Listing::query()->whereNotNull('region')->distinct()->orderBy('region')->pluck('region', 'region')->all()),
+                Tables\Filters\SelectFilter::make('city_id')
+                    ->label('City')
+                    ->relationship('city', 'name'),
                 Tables\Filters\SelectFilter::make('completion')
                     ->label('Completion %')
                     ->options(['green' => '90–100% (green)', 'yellow' => '60–89% (yellow)', 'red' => '0–59% (red)'])
@@ -677,6 +732,41 @@ class EnrichmentResource extends Resource
                     ),
             ])
             ->actions([
+                $editBasic,
+                Tables\Actions\Action::make('enrich')
+                    ->label('')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('warning')
+                    ->tooltip('Enrich — run automated enrichment (free: website, scrape, images; optional paid: Google Places, Claude AI)')
+                    // Google Places and Claude are both metered/paid APIs — OpenStreetMap
+                    // (GPS/address) and the listing's own website (description, contact,
+                    // photos) are free and always used. These two checkboxes are the only
+                    // way this run ever spends money, hence unchecked by default.
+                    ->form([
+                        Forms\Components\Checkbox::make('use_google_places')
+                            ->label('Use Google Places (paid — GPS, address, phone, photo fallback)')
+                            ->default(false),
+                        Forms\Components\Checkbox::make('use_claude')
+                            ->label('Use Claude AI (paid — structured data extraction & description text)')
+                            ->default(false),
+                    ])
+                    ->modalDescription('OpenStreetMap and the listing\'s own website are always used and cost nothing. Google Places and Claude are only queried if checked below.')
+                    ->action(function (Listing $record, array $data): void {
+                        $steps = ['website', 'scrape', 'images'];
+
+                        if ($data['use_claude']) {
+                            $steps[] = 'ai_extract';
+                            $steps[] = 'description';
+                        }
+
+                        EnrichListingJob::enqueue($record->id, $steps, (bool) $data['use_google_places']);
+
+                        Notification::make()
+                            ->title('Enrichment queued')
+                            ->body('Running in the background — the "Last run" column and Log tab update automatically within ~10s of finishing.')
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\Action::make('view_frontend')
                     ->label('')
                     ->icon('heroicon-o-arrow-top-right-on-square')
@@ -717,44 +807,11 @@ class EnrichmentResource extends Resource
                     ])
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Close'),
-                $editBasic,
-                Tables\Actions\Action::make('enrich')
-                    ->label('Enrich')
-                    ->icon('heroicon-o-sparkles')
-                    ->color('warning')
-                    // Google Places and Claude are both metered/paid APIs — OpenStreetMap
-                    // (GPS/address) and the listing's own website (description, contact,
-                    // photos) are free and always used. These two checkboxes are the only
-                    // way this run ever spends money, hence unchecked by default.
-                    ->form([
-                        Forms\Components\Checkbox::make('use_google_places')
-                            ->label('Use Google Places (paid — GPS, address, phone, photo fallback)')
-                            ->default(false),
-                        Forms\Components\Checkbox::make('use_claude')
-                            ->label('Use Claude AI (paid — structured data extraction & description text)')
-                            ->default(false),
-                    ])
-                    ->modalDescription('OpenStreetMap and the listing\'s own website are always used and cost nothing. Google Places and Claude are only queried if checked below.')
-                    ->action(function (Listing $record, array $data): void {
-                        $steps = ['website', 'scrape', 'images'];
-
-                        if ($data['use_claude']) {
-                            $steps[] = 'ai_extract';
-                            $steps[] = 'description';
-                        }
-
-                        EnrichListingJob::enqueue($record->id, $steps, (bool) $data['use_google_places']);
-
-                        Notification::make()
-                            ->title('Enrichment queued')
-                            ->body('Running in the background — the "Last run" column and Log tab update automatically within ~10s of finishing.')
-                            ->success()
-                            ->send();
-                    }),
                 Tables\Actions\Action::make('cancel_enrichment')
-                    ->label('Cancel')
+                    ->label('')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
+                    ->tooltip('Cancel — mark this stuck/running enrichment job as cancelled so you can edit the listing again')
                     // Visible for queued/running/stuck alike — not just isEnriching() (fresh
                     // only), otherwise the button disappears exactly when a run goes stale and
                     // "Cancel" is what the badge/tooltip tell the admin to use.

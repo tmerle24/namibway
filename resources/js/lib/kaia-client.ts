@@ -38,6 +38,7 @@ export async function fetchRegions(): Promise<string[]> {
 export interface RegionCoords {
     lat: number;
     lng: number;
+    image?: string | null;
 }
 
 // Static fallback so the map renders even when DB has no lat/lng rows yet.
@@ -166,6 +167,41 @@ export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
     return { token, url: `${window.location.origin}/trip/${token}` };
 }
 
+export async function loadPlan(token: string): Promise<ItineraryPlan> {
+    const response = await fetch(`/kaia/plans/${token}`, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to load plan');
+    }
+
+    const data = await response.json();
+
+    return data.variant as ItineraryPlan;
+}
+
+export async function updatePlan(
+    token: string,
+    plan: ItineraryPlan,
+): Promise<void> {
+    const response = await fetch(`/kaia/plans/${token}`, {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify({ variant: plan }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to update plan');
+    }
+}
+
 export async function createTrip(
     details: GuestDetails,
     variantName: string,
@@ -264,6 +300,46 @@ export async function sendFeedback(payload: FeedbackPayload): Promise<void> {
     if (!response.ok) {
         throw new Error('Failed to send feedback.');
     }
+}
+
+export interface RegeneratePlanParams {
+    nights: number;
+    travel_period: string;
+    interests: string;
+    budget_tier: string;
+    adults: number;
+    children_under_13: number;
+    children_ages: string | null;
+    vehicle_type: string;
+    start_location: string;
+    end_location: string;
+}
+
+export async function regeneratePlan(
+    params: RegeneratePlanParams,
+): Promise<ItineraryPlan> {
+    const response = await fetch('/kaia/regenerate', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+
+        throw new Error(
+            (data as { error?: string }).error ?? 'Could not update the plan.',
+        );
+    }
+
+    const data = await response.json();
+
+    return data.plan as ItineraryPlan;
 }
 
 export async function sendKaiaMessage(

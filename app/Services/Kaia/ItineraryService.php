@@ -4,7 +4,10 @@ namespace App\Services\Kaia;
 
 use App\Connectors\ConnectorFactory;
 use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
+use App\Http\Controllers\Controller;
 use App\Models\Listing;
+use App\Models\RouteTemplate;
+use App\Models\RouteTemplateStop;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -41,32 +44,112 @@ class ItineraryService
     private const MAX_CANDIDATES_PER_TYPE = 20;
 
     /**
-     * Real one-way driving durations (hours) between the 6 political regions
-     * used on Listing::region, verified via OSRM against a representative
-     * town/waypoint per region (Windhoek, Otjiwarongo/Waterberg, Okaukuejo/
-     * Etosha, Swakopmund, Sesriem, Fish River Canyon area) — not left to the
-     * model's memory (see CLAUDE.md: Claude is not the source of truth for
-     * Namibian driving distances). Keyed alphabetically ("A|B") so lookup
-     * doesn't care about direction.
+     * Real one-way driving durations (hours) between Namibia's 14 political
+     * regions used on Listing::region, verified via OSRM against a
+     * representative town/waypoint per region (Windhoek, Otjiwarongo,
+     * Okaukuejo/Etosha, Swakopmund, Sesriem, Fish River Canyon area, Eenhana,
+     * Outapi, Oshakati, Tsumeb, Rundu, Nkurenkuru, Katima Mulilo, Gobabis) —
+     * not left to the model's memory (see CLAUDE.md: Claude is not the
+     * source of truth for Namibian driving distances). Keyed alphabetically
+     * ("A|B") so lookup doesn't care about direction. The original 6-region
+     * loop's pairs are hand-verified; the 8 later-added northern/eastern
+     * regions are OSRM-only (no current partner content there — see
+     * routingGuidance(), which still only recommends the original loop).
      *
      * @var array<string, float>
      */
     private const DRIVING_HOURS = [
         'Erongo|Hardap' => 4.3,
         'Erongo|Karas' => 10.2,
+        'Erongo|Kavango East' => 9.1,
+        'Erongo|Kavango West' => 8.7,
         'Erongo|Khomas' => 3.9,
         'Erongo|Kunene' => 5.9,
+        'Erongo|Ohangwena' => 9.4,
+        'Erongo|Omaheke' => 6.1,
+        'Erongo|Omusati' => 8.5,
+        'Erongo|Oshana' => 9.0,
+        'Erongo|Oshikoto' => 6.1,
         'Erongo|Otjozondjupa' => 4.1,
+        'Erongo|Zambezi' => 14.5,
         'Hardap|Karas' => 6.7,
+        'Hardap|Kavango East' => 11.6,
+        'Hardap|Kavango West' => 11.2,
         'Hardap|Khomas' => 4.1,
         'Hardap|Kunene' => 8.8,
+        'Hardap|Ohangwena' => 11.9,
+        'Hardap|Omaheke' => 6.0,
+        'Hardap|Omusati' => 12.6,
+        'Hardap|Oshana' => 11.7,
+        'Hardap|Oshikoto' => 8.6,
         'Hardap|Otjozondjupa' => 6.6,
+        'Hardap|Zambezi' => 16.9,
+        'Karas|Kavango East' => 14.8,
+        'Karas|Kavango West' => 14.5,
         'Karas|Khomas' => 7.3,
         'Karas|Kunene' => 12.1,
+        'Karas|Ohangwena' => 15.2,
+        'Karas|Omaheke' => 8.1,
+        'Karas|Omusati' => 15.9,
+        'Karas|Oshana' => 15.0,
+        'Karas|Oshikoto' => 11.9,
         'Karas|Otjozondjupa' => 9.9,
+        'Karas|Zambezi' => 20.2,
+        'Kavango East|Kavango West' => 1.6,
+        'Kavango East|Khomas' => 7.6,
+        'Kavango East|Kunene' => 6.7,
+        'Kavango East|Ohangwena' => 4.2,
+        'Kavango East|Omaheke' => 7.0,
+        'Kavango East|Omusati' => 5.8,
+        'Kavango East|Oshana' => 5.2,
+        'Kavango East|Oshikoto' => 3.5,
+        'Kavango East|Otjozondjupa' => 5.0,
+        'Kavango East|Zambezi' => 5.4,
+        'Kavango West|Khomas' => 7.3,
+        'Kavango West|Kunene' => 6.3,
+        'Kavango West|Ohangwena' => 2.9,
+        'Kavango West|Omaheke' => 7.4,
+        'Kavango West|Omusati' => 4.4,
+        'Kavango West|Oshana' => 3.8,
+        'Kavango West|Oshikoto' => 2.7,
+        'Kavango West|Otjozondjupa' => 4.6,
+        'Kavango West|Zambezi' => 7.0,
         'Khomas|Kunene' => 4.8,
+        'Khomas|Ohangwena' => 7.9,
+        'Khomas|Omaheke' => 2.2,
+        'Khomas|Omusati' => 8.7,
+        'Khomas|Oshana' => 7.7,
+        'Khomas|Oshikoto' => 4.7,
         'Khomas|Otjozondjupa' => 2.7,
+        'Khomas|Zambezi' => 13.0,
+        'Kunene|Ohangwena' => 5.6,
+        'Kunene|Omaheke' => 6.7,
+        'Kunene|Omusati' => 5.9,
+        'Kunene|Oshana' => 5.4,
+        'Kunene|Oshikoto' => 3.7,
         'Kunene|Otjozondjupa' => 2.2,
+        'Kunene|Zambezi' => 12.1,
+        'Ohangwena|Omaheke' => 8.1,
+        'Ohangwena|Omusati' => 1.6,
+        'Ohangwena|Oshana' => 1.1,
+        'Ohangwena|Oshikoto' => 3.5,
+        'Ohangwena|Otjozondjupa' => 5.3,
+        'Ohangwena|Zambezi' => 9.6,
+        'Omaheke|Omusati' => 8.9,
+        'Omaheke|Oshana' => 7.9,
+        'Omaheke|Oshikoto' => 4.9,
+        'Omaheke|Otjozondjupa' => 4.6,
+        'Omaheke|Zambezi' => 12.5,
+        'Omusati|Oshana' => 0.9,
+        'Omusati|Oshikoto' => 4.3,
+        'Omusati|Otjozondjupa' => 6.0,
+        'Omusati|Zambezi' => 11.2,
+        'Oshana|Oshikoto' => 3.3,
+        'Oshana|Otjozondjupa' => 5.1,
+        'Oshana|Zambezi' => 10.6,
+        'Oshikoto|Otjozondjupa' => 2.0,
+        'Oshikoto|Zambezi' => 8.9,
+        'Otjozondjupa|Zambezi' => 10.4,
     ];
 
     /**
@@ -93,7 +176,7 @@ class ItineraryService
      * self-corrects rather than surfacing a one-off glitch to the traveler.
      *
      * @param  array<string, mixed>  $tripParams
-     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string, trip_params: array<string, mixed>}
      */
     public function generate(array $tripParams): array
     {
@@ -124,7 +207,7 @@ class ItineraryService
 
     /**
      * @param  array<string, mixed>  $tripParams
-     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string, trip_params: array<string, mixed>}
      */
     private function generateWithFreshRetry(array $tripParams, ?string $correction = null): array
     {
@@ -141,15 +224,18 @@ class ItineraryService
 
     /**
      * @param  array<string, mixed>  $tripParams
-     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string}
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string, trip_params: array<string, mixed>}
      */
     private function attempt(array $tripParams, ?string $correction = null): array
     {
         $listings = $this->candidateListings($tripParams);
+        $routeTemplates = $this->matchingRouteTemplates($tripParams);
 
         $userContent = 'Trip parameters: '.json_encode($tripParams)
             .PHP_EOL.PHP_EOL.'NamibWay catalog (only use listings from here): '
-            .json_encode($this->toAiCatalog($listings));
+            .json_encode($this->toAiCatalog($listings))
+            .PHP_EOL.PHP_EOL.'Candidate classic routes for this trip (see ROUTE guidance below for how '
+            .'to use these): '.json_encode($routeTemplates);
 
         if ($correction !== null) {
             $userContent .= PHP_EOL.PHP_EOL.'IMPORTANT CORRECTION (from a previous attempt): '.$correction;
@@ -182,6 +268,13 @@ class ItineraryService
                 // re-derive from the model.
                 $plan['start_location'] = $this->stringParam($tripParams, 'start_location', 'Windhoek');
                 $plan['end_location'] = $this->stringParam($tripParams, 'end_location', $plan['start_location']);
+
+                // Same reasoning as start/end above: dates, party size and
+                // travel style were already collected as ground truth during
+                // the interview — echo them straight through instead of
+                // making the frontend parse them back out of trip_summary's
+                // free-text prose.
+                $plan['trip_params'] = $this->extractTripParams($tripParams);
 
                 return $plan;
             }
@@ -243,7 +336,7 @@ class ItineraryService
      */
     private function resolveReferences(array $plan, Collection $listings): array
     {
-        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string, lat: float|null, lng: float|null}> $index */
+        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string, lat: float|null, lng: float|null, image: string|null}> $index */
         $index = [];
 
         foreach ($listings as $listing) {
@@ -257,6 +350,7 @@ class ItineraryService
                 'price_currency' => $listing->price_currency,
                 'lat' => $listing->latitude ? (float) $listing->latitude : null,
                 'lng' => $listing->longitude ? (float) $listing->longitude : null,
+                'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
             ];
         }
 
@@ -265,7 +359,7 @@ class ItineraryService
                 return null;
             }
 
-            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'lat' => null, 'lng' => null];
+            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'lat' => null, 'lng' => null, 'image' => null];
         };
 
         $plan['variants'] = array_map(function (array $variant) use ($resolve, $listings) {
@@ -382,6 +476,7 @@ class ItineraryService
                 'price_currency' => $fallback->price_currency,
                 'lat' => $fallback->latitude ? (float) $fallback->latitude : null,
                 'lng' => $fallback->longitude ? (float) $fallback->longitude : null,
+                'image' => $fallback->image ? Controller::resolveMediaUrl($fallback->image) : null,
             ];
         }
 
@@ -398,12 +493,13 @@ class ItineraryService
      */
     public function alternatives(string $type, ?int $excludeId = null): array
     {
-        $excluded = $excludeId !== null ? Listing::find($excludeId) : null;
+        $excluded = $excludeId !== null ? Listing::with('city.region')->find($excludeId) : null;
 
         $pool = Listing::query()
             ->where('is_published', true)
             ->where('type', $type)
             ->when($excludeId !== null, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->with('city.region')
             ->get();
 
         if ($pool->isEmpty()) {
@@ -456,9 +552,9 @@ class ItineraryService
      * place rather than breaking itinerary generation over a flaky external
      * API or a plan the AI left too vague to compute exact stay dates for.
      *
-     * @param  array{trip_summary: string, variants: array<int, array<string, mixed>>}  $plan
+     * @param  array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string, trip_params: array<string, mixed>}  $plan
      * @param  array<string, mixed>  $tripParams
-     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>}
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>, start_location: string, end_location: string, trip_params: array<string, mixed>}
      */
     private function applyAvailabilityChecks(array $plan, array $tripParams): array
     {
@@ -504,7 +600,7 @@ class ItineraryService
                 continue;
             }
 
-            $listing = Listing::with('partner')->find($listingId);
+            $listing = Listing::with('partner')->find((int) $listingId);
 
             if ($listing === null || $listing->partner === null) {
                 continue;
@@ -659,7 +755,7 @@ class ItineraryService
     }
 
     /**
-     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, lat: float|null, lng: float|null}|null
+     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, lat: float|null, lng: float|null, image: string|null}|null
      */
     private function toAccommodationReference(?Listing $listing): ?array
     {
@@ -676,6 +772,7 @@ class ItineraryService
             'price_currency' => $listing->price_currency,
             'lat' => $listing->latitude ? (float) $listing->latitude : null,
             'lng' => $listing->longitude ? (float) $listing->longitude : null,
+            'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
         ];
     }
 
@@ -695,9 +792,18 @@ class ItineraryService
 
             {$routeGuidance}
 
-            Build exactly 2 variants of differing budget/pace where the catalog allows it, otherwise 1 is
-            fine — both variants must follow the same ROUTE instructions above; direction is handled
-            separately, outside this generation step.
+            CLASSIC ROUTES: the trip data includes a "Candidate classic routes" list. If it is non-empty,
+            pick the ONE template that best matches the traveler's interests (compare against each
+            template's trip_type/notes/stop highlights) and build the route by visiting its stops in the
+            given order — do not reorder or skip a stop. Allocate nights to each stop within that stop's
+            min_nights/max_nights range so the stops' nights sum to the trip's total night count (the
+            Windhoek start/end days from the ROUTE guidance above are separate from and in addition to the
+            stops). This takes priority over freely inventing your own route. If the list is empty, ignore
+            this paragraph and follow the ROUTE guidance above instead.
+
+            Build exactly 1 variant — a single, focused itinerary that best fits the trip parameters. (A
+            future version of this product may offer alternative variants again; for now, put all your
+            effort into one excellent plan rather than splitting it across several.)
 
             For each day's "location" field, use the listing's exact "region" value — e.g. "Khomas",
             "Erongo", "Hardap", "Kunene", "Otjozondjupa", "Karas". Never use a park or tourist-area name
@@ -766,16 +872,22 @@ class ItineraryService
 
         $loopGuidance = match ($bucket) {
             'short' => 'Keep it simple for a short trip: out from Khomas (Windhoek) to Kunene (Etosha '
-                .'safari) and back — do not try to cover the whole country.',
-            'medium' => 'Follow the classic Namibia loop: Khomas (Windhoek) north toward Kunene (Etosha '
-                .'safari), optionally stopping a night in Otjozondjupa (Waterberg) on the way up or back '
-                .'if there is time for it (it is a nice-to-have, not mandatory), west to Erongo '
-                .'(Damaraland / Spitzkoppe / Swakopmund coast), south to Hardap (Sossusvlei / Sesriem / '
-                .'Solitaire dunes), then back to Khomas (Windhoek).',
+                .'safari) and back — do not try to cover the whole country. Regions to use: Khomas, '
+                .'Otjozondjupa, Kunene only. Do NOT use Karas (Luderitz / Fish River Canyon) or go all '
+                .'the way to Erongo/Hardap — there is not enough time to reach them and drive back safely.',
+            'medium' => $this->mediumLoopGuidance($nights),
+            // Every DRIVING_HOURS pair touching Karas exceeds MAX_DRIVING_HOURS
+            // (closest is Hardap|Karas at 6.7h) — it cannot be reached from or
+            // returned to any of the other 5 regions within the daily limit, so
+            // it is never safe to route there regardless of trip length. Depth,
+            // not breadth, is what extra nights on a long trip should buy.
             default => 'Follow the classic Namibia loop (Khomas -> optionally Otjozondjupa -> Kunene -> '
-                .'Erongo -> Hardap -> Khomas) but extend it for the extra nights: add more time in Erongo '
-                .'for the Skeleton Coast, and extend south into Karas (Luderitz / Fish River Canyon) '
-                .'before looping back.',
+                .'Erongo -> Hardap -> Khomas) but extend it for the extra nights by going deeper, not '
+                .'wider: more time in Kunene for Etosha, more time in Erongo for the Skeleton Coast and '
+                .'Damaraland, more time in Hardap for Sossusvlei and Naukluft. Regions to use: Khomas, '
+                .'Otjozondjupa, Kunene, Erongo, Hardap only. Do NOT use Karas (Luderitz / Fish River '
+                .'Canyon) — it cannot be reached from and returned to this loop within the daily '
+                .'driving-time limit, no matter how many nights the trip has.',
         };
 
         $safety = $this->drivingSafetyGuidance();
@@ -802,6 +914,46 @@ class ItineraryService
             ."loop back to \"{$start}\". Use this as a guide for the middle of the trip: {$loopGuidance} "
             ."— but drop the \"back to Khomas\" leg and finish in whichever region contains \"{$end}\" "
             ."instead. Never jump back and forth between distant regions.\n\n{$safety}";
+    }
+
+    /**
+     * Fallback used only when matchingRouteTemplates() has nothing for this
+     * night count (sparse content, or before any templates existed). The
+     * classic loop's regions (Khomas/Otjozondjupa/Kunene/Erongo/Hardap)
+     * comfortably fit an 8-16 night trip; Karas (Luderitz / Fish River
+     * Canyon) does not — the Hardap<->Karas and Karas<->Khomas legs each
+     * exceed the daily driving-time cap, so a medium-length trip that wanders
+     * down there is unsafe by construction, not just a style choice. Earlier
+     * wording only described where TO go and relied on the model inferring
+     * Karas was out of scope; in practice it occasionally added it anyway,
+     * which produced an itinerary validateDrivingTimes() then rejected,
+     * burning the one corrective retry generate() gets before giving up
+     * entirely. Naming the excluded region explicitly closes that gap.
+     *
+     * A generous medium trip (11+ nights) has enough slack to actually visit
+     * the loop's real highlights rather than just passing through their
+     * region, so that tier commits to them by name instead of leaving
+     * Waterberg as a lower-priority "nice to have".
+     */
+    private function mediumLoopGuidance(?int $nights): string
+    {
+        $base = 'Follow the classic Namibia loop: Khomas (Windhoek) north toward Kunene (Etosha safari), '
+            .'west to Erongo (Damaraland / Spitzkoppe / Skeleton Coast / Swakopmund coast), south to '
+            .'Hardap (Sossusvlei / Sesriem / Solitaire dunes / Naukluft), then back to Khomas (Windhoek). '
+            .'Regions to use for this trip: Khomas, Otjozondjupa, Kunene, Erongo, Hardap only. Do NOT use '
+            .'Karas (Luderitz / Fish River Canyon) — it cannot be reached from and returned to this loop '
+            .'within the daily driving-time limit, so it is reserved for longer trips only.';
+
+        if ($nights !== null && $nights >= 11) {
+            return $base.' With this many nights there is time to do the loop properly rather than just '
+                .'passing through it: include a night in Otjozondjupa (Waterberg) on the way up or back, '
+                .'and give Erongo and Hardap at least 2-3 nights each so the traveler actually experiences '
+                .'Spitzkoppe, the Skeleton Coast, Swakopmund, Sossusvlei and the Naukluft area rather than '
+                .'a single fast pass through each region.';
+        }
+
+        return $base.' Optionally stop a night in Otjozondjupa (Waterberg) on the way up or back if there '
+            .'is time for it (nice-to-have, not mandatory).';
     }
 
     /**
@@ -893,8 +1045,8 @@ class ItineraryService
     /**
      * Looks up the real driving time between two regions regardless of
      * argument order (DRIVING_HOURS is keyed alphabetically). Returns null
-     * only when the pair isn't in the table (shouldn't happen for the 6
-     * known regions) — callers treat null as "can't validate, skip".
+     * only when the pair isn't in the table (shouldn't happen for any of
+     * the 14 known regions) — callers treat null as "can't validate, skip".
      */
     private function drivingHours(string $a, string $b): ?float
     {
@@ -910,7 +1062,7 @@ class ItineraryService
     /**
      * Maps a possibly loosely-cased/whitespaced region string from the AI's
      * output back to the canonical spelling used as a DRIVING_HOURS key.
-     * Returns null for anything that isn't one of the 6 known regions
+     * Returns null for anything that isn't one of the 14 known regions
      * (park/tourist-area names Claude was told not to use, typos, etc.) —
      * we simply can't validate driving time for those.
      */
@@ -939,6 +1091,26 @@ class ItineraryService
         $value = $tripParams[$key] ?? null;
 
         return is_string($value) && $value !== '' ? $value : $default;
+    }
+
+    /**
+     * @param  array<string, mixed>  $tripParams
+     * @return array{nights: int|null, travel_period: string, interests: string, adults: int, children_under_13: int, children_ages: string|null, vehicle_type: string, budget_tier: string}
+     */
+    private function extractTripParams(array $tripParams): array
+    {
+        $childrenAges = $tripParams['children_ages'] ?? null;
+
+        return [
+            'nights' => is_numeric($tripParams['nights'] ?? null) ? (int) $tripParams['nights'] : null,
+            'travel_period' => $this->stringParam($tripParams, 'travel_period', ''),
+            'interests' => $this->stringParam($tripParams, 'interests', ''),
+            'adults' => is_numeric($tripParams['adults'] ?? null) ? (int) $tripParams['adults'] : 1,
+            'children_under_13' => is_numeric($tripParams['children_under_13'] ?? null) ? (int) $tripParams['children_under_13'] : 0,
+            'children_ages' => is_string($childrenAges) && $childrenAges !== '' ? $childrenAges : null,
+            'vehicle_type' => $this->stringParam($tripParams, 'vehicle_type', ''),
+            'budget_tier' => $this->stringParam($tripParams, 'budget_tier', ''),
+        ];
     }
 
     /**
@@ -1004,6 +1176,7 @@ class ItineraryService
 
         return Listing::query()
             ->where('is_published', true)
+            ->with('city.region')
             ->get()
             ->groupBy(fn (Listing $listing) => $listing->type->value)
             ->flatMap(function ($listings, string $type) use ($requestedTier, $vehicleType) {
@@ -1045,6 +1218,60 @@ class ItineraryService
     private function isCamper(Listing $listing): bool
     {
         return in_array('Camper', $listing->getTranslation('highlights', 'en', useFallbackLocale: true) ?? [], true);
+    }
+
+    /**
+     * Deterministic pre-filter, same spirit as candidateListings(): total
+     * night count is a hard feasibility fact (like region/price/vehicle-type
+     * there), so it's filtered in code, not left for the model to judge.
+     * Which of the matches best fits the traveler's free-text interests is
+     * genuinely a judgment call, so that part stays with the AI — it gets
+     * every matching template's trip_type/highlights/notes as context and
+     * picks one itself (see systemPrompt()'s ROUTE guidance).
+     *
+     * Round-trip only for now (see plan): a one-way trip's route varies too
+     * much end-to-end to usefully template, so this returns empty for those
+     * and generation falls through to the freeform ROUTE guidance instead —
+     * exactly like it does when no template's night range matches either.
+     *
+     * @param  array<string, mixed>  $tripParams
+     * @return array<int, array<string, mixed>>
+     */
+    private function matchingRouteTemplates(array $tripParams): array
+    {
+        $start = $this->stringParam($tripParams, 'start_location', 'Windhoek');
+        $end = $this->stringParam($tripParams, 'end_location', $start);
+
+        if (mb_strtolower($start) !== mb_strtolower($end)) {
+            return [];
+        }
+
+        $nights = is_numeric($tripParams['nights'] ?? null) ? (int) $tripParams['nights'] : null;
+
+        if ($nights === null) {
+            return [];
+        }
+
+        return RouteTemplate::query()
+            ->where('is_published', true)
+            ->where('min_nights', '<=', $nights)
+            ->where('max_nights', '>=', $nights)
+            ->with('stops')
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn (RouteTemplate $template) => [
+                'name' => $template->getTranslation('name', 'en', useFallbackLocale: true),
+                'trip_type' => $template->trip_type->value,
+                'notes' => $template->notes,
+                'stops' => $template->stops->map(fn (RouteTemplateStop $stop) => [
+                    'region' => $stop->region,
+                    'min_nights' => $stop->min_nights,
+                    'max_nights' => $stop->max_nights,
+                    'highlights' => $stop->highlights,
+                ])->values()->all(),
+            ])
+            ->values()
+            ->all();
     }
 
     private function budgetTierDistance(?string $price, string $requestedTier): int

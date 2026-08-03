@@ -2,7 +2,12 @@
     "nav": {
         "dashboard": "Tableau de bord",
         "login": "Se connecter",
-        "register": "S'inscrire"
+        "register": "S'inscrire",
+        "currency": "Devise",
+        "language": "Langue",
+        "more": "Plus d'options",
+        "backToWebsite": "Retour au site",
+        "logout": "Se déconnecter"
     },
     "hero": {
         "title": "La façon la plus intelligente de découvrir la Namibie.",
@@ -25,7 +30,10 @@
         "viewListing": "Voir & demander →",
         "from": "à partir de",
         "error": "Kaia a des difficultés à répondre pour le moment.",
-        "retry": "Réessayer"
+        "retry": "Réessayer",
+        "voiceInput": "Parler à Kaia",
+        "stopListening": "Arrêter l'enregistrement",
+        "listening": "J'écoute…"
     },
     "itinerary": {
         "eyebrow": "Votre plan",
@@ -41,6 +49,7 @@
         "vehicle": "Véhicule : {value}",
         "remove": "Retirer",
         "removeDay": "Retirer ce jour",
+        "dismissPlan": "Ignorer ce plan",
         "bookCta": "Demander la disponibilité & réserver",
         "swap": "Échanger",
         "alternatives": "Alternatives",
@@ -103,6 +112,13 @@
             "confirm": "Merci — publié auprès de la communauté."
         }
     },
+    "destinations": {
+        "eyebrow": "Incontournables de Namibie",
+        "title": "Les lieux autour desquels chaque itinéraire se construit",
+        "subtitle": "Touchez une destination pour voir les hébergements, activités et restaurants à proximité.",
+        "prev": "Destinations précédentes",
+        "next": "Destinations suivantes"
+    },
     "explore": {
         "eyebrow": "Explorer",
         "title": "Laissez-vous inspirer, parcourez à tout moment",
@@ -121,7 +137,8 @@
             "moreFilters": "Plus de filtres ▾",
             "hideFilters": "Masquer les filtres ▲",
             "note": "Les dates sont enregistrées pour quand la disponibilité réelle des partenaires sera connectée — ce catalogue n'est pas encore vérifié par date.",
-            "allRegions": "Toutes les régions et villes",
+            "allRegions": "Toutes les régions",
+            "allCities": "Toutes les villes",
             "anyBudget": "Tous budgets",
             "budget": "Économique",
             "midRange": "Milieu de gamme",
@@ -168,7 +185,9 @@
             "sortFeatured": "En vedette",
             "sortPriceAsc": "Prix : croissant",
             "sortPriceDesc": "Prix : décroissant",
-            "sortRating": "Mieux notés"
+            "sortRating": "Mieux notés",
+            "showMap": "Afficher la carte",
+            "hideMap": "Masquer la carte"
         }
     },
     "footer": {
@@ -186,6 +205,10 @@
         "gallery": "Galerie",
         "about": "À propos",
         "steckbrief": "En un coup d'œil",
+        "location": {
+            "title": "Emplacement",
+            "directions": "Obtenir l'itinéraire →"
+        },
         "contact": {
             "title": "Contact",
             "website": "Site web",
@@ -194,6 +217,7 @@
         },
         "inquiry": {
             "title": "Demander la disponibilité",
+            "contactPerson": "Votre contact : {name}",
             "subtitle": "Envoyez vos coordonnées directement à {partner} — sans paiement, sans engagement.",
             "subtitleGeneric": "Envoyez vos coordonnées directement au partenaire — sans paiement, sans engagement.",
             "name": "Nom complet",
@@ -254,7 +278,7 @@
     },
     "howItWorks": {
         "ai": {
-            "badge": "Avec l'IA",
+            "badge": "Recherche intelligente",
             "title": "Laissez Kaia planifier votre voyage",
             "steps": [
                 "Discutez — décrivez vos envies à Kaia",

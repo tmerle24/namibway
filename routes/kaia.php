@@ -7,6 +7,10 @@ Route::post('kaia/message', [KaiaController::class, 'message'])
     ->middleware('throttle:20,1')
     ->name('kaia.message');
 
+Route::post('kaia/regenerate', [KaiaController::class, 'regenerate'])
+    ->middleware('throttle:10,1')
+    ->name('kaia.regenerate');
+
 Route::get('kaia/regions', [KaiaController::class, 'regions'])
     ->middleware('throttle:30,1')
     ->name('kaia.regions');
@@ -26,3 +30,7 @@ Route::post('kaia/plans', [KaiaController::class, 'savePlan'])
 Route::get('kaia/plans/{token}', [KaiaController::class, 'loadPlan'])
     ->middleware('throttle:60,1')
     ->name('kaia.plans.load');
+
+Route::patch('kaia/plans/{token}', [KaiaController::class, 'updatePlan'])
+    ->middleware('throttle:60,1')
+    ->name('kaia.plans.update');

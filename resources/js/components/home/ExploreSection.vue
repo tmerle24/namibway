@@ -3,9 +3,10 @@ import { Link } from '@inertiajs/vue3';
 import 'flatpickr/dist/flatpickr.min.css';
 import flatpickr from 'flatpickr';
 import type { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatPrice } from '@/lib/currency';
+import { consumeExploreScroll, saveExploreScroll } from '@/lib/explore-scroll';
 import type { SearchIntent } from '@/lib/kaia-types';
 import { show } from '@/routes/listings';
 import ExploreMap from './ExploreMap.vue';
@@ -20,6 +21,7 @@ interface Listing {
     description: string | null;
     image: string | null;
     region: string | null;
+    city: string | null;
     latitude: number | null;
     longitude: number | null;
     price_from: string | null;
@@ -28,17 +30,17 @@ interface Listing {
     rating_count: number | null;
 }
 
-interface Region {
+interface Destination {
     name: string;
     slug: string;
     blurb: string | null;
     image: string | null;
-    listing_region: string;
+    region_name: string;
 }
 
 const props = defineProps<{
     listings: Listing[];
-    regions: Region[];
+    destinations: Destination[];
     featuredPick: Listing | null;
     triggerSearch?: SearchIntent | null;
 }>();
@@ -54,6 +56,7 @@ interface IdeaCard {
     title: string;
     description: string;
     region: string | null;
+    city: string | null;
     budget: Budget;
     image: string;
     slug: string | null;
@@ -76,6 +79,7 @@ interface SearchListing {
     description: string | null;
     image: string | null;
     region: string | null;
+    city: string | null;
     price_from: string | null;
     price_currency: string;
     rating: number | null;
@@ -170,6 +174,7 @@ const ideaRows = computed<IdeaRow[]>(() => {
             title: listing.name,
             description: truncate(listing.description),
             region: listing.region,
+            city: listing.city,
             budget: budgetBucket(listing.price_from),
             image:
                 listing.image ??
@@ -188,13 +193,14 @@ const ideaRows = computed<IdeaRow[]>(() => {
     rows.push({
         key: 'region',
         bg: ROW_BG.region,
-        items: props.regions.map((region) => ({
+        items: props.destinations.map((destination) => ({
             id: null,
-            title: region.name,
-            description: region.blurb ?? '',
-            region: region.listing_region,
+            title: destination.name,
+            description: destination.blurb ?? '',
+            region: destination.region_name,
+            city: null,
             budget: null,
-            image: region.image ?? '/images/explore/region-khomas.jpg',
+            image: destination.image ?? '/images/explore/region-khomas.jpg',
             slug: null,
             latitude: null,
             longitude: null,
@@ -229,8 +235,32 @@ const availableRegions = computed(() => {
     return [...regions].sort();
 });
 
+// Only listings carry a real city (destination cards use the 'region' row
+// and have no city of their own) — narrows to the selected region, if any.
+const availableCities = computed(() => {
+    const cities = new Set<string>();
+
+    for (const row of ideaRows.value) {
+        if (row.key === 'region') {
+            continue;
+        }
+
+        for (const item of row.items) {
+            if (
+                item.city &&
+                (!filterRegion.value || item.region === filterRegion.value)
+            ) {
+                cities.add(item.city);
+            }
+        }
+    }
+
+    return [...cities].sort();
+});
+
 const filterCategory = ref('');
 const filterRegion = ref('');
+const filterCity = ref('');
 const filterBudget = ref('');
 const filterMinRating = ref('');
 const filterKeyword = ref('');
@@ -240,6 +270,7 @@ const filterBar = ref<HTMLDivElement | null>(null);
 let fp: FlatpickrInstance | null = null;
 
 const searchMode = ref(false);
+const mapOpen = ref(false);
 const searchResults = ref<SearchListing[]>([]);
 const searchMeta = ref<SearchMeta>({
     current_page: 1,
@@ -262,6 +293,10 @@ async function performSearch(page = 1, append = false) {
 
     if (filterRegion.value) {
         params.set('region', filterRegion.value);
+    }
+
+    if (filterCity.value) {
+        params.set('city', filterCity.value);
     }
 
     if (filterKeyword.value) {
@@ -309,6 +344,7 @@ const hasActiveFilters = computed(
     () =>
         filterCategory.value !== '' ||
         filterRegion.value !== '' ||
+        filterCity.value !== '' ||
         filterBudget.value !== '' ||
         filterMinRating.value !== '' ||
         filterKeyword.value !== '',
@@ -317,6 +353,7 @@ const hasActiveFilters = computed(
 function clearFilters() {
     filterCategory.value = '';
     filterRegion.value = '';
+    filterCity.value = '';
     filterBudget.value = '';
     filterMinRating.value = '';
     filterKeyword.value = '';
@@ -327,30 +364,129 @@ function clearFilters() {
 function selectRegion(region: string) {
     filterCategory.value = '';
     filterRegion.value = region;
+    filterCity.value = '';
     filterMoreOpen.value = true;
     filterBar.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function viewAllInRow(row: IdeaRow) {
+async function viewAllInRow(row: IdeaRow) {
     filterCategory.value = row.key;
-    performSearch(1);
+    await performSearch(1);
+    await nextTick();
+    filterBar.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+// Picking a region can strand a previously-chosen city that belongs to a
+// different one — drop it rather than silently filtering to zero results.
+watch(filterRegion, () => {
+    if (filterCity.value && !availableCities.value.includes(filterCity.value)) {
+        filterCity.value = '';
+    }
+});
 
 watch(
     () => props.triggerSearch,
-    (intent) => {
+    async (intent) => {
         if (!intent) {
             return;
         }
 
         filterCategory.value = intent.type ?? '';
         filterRegion.value = intent.region ?? '';
+        filterCity.value = intent.city ?? '';
         filterKeyword.value = intent.keyword ?? '';
         filterBudget.value = intent.budget ?? '';
+        filterMinRating.value = intent.min_rating ?? '';
+        sortBy.value = intent.sort ?? 'featured';
 
-        performSearch(1);
+        await performSearch(1);
+        await nextTick();
+        restoreScroll();
     },
 );
+
+function restoreScroll() {
+    const y = consumeExploreScroll();
+
+    if (y !== null) {
+        window.scrollTo(0, y);
+    }
+}
+
+const EXPLORE_QUERY_KEYS = [
+    'type',
+    'region',
+    'city',
+    'budget',
+    'keyword',
+    'min_rating',
+    'sort',
+];
+
+function hasUrlFilters(): boolean {
+    const params = new URLSearchParams(window.location.search);
+
+    return EXPLORE_QUERY_KEYS.some((key) => params.get(key));
+}
+
+function saveScrollPosition() {
+    saveExploreScroll();
+}
+
+const listingBackQuery = computed(() => {
+    const query: Record<string, string> = {};
+
+    if (filterCategory.value) {
+        query.type = filterCategory.value;
+    }
+
+    if (filterRegion.value) {
+        query.region = filterRegion.value;
+    }
+
+    if (filterCity.value) {
+        query.city = filterCity.value;
+    }
+
+    if (filterBudget.value) {
+        query.budget = filterBudget.value;
+    }
+
+    if (filterMinRating.value) {
+        query.min_rating = filterMinRating.value;
+    }
+
+    if (filterKeyword.value) {
+        query.keyword = filterKeyword.value;
+    }
+
+    if (searchMode.value && sortBy.value !== 'featured') {
+        query.sort = sortBy.value;
+    }
+
+    return query;
+});
+
+function listingUrl(slug: string): string {
+    const query = listingBackQuery.value;
+
+    return show(
+        { listing: slug },
+        Object.keys(query).length > 0 ? { query } : undefined,
+    ).url;
+}
+
+function onIdeaCardClick(row: IdeaRow, item: IdeaCard) {
+    if (row.key === 'region' && item.region) {
+        selectRegion(item.region);
+
+        return;
+    }
+
+    if (item.slug) {
+        saveScrollPosition();
+    }
+}
 
 const SHORTLIST_KEY = 'namibway_shortlist';
 
@@ -430,6 +566,13 @@ onMounted(() => {
             minDate: 'today',
         });
     }
+
+    // No incoming filters means no async search to wait for (see the
+    // triggerSearch watcher above, which restores scroll once its results
+    // are rendered instead) — the inspiration rows are already in the DOM.
+    if (!hasUrlFilters()) {
+        nextTick(() => restoreScroll());
+    }
 });
 
 onUnmounted(() => {
@@ -442,6 +585,10 @@ function matches(row: IdeaRow, item: IdeaCard): boolean {
     }
 
     if (filterRegion.value && item.region !== filterRegion.value) {
+        return false;
+    }
+
+    if (filterCity.value && item.city !== filterCity.value) {
         return false;
     }
 
@@ -475,6 +622,8 @@ function matches(row: IdeaRow, item: IdeaCard): boolean {
             item.description +
             ' ' +
             (item.region ?? '') +
+            ' ' +
+            (item.city ?? '') +
             ' ' +
             t(`explore.rows.${row.key}`)
         )
@@ -572,6 +721,18 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                         {{ region }}
                     </option>
                 </select>
+                <select v-model="filterCity">
+                    <option value="">
+                        {{ t('explore.filters.allCities') }}
+                    </option>
+                    <option
+                        v-for="city in availableCities"
+                        :key="city"
+                        :value="city"
+                    >
+                        {{ city }}
+                    </option>
+                </select>
                 <select v-model="filterCategory">
                     <option value="">
                         {{ t('explore.filters.allCategories') }}
@@ -623,6 +784,19 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                     @click="clearFilters"
                 >
                     {{ t('explore.filters.clearFilters') }}
+                </button>
+                <button
+                    v-if="!searchMode && mapMarkers.length > 0"
+                    type="button"
+                    class="map-toggle-btn"
+                    :aria-pressed="mapOpen"
+                    @click="mapOpen = !mapOpen"
+                >
+                    {{
+                        mapOpen
+                            ? t('explore.results.hideMap')
+                            : t('explore.results.showMap')
+                    }}
                 </button>
                 <span class="filter-note">{{ t('explore.filters.note') }}</span>
             </div>
@@ -708,8 +882,9 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                 <Link
                     v-for="item in searchResults"
                     :key="item.id"
-                    :href="show({ listing: item.slug }).url"
+                    :href="listingUrl(item.slug)"
                     class="result-card"
+                    @click="saveScrollPosition"
                 >
                     <div class="result-card-thumb">
                         <span class="idea-tag">{{
@@ -748,8 +923,11 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                             >
                         </div>
                         <h4 class="result-card-name">{{ item.name }}</h4>
-                        <p v-if="item.region" class="result-card-region">
-                            {{ item.region }}
+                        <p
+                            v-if="item.city || item.region"
+                            class="result-card-region"
+                        >
+                            {{ item.city ?? item.region }}
                         </p>
                         <p v-if="item.description" class="result-card-desc">
                             {{ truncate(item.description, 110) }}
@@ -786,10 +964,19 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
 
         <!-- Inspiration / magazine mode -->
         <template v-else>
+            <ExploreMap
+                v-if="mapOpen && mapMarkers.length > 0"
+                :markers="mapMarkers"
+                :back-query="listingBackQuery"
+                map-id="explore-map"
+                @navigate="saveScrollPosition"
+            />
+
             <Link
                 v-if="featuredPick && !hasActiveFilters"
                 :href="show({ listing: featuredPick.slug }).url"
                 class="featured-pick"
+                @click="saveScrollPosition"
             >
                 <div class="featured-pick-media">
                     <img
@@ -808,15 +995,16 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                         class="featured-pick-rating"
                     >
                         ★ {{ featuredPick.rating.toFixed(1) }}
-                        <span v-if="featuredPick.region">
-                            · {{ featuredPick.region }}</span
+                        <span v-if="featuredPick.city || featuredPick.region">
+                            ·
+                            {{ featuredPick.city ?? featuredPick.region }}</span
                         >
                     </p>
                     <p
-                        v-else-if="featuredPick.region"
+                        v-else-if="featuredPick.city || featuredPick.region"
                         class="featured-pick-region"
                     >
-                        {{ featuredPick.region }}
+                        {{ featuredPick.city ?? featuredPick.region }}
                     </p>
                     <p
                         v-if="featuredPick.description"
@@ -833,11 +1021,6 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
             <p v-if="!hasResults" class="filter-empty">
                 {{ t('explore.filters.empty') }}
             </p>
-            <ExploreMap
-                v-if="mapMarkers.length > 0"
-                :markers="mapMarkers"
-                map-id="explore-map"
-            />
             <div>
                 <div
                     v-for="row in visibleRows"
@@ -864,19 +1047,13 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                                       ? 'button'
                                       : 'div'
                             "
-                            v-for="item in row.items"
+                            v-for="item in row.items.slice(0, 8)"
                             :key="item.title"
                             :href="
-                                item.slug
-                                    ? show({ listing: item.slug }).url
-                                    : undefined
+                                item.slug ? listingUrl(item.slug) : undefined
                             "
                             class="idea-card"
-                            @click="
-                                row.key === 'region' && item.region
-                                    ? selectRegion(item.region)
-                                    : undefined
-                            "
+                            @click="onIdeaCardClick(row, item)"
                         >
                             <div
                                 class="idea-thumb"

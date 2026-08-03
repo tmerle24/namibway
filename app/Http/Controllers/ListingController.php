@@ -2,69 +2,32 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ConnectorType;
 use App\Enums\InquiryStatus;
 use App\Jobs\EnrichListingJob;
 use App\Mail\NewInquiryReceived;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Review;
+use App\Services\Enrichment\CoordinateTextParser;
+use App\Services\Enrichment\OsmLocationFinder;
+use App\Services\Region\PhoneNumberFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 class ListingController extends Controller
 {
     public function search(Request $request): JsonResponse
     {
-        $query = Listing::query()->where('is_published', true);
-
-        $type = $request->query('type');
-
-        if (is_string($type) && $type !== '') {
-            $query->where('type', $type);
-        }
-
-        $region = $request->query('region');
-
-        if (is_string($region) && $region !== '') {
-            $query->where('region', 'ilike', '%'.$region.'%');
-        }
-
-        $keyword = $request->query('keyword');
-
-        if (is_string($keyword) && $keyword !== '') {
-            $kw = '%'.mb_strtolower($keyword).'%';
-            $query->where(function ($q) use ($kw) {
-                $q->whereRaw('lower(cast(name as text)) like ?', [$kw])
-                    ->orWhereRaw('lower(cast(description as text)) like ?', [$kw])
-                    ->orWhereRaw('lower(cast(region as text)) like ?', [$kw])
-                    ->orWhereRaw('lower(cast(type as text)) like ?', [$kw]);
-            });
-        }
-
-        $budget = $request->query('budget');
-
-        if (is_string($budget)) {
-            if ($budget === 'budget') {
-                $query->where(function ($q) {
-                    $q->where('price_from', '<', 150)->orWhereNull('price_from');
-                });
-            } elseif ($budget === 'mid-range') {
-                $query->whereBetween('price_from', [150, 400]);
-            } elseif ($budget === 'premium') {
-                $query->where('price_from', '>', 400);
-            }
-        }
-
-        $minRating = $request->query('min_rating');
-
-        if (is_string($minRating) && $minRating !== '') {
-            $query->where('rating', '>=', (float) $minRating);
-        }
+        $query = Listing::query()->where('is_published', true)->with('city.region')->filterBy($request->query());
 
         $sort = $request->query('sort', 'featured');
 
@@ -89,6 +52,7 @@ class ListingController extends Controller
                 'description' => $l->description,
                 'image' => $l->image ? self::resolveMediaUrl($l->image) : null,
                 'region' => $l->region,
+                'city' => $l->city?->name,
                 'price_from' => $l->price_from,
                 'price_currency' => $l->price_currency,
                 'rating' => $l->rating !== null ? (float) $l->rating : null,
@@ -114,7 +78,7 @@ class ListingController extends Controller
         // property owner via the same claim_token already emailed to them for the
         // claim flow — see ClaimInviteService, which links here with ?preview=<token>.
         $isAdmin = self::isAdmin();
-        $isOwnerPreview = self::hasValidPreviewToken($listing, $request);
+        $isOwnerPreview = self::isOwner($listing, $request);
         $isPreview = ! $listing->is_published;
 
         abort_unless($listing->is_published || $isAdmin || $isOwnerPreview, 404);
@@ -142,6 +106,46 @@ class ListingController extends Controller
         // right to publish them without consent (see Listing::approvePendingPhotos()).
         $canApprovePhotos = $isAdmin || $isOwnerPreview;
 
+        // Detect coordinate text saved into `address` so the public page shows a
+        // working map instead of a raw "S20°47.482 E016°42.704" string next to the
+        // phone number — see CoordinateTextParser's docblock for why this happens.
+        $parsedCoordinates = $listing->address ? CoordinateTextParser::parse($listing->address) : null;
+
+        // No coordinates in the DB and no coordinate text to parse, but there's a real
+        // address — geocode it via the same Nominatim lookup EnrichmentPipeline uses,
+        // cached by address (so repeat views, or listings sharing an address, never
+        // re-query) and persisted onto the listing so this only ever runs once. Without
+        // this, any listing whose enrichment job hasn't run yet would show no map at
+        // all despite having a perfectly good address. Unlike $parsedCoordinates, this
+        // case keeps the address visible — it's a real, human-readable address, not raw
+        // coordinate text, so the map popup can show it alongside the listing name.
+        $geocodedCoordinates = null;
+
+        if (
+            $listing->latitude === null
+            && $listing->longitude === null
+            && $parsedCoordinates === null
+            && filled($listing->address)
+        ) {
+            $geocoded = Cache::remember(
+                'listing-address-geocode:'.md5($listing->address),
+                now()->addMonths(6),
+                fn () => app(OsmLocationFinder::class)->fillMissingCoordinates(['address' => $listing->address], $listing->name),
+            );
+
+            if (isset($geocoded['latitude'], $geocoded['longitude'])) {
+                $geocodedCoordinates = [$geocoded['latitude'], $geocoded['longitude']];
+                $listing->forceFill([
+                    'latitude' => $geocoded['latitude'],
+                    'longitude' => $geocoded['longitude'],
+                ])->saveQuietly();
+            }
+        }
+
+        $resolvedCoordinates = $parsedCoordinates ?? $geocodedCoordinates;
+
+        $phone = app(PhoneNumberFormatter::class)->format($listing->phone);
+
         return Inertia::render('ListingDetail', [
             'listing' => [
                 'id' => $listing->id,
@@ -163,11 +167,23 @@ class ListingController extends Controller
                     ? collect($listing->pending_gallery ?? [])->map(fn (string $path) => self::resolveMediaUrl($path))->values()
                     : [],
                 'region' => $listing->region,
+                'city' => $listing->city?->name,
+                'address' => $parsedCoordinates ? null : $listing->address,
+                'phone' => $phone['display'] ?? null,
+                'phone_href' => $phone['href'] ?? null,
+                'website' => $listing->website,
+                'latitude' => $listing->latitude !== null
+                    ? (float) $listing->latitude
+                    : $resolvedCoordinates[0] ?? null,
+                'longitude' => $listing->longitude !== null
+                    ? (float) $listing->longitude
+                    : $resolvedCoordinates[1] ?? null,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
                 'rating' => $listing->rating !== null ? (float) $listing->rating : null,
                 'rating_count' => $listing->rating_count,
                 'accepts_inquiries' => $listing->accepts_inquiries,
+                'contact_person' => $listing->contact_person,
                 'partner' => $listing->partner ? [
                     'name' => $listing->partner->name,
                     'logo' => $listing->partner->logo ? self::resolveMediaUrl($listing->partner->logo) : null,
@@ -181,6 +197,7 @@ class ListingController extends Controller
             'can_publish' => $isAdmin || $isOwnerPreview,
             'can_approve_photos' => $canApprovePhotos,
             'preview_token' => $isOwnerPreview ? $request->input('preview') : null,
+            'claim_url' => self::claimUrl($listing, $isOwnerPreview),
         ]);
     }
 
@@ -198,7 +215,7 @@ class ListingController extends Controller
     public function publish(Request $request, Listing $listing): RedirectResponse
     {
         $isAdmin = self::isAdmin();
-        $isOwnerPreview = self::hasValidPreviewToken($listing, $request);
+        $isOwnerPreview = self::isOwner($listing, $request);
 
         abort_unless($isAdmin || $isOwnerPreview, 403);
         abort_unless($request->boolean('terms_accepted'), 422, 'Terms & Conditions must be accepted to publish.');
@@ -218,7 +235,7 @@ class ListingController extends Controller
 
     public function approvePhotos(Request $request, Listing $listing): RedirectResponse
     {
-        abort_unless(self::isAdmin() || self::hasValidPreviewToken($listing, $request), 403);
+        abort_unless(self::isAdmin() || self::isOwner($listing, $request), 403);
 
         $listing->approvePendingPhotos();
 
@@ -259,13 +276,22 @@ class ListingController extends Controller
     /**
      * Self-service editor for the property owner (via claim_token) or an admin — a
      * lighter-weight alternative to the Filament panel, which owners have no account
-     * for. Deliberately a small field set: the basics an owner would actually want to
-     * fix themselves, not the full admin surface (no photos — that's the separate
-     * approve flow — no taxonomy/GPS, which stay data-integrity-sensitive/admin-only).
+     * for. Covers the basics an owner would actually want to fix themselves: content,
+     * photos, location, publish state, and which booking system this listing connects
+     * to — including the API credentials themselves, so the owner doesn't have to be
+     * chased down separately for them. Those credentials go live only once staff has
+     * verified them (see Partner::setConnectorSetup() and ConnectorFactory's gate) —
+     * never sent back down here once saved, so this only ever shows the setup form
+     * while unverified, and a locked status line afterwards.
      */
     public function edit(Request $request, Listing $listing): Response
     {
-        abort_unless(self::isAdmin() || self::hasValidPreviewToken($listing, $request), 403);
+        abort_unless(self::isAdmin() || self::isOwner($listing, $request), 403);
+
+        $listing->load('partner');
+
+        $partner = $listing->partner;
+        $connectorType = $partner?->connector_type;
 
         return Inertia::render('ListingEdit', [
             'listing' => [
@@ -275,22 +301,38 @@ class ListingController extends Controller
                 'description' => $listing->getTranslation('description', 'en', useFallbackLocale: false),
                 'short_description' => $listing->getTranslation('short_description', 'en', useFallbackLocale: false),
                 'highlights' => $listing->getTranslation('highlights', 'en', useFallbackLocale: false) ?? [],
+                'contact_person' => $listing->contact_person,
                 'phone' => $listing->phone,
                 'contact_email' => $listing->contact_email,
                 'website' => $listing->website,
                 'address' => $listing->address,
+                'latitude' => $listing->latitude !== null ? (float) $listing->latitude : null,
+                'longitude' => $listing->longitude !== null ? (float) $listing->longitude : null,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
                 'is_published' => $listing->is_published,
+                'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
+                'gallery' => collect($listing->gallery ?? [])
+                    ->map(fn (string $path) => self::resolveMediaUrl($path))
+                    ->values(),
+                'connector_type' => $connectorType?->value,
+                'connector_property_code' => $listing->connector_property_code,
+                'wetu_id' => $listing->wetu_id,
+                'has_connector_credentials' => filled($partner?->connector_config),
+                'connector_verified' => $partner?->connector_verified_at !== null,
             ],
+            'connector_options' => collect(ConnectorType::cases())
+                ->map(fn (ConnectorType $c) => ['value' => $c->value, 'label' => $c->label()])
+                ->values(),
             'preview_token' => self::hasValidPreviewToken($listing, $request) ? $request->input('preview') : null,
+            'claim_url' => self::claimUrl($listing, self::hasValidPreviewToken($listing, $request)),
         ]);
     }
 
-    public function update(Request $request, Listing $listing): RedirectResponse
+    public function update(Request $request, Listing $listing, OsmLocationFinder $osmFinder): RedirectResponse
     {
         $isAdmin = self::isAdmin();
-        $isOwnerPreview = self::hasValidPreviewToken($listing, $request);
+        $isOwnerPreview = self::isOwner($listing, $request);
 
         abort_unless($isAdmin || $isOwnerPreview, 403);
 
@@ -300,13 +342,36 @@ class ListingController extends Controller
             'short_description' => ['nullable', 'string', 'max:500'],
             'highlights' => ['nullable', 'array'],
             'highlights.*' => ['string', 'max:100'],
+            'contact_person' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'contact_email' => ['nullable', 'email', 'max:255'],
             'website' => ['nullable', 'url', 'max:255'],
             'address' => ['nullable', 'string', 'max:500'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'price_from' => ['nullable', 'numeric', 'min:0'],
             'price_currency' => ['nullable', 'string', 'max:3'],
+            'image' => ['nullable', 'image', 'max:8192'],
+            'remove_image' => ['nullable', 'boolean'],
+            'gallery_touched' => ['nullable', 'boolean'],
+            'gallery_keep' => ['nullable', 'array'],
+            'gallery_keep.*' => ['string'],
+            'gallery_new' => ['nullable', 'array', 'max:20'],
+            'gallery_new.*' => ['image', 'max:8192'],
+            'connector_type' => ['nullable', Rule::in(array_map(fn (ConnectorType $c) => $c->value, ConnectorType::cases()))],
+            'connector_property_code' => ['nullable', 'string', 'max:100'],
+            'wetu_id' => ['nullable', 'string', 'max:100'],
+            'resconnect_api_key' => ['nullable', 'string', 'max:500'],
+            'resconnect_base_url' => ['nullable', 'string', 'max:255'],
+            'nightsbridge_bbid' => ['nullable', 'string', 'max:255'],
+            'nightsbridge_api_key' => ['nullable', 'string', 'max:500'],
+            'nightsbridge_base_url' => ['nullable', 'string', 'max:255'],
+            'hopecloud_api_key' => ['nullable', 'string', 'max:500'],
+            'hopecloud_account_id' => ['nullable', 'string', 'max:255'],
+            'hopecloud_base_url' => ['nullable', 'string', 'max:255'],
+            'wetu_api_key' => ['nullable', 'string', 'max:500'],
             'publish' => ['nullable', 'boolean'],
+            'unpublish' => ['nullable', 'boolean'],
             'terms_accepted' => ['nullable', 'boolean'],
             'preview' => ['nullable', 'string'],
         ]);
@@ -319,16 +384,64 @@ class ListingController extends Controller
         $listing->setTranslation('description', 'en', $validated['description'] ?? '');
         $listing->setTranslation('short_description', 'en', $validated['short_description'] ?? '');
         $listing->setTranslation('highlights', 'en', $validated['highlights'] ?? []);
+        $validated = $osmFinder->fillMissingCoordinates($validated, $validated['name']);
         $listing->fill(array_filter([
+            'contact_person' => $validated['contact_person'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'contact_email' => $validated['contact_email'] ?? null,
             'website' => $validated['website'] ?? null,
             'address' => $validated['address'] ?? null,
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
             'price_from' => $validated['price_from'] ?? null,
             'price_currency' => $validated['price_currency'] ?? null,
+            'connector_property_code' => $validated['connector_property_code'] ?? null,
+            'wetu_id' => $validated['wetu_id'] ?? null,
         ], fn ($value) => $value !== null));
 
-        if (! empty($validated['publish'])) {
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('listings', 'public');
+            $listing->image = $path ?: throw new RuntimeException('Failed to store hero image upload.');
+        } elseif (! empty($validated['remove_image'])) {
+            $listing->image = null;
+        }
+
+        // gallery_touched is a plain boolean flag (rather than inferring intent from
+        // gallery_keep/gallery_new being present) because an emptied multipart array
+        // sends no field at all — without the flag, "remove every photo and add none"
+        // would be indistinguishable from "gallery untouched".
+        if (! empty($validated['gallery_touched'])) {
+            $keepUrls = $validated['gallery_keep'] ?? [];
+            $kept = collect($listing->gallery ?? [])
+                ->filter(fn (string $path) => in_array(self::resolveMediaUrl($path), $keepUrls, true));
+            $newPaths = collect($request->file('gallery_new', []))
+                ->map(fn ($file) => $file->store('listings/gallery', 'public') ?: throw new RuntimeException('Failed to store gallery image upload.'));
+
+            $listing->gallery = $kept->concat($newPaths)->values()->all();
+        }
+
+        // connector_type/credentials are account-level (shared across all of this
+        // partner's listings), unlike connector_property_code above which is
+        // per-listing — see the migration that split them apart. Once staff has
+        // verified the current connector, this lightweight editor stops touching it
+        // at all — the frontend already hides the credential fields at that point
+        // (ListingEdit.vue), so a change here can only mean setting it up for the
+        // first time or fixing it while still pending review.
+        if (
+            array_key_exists('connector_type', $validated)
+            && $listing->partner
+            && $listing->partner->connector_verified_at === null
+        ) {
+            $type = $validated['connector_type'] ?: null;
+            $config = self::collapseConnectorConfig($type, $validated);
+
+            $listing->partner->setConnectorSetup($type, $config, $isAdmin);
+            $listing->partner->save();
+        }
+
+        if (! empty($validated['unpublish'])) {
+            $listing->is_published = false;
+        } elseif (! empty($validated['publish'])) {
             $listing->approvePendingPhotos();
             $listing->is_published = true;
             $listing->terms_accepted_at = now();
@@ -350,6 +463,76 @@ class ListingController extends Controller
     private static function isAdmin(): bool
     {
         return auth()->check() && auth()->user()->is_admin;
+    }
+
+    /** A logged-in business-owner account (see DashboardController) editing one of their own listings. */
+    private static function isSessionOwner(Listing $listing): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && $user->partner_id !== null && $user->partner_id === $listing->partner_id;
+    }
+
+    /**
+     * Owner access, either via the emailed claim_token preview link (pre-account,
+     * see hasValidPreviewToken()) or a real session for an owner who has since
+     * claimed their account (see isSessionOwner()) — the two are equivalent in
+     * what they're allowed to do, just different ways of proving ownership.
+     */
+    private static function isOwner(Listing $listing, Request $request): bool
+    {
+        return self::hasValidPreviewToken($listing, $request) || self::isSessionOwner($listing);
+    }
+
+    /**
+     * Collapses the type-specific credential fields validated in update() into
+     * the single connector_config blob, mirroring
+     * BookingConnectorSchema::collapseConfigForSave() for the admin/partner-
+     * portal wizard — kept separate rather than shared since that one reads
+     * off raw Filament form state and this one off already-validated request
+     * data.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private static function collapseConnectorConfig(?string $type, array $validated): array
+    {
+        return match ($type) {
+            ConnectorType::ResConnect->value => array_filter([
+                'api_key' => $validated['resconnect_api_key'] ?? null,
+                'base_url' => $validated['resconnect_base_url'] ?? null,
+            ], fn ($v) => filled($v)),
+            ConnectorType::NightsBridge->value => array_filter([
+                'bbid' => $validated['nightsbridge_bbid'] ?? null,
+                'api_key' => $validated['nightsbridge_api_key'] ?? null,
+                'base_url' => $validated['nightsbridge_base_url'] ?? null,
+            ], fn ($v) => filled($v)),
+            ConnectorType::HopeCloud->value => array_filter([
+                'api_key' => $validated['hopecloud_api_key'] ?? null,
+                'account_id' => $validated['hopecloud_account_id'] ?? null,
+                'base_url' => $validated['hopecloud_base_url'] ?? null,
+            ], fn ($v) => filled($v)),
+            ConnectorType::Wetu->value => array_filter([
+                'api_key' => $validated['wetu_api_key'] ?? null,
+            ], fn ($v) => filled($v)),
+            default => [],
+        };
+    }
+
+    /**
+     * The self-service preview/edit link only gets someone as far as editing content —
+     * it was never wired to the actual "create an account" step (a separate /claim/{token}
+     * URL only ever sent as a second link in the invite email). Surface it here too, but
+     * only while there's still an account worth creating: once claimed, the owner already
+     * has one and should use the Filament partner portal instead.
+     */
+    private static function claimUrl(Listing $listing, bool $isOwnerPreview): ?string
+    {
+        if (! $isOwnerPreview || ! $listing->partner || $listing->partner->claimed_at !== null) {
+            return null;
+        }
+
+        return url("/claim/{$listing->partner->claim_token}");
     }
 
     /** The property owner's claim_token, already emailed to them, doubles as a preview key. */

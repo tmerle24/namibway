@@ -11,16 +11,20 @@
         "filament/filament": "^3.3",
         "filament/spatie-laravel-translatable-plugin": "^3.3",
         "inertiajs/inertia-laravel": "^3.0",
+        "knuckleswtf/scribe": "^5.11",
         "laravel/chisel": "^0.1.0",
         "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
         "laravel/horizon": "^5.48",
+        "laravel/sanctum": "^4.3",
         "laravel/socialite": "^5.28",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",
         "league/flysystem-aws-s3-v3": "^3.35",
+        "mews/purifier": "^3.4",
         "spatie/laravel-backup": "^10.3",
-        "spatie/laravel-translatable": "^6.14"
+        "spatie/laravel-translatable": "^6.14",
+        "zbateson/mail-mime-parser": "^4.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",

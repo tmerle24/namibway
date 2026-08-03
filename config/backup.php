@@ -23,11 +23,20 @@ return [
         'source' => [
             'files' => [
                 /*
-                 * The list of directories and files that will be included in the backup.
+                 * Not the whole app: the codebase is already durably backed up via GitHub
+                 * (main). Two things aren't, though:
+                 * - .env — the only place secrets live (DB password, ANTHROPIC_API_KEY,
+                 *   R2/OAuth credentials, APP_KEY). Without it, a server loss isn't
+                 *   recoverable even with the DB dump in hand. See restore.sh.
+                 * - storage/app/public — most listing/partner/region images are on the
+                 *   'r2' disk (durable, off-server), but some FileUpload fields still
+                 *   wrote to local 'public' storage before 2026-08-02 (see
+                 *   Controller::resolveMediaUrl) — this is a safety net for whatever's
+                 *   still there, not the primary place new uploads land.
                  */
                 'include' => [
-                    base_path(),
-                    // storage_path(),  // Include if you use zero downtime deployments and don't follow symlinks
+                    base_path('.env'),
+                    storage_path('app/public'),
                 ],
 
                 /*
@@ -221,12 +230,14 @@ return [
      */
     'notifications' => [
         'notifications' => [
+            // Only failure-shaped events mail out — a nightly "backup was successful"
+            // email is just noise to filter past; silence means it worked.
             BackupHasFailedNotification::class => ['mail'],
             UnhealthyBackupWasFoundNotification::class => ['mail'],
             CleanupHasFailedNotification::class => ['mail'],
-            BackupWasSuccessfulNotification::class => ['mail'],
-            HealthyBackupWasFoundNotification::class => ['mail'],
-            CleanupWasSuccessfulNotification::class => ['mail'],
+            BackupWasSuccessfulNotification::class => [],
+            HealthyBackupWasFoundNotification::class => [],
+            CleanupWasSuccessfulNotification::class => [],
         ],
 
         /*

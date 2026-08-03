@@ -2,7 +2,12 @@
     "nav": {
         "dashboard": "Dashboard",
         "login": "Anmelden",
-        "register": "Registrieren"
+        "register": "Registrieren",
+        "currency": "Währung",
+        "language": "Sprache",
+        "more": "Weitere Optionen",
+        "backToWebsite": "Zurück zur Website",
+        "logout": "Abmelden"
     },
     "hero": {
         "title": "Der klügste Weg, Namibia zu erleben.",
@@ -25,12 +30,15 @@
         "viewListing": "Ansehen & anfragen →",
         "from": "ab",
         "error": "Kaia hat gerade Schwierigkeiten zu antworten.",
-        "retry": "Erneut versuchen"
+        "retry": "Erneut versuchen",
+        "voiceInput": "Kaia etwas sagen",
+        "stopListening": "Aufnahme stoppen",
+        "listening": "Ich höre zu…"
     },
     "itinerary": {
         "eyebrow": "Dein Plan",
-        "title": "Ein paar Möglichkeiten für diese Reise",
-        "subtitle": "Erstellt aus dem Gespräch oben — Unterkunft, Aktivitäten und Restaurants gemeinsam gedacht, nicht getrennt.",
+        "title": "Deine Reise, geplant",
+        "subtitle": "Erstellt aus dem Gespräch oben — Unterkunft, Aktivitäten und Restaurants gemeinsam gedacht, nicht getrennt. Ändere unten beliebige Angaben, Kaia plant die Reise dann neu.",
         "route": "Route",
         "roundTrip": "Rundreise",
         "reverseRoute": "Route umkehren",
@@ -41,6 +49,7 @@
         "vehicle": "Fahrzeug: {value}",
         "remove": "Entfernen",
         "removeDay": "Tag entfernen",
+        "dismissPlan": "Diesen Plan verwerfen",
         "bookCta": "Verfügbarkeit anfragen & buchen",
         "swap": "Tauschen",
         "alternatives": "Alternativen",
@@ -62,7 +71,43 @@
         "savedToAccount": "Gespeichert ✓",
         "copyFailed": "Kopieren nicht möglich — bitte den Link manuell markieren und kopieren.",
         "setStartDate": "Startdatum festlegen",
-        "drivingTime": "Fahrzeit"
+        "drivingTime": "Fahrzeit",
+        "meta": {
+            "travelPeriod": "Reisezeit",
+            "duration": "Dauer",
+            "travelers": "Personen",
+            "preferences": "Präferenzen",
+            "budget": "Budget",
+            "edit": "Bearbeiten",
+            "nights": "{count} Nacht | {count} Nächte",
+            "adults": "{count} Erwachsener | {count} Erwachsene",
+            "children": "{count} Kind | {count} Kinder",
+            "budgetTiers": {
+                "budget": "Budget",
+                "mid-range": "Mittelklasse",
+                "premium": "Premium"
+            }
+        },
+        "paramsEditor": {
+            "title": "Reisedetails bearbeiten",
+            "subtitle": "Ändere unten beliebige Angaben — Kaia plant die Reise dann neu.",
+            "dateFrom": "Von",
+            "dateTo": "Bis",
+            "adults": "Erwachsene",
+            "childrenAges": "Kinder (Alter)",
+            "childrenAgesPlaceholder": "z. B. 5, 8",
+            "interests": "Präferenzen",
+            "interestsPlaceholder": "z. B. Safari, Abenteuer, entspanntes Tempo",
+            "budget": "Budget",
+            "startLocation": "Startort",
+            "endLocation": "Zielort",
+            "cancel": "Abbrechen",
+            "save": "Plan aktualisieren",
+            "saving": "Dein Plan wird aktualisiert…",
+            "datesRequired": "Bitte Start- und Enddatum wählen.",
+            "dateOrderInvalid": "Das Enddatum muss nach dem Startdatum liegen.",
+            "locationsRequired": "Bitte Start- und Zielort angeben."
+        }
     },
     "booking": {
         "eyebrow": "Buchungsassistent",
@@ -113,6 +158,13 @@
             "confirm": "Danke — in der Community veröffentlicht."
         }
     },
+    "destinations": {
+        "eyebrow": "Namibias Highlights",
+        "title": "Die Orte, um die sich jede Reiseroute dreht",
+        "subtitle": "Auf ein Ziel tippen, um Unterkünfte, Aktivitäten und Restaurants in der Nähe zu sehen.",
+        "prev": "Vorherige Ziele",
+        "next": "Weitere Ziele"
+    },
     "explore": {
         "eyebrow": "Entdecken",
         "title": "Lass dich inspirieren, jederzeit stöbern",
@@ -131,7 +183,8 @@
             "moreFilters": "Weitere Filter ▾",
             "hideFilters": "Filter ausblenden ▲",
             "note": "Daten werden erfasst, sobald echte Partner-Verfügbarkeit angebunden ist — dieser Katalog ist noch nicht datumsgeprüft.",
-            "allRegions": "Alle Regionen & Orte",
+            "allRegions": "Alle Regionen",
+            "allCities": "Alle Städte",
             "anyBudget": "Beliebiges Budget",
             "budget": "Budget",
             "midRange": "Mittelklasse",
@@ -178,7 +231,9 @@
             "sortFeatured": "Empfohlen",
             "sortPriceAsc": "Preis: günstigste zuerst",
             "sortPriceDesc": "Preis: teuerste zuerst",
-            "sortRating": "Bestbewertet"
+            "sortRating": "Bestbewertet",
+            "showMap": "Karte anzeigen",
+            "hideMap": "Karte ausblenden"
         }
     },
     "tripPlan": {
@@ -222,6 +277,10 @@
         "gallery": "Galerie",
         "about": "Über",
         "steckbrief": "Auf einen Blick",
+        "location": {
+            "title": "Standort",
+            "directions": "Route anzeigen →"
+        },
         "contact": {
             "title": "Kontakt",
             "website": "Webseite",
@@ -230,6 +289,7 @@
         },
         "inquiry": {
             "title": "Verfügbarkeit anfragen",
+            "contactPerson": "Ihr Ansprechpartner: {name}",
             "subtitle": "Sende deine Daten direkt an {partner} — ohne Zahlung, ohne Verpflichtung.",
             "subtitleGeneric": "Sende deine Daten direkt an den Partner — ohne Zahlung, ohne Verpflichtung.",
             "name": "Vollständiger Name",
@@ -264,7 +324,7 @@
     },
     "howItWorks": {
         "ai": {
-            "badge": "KI-gestützt",
+            "badge": "Intelligente Suche",
             "title": "Reiseplan erstellen lassen",
             "steps": [
                 "Chat — erzähl Kaia, was du dir vorstellst",

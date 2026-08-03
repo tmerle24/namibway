@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ListingType;
+use App\Models\Destination;
 use App\Models\Listing;
-use App\Models\Region;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,8 +22,21 @@ class HomeController extends Controller
 
     private const LISTING_COLUMNS = [
         'id', 'type', 'name', 'slug', 'description',
-        'image', 'region', 'address', 'latitude', 'longitude',
+        'image', 'city_id', 'address', 'latitude', 'longitude',
         'price_from', 'price_currency', 'rating', 'rating_count',
+    ];
+
+    /**
+     * Types eligible for the homepage "cover story" pick. Restricted to
+     * categories that reliably have attractive photos — e.g. vehicle rental
+     * listings tend to have flat product/lot shots, not the kind of hero
+     * image a magazine front page wants. Revisit once the section is
+     * curated manually with vetted photos rather than picked automatically.
+     */
+    private const FEATURED_TYPES = [
+        ListingType::Accommodation,
+        ListingType::Activity,
+        ListingType::Restaurant,
     ];
 
     public function __invoke(): Response
@@ -46,24 +59,26 @@ class HomeController extends Controller
                 ->orderByDesc('is_featured')
                 ->orderByRaw('MD5(id::text || ?)', [$daySeed])
                 ->limit(self::PER_CATEGORY_LIMIT)
+                ->with('city.region')
                 ->get(self::LISTING_COLUMNS))
             ->map(fn (Listing $listing) => self::presentListing($listing));
 
-        $regions = Region::query()
+        $destinations = Destination::query()
             ->where('is_published', true)
-            ->orderBy('sort_order')
-            ->get(['id', 'name', 'slug', 'blurb', 'image', 'listing_region'])
-            ->map(fn (Region $region) => [
-                'name' => $region->name,
-                'slug' => $region->slug,
-                'blurb' => $region->blurb,
-                'image' => $region->image ? self::resolveMediaUrl($region->image) : null,
-                'listing_region' => $region->listing_region,
+            ->orderByRaw('MD5(id::text || ?)', [$daySeed])
+            ->with('region:id,name')
+            ->get(['id', 'name', 'slug', 'blurb', 'image', 'region_id'])
+            ->map(fn (Destination $destination) => [
+                'name' => $destination->name,
+                'slug' => $destination->slug,
+                'blurb' => $destination->blurb,
+                'image' => $destination->image ? self::resolveMediaUrl($destination->image) : null,
+                'region_name' => $destination->region->name,
             ]);
 
         return Inertia::render('Welcome', [
             'listings' => $listings,
-            'regions' => $regions,
+            'destinations' => $destinations,
             'featuredPick' => $featuredPick ? self::presentListing($featuredPick) : null,
         ]);
     }
@@ -80,13 +95,17 @@ class HomeController extends Controller
         return Listing::query()
             ->where('is_published', true)
             ->where('is_homepage_pick', true)
+            ->whereIn('type', self::FEATURED_TYPES)
             ->orderByRaw('MD5(id::text || ?)', [$daySeed])
+            ->with('city.region')
             ->first(self::LISTING_COLUMNS)
             ?? Listing::query()
                 ->where('is_published', true)
+                ->whereIn('type', self::FEATURED_TYPES)
                 ->orderByRaw("(image IS NOT NULL OR json_array_length(COALESCE(gallery, '[]')) > 0) DESC")
                 ->orderByDesc('rating')
                 ->orderByRaw('MD5(id::text || ?)', [$daySeed])
+                ->with('city.region')
                 ->first(self::LISTING_COLUMNS);
     }
 
@@ -100,7 +119,8 @@ class HomeController extends Controller
             'slug' => $listing->slug,
             'description' => $listing->description,
             'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
-            'region' => self::detectTown($listing->address) ?? $listing->region,
+            'region' => $listing->region,
+            'city' => $listing->city ? $listing->city->name : self::detectTown($listing->address),
             'latitude' => $listing->latitude !== null ? (float) $listing->latitude : null,
             'longitude' => $listing->longitude !== null ? (float) $listing->longitude : null,
             'price_from' => $listing->price_from,

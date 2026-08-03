@@ -436,7 +436,7 @@ class EnrichmentPipeline
             $updates['address'] = $data['address'];
         }
 
-        if ($listing->latitude === null && ! empty($data['latitude']) && ! empty($data['longitude'])) {
+        if ($listing->latitude === null && is_numeric($data['latitude'] ?? null) && is_numeric($data['longitude'] ?? null)) {
             $updates['latitude'] = $data['latitude'];
             $updates['longitude'] = $data['longitude'];
         }
