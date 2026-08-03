@@ -1941,11 +1941,6 @@
     }
 }
 
-.kaia-page .map-toggle-row {
-    display: flex;
-    justify-content: flex-end;
-    margin: 12px 0;
-}
 .kaia-page .map-toggle-btn {
     background: none;
     border: 1px solid #d6c9b5;

@@ -761,6 +761,19 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                 >
                     {{ t('explore.filters.clearFilters') }}
                 </button>
+                <button
+                    v-if="!searchMode && mapMarkers.length > 0"
+                    type="button"
+                    class="map-toggle-btn"
+                    :aria-pressed="mapOpen"
+                    @click="mapOpen = !mapOpen"
+                >
+                    {{
+                        mapOpen
+                            ? t('explore.results.hideMap')
+                            : t('explore.results.showMap')
+                    }}
+                </button>
                 <span class="filter-note">{{ t('explore.filters.note') }}</span>
             </div>
             <div class="filter-more" :class="{ open: filterMoreOpen }">
@@ -793,20 +806,6 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                     </option>
                 </select>
             </div>
-        </div>
-        <div v-if="!searchMode && mapMarkers.length > 0" class="map-toggle-row">
-            <button
-                type="button"
-                class="map-toggle-btn"
-                :aria-pressed="mapOpen"
-                @click="mapOpen = !mapOpen"
-            >
-                {{
-                    mapOpen
-                        ? t('explore.results.hideMap')
-                        : t('explore.results.showMap')
-                }}
-            </button>
         </div>
         <!-- Search results mode -->
         <template v-if="searchMode">
