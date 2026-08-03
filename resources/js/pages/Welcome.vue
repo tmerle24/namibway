@@ -104,9 +104,7 @@ async function onSearchIntent(
 const LISTING_TYPES = ['accommodation', 'activity', 'restaurant', 'vehicle'];
 
 onMounted(async () => {
-    const tripParam = new URLSearchParams(window.location.search).get(
-        'trip',
-    );
+    const tripParam = new URLSearchParams(window.location.search).get('trip');
 
     if (tripParam) {
         try {
@@ -115,6 +113,23 @@ onMounted(async () => {
         } catch {
             // Unknown/expired token — fall through to a normal fresh visit.
         }
+    }
+
+    // Arriving from MobileFooterNav on another page (e.g. a listing detail
+    // page), which links back here with the intended mobile tab pre-selected
+    // since there's no local section state to toggle from over there.
+    const mobileSectionParam = new URLSearchParams(window.location.search).get(
+        'mobileSection',
+    );
+    const MOBILE_SECTIONS: MobileSection[] = [
+        'kaia',
+        'discover',
+        'explore',
+        'support',
+    ];
+
+    if (MOBILE_SECTIONS.includes(mobileSectionParam as MobileSection)) {
+        mobileSection.value = mobileSectionParam as MobileSection;
     }
 
     const params = new URLSearchParams(window.location.search);
@@ -243,6 +258,6 @@ async function onGuestSubmit(details: GuestDetails) {
 
         <SiteFooter />
 
-        <MobileFooterNav v-model:active="mobileSection" />
+        <MobileFooterNav local v-model:active="mobileSection" />
     </div>
 </template>

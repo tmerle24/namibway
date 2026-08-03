@@ -1422,6 +1422,43 @@
 .kaia-page .detail-back:hover {
     border-color: var(--rust);
 }
+/* Mobile/tablet only — reuses the same header as Welcome instead of this
+   page's own light desktop topbar, and moves the back link next to the
+   listing title. Desktop is untouched: .detail-mobile-header/.detail-back
+   stay hidden, .detail-title-row is a plain block, .detail-topbar keeps
+   showing exactly as before. */
+.kaia-page .detail-mobile-header {
+    display: none;
+}
+.kaia-page .detail-title-back {
+    display: none;
+}
+@media (hover: none), (pointer: coarse) {
+    .kaia-page .detail-topbar {
+        display: none;
+    }
+    .kaia-page .detail-mobile-header {
+        display: block;
+    }
+    .kaia-page .detail-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        width: 100%;
+    }
+    .kaia-page .detail-title-back {
+        display: inline-flex;
+        flex-shrink: 0;
+        color: var(--sand);
+        border-color: rgba(251, 248, 241, 0.35);
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    .kaia-page .detail-title-back:hover {
+        border-color: var(--paper);
+    }
+}
 .kaia-page .detail-hero {
     position: relative;
     height: 420px;
@@ -2376,6 +2413,12 @@
         padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
     }
 
+    /* Takes up too much vertical space on a phone screen under the Kaia tab —
+       never shown on mobile at all, regardless of which tab is active. */
+    .kaia-page .how-it-works {
+        display: none;
+    }
+
     /* Only ever hide the inactive groups — never force a `display` on the
        active one, so each section keeps whatever display value (grid, flex,
        block…) its own rules already give it. */
@@ -2387,7 +2430,6 @@
             #itinerary-section,
             #guest-form-section,
             #booking-section,
-            .how-it-works,
             #explore-section,
             #after-sales-section
         ),
@@ -2397,7 +2439,6 @@
             #itinerary-section,
             #guest-form-section,
             #booking-section,
-            .how-it-works,
             #destinations-section,
             #after-sales-section
         ),
@@ -2407,7 +2448,6 @@
             #itinerary-section,
             #guest-form-section,
             #booking-section,
-            .how-it-works,
             #destinations-section,
             #explore-section
         ) {

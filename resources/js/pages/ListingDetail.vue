@@ -8,11 +8,14 @@ import AdminBar from '@/components/AdminBar.vue';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import ExploreMap from '@/components/home/ExploreMap.vue';
 import type { ExploreMapMarker } from '@/components/home/ExploreMap.vue';
+import MobileFooterNav from '@/components/home/MobileFooterNav.vue';
 import ImageLightbox from '@/components/ImageLightbox.vue';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import NavMoreMenu from '@/components/NavMoreMenu.vue';
 import PublishConsentModal from '@/components/PublishConsentModal.vue';
+import SiteFooter from '@/components/SiteFooter.vue';
+import SiteHeader from '@/components/SiteHeader.vue';
 import { formatPrice } from '@/lib/currency';
 import { home } from '@/routes';
 import inquiries from '@/routes/listings/inquiries';
@@ -233,6 +236,12 @@ const websiteUrl = computed(
             :listing-slug="props.listing.slug"
         />
 
+        <!-- Touch devices only — the desktop topbar below (.detail-topbar)
+             stays exactly as-is; see kaia-home.css. -->
+        <div class="detail-mobile-header">
+            <SiteHeader />
+        </div>
+
         <div v-if="props.is_preview" class="draft-banner">
             <span>Draft preview</span>
             <span class="draft-banner-badge">unpublished</span>
@@ -412,7 +421,15 @@ const websiteUrl = computed(
                     class="idea-tag"
                     >{{ t(`listing.types.${props.listing.type}`) }}</Link
                 >
-                <h1>{{ props.listing.name }}</h1>
+                <div class="detail-title-row">
+                    <h1>{{ props.listing.name }}</h1>
+                    <Link
+                        v-if="!props.claim_url"
+                        :href="backHref"
+                        class="detail-back detail-title-back"
+                        >{{ t('listing.backToHome') }}</Link
+                    >
+                </div>
                 <p v-if="props.listing.region">
                     <Link
                         :href="
@@ -807,10 +824,8 @@ const websiteUrl = computed(
             </div>
         </section>
 
-        <footer>
-            <img :src="logoDark" alt="NamibWay" class="footer-logo" />
-            <p>{{ t('footer.tagline') }}</p>
-        </footer>
+        <SiteFooter />
+        <MobileFooterNav />
     </div>
 </template>
 
