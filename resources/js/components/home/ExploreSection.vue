@@ -270,6 +270,7 @@ const filterBar = ref<HTMLDivElement | null>(null);
 let fp: FlatpickrInstance | null = null;
 
 const searchMode = ref(false);
+const mapOpen = ref(false);
 const searchResults = ref<SearchListing[]>([]);
 const searchMeta = ref<SearchMeta>({
     current_page: 1,
@@ -793,6 +794,20 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                 </select>
             </div>
         </div>
+        <div v-if="!searchMode && mapMarkers.length > 0" class="map-toggle-row">
+            <button
+                type="button"
+                class="map-toggle-btn"
+                :aria-pressed="mapOpen"
+                @click="mapOpen = !mapOpen"
+            >
+                {{
+                    mapOpen
+                        ? t('explore.results.hideMap')
+                        : t('explore.results.showMap')
+                }}
+            </button>
+        </div>
         <!-- Search results mode -->
         <template v-if="searchMode">
             <div class="search-results-header">
@@ -976,7 +991,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                 {{ t('explore.filters.empty') }}
             </p>
             <ExploreMap
-                v-if="mapMarkers.length > 0"
+                v-if="mapOpen && mapMarkers.length > 0"
                 :markers="mapMarkers"
                 :back-query="listingBackQuery"
                 map-id="explore-map"

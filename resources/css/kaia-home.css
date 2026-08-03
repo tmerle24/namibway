@@ -1941,6 +1941,35 @@
     }
 }
 
+.kaia-page .map-toggle-row {
+    display: flex;
+    justify-content: flex-end;
+    margin: 12px 0;
+}
+.kaia-page .map-toggle-btn {
+    background: none;
+    border: 1px solid #d6c9b5;
+    border-radius: 5px;
+    color: #5b5346;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        background 0.12s,
+        color 0.12s;
+}
+.kaia-page .map-toggle-btn:hover {
+    background: #f0ece4;
+    color: #2c2521;
+}
+.kaia-page .map-toggle-btn[aria-pressed='true'] {
+    background: var(--night);
+    color: var(--paper);
+    border-color: var(--night);
+}
+
 /* ── Search results mode ── */
 .kaia-page .search-results-header {
     display: flex;

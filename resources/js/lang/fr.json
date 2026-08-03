@@ -183,7 +183,9 @@
             "sortFeatured": "En vedette",
             "sortPriceAsc": "Prix : croissant",
             "sortPriceDesc": "Prix : décroissant",
-            "sortRating": "Mieux notés"
+            "sortRating": "Mieux notés",
+            "showMap": "Afficher la carte",
+            "hideMap": "Masquer la carte"
         }
     },
     "footer": {
