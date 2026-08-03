@@ -172,11 +172,11 @@ async function onGuestSubmit(details: GuestDetails) {
     <div class="kaia-page">
         <AdminBar />
         <HeroChat @plan-ready="onPlanReady" @search-intent="onSearchIntent" />
+        <ItinerarySection v-if="plan" :plan="plan" @book="onBook" />
         <TopDestinations
             :destinations="destinations"
             @select="(region) => onSearchIntent({ region })"
         />
-        <ItinerarySection v-if="plan" :plan="plan" @book="onBook" />
         <GuestDetailsForm
             v-if="bookingVariant && !bookingActive"
             :variant="bookingVariant"
