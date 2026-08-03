@@ -15,8 +15,7 @@ export function initializeLocale(initialLocale: string | undefined): void {
 
     router.on('success', (event) => {
         const locale = (event as CustomEvent).detail?.page?.props?.locale as
-            | string
-            | undefined;
+            string | undefined;
         applyLocale(locale);
     });
 }
