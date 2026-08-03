@@ -72,6 +72,15 @@
         "copyFailed": "Kopieren nicht möglich — bitte den Link manuell markieren und kopieren.",
         "setStartDate": "Startdatum festlegen",
         "drivingTime": "Fahrzeit",
+        "chooseRoom": "Zimmer wählen",
+        "changeRoom": "Ändern",
+        "perNight": "Nacht",
+        "roomPlaceholderNote": "Beispielhafte Zimmer — endgültige Auswahl und aktuelle Preise gibt es bei der Buchung.",
+        "roomTypes": {
+            "standard": "Standardzimmer",
+            "comfort": "Komfortzimmer",
+            "family": "Familienzimmer"
+        },
         "meta": {
             "travelPeriod": "Reisezeit",
             "duration": "Dauer",

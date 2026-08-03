@@ -17,11 +17,13 @@ import type {
     ItineraryListingRef,
     ItineraryPlan,
     ItineraryVariant,
+    RoomOption,
     TripParams,
 } from '@/lib/kaia-types';
 import AlternativesPanel from './AlternativesPanel.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
 import LocationPicker from './LocationPicker.vue';
+import RoomTypePicker from './RoomTypePicker.vue';
 import SaveLoginModal from './SaveLoginModal.vue';
 import SaveShareBar from './SaveShareBar.vue';
 import TripMap from './TripMap.vue';
@@ -49,6 +51,7 @@ const isLoggedIn = computed(() => !!page.props.auth?.user);
 // Resets whenever a genuinely new plan comes in from the parent.
 const editableVariants = ref<ItineraryVariant[]>([]);
 const swap = ref<SwapState | null>(null);
+const roomPickerKey = ref<string | null>(null);
 const dbRegions = ref<string[]>([]);
 const regionCoords = ref<Record<string, RegionCoords>>({});
 const savedTokens = ref<Record<number, string>>({});
@@ -155,6 +158,7 @@ async function applyParamsEdit(values: TripParamsFormValues) {
         currentTripParams.value = newPlan.trip_params;
         newPlan.variants.forEach((_, i) => applyDates(i));
         swap.value = null;
+        roomPickerKey.value = null;
         savedTokens.value = {};
         drivingLegsPerVariant.value = {};
         paramsModalOpen.value = false;
@@ -379,6 +383,7 @@ watch(
         currentTripSummary.value = plan.trip_summary;
         currentTripParams.value = plan.trip_params;
         swap.value = null;
+        roomPickerKey.value = null;
 
         // Claude doesn't always fill in every day's date field consistently —
         // normalize all days from day 1's date right away rather than only
@@ -445,6 +450,7 @@ function dismissVariant(variantIndex: number) {
         variantIndex,
     );
     swap.value = null;
+    roomPickerKey.value = null;
 }
 
 onMounted(async () => {
@@ -477,6 +483,7 @@ function reverseVariant(variantIndex: number) {
     editableVariants.value[variantIndex].days.reverse();
     renumberDays(variantIndex);
     swap.value = null;
+    roomPickerKey.value = null;
 }
 
 function removeItem(
@@ -486,6 +493,7 @@ function removeItem(
 ) {
     editableVariants.value[variantIndex].days[dayIndex][field] = null;
     swap.value = null;
+    roomPickerKey.value = null;
 }
 
 function removeDay(variantIndex: number, dayIndex: number) {
@@ -496,6 +504,7 @@ function removeDay(variantIndex: number, dayIndex: number) {
     });
     applyDates(variantIndex);
     swap.value = null;
+    roomPickerKey.value = null;
 }
 
 // afterDayIndex = -1 inserts before the first day
@@ -515,6 +524,31 @@ function addDay(variantIndex: number, afterDayIndex: number) {
     });
     applyDates(variantIndex);
     swap.value = null;
+    roomPickerKey.value = null;
+}
+
+// --- Room type picker (placeholder content, see RoomTypePicker.vue) ---
+
+function roomSelectionKey(variantIndex: number, dayIndex: number): string {
+    return `${variantIndex}-${dayIndex}`;
+}
+
+function toggleRoomPicker(variantIndex: number, dayIndex: number) {
+    const key = roomSelectionKey(variantIndex, dayIndex);
+    roomPickerKey.value = roomPickerKey.value === key ? null : key;
+}
+
+function selectRoom(
+    variantIndex: number,
+    dayIndex: number,
+    option: RoomOption,
+) {
+    editableVariants.value[variantIndex].days[dayIndex].room_selection = option;
+    roomPickerKey.value = null;
+}
+
+function clearRoom(variantIndex: number, dayIndex: number) {
+    editableVariants.value[variantIndex].days[dayIndex].room_selection = null;
 }
 
 // --- Swap / Add panel ---
@@ -549,6 +583,7 @@ async function openSwap(
 
     if (swap.value?.key === key) {
         swap.value = null;
+        roomPickerKey.value = null;
 
         return;
     }
@@ -585,6 +620,7 @@ function applySwap(alternative: ItineraryListingRef) {
     }
 
     swap.value = null;
+    roomPickerKey.value = null;
 }
 
 // --- Save & share (auth-gated) ---
@@ -907,6 +943,96 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                         :loading="swap.loading"
                                         :alternatives="swap.alternatives"
                                         @select="applySwap"
+                                    />
+                                    <div
+                                        v-if="day.accommodation"
+                                        class="room-selection-row"
+                                    >
+                                        <template v-if="day.room_selection">
+                                            <span class="room-selection-chip">
+                                                🛏️
+                                                {{ day.room_selection.name }}
+                                                ·
+                                                {{
+                                                    formatPrice(
+                                                        String(
+                                                            day.room_selection
+                                                                .price_per_night,
+                                                        ),
+                                                    )
+                                                }}/{{ t('itinerary.perNight') }}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                class="room-selection-link"
+                                                @click="
+                                                    toggleRoomPicker(
+                                                        variantIndex,
+                                                        dayIndex,
+                                                    )
+                                                "
+                                            >
+                                                {{ t('itinerary.changeRoom') }}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="remove-btn"
+                                                :aria-label="
+                                                    t('itinerary.remove')
+                                                "
+                                                @click="
+                                                    clearRoom(
+                                                        variantIndex,
+                                                        dayIndex,
+                                                    )
+                                                "
+                                            >
+                                                ×
+                                            </button>
+                                        </template>
+                                        <button
+                                            v-else
+                                            type="button"
+                                            class="room-selection-add-btn"
+                                            @click="
+                                                toggleRoomPicker(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                )
+                                            "
+                                        >
+                                            🛏️ {{ t('itinerary.chooseRoom') }}
+                                        </button>
+                                    </div>
+                                    <RoomTypePicker
+                                        v-if="
+                                            roomPickerKey ===
+                                            roomSelectionKey(
+                                                variantIndex,
+                                                dayIndex,
+                                            )
+                                        "
+                                        :base-price="
+                                            day.accommodation?.price_from ??
+                                            null
+                                        "
+                                        :currency="
+                                            day.accommodation?.price_currency ??
+                                            'NAD'
+                                        "
+                                        :adults="currentTripParams?.adults ?? 2"
+                                        :children="
+                                            currentTripParams?.children_under_13 ??
+                                            0
+                                        "
+                                        @select="
+                                            (option) =>
+                                                selectRoom(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                    option,
+                                                )
+                                        "
                                     />
 
                                     <ItineraryLineItem
