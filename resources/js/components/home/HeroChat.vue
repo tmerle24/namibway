@@ -122,6 +122,7 @@ function toggleVoiceInput() {
 
     if (isListening.value) {
         stopListening();
+
         return;
     }
 
