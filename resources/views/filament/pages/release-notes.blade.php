@@ -66,7 +66,7 @@
         </style>
 
         <p class="eyebrow">Documentation</p>
-        <h1>Release Notes</h1>
+        <h1>Deploy Log</h1>
         <p class="subtitle">
             Generated automatically on every deploy from the git log — nothing here is hand-maintained,
             so it always matches what's actually running in production.

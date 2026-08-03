@@ -12,9 +12,11 @@ class ReleaseNotes extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-sparkles';
 
-    protected static ?string $navigationLabel = 'Release Notes';
+    protected static ?string $navigationLabel = 'Deploy Log';
 
-    protected static ?string $title = 'Release Notes';
+    protected static ?string $title = 'Deploy Log';
+
+    protected static ?string $slug = 'deploy-log';
 
     protected static ?string $navigationGroup = 'Documentation';
 
