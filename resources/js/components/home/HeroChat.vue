@@ -310,38 +310,40 @@ async function retryLastMessage() {
 
 <template>
     <div class="hero-nav">
-        <Link :href="home()" class="brand">
-            <img :src="logoLight" alt="NamibWay" class="brand-logo" />
-        </Link>
-        <div class="hero-nav-actions">
-            <NavMoreMenu>
-                <CurrencySwitcher variant="full" />
-            </NavMoreMenu>
-            <LocaleSwitcher />
-            <Link
-                v-if="page.props.auth?.user"
-                :href="dashboard()"
-                class="icon-link"
-                :aria-label="t('nav.dashboard')"
-            >
-                <LayoutDashboard :size="16" />
+        <div class="hero-nav-inner">
+            <Link :href="home()" class="brand">
+                <img :src="logoLight" alt="NamibWay" class="brand-logo" />
             </Link>
-            <template v-else>
+            <div class="hero-nav-actions">
+                <NavMoreMenu>
+                    <CurrencySwitcher variant="full" />
+                </NavMoreMenu>
+                <LocaleSwitcher />
                 <Link
-                    :href="login()"
+                    v-if="page.props.auth?.user"
+                    :href="dashboard()"
                     class="icon-link"
-                    :aria-label="t('nav.login')"
+                    :aria-label="t('nav.dashboard')"
                 >
-                    <LogIn :size="16" />
+                    <LayoutDashboard :size="16" />
                 </Link>
-                <Link
-                    :href="register()"
-                    class="icon-link"
-                    :aria-label="t('nav.register')"
-                >
-                    <UserPlus :size="16" />
-                </Link>
-            </template>
+                <template v-else>
+                    <Link
+                        :href="login()"
+                        class="icon-link"
+                        :aria-label="t('nav.login')"
+                    >
+                        <LogIn :size="16" />
+                    </Link>
+                    <Link
+                        :href="register()"
+                        class="icon-link"
+                        :aria-label="t('nav.register')"
+                    >
+                        <UserPlus :size="16" />
+                    </Link>
+                </template>
+            </div>
         </div>
     </div>
     <div id="kaia-hero" class="hero">
