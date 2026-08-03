@@ -2630,13 +2630,13 @@
     height: 56px;
     margin-top: -28px;
     border-radius: 50%;
-    background: var(--rust);
+    background: var(--ink);
     color: var(--paper);
     border: 4px solid var(--paper);
     box-shadow: 0 6px 16px rgba(16, 26, 48, 0.35);
 }
 .kaia-page .mobile-footer-nav-compass.active {
-    background: var(--rust-dark);
+    background: var(--ink);
     color: var(--gold);
 }
 .kaia-page .mobile-footer-nav-compass-icon {
