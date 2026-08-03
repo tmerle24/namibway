@@ -2255,3 +2255,14 @@
         margin: 0 12px;
     }
 }
+
+/* iOS Safari auto-zooms the whole page when a focused input/select/textarea has
+   font-size below 16px, and the zoomed-in viewport sticks around after the
+   keyboard closes. Force 16px on all form controls on mobile widths to prevent it. */
+@media (max-width: 768px) {
+    .kaia-page input,
+    .kaia-page textarea,
+    .kaia-page select {
+        font-size: 16px;
+    }
+}
