@@ -7,6 +7,10 @@ Route::post('kaia/message', [KaiaController::class, 'message'])
     ->middleware('throttle:20,1')
     ->name('kaia.message');
 
+Route::post('kaia/regenerate', [KaiaController::class, 'regenerate'])
+    ->middleware('throttle:10,1')
+    ->name('kaia.regenerate');
+
 Route::get('kaia/regions', [KaiaController::class, 'regions'])
     ->middleware('throttle:30,1')
     ->name('kaia.regions');

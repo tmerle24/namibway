@@ -801,9 +801,9 @@ class ItineraryService
             stops). This takes priority over freely inventing your own route. If the list is empty, ignore
             this paragraph and follow the ROUTE guidance above instead.
 
-            Build exactly 2 variants of differing budget/pace where the catalog allows it, otherwise 1 is
-            fine — both variants must follow the same ROUTE instructions above; direction is handled
-            separately, outside this generation step.
+            Build exactly 1 variant — a single, focused itinerary that best fits the trip parameters. (A
+            future version of this product may offer alternative variants again; for now, put all your
+            effort into one excellent plan rather than splitting it across several.)
 
             For each day's "location" field, use the listing's exact "region" value — e.g. "Khomas",
             "Erongo", "Hardap", "Kunene", "Otjozondjupa", "Karas". Never use a park or tourist-area name
@@ -1095,16 +1095,19 @@ class ItineraryService
 
     /**
      * @param  array<string, mixed>  $tripParams
-     * @return array{nights: int|null, travel_period: string, interests: string, adults: int, children_under_13: int, vehicle_type: string, budget_tier: string}
+     * @return array{nights: int|null, travel_period: string, interests: string, adults: int, children_under_13: int, children_ages: string|null, vehicle_type: string, budget_tier: string}
      */
     private function extractTripParams(array $tripParams): array
     {
+        $childrenAges = $tripParams['children_ages'] ?? null;
+
         return [
             'nights' => is_numeric($tripParams['nights'] ?? null) ? (int) $tripParams['nights'] : null,
             'travel_period' => $this->stringParam($tripParams, 'travel_period', ''),
             'interests' => $this->stringParam($tripParams, 'interests', ''),
             'adults' => is_numeric($tripParams['adults'] ?? null) ? (int) $tripParams['adults'] : 1,
             'children_under_13' => is_numeric($tripParams['children_under_13'] ?? null) ? (int) $tripParams['children_under_13'] : 0,
+            'children_ages' => is_string($childrenAges) && $childrenAges !== '' ? $childrenAges : null,
             'vehicle_type' => $this->stringParam($tripParams, 'vehicle_type', ''),
             'budget_tier' => $this->stringParam($tripParams, 'budget_tier', ''),
         ];

@@ -59,8 +59,8 @@
     },
     "itinerary": {
         "eyebrow": "Your plan",
-        "title": "A few ways to do this trip",
-        "subtitle": "Generated from the conversation above — accommodation, activities and dining together, not separate silos.",
+        "title": "Your trip, planned",
+        "subtitle": "Generated from the conversation above — accommodation, activities and dining together, not separate silos. Change anything below and Kaia will re-plan around it.",
         "route": "Route",
         "roundTrip": "round trip",
         "reverseRoute": "Reverse route",
@@ -100,6 +100,7 @@
             "travelers": "Travelers",
             "preferences": "Preferences",
             "budget": "Budget",
+            "edit": "Edit",
             "nights": "{count} night | {count} nights",
             "adults": "{count} adult | {count} adults",
             "children": "{count} child | {count} children",
@@ -108,6 +109,26 @@
                 "mid-range": "Mid-range",
                 "premium": "Premium"
             }
+        },
+        "paramsEditor": {
+            "title": "Edit trip details",
+            "subtitle": "Update anything below — Kaia will re-plan the trip to match.",
+            "dateFrom": "From",
+            "dateTo": "To",
+            "adults": "Adults",
+            "childrenAges": "Children (ages)",
+            "childrenAgesPlaceholder": "e.g. 5, 8",
+            "interests": "Preferences",
+            "interestsPlaceholder": "e.g. safari, adventure, relaxed pace",
+            "budget": "Budget",
+            "startLocation": "Start city",
+            "endLocation": "End city",
+            "cancel": "Cancel",
+            "save": "Update plan",
+            "saving": "Updating your plan…",
+            "datesRequired": "Please choose a start and end date.",
+            "dateOrderInvalid": "The end date must be after the start date.",
+            "locationsRequired": "Please enter a start and end city."
         }
     },
     "booking": {

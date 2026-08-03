@@ -128,6 +128,38 @@ class KaiaController extends Controller
         return response()->json(['token' => $saved->token]);
     }
 
+    // Re-runs itinerary generation from scratch with traveler-edited trip
+    // parameters (dates, party, preferences, budget, start/end city) — used
+    // by the "edit trip details" popup on an already-generated plan, as
+    // opposed to message()'s conversational interview flow.
+    public function regenerate(Request $request, ItineraryService $itinerary): JsonResponse
+    {
+        $validated = $request->validate([
+            'nights' => ['required', 'integer', 'min:1', 'max:60'],
+            'travel_period' => ['required', 'string', 'max:120'],
+            'interests' => ['nullable', 'string', 'max:500'],
+            'budget_tier' => ['required', 'string', 'in:budget,mid-range,premium'],
+            'adults' => ['required', 'integer', 'min:1', 'max:20'],
+            'children_under_13' => ['required', 'integer', 'min:0', 'max:20'],
+            'children_ages' => ['nullable', 'string', 'max:200'],
+            'vehicle_type' => ['required', 'string', 'in:car,camper'],
+            'start_location' => ['nullable', 'string', 'max:120'],
+            'end_location' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        try {
+            $plan = $itinerary->generate($validated);
+
+            return response()->json(['plan' => $plan]);
+        } catch (RuntimeException $e) {
+            Log::error('Kaia itinerary regeneration failed: '.$e->getMessage());
+
+            return response()->json([
+                'error' => 'Could not update the plan. Please try again.',
+            ], 502);
+        }
+    }
+
     public function message(Request $request, InterviewService $interview, ItineraryService $itinerary): JsonResponse
     {
         $validated = $request->validate([

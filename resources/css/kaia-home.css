@@ -483,6 +483,9 @@
     margin-bottom: 28px;
     max-width: 600px;
 }
+.kaia-page #itinerary-section .section-head {
+    max-width: 100%;
+}
 .kaia-page .section-head h2 {
     font-size: 28px;
     margin-bottom: 8px;
@@ -490,29 +493,6 @@
 .kaia-page .section-head p {
     color: #5b5346;
     font-size: 15px;
-}
-.kaia-page .route-summary {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 12px;
-    font-size: 13.5px;
-}
-.kaia-page .route-label {
-    color: #8a7f68;
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 11px;
-    letter-spacing: 0.05em;
-}
-.kaia-page .route-arrow {
-    color: var(--rust);
-}
-.kaia-page .route-roundtrip-tag {
-    color: #8a7f68;
-    font-size: 11.5px;
-    font-style: italic;
 }
 .kaia-page .trip-summary-text {
     color: #5b5346;
@@ -544,6 +524,35 @@
 .kaia-page .trip-meta-text strong {
     font-weight: 600;
     color: var(--rust-dark);
+}
+.kaia-page .trip-meta-row--editable {
+    cursor: pointer;
+    border-radius: 10px;
+    padding: 4px;
+    margin: -4px;
+    transition: background 0.12s;
+}
+.kaia-page .trip-meta-row--editable:hover,
+.kaia-page .trip-meta-row--editable:focus-visible {
+    background: var(--sand);
+    outline: none;
+}
+.kaia-page .trip-meta-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: 1px dashed var(--sand-dark);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: var(--rust-dark);
+    font-weight: 600;
+    cursor: pointer;
+}
+.kaia-page .trip-meta-edit-btn:hover {
+    border-color: var(--rust);
+    background: var(--rust-light);
 }
 
 /* ---------- ITINERARY VARIANTS ---------- */
@@ -610,6 +619,16 @@
     font-size: 14px;
     margin-bottom: 4px;
 }
+.kaia-page .variant-card .trip-meta-row {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+.kaia-page .params-regenerating-note {
+    font-size: 12.5px;
+    color: var(--rust-dark);
+    font-style: italic;
+    margin: -8px 0 16px;
+}
 .kaia-page .variant-vehicle {
     color: #5b5346;
     font-size: 12.5px;
@@ -661,10 +680,24 @@
     border-top: none;
 }
 .kaia-page .day-num {
-    font-family: 'Fraunces', serif;
-    color: var(--rust);
-    font-size: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
     min-width: 52px;
+}
+.kaia-page .day-num-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.kaia-page .day-num-badge {
+    font-family: 'Inter', sans-serif;
+    cursor: default;
+}
+.kaia-page .day-num-badge:hover {
+    transform: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 .kaia-page .day-date {
     display: block;
@@ -672,7 +705,6 @@
     font-size: 11px;
     color: #7a6f63;
     font-weight: 400;
-    margin-top: 2px;
 }
 .kaia-page .day-thumb {
     width: 44px;
