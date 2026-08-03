@@ -37,8 +37,8 @@
     },
     "itinerary": {
         "eyebrow": "Dein Plan",
-        "title": "Ein paar Möglichkeiten für diese Reise",
-        "subtitle": "Erstellt aus dem Gespräch oben — Unterkunft, Aktivitäten und Restaurants gemeinsam gedacht, nicht getrennt.",
+        "title": "Deine Reise, geplant",
+        "subtitle": "Erstellt aus dem Gespräch oben — Unterkunft, Aktivitäten und Restaurants gemeinsam gedacht, nicht getrennt. Ändere unten beliebige Angaben, Kaia plant die Reise dann neu.",
         "route": "Route",
         "roundTrip": "Rundreise",
         "reverseRoute": "Route umkehren",
@@ -78,6 +78,7 @@
             "travelers": "Personen",
             "preferences": "Präferenzen",
             "budget": "Budget",
+            "edit": "Bearbeiten",
             "nights": "{count} Nacht | {count} Nächte",
             "adults": "{count} Erwachsener | {count} Erwachsene",
             "children": "{count} Kind | {count} Kinder",
@@ -86,6 +87,26 @@
                 "mid-range": "Mittelklasse",
                 "premium": "Premium"
             }
+        },
+        "paramsEditor": {
+            "title": "Reisedetails bearbeiten",
+            "subtitle": "Ändere unten beliebige Angaben — Kaia plant die Reise dann neu.",
+            "dateFrom": "Von",
+            "dateTo": "Bis",
+            "adults": "Erwachsene",
+            "childrenAges": "Kinder (Alter)",
+            "childrenAgesPlaceholder": "z. B. 5, 8",
+            "interests": "Präferenzen",
+            "interestsPlaceholder": "z. B. Safari, Abenteuer, entspanntes Tempo",
+            "budget": "Budget",
+            "startLocation": "Startort",
+            "endLocation": "Zielort",
+            "cancel": "Abbrechen",
+            "save": "Plan aktualisieren",
+            "saving": "Dein Plan wird aktualisiert…",
+            "datesRequired": "Bitte Start- und Enddatum wählen.",
+            "dateOrderInvalid": "Das Enddatum muss nach dem Startdatum liegen.",
+            "locationsRequired": "Bitte Start- und Zielort angeben."
         }
     },
     "booking": {

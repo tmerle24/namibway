@@ -32,6 +32,7 @@ export interface TripParams {
     interests: string;
     adults: number;
     children_under_13: number;
+    children_ages?: string | null;
     vehicle_type: string;
     budget_tier: string;
 }

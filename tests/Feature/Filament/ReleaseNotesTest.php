@@ -73,7 +73,7 @@ class ReleaseNotesTest extends TestCase
         $this->writeSnapshot();
 
         $this->actingAs($this->admin())
-            ->get('/admin/release-notes')
+            ->get('/admin/deploy-log')
             ->assertOk()
             ->assertSee('Release Notes')
             ->assertSee('v1.0.187')
@@ -86,7 +86,7 @@ class ReleaseNotesTest extends TestCase
         $this->writeSnapshot();
 
         $this->actingAs($this->admin())
-            ->get('/admin/release-notes')
+            ->get('/admin/deploy-log')
             ->assertOk()
             ->assertSee('v1.0.180')
             ->assertSee('def5678')
@@ -98,7 +98,7 @@ class ReleaseNotesTest extends TestCase
         File::delete(storage_path('app/release/version.json'));
 
         $this->actingAs($this->admin())
-            ->get('/admin/release-notes')
+            ->get('/admin/deploy-log')
             ->assertOk()
             ->assertSee('No release snapshot yet');
     }

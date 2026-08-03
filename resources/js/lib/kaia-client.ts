@@ -302,6 +302,46 @@ export async function sendFeedback(payload: FeedbackPayload): Promise<void> {
     }
 }
 
+export interface RegeneratePlanParams {
+    nights: number;
+    travel_period: string;
+    interests: string;
+    budget_tier: string;
+    adults: number;
+    children_under_13: number;
+    children_ages: string | null;
+    vehicle_type: string;
+    start_location: string;
+    end_location: string;
+}
+
+export async function regeneratePlan(
+    params: RegeneratePlanParams,
+): Promise<ItineraryPlan> {
+    const response = await fetch('/kaia/regenerate', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+
+        throw new Error(
+            (data as { error?: string }).error ?? 'Could not update the plan.',
+        );
+    }
+
+    const data = await response.json();
+
+    return data.plan as ItineraryPlan;
+}
+
 export async function sendKaiaMessage(
     history: ChatMessage[],
 ): Promise<KaiaResponse> {

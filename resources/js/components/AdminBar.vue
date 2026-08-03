@@ -46,6 +46,7 @@ watch(rootEl, (el) => {
 
     if (!el) {
         setAdminBarHeightVar(0);
+
         return;
     }
 
