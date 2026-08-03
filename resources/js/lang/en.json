@@ -119,6 +119,15 @@
         "copyFailed": "Couldn't copy automatically — the link is selected, copy it manually.",
         "setStartDate": "Set start date",
         "drivingTime": "Driving",
+        "chooseRoom": "Choose room",
+        "changeRoom": "Change",
+        "perNight": "night",
+        "roomPlaceholderNote": "Illustrative rooms — final selection and live rates come at booking.",
+        "roomTypes": {
+            "standard": "Standard Room",
+            "comfort": "Comfort Room",
+            "family": "Family Room"
+        },
         "meta": {
             "travelPeriod": "Travel dates",
             "duration": "Duration",

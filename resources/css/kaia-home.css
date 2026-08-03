@@ -1879,6 +1879,46 @@
     color: var(--rust);
 }
 
+/* Room-type selection row — sits under the accommodation line item */
+.kaia-page .room-selection-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 2px 0 2px;
+}
+.kaia-page .room-selection-chip {
+    font-size: 12px;
+    color: #4a4438;
+}
+.kaia-page .room-selection-link {
+    background: none;
+    border: none;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--rust);
+    cursor: pointer;
+    padding: 0;
+}
+.kaia-page .room-selection-link:hover {
+    text-decoration: underline;
+}
+.kaia-page .room-selection-add-btn {
+    background: none;
+    border: 1px dashed var(--sand-dark);
+    border-radius: 5px;
+    color: #8a7f68;
+    font-size: 11px;
+    padding: 1px 7px;
+    cursor: pointer;
+    opacity: 0.85;
+}
+.kaia-page .room-selection-add-btn:hover {
+    opacity: 1;
+    border-color: var(--rust);
+    color: var(--rust);
+}
+
 /* AlternativesPanel — replace old span-based use with button + detail link */
 .kaia-page .alt-detail-link {
     font-size: 11px;

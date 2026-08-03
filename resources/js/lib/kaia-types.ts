@@ -10,6 +10,17 @@ export interface ItineraryListingRef {
     image?: string | null;
 }
 
+// Placeholder room-type content — not backed by RoomType/live availability
+// yet (see RoomTypePicker.vue). Good enough to demo the picking UX; swap
+// the generator for a real per-stay availability call once that's wired up.
+export interface RoomOption {
+    code: string;
+    name: string;
+    capacity: string;
+    price_per_night: number;
+    currency: string;
+}
+
 export interface ItineraryDay {
     day: number;
     date?: string | null;
@@ -18,6 +29,7 @@ export interface ItineraryDay {
     accommodation?: ItineraryListingRef | null;
     activity?: ItineraryListingRef | null;
     restaurant?: ItineraryListingRef | null;
+    room_selection?: RoomOption | null;
 }
 
 export interface ItineraryVariant {
