@@ -287,10 +287,12 @@ watch(
         // after the traveler drags/adds/removes something.
         plan.variants.forEach((_, i) => applyDates(i));
 
-        // The persist watcher below would otherwise immediately re-save the
-        // plan it was just hydrated from (new Kaia result, or restored via
-        // ?trip=token) — skip that one, redundant round-trip.
-        skipNextPersist = true;
+        // Only skip the immediate re-save when hydrating a plan that's
+        // *already* got a token (restored via ?trip=token — saving it right
+        // back would be a redundant round-trip). A brand-new Kaia result has
+        // no token yet, so it must NOT be skipped — that's the save that
+        // mints the token and updates the URL in the first place.
+        skipNextPersist = !!currentToken.value;
     },
     { immediate: true },
 );
