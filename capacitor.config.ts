@@ -10,6 +10,12 @@ const config: CapacitorConfig = {
     appId: 'com.namibway.app',
     appName: 'NamibWay',
     webDir: 'ios-shell',
+    server: {
+        // Without this, Capacitor treats navigation to namibway.com as external (it
+        // only matches the app's own id/origin by default) and hands it off to the
+        // system browser instead of loading it in the WebView.
+        allowNavigation: ['namibway.com', 'www.namibway.com'],
+    },
 };
 
 export default config;
