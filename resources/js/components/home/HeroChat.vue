@@ -310,7 +310,6 @@ async function retryLastMessage() {
             preserveAspectRatio="none"
             aria-hidden="true"
         >
-            <circle cx="520" cy="140" r="60" fill="var(--gold)" opacity="0.9" />
             <path
                 d="M0 260 Q140 190 300 250 T620 240 T1040 255 V340 H0 Z"
                 fill="#C97A3E"
@@ -357,6 +356,8 @@ async function retryLastMessage() {
                 <h1>{{ t('hero.title') }}</h1>
                 <p>{{ t('hero.subtitle') }}</p>
             </div>
+
+            <div class="hero-sun" aria-hidden="true"></div>
 
             <div class="chat-panel" ref="chatPanel">
                 <div class="chat-log" ref="chatLog">

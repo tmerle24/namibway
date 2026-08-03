@@ -276,6 +276,22 @@
     font-size: 17px;
     max-width: 480px;
 }
+/* A sun peeking over the chat panel. Positioned in normal flow (with a
+   negative bottom margin to pull it under the panel) rather than living
+   inside the bottom-anchored hero-bg SVG, so its position tracks the panel
+   instead of the hero's overall height — which varies a lot between the
+   fixed desktop hero and the mobile full-height state. Deliberately no
+   `opacity` here: opacity < 1 promotes an element to its own stacking
+   context, which then paints above later in-flow siblings regardless of
+   DOM order — that made the sun float on top of the chat panel instead of
+   being covered by it. */
+.kaia-page .hero-sun {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: var(--gold);
+    margin: 4px auto -50px;
+}
 
 /* ---------- CHAT PANEL ---------- */
 .kaia-page .chat-panel {
