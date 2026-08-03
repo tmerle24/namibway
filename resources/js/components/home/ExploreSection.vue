@@ -49,7 +49,11 @@ const { t } = useI18n();
 
 type Budget = 'budget' | 'mid-range' | 'premium' | null;
 type RowKey =
-    'accommodation' | 'activity' | 'restaurant' | 'vehicle' | 'region';
+    | 'accommodation'
+    | 'activity'
+    | 'restaurant'
+    | 'vehicle'
+    | 'region';
 
 interface IdeaCard {
     id: number | null;
