@@ -78,7 +78,7 @@ class ListingController extends Controller
         // property owner via the same claim_token already emailed to them for the
         // claim flow — see ClaimInviteService, which links here with ?preview=<token>.
         $isAdmin = self::isAdmin();
-        $isOwnerPreview = self::hasValidPreviewToken($listing, $request);
+        $isOwnerPreview = self::isOwner($listing, $request);
         $isPreview = ! $listing->is_published;
 
         abort_unless($listing->is_published || $isAdmin || $isOwnerPreview, 404);
@@ -215,7 +215,7 @@ class ListingController extends Controller
     public function publish(Request $request, Listing $listing): RedirectResponse
     {
         $isAdmin = self::isAdmin();
-        $isOwnerPreview = self::hasValidPreviewToken($listing, $request);
+        $isOwnerPreview = self::isOwner($listing, $request);
 
         abort_unless($isAdmin || $isOwnerPreview, 403);
         abort_unless($request->boolean('terms_accepted'), 422, 'Terms & Conditions must be accepted to publish.');
@@ -235,7 +235,7 @@ class ListingController extends Controller
 
     public function approvePhotos(Request $request, Listing $listing): RedirectResponse
     {
-        abort_unless(self::isAdmin() || self::hasValidPreviewToken($listing, $request), 403);
+        abort_unless(self::isAdmin() || self::isOwner($listing, $request), 403);
 
         $listing->approvePendingPhotos();
 
@@ -286,7 +286,7 @@ class ListingController extends Controller
      */
     public function edit(Request $request, Listing $listing): Response
     {
-        abort_unless(self::isAdmin() || self::hasValidPreviewToken($listing, $request), 403);
+        abort_unless(self::isAdmin() || self::isOwner($listing, $request), 403);
 
         $listing->load('partner');
 
@@ -332,7 +332,7 @@ class ListingController extends Controller
     public function update(Request $request, Listing $listing, OsmLocationFinder $osmFinder): RedirectResponse
     {
         $isAdmin = self::isAdmin();
-        $isOwnerPreview = self::hasValidPreviewToken($listing, $request);
+        $isOwnerPreview = self::isOwner($listing, $request);
 
         abort_unless($isAdmin || $isOwnerPreview, 403);
 
@@ -463,6 +463,25 @@ class ListingController extends Controller
     private static function isAdmin(): bool
     {
         return auth()->check() && auth()->user()->is_admin;
+    }
+
+    /** A logged-in business-owner account (see DashboardController) editing one of their own listings. */
+    private static function isSessionOwner(Listing $listing): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && $user->partner_id !== null && $user->partner_id === $listing->partner_id;
+    }
+
+    /**
+     * Owner access, either via the emailed claim_token preview link (pre-account,
+     * see hasValidPreviewToken()) or a real session for an owner who has since
+     * claimed their account (see isSessionOwner()) — the two are equivalent in
+     * what they're allowed to do, just different ways of proving ownership.
+     */
+    private static function isOwner(Listing $listing, Request $request): bool
+    {
+        return self::hasValidPreviewToken($listing, $request) || self::isSessionOwner($listing);
     }
 
     /**

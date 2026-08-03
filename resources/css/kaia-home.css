@@ -2589,6 +2589,53 @@
 .kaia-page .dashboard-table-actions a + a {
     margin-left: 12px;
 }
+.kaia-page .dashboard-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.kaia-page .dashboard-status-pill::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+.kaia-page .dashboard-status-pill--pending,
+.kaia-page .dashboard-status-pill--processing,
+.kaia-page .dashboard-status-pill--on_request {
+    color: var(--rust);
+}
+.kaia-page .dashboard-status-pill--nwr_pending,
+.kaia-page .dashboard-status-pill--failed {
+    color: var(--danger);
+}
+.kaia-page .dashboard-status-pill--confirmed {
+    color: var(--sage);
+}
+.kaia-page .dashboard-status-pill--cancelled {
+    color: #a89d8a;
+}
+.kaia-page .dashboard-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+.kaia-page .dashboard-badge--published {
+    background: var(--sage-light);
+    color: #3c4a37;
+}
+.kaia-page .dashboard-badge--unpublished {
+    background: var(--sand);
+    color: #8a7d6e;
+}
 @media (max-width: 720px) {
     .kaia-page .dashboard-section {
         flex-direction: column;

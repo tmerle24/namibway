@@ -27,8 +27,29 @@
         "nav": {
             "trips": "My Trips",
             "listings": "Listings",
-            "bookings": "Bookings",
-            "comingSoon": "Coming soon"
+            "bookings": "Bookings"
+        },
+        "listings": {
+            "title": "Your listings",
+            "subtitle": "Content, photos and booking setup — same editor as your claim-link email.",
+            "empty": "No listings on your account yet.",
+            "name": "Listing",
+            "status": "Status",
+            "updated": "Last updated",
+            "actions": "Actions",
+            "edit": "Edit",
+            "published": "Published",
+            "unpublished": "Unpublished"
+        },
+        "bookings": {
+            "title": "Your bookings",
+            "subtitle": "Requests coming in from travelers across all your listings.",
+            "empty": "No booking requests yet.",
+            "listing": "Listing",
+            "guest": "Guest",
+            "dates": "Dates",
+            "status": "Status",
+            "requested": "Requested"
         }
     },
     "hero": {
