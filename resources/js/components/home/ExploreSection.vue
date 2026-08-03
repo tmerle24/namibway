@@ -807,20 +807,6 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                 </select>
             </div>
         </div>
-        <div v-if="!searchMode && mapMarkers.length > 0" class="map-toggle-row">
-            <button
-                type="button"
-                class="map-toggle-btn"
-                :aria-pressed="mapOpen"
-                @click="mapOpen = !mapOpen"
-            >
-                {{
-                    mapOpen
-                        ? t('explore.results.hideMap')
-                        : t('explore.results.showMap')
-                }}
-            </button>
-        </div>
         <!-- Search results mode -->
         <template v-if="searchMode">
             <div class="search-results-header">
