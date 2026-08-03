@@ -89,17 +89,39 @@ Unlike iOS, this doesn't need the virtual Mac — Android Studio/Gradle runs fin
 5. Fill in the Play Store listing (screenshots, feature graphic, description, privacy
    policy URL, content rating questionnaire) and submit for review.
 
+## Voice input (Kaia)
+
+Kaia's chat (`resources/js/components/home/HeroChat.vue`) has a microphone button for
+dictating messages instead of typing. In the browser/PWA this uses the Web Speech API
+(`window.SpeechRecognition`/`webkitSpeechRecognition`) — but WKWebView doesn't implement
+that API at all, so it never worked on iOS, only on Android's Chromium-based WebView.
+
+Inside the wrapped app, voice input now goes through
+`@capgo/capacitor-speech-recognition` instead (Apple's Speech framework / Android's
+`SpeechRecognizer`), gated on `Capacitor.isNativePlatform()`. This plugin was chosen
+specifically because it ships both `Package.swift` and a podspec — our iOS project uses
+Swift Package Manager (no Podfile), and most Capacitor plugins (including
+`@capacitor-community/speech-recognition`, the more commonly-referenced package) only
+ship a podspec, which `cap sync` silently drops when the project is SPM-only (no error,
+the plugin just isn't linked and every call fails at runtime as "not implemented"). If a
+plugin needs to be swapped later, check for a `Package.swift` in its published package
+first, or the native call will silently do nothing on iOS.
+
+Required native permission strings are already in place:
+
+- **iOS**: `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` in
+  `ios/App/App/Info.plist`.
+- **Android**: `RECORD_AUDIO` — merged in automatically from the plugin's own manifest,
+  nothing to add to `AndroidManifest.xml`.
+
 ## Before actually submitting: read this
 
 A plain WebView pointed at a website is a common rejection reason on **both stores** —
 Apple's Guideline 4.2 (Minimum Functionality) explicitly targets apps that "simply wrap web
 content" with no native value-add, and Google Play's spam/minimum-functionality policy is
-similar. Two things already in the repo help (the PWA manifest and `sw.js`/`offline.html`
-show some app-like intent), but a bare wrapper with zero native integrations is still a
-real rejection risk on either store. Worth adding at least one genuine native capability
-before submitting for real — push notifications for booking confirmations (fits the
-request-governance flow in `CLAUDE.md`) is the most natural fit and reuses infrastructure
-the backend needs anyway.
+similar. The native voice input above is a genuine example of this; push notifications for
+booking confirmations (fits the request-governance flow in `CLAUDE.md`) would be another
+good one to add before submitting for real.
 
 Given the core booking flow is still actively changing (see `CLAUDE.md`), treat this
 Capacitor setup as infrastructure prep to validate before it's cancelled — not as a signal

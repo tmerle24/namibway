@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Capacitor } from '@capacitor/core';
+import { SpeechRecognition as NativeSpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import SiteHeader from '@/components/SiteHeader.vue';
@@ -81,15 +83,18 @@ const chatPanel = ref<HTMLDivElement | null>(null);
 const chatInput = ref<HTMLInputElement | null>(null);
 let thinkingTimer: ReturnType<typeof setInterval> | null = null;
 
-// Web Speech API today; once the Capacitor wrapper lands this is the spot to
-// swap in a native STT plugin (the WebView implementation is unreliable on
-// iOS) — everything else just consumes `inputText`, so the swap is isolated
-// here.
+// Wrapped-app voice input uses the native STT plugin (@capacitor-community/
+// speech-recognition, backed by Apple's Speech framework / Android's
+// SpeechRecognizer) instead of the Web Speech API — WKWebView doesn't
+// implement window.SpeechRecognition at all, so the browser API only ever
+// worked on Android. The browser/PWA path below is unchanged.
+const isNativePlatform = Capacitor.isNativePlatform();
+
 const SpeechRecognitionCtor =
     typeof window !== 'undefined'
         ? (window.SpeechRecognition ?? window.webkitSpeechRecognition)
         : undefined;
-const isVoiceSupported = !!SpeechRecognitionCtor;
+const isVoiceSupported = ref(isNativePlatform || !!SpeechRecognitionCtor);
 const isListening = ref(false);
 let recognition: InstanceType<
     NonNullable<typeof SpeechRecognitionCtor>
@@ -103,20 +108,68 @@ const speechLocales: Record<string, string> = {
     es: 'es-ES',
 };
 
+if (isNativePlatform) {
+    NativeSpeechRecognition.available().then(({ available }) => {
+        isVoiceSupported.value = available;
+    });
+
+    NativeSpeechRecognition.addListener('partialResults', ({ matches }) => {
+        inputText.value = matches?.[0] ?? '';
+    });
+
+    NativeSpeechRecognition.addListener('listeningState', ({ status }) => {
+        isListening.value = status === 'started';
+    });
+}
+
 function stopListening() {
     isListening.value = false;
+
+    if (isNativePlatform) {
+        void NativeSpeechRecognition.stop();
+
+        return;
+    }
+
     recognition?.stop();
     recognition = null;
 }
 
+async function startNativeListening() {
+    const permission = await NativeSpeechRecognition.requestPermissions();
+
+    if (permission.speechRecognition !== 'granted') {
+        return;
+    }
+
+    isListening.value = true;
+    NativeSpeechRecognition.start({
+        language: speechLocales[locale.value] ?? 'en-US',
+        partialResults: true,
+        popup: false,
+    }).catch(() => {
+        isListening.value = false;
+    });
+}
+
 function toggleVoiceInput() {
-    if (!SpeechRecognitionCtor || isTyping.value) {
+    if (!isVoiceSupported.value || isTyping.value) {
         return;
     }
 
     if (isListening.value) {
         stopListening();
 
+        return;
+    }
+
+    if (isNativePlatform) {
+        void startNativeListening();
+
+        return;
+    }
+
+    if (!SpeechRecognitionCtor) {
         return;
     }
 
@@ -162,6 +215,10 @@ function stopThinking() {
 onUnmounted(() => {
     stopThinking();
     stopListening();
+
+    if (isNativePlatform) {
+        void NativeSpeechRecognition.removeAllListeners();
+    }
 });
 
 function syncScroll() {
