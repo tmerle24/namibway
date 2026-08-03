@@ -7,7 +7,12 @@
         "language": "Idioma",
         "more": "Más opciones",
         "backToWebsite": "Volver al sitio web",
-        "logout": "Cerrar sesión"
+        "logout": "Cerrar sesión",
+        "mobileSearch": "Buscar",
+        "mobileDiscover": "Descubrir",
+        "mobileKaia": "Kaia",
+        "mobileSupport": "Ayuda",
+        "mobileAccount": "Cuenta"
     },
     "hero": {
         "title": "La forma más inteligente de vivir Namibia.",

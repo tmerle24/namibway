@@ -7,7 +7,12 @@
         "language": "Taal",
         "more": "Meer opties",
         "backToWebsite": "Terug naar de website",
-        "logout": "Uitloggen"
+        "logout": "Uitloggen",
+        "mobileSearch": "Zoeken",
+        "mobileDiscover": "Ontdekken",
+        "mobileKaia": "Kaia",
+        "mobileSupport": "Support",
+        "mobileAccount": "Account"
     },
     "hero": {
         "title": "De slimste manier om Namibië te beleven.",
