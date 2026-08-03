@@ -242,6 +242,42 @@ const websiteUrl = computed(
             <SiteHeader />
         </div>
 
+        <!-- Same owner actions as .detail-topbar-actions below, just in their
+             own bar under the header — owners very often open the claim
+             email straight from their phone, so these can't be mobile-only
+             hidden the way the rest of .detail-topbar is. -->
+        <div
+            v-if="props.can_publish || props.claim_url"
+            class="detail-mobile-owner-bar"
+        >
+            <template v-if="props.can_publish">
+                <Link
+                    :href="`/listings/${props.listing.slug}/edit${props.preview_token ? `?preview=${props.preview_token}` : ''}`"
+                    class="owner-header-link owner-header-link--edit"
+                >
+                    <Pencil :size="14" />
+                    Edit
+                </Link>
+                <button
+                    v-if="props.is_preview"
+                    type="button"
+                    class="owner-header-link owner-header-link--publish"
+                    @click="publishListing"
+                >
+                    <Globe :size="14" />
+                    Publish
+                </button>
+            </template>
+            <a
+                v-if="props.claim_url"
+                :href="props.claim_url"
+                class="owner-header-link owner-header-link--claim"
+            >
+                <UserPlus :size="14" />
+                Claim account
+            </a>
+        </div>
+
         <div v-if="props.is_preview" class="draft-banner">
             <span>Draft preview</span>
             <span class="draft-banner-badge">unpublished</span>
@@ -997,5 +1033,22 @@ const websiteUrl = computed(
 
 .owner-header-link--claim:hover {
     background: #fdf6ec;
+}
+
+.detail-mobile-owner-bar {
+    display: none;
+}
+@media (hover: none), (pointer: coarse) {
+    .detail-mobile-owner-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 10px 24px;
+        background: var(--paper, #fbf8f1);
+        border-bottom: 1px solid var(--sand-dark, #d6c9b5);
+    }
 }
 </style>
