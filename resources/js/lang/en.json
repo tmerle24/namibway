@@ -5,7 +5,8 @@
         "register": "Register",
         "currency": "Currency",
         "language": "Language",
-        "more": "More options"
+        "more": "More options",
+        "backToWebsite": "Back to website"
     },
     "dashboard": {
         "title": "My trips",
@@ -39,7 +40,10 @@
         "viewListing": "View & enquire →",
         "from": "from",
         "error": "Kaia is having trouble responding right now.",
-        "retry": "Retry"
+        "retry": "Retry",
+        "voiceInput": "Speak to Kaia",
+        "stopListening": "Stop recording",
+        "listening": "Listening…"
     },
     "itinerary": {
         "eyebrow": "Your plan",

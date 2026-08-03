@@ -350,6 +350,35 @@
 .kaia-page .chat-input-row button:hover:not(:disabled) {
     background: var(--rust-dark);
 }
+.kaia-page .chat-mic-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 42px;
+    padding: 0;
+    background: var(--paper);
+    color: var(--rust);
+    border: 1px solid var(--sand-dark);
+}
+.kaia-page .chat-mic-btn:hover:not(:disabled) {
+    background: var(--sand);
+}
+.kaia-page .chat-mic-btn.listening {
+    background: var(--rust);
+    color: var(--paper);
+    border-color: var(--rust);
+    animation: kaia-mic-pulse 1.4s ease-in-out infinite;
+}
+@keyframes kaia-mic-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(197, 90, 17, 0.35);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(197, 90, 17, 0);
+    }
+}
 .kaia-page .chat-rec-card {
     display: flex;
     gap: 10px;

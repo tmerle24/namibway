@@ -5,7 +5,8 @@
         "register": "Registreren",
         "currency": "Valuta",
         "language": "Taal",
-        "more": "Meer opties"
+        "more": "Meer opties",
+        "backToWebsite": "Terug naar de website"
     },
     "hero": {
         "title": "De slimste manier om Namibië te beleven.",
@@ -28,7 +29,10 @@
         "viewListing": "Bekijk & vraag aan →",
         "from": "vanaf",
         "error": "Kaia heeft momenteel moeite om te reageren.",
-        "retry": "Opnieuw proberen"
+        "retry": "Opnieuw proberen",
+        "voiceInput": "Spreek met Kaia",
+        "stopListening": "Opname stoppen",
+        "listening": "Ik luister…"
     },
     "itinerary": {
         "eyebrow": "Jouw plan",
