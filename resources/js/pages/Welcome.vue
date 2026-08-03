@@ -223,7 +223,11 @@ async function onGuestSubmit(details: GuestDetails) {
 </script>
 
 <template>
-    <div class="kaia-page" :data-mobile-section="mobileSection">
+    <div
+        class="kaia-page"
+        :class="{ 'has-plan': plan }"
+        :data-mobile-section="mobileSection"
+    >
         <AdminBar />
         <HeroChat @plan-ready="onPlanReady" @search-intent="onSearchIntent" />
         <ItinerarySection
