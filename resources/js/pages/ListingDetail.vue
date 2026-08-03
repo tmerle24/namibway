@@ -11,6 +11,7 @@ import type { ExploreMapMarker } from '@/components/home/ExploreMap.vue';
 import ImageLightbox from '@/components/ImageLightbox.vue';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
+import NavMoreMenu from '@/components/NavMoreMenu.vue';
 import PublishConsentModal from '@/components/PublishConsentModal.vue';
 import { formatPrice } from '@/lib/currency';
 import { home } from '@/routes';
@@ -388,7 +389,9 @@ const websiteUrl = computed(
                     <UserPlus :size="14" />
                     Claim account
                 </a>
-                <CurrencySwitcher />
+                <NavMoreMenu>
+                    <CurrencySwitcher variant="full" />
+                </NavMoreMenu>
                 <LocaleSwitcher />
                 <Link :href="backHref" class="detail-back">{{
                     t('listing.backToHome')

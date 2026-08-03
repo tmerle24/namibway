@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
+use RuntimeException;
 
 /**
  * Writes storage/app/release/version.json from the current git state.
@@ -18,6 +19,9 @@ use Illuminate\Support\Facades\Process;
  * deploy's commit window. The file also keeps its previous flat top-level
  * fields (version/build/hash/.../commits) mirroring the newest release,
  * for backward compatibility with anything reading the old shape.
+ *
+ * @phpstan-import-type ReleaseCommit from \App\Services\ReleaseVersion
+ * @phpstan-import-type ReleaseEntry from \App\Services\ReleaseVersion
  */
 class ReleaseSnapshot extends Command
 {
@@ -57,9 +61,11 @@ class ReleaseSnapshot extends Command
 
         // Migrate the old flat shape (no "releases" key) into a single-entry history
         // so existing on-server snapshots aren't lost when this ships.
-        $releases = collect($previous['releases'] ?? (
+        /** @var array<int, ReleaseEntry> $previousReleases */
+        $previousReleases = $previous['releases'] ?? (
             $previous ? [array_intersect_key($previous, array_flip(['version', 'build', 'hash', 'date', 'time', 'deployed_at', 'commits']))] : []
-        ));
+        );
+        $releases = collect($previousReleases);
 
         $previousHash = $previous['hash'] ?? null;
 
@@ -83,8 +89,7 @@ class ReleaseSnapshot extends Command
 
         $releases = $releases->take(self::MAX_RELEASES)->values();
 
-        File::ensureDirectoryExists(dirname($path));
-        File::put($path, json_encode([
+        $json = json_encode([
             'version' => $version,
             'build' => $buildNumber,
             'hash' => $hash,
@@ -93,7 +98,14 @@ class ReleaseSnapshot extends Command
             'deployed_at' => now()->toIso8601String(),
             'commits' => $commits,
             'releases' => $releases->all(),
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        if ($json === false) {
+            throw new RuntimeException('Failed to encode release snapshot as JSON.');
+        }
+
+        File::ensureDirectoryExists(dirname($path));
+        File::put($path, $json);
 
         $this->info("Release snapshot written: v{$version} ({$hash}), ".$releases->count().' release(s) in history');
 
@@ -104,6 +116,8 @@ class ReleaseSnapshot extends Command
      * Commits for this release: everything since $previousHash (exclusive) if known,
      * otherwise (first snapshot ever, or the previous hash no longer exists in history
      * e.g. after a rebase/force-push) fall back to the most recent 60 commits.
+     *
+     * @return array<int, ReleaseCommit>
      */
     private function commitsSince(?string $previousHash): array
     {
@@ -118,7 +132,7 @@ class ReleaseSnapshot extends Command
                 ->run(['git', 'log', '-n', '60', '--pretty=format:%h%x1f%ad%x1f%s', '--date=short']);
         }
 
-        return collect(preg_split('/\R/', trim($result->output())))
+        return collect(preg_split('/\R/', trim($result->output())) ?: [])
             ->filter()
             ->map(function (string $line) {
                 [$commitHash, $date, $subject] = array_pad(explode("\x1f", $line, 3), 3, '');

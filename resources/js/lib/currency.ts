@@ -1,7 +1,7 @@
 import { router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
-const SYMBOLS: Record<string, string> = {
+export const SYMBOLS: Record<string, string> = {
     NAD: 'N$',
     USD: '$',
     EUR: '€',

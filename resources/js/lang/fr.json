@@ -2,7 +2,10 @@
     "nav": {
         "dashboard": "Tableau de bord",
         "login": "Se connecter",
-        "register": "S'inscrire"
+        "register": "S'inscrire",
+        "currency": "Devise",
+        "language": "Langue",
+        "more": "Plus d'options"
     },
     "hero": {
         "title": "La façon la plus intelligente de découvrir la Namibie.",

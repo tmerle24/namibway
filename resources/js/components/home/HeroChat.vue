@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
+import { LayoutDashboard, LogIn, UserPlus } from '@lucide/vue';
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
+import NavMoreMenu from '@/components/NavMoreMenu.vue';
 import { formatPrice } from '@/lib/currency';
 import { sendKaiaMessage } from '@/lib/kaia-client';
 import type {
@@ -241,6 +243,41 @@ async function retryLastMessage() {
 </script>
 
 <template>
+    <div class="hero-nav">
+        <Link :href="home()" class="brand">
+            <img :src="logoLight" alt="NamibWay" class="brand-logo" />
+        </Link>
+        <div class="hero-nav-actions">
+            <NavMoreMenu>
+                <CurrencySwitcher variant="full" />
+            </NavMoreMenu>
+            <LocaleSwitcher />
+            <Link
+                v-if="page.props.auth?.user"
+                :href="dashboard()"
+                class="icon-link"
+                :aria-label="t('nav.dashboard')"
+            >
+                <LayoutDashboard :size="16" />
+            </Link>
+            <template v-else>
+                <Link
+                    :href="login()"
+                    class="icon-link"
+                    :aria-label="t('nav.login')"
+                >
+                    <LogIn :size="16" />
+                </Link>
+                <Link
+                    :href="register()"
+                    class="icon-link"
+                    :aria-label="t('nav.register')"
+                >
+                    <UserPlus :size="16" />
+                </Link>
+            </template>
+        </div>
+    </div>
     <div id="kaia-hero" class="hero">
         <svg
             class="hero-bg"
@@ -284,22 +321,6 @@ async function retryLastMessage() {
             </g>
         </svg>
         <div class="hero-content">
-            <div class="hero-nav">
-                <Link :href="home()" class="brand">
-                    <img :src="logoLight" alt="NamibWay" class="brand-logo" />
-                </Link>
-                <div style="display: flex; align-items: center; gap: 8px">
-                    <CurrencySwitcher />
-                    <LocaleSwitcher />
-                    <Link v-if="page.props.auth?.user" :href="dashboard()">{{
-                        t('nav.dashboard')
-                    }}</Link>
-                    <template v-else>
-                        <Link :href="login()">{{ t('nav.login') }}</Link>
-                        <Link :href="register()">{{ t('nav.register') }}</Link>
-                    </template>
-                </div>
-            </div>
             <div class="hero-head">
                 <h1>{{ t('hero.title') }}</h1>
                 <p>{{ t('hero.subtitle') }}</p>

@@ -11,6 +11,7 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -35,7 +36,7 @@ class PartnerPanelProvider extends PanelProvider
                 'primary' => Color::Teal,
             ])
             ->renderHook(
-                \Filament\View\PanelsRenderHook::HEAD_END,
+                PanelsRenderHook::HEAD_END,
                 fn (): string => view('filament.partials.sticky-page-header')->render(),
             )
             ->discoverResources(in: app_path('Filament/Partner/Resources'), for: 'App\\Filament\\Partner\\Resources')

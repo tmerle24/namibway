@@ -8,9 +8,33 @@ use Illuminate\Support\Facades\File;
  * Reads the release snapshot written by `php artisan release:snapshot`
  * (see deploy.sh). Falls back gracefully in local dev where no deploy
  * has run yet.
+ *
+ * @phpstan-type ReleaseCommit array{hash: string, date: string, subject: string}
+ * @phpstan-type ReleaseEntry array{
+ *     version: string|null,
+ *     build: int|null,
+ *     hash: string|null,
+ *     date: string|null,
+ *     time: string|null,
+ *     deployed_at: string|null,
+ *     commits: array<int, ReleaseCommit>,
+ * }
+ * @phpstan-type ReleaseData array{
+ *     version: string|null,
+ *     build: int|null,
+ *     hash: string|null,
+ *     date: string|null,
+ *     time: string|null,
+ *     deployed_at: string|null,
+ *     commits: array<int, ReleaseCommit>,
+ *     releases: array<int, ReleaseEntry>,
+ * }
  */
 class ReleaseVersion
 {
+    /**
+     * @return ReleaseData
+     */
     public static function current(): array
     {
         $path = storage_path('app/release/version.json');

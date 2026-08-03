@@ -186,7 +186,9 @@ function submit(mode: 'draft' | 'preview' | 'publish' | 'unpublish') {
     const payload: Record<string, FormDataConvertible> = {
         ...form,
         connector_type: form.connector_type === '' ? null : form.connector_type,
-        connector_property_code: PROPERTY_CODE_TYPES.includes(form.connector_type)
+        connector_property_code: PROPERTY_CODE_TYPES.includes(
+            form.connector_type,
+        )
             ? form.connector_property_code
             : '',
         wetu_id: form.connector_type === 'wetu' ? form.wetu_id : '',
@@ -524,7 +526,9 @@ function handleUnpublishClick() {
                         — verified, connected for all of your listings.
                     </p>
 
-                    <label v-if="PROPERTY_CODE_TYPES.includes(form.connector_type)">
+                    <label
+                        v-if="PROPERTY_CODE_TYPES.includes(form.connector_type)"
+                    >
                         Property code
                         <input
                             v-model="form.connector_property_code"
@@ -551,9 +555,8 @@ function handleUnpublishClick() {
 
                 <template v-else>
                     <p class="edit-section-hint">
-                        Which system do travellers' booking requests go
-                        through? This applies to all of your listings, not
-                        just this one.
+                        Which system do travellers' booking requests go through?
+                        This applies to all of your listings, not just this one.
                     </p>
                     <label>
                         System
@@ -588,7 +591,9 @@ function handleUnpublishClick() {
                         </label>
                     </template>
 
-                    <template v-else-if="form.connector_type === 'nightsbridge'">
+                    <template
+                        v-else-if="form.connector_type === 'nightsbridge'"
+                    >
                         <label>
                             Booking Bureau ID (bbid)
                             <input
@@ -653,7 +658,9 @@ function handleUnpublishClick() {
                         </label>
                     </template>
 
-                    <label v-if="PROPERTY_CODE_TYPES.includes(form.connector_type)">
+                    <label
+                        v-if="PROPERTY_CODE_TYPES.includes(form.connector_type)"
+                    >
                         Property code
                         <input
                             v-model="form.connector_property_code"
@@ -672,29 +679,41 @@ function handleUnpublishClick() {
                         />
                     </label>
 
-                    <p v-else-if="form.connector_type === 'native'" class="edit-section-hint">
+                    <p
+                        v-else-if="form.connector_type === 'native'"
+                        class="edit-section-hint"
+                    >
                         No API access needed — bookings are checked and held
-                        live against NamibWay's own availability. Room types
-                        are managed for you in the admin panel.
-                    </p>
-
-                    <p v-else-if="form.connector_type === 'nwr'" class="edit-section-hint">
-                        NWR has no system we can connect to. Every request
-                        goes to our team as a manual review.
-                    </p>
-
-                    <p v-else-if="form.connector_type === 'manual'" class="edit-section-hint">
-                        Requests are sent to you as a plain email
-                        notification, without live availability checks.
+                        live against NamibWay's own availability. Room types are
+                        managed for you in the admin panel.
                     </p>
 
                     <p
-                        v-if="form.connector_type && CREDENTIALED_TYPES.includes(form.connector_type)"
+                        v-else-if="form.connector_type === 'nwr'"
+                        class="edit-section-hint"
+                    >
+                        NWR has no system we can connect to. Every request goes
+                        to our team as a manual review.
+                    </p>
+
+                    <p
+                        v-else-if="form.connector_type === 'manual'"
+                        class="edit-section-hint"
+                    >
+                        Requests are sent to you as a plain email notification,
+                        without live availability checks.
+                    </p>
+
+                    <p
+                        v-if="
+                            form.connector_type &&
+                            CREDENTIALED_TYPES.includes(form.connector_type)
+                        "
                         class="edit-section-hint"
                     >
                         We'll check these details before switching live
-                        availability on for this system — you'll still
-                        receive requests by email in the meantime.
+                        availability on for this system — you'll still receive
+                        requests by email in the meantime.
                     </p>
                 </template>
             </div>
