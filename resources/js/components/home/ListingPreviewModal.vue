@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import ImageLightbox from '@/components/ImageLightbox.vue';
+import { formatPrice } from '@/lib/currency';
 import { fetchListingPreview } from '@/lib/kaia-client';
 import type { ListingPreview } from '@/lib/kaia-client';
-import { formatPrice } from '@/lib/currency';
 import { show } from '@/routes/listings';
-import ImageLightbox from '@/components/ImageLightbox.vue';
 
 const props = defineProps<{
     slug: string;
@@ -72,7 +72,11 @@ const fullPageUrl = show({ listing: props.slug }).url;
 
             <div v-else-if="error" class="preview-modal-error">
                 <p>{{ t('listingPreview.error') }}</p>
-                <a :href="fullPageUrl" target="_blank" rel="noopener noreferrer">
+                <a
+                    :href="fullPageUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
                     {{ t('listingPreview.viewFullPage') }}
                 </a>
             </div>
@@ -96,7 +100,10 @@ const fullPageUrl = show({ listing: props.slug }).url;
                     >
                         {{ listing.city || listing.region }}
                     </p>
-                    <p v-if="listing.rating !== null" class="preview-modal-rating">
+                    <p
+                        v-if="listing.rating !== null"
+                        class="preview-modal-rating"
+                    >
                         ★ {{ listing.rating.toFixed(1) }}
                         <span v-if="listing.rating_count">
                             ({{
@@ -140,7 +147,9 @@ const fullPageUrl = show({ listing: props.slug }).url;
                         v-if="listing.highlights.length"
                         class="preview-modal-highlights"
                     >
-                        <li v-for="h in listing.highlights" :key="h">{{ h }}</li>
+                        <li v-for="h in listing.highlights" :key="h">
+                            {{ h }}
+                        </li>
                     </ul>
 
                     <div
@@ -176,7 +185,9 @@ const fullPageUrl = show({ listing: props.slug }).url;
         <ImageLightbox
             v-if="listing && lightboxIndex !== null"
             :images="
-                listing.image ? [listing.image, ...listing.gallery] : listing.gallery
+                listing.image
+                    ? [listing.image, ...listing.gallery]
+                    : listing.gallery
             "
             :index="lightboxIndex"
             :alt="listing.name"
