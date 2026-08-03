@@ -25,6 +25,7 @@ const emit = defineEmits<{ navigate: [] }>();
 let map: LeafletMap | null = null;
 let clusterGroup: MarkerClusterGroup | null = null;
 let markerLayers: Marker[] = [];
+let destroyed = false;
 
 const NAMIBIA_CENTER: [number, number] = [-22.0, 17.5];
 const DEFAULT_ZOOM = 5;
@@ -42,6 +43,10 @@ async function initMap() {
     await import('leaflet/dist/leaflet.css');
     await import('leaflet.markercluster');
     await import('leaflet.markercluster/dist/MarkerCluster.css');
+
+    if (destroyed) {
+        return;
+    }
 
     map = L.map(props.mapId, {
         center: NAMIBIA_CENTER,
@@ -66,6 +71,10 @@ function renderMarkers() {
 
     Promise.all([import('leaflet'), import('leaflet.markercluster')]).then(
         ([{ default: L }]) => {
+            if (!map) {
+                return;
+            }
+
             markerLayers.forEach((m) => m.remove());
             markerLayers = [];
 
@@ -168,6 +177,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    destroyed = true;
     map?.remove();
     map = null;
 });

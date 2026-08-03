@@ -183,7 +183,9 @@
             "sortFeatured": "Destacados",
             "sortPriceAsc": "Precio: menor a mayor",
             "sortPriceDesc": "Precio: mayor a menor",
-            "sortRating": "Mejor valorados"
+            "sortRating": "Mejor valorados",
+            "showMap": "Mostrar mapa",
+            "hideMap": "Ocultar mapa"
         }
     },
     "footer": {

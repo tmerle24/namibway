@@ -208,7 +208,9 @@
             "sortFeatured": "Empfohlen",
             "sortPriceAsc": "Preis: günstigste zuerst",
             "sortPriceDesc": "Preis: teuerste zuerst",
-            "sortRating": "Bestbewertet"
+            "sortRating": "Bestbewertet",
+            "showMap": "Karte anzeigen",
+            "hideMap": "Karte ausblenden"
         }
     },
     "tripPlan": {

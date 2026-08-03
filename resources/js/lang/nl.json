@@ -183,7 +183,9 @@
             "sortFeatured": "Aanbevolen",
             "sortPriceAsc": "Prijs: laag naar hoog",
             "sortPriceDesc": "Prijs: hoog naar laag",
-            "sortRating": "Hoogst beoordeeld"
+            "sortRating": "Hoogst beoordeeld",
+            "showMap": "Kaart tonen",
+            "hideMap": "Kaart verbergen"
         }
     },
     "footer": {

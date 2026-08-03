@@ -225,7 +225,9 @@
             "sortFeatured": "Featured",
             "sortPriceAsc": "Price: low to high",
             "sortPriceDesc": "Price: high to low",
-            "sortRating": "Highest rated"
+            "sortRating": "Highest rated",
+            "showMap": "Show map",
+            "hideMap": "Hide map"
         }
     },
     "tripPlan": {
