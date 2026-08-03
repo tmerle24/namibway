@@ -2589,16 +2589,17 @@
         display: flex;
         flex-direction: column;
         box-sizing: border-box;
-        min-height: 100vh;
-        min-height: 100dvh;
-        /* Keep the same clearance as the page-wide rule above, so the hero
-           ends right above the fixed footer nav instead of running the
-           bottom of the chat panel underneath it. box-sizing: border-box
-           (unlike the page-wide rule, which relies on real content below
-           it to scroll past its own padding) folds this into the 100dvh
-           height rather than adding to it, so it doesn't reintroduce a
-           bare gap between the hero and the nav. */
-        padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+        /* Shrink the container itself by the footer nav's clearance, rather
+           than sizing it to the full 100dvh and reserving that clearance as
+           padding-bottom: padding sits *inside* this element's own box, so
+           it paints the page's cream background as a bare strip between the
+           hero and the nav instead of removing the space. Reducing the
+           height directly makes the flex:1 hero's bottom edge — with
+           nothing reserved after it — the container's actual bottom edge,
+           landing flush above the nav with no gap and no overlap. */
+        min-height: calc(100vh - 72px);
+        min-height: calc(100dvh - 72px - env(safe-area-inset-bottom, 0px));
+        padding-bottom: 0;
     }
 
     .kaia-page[data-mobile-section='kaia']:not(.has-plan) #kaia-hero {
