@@ -5,7 +5,8 @@
         "register": "Registrarse",
         "currency": "Moneda",
         "language": "Idioma",
-        "more": "Más opciones"
+        "more": "Más opciones",
+        "backToWebsite": "Volver al sitio web"
     },
     "hero": {
         "title": "La forma más inteligente de vivir Namibia.",
@@ -28,7 +29,10 @@
         "viewListing": "Ver y solicitar →",
         "from": "desde",
         "error": "Kaia está teniendo problemas para responder en este momento.",
-        "retry": "Reintentar"
+        "retry": "Reintentar",
+        "voiceInput": "Habla con Kaia",
+        "stopListening": "Detener grabación",
+        "listening": "Escuchando…"
     },
     "itinerary": {
         "eyebrow": "Tu plan",

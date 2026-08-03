@@ -5,7 +5,8 @@
         "register": "S'inscrire",
         "currency": "Devise",
         "language": "Langue",
-        "more": "Plus d'options"
+        "more": "Plus d'options",
+        "backToWebsite": "Retour au site"
     },
     "hero": {
         "title": "La façon la plus intelligente de découvrir la Namibie.",
@@ -28,7 +29,10 @@
         "viewListing": "Voir & demander →",
         "from": "à partir de",
         "error": "Kaia a des difficultés à répondre pour le moment.",
-        "retry": "Réessayer"
+        "retry": "Réessayer",
+        "voiceInput": "Parler à Kaia",
+        "stopListening": "Arrêter l'enregistrement",
+        "listening": "J'écoute…"
     },
     "itinerary": {
         "eyebrow": "Votre plan",

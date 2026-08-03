@@ -88,6 +88,67 @@ const chatPanel = ref<HTMLDivElement | null>(null);
 const chatInput = ref<HTMLInputElement | null>(null);
 let thinkingTimer: ReturnType<typeof setInterval> | null = null;
 
+// Web Speech API today; once the Capacitor wrapper lands this is the spot to
+// swap in a native STT plugin (the WebView implementation is unreliable on
+// iOS) — everything else just consumes `inputText`, so the swap is isolated
+// here.
+const SpeechRecognitionCtor =
+    typeof window !== 'undefined'
+        ? (window.SpeechRecognition ?? window.webkitSpeechRecognition)
+        : undefined;
+const isVoiceSupported = !!SpeechRecognitionCtor;
+const isListening = ref(false);
+let recognition: InstanceType<NonNullable<typeof SpeechRecognitionCtor>> | null =
+    null;
+
+const speechLocales: Record<string, string> = {
+    en: 'en-US',
+    de: 'de-DE',
+    nl: 'nl-NL',
+    fr: 'fr-FR',
+    es: 'es-ES',
+};
+
+function stopListening() {
+    isListening.value = false;
+    recognition?.stop();
+    recognition = null;
+}
+
+function toggleVoiceInput() {
+    if (!SpeechRecognitionCtor || isTyping.value) {
+        return;
+    }
+
+    if (isListening.value) {
+        stopListening();
+        return;
+    }
+
+    recognition = new SpeechRecognitionCtor();
+    recognition.lang = speechLocales[locale.value] ?? 'en-US';
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+        let transcript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+        }
+
+        inputText.value = transcript;
+    };
+    recognition.onend = () => {
+        isListening.value = false;
+    };
+    recognition.onerror = () => {
+        isListening.value = false;
+    };
+
+    isListening.value = true;
+    recognition.start();
+}
+
 function startThinking() {
     thinkingIndex.value = 0;
     thinkingTimer = setInterval(() => {
@@ -103,7 +164,10 @@ function stopThinking() {
     }
 }
 
-onUnmounted(stopThinking);
+onUnmounted(() => {
+    stopThinking();
+    stopListening();
+});
 
 function syncScroll() {
     if (chatLog.value) {
@@ -404,11 +468,49 @@ async function retryLastMessage() {
                         ref="chatInput"
                         v-model="inputText"
                         type="text"
-                        :placeholder="t('chat.placeholder')"
+                        :placeholder="
+                            isListening
+                                ? t('chat.listening')
+                                : t('chat.placeholder')
+                        "
                         autocomplete="off"
                         :readonly="isTyping"
                         @keydown.enter="sendMessage"
                     />
+                    <button
+                        v-if="isVoiceSupported"
+                        type="button"
+                        class="chat-mic-btn"
+                        :class="{ listening: isListening }"
+                        :disabled="isTyping"
+                        :aria-label="
+                            isListening
+                                ? t('chat.stopListening')
+                                : t('chat.voiceInput')
+                        "
+                        :title="
+                            isListening
+                                ? t('chat.stopListening')
+                                : t('chat.voiceInput')
+                        "
+                        @click="toggleVoiceInput"
+                    >
+                        <svg
+                            viewBox="0 0 24 24"
+                            width="18"
+                            height="18"
+                            aria-hidden="true"
+                        >
+                            <path
+                                fill="currentColor"
+                                d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"
+                            />
+                            <path
+                                fill="currentColor"
+                                d="M19 11a1 1 0 0 0-2 0 5 5 0 0 1-10 0 1 1 0 0 0-2 0 7 7 0 0 0 6 6.92V20H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2h-2v-2.08A7 7 0 0 0 19 11Z"
+                            />
+                        </svg>
+                    </button>
                     <button
                         :disabled="isTyping || !inputText.trim()"
                         @click="sendMessage"

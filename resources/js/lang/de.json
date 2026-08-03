@@ -5,7 +5,8 @@
         "register": "Registrieren",
         "currency": "Währung",
         "language": "Sprache",
-        "more": "Weitere Optionen"
+        "more": "Weitere Optionen",
+        "backToWebsite": "Zurück zur Website"
     },
     "hero": {
         "title": "Der klügste Weg, Namibia zu erleben.",
@@ -28,7 +29,10 @@
         "viewListing": "Ansehen & anfragen →",
         "from": "ab",
         "error": "Kaia hat gerade Schwierigkeiten zu antworten.",
-        "retry": "Erneut versuchen"
+        "retry": "Erneut versuchen",
+        "voiceInput": "Kaia etwas sagen",
+        "stopListening": "Aufnahme stoppen",
+        "listening": "Ich höre zu…"
     },
     "itinerary": {
         "eyebrow": "Dein Plan",
