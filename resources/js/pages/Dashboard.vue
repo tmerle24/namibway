@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import { Building2, CalendarCheck, Map } from '@lucide/vue';
 import { useI18n } from 'vue-i18n';
+import '../../css/kaia-home.css';
+import AdminBar from '@/components/AdminBar.vue';
+import SiteFooter from '@/components/SiteFooter.vue';
+import SiteHeader from '@/components/SiteHeader.vue';
 import { dashboard } from '@/routes';
-
-defineOptions({
-    layout: {
-        breadcrumbs: [
-            {
-                title: 'Dashboard',
-                href: dashboard(),
-            },
-        ],
-    },
-});
 
 interface SavedPlan {
     id: number;
@@ -39,80 +33,70 @@ function formatDate(iso: string): string {
 <template>
     <Head :title="t('nav.dashboard')" />
 
-    <div class="flex flex-col gap-6 p-6">
-        <div>
-            <h1 class="text-2xl font-semibold text-foreground">
-                {{ t('dashboard.title') }}
-            </h1>
-            <p class="mt-1 text-sm text-muted-foreground">
-                {{ t('dashboard.subtitle') }}
-            </p>
-        </div>
+    <div class="kaia-page">
+        <AdminBar />
+        <SiteHeader />
 
-        <div
-            v-if="plans.length === 0"
-            class="rounded-xl border border-border p-10 text-center text-sm text-muted-foreground"
-        >
-            {{ t('dashboard.empty') }}
-            <br />
-            <Link
-                href="/"
-                class="mt-3 inline-block text-primary underline-offset-4 hover:underline"
-            >
-                {{ t('dashboard.startPlanning') }}
-            </Link>
-        </div>
+        <section class="dashboard-section">
+            <nav class="dashboard-sidebar">
+                <Link :href="dashboard()" class="dashboard-nav-link active">
+                    <Map :size="16" />
+                    {{ t('dashboard.nav.trips') }}
+                </Link>
+                <span class="dashboard-nav-link disabled">
+                    <Building2 :size="16" />
+                    {{ t('dashboard.nav.listings') }}
+                    <span class="dashboard-nav-badge">{{
+                        t('dashboard.nav.comingSoon')
+                    }}</span>
+                </span>
+                <span class="dashboard-nav-link disabled">
+                    <CalendarCheck :size="16" />
+                    {{ t('dashboard.nav.bookings') }}
+                    <span class="dashboard-nav-badge">{{
+                        t('dashboard.nav.comingSoon')
+                    }}</span>
+                </span>
+            </nav>
 
-        <div v-else class="overflow-hidden rounded-xl border border-border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50">
-                    <tr>
-                        <th
-                            class="px-4 py-3 text-left font-medium text-muted-foreground"
-                        >
-                            {{ t('dashboard.planTitle') }}
-                        </th>
-                        <th
-                            class="px-4 py-3 text-left font-medium text-muted-foreground"
-                        >
-                            {{ t('dashboard.created') }}
-                        </th>
-                        <th
-                            class="px-4 py-3 text-right font-medium text-muted-foreground"
-                        >
-                            {{ t('dashboard.actions') }}
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-border">
-                    <tr
-                        v-for="plan in plans"
-                        :key="plan.id"
-                        class="hover:bg-muted/30"
-                    >
-                        <td class="px-4 py-3 font-medium">
-                            {{ plan.title || t('dashboard.untitled') }}
-                        </td>
-                        <td class="px-4 py-3 text-muted-foreground">
-                            {{ formatDate(plan.created_at) }}
-                        </td>
-                        <td class="px-4 py-3 text-right">
-                            <a
-                                :href="`/trip/${plan.token}`"
-                                class="mr-3 text-primary underline-offset-4 hover:underline"
-                            >
-                                {{ t('dashboard.view') }}
-                            </a>
-                            <a
-                                :href="`/trip/${plan.token}/pdf`"
-                                class="text-muted-foreground underline-offset-4 hover:underline"
-                            >
-                                PDF
-                            </a>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+            <div class="dashboard-content">
+                <h1>{{ t('dashboard.title') }}</h1>
+                <p class="dashboard-subtitle">{{ t('dashboard.subtitle') }}</p>
+
+                <div v-if="plans.length === 0" class="dashboard-empty">
+                    {{ t('dashboard.empty') }}
+                    <br />
+                    <Link href="/">{{ t('dashboard.startPlanning') }}</Link>
+                </div>
+
+                <div v-else class="dashboard-table-wrap">
+                    <table class="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>{{ t('dashboard.planTitle') }}</th>
+                                <th>{{ t('dashboard.created') }}</th>
+                                <th>{{ t('dashboard.actions') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="plan in plans" :key="plan.id">
+                                <td>
+                                    {{ plan.title || t('dashboard.untitled') }}
+                                </td>
+                                <td>{{ formatDate(plan.created_at) }}</td>
+                                <td class="dashboard-table-actions">
+                                    <a :href="`/trip/${plan.token}`">{{
+                                        t('dashboard.view')
+                                    }}</a>
+                                    <a :href="`/trip/${plan.token}/pdf`">PDF</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <SiteFooter />
     </div>
 </template>

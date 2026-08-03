@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import { Link, router, usePage } from '@inertiajs/vue3';
-import { LayoutDashboard, LogIn, LogOut, UserPlus } from '@lucide/vue';
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
-import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
-import NavMoreMenu from '@/components/NavMoreMenu.vue';
+import SiteHeader from '@/components/SiteHeader.vue';
 import { formatPrice } from '@/lib/currency';
 import { sendKaiaMessage } from '@/lib/kaia-client';
 import type {
@@ -14,8 +10,6 @@ import type {
     ListingRecommendation,
     SearchIntent,
 } from '@/lib/kaia-types';
-import { dashboard, home, login, logout, register } from '@/routes';
-import logoLight from '../../../images/logo-light.png';
 
 // Same per-category placeholder set used by ExploreSection/ListingDetail, so
 // a listing without a photo still shows something on-brand here instead of
@@ -62,12 +56,7 @@ const emit = defineEmits<{
     (e: 'search-intent', intent: SearchIntent): void;
 }>();
 
-const page = usePage();
 const { t, tm, locale } = useI18n();
-
-function handleLogout() {
-    router.flushAll();
-}
 
 const thinkingStatuses = computed(
     () => tm('chat.thinkingStatuses') as unknown as string[],
@@ -313,48 +302,7 @@ async function retryLastMessage() {
 </script>
 
 <template>
-    <div class="hero-nav">
-        <div class="hero-nav-inner">
-            <Link :href="home()" class="brand">
-                <img :src="logoLight" alt="NamibWay" class="brand-logo" />
-            </Link>
-            <div class="hero-nav-actions">
-                <LocaleSwitcher />
-                <NavMoreMenu>
-                    <CurrencySwitcher variant="full" />
-                    <div class="nav-more-divider"></div>
-                    <Link
-                        v-if="page.props.auth?.user"
-                        :href="dashboard()"
-                        class="nav-more-link"
-                    >
-                        <LayoutDashboard :size="14" />
-                        {{ t('nav.dashboard') }}
-                    </Link>
-                    <template v-else>
-                        <Link :href="login()" class="nav-more-link">
-                            <LogIn :size="14" />
-                            {{ t('nav.login') }}
-                        </Link>
-                        <Link :href="register()" class="nav-more-link">
-                            <UserPlus :size="14" />
-                            {{ t('nav.register') }}
-                        </Link>
-                    </template>
-                    <Link
-                        v-if="page.props.auth?.user"
-                        :href="logout()"
-                        as="button"
-                        class="nav-more-link nav-more-link--button"
-                        @click="handleLogout"
-                    >
-                        <LogOut :size="14" />
-                        {{ t('nav.logout') }}
-                    </Link>
-                </NavMoreMenu>
-            </div>
-        </div>
-    </div>
+    <SiteHeader />
     <div id="kaia-hero" class="hero">
         <svg
             class="hero-bg"

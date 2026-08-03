@@ -13,6 +13,7 @@ import ItinerarySection from '@/components/home/ItinerarySection.vue';
 import type { MobileSection } from '@/components/home/MobileFooterNav.vue';
 import MobileFooterNav from '@/components/home/MobileFooterNav.vue';
 import TopDestinations from '@/components/home/TopDestinations.vue';
+import SiteFooter from '@/components/SiteFooter.vue';
 import { hasSavedExploreScroll } from '@/lib/explore-scroll';
 import { createTrip } from '@/lib/kaia-client';
 import type {
@@ -21,7 +22,6 @@ import type {
     ItineraryVariant,
     SearchIntent,
 } from '@/lib/kaia-types';
-import logoDark from '../../images/logo-dark.png';
 
 interface Listing {
     id: number;
@@ -205,10 +205,7 @@ async function onGuestSubmit(details: GuestDetails) {
             :trip-id="bookingTripId"
         />
 
-        <footer>
-            <img :src="logoDark" alt="NamibWay" class="footer-logo" />
-            <p>{{ t('footer.tagline') }}</p>
-        </footer>
+        <SiteFooter />
 
         <MobileFooterNav v-model:active="mobileSection" />
     </div>

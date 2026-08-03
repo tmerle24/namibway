@@ -23,7 +23,13 @@
         "created": "Saved on",
         "actions": "Actions",
         "view": "View",
-        "untitled": "Untitled plan"
+        "untitled": "Untitled plan",
+        "nav": {
+            "trips": "My Trips",
+            "listings": "Listings",
+            "bookings": "Bookings",
+            "comingSoon": "Coming soon"
+        }
     },
     "hero": {
         "title": "The smartest way to experience Namibia.",
