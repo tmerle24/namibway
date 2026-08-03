@@ -1,14 +1,9 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import {
-    Binoculars,
-    CircleUserRound,
-    Compass,
-    LifeBuoy,
-    Search,
-} from '@lucide/vue';
+import { Binoculars, CircleUserRound, LifeBuoy, Search } from '@lucide/vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import NamibWayCompassIcon from '@/components/NamibWayCompassIcon.vue';
 import { useIsApp } from '@/composables/useIsApp';
 import { dashboard, home, login } from '@/routes';
 
@@ -83,7 +78,7 @@ function homeHref(section: MobileSection) {
             :aria-label="t('nav.mobileKaia')"
             @click="emit('update:active', 'kaia')"
         >
-            <Compass :size="26" />
+            <NamibWayCompassIcon class="mobile-footer-nav-compass-icon" />
         </button>
         <Link
             v-else
@@ -91,7 +86,7 @@ function homeHref(section: MobileSection) {
             class="mobile-footer-nav-compass"
             :aria-label="t('nav.mobileKaia')"
         >
-            <Compass :size="26" />
+            <NamibWayCompassIcon class="mobile-footer-nav-compass-icon" />
         </Link>
 
         <button
