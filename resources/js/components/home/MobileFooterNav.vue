@@ -4,7 +4,6 @@ import { Binoculars, CircleUserRound, LifeBuoy, Search } from '@lucide/vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import NamibWayCompassIcon from '@/components/NamibWayCompassIcon.vue';
-import { useIsApp } from '@/composables/useIsApp';
 import { dashboard, home, login } from '@/routes';
 
 export type MobileSection = 'kaia' | 'discover' | 'explore' | 'support';
@@ -24,7 +23,6 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const page = usePage();
-const isApp = useIsApp();
 const accountHref = computed(() =>
     page.props.auth?.user ? dashboard() : login(),
 );
@@ -35,7 +33,7 @@ function homeHref(section: MobileSection) {
 </script>
 
 <template>
-    <nav v-if="!isApp" class="mobile-footer-nav" aria-label="Mobile navigation">
+    <nav class="mobile-footer-nav" aria-label="Mobile navigation">
         <button
             v-if="local"
             type="button"
