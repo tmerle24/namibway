@@ -334,7 +334,10 @@ async function retryLastMessage() {
                 stroke-linecap="round"
             >
                 <path d="M0 0 C -2 -22 3 -45 -1 -68" stroke-width="7" />
-                <path d="M-1 -68 C -12 -78 -22 -82 -27 -92" stroke-width="4.5" />
+                <path
+                    d="M-1 -68 C -12 -78 -22 -82 -27 -92"
+                    stroke-width="4.5"
+                />
                 <path
                     d="M-27 -92 C -33 -100 -42 -104 -46 -112"
                     stroke-width="2.5"
