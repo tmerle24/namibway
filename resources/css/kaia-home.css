@@ -2537,6 +2537,12 @@
         box-sizing: border-box;
         min-height: 100vh;
         min-height: 100dvh;
+        /* No real content follows the hero in this state (footer's hidden
+           just below), so the page-wide clearance for the fixed nav bar
+           would otherwise show up as a bare strip of the page background
+           between the hero and the nav — let the hero run underneath it
+           instead. */
+        padding-bottom: 0;
     }
 
     .kaia-page[data-mobile-section='kaia']:not(.has-plan) #kaia-hero {
