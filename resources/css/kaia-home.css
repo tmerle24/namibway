@@ -2591,12 +2591,14 @@
         box-sizing: border-box;
         min-height: 100vh;
         min-height: 100dvh;
-        /* No real content follows the hero in this state (footer's hidden
-           just below), so the page-wide clearance for the fixed nav bar
-           would otherwise show up as a bare strip of the page background
-           between the hero and the nav — let the hero run underneath it
-           instead. */
-        padding-bottom: 0;
+        /* Keep the same clearance as the page-wide rule above, so the hero
+           ends right above the fixed footer nav instead of running the
+           bottom of the chat panel underneath it. box-sizing: border-box
+           (unlike the page-wide rule, which relies on real content below
+           it to scroll past its own padding) folds this into the 100dvh
+           height rather than adding to it, so it doesn't reintroduce a
+           bare gap between the hero and the nav. */
+        padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
     }
 
     .kaia-page[data-mobile-section='kaia']:not(.has-plan) #kaia-hero {
