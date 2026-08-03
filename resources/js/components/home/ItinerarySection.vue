@@ -502,9 +502,11 @@ function dismissVariant(variantIndex: number) {
 }
 
 onMounted(async () => {
-    [dbRegions.value, regionCoords.value, dbCities.value] = await Promise.all(
-        [fetchRegions(), fetchRegionCoords(), fetchCities()],
-    );
+    [dbRegions.value, regionCoords.value, dbCities.value] = await Promise.all([
+        fetchRegions(),
+        fetchRegionCoords(),
+        fetchCities(),
+    ]);
 });
 
 // Combine DB regions with locations already in the plan — deduplicated.

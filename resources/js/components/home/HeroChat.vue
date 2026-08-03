@@ -310,7 +310,6 @@ async function retryLastMessage() {
             preserveAspectRatio="none"
             aria-hidden="true"
         >
-            <circle cx="520" cy="140" r="60" fill="var(--gold)" opacity="0.9" />
             <path
                 d="M0 260 Q140 190 300 250 T620 240 T1040 255 V340 H0 Z"
                 fill="#C97A3E"
@@ -325,17 +324,28 @@ async function retryLastMessage() {
                 d="M0 330 Q220 280 480 320 T1040 325 V340 H0 Z"
                 fill="#8C4A15"
             />
-            <!-- A Deadvlei-style dead camel thorn tree — bare, gnarled
-                 branches with no foliage, the classic silhouette of
-                 Namibia's most photographed landmark. -->
+        </svg>
+        <!-- A Deadvlei-style dead camel thorn tree — bare, gnarled branches
+             with no foliage, the classic silhouette of Namibia's most
+             photographed landmark. Its own SVG with a normal
+             (aspect-ratio-preserving) viewBox, separate from hero-bg above:
+             hero-bg deliberately stretches non-uniformly to fill the hero
+             at any height, which is fine for the abstract dune shapes but
+             warps a recognizable silhouette like this into a squashed mess
+             whenever the hero gets much taller than its 340-unit viewBox
+             (e.g. the mobile full-height state). -->
+        <svg class="hero-tree" viewBox="0 0 100 135" aria-hidden="true">
             <g
-                transform="translate(130,280)"
+                transform="translate(50,130)"
                 fill="none"
                 stroke="#1c130c"
                 stroke-linecap="round"
             >
                 <path d="M0 0 C -2 -22 3 -45 -1 -68" stroke-width="7" />
-                <path d="M-1 -68 C -12 -78 -22 -82 -27 -92" stroke-width="4.5" />
+                <path
+                    d="M-1 -68 C -12 -78 -22 -82 -27 -92"
+                    stroke-width="4.5"
+                />
                 <path
                     d="M-27 -92 C -33 -100 -42 -104 -46 -112"
                     stroke-width="2.5"
@@ -357,6 +367,8 @@ async function retryLastMessage() {
                 <h1>{{ t('hero.title') }}</h1>
                 <p>{{ t('hero.subtitle') }}</p>
             </div>
+
+            <div class="hero-sun" aria-hidden="true"></div>
 
             <div class="chat-panel" ref="chatPanel">
                 <div class="chat-log" ref="chatLog">
