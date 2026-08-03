@@ -35,6 +35,16 @@ export async function fetchRegions(): Promise<string[]> {
     return data.regions ?? [];
 }
 
+export async function fetchCities(): Promise<string[]> {
+    const response = await fetch('/kaia/cities', {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    const data = await response.json();
+
+    return data.cities ?? [];
+}
+
 export interface RegionCoords {
     lat: number;
     lng: number;

@@ -744,6 +744,12 @@
 .kaia-page .line-item-value {
     display: contents;
 }
+/* Continuation day within a multi-night stage: the city heading is hidden
+   (shown once, on the stage's first day), so its row collapses to just the
+   remove-day button. */
+.kaia-page .day-detail--continuation > div:first-child {
+    min-height: 18px;
+}
 .kaia-page .item-price {
     color: #8a7f68;
     font-size: 11.5px;

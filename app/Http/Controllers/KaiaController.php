@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\City;
 use App\Models\Destination;
 use App\Models\Listing;
 use App\Models\Region;
@@ -24,6 +25,16 @@ class KaiaController extends Controller
             ->pluck('name');
 
         return response()->json(['regions' => $regions]);
+    }
+
+    public function cities(): JsonResponse
+    {
+        $cities = City::query()
+            ->whereHas('listings', fn ($q) => $q->where('is_published', true))
+            ->orderBy('name')
+            ->pluck('name');
+
+        return response()->json(['cities' => $cities]);
     }
 
     public function regionCoords(): JsonResponse
