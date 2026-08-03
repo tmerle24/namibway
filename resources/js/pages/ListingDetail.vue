@@ -389,16 +389,16 @@ const websiteUrl = computed(
                     <UserPlus :size="14" />
                     Claim account
                 </a>
-                <NavMoreMenu>
-                    <CurrencySwitcher variant="full" />
-                    <LocaleSwitcher variant="full" />
-                </NavMoreMenu>
                 <Link
                     v-if="!props.claim_url"
                     :href="backHref"
                     class="detail-back"
                     >{{ t('listing.backToHome') }}</Link
                 >
+                <NavMoreMenu>
+                    <CurrencySwitcher variant="full" />
+                    <LocaleSwitcher variant="full" />
+                </NavMoreMenu>
             </div>
         </div>
 
