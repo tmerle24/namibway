@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
-import { LayoutDashboard, LogIn, UserPlus } from '@lucide/vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { LayoutDashboard, LogIn, LogOut, UserPlus } from '@lucide/vue';
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
@@ -14,7 +14,7 @@ import type {
     ListingRecommendation,
     SearchIntent,
 } from '@/lib/kaia-types';
-import { dashboard, home, login, register } from '@/routes';
+import { dashboard, home, login, logout, register } from '@/routes';
 import logoLight from '../../../images/logo-light.png';
 
 // Same per-category placeholder set used by ExploreSection/ListingDetail, so
@@ -64,6 +64,10 @@ const emit = defineEmits<{
 
 const page = usePage();
 const { t, tm, locale } = useI18n();
+
+function handleLogout() {
+    router.flushAll();
+}
 
 const thinkingStatuses = computed(
     () => tm('chat.thinkingStatuses') as unknown as string[],
@@ -317,32 +321,37 @@ async function retryLastMessage() {
             <div class="hero-nav-actions">
                 <NavMoreMenu>
                     <CurrencySwitcher variant="full" />
+                    <LocaleSwitcher variant="full" />
+                    <div class="nav-more-divider"></div>
+                    <Link
+                        v-if="page.props.auth?.user"
+                        :href="dashboard()"
+                        class="nav-more-link"
+                    >
+                        <LayoutDashboard :size="14" />
+                        {{ t('nav.dashboard') }}
+                    </Link>
+                    <template v-else>
+                        <Link :href="login()" class="nav-more-link">
+                            <LogIn :size="14" />
+                            {{ t('nav.login') }}
+                        </Link>
+                        <Link :href="register()" class="nav-more-link">
+                            <UserPlus :size="14" />
+                            {{ t('nav.register') }}
+                        </Link>
+                    </template>
+                    <Link
+                        v-if="page.props.auth?.user"
+                        :href="logout()"
+                        as="button"
+                        class="nav-more-link nav-more-link--button"
+                        @click="handleLogout"
+                    >
+                        <LogOut :size="14" />
+                        {{ t('nav.logout') }}
+                    </Link>
                 </NavMoreMenu>
-                <LocaleSwitcher />
-                <Link
-                    v-if="page.props.auth?.user"
-                    :href="dashboard()"
-                    class="icon-link"
-                    :aria-label="t('nav.dashboard')"
-                >
-                    <LayoutDashboard :size="16" />
-                </Link>
-                <template v-else>
-                    <Link
-                        :href="login()"
-                        class="icon-link"
-                        :aria-label="t('nav.login')"
-                    >
-                        <LogIn :size="16" />
-                    </Link>
-                    <Link
-                        :href="register()"
-                        class="icon-link"
-                        :aria-label="t('nav.register')"
-                    >
-                        <UserPlus :size="16" />
-                    </Link>
-                </template>
             </div>
         </div>
     </div>

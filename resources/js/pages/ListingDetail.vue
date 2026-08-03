@@ -391,8 +391,8 @@ const websiteUrl = computed(
                 </a>
                 <NavMoreMenu>
                     <CurrencySwitcher variant="full" />
+                    <LocaleSwitcher variant="full" />
                 </NavMoreMenu>
-                <LocaleSwitcher />
                 <Link
                     v-if="!props.claim_url"
                     :href="backHref"

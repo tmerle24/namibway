@@ -6,7 +6,8 @@
         "currency": "Moneda",
         "language": "Idioma",
         "more": "Más opciones",
-        "backToWebsite": "Volver al sitio web"
+        "backToWebsite": "Volver al sitio web",
+        "logout": "Cerrar sesión"
     },
     "hero": {
         "title": "La forma más inteligente de vivir Namibia.",
@@ -135,7 +136,7 @@
             "moreFilters": "Más filtros ▾",
             "hideFilters": "Ocultar filtros ▲",
             "note": "Las fechas se registran para cuando se conecte la disponibilidad real de los socios — este catálogo aún no verifica fechas.",
-            "allRegions": "Todas las regiones y ciudades",
+            "allRegions": "Todas las regiones",
             "allCities": "Todas las ciudades",
             "anyBudget": "Cualquier presupuesto",
             "budget": "Económico",

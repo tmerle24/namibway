@@ -194,13 +194,42 @@
     top: calc(100% + 8px);
     right: 0;
     z-index: 30;
-    min-width: 180px;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     color: var(--sand);
     background: var(--night);
     border: 1px solid rgba(251, 248, 241, 0.35);
     border-radius: 10px;
     padding: 10px;
     box-shadow: 0 12px 30px rgba(16, 26, 48, 0.35);
+}
+.kaia-page .nav-more-divider {
+    height: 1px;
+    background: rgba(251, 248, 241, 0.2);
+}
+.kaia-page .nav-more-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--sand);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    text-decoration: none;
+    background: transparent;
+    border: none;
+    padding: 6px 2px;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+}
+.kaia-page .nav-more-link:hover {
+    color: var(--paper);
+}
+.kaia-page .nav-more-link--button {
+    font: inherit;
 }
 .kaia-page .full-switcher {
     display: flex;

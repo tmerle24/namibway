@@ -6,7 +6,8 @@
         "currency": "Währung",
         "language": "Sprache",
         "more": "Weitere Optionen",
-        "backToWebsite": "Zurück zur Website"
+        "backToWebsite": "Zurück zur Website",
+        "logout": "Abmelden"
     },
     "hero": {
         "title": "Der klügste Weg, Namibia zu erleben.",
@@ -160,7 +161,7 @@
             "moreFilters": "Weitere Filter ▾",
             "hideFilters": "Filter ausblenden ▲",
             "note": "Daten werden erfasst, sobald echte Partner-Verfügbarkeit angebunden ist — dieser Katalog ist noch nicht datumsgeprüft.",
-            "allRegions": "Alle Regionen & Orte",
+            "allRegions": "Alle Regionen",
             "allCities": "Alle Städte",
             "anyBudget": "Beliebiges Budget",
             "budget": "Budget",

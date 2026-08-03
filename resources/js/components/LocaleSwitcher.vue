@@ -3,6 +3,8 @@ import { router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+const { variant = 'icon' } = defineProps<{ variant?: 'icon' | 'full' }>();
+
 const page = usePage();
 const { t } = useI18n();
 
@@ -29,7 +31,24 @@ function switchLocale(event: Event) {
 </script>
 
 <template>
-    <span class="icon-switcher">
+    <span v-if="variant === 'full'" class="full-switcher">
+        <span class="full-switcher-label">{{ t('nav.language') }}</span>
+        <select
+            :value="page.props.locale"
+            class="full-switcher-select"
+            :aria-label="t('nav.language')"
+            @change="switchLocale"
+        >
+            <option
+                v-for="(label, code) in page.props.availableLocales"
+                :key="code"
+                :value="code"
+            >
+                {{ FLAGS[code as string] ?? '' }} {{ label }}
+            </option>
+        </select>
+    </span>
+    <span v-else class="icon-switcher">
         <span class="icon-switcher-glyph" aria-hidden="true">{{ glyph }}</span>
         <select
             :value="page.props.locale"

@@ -6,7 +6,8 @@
         "currency": "Valuta",
         "language": "Taal",
         "more": "Meer opties",
-        "backToWebsite": "Terug naar de website"
+        "backToWebsite": "Terug naar de website",
+        "logout": "Uitloggen"
     },
     "hero": {
         "title": "De slimste manier om Namibië te beleven.",
@@ -135,7 +136,7 @@
             "moreFilters": "Meer filters ▾",
             "hideFilters": "Filters verbergen ▲",
             "note": "Data worden vastgelegd voor wanneer live partnerbeschikbaarheid is gekoppeld — deze catalogus is nog niet op datum gecontroleerd.",
-            "allRegions": "Alle regio's & steden",
+            "allRegions": "Alle regio's",
             "allCities": "Alle steden",
             "anyBudget": "Elk budget",
             "budget": "Budget",
