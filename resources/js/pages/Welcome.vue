@@ -104,9 +104,7 @@ async function onSearchIntent(
 const LISTING_TYPES = ['accommodation', 'activity', 'restaurant', 'vehicle'];
 
 onMounted(async () => {
-    const tripParam = new URLSearchParams(window.location.search).get(
-        'trip',
-    );
+    const tripParam = new URLSearchParams(window.location.search).get('trip');
 
     if (tripParam) {
         try {
