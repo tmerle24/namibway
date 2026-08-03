@@ -24,6 +24,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>NamibWay uses the microphone so you can talk to Kaia instead of typing while planning your trip.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>NamibWay uses speech recognition to turn what you say to Kaia into text.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
