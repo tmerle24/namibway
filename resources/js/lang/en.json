@@ -49,7 +49,11 @@
             "guest": "Guest",
             "dates": "Dates",
             "status": "Status",
-            "requested": "Requested"
+            "requested": "Requested",
+            "actions": "Actions",
+            "confirm": "Confirm",
+            "decline": "Decline",
+            "declineConfirm": "Decline this booking request? The guest will not be notified automatically — let them know some other way."
         }
     },
     "hero": {

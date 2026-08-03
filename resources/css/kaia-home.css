@@ -2589,6 +2589,29 @@
 .kaia-page .dashboard-table-actions a + a {
     margin-left: 12px;
 }
+.kaia-page .dashboard-action-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--rust);
+    font-weight: 600;
+    font-size: inherit;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+}
+.kaia-page .dashboard-action-link:hover:not(:disabled) {
+    text-decoration: underline;
+}
+.kaia-page .dashboard-action-link:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+.kaia-page .dashboard-action-link + .dashboard-action-link {
+    margin-left: 12px;
+}
+.kaia-page .dashboard-action-link--danger {
+    color: var(--danger);
+}
 .kaia-page .dashboard-status-pill {
     display: inline-flex;
     align-items: center;

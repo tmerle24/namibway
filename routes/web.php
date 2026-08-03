@@ -3,6 +3,7 @@
 use App\Http\Controllers\AfterSalesController;
 use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\CurrencyController;
+use App\Http\Controllers\DashboardBookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListingController;
@@ -85,6 +86,10 @@ Route::get('login/start', function (Request $request) {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::post('dashboard/bookings/{inquiry}/confirm', [DashboardBookingController::class, 'confirm'])
+        ->name('dashboard.bookings.confirm');
+    Route::post('dashboard/bookings/{inquiry}/decline', [DashboardBookingController::class, 'decline'])
+        ->name('dashboard.bookings.decline');
 });
 
 require __DIR__.'/settings.php';

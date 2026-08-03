@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { Building2, CalendarCheck, Map } from '@lucide/vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import '../../css/kaia-home.css';
 import AdminBar from '@/components/AdminBar.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import { dashboard } from '@/routes';
+import {
+    confirm as confirmBooking,
+    decline as declineBooking,
+} from '@/routes/dashboard/bookings';
 import { edit as editListing } from '@/routes/listings';
 
 type DashboardTab = 'trips' | 'listings' | 'bookings';
@@ -66,6 +70,48 @@ function bookingDates(booking: OwnerBooking): string {
 }
 
 const showTripsTab = computed(() => !props.isOwner || props.plans.length > 0);
+
+const processingBookingId = ref<number | null>(null);
+
+function handleConfirmBooking(booking: OwnerBooking) {
+    if (processingBookingId.value) {
+        return;
+    }
+
+    processingBookingId.value = booking.id;
+    router.post(
+        confirmBooking(booking.id).url,
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                processingBookingId.value = null;
+            },
+        },
+    );
+}
+
+function handleDeclineBooking(booking: OwnerBooking) {
+    if (processingBookingId.value) {
+        return;
+    }
+
+    if (!window.confirm(t('dashboard.bookings.declineConfirm'))) {
+        return;
+    }
+
+    processingBookingId.value = booking.id;
+    router.post(
+        declineBooking(booking.id).url,
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                processingBookingId.value = null;
+            },
+        },
+    );
+}
 </script>
 
 <template>
@@ -195,6 +241,9 @@ const showTripsTab = computed(() => !props.isOwner || props.plans.length > 0);
                                     <th>
                                         {{ t('dashboard.bookings.status') }}
                                     </th>
+                                    <th>
+                                        {{ t('dashboard.bookings.actions') }}
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -216,6 +265,53 @@ const showTripsTab = computed(() => !props.isOwner || props.plans.length > 0);
                                                 )
                                             }}
                                         </span>
+                                    </td>
+                                    <td class="dashboard-table-actions">
+                                        <template
+                                            v-if="
+                                                booking.status === 'on_request'
+                                            "
+                                        >
+                                            <button
+                                                type="button"
+                                                class="dashboard-action-link"
+                                                :disabled="
+                                                    processingBookingId ===
+                                                    booking.id
+                                                "
+                                                @click="
+                                                    handleConfirmBooking(
+                                                        booking,
+                                                    )
+                                                "
+                                            >
+                                                {{
+                                                    t(
+                                                        'dashboard.bookings.confirm',
+                                                    )
+                                                }}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="dashboard-action-link dashboard-action-link--danger"
+                                                :disabled="
+                                                    processingBookingId ===
+                                                    booking.id
+                                                "
+                                                @click="
+                                                    handleDeclineBooking(
+                                                        booking,
+                                                    )
+                                                "
+                                            >
+                                                {{
+                                                    t(
+                                                        'dashboard.bookings.decline',
+                                                    )
+                                                }}
+                                            </button>
+                                        </template>
+                                        <span v-else>—</span>
                                     </td>
                                 </tr>
                             </tbody>
