@@ -2525,6 +2525,27 @@
         ) {
         display: none;
     }
+
+    /* Before Kaia has produced an itinerary, the Kaia tab is just the hero +
+       chat — stretch it down to fill the screen above the footer nav instead
+       of trailing off into the site footer, which reads as an odd dead end
+       this early in the flow. Once a plan exists, ItinerarySection gives the
+       tab real content again, so the hero goes back to its natural height. */
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) {
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        min-height: 100vh;
+        min-height: 100dvh;
+    }
+
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) #kaia-hero {
+        flex: 1;
+    }
+
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) footer {
+        display: none;
+    }
 }
 
 .kaia-page .mobile-footer-nav {
