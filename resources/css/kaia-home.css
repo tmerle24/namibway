@@ -122,6 +122,10 @@
     z-index: 20;
     width: 100%;
     background: var(--night);
+    /* In the wrapped iOS app the WKWebView draws under the status bar/notch
+       (viewport-fit=cover); without this the logo/nav row sits flush behind
+       it instead of below it. No-op in a regular browser. */
+    padding-top: env(safe-area-inset-top, 0px);
 }
 .kaia-page .hero-nav-inner {
     display: flex;
@@ -2511,12 +2515,17 @@
 
 /* iOS Safari auto-zooms the whole page when a focused input/select/textarea has
    font-size below 16px, and the zoomed-in viewport sticks around after the
-   keyboard closes. Force 16px on all form controls on mobile widths to prevent it. */
+   keyboard closes (fixed-position elements like the mobile footer nav then
+   render off-screen, and the sticky header pans up under the status bar).
+   `!important` is needed here: several more specific selectors elsewhere in
+   this file (.chat-input-row input, .filter-bar input, .inquiry-form input,
+   .form-row input, …) set a smaller font-size and would otherwise win the
+   cascade over this lower-specificity rule despite coming later. */
 @media (max-width: 768px) {
     .kaia-page input,
     .kaia-page textarea,
     .kaia-page select {
-        font-size: 16px;
+        font-size: 16px !important;
     }
 }
 
