@@ -8,13 +8,16 @@ import {
     fetchAlternatives,
     fetchRegionCoords,
     fetchRegions,
+    regeneratePlan,
     savePlan,
+    updatePlan,
 } from '@/lib/kaia-client';
 import type { RegionCoords } from '@/lib/kaia-client';
 import type {
     ItineraryListingRef,
     ItineraryPlan,
     ItineraryVariant,
+    TripParams,
 } from '@/lib/kaia-types';
 import AlternativesPanel from './AlternativesPanel.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
@@ -23,13 +26,18 @@ import SaveLoginModal from './SaveLoginModal.vue';
 import SaveShareBar from './SaveShareBar.vue';
 import TripMap from './TripMap.vue';
 import type { DrivingLeg } from './TripMap.vue';
+import TripMeta from './TripMeta.vue';
+import TripParamsEditModal from './TripParamsEditModal.vue';
+import type { TripParamsFormValues } from './TripParamsEditModal.vue';
 
 const props = defineProps<{
     plan: ItineraryPlan;
+    token: string | null;
 }>();
 
 const emit = defineEmits<{
     (e: 'book', variant: ItineraryVariant): void;
+    (e: 'update:token', token: string): void;
 }>();
 
 const { t } = useI18n();
@@ -46,19 +54,117 @@ const regionCoords = ref<Record<string, RegionCoords>>({});
 const savedTokens = ref<Record<number, string>>({});
 const drivingLegsPerVariant = ref<Record<number, DrivingLeg[]>>({});
 
-// Trip-level start/end — same for every variant, editable inline like a
-// day's location. Reversing a variant's direction (below) doesn't touch
-// these; it only reorders that variant's own days.
+// Whole-session token (all surviving variants together) — distinct from
+// savedTokens above, which are per-variant tokens minted by the manual
+// "Save & share" button. This one drives the ?trip= URL param so reloading
+// or revisiting the link restores exactly what's in editableVariants now.
+const currentToken = ref<string | null>(props.token);
+
+// Trip-level start/end — same for every variant. Reversing a variant's
+// direction (below) doesn't touch these; it only reorders that variant's
+// own days. Edited together with the rest of the trip params via the
+// params-edit popup (see openParamsEditor/applyParamsEdit below).
 const routeStart = ref('Windhoek');
 const routeEnd = ref('Windhoek');
-const isRoundTrip = computed(
-    () =>
-        routeStart.value.trim().toLowerCase() ===
-        routeEnd.value.trim().toLowerCase(),
-);
 
 // --- Auth-gate for saving ---
 const showAuthModal = ref(false);
+
+// Local, editable shadows of the plan-level (not per-variant) fields —
+// same reasoning as editableVariants above: regenerating the plan from the
+// params-edit popup replaces these without touching the read-only prop.
+const currentTripSummary = ref(props.plan.trip_summary);
+const currentTripParams = ref<TripParams | null | undefined>(
+    props.plan.trip_params,
+);
+
+// --- Trip-params edit popup (regenerates the whole plan via Kaia) ---
+const paramsModalOpen = ref(false);
+const regenerating = ref(false);
+const regenerateError = ref<string | null>(null);
+
+function openParamsEditor() {
+    regenerateError.value = null;
+    paramsModalOpen.value = true;
+}
+
+function nightsBetween(fromStr: string, toStr: string): number {
+    const from = parseDateInputValue(fromStr);
+    const to = parseDateInputValue(toStr);
+
+    return Math.round((to.getTime() - from.getTime()) / 86400000);
+}
+
+// Constructs a local-midnight Date from a <input type="date"> value —
+// `new Date('YYYY-MM-DD')` parses as UTC midnight, which can roll back a
+// day once formatted in a negative-UTC-offset timezone.
+function parseDateInputValue(value: string): Date {
+    const [y, m, d] = value.split('-').map(Number);
+
+    return new Date(y, m - 1, d);
+}
+
+function formatTravelPeriod(fromStr: string, toStr: string): string {
+    const fmt = (d: Date) =>
+        d.toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        });
+    const fromFmt = fmt(parseDateInputValue(fromStr));
+    const toFmt = fmt(parseDateInputValue(toStr));
+
+    return fromFmt === toFmt ? fromFmt : `${fromFmt} – ${toFmt}`;
+}
+
+// The interview only ever asked for a headcount, not individual ages, but
+// the edit popup lets the traveler enter ages directly — count how many
+// fall under 13 from that free-text list ("5, 8, 15" -> 2).
+function computeChildrenUnder13(childrenAges: string): number {
+    return childrenAges
+        .split(',')
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => !isNaN(n) && n < 13).length;
+}
+
+async function applyParamsEdit(values: TripParamsFormValues) {
+    regenerateError.value = null;
+    regenerating.value = true;
+
+    try {
+        const newPlan = await regeneratePlan({
+            nights: Math.max(nightsBetween(values.dateFrom, values.dateTo), 1),
+            travel_period: formatTravelPeriod(values.dateFrom, values.dateTo),
+            interests: values.interests,
+            budget_tier: values.budgetTier,
+            adults: values.adults,
+            children_under_13: computeChildrenUnder13(values.childrenAges),
+            children_ages: values.childrenAges || null,
+            vehicle_type: currentTripParams.value?.vehicle_type || 'car',
+            start_location: values.startLocation,
+            end_location: values.endLocation,
+        });
+
+        editableVariants.value = JSON.parse(JSON.stringify(newPlan.variants));
+        startDates.value = newPlan.variants.map((v) =>
+            parseDayDate(v.days[0]?.date),
+        );
+        routeStart.value = newPlan.start_location || values.startLocation;
+        routeEnd.value = newPlan.end_location || routeStart.value;
+        currentTripSummary.value = newPlan.trip_summary;
+        currentTripParams.value = newPlan.trip_params;
+        newPlan.variants.forEach((_, i) => applyDates(i));
+        swap.value = null;
+        savedTokens.value = {};
+        drivingLegsPerVariant.value = {};
+        paramsModalOpen.value = false;
+    } catch (e) {
+        regenerateError.value =
+            e instanceof Error ? e.message : 'Could not update the plan.';
+    } finally {
+        regenerating.value = false;
+    }
+}
 
 // Track the start date per variant so we can recompute day dates after
 // drag-and-drop reordering or manual day additions.
@@ -81,19 +187,22 @@ function formatDrivingTime(seconds: number): string {
 
 function drivingTimeBetween(
     variantIndex: number,
-    fromLocation: string,
-    toLocation: string,
+    fromLocation: string | null | undefined,
+    toLocation: string | null | undefined,
 ): string | null {
     const legs = drivingLegsPerVariant.value[variantIndex];
 
-    if (!legs) {
+    if (!legs || !fromLocation || !toLocation) {
         return null;
     }
 
+    const from = fromLocation.toLowerCase().trim();
+    const to = toLocation.toLowerCase().trim();
+
     const leg = legs.find(
         (l) =>
-            l.from.toLowerCase().trim() === fromLocation.toLowerCase().trim() &&
-            l.to.toLowerCase().trim() === toLocation.toLowerCase().trim(),
+            l.from?.toLowerCase().trim() === from &&
+            l.to?.toLowerCase().trim() === to,
     );
 
     return leg ? formatDrivingTime(leg.seconds) : null;
@@ -147,6 +256,24 @@ function formatDateRange(day: {
     return `${day.date} – ${day.date_to}`;
 }
 
+// Accommodation photo first (what the traveler is actually booking), falling
+// back to a representative photo for the day's region — regionCoords is
+// keyed by both destination name and, since fetchRegionCoords()'s backing
+// endpoint was extended for this, the plain political region name too (the
+// only thing a day's `location` ever is).
+function dayThumbnail(day: {
+    location: string;
+    accommodation?: { image?: string | null } | null;
+}): string | null {
+    if (day.accommodation?.image) {
+        return day.accommodation.image;
+    }
+
+    const key = day.location?.toLowerCase().trim();
+
+    return (key && regionCoords.value[key]?.image) || null;
+}
+
 function applyDates(variantIndex: number) {
     const start = startDates.value[variantIndex];
 
@@ -180,6 +307,66 @@ function onStartDateInput(variantIndex: number, value: string) {
     applyDates(variantIndex);
 }
 
+// --- Auto-persist (whole-session token behind the ?trip= URL param) ---
+// Declared ahead of the plan watcher below since that watcher runs
+// synchronously (immediate: true) during setup and references these.
+
+let skipNextPersist = false;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let persistInFlight = false;
+let persistPending = false;
+
+function schedulePersist() {
+    if (skipNextPersist) {
+        skipNextPersist = false;
+
+        return;
+    }
+
+    if (persistTimer) {
+        clearTimeout(persistTimer);
+    }
+
+    persistTimer = setTimeout(runPersist, 600);
+}
+
+async function runPersist() {
+    if (persistInFlight) {
+        persistPending = true;
+
+        return;
+    }
+
+    persistInFlight = true;
+
+    const combined: ItineraryPlan = {
+        trip_summary: currentTripSummary.value,
+        variants: editableVariants.value,
+        start_location: routeStart.value,
+        end_location: routeEnd.value,
+        trip_params: currentTripParams.value,
+    };
+
+    try {
+        if (currentToken.value) {
+            await updatePlan(currentToken.value, combined);
+        } else {
+            const result = await savePlan(combined);
+            currentToken.value = result.token;
+            emit('update:token', result.token);
+        }
+    } catch (e) {
+        console.warn('Failed to auto-save plan:', e);
+    } finally {
+        persistInFlight = false;
+
+        if (persistPending) {
+            persistPending = false;
+            schedulePersist();
+        }
+    }
+}
+
 watch(
     () => props.plan,
     (plan) => {
@@ -189,15 +376,76 @@ watch(
         );
         routeStart.value = plan.start_location || 'Windhoek';
         routeEnd.value = plan.end_location || routeStart.value;
+        currentTripSummary.value = plan.trip_summary;
+        currentTripParams.value = plan.trip_params;
         swap.value = null;
 
         // Claude doesn't always fill in every day's date field consistently —
         // normalize all days from day 1's date right away rather than only
         // after the traveler drags/adds/removes something.
         plan.variants.forEach((_, i) => applyDates(i));
+
+        // Only skip the immediate re-save when hydrating a plan that's
+        // *already* got a token (restored via ?trip=token — saving it right
+        // back would be a redundant round-trip). A brand-new Kaia result has
+        // no token yet, so it must NOT be skipped — that's the save that
+        // mints the token and updates the URL in the first place.
+        skipNextPersist = !!currentToken.value;
     },
     { immediate: true },
 );
+
+watch(
+    () => props.token,
+    (token) => {
+        if (token !== currentToken.value) {
+            currentToken.value = token;
+        }
+    },
+);
+
+watch(
+    [editableVariants, routeStart, routeEnd, currentTripParams],
+    schedulePersist,
+    { deep: true },
+);
+
+// Shifts the keys of an index-keyed record down by one past the removed
+// index — savedTokens/drivingLegsPerVariant would otherwise point at the
+// wrong (shifted) variant after a dismiss.
+function reindexAfterRemoval<T>(
+    record: Record<number, T>,
+    removedIndex: number,
+): Record<number, T> {
+    const result: Record<number, T> = {};
+
+    Object.entries(record).forEach(([key, value]) => {
+        const i = Number(key);
+
+        if (i < removedIndex) {
+            result[i] = value;
+        } else if (i > removedIndex) {
+            result[i - 1] = value;
+        }
+    });
+
+    return result;
+}
+
+function dismissVariant(variantIndex: number) {
+    if (editableVariants.value.length <= 1) {
+        return;
+    }
+
+    editableVariants.value.splice(variantIndex, 1);
+    startDates.value.splice(variantIndex, 1);
+    savedTokens.value = reindexAfterRemoval(savedTokens.value, variantIndex);
+    drivingLegsPerVariant.value = reindexAfterRemoval(
+        drivingLegsPerVariant.value,
+        variantIndex,
+    );
+    swap.value = null;
+}
 
 onMounted(async () => {
     [dbRegions.value, regionCoords.value] = await Promise.all([
@@ -356,10 +604,11 @@ async function saveAllVariants() {
     const results = await Promise.allSettled(
         editableVariants.value.map((variant, i) =>
             savePlan({
-                trip_summary: props.plan.trip_summary,
+                trip_summary: currentTripSummary.value,
                 variants: [variant],
                 start_location: routeStart.value,
                 end_location: routeEnd.value,
+                trip_params: currentTripParams.value,
             }).then((result) => {
                 savedTokens.value[i] = result.token;
             }),
@@ -405,23 +654,9 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
             <div class="eyebrow">{{ t('itinerary.eyebrow') }}</div>
             <h2>{{ t('itinerary.title') }}</h2>
             <p>{{ t('itinerary.subtitle') }}</p>
-            <div class="route-summary">
-                <span class="route-label">{{ t('itinerary.route') }}:</span>
-                <LocationPicker
-                    :model-value="routeStart"
-                    :suggestions="locationSuggestions"
-                    @update:model-value="routeStart = $event"
-                />
-                <span class="route-arrow">→</span>
-                <LocationPicker
-                    :model-value="routeEnd"
-                    :suggestions="locationSuggestions"
-                    @update:model-value="routeEnd = $event"
-                />
-                <span v-if="isRoundTrip" class="route-roundtrip-tag">{{
-                    t('itinerary.roundTrip')
-                }}</span>
-            </div>
+            <p v-if="currentTripSummary" class="trip-summary-text">
+                {{ currentTripSummary }}
+            </p>
         </div>
         <div class="variants">
             <div
@@ -431,16 +666,39 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
             >
                 <div class="variant-head">
                     <h3>{{ variant.name }}</h3>
-                    <button
-                        type="button"
-                        class="reverse-route-btn"
-                        @click="reverseVariant(variantIndex)"
-                    >
-                        ⇄ {{ t('itinerary.reverseRoute') }}
-                    </button>
+                    <div class="variant-head-actions">
+                        <button
+                            type="button"
+                            class="reverse-route-btn"
+                            @click="reverseVariant(variantIndex)"
+                        >
+                            ⇄ {{ t('itinerary.reverseRoute') }}
+                        </button>
+                        <button
+                            v-if="editableVariants.length > 1"
+                            type="button"
+                            class="dismiss-variant-btn"
+                            :aria-label="t('itinerary.dismissPlan')"
+                            :title="t('itinerary.dismissPlan')"
+                            @click="dismissVariant(variantIndex)"
+                        >
+                            ×
+                        </button>
+                    </div>
                 </div>
                 <div v-if="estimatedLabel(variant)" class="variant-price">
                     {{ estimatedLabel(variant) }}
+                </div>
+
+                <TripMeta
+                    :trip-params="currentTripParams"
+                    :route-start="routeStart"
+                    :route-end="routeEnd"
+                    editable
+                    @edit="openParamsEditor"
+                />
+                <div v-if="regenerating" class="params-regenerating-note">
+                    {{ t('itinerary.paramsEditor.saving') }}
                 </div>
 
                 <template v-if="variant.vehicle">
@@ -512,27 +770,14 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     @end="renumberDays(variantIndex)"
                 >
                     <template #item="{ element: day, index: dayIndex }">
-                        <div
-                            v-if="
-                                dayIndex > 0 &&
-                                day.location !==
-                                    editableVariants[variantIndex].days[
-                                        dayIndex - 1
-                                    ].location &&
-                                drivingTimeBetween(
-                                    variantIndex,
-                                    editableVariants[variantIndex].days[
-                                        dayIndex - 1
-                                    ].location,
-                                    day.location,
-                                )
-                            "
-                            class="drive-time-row"
-                        >
-                            <span class="drive-time-icon">🚗</span>
-                            <span class="drive-time-label">
-                                {{ t('itinerary.drivingTime') }}:
-                                {{
+                        <div class="day-item">
+                            <div
+                                v-if="
+                                    dayIndex > 0 &&
+                                    day.location !==
+                                        editableVariants[variantIndex].days[
+                                            dayIndex - 1
+                                        ].location &&
                                     drivingTimeBetween(
                                         variantIndex,
                                         editableVariants[variantIndex].days[
@@ -540,163 +785,210 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                         ].location,
                                         day.location,
                                     )
-                                }}
-                            </span>
-                        </div>
-                        <div class="day-row">
-                            <div class="day-num">
-                                <span
-                                    class="drag-handle"
-                                    :title="t('itinerary.dragToReorder')"
-                                    >⠿</span
-                                >
-                                {{ day.day }}
-                                <span v-if="day.date" class="day-date">{{
-                                    formatDateRange(day)
-                                }}</span>
-                            </div>
-                            <div class="day-detail">
-                                <div>
-                                    <LocationPicker
-                                        :model-value="day.location"
-                                        :suggestions="locationSuggestions"
-                                        @update:model-value="
+                                "
+                                class="drive-time-row"
+                            >
+                                <span class="drive-time-icon">🚗</span>
+                                <span class="drive-time-label">
+                                    {{ t('itinerary.drivingTime') }}:
+                                    {{
+                                        drivingTimeBetween(
+                                            variantIndex,
                                             editableVariants[variantIndex].days[
-                                                dayIndex
-                                            ].location = $event
+                                                dayIndex - 1
+                                            ].location,
+                                            day.location,
+                                        )
+                                    }}
+                                </span>
+                            </div>
+                            <div class="day-row">
+                                <div class="day-num">
+                                    <div class="day-num-top">
+                                        <span
+                                            class="drag-handle"
+                                            :title="
+                                                t('itinerary.dragToReorder')
+                                            "
+                                            >⠿</span
+                                        >
+                                        <span
+                                            class="trip-map-marker day-num-badge"
+                                            :class="{
+                                                'trip-map-marker--start':
+                                                    dayIndex === 0,
+                                                'trip-map-marker--end':
+                                                    dayIndex ===
+                                                        editableVariants[
+                                                            variantIndex
+                                                        ].days.length -
+                                                            1 &&
+                                                    editableVariants[
+                                                        variantIndex
+                                                    ].days.length > 1,
+                                            }"
+                                            >{{ day.day }}</span
+                                        >
+                                    </div>
+                                    <span v-if="day.date" class="day-date">{{
+                                        formatDateRange(day)
+                                    }}</span>
+                                </div>
+                                <img
+                                    v-if="dayThumbnail(day)"
+                                    :src="dayThumbnail(day)!"
+                                    alt=""
+                                    class="day-thumb"
+                                />
+                                <div class="day-detail">
+                                    <div>
+                                        <LocationPicker
+                                            :model-value="day.location"
+                                            :suggestions="locationSuggestions"
+                                            @update:model-value="
+                                                editableVariants[
+                                                    variantIndex
+                                                ].days[dayIndex].location =
+                                                    $event
+                                            "
+                                        />
+                                        <button
+                                            type="button"
+                                            class="remove-btn"
+                                            :aria-label="
+                                                t('itinerary.removeDay')
+                                            "
+                                            @click="
+                                                removeDay(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                )
+                                            "
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+
+                                    <ItineraryLineItem
+                                        keypath="itinerary.stay"
+                                        :item-ref="day.accommodation"
+                                        @remove="
+                                            removeItem(
+                                                variantIndex,
+                                                dayIndex,
+                                                'accommodation',
+                                            )
+                                        "
+                                        @swap="
+                                            openSwap(
+                                                variantIndex,
+                                                dayIndex,
+                                                'accommodation',
+                                                day.accommodation!,
+                                            )
+                                        "
+                                        @add="
+                                            openSwap(
+                                                variantIndex,
+                                                dayIndex,
+                                                'accommodation',
+                                            )
                                         "
                                     />
-                                    <button
-                                        type="button"
-                                        class="remove-btn"
-                                        :aria-label="t('itinerary.removeDay')"
-                                        @click="
-                                            removeDay(variantIndex, dayIndex)
+                                    <AlternativesPanel
+                                        v-if="
+                                            swap?.key ===
+                                            swapKey(
+                                                variantIndex,
+                                                dayIndex,
+                                                'accommodation',
+                                            )
                                         "
-                                    >
-                                        ×
-                                    </button>
+                                        :loading="swap.loading"
+                                        :alternatives="swap.alternatives"
+                                        @select="applySwap"
+                                    />
+
+                                    <ItineraryLineItem
+                                        keypath="itinerary.activity"
+                                        :item-ref="day.activity"
+                                        @remove="
+                                            removeItem(
+                                                variantIndex,
+                                                dayIndex,
+                                                'activity',
+                                            )
+                                        "
+                                        @swap="
+                                            openSwap(
+                                                variantIndex,
+                                                dayIndex,
+                                                'activity',
+                                                day.activity!,
+                                            )
+                                        "
+                                        @add="
+                                            openSwap(
+                                                variantIndex,
+                                                dayIndex,
+                                                'activity',
+                                            )
+                                        "
+                                    />
+                                    <AlternativesPanel
+                                        v-if="
+                                            swap?.key ===
+                                            swapKey(
+                                                variantIndex,
+                                                dayIndex,
+                                                'activity',
+                                            )
+                                        "
+                                        :loading="swap.loading"
+                                        :alternatives="swap.alternatives"
+                                        @select="applySwap"
+                                    />
+
+                                    <ItineraryLineItem
+                                        keypath="itinerary.dinner"
+                                        :item-ref="day.restaurant"
+                                        @remove="
+                                            removeItem(
+                                                variantIndex,
+                                                dayIndex,
+                                                'restaurant',
+                                            )
+                                        "
+                                        @swap="
+                                            openSwap(
+                                                variantIndex,
+                                                dayIndex,
+                                                'restaurant',
+                                                day.restaurant!,
+                                            )
+                                        "
+                                        @add="
+                                            openSwap(
+                                                variantIndex,
+                                                dayIndex,
+                                                'restaurant',
+                                            )
+                                        "
+                                    />
+                                    <AlternativesPanel
+                                        v-if="
+                                            swap?.key ===
+                                            swapKey(
+                                                variantIndex,
+                                                dayIndex,
+                                                'restaurant',
+                                            )
+                                        "
+                                        :loading="swap.loading"
+                                        :alternatives="swap.alternatives"
+                                        @select="applySwap"
+                                    />
                                 </div>
-
-                                <ItineraryLineItem
-                                    keypath="itinerary.stay"
-                                    :item-ref="day.accommodation"
-                                    @remove="
-                                        removeItem(
-                                            variantIndex,
-                                            dayIndex,
-                                            'accommodation',
-                                        )
-                                    "
-                                    @swap="
-                                        openSwap(
-                                            variantIndex,
-                                            dayIndex,
-                                            'accommodation',
-                                            day.accommodation!,
-                                        )
-                                    "
-                                    @add="
-                                        openSwap(
-                                            variantIndex,
-                                            dayIndex,
-                                            'accommodation',
-                                        )
-                                    "
-                                />
-                                <AlternativesPanel
-                                    v-if="
-                                        swap?.key ===
-                                        swapKey(
-                                            variantIndex,
-                                            dayIndex,
-                                            'accommodation',
-                                        )
-                                    "
-                                    :loading="swap.loading"
-                                    :alternatives="swap.alternatives"
-                                    @select="applySwap"
-                                />
-
-                                <ItineraryLineItem
-                                    keypath="itinerary.activity"
-                                    :item-ref="day.activity"
-                                    @remove="
-                                        removeItem(
-                                            variantIndex,
-                                            dayIndex,
-                                            'activity',
-                                        )
-                                    "
-                                    @swap="
-                                        openSwap(
-                                            variantIndex,
-                                            dayIndex,
-                                            'activity',
-                                            day.activity!,
-                                        )
-                                    "
-                                    @add="
-                                        openSwap(
-                                            variantIndex,
-                                            dayIndex,
-                                            'activity',
-                                        )
-                                    "
-                                />
-                                <AlternativesPanel
-                                    v-if="
-                                        swap?.key ===
-                                        swapKey(
-                                            variantIndex,
-                                            dayIndex,
-                                            'activity',
-                                        )
-                                    "
-                                    :loading="swap.loading"
-                                    :alternatives="swap.alternatives"
-                                    @select="applySwap"
-                                />
-
-                                <ItineraryLineItem
-                                    keypath="itinerary.dinner"
-                                    :item-ref="day.restaurant"
-                                    @remove="
-                                        removeItem(
-                                            variantIndex,
-                                            dayIndex,
-                                            'restaurant',
-                                        )
-                                    "
-                                    @swap="
-                                        openSwap(
-                                            variantIndex,
-                                            dayIndex,
-                                            'restaurant',
-                                            day.restaurant!,
-                                        )
-                                    "
-                                    @add="
-                                        openSwap(
-                                            variantIndex,
-                                            dayIndex,
-                                            'restaurant',
-                                        )
-                                    "
-                                />
-                                <AlternativesPanel
-                                    v-if="
-                                        swap?.key ===
-                                        swapKey(
-                                            variantIndex,
-                                            dayIndex,
-                                            'restaurant',
-                                        )
-                                    "
-                                    :loading="swap.loading"
-                                    :alternatives="swap.alternatives"
-                                    @select="applySwap"
-                                />
                             </div>
                         </div>
                     </template>
@@ -716,10 +1008,11 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
 
                 <SaveShareBar
                     :plan="{
-                        trip_summary: plan.trip_summary,
+                        trip_summary: currentTripSummary,
                         variants: [variant],
                         start_location: routeStart,
                         end_location: routeEnd,
+                        trip_params: currentTripParams,
                     }"
                     :token="savedTokens[variantIndex] ?? null"
                     :is-logged-in="isLoggedIn"
@@ -737,6 +1030,19 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
             v-if="showAuthModal"
             @close="showAuthModal = false"
             @authenticated="onAuthSuccess"
+        />
+
+        <TripParamsEditModal
+            v-if="paramsModalOpen"
+            :trip-params="currentTripParams"
+            :start-location="routeStart"
+            :end-location="routeEnd"
+            :reference-start-date="startDates[0] ?? null"
+            :location-suggestions="locationSuggestions"
+            :saving="regenerating"
+            :error="regenerateError"
+            @close="paramsModalOpen = false"
+            @save="applyParamsEdit"
         />
     </section>
 </template>

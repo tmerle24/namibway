@@ -2,7 +2,7 @@
 import '../../css/kaia-home.css';
 import type { FormDataConvertible } from '@inertiajs/core';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ArrowLeft, Eye, EyeOff, Send, X } from '@lucide/vue';
+import { ArrowLeft, Eye, EyeOff, Send, UserPlus, X } from '@lucide/vue';
 import { reactive, ref } from 'vue';
 import AdminBar from '@/components/AdminBar.vue';
 import LocationPicker from '@/components/LocationPicker.vue';
@@ -30,7 +30,9 @@ interface Listing {
     gallery: string[];
     connector_type: string | null;
     connector_property_code: string | null;
+    wetu_id: string | null;
     has_connector_credentials: boolean;
+    connector_verified: boolean;
 }
 
 interface ConnectorOption {
@@ -42,6 +44,7 @@ const props = defineProps<{
     listing: Listing;
     connector_options: ConnectorOption[];
     preview_token?: string | null;
+    claim_url?: string | null;
 }>();
 
 const form = reactive({
@@ -60,7 +63,36 @@ const form = reactive({
     price_currency: props.listing.price_currency ?? 'NAD',
     connector_type: props.listing.connector_type ?? '',
     connector_property_code: props.listing.connector_property_code ?? '',
+    wetu_id: props.listing.wetu_id ?? '',
+    // Never prefilled from props — the backend never sends stored credentials
+    // back down (see ListingController::edit()), so these start blank even
+    // when a system is already connected. Only used while connectorLocked is
+    // false (see below); once verified, the backend ignores them entirely.
+    resconnect_api_key: '',
+    resconnect_base_url: '',
+    nightsbridge_bbid: '',
+    nightsbridge_api_key: '',
+    nightsbridge_base_url: '',
+    hopecloud_api_key: '',
+    hopecloud_account_id: '',
+    hopecloud_base_url: '',
+    wetu_api_key: '',
 });
+
+// Mirrors the per-system field visibility in the admin Filament wizard
+// (BookingConnectorSchema::propertyFields) — API-key connectors share the
+// generic property/unit code, Wetu uses its own id column, and Native/Manual/
+// NWR need no per-listing identifier entered here at all.
+const PROPERTY_CODE_TYPES = ['resconnect', 'nightsbridge', 'hopecloud'];
+const CREDENTIALED_TYPES = ['resconnect', 'nightsbridge', 'hopecloud', 'wetu'];
+
+// Once staff has verified the connector that's actually saved, this editor
+// stops letting the credentials be touched at all (the backend ignores them
+// too — see ListingController::update()). Before that point — including
+// while a first-picked system is still pending review — the setup fields
+// stay open so the owner can fix a typo before anyone's looked at it.
+const connectorLocked =
+    props.listing.connector_type !== null && props.listing.connector_verified;
 
 const newHighlight = ref('');
 const saving = ref<'draft' | 'preview' | 'publish' | 'unpublish' | null>(null);
@@ -154,6 +186,12 @@ function submit(mode: 'draft' | 'preview' | 'publish' | 'unpublish') {
     const payload: Record<string, FormDataConvertible> = {
         ...form,
         connector_type: form.connector_type === '' ? null : form.connector_type,
+        connector_property_code: PROPERTY_CODE_TYPES.includes(
+            form.connector_type,
+        )
+            ? form.connector_property_code
+            : '',
+        wetu_id: form.connector_type === 'wetu' ? form.wetu_id : '',
         preview: props.preview_token ?? undefined,
         publish: mode === 'publish' ? true : undefined,
         unpublish: mode === 'unpublish' ? true : undefined,
@@ -226,14 +264,24 @@ function handleUnpublishClick() {
             <Link :href="previewUrl" class="brand"
                 ><img :src="logoDark" alt="NamibWay" class="brand-logo"
             /></Link>
-            <Link
-                :href="previewUrl"
-                class="detail-back"
-                style="display: inline-flex; align-items: center; gap: 5px"
-            >
-                <ArrowLeft :size="14" />
-                Back to preview
-            </Link>
+            <div class="detail-topbar-actions">
+                <a
+                    v-if="props.claim_url"
+                    :href="props.claim_url"
+                    class="owner-header-link owner-header-link--claim"
+                >
+                    <UserPlus :size="14" />
+                    Claim account
+                </a>
+                <Link
+                    :href="previewUrl"
+                    class="detail-back"
+                    style="display: inline-flex; align-items: center; gap: 5px"
+                >
+                    <ArrowLeft :size="14" />
+                    Back to preview
+                </Link>
+            </div>
         </div>
 
         <div class="edit-header">
@@ -467,42 +515,207 @@ function handleUnpublishClick() {
 
             <div class="edit-section">
                 <span class="edit-section-label">Booking system</span>
-                <p class="edit-section-hint">
-                    Which system do travellers' booking requests go through?
-                    This applies to all of your listings, not just this one.
-                </p>
-                <label>
-                    System
-                    <select v-model="form.connector_type">
-                        <option value="">— none selected —</option>
-                        <option
-                            v-for="option in props.connector_options"
-                            :key="option.value"
-                            :value="option.value"
-                        >
-                            {{ option.label }}
-                        </option>
-                    </select>
-                </label>
-                <label>
-                    Property code
-                    <input
-                        v-model="form.connector_property_code"
-                        type="text"
-                        maxlength="100"
-                        placeholder="Property/unit ID in that system, if applicable"
-                    />
-                </label>
-                <p v-if="form.connector_type" class="edit-section-hint">
-                    <template v-if="props.listing.has_connector_credentials">
-                        API credentials are already connected for this booking
-                        system.
+
+                <template v-if="connectorLocked">
+                    <p class="edit-section-hint">
+                        <strong>{{
+                            props.connector_options.find(
+                                (o) => o.value === form.connector_type,
+                            )?.label
+                        }}</strong>
+                        — verified, connected for all of your listings.
+                    </p>
+
+                    <label
+                        v-if="PROPERTY_CODE_TYPES.includes(form.connector_type)"
+                    >
+                        Property code
+                        <input
+                            v-model="form.connector_property_code"
+                            type="text"
+                            maxlength="100"
+                            placeholder="Property/unit ID in that system"
+                        />
+                    </label>
+                    <label v-else-if="form.connector_type === 'wetu'">
+                        Wetu Property ID
+                        <input
+                            v-model="form.wetu_id"
+                            type="text"
+                            maxlength="100"
+                            placeholder="Enables automatic content import from Wetu"
+                        />
+                    </label>
+
+                    <p class="edit-section-hint">
+                        To switch to a different booking system, get in touch
+                        with us.
+                    </p>
+                </template>
+
+                <template v-else>
+                    <p class="edit-section-hint">
+                        Which system do travellers' booking requests go through?
+                        This applies to all of your listings, not just this one.
+                    </p>
+                    <label>
+                        System
+                        <select v-model="form.connector_type">
+                            <option value="">— none selected —</option>
+                            <option
+                                v-for="option in props.connector_options"
+                                :key="option.value"
+                                :value="option.value"
+                            >
+                                {{ option.label }}
+                            </option>
+                        </select>
+                    </label>
+
+                    <template v-if="form.connector_type === 'resconnect'">
+                        <label>
+                            API key
+                            <input
+                                v-model="form.resconnect_api_key"
+                                type="text"
+                                autocomplete="off"
+                            />
+                        </label>
+                        <label>
+                            Base URL (optional)
+                            <input
+                                v-model="form.resconnect_base_url"
+                                type="text"
+                                placeholder="Only fill in if it differs from the default"
+                            />
+                        </label>
                     </template>
-                    <template v-else>
-                        No API credentials connected yet — get in touch with us
-                        to enable live availability for this system.
+
+                    <template
+                        v-else-if="form.connector_type === 'nightsbridge'"
+                    >
+                        <label>
+                            Booking Bureau ID (bbid)
+                            <input
+                                v-model="form.nightsbridge_bbid"
+                                type="text"
+                                autocomplete="off"
+                            />
+                        </label>
+                        <label>
+                            API key
+                            <input
+                                v-model="form.nightsbridge_api_key"
+                                type="text"
+                                autocomplete="off"
+                            />
+                        </label>
+                        <label>
+                            Base URL (optional)
+                            <input
+                                v-model="form.nightsbridge_base_url"
+                                type="text"
+                                placeholder="Only fill in if it differs from the default"
+                            />
+                        </label>
                     </template>
-                </p>
+
+                    <template v-else-if="form.connector_type === 'hopecloud'">
+                        <label>
+                            API key
+                            <input
+                                v-model="form.hopecloud_api_key"
+                                type="text"
+                                autocomplete="off"
+                            />
+                        </label>
+                        <label>
+                            Account ID
+                            <input
+                                v-model="form.hopecloud_account_id"
+                                type="text"
+                                autocomplete="off"
+                            />
+                        </label>
+                        <label>
+                            Base URL (optional)
+                            <input
+                                v-model="form.hopecloud_base_url"
+                                type="text"
+                                placeholder="Only fill in if it differs from the default"
+                            />
+                        </label>
+                    </template>
+
+                    <template v-else-if="form.connector_type === 'wetu'">
+                        <label>
+                            API key
+                            <input
+                                v-model="form.wetu_api_key"
+                                type="text"
+                                autocomplete="off"
+                            />
+                        </label>
+                    </template>
+
+                    <label
+                        v-if="PROPERTY_CODE_TYPES.includes(form.connector_type)"
+                    >
+                        Property code
+                        <input
+                            v-model="form.connector_property_code"
+                            type="text"
+                            maxlength="100"
+                            placeholder="Property/unit ID in that system"
+                        />
+                    </label>
+                    <label v-else-if="form.connector_type === 'wetu'">
+                        Wetu Property ID
+                        <input
+                            v-model="form.wetu_id"
+                            type="text"
+                            maxlength="100"
+                            placeholder="Enables automatic content import from Wetu"
+                        />
+                    </label>
+
+                    <p
+                        v-else-if="form.connector_type === 'native'"
+                        class="edit-section-hint"
+                    >
+                        No API access needed — bookings are checked and held
+                        live against NamibWay's own availability. Room types are
+                        managed for you in the admin panel.
+                    </p>
+
+                    <p
+                        v-else-if="form.connector_type === 'nwr'"
+                        class="edit-section-hint"
+                    >
+                        NWR has no system we can connect to. Every request goes
+                        to our team as a manual review.
+                    </p>
+
+                    <p
+                        v-else-if="form.connector_type === 'manual'"
+                        class="edit-section-hint"
+                    >
+                        Requests are sent to you as a plain email notification,
+                        without live availability checks.
+                    </p>
+
+                    <p
+                        v-if="
+                            form.connector_type &&
+                            CREDENTIALED_TYPES.includes(form.connector_type)
+                        "
+                        class="edit-section-hint"
+                    >
+                        We'll check these details before switching live
+                        availability on for this system — you'll still receive
+                        requests by email in the meantime.
+                    </p>
+                </template>
             </div>
 
             <div class="edit-actions">
@@ -561,6 +774,28 @@ function handleUnpublishClick() {
 </template>
 
 <style scoped>
+.owner-header-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.owner-header-link--claim {
+    background: transparent;
+    color: var(--rust, #b45309);
+    border: 1px solid var(--rust, #b45309);
+}
+
+.owner-header-link--claim:hover {
+    background: #fdf6ec;
+}
+
 .edit-header {
     max-width: 640px;
     margin: 32px auto 0;

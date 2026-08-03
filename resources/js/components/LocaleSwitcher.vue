@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { router, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { variant = 'icon' } = defineProps<{ variant?: 'icon' | 'full' }>();
 
 const page = usePage();
+const { t } = useI18n();
 
 const FLAGS: Record<string, string> = {
     en: '🇬🇧',
@@ -10,6 +15,8 @@ const FLAGS: Record<string, string> = {
     fr: '🇫🇷',
     es: '🇪🇸',
 };
+
+const glyph = computed(() => FLAGS[page.props.locale as string] ?? '🌐');
 
 function setCookie(name: string, value: string, days = 365) {
     const maxAge = days * 24 * 60 * 60;
@@ -24,17 +31,38 @@ function switchLocale(event: Event) {
 </script>
 
 <template>
-    <select
-        :value="page.props.locale"
-        class="locale-switcher"
-        @change="switchLocale"
-    >
-        <option
-            v-for="(label, code) in page.props.availableLocales"
-            :key="code"
-            :value="code"
+    <span v-if="variant === 'full'" class="full-switcher">
+        <span class="full-switcher-label">{{ t('nav.language') }}</span>
+        <select
+            :value="page.props.locale"
+            class="full-switcher-select"
+            :aria-label="t('nav.language')"
+            @change="switchLocale"
         >
-            {{ FLAGS[code as string] ?? '' }} {{ label }}
-        </option>
-    </select>
+            <option
+                v-for="(label, code) in page.props.availableLocales"
+                :key="code"
+                :value="code"
+            >
+                {{ FLAGS[code as string] ?? '' }} {{ label }}
+            </option>
+        </select>
+    </span>
+    <span v-else class="icon-switcher">
+        <span class="icon-switcher-glyph" aria-hidden="true">{{ glyph }}</span>
+        <select
+            :value="page.props.locale"
+            class="icon-switcher-native"
+            :aria-label="t('nav.language')"
+            @change="switchLocale"
+        >
+            <option
+                v-for="(label, code) in page.props.availableLocales"
+                :key="code"
+                :value="code"
+            >
+                {{ FLAGS[code as string] ?? '' }} {{ label }}
+            </option>
+        </select>
+    </span>
 </template>

@@ -6,6 +6,7 @@ use App\Connectors\Contracts\BookingConnector;
 use App\Connectors\Contracts\ContentConnector;
 use App\Connectors\HopeCloud\HopeCloudClient;
 use App\Connectors\HopeCloud\HopeCloudConnector;
+use App\Connectors\Native\NativeConnector;
 use App\Connectors\NightsBridge\NightsBridgeClient;
 use App\Connectors\NightsBridge\NightsBridgeConnector;
 use App\Connectors\Nwr\NwrConnector;
@@ -28,6 +29,7 @@ class ConnectorFactory
             ConnectorType::NightsBridge => self::makeNightsBridge($partner),
             ConnectorType::HopeCloud => self::makeHopeCloud($partner),
             ConnectorType::Nwr => new NwrConnector,
+            ConnectorType::Native => new NativeConnector,
             null, ConnectorType::Manual, ConnectorType::Wetu => throw new InvalidArgumentException(
                 "Partner [{$partner->id}] has no automated booking connector configured."
             ),
@@ -52,8 +54,25 @@ class ConnectorFactory
         return self::makeBooking($partner);
     }
 
+    /**
+     * Owner-submitted credentials (partner portal or the token-based listing
+     * editor) are stored immediately but stay unusable for real bookings
+     * until staff verifies them — see Partner::setConnectorSetup(). Admin-
+     * entered credentials are verified the moment they're saved.
+     */
+    private static function requireVerified(Partner $partner): void
+    {
+        if ($partner->connector_verified_at === null) {
+            throw new InvalidArgumentException(
+                "Partner [{$partner->id}]'s {$partner->connector_type?->label()} credentials haven't been verified yet."
+            );
+        }
+    }
+
     private static function makeResConnect(Partner $partner): ResConnectConnector
     {
+        self::requireVerified($partner);
+
         $config = $partner->connector_config ?? [];
         $apiKey = $config['api_key'] ?? '';
         $baseUrl = $config['base_url'] ?? config('connectors.resconnect.default_base_url');
@@ -71,6 +90,8 @@ class ConnectorFactory
 
     private static function makeNightsBridge(Partner $partner): NightsBridgeConnector
     {
+        self::requireVerified($partner);
+
         $config = $partner->connector_config ?? [];
         $bbid = $config['bbid'] ?? '';
         $apiKey = $config['api_key'] ?? '';
@@ -89,6 +110,8 @@ class ConnectorFactory
 
     private static function makeHopeCloud(Partner $partner): HopeCloudConnector
     {
+        self::requireVerified($partner);
+
         $config = $partner->connector_config ?? [];
         $apiKey = $config['api_key'] ?? '';
         $accountId = $config['account_id'] ?? '';
@@ -107,6 +130,8 @@ class ConnectorFactory
 
     private static function makeWetu(Partner $partner): WetuConnector
     {
+        self::requireVerified($partner);
+
         $config = $partner->connector_config ?? [];
         $apiKey = $config['api_key'] ?? '';
 

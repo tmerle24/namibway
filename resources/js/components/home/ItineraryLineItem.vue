@@ -26,51 +26,53 @@ function refUrl(ref: ItineraryListingRef): string {
 <template>
     <i18n-t :keypath="keypath" tag="div" class="line-item">
         <template #value>
-            <template v-if="props.itemRef">
-                <a
-                    v-if="props.itemRef.slug"
-                    :href="refUrl(props.itemRef)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >{{ props.itemRef.name }}</a
-                >
-                <template v-else>{{ props.itemRef.name }}</template>
-                <span
-                    v-if="formatPrice(props.itemRef.price_from)"
-                    class="item-price"
-                    >{{ formatPrice(props.itemRef.price_from) }}</span
-                >
-                <template v-if="!props.readonly">
-                    <button
-                        v-if="props.itemRef.id"
-                        type="button"
-                        class="swap-btn"
-                        :aria-label="t('itinerary.swap')"
-                        @click="$emit('swap')"
+            <span class="line-item-value">
+                <template v-if="props.itemRef">
+                    <a
+                        v-if="props.itemRef.slug"
+                        :href="refUrl(props.itemRef)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        >{{ props.itemRef.name }}</a
                     >
-                        ⇄
-                    </button>
-                    <button
-                        type="button"
-                        class="remove-btn"
-                        :aria-label="t('itinerary.remove')"
-                        @click="$emit('remove')"
+                    <template v-else>{{ props.itemRef.name }}</template>
+                    <span
+                        v-if="formatPrice(props.itemRef.price_from)"
+                        class="item-price"
+                        >{{ formatPrice(props.itemRef.price_from) }}</span
                     >
-                        ×
+                    <template v-if="!props.readonly">
+                        <button
+                            v-if="props.itemRef.id"
+                            type="button"
+                            class="swap-btn"
+                            :aria-label="t('itinerary.swap')"
+                            @click="$emit('swap')"
+                        >
+                            ⇄
+                        </button>
+                        <button
+                            type="button"
+                            class="remove-btn"
+                            :aria-label="t('itinerary.remove')"
+                            @click="$emit('remove')"
+                        >
+                            ×
+                        </button>
+                    </template>
+                </template>
+                <template v-else>
+                    —
+                    <button
+                        v-if="!props.readonly"
+                        type="button"
+                        class="add-item-btn"
+                        @click="$emit('add')"
+                    >
+                        + {{ t('itinerary.add') }}
                     </button>
                 </template>
-            </template>
-            <template v-else>
-                —
-                <button
-                    v-if="!props.readonly"
-                    type="button"
-                    class="add-item-btn"
-                    @click="$emit('add')"
-                >
-                    + {{ t('itinerary.add') }}
-                </button>
-            </template>
+            </span>
         </template>
     </i18n-t>
 </template>

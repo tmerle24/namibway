@@ -2,22 +2,21 @@
 
 namespace App\Filament\Resources\RegionResource\Pages;
 
+use App\Filament\Concerns\HasFormActionsInHeader;
 use App\Filament\Resources\RegionResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
-use Filament\Resources\Pages\EditRecord\Concerns\Translatable;
 
 class EditRegion extends EditRecord
 {
-    use Translatable;
+    use HasFormActionsInHeader;
 
     protected static string $resource = RegionResource::class;
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\LocaleSwitcher::make(),
+        return $this->withFormActions([
             Actions\DeleteAction::make(),
-        ];
+        ]);
     }
 }

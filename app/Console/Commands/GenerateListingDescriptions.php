@@ -30,7 +30,8 @@ class GenerateListingDescriptions extends Command
                     ->orWhereRaw("description->>'en' = ''");
             })
             ->limit($limit)
-            ->get(['id', 'name', 'type', 'region', 'address', 'website', 'phone']);
+            ->with('city.region')
+            ->get(['id', 'name', 'type', 'city_id', 'address', 'website', 'phone']);
 
         $this->info("Found {$listings->count()} listings to describe");
 

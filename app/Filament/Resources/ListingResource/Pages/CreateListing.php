@@ -2,14 +2,17 @@
 
 namespace App\Filament\Resources\ListingResource\Pages;
 
+use App\Filament\Concerns\HasCreateFormActionsInHeader;
 use App\Filament\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
+use App\Services\Enrichment\OsmLocationFinder;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Resources\Pages\CreateRecord\Concerns\Translatable;
 
 class CreateListing extends CreateRecord
 {
+    use HasCreateFormActionsInHeader;
     use Translatable;
 
     protected static string $resource = ListingResource::class;
@@ -22,13 +25,15 @@ class CreateListing extends CreateRecord
     {
         $partnerId = $data['partner_id'] ?? null;
 
+        $data = app(OsmLocationFinder::class)->fillMissingCoordinates($data, $data['name'] ?? '');
+
         return BookingConnectorSchema::persistPartnerFields($data, $partnerId ? (int) $partnerId : null);
     }
 
     protected function getHeaderActions(): array
     {
-        return [
+        return $this->withFormActions([
             Actions\LocaleSwitcher::make(),
-        ];
+        ]);
     }
 }

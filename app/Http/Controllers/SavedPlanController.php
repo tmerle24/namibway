@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Region;
+use App\Models\Destination;
 use App\Models\SavedPlan;
 use App\Services\Pdf\RouteMapImageService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -21,6 +21,9 @@ class SavedPlanController extends Controller
             'plan' => ['required', 'array'],
             'plan.trip_summary' => ['required', 'string', 'max:500'],
             'plan.variants' => ['required', 'array', 'min:1'],
+            'plan.start_location' => ['sometimes', 'string', 'max:255'],
+            'plan.end_location' => ['sometimes', 'string', 'max:255'],
+            'plan.trip_params' => ['sometimes', 'array'],
         ]);
 
         $plan = $validated['plan'];
@@ -56,14 +59,14 @@ class SavedPlanController extends Controller
         $saved = SavedPlan::where('token', $token)->firstOrFail();
         $plan = $saved->plan_json;
 
-        $regionCoords = Region::query()
+        $regionCoords = Destination::query()
             ->whereNotNull('lat')
             ->whereNotNull('lng')
             ->get(['name', 'lat', 'lng'])
-            ->mapWithKeys(fn (Region $r) => [
-                mb_strtolower($r->getTranslation('name', 'en')) => [
-                    'lat' => $r->lat,
-                    'lng' => $r->lng,
+            ->mapWithKeys(fn (Destination $d) => [
+                mb_strtolower($d->getTranslation('name', 'en')) => [
+                    'lat' => $d->lat,
+                    'lng' => $d->lng,
                 ],
             ])
             ->toArray();

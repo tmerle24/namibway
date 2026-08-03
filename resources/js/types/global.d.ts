@@ -33,3 +33,36 @@ declare module 'vue' {
         $headManager: ReturnType<typeof createHeadManager>;
     }
 }
+
+// Web Speech API — not part of TypeScript's DOM lib since it's still
+// non-standard, only used behind feature detection in HeroChat.vue.
+interface SpeechRecognitionResult {
+    [index: number]: { transcript: string };
+}
+
+interface SpeechRecognitionResultList {
+    readonly length: number;
+    [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionEvent extends Event {
+    resultIndex: number;
+    results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognition extends EventTarget {
+    lang: string;
+    interimResults: boolean;
+    onresult: ((event: SpeechRecognitionEvent) => void) | null;
+    onend: (() => void) | null;
+    onerror: (() => void) | null;
+    start(): void;
+    stop(): void;
+}
+
+declare global {
+    interface Window {
+        SpeechRecognition?: new () => SpeechRecognition;
+        webkitSpeechRecognition?: new () => SpeechRecognition;
+    }
+}

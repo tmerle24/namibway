@@ -276,6 +276,43 @@ sudo chmod -R 775 /var/www/namibway/storage /var/www/namibway/bootstrap/cache
 
 ---
 
+## Disaster Recovery — Server-Totalausfall
+
+Nightly Backup (`config/backup.php`, Schedule in `routes/console.php`) sichert **DB-Dump +
+`.env`** verschlüsselt (AES-256, `BACKUP_ARCHIVE_PASSWORD`) nach R2 (`r2-backups`-Disk,
+non-public Bucket). Der Rest ist bereits anderswo durabel: Code in GitHub (`main`), Medien
+in Cloudflare R2 (`r2`-Disk). `.env` ist damit die einzige Sache, die *nur* auf dem Server
+existiert — ohne sie im Backup wäre ein Server-Verlust selbst mit DB-Dump in der Hand nicht
+restaurierbar (alle Secrets: DB-Passwort, `ANTHROPIC_API_KEY`, R2-/OAuth-Credentials,
+`APP_KEY`).
+
+**Nicht** über das Backup abgedeckt (bewusst — Infrastruktur-Entscheidungen, keine Daten):
+PostgreSQL/Redis-Installation, nginx-Vhost + SSL-Zertifikat, Supervisor-Config für Horizon.
+Die Schritte dafür stehen oben unter "Produktions-Deployment" 1–2 und 7.
+
+### Restore auf neuem Server
+
+```bash
+# 1. PostgreSQL + Redis installieren, DB + User anlegen — siehe oben Schritte 1–2
+# 2. .env + DB aus dem letzten Backup zurückholen:
+scp restore.sh user@neuer-server:~/
+ssh user@neuer-server
+bash restore.sh
+# fragt R2-Zugangsdaten, Backup-Passwort und DB-Zugangsdaten interaktiv ab
+# (Werte vorab exportieren, um die Abfrage zu überspringen — siehe Kommentar im Skript)
+
+# 3. Code + Dependencies + Migrationen (findet jetzt ein befülltes .env vor):
+bash deploy.sh
+
+# 4. nginx-Vhost + SSL, Supervisor-Config für Horizon — siehe oben Schritte 7 + DNS/SSL
+```
+
+`restore.sh` sichert ein eventuell schon vorhandenes `.env` vor dem Überschreiben nach
+`.env.bak-restore`. `APP_URL`/`DB_HOST` in der wiederhergestellten `.env` prüfen, falls sich
+Hostname oder DB-Standort gegenüber dem alten Server geändert haben.
+
+---
+
 ## Nützliche Befehle
 
 ```bash

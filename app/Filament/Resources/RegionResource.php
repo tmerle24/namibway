@@ -3,21 +3,25 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\RegionResource\Pages;
+use App\Filament\Support\PipelineImageResolver;
+use App\Http\Controllers\Controller;
 use App\Models\Region;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class RegionResource extends Resource
 {
-    use Translatable;
-
     protected static ?string $model = Region::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-map-pin';
+    protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
+
+    protected static ?string $navigationGroup = 'Settings';
+
+    protected static ?int $navigationSort = 20;
 
     public static function form(Form $form): Form
     {
@@ -25,61 +29,39 @@ class RegionResource extends Resource
             ->schema([
                 Forms\Components\FileUpload::make('image')
                     ->image()
-                    ->disk('public')
-                    ->directory('regions')
+                    ->disk('r2')
+                    ->directory('political-regions')
                     ->imageEditor()
+                    ->fetchFileInformation(false)
+                    ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('name')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->unique(ignoreRecord: true),
                 Forms\Components\TextInput::make('slug')
                     ->required()
                     ->maxLength(255)
-                    ->unique(ignoreRecord: true),
-                Forms\Components\Textarea::make('blurb')
-                    ->label('Blurb')
-                    ->helperText('Short teaser shown on the Explore card, e.g. "Windhoek and the central highlands — most itineraries start here."')
-                    ->columnSpanFull(),
-                Forms\Components\Select::make('listing_region')
-                    ->label('Matches listing region')
-                    ->helperText('Which of the 6 political regions this destination belongs to — determines what gets shown when a traveler clicks this card.')
-                    ->options(array_combine(config('kaia.regions'), config('kaia.regions')))
-                    ->required(),
-                Forms\Components\TextInput::make('lat')
-                    ->label('Latitude')
-                    ->numeric()
-                    ->nullable()
-                    ->helperText('Decimal degrees, e.g. -22.5597'),
-                Forms\Components\TextInput::make('lng')
-                    ->label('Longitude')
-                    ->numeric()
-                    ->nullable()
-                    ->helperText('Decimal degrees, e.g. 17.0832'),
-                Forms\Components\TextInput::make('sort_order')
-                    ->numeric()
-                    ->default(0),
-                Forms\Components\Toggle::make('is_published')
-                    ->default(true)
-                    ->required(),
+                    ->unique(ignoreRecord: true)
+                    ->helperText('Auto-filled from the name when left blank.'),
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('sort_order')
+            ->defaultSort('name')
+            ->modifyQueryUsing(fn (Builder $query) => $query->withCount('cities'))
             ->columns([
                 Tables\Columns\ImageColumn::make('image')
-                    ->disk('public')
+                    ->getStateUsing(fn (Region $record): ?string => $record->image ? Controller::resolveMediaUrl($record->image) : null)
                     ->square(),
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('listing_region')
-                    ->label('Region'),
-                Tables\Columns\TextColumn::make('sort_order')
+                    ->searchable()
                     ->sortable(),
-                Tables\Columns\IconColumn::make('is_published')
-                    ->boolean(),
+                Tables\Columns\TextColumn::make('slug'),
+                Tables\Columns\TextColumn::make('cities_count')
+                    ->label('Cities'),
             ])
             ->filters([
                 //

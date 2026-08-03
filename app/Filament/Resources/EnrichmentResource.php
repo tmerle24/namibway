@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Enums\ListingType;
 use App\Filament\Resources\EnrichmentResource\Pages;
 use App\Filament\Support\PipelineImageResolver;
+use App\Http\Controllers\Controller;
 use App\Jobs\EnrichListingJob;
 use App\Models\EnrichmentJob;
 use App\Models\Listing;
@@ -42,6 +43,8 @@ class EnrichmentResource extends Resource
     protected static ?string $navigationLabel = 'Data Enrichment';
 
     protected static ?string $navigationIcon = 'heroicon-o-sparkles';
+
+    protected static ?string $navigationGroup = 'Content';
 
     protected static ?string $modelLabel = 'listing';
 
@@ -121,8 +124,12 @@ class EnrichmentResource extends Resource
                                 ->label('NTB number')
                                 ->extraInputAttributes(fn (): array => self::focusAttributes('ntb_number')),
                             Forms\Components\Select::make('type')->label('Category')->options(ListingType::class)->required(),
-                            Forms\Components\TextInput::make('region')
-                                ->extraInputAttributes(fn (): array => self::focusAttributes('region')),
+                            Forms\Components\Select::make('city_id')
+                                ->label('City')
+                                ->relationship('city', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->extraInputAttributes(fn (): array => self::focusAttributes('city_id')),
                         ])->columns(2),
 
                     Forms\Components\Tabs\Tab::make('Contact')
@@ -187,8 +194,40 @@ class EnrichmentResource extends Resource
                             // getUploadedFileUsing() ever runs, so URLs/foreign-disk paths get
                             // silently dropped from the field's state no matter what the resolver
                             // does — disabling it is the only way to let the resolver see them.
-                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor()->panelAspectRatio('16:9')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
-                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->panelLayout('grid')->imageEditor()->disk('r2')->directory('listings/gallery')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
+                            //
+                            // FilePond's own in-panel preview rasterizes to a small internal
+                            // canvas and CSS-stretches it to fill the panel — intrinsic to its
+                            // crop/zoom-capable renderer, not something any Filament FileUpload
+                            // option controls. These Placeholders render the stored file directly
+                            // so the tab shows the real quality.
+                            Forms\Components\Placeholder::make('image_preview')
+                                ->label('Current hero image')
+                                ->content(function (?Listing $record): HtmlString {
+                                    if (! $record?->image) {
+                                        return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">No image set yet.</span>');
+                                    }
+
+                                    $url = e(Controller::resolveMediaUrl($record->image));
+
+                                    return new HtmlString("<img src=\"{$url}\" style=\"max-width: 100%; max-height: 420px; border-radius: 0.5rem; object-fit: cover;\" />");
+                                }),
+                            Forms\Components\FileUpload::make('image')->label('Hero image')->image()->disk('r2')->directory('listings')->imageEditor()->openable()->panelAspectRatio('16:9')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
+                            Forms\Components\Placeholder::make('gallery_preview')
+                                ->label('Current gallery')
+                                ->content(function (?Listing $record): HtmlString {
+                                    $images = $record->gallery ?? [];
+
+                                    if (empty($images)) {
+                                        return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">No gallery images yet.</span>');
+                                    }
+
+                                    $thumbs = collect($images)
+                                        ->map(fn (string $path) => '<img src="'.e(Controller::resolveMediaUrl($path)).'" style="height: 120px; border-radius: 0.5rem; object-fit: cover;" />')
+                                        ->implode('');
+
+                                    return new HtmlString('<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">'.$thumbs.'</div>');
+                                }),
+                            Forms\Components\FileUpload::make('gallery')->image()->multiple()->reorderable()->panelLayout('grid')->itemPanelAspectRatio(1)->imageEditor()->openable()->disk('r2')->directory('listings/gallery')->fetchFileInformation(false)->getUploadedFileUsing(PipelineImageResolver::resolve(...)),
                         ]),
 
                     Forms\Components\Tabs\Tab::make('Metadata')
@@ -424,7 +463,7 @@ class EnrichmentResource extends Resource
             ->label('')
             ->tooltip('Edit — open the full edit form for this listing');
         $editNtbNumber = self::editAction(self::TAB_BASIC, 'edit_ntb_number', 'ntb_number');
-        $editRegion = self::editAction(self::TAB_BASIC, 'edit_region', 'region');
+        $editRegion = self::editAction(self::TAB_BASIC, 'edit_region', 'city_id');
         $editWebsite = self::editAction(self::TAB_CONTACT, 'edit_website', 'website');
         $editEmail = self::editAction(self::TAB_CONTACT, 'edit_email', 'contact_email');
         $editPhone = self::editAction(self::TAB_CONTACT, 'edit_phone', 'phone');
@@ -455,7 +494,8 @@ class EnrichmentResource extends Resource
                     ->badge()
                     ->action($editBasic)
                     ->sortable(),
-                Tables\Columns\TextColumn::make('region')
+                Tables\Columns\TextColumn::make('city.name')
+                    ->label('City')
                     ->searchable()
                     ->action($editRegion)
                     ->sortable(),
@@ -619,8 +659,9 @@ class EnrichmentResource extends Resource
             ->defaultSort('enrichment_score', 'asc')
             ->filters([
                 Tables\Filters\SelectFilter::make('type')->label('Category')->options(ListingType::class),
-                Tables\Filters\SelectFilter::make('region')
-                    ->options(fn (): array => Listing::query()->whereNotNull('region')->distinct()->orderBy('region')->pluck('region', 'region')->all()),
+                Tables\Filters\SelectFilter::make('city_id')
+                    ->label('City')
+                    ->relationship('city', 'name'),
                 Tables\Filters\SelectFilter::make('completion')
                     ->label('Completion %')
                     ->options(['green' => '90–100% (green)', 'yellow' => '60–89% (yellow)', 'red' => '0–59% (red)'])

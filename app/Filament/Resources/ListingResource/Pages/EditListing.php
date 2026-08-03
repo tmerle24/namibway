@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\ListingResource\Pages;
 
+use App\Filament\Concerns\HasFormActionsInHeader;
 use App\Filament\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Models\Listing;
+use App\Services\Enrichment\OsmLocationFinder;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Resources\Pages\EditRecord\Concerns\Translatable;
@@ -12,6 +14,7 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class EditListing extends EditRecord
 {
+    use HasFormActionsInHeader;
     use Translatable;
 
     protected static string $resource = ListingResource::class;
@@ -26,6 +29,8 @@ class EditListing extends EditRecord
         $record = $this->getRecord();
 
         $partnerId = $data['partner_id'] ?? $record->partner_id;
+
+        $data = app(OsmLocationFinder::class)->fillMissingCoordinates($data, $data['name'] ?? $record->name);
 
         return BookingConnectorSchema::persistPartnerFields($data, $partnerId ? (int) $partnerId : null);
     }
@@ -42,9 +47,9 @@ class EditListing extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
+        return $this->withFormActions([
             Actions\LocaleSwitcher::make(),
             Actions\DeleteAction::make(),
-        ];
+        ]);
     }
 }

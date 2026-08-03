@@ -12,6 +12,7 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\SpatieLaravelTranslatablePlugin;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -38,6 +39,10 @@ class PartnerPanelProvider extends PanelProvider
             ->plugin(
                 SpatieLaravelTranslatablePlugin::make()
                     ->defaultLocales(config('locales.supported'))
+            )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => view('filament.partials.sticky-page-header')->render(),
             )
             ->discoverResources(in: app_path('Filament/Partner/Resources'), for: 'App\\Filament\\Partner\\Resources')
             ->discoverPages(in: app_path('Filament/Partner/Pages'), for: 'App\\Filament\\Partner\\Pages')

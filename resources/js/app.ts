@@ -17,9 +17,14 @@ createInertiaApp({
     layout: (name) => {
         switch (true) {
             case name === 'Welcome':
+            case name === 'Dashboard':
             case name === 'ListingDetail':
+            case name === 'ListingEdit':
+            case name === 'Terms':
+            case name === 'TripPlan':
             case name === 'Claim':
             case name === 'ClaimDecline':
+            case name === 'partner/ActionResult':
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
@@ -47,3 +52,11 @@ initializeTheme();
 
 // This will listen for flash toast data from the server...
 initializeFlashToast();
+
+// Register the service worker (production only, so it never intercepts
+// requests against the Vite dev server).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js');
+    });
+}

@@ -24,6 +24,38 @@ class OsmLocationFinder
 
     private const USER_AGENT = 'NamibWay/1.0 (+https://namibway.com; enrichment@namibway.com)';
 
+    /**
+     * Fills 'latitude'/'longitude' into $data by geocoding 'name' + 'address' if both
+     * are already absent/blank there — used wherever a listing is saved manually
+     * (admin/partner/owner edit forms) without GPS coordinates, so the map still has
+     * a position instead of being hidden. Leaves $data untouched if coordinates are
+     * already present or nothing is found.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function fillMissingCoordinates(array $data, string $name): array
+    {
+        if (! empty($data['latitude']) || ! empty($data['longitude'])) {
+            return $data;
+        }
+
+        $query = trim($name.' '.($data['address'] ?? '').' Namibia');
+
+        if ($query === 'Namibia') {
+            return $data;
+        }
+
+        $result = $this->search($query, 0);
+
+        if ($result !== null && isset($result['latitude'], $result['longitude'])) {
+            $data['latitude'] = $result['latitude'];
+            $data['longitude'] = $result['longitude'];
+        }
+
+        return $data;
+    }
+
     /** @return array{phone?: string, address?: string, latitude?: float, longitude?: float} */
     public function findLocationFacts(Listing $listing): array
     {

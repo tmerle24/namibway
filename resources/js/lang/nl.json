@@ -2,7 +2,12 @@
     "nav": {
         "dashboard": "Dashboard",
         "login": "Inloggen",
-        "register": "Registreren"
+        "register": "Registreren",
+        "currency": "Valuta",
+        "language": "Taal",
+        "more": "Meer opties",
+        "backToWebsite": "Terug naar de website",
+        "logout": "Uitloggen"
     },
     "hero": {
         "title": "De slimste manier om Namibië te beleven.",
@@ -25,7 +30,10 @@
         "viewListing": "Bekijk & vraag aan →",
         "from": "vanaf",
         "error": "Kaia heeft momenteel moeite om te reageren.",
-        "retry": "Opnieuw proberen"
+        "retry": "Opnieuw proberen",
+        "voiceInput": "Spreek met Kaia",
+        "stopListening": "Opname stoppen",
+        "listening": "Ik luister…"
     },
     "itinerary": {
         "eyebrow": "Jouw plan",
@@ -41,6 +49,7 @@
         "vehicle": "Voertuig: {value}",
         "remove": "Verwijderen",
         "removeDay": "Dag verwijderen",
+        "dismissPlan": "Dit plan verwerpen",
         "bookCta": "Beschikbaarheid aanvragen & boeken",
         "swap": "Ruilen",
         "alternatives": "Alternatieven",
@@ -103,6 +112,13 @@
             "confirm": "Bedankt — gepubliceerd voor de community."
         }
     },
+    "destinations": {
+        "eyebrow": "Hoogtepunten van Namibië",
+        "title": "De plekken waar elke reisroute om draait",
+        "subtitle": "Tik op een bestemming om accommodatie, activiteiten en restaurants in de buurt te zien.",
+        "prev": "Vorige bestemmingen",
+        "next": "Volgende bestemmingen"
+    },
     "explore": {
         "eyebrow": "Ontdekken",
         "title": "Laat je inspireren, blader wanneer je wilt",
@@ -121,7 +137,8 @@
             "moreFilters": "Meer filters ▾",
             "hideFilters": "Filters verbergen ▲",
             "note": "Data worden vastgelegd voor wanneer live partnerbeschikbaarheid is gekoppeld — deze catalogus is nog niet op datum gecontroleerd.",
-            "allRegions": "Alle regio's & steden",
+            "allRegions": "Alle regio's",
+            "allCities": "Alle steden",
             "anyBudget": "Elk budget",
             "budget": "Budget",
             "midRange": "Middenklasse",
@@ -168,7 +185,9 @@
             "sortFeatured": "Aanbevolen",
             "sortPriceAsc": "Prijs: laag naar hoog",
             "sortPriceDesc": "Prijs: hoog naar laag",
-            "sortRating": "Hoogst beoordeeld"
+            "sortRating": "Hoogst beoordeeld",
+            "showMap": "Kaart tonen",
+            "hideMap": "Kaart verbergen"
         }
     },
     "footer": {
@@ -186,6 +205,10 @@
         "gallery": "Galerij",
         "about": "Over",
         "steckbrief": "In het kort",
+        "location": {
+            "title": "Locatie",
+            "directions": "Routebeschrijving →"
+        },
         "contact": {
             "title": "Contact",
             "website": "Website",

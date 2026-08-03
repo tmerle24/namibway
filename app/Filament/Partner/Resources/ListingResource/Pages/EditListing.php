@@ -2,15 +2,18 @@
 
 namespace App\Filament\Partner\Resources\ListingResource\Pages;
 
+use App\Filament\Concerns\HasFormActionsInHeader;
 use App\Filament\Partner\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Models\Listing;
+use App\Services\Enrichment\OsmLocationFinder;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Resources\Pages\EditRecord\Concerns\Translatable;
 
 class EditListing extends EditRecord
 {
+    use HasFormActionsInHeader;
     use Translatable;
 
     protected static string $resource = ListingResource::class;
@@ -26,18 +29,20 @@ class EditListing extends EditRecord
 
         $partnerId = $record->partner_id;
 
+        $data = app(OsmLocationFinder::class)->fillMissingCoordinates($data, $data['name'] ?? $record->name);
+
         return BookingConnectorSchema::persistPartnerFields($data, $partnerId ? (int) $partnerId : null);
     }
 
     protected function getHeaderActions(): array
     {
-        return [
+        return $this->withFormActions([
             Actions\LocaleSwitcher::make(),
             Actions\Action::make('back')
                 ->label('Back to listings')
                 ->url(ListingResource::getUrl())
                 ->color('gray'),
-        ];
+        ]);
     }
 
     protected function getRedirectUrl(): string

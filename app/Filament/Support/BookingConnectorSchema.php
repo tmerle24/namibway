@@ -85,13 +85,17 @@ class BookingConnectorSchema
         $type = self::connectorTypeValue($data['connector_setup_type'] ?? null);
 
         if ($type !== null && $partnerId !== null) {
-            // Deliberately Partner::find()->fill()->save() rather than
-            // whereKey()->update(): Eloquent's query-builder update() bypasses
-            // attribute casts entirely, so connector_config's encrypted:array
-            // cast would never run and the config would be written to the
-            // database as plain, unencrypted JSON.
             $partner = Partner::find($partnerId);
-            $partner?->fill(self::collapseConfigForSave($data))->save();
+
+            // setConnectorSetup(), not a plain fill()->save() of
+            // collapseConfigForSave()'s output: whoever is filling in this
+            // wizard (admin panel vs. partner portal) decides whether the
+            // credentials are trusted immediately or need staff review first
+            // — see Partner::setConnectorSetup() and ConnectorFactory's gate.
+            $config = self::collapseConfigForSave($data);
+            $isAdmin = auth()->check() && auth()->user()->is_admin;
+            $partner?->setConnectorSetup($config['connector_type'], $config['connector_config'], $isAdmin);
+            $partner?->save();
         }
 
         foreach (self::PSEUDO_FIELDS as $key) {
@@ -174,6 +178,10 @@ class BookingConnectorSchema
                 ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Wetu->value)
                 ->required(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Wetu->value),
 
+            Forms\Components\Placeholder::make('native_note')
+                ->label('')
+                ->content('No API access needed — bookings are checked and held live against NamibWay\'s own availability, using the room types you set up in the next step.')
+                ->visible(fn (Get $get) => $get('connector_setup_type') === ConnectorType::Native->value),
             Forms\Components\Placeholder::make('nwr_note')
                 ->label('')
                 ->content('No API access needed — NWR has no system we can connect to. Every request goes to the team as "manual review".')
@@ -203,6 +211,45 @@ class BookingConnectorSchema
                     ->helperText('Enables automatic content import from Wetu (name, description, photos, region).')
                     ->maxLength(100),
             ],
+            ConnectorType::Native->value => [
+                Forms\Components\Repeater::make('roomTypes')
+                    ->relationship()
+                    ->label('Room types')
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('code')
+                            ->required()
+                            ->maxLength(50)
+                            ->helperText('Stable identifier, e.g. "standard-double" — don\'t change once bookings exist.'),
+                        Forms\Components\TextInput::make('total_units')
+                            ->label('Units available')
+                            ->numeric()
+                            ->required()
+                            ->minValue(1),
+                        Forms\Components\TextInput::make('rate_per_night')
+                            ->numeric()
+                            ->required()
+                            ->prefix('NAD')
+                            ->minValue(0),
+                        Forms\Components\TextInput::make('max_adults')
+                            ->numeric()
+                            ->default(2)
+                            ->minValue(1),
+                        Forms\Components\TextInput::make('max_children')
+                            ->numeric()
+                            ->default(0)
+                            ->minValue(0),
+                        Forms\Components\Textarea::make('description')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2)
+                    ->addActionLabel('Add room type')
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
+                    ->columnSpanFull(),
+            ],
             default => [
                 Forms\Components\Placeholder::make('nothing_needed')
                     ->label('')
@@ -210,6 +257,14 @@ class BookingConnectorSchema
             ],
         };
     }
+
+    /** @var array<int, ConnectorType> */
+    private const CREDENTIALED_TYPES = [
+        ConnectorType::ResConnect,
+        ConnectorType::NightsBridge,
+        ConnectorType::HopeCloud,
+        ConnectorType::Wetu,
+    ];
 
     /**
      * @return array<int, Forms\Components\Component>
@@ -219,6 +274,12 @@ class BookingConnectorSchema
         $hasCredentials = filled($partner->connector_config);
         $status = $partner->connector_type->label().' — '
             .($hasCredentials ? 'API credentials on file' : 'no API credentials yet');
+
+        if (in_array($partner->connector_type, self::CREDENTIALED_TYPES, true)) {
+            $status .= ' — '.($partner->connector_verified_at !== null
+                ? 'verified '.$partner->connector_verified_at->diffForHumans()
+                : 'pending staff review before it goes live');
+        }
 
         return [
             Forms\Components\Placeholder::make('connector_status')

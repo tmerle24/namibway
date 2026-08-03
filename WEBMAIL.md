@@ -1,0 +1,248 @@
+# Webmail (Roundcube) — Setup
+
+Roundcube-Installation für `webmail.namibway.com`, verbunden per IMAP/SMTP mit der bestehenden
+geteilten Mailbox (dieselbe, die `namibway:fetch-partner-emails` per POP3 pollt, siehe
+`app/Services/Messaging/PartnerEmailFetcher.php`). Dient als vollwertiger Mail-Client für
+Mitarbeiter, um mit Partnern, Kunden und Unternehmen zu korrespondieren — im Admin-Panel unter
+"Messaging → Emails" verlinkt (`app/Providers/Filament/AdminPanelProvider.php`), öffnet in
+einem neuen Tab.
+
+POP3-Fetcher und Roundcube laufen unabhängig nebeneinander und stören sich nicht: POP3 löscht
+nie etwas vom Server (siehe Docblock von `PartnerEmailFetcher`), Roundcube liest per IMAP
+denselben Posteingang parallel.
+
+## Voraussetzungen
+
+- DNS: `webmail.namibway.com` als A- oder CNAME-Eintrag auf die Server-IP (beim jeweiligen
+  DNS-Provider, z.B. Cloudflare).
+- Mailprovider ist OVH — IMAP `imap.mail.ovh.net:993` (SSL/TLS), SMTP `smtp.mail.ovh.net:465`
+  (SSL/TLS), Login = volle E-Mail-Adresse + deren Passwort (identisch mit dem, was hinter
+  `POP3_USERNAME`/`POP3_PASSWORD` in der Produktions-`.env` steckt). Siehe Schritt 3.
+- nginx + Certbot bereits vorhanden (wie für `namibway.com`, siehe `DEPLOYMENT.md`).
+
+## 1. Installation
+
+**Variante A — Distro-Paket (einfacher, evtl. ältere Version):**
+
+```bash
+sudo apt update
+sudo apt install roundcube roundcube-pgsql
+```
+
+Der `dbconfig-common`-Dialog während der Installation fragt nach einer DB — Roundcube braucht
+eine eigene kleine Datenbank für Adressbuch/Einstellungen, unabhängig von `namibway`. Entweder
+dort automatisch anlegen lassen (PostgreSQL ist bereits installiert, siehe `DEPLOYMENT.md`)
+oder manuell:
+
+```bash
+sudo -u postgres psql -c "CREATE DATABASE roundcube;"
+sudo -u postgres psql -c "CREATE USER roundcube WITH ENCRYPTED PASSWORD 'ein-sicheres-passwort';"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE roundcube TO roundcube;"
+sudo -u postgres psql -d roundcube -c "GRANT ALL ON SCHEMA public TO roundcube;"
+```
+
+**Variante B — aktuelles Release von roundcube.net (falls das Distro-Paket zu alt ist):**
+
+```bash
+cd /var/www
+sudo curl -LO https://github.com/roundcube/roundcubemail/releases/latest/download/roundcubemail-<version>-complete.tar.gz
+sudo tar xzf roundcubemail-<version>-complete.tar.gz
+sudo mv roundcubemail-<version> webmail
+sudo chown -R www-data:www-data webmail
+cd webmail
+php bin/install.php   # interaktiver DB-/Konfig-Assistent
+```
+
+## 2. nginx-vhost
+
+`/etc/nginx/sites-available/webmail.namibway.com`, nach demselben Muster wie der bestehende
+`namibway.com`-vhost (PHP-FPM-Handoff — welche `php*-fpm`-Version, siehe laufende Units mit
+`systemctl list-units --type=service | grep php`):
+
+```nginx
+server {
+    listen 80;
+    server_name webmail.namibway.com;
+    root /var/lib/roundcube/public_html;   # bzw. /var/www/webmail/public_html bei Variante B
+
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;   # an tatsächlich genutzte Version anpassen
+    }
+
+    location ~ ^/(README|SECURITY|CHANGELOG|composer\.json)$ {
+        deny all;
+    }
+}
+```
+
+Bewusst nur ein reiner Port-80-vhost — **kein** eigener `listen 443`-Block und keine manuelle
+Weiterleitung nötig. Das übernimmt Certbot im nächsten Schritt automatisch:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/webmail.namibway.com /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d webmail.namibway.com
+```
+
+Das `--nginx`-Plugin bearbeitet die vhost-Datei danach selbst: es ergänzt einen
+`listen 443 ssl`-Block mit den Zertifikatspfaden und richtet eine Weiterleitung von Port 80 auf
+443 ein. Mit `sudo cat /etc/nginx/sites-available/webmail.namibway.com` danach kurz prüfen, ob
+beides drinsteht — falls die interaktive Certbot-Frage nach der Weiterleitung übersprungen
+wurde (ältere Certbot-Versionen fragen das explizit ab), lässt sich das mit
+`sudo certbot install --nginx -d webmail.namibway.com` bzw. `sudo certbot enhance --nginx --redirect` nachholen.
+
+## 3. Roundcube mit der Mailbox verbinden
+
+Mailprovider ist OVH — Server laut [OVH-Doku](https://docs.ovhcloud.com/fr/guides/web-cloud/email-and-collaborative-solutions/mx-plan/how-to-configure-outlook-2016):
+IMAP `imap.mail.ovh.net:993` (SSL/TLS), SMTP `smtp.mail.ovh.net:465` (SSL/TLS). Alternativ
+`ssl0.ovh.net` für beides, falls die spezifischen Hostnamen mal nicht auflösen.
+
+In `config.inc.php` (Distro-Paket: `/etc/roundcube/config.inc.php`; Variante B:
+`/var/www/webmail/config/config.inc.php`) — Achtung: die Config-Keys heißen seit Roundcube 1.5
+`imap_host`/`smtp_host`, nicht mehr `default_host`/`smtp_server`/`smtp_port` (ältere
+Anleitungen im Netz nutzen noch die alten Namen):
+
+```php
+// Port + Schema stecken direkt im Host-String, kein separater *_port-Key mehr.
+// Das ssl://-Präfix ist Pflicht: 993/465 sind implizites TLS — der Server
+// erwartet den TLS-Handshake sofort nach dem Connect. Ohne das Präfix
+// verbindet Roundcube im Klartext, der Server antwortet nie darauf, und der
+// Login hängt bis zum nginx-Timeout (siehe Troubleshooting unten — genau
+// dieser Fehler ist uns beim ersten Setup passiert).
+$config['imap_host'] = ['ssl://imap.mail.ovh.net:993'];
+
+$config['smtp_host'] = 'ssl://smtp.mail.ovh.net:465';
+$config['smtp_user'] = '%u';   // übernimmt den Login-Benutzernamen
+$config['smtp_pass'] = '%p';   // übernimmt das Login-Passwort
+
+$config['product_name'] = 'NamibWay Webmail';
+```
+
+Da es eine **geteilte Mailbox** ist (kein Multi-User-Setup), am Login-Screen einfach mit dem
+`POP3_USERNAME`/`POP3_PASSWORD`-Paar (identisch mit dem IMAP/SMTP-Login bei OVH) anmelden —
+Roundcube fragt Login/Passwort interaktiv ab, es muss nichts davon fest im Code stehen.
+
+## 4. Branding
+
+### Logo
+
+Statt des vollen Wordmark-Logos (das im Dark Mode kaum lesbar wäre — dunkelbraune Schrift auf
+dunklem Grund) ein eigenständiges rundes Icon: Amber-Kreis mit der Kompassnadel aus dem Logo,
+funktioniert gegen jeden Hintergrund. Erzeugt aus dem Logo (`public/images/namibway-logo-dark.png`)
+durch Isolieren der Nadel-Aussparung und Neuzusammensetzen auf einem `#f59e0b`-Kreis (Amber, wie
+`Color::Amber` im Filament-Admin) — liegt im Repo unter `public/images/namibway-icon-amber.png`,
+wird über `namibway.com` mitdeployt.
+
+```php
+$config['skin_logo'] = 'https://namibway.com/images/namibway-icon-amber.png';
+```
+
+Danach `sudo systemctl reload php8.3-fpm` und neu laden.
+
+### Produktname (Tab-Titel)
+
+Bereits gesetzt in Schritt 3: `$config['product_name'] = 'NamibWay Webmail';`.
+
+### Farben (Braun, aus dem Logo — `#804a1c`)
+
+```php
+$config['additional_css'] = ['plugins/namibway_brand/custom.css'];
+```
+
+Datei `plugins/namibway_brand/custom.css` (Ordner ggf. anlegen):
+
+```css
+/* Linke Menüleiste (Schreiben / E-Mail / Kontakte / Einstellungen) —
+   Selektor #layout-menu per Browser-DevTools am echten Element bestätigt. */
+#layout-menu {
+    background-color: #804a1c !important;
+}
+
+/* Login-Button ("Anmelden") — mehrere Selektoren, da ungetestet, welcher
+   in der installierten Elastic-Version tatsächlich greift. */
+#login-form button[type="submit"],
+#login-form .button-primary,
+.formbuttons button.primary,
+#rcmloginsubmit {
+    background-color: #804a1c !important;
+    border-color: #804a1c !important;
+}
+```
+
+**Vorbehalt:** `#layout-menu` ist per DevTools an der echten Seite verifiziert, die
+Login-Button-Selektoren nicht — je nachdem, welcher tatsächlich greift, per
+Browser-DevTools ("Untersuchen" auf dem Anmelden-Button) den echten Klassen-/ID-Namen
+prüfen und ggf. ergänzen.
+
+### Watermark (leere Vorschau ohne ausgewählte Nachricht)
+
+Das große blasse Symbol im leeren Vorschaufenster ist `skins/elastic/images/logo.svg`, per
+`background-blend-mode: luminosity` gegen Weiß geblendet. Pfad bestätigt per
+`sudo find / -path "*/skins/elastic/images/logo.svg"` (Distro-Paket legt Skin-Dateien unter
+`/usr/share/roundcube/` ab, nicht unter `/etc/roundcube/` — dort liegt nur die Config; bei
+Variante B stattdessen `/var/www/webmail/skins/elastic/images/logo.svg`).
+
+**Wichtig:** eine SVG, die als CSS-Hintergrundbild eingebunden wird, darf laut Browser keine
+externen Ressourcen nachladen — ein `<image href="https://...">` mit externer URL bleibt daher
+als kaputtes Bild-Icon hängen (so beim ersten Versuch passiert). Bild deshalb direkt als
+Base64 einbetten, kein externer Request mehr nötig:
+
+```bash
+sudo tee /usr/share/roundcube/skins/elastic/images/logo.svg > /dev/null << 'SVGEOF'
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><image href="data:image/png;base64,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" width="200" height="200"/></svg>
+SVGEOF
+```
+
+Kein php-fpm-Reload nötig, das ist eine statische Datei — nach dem `tee` per Hard-Refresh
+(Strg+Shift+R) im Browser prüfen.
+
+### Favicon
+
+Kein Config-Wert, sondern eine Datei im Skin-Ordner — direkt ersetzen. Da die exakte URL im
+`<link>`-Tag intern gesetzt ist (kein Config-Override), reicht ein Datei-Download vom schon
+live gehosteten Favicon:
+
+```bash
+sudo curl -o /usr/share/roundcube/skins/elastic/images/favicon.ico https://namibway.com/images/namibway-favicon.ico
+```
+
+(Bei Variante B: `.../webmail/skins/elastic/images/favicon.ico`.)
+
+## Test
+
+```bash
+curl -sI https://webmail.namibway.com | head -1   # 200 erwartet
+```
+
+Danach im Browser unter `https://webmail.namibway.com` mit den Mailbox-Zugangsdaten einloggen
+und prüfen, dass Posteingang + Versand funktionieren.
+
+## Troubleshooting
+
+**502 Bad Gateway sofort:** falscher PHP-FPM-Socket-Pfad in der nginx-Config — mit
+`systemctl list-units --type=service | grep php` die tatsächlich laufende Version prüfen.
+
+**502 Bad Gateway erst nach dem Login-Klick, nginx-Log zeigt "upstream timed out ... while
+reading response header":** `imap_host`/`smtp_host` fehlt das `ssl://`-Präfix. 993/465 sind
+implizites TLS — der Server erwartet den TLS-Handshake direkt nach dem Connect; ohne `ssl://`
+verbindet Roundcube im Klartext, der Server antwortet nicht, und PHP-FPM hängt bis zum
+nginx-`fastcgi_read_timeout` (Standard 60s). Diagnose: `sudo -u www-data php -r
+'$s=@stream_socket_client("ssl://imap.mail.ovh.net:993",$e,$s2,5); var_dump($s!==false);'`
+— läuft das sofort (`bool(true)`), aber der echte Login trotzdem in einen Timeout, ist
+`ssl://` in der Config das Erste, was zu prüfen ist. Nach dem Fix `sudo systemctl reload
+php8.3-fpm` nicht vergessen (OPcache hält sonst den alten Config-Stand fest).
+
+**TLS-Fehler beim IMAP/SMTP-Connect trotz `ssl://`-Präfix:** falls der Provider stattdessen
+STARTTLS erwartet (z.B. bei einem anderen Provider als OVH), braucht `imap_host`/`smtp_host`
+`tls://` statt `ssl://` und einen anderen Port (typischerweise 143 bzw. 587).
+
+**Login schlägt fehl, Zugangsdaten sind aber korrekt:** IMAP könnte beim Provider separat vom
+POP3-Zugang aktiviert/erlaubt werden müssen — bei OVH sollte das über dasselbe Postfach-Konto
+laufen, im Zweifel im OVH-Kundencenter prüfen, ob IMAP für diese Adresse freigeschaltet ist.

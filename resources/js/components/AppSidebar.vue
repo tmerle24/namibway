@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { LayoutGrid } from '@lucide/vue';
+import { Home, LayoutGrid } from '@lucide/vue';
 import { useI18n } from 'vue-i18n';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -24,6 +24,11 @@ const mainNavItems: NavItem[] = [
         title: t('nav.dashboard'),
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: t('nav.backToWebsite'),
+        href: '/',
+        icon: Home,
     },
 ];
 </script>

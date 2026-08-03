@@ -37,7 +37,8 @@ class FetchGooglePlacesPhotos extends Command
             })
             ->orderByRaw('google_photos_checked_at ASC NULLS FIRST')
             ->limit($limit)
-            ->get(['id', 'slug', 'name', 'region', 'google_photos_checked_at']);
+            ->with('city.region')
+            ->get(['id', 'slug', 'name', 'city_id', 'google_photos_checked_at']);
 
         if ($listings->isEmpty()) {
             $this->info('No listings due for a Google Places photo lookup.');

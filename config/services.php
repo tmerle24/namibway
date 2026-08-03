@@ -55,4 +55,13 @@ return [
         'key' => env('GOOGLE_PLACES_API_KEY'),
     ],
 
+    'pop3' => [
+        'host' => env('POP3_HOST'),
+        'port' => env('POP3_PORT', 995),
+        'encryption' => env('POP3_ENCRYPTION', 'ssl'),
+        'username' => env('POP3_USERNAME'),
+        'password' => env('POP3_PASSWORD'),
+        'validate_cert' => env('POP3_VALIDATE_CERT', true),
+    ],
+
 ];

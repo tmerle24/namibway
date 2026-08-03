@@ -2,7 +2,17 @@
     "nav": {
         "dashboard": "Dashboard",
         "login": "Log in",
-        "register": "Register"
+        "register": "Register",
+        "currency": "Currency",
+        "language": "Language",
+        "more": "More options",
+        "backToWebsite": "Back to website",
+        "logout": "Log out",
+        "mobileSearch": "Search",
+        "mobileDiscover": "Discover",
+        "mobileKaia": "Kaia",
+        "mobileSupport": "Support",
+        "mobileAccount": "Account"
     },
     "dashboard": {
         "title": "My trips",
@@ -13,7 +23,38 @@
         "created": "Saved on",
         "actions": "Actions",
         "view": "View",
-        "untitled": "Untitled plan"
+        "untitled": "Untitled plan",
+        "nav": {
+            "trips": "My Trips",
+            "listings": "Listings",
+            "bookings": "Bookings"
+        },
+        "listings": {
+            "title": "Your listings",
+            "subtitle": "Content, photos and booking setup — same editor as your claim-link email.",
+            "empty": "No listings on your account yet.",
+            "name": "Listing",
+            "status": "Status",
+            "updated": "Last updated",
+            "actions": "Actions",
+            "edit": "Edit",
+            "published": "Published",
+            "unpublished": "Unpublished"
+        },
+        "bookings": {
+            "title": "Your bookings",
+            "subtitle": "Requests coming in from travelers across all your listings.",
+            "empty": "No booking requests yet.",
+            "listing": "Listing",
+            "guest": "Guest",
+            "dates": "Dates",
+            "status": "Status",
+            "requested": "Requested",
+            "actions": "Actions",
+            "confirm": "Confirm",
+            "decline": "Decline",
+            "declineConfirm": "Decline this booking request? The guest will not be notified automatically — let them know some other way."
+        }
     },
     "hero": {
         "title": "The smartest way to experience Namibia.",
@@ -36,12 +77,15 @@
         "viewListing": "View & enquire →",
         "from": "from",
         "error": "Kaia is having trouble responding right now.",
-        "retry": "Retry"
+        "retry": "Retry",
+        "voiceInput": "Speak to Kaia",
+        "stopListening": "Stop recording",
+        "listening": "Listening…"
     },
     "itinerary": {
         "eyebrow": "Your plan",
-        "title": "A few ways to do this trip",
-        "subtitle": "Generated from the conversation above — accommodation, activities and dining together, not separate silos.",
+        "title": "Your trip, planned",
+        "subtitle": "Generated from the conversation above — accommodation, activities and dining together, not separate silos. Change anything below and Kaia will re-plan around it.",
         "route": "Route",
         "roundTrip": "round trip",
         "reverseRoute": "Reverse route",
@@ -52,6 +96,7 @@
         "vehicle": "Vehicle: {value}",
         "remove": "Remove",
         "removeDay": "Remove day",
+        "dismissPlan": "Dismiss this plan",
         "bookCta": "Request availability & book",
         "swap": "Swap",
         "alternatives": "Alternatives",
@@ -73,7 +118,43 @@
         "savedToAccount": "Saved ✓",
         "copyFailed": "Couldn't copy automatically — the link is selected, copy it manually.",
         "setStartDate": "Set start date",
-        "drivingTime": "Driving"
+        "drivingTime": "Driving",
+        "meta": {
+            "travelPeriod": "Travel dates",
+            "duration": "Duration",
+            "travelers": "Travelers",
+            "preferences": "Preferences",
+            "budget": "Budget",
+            "edit": "Edit",
+            "nights": "{count} night | {count} nights",
+            "adults": "{count} adult | {count} adults",
+            "children": "{count} child | {count} children",
+            "budgetTiers": {
+                "budget": "Budget",
+                "mid-range": "Mid-range",
+                "premium": "Premium"
+            }
+        },
+        "paramsEditor": {
+            "title": "Edit trip details",
+            "subtitle": "Update anything below — Kaia will re-plan the trip to match.",
+            "dateFrom": "From",
+            "dateTo": "To",
+            "adults": "Adults",
+            "childrenAges": "Children (ages)",
+            "childrenAgesPlaceholder": "e.g. 5, 8",
+            "interests": "Preferences",
+            "interestsPlaceholder": "e.g. safari, adventure, relaxed pace",
+            "budget": "Budget",
+            "startLocation": "Start city",
+            "endLocation": "End city",
+            "cancel": "Cancel",
+            "save": "Update plan",
+            "saving": "Updating your plan…",
+            "datesRequired": "Please choose a start and end date.",
+            "dateOrderInvalid": "The end date must be after the start date.",
+            "locationsRequired": "Please enter a start and end city."
+        }
     },
     "booking": {
         "eyebrow": "Booking assistant",
@@ -130,6 +211,13 @@
             "error": "Something went wrong. Please try again."
         }
     },
+    "destinations": {
+        "eyebrow": "Namibia highlights",
+        "title": "The places every itinerary is built around",
+        "subtitle": "Tap a destination to see accommodation, activities and restaurants nearby.",
+        "prev": "Previous destinations",
+        "next": "Next destinations"
+    },
     "explore": {
         "eyebrow": "Explore",
         "title": "Get inspired, browse anytime",
@@ -148,7 +236,8 @@
             "moreFilters": "More filters ▾",
             "hideFilters": "Hide filters ▲",
             "note": "Dates are captured for when live partner availability is connected — this catalog isn't date-checked yet.",
-            "allRegions": "All regions & towns",
+            "allRegions": "All regions",
+            "allCities": "All cities",
             "anyBudget": "Any budget",
             "budget": "Budget",
             "midRange": "Mid-range",
@@ -195,7 +284,9 @@
             "sortFeatured": "Featured",
             "sortPriceAsc": "Price: low to high",
             "sortPriceDesc": "Price: high to low",
-            "sortRating": "Highest rated"
+            "sortRating": "Highest rated",
+            "showMap": "Show map",
+            "hideMap": "Hide map"
         }
     },
     "tripPlan": {
@@ -239,6 +330,10 @@
         "gallery": "Gallery",
         "about": "About",
         "steckbrief": "At a glance",
+        "location": {
+            "title": "Location",
+            "directions": "Get directions →"
+        },
         "contact": {
             "title": "Contact",
             "website": "Website",

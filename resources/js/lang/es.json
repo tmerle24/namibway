@@ -2,7 +2,12 @@
     "nav": {
         "dashboard": "Panel",
         "login": "Iniciar sesión",
-        "register": "Registrarse"
+        "register": "Registrarse",
+        "currency": "Moneda",
+        "language": "Idioma",
+        "more": "Más opciones",
+        "backToWebsite": "Volver al sitio web",
+        "logout": "Cerrar sesión"
     },
     "hero": {
         "title": "La forma más inteligente de vivir Namibia.",
@@ -25,7 +30,10 @@
         "viewListing": "Ver y solicitar →",
         "from": "desde",
         "error": "Kaia está teniendo problemas para responder en este momento.",
-        "retry": "Reintentar"
+        "retry": "Reintentar",
+        "voiceInput": "Habla con Kaia",
+        "stopListening": "Detener grabación",
+        "listening": "Escuchando…"
     },
     "itinerary": {
         "eyebrow": "Tu plan",
@@ -41,6 +49,7 @@
         "vehicle": "Vehículo: {value}",
         "remove": "Eliminar",
         "removeDay": "Eliminar día",
+        "dismissPlan": "Descartar este plan",
         "bookCta": "Consultar disponibilidad y reservar",
         "swap": "Cambiar",
         "alternatives": "Alternativas",
@@ -103,6 +112,13 @@
             "confirm": "Gracias — publicado para la comunidad."
         }
     },
+    "destinations": {
+        "eyebrow": "Lo más destacado de Namibia",
+        "title": "Los lugares en torno a los que gira cada itinerario",
+        "subtitle": "Toca un destino para ver alojamiento, actividades y restaurantes cercanos.",
+        "prev": "Destinos anteriores",
+        "next": "Destinos siguientes"
+    },
     "explore": {
         "eyebrow": "Explorar",
         "title": "Inspírate, explora cuando quieras",
@@ -121,7 +137,8 @@
             "moreFilters": "Más filtros ▾",
             "hideFilters": "Ocultar filtros ▲",
             "note": "Las fechas se registran para cuando se conecte la disponibilidad real de los socios — este catálogo aún no verifica fechas.",
-            "allRegions": "Todas las regiones y ciudades",
+            "allRegions": "Todas las regiones",
+            "allCities": "Todas las ciudades",
             "anyBudget": "Cualquier presupuesto",
             "budget": "Económico",
             "midRange": "Gama media",
@@ -168,7 +185,9 @@
             "sortFeatured": "Destacados",
             "sortPriceAsc": "Precio: menor a mayor",
             "sortPriceDesc": "Precio: mayor a menor",
-            "sortRating": "Mejor valorados"
+            "sortRating": "Mejor valorados",
+            "showMap": "Mostrar mapa",
+            "hideMap": "Ocultar mapa"
         }
     },
     "footer": {
@@ -186,6 +205,10 @@
         "gallery": "Galería",
         "about": "Acerca de",
         "steckbrief": "De un vistazo",
+        "location": {
+            "title": "Ubicación",
+            "directions": "Cómo llegar →"
+        },
         "contact": {
             "title": "Contacto",
             "website": "Sitio web",

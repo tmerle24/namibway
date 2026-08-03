@@ -7,11 +7,14 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\SpatieLaravelTranslatablePlugin;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -33,6 +36,10 @@ class AdminPanelProvider extends PanelProvider
             ->darkModeBrandLogo(asset('images/namibway-logo-light.png'))
             ->brandLogoHeight('59px')
             ->favicon(asset('favicon.png'))
+            // Tailwind's max-w scale stops at 7xl (80rem); '8xl' isn't a real
+            // utility class, so it generates no CSS rule at all — which is
+            // exactly what's wanted here, an uncapped-width <main>.
+            ->maxContentWidth('max-w-8xl')
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -45,6 +52,39 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Pages\Dashboard::class,
             ])
+            ->navigationGroups([
+                NavigationGroup::make('Content'),
+                NavigationGroup::make('Messaging')->collapsed(),
+                NavigationGroup::make('Documentation')->collapsed(),
+                NavigationGroup::make('Interfaces')->collapsed(),
+                NavigationGroup::make('Settings')->collapsed(),
+            ])
+            ->navigationItems([
+                // Links out to the Scribe-generated static docs (see config/scribe.php,
+                // routes/api.php) rather than a Filament page — there's no in-app content
+                // to render, just the public /docs site partners/OTAs already use.
+                NavigationItem::make('API Documentation')
+                    ->url(rtrim(config('scribe.base_url'), '/').'/docs', shouldOpenInNewTab: true)
+                    ->icon('heroicon-o-code-bracket')
+                    ->group('Documentation')
+                    ->sort(2),
+                // Opens the Roundcube webmail client (separate install, see WEBMAIL.md)
+                // rather than an in-app inbox — real IMAP mailbox with attachments,
+                // folders, and search instead of reimplementing those in Filament.
+                NavigationItem::make('Emails')
+                    ->url('https://webmail.namibway.com', shouldOpenInNewTab: true)
+                    ->icon('heroicon-o-envelope')
+                    ->group('Messaging')
+                    ->sort(0),
+            ])
+            ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn (): string => view('filament.partials.release-version-badge')->render(),
+            )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => view('filament.partials.sticky-page-header')->render(),
+            )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,

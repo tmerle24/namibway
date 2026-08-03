@@ -7,6 +7,7 @@ export interface ItineraryListingRef {
     price_currency: string;
     lat?: number | null;
     lng?: number | null;
+    image?: string | null;
 }
 
 export interface ItineraryDay {
@@ -25,11 +26,23 @@ export interface ItineraryVariant {
     days: ItineraryDay[];
 }
 
+export interface TripParams {
+    nights: number | null;
+    travel_period: string;
+    interests: string;
+    adults: number;
+    children_under_13: number;
+    children_ages?: string | null;
+    vehicle_type: string;
+    budget_tier: string;
+}
+
 export interface ItineraryPlan {
     trip_summary: string;
     variants: ItineraryVariant[];
     start_location?: string;
     end_location?: string;
+    trip_params?: TripParams | null;
 }
 
 export interface ChatMessage {
@@ -59,8 +72,11 @@ export interface ListingRecommendation {
 export interface SearchIntent {
     type?: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
     region?: string;
+    city?: string;
     keyword?: string;
     budget?: 'budget' | 'mid-range' | 'premium';
+    min_rating?: string;
+    sort?: string;
 }
 
 export interface GuestDetails {
