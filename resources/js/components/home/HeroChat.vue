@@ -325,24 +325,31 @@ async function retryLastMessage() {
                 d="M0 330 Q220 280 480 320 T1040 325 V340 H0 Z"
                 fill="#8C4A15"
             />
-            <g opacity="0.8" transform="translate(120,232)">
-                <line
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="46"
-                    stroke="#241C15"
-                    stroke-width="4"
-                    stroke-linecap="round"
+            <!-- A Deadvlei-style dead camel thorn tree — bare, gnarled
+                 branches with no foliage, the classic silhouette of
+                 Namibia's most photographed landmark. -->
+            <g
+                transform="translate(130,280)"
+                fill="none"
+                stroke="#1c130c"
+                stroke-linecap="round"
+            >
+                <path d="M0 0 C -2 -22 3 -45 -1 -68" stroke-width="7" />
+                <path d="M-1 -68 C -12 -78 -22 -82 -27 -92" stroke-width="4.5" />
+                <path
+                    d="M-27 -92 C -33 -100 -42 -104 -46 -112"
+                    stroke-width="2.5"
                 />
                 <path
-                    d="M0 6 C -26 -4, -38 -22, -30 -30 C -22 -22, -8 -14, 0 6 Z"
-                    fill="#241C15"
+                    d="M-27 -92 C -24 -102 -22 -110 -18 -118"
+                    stroke-width="2.5"
                 />
-                <path
-                    d="M0 10 C 26 0, 40 -16, 32 -26 C 22 -18, 8 -10, 0 10 Z"
-                    fill="#241C15"
-                />
+                <path d="M-1 -68 C 6 -80 8 -90 3 -100" stroke-width="4.5" />
+                <path d="M3 -100 C 8 -108 16 -112 20 -120" stroke-width="2.5" />
+                <path d="M3 -100 C 0 -110 2 -118 -3 -126" stroke-width="2.5" />
+                <path d="M-1 -68 C 10 -74 20 -76 27 -86" stroke-width="4" />
+                <path d="M27 -86 C 33 -92 40 -94 46 -100" stroke-width="2.2" />
+                <path d="M27 -86 C 30 -95 35 -100 33 -108" stroke-width="2.2" />
             </g>
         </svg>
         <div class="hero-content">
