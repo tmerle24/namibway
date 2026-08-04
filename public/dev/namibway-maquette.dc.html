@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#EFE7DA; color:#23201C; font-family:'Work Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#B4552D; text-decoration:none; }
+  a:hover { color:#8E3F1F; text-decoration:underline; }
+  @keyframes nwPulse { 0%,100% { opacity:.35; transform:scale(1); } 50% { opacity:.9; transform:scale(1.35); } }
+</style>
+</helmet>
+
+<section style="display:flex;flex-direction:column;gap:56px;padding:64px 72px 120px">
+
+  <div style="display:flex;flex-direction:column;gap:18px;max-width:900px">
+    <div style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#B4552D">NamibWay · Development maquette · Turn 1</div>
+    <h1 style="margin:0;font:400 52px/1.05 'Newsreader',serif;letter-spacing:-.02em;color:#16283F">Plan a trip together, without an account</h1>
+    <p style="margin:0;font:400 17px/1.6 'Work Sans',sans-serif;color:#5E564B;text-wrap:pretty;max-width:720px">Two directions for the plan editor and Kaia (<a href="#1a">1a</a> split canvas, <a href="#1b">1b</a> timeline first), then the shared flow every direction uses: entry chat, plan variants, detail &amp; room modals, the collaboration layer, sign-in gate, booking request, mobile core screens and the later live-tracking view.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;padding-top:6px">
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid #DDCFB9;border-radius:999px;background:#FAF6EF;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B"><span style="width:10px;height:10px;border-radius:3px;background:#16283F"></span>Navy · structure</div>
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid #DDCFB9;border-radius:999px;background:#FAF6EF;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B"><span style="width:10px;height:10px;border-radius:3px;background:#B4552D"></span>Terracotta · action</div>
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid #DDCFB9;border-radius:999px;background:#FAF6EF;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B"><span style="width:10px;height:10px;border-radius:3px;background:#D9A34A"></span>Ochre · highlight</div>
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid #DDCFB9;border-radius:999px;background:#FAF6EF;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B"><span style="width:10px;height:10px;border-radius:3px;background:#3F7D5C"></span>Sage · agreement</div>
+      <div style="padding:7px 13px;border:1px solid #DDCFB9;border-radius:999px;background:#FAF6EF;font:500 12px/1 'IBM Plex Mono',monospace;color:#8A7F70">Newsreader / Work Sans / IBM Plex Mono</div>
+    </div>
+  </div>
+
+  <div id="1a" style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="padding:5px 10px;border-radius:6px;background:#16283F;color:#F7F1E6;font:500 12px/1 'IBM Plex Mono',monospace">1a</span>
+      <h2 style="margin:0;font:500 26px/1.2 'Newsreader',serif;color:#16283F">Split canvas — map and timeline side by side, Kaia always docked</h2>
+      <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">Desktop 1440 · the plan is one object seen two ways; hovering a day highlights its leg on the map.</span>
+    </div>
+
+    <div style="width:1440px;border:1px solid #DDCFB9;border-radius:16px;overflow:hidden;background:#FAF6EF;box-shadow:0 30px 70px -34px rgba(35,32,28,.45)">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:60px;background:#16283F">
+        <div style="display:flex;align-items:center;gap:26px">
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="width:26px;height:26px;border-radius:50%;border:2px solid #D9A34A;display:flex;align-items:center;justify-content:center;color:#D9A34A;font:600 12px/1 'Work Sans',sans-serif">N</span>
+            <span style="font:600 17px/1 'Work Sans',sans-serif;letter-spacing:-.01em;color:#F7F1E6">NamibWay</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font:500 13px/1 'Work Sans',sans-serif;color:#A9BACD">
+            <span>Namibia Loop · 18 nights</span>
+            <span style="padding:4px 8px;border-radius:5px;background:rgba(217,163,74,.16);color:#E8C583;font:500 11px/1 'IBM Plex Mono',monospace">DRAFT · not saved</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="display:flex;align-items:center">
+            <span style="width:28px;height:28px;border-radius:50%;background:#B4552D;color:#fff;font:600 11px/28px 'Work Sans',sans-serif;text-align:center;border:2px solid #16283F">LM</span>
+            <span style="width:28px;height:28px;border-radius:50%;background:#3F7D5C;color:#fff;font:600 11px/28px 'Work Sans',sans-serif;text-align:center;border:2px solid #16283F;margin-left:-9px">TK</span>
+            <span style="width:28px;height:28px;border-radius:50%;background:#4B5E75;color:#DCE5EE;font:600 11px/28px 'Work Sans',sans-serif;text-align:center;border:2px solid #16283F;margin-left:-9px">+2</span>
+          </div>
+          <button style="padding:9px 15px;border:1px solid rgba(247,241,230,.28);border-radius:8px;background:transparent;color:#F7F1E6;font:500 13px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:rgba(247,241,230,.1)">Share link</button>
+          <button style="padding:9px 16px;border:0;border-radius:8px;background:#B4552D;color:#fff;font:600 13px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#9E4726">Save plan</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:352px 1fr 316px;height:920px">
+
+        <div style="display:flex;flex-direction:column;border-right:1px solid #E4D9C6;background:#FFFDF9">
+          <div style="padding:20px 22px 16px;border-bottom:1px solid #EDE3D2">
+            <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#B4552D">Your plan</div>
+            <h3 style="margin:9px 0 12px;font:500 25px/1.2 'Newsreader',serif;color:#16283F">Extended Namibia Loop</h3>
+            <div style="display:flex;align-items:baseline;gap:9px">
+              <span style="font:600 27px/1 'Work Sans',sans-serif;color:#23201C">€ 1,408</span>
+              <span style="font:400 13px/1 'Work Sans',sans-serif;color:#8A7F70">est. for 2 · excl. flights</span>
+            </div>
+            <div style="height:7px;border-radius:4px;background:#EDE3D2;margin:14px 0 7px;overflow:hidden"><div style="width:28%;height:100%;background:#3F7D5C"></div></div>
+            <div style="display:flex;justify-content:space-between;font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70"><span>28 % of € 5,000 budget</span><span>€ 3,592 left</span></div>
+          </div>
+          <div style="padding:16px 22px;display:flex;flex-direction:column;gap:9px;border-bottom:1px solid #EDE3D2">
+            <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8A7F70">Trip basics</div>
+            <div style="display:flex;flex-wrap:wrap;gap:7px">
+              <span style="padding:6px 11px;border:1px solid #E4D9C6;border-radius:999px;background:#FAF6EF;font:500 12px/1 'Work Sans',sans-serif;color:#4A4238">Windhoek → Windhoek</span>
+              <span style="padding:6px 11px;border:1px solid #E4D9C6;border-radius:999px;background:#FAF6EF;font:500 12px/1 'Work Sans',sans-serif;color:#4A4238">1–19 Jan 2027</span>
+              <span style="padding:6px 11px;border:1px solid #E4D9C6;border-radius:999px;background:#FAF6EF;font:500 12px/1 'Work Sans',sans-serif;color:#4A4238">2 adults</span>
+              <span style="padding:6px 11px;border:1px solid #E4D9C6;border-radius:999px;background:#FAF6EF;font:500 12px/1 'Work Sans',sans-serif;color:#4A4238">Camping + lodges</span>
+              <span style="padding:6px 11px;border:1px dashed #C89A6E;border-radius:999px;background:transparent;font:500 12px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">Edit basics</span>
+            </div>
+          </div>
+          <div style="padding:16px 22px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid #EDE3D2">
+            <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8A7F70">Vehicle</div>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #E4D9C6;border-radius:11px;background:#FAF6EF">
+              <div style="width:52px;height:40px;border-radius:7px;background:repeating-linear-gradient(135deg,#E7D8C0 0 5px,#DFCDB0 5px 10px)"></div>
+              <div style="flex:1">
+                <div style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Bushtrack Camper 4×4</div>
+                <div style="font:400 12px/1.4 'Work Sans',sans-serif;color:#8A7F70">Roof tent · € 76 / day</div>
+              </div>
+              <button style="padding:7px 10px;border:1px solid #E4D9C6;border-radius:7px;background:#fff;font:500 12px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">Swap</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:1px">
+              <div style="display:flex;justify-content:space-between;padding:8px 10px;border-radius:7px;font:400 12px/1 'Work Sans',sans-serif;color:#5E564B" style-hover="background:#F3EADB;cursor:pointer"><span>Three Horses Travel Tours</span><span style="color:#8A7F70">€ 71</span></div>
+              <div style="display:flex;justify-content:space-between;padding:8px 10px;border-radius:7px;font:400 12px/1 'Work Sans',sans-serif;color:#5E564B" style-hover="background:#F3EADB;cursor:pointer"><span>Zimpli Africa Car Hire</span><span style="color:#8A7F70">€ 79</span></div>
+              <div style="display:flex;justify-content:space-between;padding:8px 10px;border-radius:7px;font:400 12px/1 'Work Sans',sans-serif;color:#5E564B" style-hover="background:#F3EADB;cursor:pointer"><span>Kalahari Car Hire Operations</span><span style="color:#8A7F70">€ 84</span></div>
+            </div>
+          </div>
+          <div style="padding:16px 22px;display:flex;flex-direction:column;gap:8px">
+            <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8A7F70">Trip tools</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border:1px solid #E4D9C6;border-radius:10px;background:#FFFDF9;cursor:pointer" style-hover="border-color:#C89A6E"><span style="font:500 13px/1 'Work Sans',sans-serif;color:#23201C">Packing list</span><span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#3F7D5C">12 / 34 done</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border:1px solid #E4D9C6;border-radius:10px;background:#FFFDF9;cursor:pointer" style-hover="border-color:#C89A6E"><span style="font:500 13px/1 'Work Sans',sans-serif;color:#23201C">Vehicle handover check</span><span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">18 items</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border:1px solid #E4D9C6;border-radius:10px;background:#FFFDF9;cursor:pointer" style-hover="border-color:#C89A6E"><span style="font:500 13px/1 'Work Sans',sans-serif;color:#23201C">Export as PDF</span><span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">A4 · offline</span></div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;background:#FAF6EF;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #E4D9C6;background:#FFFDF9">
+            <div style="display:flex;gap:4px;padding:3px;border:1px solid #E4D9C6;border-radius:9px;background:#F3EADB">
+              <span style="padding:7px 14px;border-radius:6px;background:#FFFDF9;box-shadow:0 1px 2px rgba(35,32,28,.12);font:600 13px/1 'Work Sans',sans-serif;color:#16283F">Day by day</span>
+              <span style="padding:7px 14px;border-radius:6px;font:500 13px/1 'Work Sans',sans-serif;color:#7A7064;cursor:pointer">By region</span>
+              <span style="padding:7px 14px;border-radius:6px;font:500 13px/1 'Work Sans',sans-serif;color:#7A7064;cursor:pointer">Costs</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px">
+              <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:#8A7F70">3,180 km driving</span>
+              <button style="padding:8px 13px;border:1px solid #E4D9C6;border-radius:8px;background:#FFFDF9;font:500 12px/1 'Work Sans',sans-serif;color:#4A4238;cursor:pointer" style-hover="border-color:#C89A6E">Reverse route</button>
+              <button style="padding:8px 13px;border:1px dashed #C89A6E;border-radius:8px;background:transparent;font:500 12px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">+ Add day</button>
+            </div>
+          </div>
+
+          <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+            <sc-for list="{{ days }}" as="d" hint-placeholder-count="7">
+              <div style="border-bottom:1px solid #EDE3D2;background:#FFFDF9" style-hover="background:#FFFFFF">
+                <sc-if value="{{ d.drive }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;align-items:center;gap:10px;padding:7px 20px 7px 74px;background:#F6EEE1;border-bottom:1px solid #EDE3D2">
+                    <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">Drive {{ d.drive }} · {{ d.km }} km</span>
+                    <span style="flex:1;height:1px;background:linear-gradient(90deg,#DDCFB9,transparent)"></span>
+                    <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#A2988A">depart {{ d.depart }} · arrive {{ d.arrive }}</span>
+                  </div>
+                </sc-if>
+                <div style="display:grid;grid-template-columns:58px 46px 1fr auto;gap:14px;padding:15px 20px">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+                    <span style="width:30px;height:30px;border-radius:50%;background:#16283F;color:#F7F1E6;font:600 13px/30px 'Work Sans',sans-serif;text-align:center">{{ d.n }}</span>
+                    <span style="font:400 10px/1.3 'IBM Plex Mono',monospace;color:#8A7F70;text-align:center">{{ d.dates }}</span>
+                  </div>
+                  <div style="width:46px;height:46px;border-radius:9px;background:repeating-linear-gradient(135deg,#E7D8C0 0 5px,#DFCDB0 5px 10px)"></div>
+                  <div style="display:flex;flex-direction:column;gap:7px;min-width:0">
+                    <div style="display:flex;align-items:center;gap:9px">
+                      <span style="font:600 15px/1.2 'Work Sans',sans-serif;color:#16283F">{{ d.place }}</span>
+                      <span style="padding:3px 8px;border-radius:5px;background:#F3EADB;font:500 10px/1.4 'IBM Plex Mono',monospace;color:#8A7F70">{{ d.region }}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">Stay</span>
+                      <span style="font:500 13px/1.4 'Work Sans',sans-serif;color:#B4552D;text-decoration:underline;text-decoration-color:#E3C4AC;cursor:pointer">{{ d.stay }}</span>
+                      <span style="padding:4px 9px;border:1px solid #E4D9C6;border-radius:6px;background:#FAF6EF;font:500 11px/1 'Work Sans',sans-serif;color:#4A4238;cursor:pointer">Choose room</span>
+                      <sc-if value="{{ collab }}" hint-placeholder-val="{{ true }}">
+                        <span style="display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;background:#EAF1EC;font:500 11px/1.4 'Work Sans',sans-serif;color:#3F7D5C">▲ 2</span>
+                        <span style="display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;background:#F3EADB;font:500 11px/1.4 'Work Sans',sans-serif;color:#8A7F70">💬 1</span>
+                      </sc-if>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">Do</span>
+                      <span style="font:500 13px/1.4 'Work Sans',sans-serif;color:#B4552D;text-decoration:underline;text-decoration-color:#E3C4AC;cursor:pointer">{{ d.activity }}</span>
+                      <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064;padding-left:8px">Dinner</span>
+                      <span style="font:500 13px/1.4 'Work Sans',sans-serif;color:#4A4238">{{ d.dinner }}</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+                    <span style="font:600 14px/1 'Work Sans',sans-serif;color:#23201C">{{ d.cost }}</span>
+                    <div style="display:flex;gap:5px">
+                      <span style="width:26px;height:26px;border:1px solid #E4D9C6;border-radius:7px;background:#FAF6EF;font:400 13px/24px 'Work Sans',sans-serif;color:#8A7F70;text-align:center;cursor:pointer">⇅</span>
+                      <span style="width:26px;height:26px;border:1px solid #E4D9C6;border-radius:7px;background:#FAF6EF;font:400 13px/24px 'Work Sans',sans-serif;color:#8A7F70;text-align:center;cursor:pointer">×</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+            <div style="padding:14px 20px;background:#FAF6EF;border-top:1px solid #E4D9C6;display:flex;align-items:center;justify-content:center;gap:10px">
+              <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:#8A7F70">Days 8–18 continue below · Damaraland → Swakopmund → Sossusvlei → Windhoek</span>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;padding:16px 20px;border-top:1px solid #E4D9C6;background:#FFFDF9">
+            <button style="flex:1;padding:14px;border:0;border-radius:10px;background:#16283F;color:#F7F1E6;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#0F1D2E">Request availability &amp; book</button>
+            <button style="flex:1;padding:14px;border:1px solid #C89A6E;border-radius:10px;background:transparent;color:#B4552D;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#FBF2E8">Save &amp; share</button>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;border-left:1px solid #E4D9C6;background:#FFFDF9">
+          <div style="position:relative;height:330px;background:linear-gradient(160deg,#E9DFC9 0%,#DFD0B4 55%,#D6C4A4 100%);border-bottom:1px solid #E4D9C6;overflow:hidden">
+            <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.22) 0 1px,transparent 1px 34px),repeating-linear-gradient(90deg,rgba(255,255,255,.22) 0 1px,transparent 1px 34px)"></div>
+            <div style="position:absolute;left:0;top:60px;width:64px;height:230px;background:#A8C4CE;opacity:.75"></div>
+            <div style="position:absolute;left:170px;top:44px;width:28px;height:28px;border-radius:50%;background:#B4552D;color:#fff;font:600 12px/28px 'Work Sans',sans-serif;text-align:center;box-shadow:0 3px 8px rgba(35,32,28,.3)">4</div>
+            <div style="position:absolute;left:212px;top:132px;width:26px;height:26px;border-radius:50%;background:#B4552D;color:#fff;font:600 11px/26px 'Work Sans',sans-serif;text-align:center">2</div>
+            <div style="position:absolute;left:82px;top:196px;width:26px;height:26px;border-radius:50%;background:#B4552D;color:#fff;font:600 11px/26px 'Work Sans',sans-serif;text-align:center">8</div>
+            <div style="position:absolute;left:96px;top:246px;width:26px;height:26px;border-radius:50%;background:#B4552D;color:#fff;font:600 11px/26px 'Work Sans',sans-serif;text-align:center">12</div>
+            <div style="position:absolute;left:206px;top:238px;width:32px;height:32px;border-radius:50%;background:#16283F;color:#F7F1E6;font:600 12px/32px 'Work Sans',sans-serif;text-align:center;box-shadow:0 3px 8px rgba(35,32,28,.35)">18</div>
+            <div style="position:absolute;left:126px;top:150px;padding:4px 8px;border-radius:6px;background:#FFFDF9;border:1px solid #E4D9C6;font:400 10px/1 'IBM Plex Mono',monospace;color:#5E564B">7 h 07</div>
+            <div style="position:absolute;left:150px;top:216px;padding:4px 8px;border-radius:6px;background:#FFFDF9;border:1px solid #E4D9C6;font:400 10px/1 'IBM Plex Mono',monospace;color:#5E564B">4 h 01</div>
+            <div style="position:absolute;top:12px;left:12px;display:flex;flex-direction:column;border:1px solid #DDCFB9;border-radius:7px;overflow:hidden;background:#FFFDF9">
+              <span style="width:26px;height:26px;font:400 15px/26px 'Work Sans',sans-serif;text-align:center;color:#4A4238;cursor:pointer">+</span>
+              <span style="width:26px;height:26px;border-top:1px solid #DDCFB9;font:400 15px/26px 'Work Sans',sans-serif;text-align:center;color:#4A4238;cursor:pointer">–</span>
+            </div>
+            <div style="position:absolute;bottom:10px;left:12px;right:12px;display:flex;gap:6px">
+              <span style="padding:6px 10px;border-radius:999px;background:rgba(255,253,249,.94);border:1px solid #DDCFB9;font:500 11px/1 'Work Sans',sans-serif;color:#4A4238">Route</span>
+              <span style="padding:6px 10px;border-radius:999px;background:rgba(255,253,249,.7);border:1px solid #DDCFB9;font:500 11px/1 'Work Sans',sans-serif;color:#7A7064">Parks</span>
+              <span style="padding:6px 10px;border-radius:999px;background:rgba(255,253,249,.7);border:1px solid #DDCFB9;font:500 11px/1 'Work Sans',sans-serif;color:#7A7064">Fuel</span>
+              <span style="padding:6px 10px;border-radius:999px;background:rgba(255,253,249,.7);border:1px solid #DDCFB9;font:500 11px/1 'Work Sans',sans-serif;color:#7A7064">Gravel</span>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #EDE3D2;background:#F6EEE1">
+            <span style="width:34px;height:34px;border-radius:50%;background:#D9A34A;color:#3A2A12;font:600 14px/34px 'Work Sans',sans-serif;text-align:center">K</span>
+            <div style="flex:1">
+              <div style="font:600 14px/1.2 'Work Sans',sans-serif;color:#16283F">Kaia</div>
+              <div style="display:flex;align-items:center;gap:5px;font:400 11px/1.3 'Work Sans',sans-serif;color:#7A7064"><span style="width:6px;height:6px;border-radius:50%;background:#3F7D5C;animation:nwPulse 2.4s ease-in-out infinite"></span>watching your plan</div>
+            </div>
+            <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:#8A7F70;cursor:pointer">⌄</span>
+          </div>
+
+          <div style="flex:1;display:flex;flex-direction:column;gap:12px;padding:16px 18px;overflow:hidden">
+            <div style="align-self:flex-start;max-width:250px;padding:12px 14px;border-radius:14px 14px 14px 4px;background:#F3EADB;font:400 13px/1.55 'Work Sans',sans-serif;color:#3A342C">Day 6 to day 7 is 3 h on gravel after a game drive. Want me to move the Palmwag night one day later?</div>
+            <div style="display:flex;gap:8px">
+              <button style="padding:8px 12px;border:1px solid #C89A6E;border-radius:999px;background:#FBF2E8;font:500 12px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">Yes, shift it</button>
+              <button style="padding:8px 12px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 12px/1 'Work Sans',sans-serif;color:#7A7064;cursor:pointer">Keep as is</button>
+            </div>
+            <div style="align-self:flex-end;max-width:250px;padding:12px 14px;border-radius:14px 14px 4px 14px;background:#16283F;font:400 13px/1.55 'Work Sans',sans-serif;color:#EFE7DA">Keep it, but find a cheaper camp near Etosha West.</div>
+            <div style="align-self:flex-start;max-width:250px;padding:12px 14px;border-radius:14px 14px 14px 4px;background:#F3EADB;font:400 13px/1.55 'Work Sans',sans-serif;color:#3A342C">Olifantsrus is € 38 and inside the park — swapped in on day 6. Two more options are listed under the stay.</div>
+            <div style="display:flex;flex-direction:column;gap:7px;padding:12px;border:1px dashed #DDCFB9;border-radius:11px;background:#FAF6EF">
+              <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#8A7F70">Suggested next</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Add a rest day in Swakopmund</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Check park entry fees for 2 adults</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Balance camping vs. lodge nights</span>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;padding:14px 18px;border-top:1px solid #E4D9C6;background:#FFFDF9">
+            <div style="flex:1;padding:11px 13px;border:1px solid #E4D9C6;border-radius:10px;background:#FAF6EF;font:400 13px/1 'Work Sans',sans-serif;color:#A2988A">Ask Kaia to change something…</div>
+            <button style="width:40px;height:40px;border:1px solid #E4D9C6;border-radius:10px;background:#FAF6EF;font:400 15px/1 'Work Sans',sans-serif;color:#7A7064;cursor:pointer">◉</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="1b" style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="padding:5px 10px;border-radius:6px;background:#16283F;color:#F7F1E6;font:500 12px/1 'IBM Plex Mono',monospace">1b</span>
+      <h2 style="margin:0;font:500 26px/1.2 'Newsreader',serif;color:#16283F">Timeline first — legs as cards, Kaia inline where you edit</h2>
+      <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">Desktop 1440 · nights grouped into legs, map on demand, no permanent side panel.</span>
+    </div>
+
+    <div style="width:1440px;border:1px solid #DDCFB9;border-radius:16px;overflow:hidden;background:#FAF6EF;box-shadow:0 30px 70px -34px rgba(35,32,28,.45)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:60px;background:#FFFDF9;border-bottom:1px solid #E4D9C6">
+        <div style="display:flex;align-items:center;gap:24px">
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="width:26px;height:26px;border-radius:50%;border:2px solid #B4552D;display:flex;align-items:center;justify-content:center;color:#B4552D;font:600 12px/1 'Work Sans',sans-serif">N</span>
+            <span style="font:600 17px/1 'Work Sans',sans-serif;color:#16283F">NamibWay</span>
+          </div>
+          <div style="display:flex;gap:22px;font:500 13px/1 'Work Sans',sans-serif;color:#7A7064">
+            <span style="color:#16283F;border-bottom:2px solid #B4552D;padding-bottom:5px">Itinerary</span>
+            <span style="cursor:pointer">Map</span>
+            <span style="cursor:pointer">Costs</span>
+            <span style="cursor:pointer">Lists</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="padding:5px 9px;border-radius:5px;background:#F3EADB;font:500 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">shared link · can edit</span>
+          <div style="display:flex">
+            <span style="width:28px;height:28px;border-radius:50%;background:#B4552D;color:#fff;font:600 11px/28px 'Work Sans',sans-serif;text-align:center;border:2px solid #FFFDF9">LM</span>
+            <span style="width:28px;height:28px;border-radius:50%;background:#3F7D5C;color:#fff;font:600 11px/28px 'Work Sans',sans-serif;text-align:center;border:2px solid #FFFDF9;margin-left:-9px">TK</span>
+          </div>
+          <button style="padding:9px 16px;border:0;border-radius:8px;background:#16283F;color:#F7F1E6;font:600 13px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#0F1D2E">Save plan</button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:40px;padding:34px 40px 26px;background:linear-gradient(180deg,#F6EEE1,#FAF6EF)">
+        <div style="max-width:640px">
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#B4552D">Your plan · 6 legs · 18 nights</div>
+          <h3 style="margin:10px 0 10px;font:400 40px/1.1 'Newsreader',serif;letter-spacing:-.015em;color:#16283F">Extended Namibia Loop</h3>
+          <p style="margin:0;font:400 15px/1.6 'Work Sans',sans-serif;color:#5E564B;text-wrap:pretty">Windhoek out and back, north through Waterberg into Etosha, down the Skeleton Coast to Swakopmund, then the dunes at Sossusvlei. Camping and lodges mixed, all legs under safe daily driving limits.</p>
+        </div>
+        <div style="display:flex;gap:26px;padding-bottom:4px">
+          <div><div style="font:400 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#8A7F70">Estimate</div><div style="font:600 26px/1.2 'Work Sans',sans-serif;color:#23201C">€ 1,408</div></div>
+          <div><div style="font:400 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#8A7F70">Driving</div><div style="font:600 26px/1.2 'Work Sans',sans-serif;color:#23201C">3,180 km</div></div>
+          <div><div style="font:400 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#8A7F70">Camp / lodge</div><div style="font:600 26px/1.2 'Work Sans',sans-serif;color:#23201C">11 / 7</div></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;padding:0 40px 20px;background:#FAF6EF;align-items:center">
+        <span style="padding:8px 13px;border-radius:999px;background:#16283F;color:#F7F1E6;font:500 12px/1 'Work Sans',sans-serif">All legs</span>
+        <span style="padding:8px 13px;border-radius:999px;border:1px solid #E4D9C6;background:#FFFDF9;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Waterberg</span>
+        <span style="padding:8px 13px;border-radius:999px;border:1px solid #E4D9C6;background:#FFFDF9;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Etosha</span>
+        <span style="padding:8px 13px;border-radius:999px;border:1px solid #E4D9C6;background:#FFFDF9;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Damaraland</span>
+        <span style="padding:8px 13px;border-radius:999px;border:1px solid #E4D9C6;background:#FFFDF9;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Coast</span>
+        <span style="padding:8px 13px;border-radius:999px;border:1px solid #E4D9C6;background:#FFFDF9;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Sossusvlei</span>
+        <span style="flex:1"></span>
+        <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:#8A7F70">drag a card to move a night</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:20px;padding:0 40px 34px;background:#FAF6EF">
+
+        <div style="border:1px solid #E4D9C6;border-radius:14px;overflow:hidden;background:#FFFDF9">
+          <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:#F6EEE1;border-bottom:1px solid #E4D9C6">
+            <span style="padding:5px 10px;border-radius:6px;background:#16283F;color:#F7F1E6;font:600 11px/1 'IBM Plex Mono',monospace">LEG 1</span>
+            <span style="font:500 17px/1.2 'Newsreader',serif;font-size:19px;color:#16283F">Windhoek &amp; Waterberg</span>
+            <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:#8A7F70">1–4 Jan · 3 nights · 285 km</span>
+            <span style="flex:1"></span>
+            <span style="font:600 14px/1 'Work Sans',sans-serif;color:#23201C">€ 159</span>
+            <span style="width:26px;height:26px;border:1px solid #DDCFB9;border-radius:7px;background:#FFFDF9;font:400 12px/24px 'Work Sans',sans-serif;color:#7A7064;text-align:center;cursor:pointer">⌄</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0">
+            <div style="padding:18px 20px;border-right:1px solid #EDE3D2;display:flex;flex-direction:column;gap:11px">
+              <div style="display:flex;align-items:center;gap:9px">
+                <span style="width:26px;height:26px;border-radius:8px;background:#F3EADB;font:600 12px/26px 'Work Sans',sans-serif;color:#16283F;text-align:center">1</span>
+                <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">1–2 Jan · Khomas</span>
+              </div>
+              <div style="height:96px;border-radius:10px;background:repeating-linear-gradient(135deg,#E7D8C0 0 6px,#DFCDB0 6px 12px);display:flex;align-items:flex-end;padding:9px"><span style="font:400 10px/1 'IBM Plex Mono',monospace;color:#7A6A52">photo · lodge exterior</span></div>
+              <div style="font:600 15px/1.3 'Work Sans',sans-serif;color:#16283F">Joe's Place Self-Catering</div>
+              <div style="display:flex;flex-direction:column;gap:5px;font:400 13px/1.5 'Work Sans',sans-serif;color:#5E564B">
+                <span>Do · City &amp; craft market walk</span>
+                <span>Dinner · <span style="color:#B4552D">Joe's Beerhouse</span></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px;padding-top:3px">
+                <span style="display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;background:#EAF1EC;font:500 11px/1 'Work Sans',sans-serif;color:#3F7D5C">▲ 2 · Lena, Tim</span>
+                <span style="padding:5px 9px;border-radius:999px;border:1px solid #E4D9C6;font:500 11px/1 'Work Sans',sans-serif;color:#7A7064;cursor:pointer">💬 Add note</span>
+                <span style="flex:1"></span>
+                <span style="font:600 13px/1 'Work Sans',sans-serif;color:#23201C">€ 63</span>
+              </div>
+            </div>
+            <div style="padding:18px 20px;border-right:1px solid #EDE3D2;display:flex;flex-direction:column;gap:11px">
+              <div style="display:flex;align-items:center;gap:9px">
+                <span style="width:26px;height:26px;border-radius:8px;background:#F3EADB;font:600 12px/26px 'Work Sans',sans-serif;color:#16283F;text-align:center">2</span>
+                <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">2–3 Jan · Otjozondjupa</span>
+              </div>
+              <div style="height:96px;border-radius:10px;background:repeating-linear-gradient(135deg,#E7D8C0 0 6px,#DFCDB0 6px 12px);display:flex;align-items:flex-end;padding:9px"><span style="font:400 10px/1 'IBM Plex Mono',monospace;color:#7A6A52">photo · farmhouse</span></div>
+              <div style="font:600 15px/1.3 'Work Sans',sans-serif;color:#16283F">Okuti Kwa Dala Rest Camp</div>
+              <div style="display:flex;flex-direction:column;gap:5px;font:400 13px/1.5 'Work Sans',sans-serif;color:#5E564B">
+                <span>Do · Waterberg Plateau hike</span>
+                <span>Dinner · Braai at camp</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px;padding-top:3px">
+                <span style="display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;background:#F3EADB;font:500 11px/1 'Work Sans',sans-serif;color:#8A7F70">▲ 1 · Lena</span>
+                <span style="padding:5px 9px;border-radius:999px;border:1px solid #E4D9C6;font:500 11px/1 'Work Sans',sans-serif;color:#7A7064;cursor:pointer">💬 1</span>
+                <span style="flex:1"></span>
+                <span style="font:600 13px/1 'Work Sans',sans-serif;color:#23201C">€ 48</span>
+              </div>
+            </div>
+            <div style="padding:18px 20px;display:flex;flex-direction:column;gap:11px;background:#FFFCF6">
+              <div style="display:flex;align-items:center;gap:9px">
+                <span style="width:26px;height:26px;border-radius:8px;background:#F3EADB;font:600 12px/26px 'Work Sans',sans-serif;color:#16283F;text-align:center">3</span>
+                <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">3–4 Jan · same camp</span>
+              </div>
+              <div style="height:96px;border-radius:10px;border:1px dashed #DDCFB9;display:flex;align-items:center;justify-content:center"><span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#A2988A">second night · no new photo</span></div>
+              <div style="font:600 15px/1.3 'Work Sans',sans-serif;color:#16283F">Okuti Kwa Dala Rest Camp</div>
+              <div style="display:flex;flex-direction:column;gap:5px;font:400 13px/1.5 'Work Sans',sans-serif;color:#5E564B">
+                <span>Do · Cheetah Conservation Fund</span>
+                <span>Dinner · <span style="padding:3px 8px;border:1px dashed #C89A6E;border-radius:999px;font:500 11px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">+ Add</span></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:10px;background:#F6EEE1;border:1px solid #EDE3D2">
+                <span style="width:22px;height:22px;border-radius:50%;background:#D9A34A;color:#3A2A12;font:600 11px/22px 'Work Sans',sans-serif;text-align:center">K</span>
+                <span style="flex:1;font:400 12px/1.45 'Work Sans',sans-serif;color:#5E564B">Free evening — want a sundowner drive here?</span>
+                <span style="font:500 12px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">Ask</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:14px;padding:0 6px">
+          <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:#8A7F70">Drive 3 h 20 · 240 km · gravel D2859</span>
+          <span style="flex:1;height:1px;background:#DDCFB9"></span>
+          <span style="padding:6px 11px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 11px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Show on map</span>
+        </div>
+
+        <div style="border:1px solid #E4D9C6;border-radius:14px;overflow:hidden;background:#FFFDF9">
+          <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:#F6EEE1;border-bottom:1px solid #E4D9C6">
+            <span style="padding:5px 10px;border-radius:6px;background:#16283F;color:#F7F1E6;font:600 11px/1 'IBM Plex Mono',monospace">LEG 2</span>
+            <span style="font:500 19px/1.2 'Newsreader',serif;color:#16283F">Etosha</span>
+            <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:#8A7F70">4–8 Jan · 4 nights · 435 km</span>
+            <span style="flex:1"></span>
+            <span style="font:600 14px/1 'Work Sans',sans-serif;color:#23201C">€ 175</span>
+            <span style="width:26px;height:26px;border:1px solid #DDCFB9;border-radius:7px;background:#FFFDF9;font:400 12px/24px 'Work Sans',sans-serif;color:#7A7064;text-align:center;cursor:pointer">⌄</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr)">
+            <div style="padding:16px 18px;border-right:1px solid #EDE3D2;display:flex;flex-direction:column;gap:8px">
+              <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">4 · 4–5 Jan</span>
+              <span style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Etosha Safari Campsite</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B">Namutoni waterhole drive</span>
+              <span style="font:600 13px/1 'Work Sans',sans-serif;color:#23201C">€ 41</span>
+            </div>
+            <div style="padding:16px 18px;border-right:1px solid #EDE3D2;display:flex;flex-direction:column;gap:8px">
+              <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">5 · 5–6 Jan</span>
+              <span style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Halali Camp</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B">Halali → Okaukuejo game drive</span>
+              <span style="font:600 13px/1 'Work Sans',sans-serif;color:#23201C">€ 44</span>
+            </div>
+            <div style="padding:16px 18px;border-right:1px solid #EDE3D2;display:flex;flex-direction:column;gap:8px;background:#FBF2E8">
+              <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#B4552D">6 · 6–7 Jan · just changed</span>
+              <span style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Olifantsrus Camp</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B">Sunset hide</span>
+              <span style="font:600 13px/1 'Work Sans',sans-serif;color:#23201C">€ 38</span>
+            </div>
+            <div style="padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+              <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">7 · 7–8 Jan</span>
+              <span style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Palmwag Lodge Campsite</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B">Desert elephant tracking</span>
+              <span style="font:600 13px/1 'Work Sans',sans-serif;color:#23201C">€ 52</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:14px;align-items:center;padding:16px 20px;border:1px dashed #DDCFB9;border-radius:14px;background:#FFFDF9">
+          <span style="font:400 13px/1 'IBM Plex Mono',monospace;color:#8A7F70">LEG 3 Damaraland · LEG 4 Coast · LEG 5 Sossusvlei · LEG 6 Windhoek</span>
+          <span style="flex:1"></span>
+          <span style="font:500 13px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">Expand all legs</span>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:14px;padding:18px 40px;border-top:1px solid #E4D9C6;background:#FFFDF9;position:sticky;bottom:0">
+        <span style="width:34px;height:34px;border-radius:50%;background:#D9A34A;color:#3A2A12;font:600 14px/34px 'Work Sans',sans-serif;text-align:center">K</span>
+        <div style="flex:1;padding:12px 15px;border:1px solid #E4D9C6;border-radius:999px;background:#FAF6EF;font:400 13px/1 'Work Sans',sans-serif;color:#A2988A">Tell Kaia what to change — “make the coast leg one night shorter”</div>
+        <button style="padding:13px 22px;border:0;border-radius:999px;background:#16283F;color:#F7F1E6;font:600 13px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#0F1D2E">Request availability &amp; book</button>
+        <button style="padding:13px 20px;border:1px solid #C89A6E;border-radius:999px;background:transparent;color:#B4552D;font:600 13px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#FBF2E8">Save &amp; share</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:32px;flex-wrap:wrap">
+
+    <div id="1c" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;max-width:900px">
+        <span style="padding:5px 10px;border-radius:6px;background:#16283F;color:#F7F1E6;font:500 12px/1 'IBM Plex Mono',monospace">1c</span>
+        <h2 style="margin:0;font:500 24px/1.2 'Newsreader',serif;color:#16283F">Entry A — conversation front and centre</h2>
+        <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">One question at a time; Kaia fills the trip card on the right as you talk.</span>
+      </div>
+      <div style="width:900px;height:700px;border:1px solid #DDCFB9;border-radius:16px;overflow:hidden;box-shadow:0 30px 70px -34px rgba(35,32,28,.45);background:linear-gradient(175deg,#16283F 0%,#243C57 38%,#8C5A2B 74%,#C98A4B 100%);display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 26px">
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="width:26px;height:26px;border-radius:50%;border:2px solid #D9A34A;display:flex;align-items:center;justify-content:center;color:#D9A34A;font:600 12px/1 'Work Sans',sans-serif">N</span>
+            <span style="font:600 17px/1 'Work Sans',sans-serif;color:#F7F1E6">NamibWay</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="padding:7px 11px;border:1px solid rgba(247,241,230,.3);border-radius:8px;font:500 12px/1 'Work Sans',sans-serif;color:#F7F1E6;cursor:pointer">EN</span>
+            <span style="padding:7px 13px;border:1px solid rgba(247,241,230,.3);border-radius:8px;font:500 12px/1 'Work Sans',sans-serif;color:#F7F1E6;cursor:pointer">Sign in</span>
+          </div>
+        </div>
+        <div style="padding:10px 26px 22px;text-align:center">
+          <h3 style="margin:0 0 8px;font:400 38px/1.12 'Newsreader',serif;letter-spacing:-.015em;color:#FBF6EC">Tell Kaia about the trip you picture</h3>
+          <p style="margin:0;font:400 14px/1.5 'Work Sans',sans-serif;color:rgba(251,246,236,.72)">No account needed. You get a full day-by-day plan in about a minute.</p>
+        </div>
+        <div style="flex:1;margin:0 26px 26px;border-radius:16px;background:#FAF6EF;display:grid;grid-template-columns:1fr 268px;overflow:hidden;box-shadow:0 20px 50px -20px rgba(15,29,46,.5)">
+          <div style="display:flex;flex-direction:column">
+            <div style="flex:1;display:flex;flex-direction:column;gap:12px;padding:22px">
+              <div style="align-self:flex-start;max-width:78%;padding:13px 16px;border-radius:16px 16px 16px 5px;background:#F3EADB;font:400 14px/1.55 'Work Sans',sans-serif;color:#3A342C">Hi, I'm Kaia. Where are you flying into, and how many days do you have?</div>
+              <div style="align-self:flex-end;max-width:78%;padding:13px 16px;border-radius:16px 16px 5px 16px;background:#16283F;font:400 14px/1.55 'Work Sans',sans-serif;color:#EFE7DA">Windhoek, 1–18 January 2027. Two adults, no kids. We love safari and adventure, want a 4×4 with a roof tent, camping mixed with lodges. Around €5,000 without flights.</div>
+              <div style="align-self:flex-start;max-width:78%;padding:13px 16px;border-radius:16px 16px 16px 5px;background:#F3EADB;font:400 14px/1.55 'Work Sans',sans-serif;color:#3A342C">That's plenty to work with. One thing: how much driving per day feels right?</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span style="padding:9px 14px;border:1px solid #C89A6E;border-radius:999px;background:#FBF2E8;font:500 13px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">Up to 3 h</span>
+                <span style="padding:9px 14px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 13px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Up to 5 h</span>
+                <span style="padding:9px 14px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 13px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">We don't mind</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:9px;padding:16px 22px;border-top:1px solid #E4D9C6;background:#FFFDF9">
+              <div style="flex:1;padding:13px 15px;border:1px solid #E4D9C6;border-radius:11px;background:#FAF6EF;font:400 14px/1 'Work Sans',sans-serif;color:#A2988A">What would you like to experience in Namibia?</div>
+              <button style="width:44px;height:44px;border:1px solid #E4D9C6;border-radius:11px;background:#FAF6EF;font:400 16px/1 'Work Sans',sans-serif;color:#7A7064;cursor:pointer">◉</button>
+              <button style="padding:0 22px;border:0;border-radius:11px;background:#B4552D;color:#fff;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#9E4726">Send</button>
+            </div>
+          </div>
+          <div style="border-left:1px solid #E4D9C6;background:#FFFDF9;padding:22px 20px;display:flex;flex-direction:column;gap:14px">
+            <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#B4552D">Kaia has noted</div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;font:400 13px/1.4 'Work Sans',sans-serif;color:#5E564B"><span>Start</span><span style="font-weight:600;color:#23201C">Windhoek</span></div>
+              <div style="display:flex;justify-content:space-between;font:400 13px/1.4 'Work Sans',sans-serif;color:#5E564B"><span>Dates</span><span style="font-weight:600;color:#23201C">1–18 Jan 2027</span></div>
+              <div style="display:flex;justify-content:space-between;font:400 13px/1.4 'Work Sans',sans-serif;color:#5E564B"><span>Travellers</span><span style="font-weight:600;color:#23201C">2 adults</span></div>
+              <div style="display:flex;justify-content:space-between;font:400 13px/1.4 'Work Sans',sans-serif;color:#5E564B"><span>Vehicle</span><span style="font-weight:600;color:#23201C">4×4 roof tent</span></div>
+              <div style="display:flex;justify-content:space-between;font:400 13px/1.4 'Work Sans',sans-serif;color:#5E564B"><span>Style</span><span style="font-weight:600;color:#23201C">Camp + lodge</span></div>
+              <div style="display:flex;justify-content:space-between;font:400 13px/1.4 'Work Sans',sans-serif;color:#5E564B"><span>Budget</span><span style="font-weight:600;color:#23201C">€ 5,000</span></div>
+              <div style="display:flex;justify-content:space-between;font:400 13px/1.4 'Work Sans',sans-serif;color:#A2988A"><span>Driving limit</span><span style="font:400 13px/1.4 'IBM Plex Mono',monospace">asking…</span></div>
+            </div>
+            <div style="height:1px;background:#EDE3D2"></div>
+            <div style="font:400 12px/1.6 'Work Sans',sans-serif;color:#8A7F70">Everything here stays editable later — nothing is locked in.</div>
+            <span style="flex:1"></span>
+            <button style="width:100%;padding:13px;border:0;border-radius:10px;background:#16283F;color:#F7F1E6;font:600 13px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#0F1D2E">Draft my plan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1d" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;max-width:900px">
+        <span style="padding:5px 10px;border-radius:6px;background:#16283F;color:#F7F1E6;font:500 12px/1 'IBM Plex Mono',monospace">1d</span>
+        <h2 style="margin:0;font:500 24px/1.2 'Newsreader',serif;color:#16283F">Entry B — pick, then talk</h2>
+        <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">Tangible choices first; the chat becomes a refinement step for people who freeze at a blank field.</span>
+      </div>
+      <div style="width:900px;height:700px;border:1px solid #DDCFB9;border-radius:16px;overflow:hidden;box-shadow:0 30px 70px -34px rgba(35,32,28,.45);background:#FAF6EF;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 26px;border-bottom:1px solid #E4D9C6;background:#FFFDF9">
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="width:26px;height:26px;border-radius:50%;border:2px solid #B4552D;display:flex;align-items:center;justify-content:center;color:#B4552D;font:600 12px/1 'Work Sans',sans-serif">N</span>
+            <span style="font:600 17px/1 'Work Sans',sans-serif;color:#16283F">NamibWay</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="padding:7px 11px;border:1px solid #E4D9C6;border-radius:8px;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">EN</span>
+            <span style="padding:7px 13px;border:1px solid #E4D9C6;border-radius:8px;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Sign in</span>
+          </div>
+        </div>
+        <div style="padding:30px 34px 20px">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+            <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#B4552D">Step 1 of 3</span>
+            <span style="width:120px;height:5px;border-radius:3px;background:#EDE3D2;overflow:hidden;display:inline-block"><span style="display:block;width:33%;height:100%;background:#B4552D"></span></span>
+          </div>
+          <h3 style="margin:0 0 6px;font:400 34px/1.15 'Newsreader',serif;letter-spacing:-.015em;color:#16283F">What kind of Namibia trip is it?</h3>
+          <p style="margin:0;font:400 14px/1.55 'Work Sans',sans-serif;color:#5E564B">Pick a starting point — Kaia asks the rest in a short chat, and you can change everything afterwards.</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:0 34px">
+          <div style="border:2px solid #B4552D;border-radius:14px;overflow:hidden;background:#FFFDF9;cursor:pointer">
+            <div style="height:104px;background:repeating-linear-gradient(135deg,#E7D8C0 0 6px,#DFCDB0 6px 12px);display:flex;align-items:flex-end;padding:9px"><span style="font:400 10px/1 'IBM Plex Mono',monospace;color:#7A6A52">photo · roof tent at dusk</span></div>
+            <div style="padding:14px 15px;display:flex;flex-direction:column;gap:6px">
+              <span style="font:600 15px/1.3 'Work Sans',sans-serif;color:#16283F">Self-drive &amp; camp</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#7A7064">4×4, roof tent, gravel roads, campsites with the odd lodge night.</span>
+              <span style="font:500 11px/1 'IBM Plex Mono',monospace;color:#B4552D;padding-top:4px">from € 78 / day</span>
+            </div>
+          </div>
+          <div style="border:1px solid #E4D9C6;border-radius:14px;overflow:hidden;background:#FFFDF9;cursor:pointer" style-hover="border-color:#C89A6E">
+            <div style="height:104px;background:repeating-linear-gradient(135deg,#E7D8C0 0 6px,#DFCDB0 6px 12px);display:flex;align-items:flex-end;padding:9px"><span style="font:400 10px/1 'IBM Plex Mono',monospace;color:#7A6A52">photo · lodge terrace</span></div>
+            <div style="padding:14px 15px;display:flex;flex-direction:column;gap:6px">
+              <span style="font:600 15px/1.3 'Work Sans',sans-serif;color:#16283F">Lodges only</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#7A7064">Beds every night, shorter drives, guided game drives included.</span>
+              <span style="font:500 11px/1 'IBM Plex Mono',monospace;color:#B4552D;padding-top:4px">from € 165 / day</span>
+            </div>
+          </div>
+          <div style="border:1px solid #E4D9C6;border-radius:14px;overflow:hidden;background:#FFFDF9;cursor:pointer" style-hover="border-color:#C89A6E">
+            <div style="height:104px;background:repeating-linear-gradient(135deg,#E7D8C0 0 6px,#DFCDB0 6px 12px);display:flex;align-items:flex-end;padding:9px"><span style="font:400 10px/1 'IBM Plex Mono',monospace;color:#7A6A52">photo · dune ridge</span></div>
+            <div style="padding:14px 15px;display:flex;flex-direction:column;gap:6px">
+              <span style="font:600 15px/1.3 'Work Sans',sans-serif;color:#16283F">Highlights in 10 days</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#7A7064">Etosha, Swakopmund, Sossusvlei — the classic loop, tightly planned.</span>
+              <span style="font:500 11px/1 'IBM Plex Mono',monospace;color:#B4552D;padding-top:4px">from € 96 / day</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;padding:20px 34px 0">
+          <span style="padding:9px 14px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 13px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">18 nights</span>
+          <span style="padding:9px 14px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 13px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">2 adults</span>
+          <span style="padding:9px 14px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 13px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">January 2027</span>
+          <span style="padding:9px 14px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 13px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Budget € 5,000</span>
+          <span style="padding:9px 14px;border:1px dashed #C89A6E;border-radius:999px;font:500 13px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">+ Something else</span>
+        </div>
+        <span style="flex:1"></span>
+        <div style="display:flex;align-items:center;gap:14px;margin:0 34px 26px;padding:16px 18px;border:1px solid #E4D9C6;border-radius:14px;background:#FFFDF9">
+          <span style="width:38px;height:38px;border-radius:50%;background:#D9A34A;color:#3A2A12;font:600 15px/38px 'Work Sans',sans-serif;text-align:center">K</span>
+          <div style="flex:1">
+            <div style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Or just describe it in your own words</div>
+            <div style="font:400 12px/1.5 'Work Sans',sans-serif;color:#7A7064">“Two of us, three weeks, safari and dunes, roughly €5,000 without flights.”</div>
+          </div>
+          <button style="padding:12px 20px;border:0;border-radius:10px;background:#16283F;color:#F7F1E6;font:600 13px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#0F1D2E">Talk to Kaia</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="1e" style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;max-width:1000px">
+      <span style="padding:5px 10px;border-radius:6px;background:#16283F;color:#F7F1E6;font:500 12px/1 'IBM Plex Mono',monospace">1e</span>
+      <h2 style="margin:0;font:500 24px/1.2 'Newsreader',serif;color:#16283F">Plan variants — the moment after the chat</h2>
+      <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">Three routes from the same brief. Compare, then open one in the editor.</span>
+    </div>
+    <div style="width:1440px;border:1px solid #DDCFB9;border-radius:16px;background:#FAF6EF;box-shadow:0 30px 70px -34px rgba(35,32,28,.45);padding:34px 40px 40px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:30px;margin-bottom:26px">
+        <div style="max-width:620px">
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#B4552D">Three ways to do it</div>
+          <h3 style="margin:9px 0 8px;font:400 34px/1.15 'Newsreader',serif;letter-spacing:-.015em;color:#16283F">Your trip, planned three ways</h3>
+          <p style="margin:0;font:400 14px/1.6 'Work Sans',sans-serif;color:#5E564B">All three fit 18 nights, 2 adults and a 4×4 with roof tent. Pick the one that feels right — you can still change every night.</p>
+        </div>
+        <div style="display:flex;gap:9px">
+          <span style="padding:9px 14px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B;cursor:pointer">Compare side by side</span>
+          <span style="padding:9px 14px;border:1px dashed #C89A6E;border-radius:999px;font:500 12px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">Ask Kaia for a fourth</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+        <div style="border:2px solid #B4552D;border-radius:16px;overflow:hidden;background:#FFFDF9;display:flex;flex-direction:column;box-shadow:0 12px 30px -18px rgba(180,85,45,.5)">
+          <div style="position:relative;height:150px;background:repeating-linear-gradient(135deg,#E7D8C0 0 6px,#DFCDB0 6px 12px)">
+            <span style="position:absolute;top:12px;left:12px;padding:5px 10px;border-radius:6px;background:#B4552D;color:#fff;font:600 11px/1 'IBM Plex Mono',monospace">RECOMMENDED</span>
+            <span style="position:absolute;bottom:9px;left:12px;font:400 10px/1 'IBM Plex Mono',monospace;color:#7A6A52">map thumbnail · full loop</span>
+          </div>
+          <div style="padding:18px 18px 20px;display:flex;flex-direction:column;gap:12px;flex:1">
+            <div>
+              <div style="font:500 19px/1.25 'Newsreader',serif;color:#16283F">Extended Namibia Loop</div>
+              <div style="font:400 12px/1.5 'Work Sans',sans-serif;color:#8A7F70">Camper adventure · 6 legs</div>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 24px/1 'Work Sans',sans-serif;color:#23201C">€ 1,408</span><span style="font:400 12px/1 'Work Sans',sans-serif;color:#8A7F70">est. total</span></div>
+            <div style="display:flex;flex-direction:column;gap:7px;font:400 13px/1.5 'Work Sans',sans-serif;color:#5E564B">
+              <span>3,180 km · avg 2 h 40 / travel day</span>
+              <span>11 camping · 7 lodge nights</span>
+              <span>Etosha 4 nights, Sossusvlei 2</span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span style="padding:5px 9px;border-radius:6px;background:#F3EADB;font:500 11px/1 'Work Sans',sans-serif;color:#5E564B">Most wildlife</span>
+              <span style="padding:5px 9px;border-radius:6px;background:#F3EADB;font:500 11px/1 'Work Sans',sans-serif;color:#5E564B">Best value</span>
+            </div>
+            <span style="flex:1"></span>
+            <button style="width:100%;padding:13px;border:0;border-radius:10px;background:#B4552D;color:#fff;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#9E4726">Open this plan</button>
+          </div>
+        </div>
+        <div style="border:1px solid #E4D9C6;border-radius:16px;overflow:hidden;background:#FFFDF9;display:flex;flex-direction:column" style-hover="border-color:#C89A6E">
+          <div style="position:relative;height:150px;background:repeating-linear-gradient(135deg,#E7D8C0 0 6px,#DFCDB0 6px 12px)"><span style="position:absolute;bottom:9px;left:12px;font:400 10px/1 'IBM Plex Mono',monospace;color:#7A6A52">map thumbnail · north focus</span></div>
+          <div style="padding:18px 18px 20px;display:flex;flex-direction:column;gap:12px;flex:1">
+            <div>
+              <div style="font:500 19px/1.25 'Newsreader',serif;color:#16283F">Slow North</div>
+              <div style="font:400 12px/1.5 'Work Sans',sans-serif;color:#8A7F70">Fewer moves · 4 legs</div>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 24px/1 'Work Sans',sans-serif;color:#23201C">€ 1,265</span><span style="font:400 12px/1 'Work Sans',sans-serif;color:#8A7F70">est. total</span></div>
+            <div style="display:flex;flex-direction:column;gap:7px;font:400 13px/1.5 'Work Sans',sans-serif;color:#5E564B">
+              <span>2,240 km · avg 1 h 50 / travel day</span>
+              <span>13 camping · 5 lodge nights</span>
+              <span>Etosha 6 nights, no Sossusvlei</span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span style="padding:5px 9px;border-radius:6px;background:#F3EADB;font:500 11px/1 'Work Sans',sans-serif;color:#5E564B">Least driving</span>
+            </div>
+            <span style="flex:1"></span>
+            <button style="width:100%;padding:13px;border:1px solid #DDCFB9;border-radius:10px;background:#FAF6EF;color:#16283F;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="border-color:#C89A6E">Open this plan</button>
+          </div>
+        </div>
+        <div style="border:1px solid #E4D9C6;border-radius:16px;overflow:hidden;background:#FFFDF9;display:flex;flex-direction:column" style-hover="border-color:#C89A6E">
+          <div style="position:relative;height:150px;background:repeating-linear-gradient(135deg,#E7D8C0 0 6px,#DFCDB0 6px 12px)"><span style="position:absolute;bottom:9px;left:12px;font:400 10px/1 'IBM Plex Mono',monospace;color:#7A6A52">map thumbnail · coast &amp; dunes</span></div>
+          <div style="padding:18px 18px 20px;display:flex;flex-direction:column;gap:12px;flex:1">
+            <div>
+              <div style="font:500 19px/1.25 'Newsreader',serif;color:#16283F">Dunes &amp; Coast</div>
+              <div style="font:400 12px/1.5 'Work Sans',sans-serif;color:#8A7F70">Landscapes first · 5 legs</div>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 24px/1 'Work Sans',sans-serif;color:#23201C">€ 1,690</span><span style="font:400 12px/1 'Work Sans',sans-serif;color:#8A7F70">est. total</span></div>
+            <div style="display:flex;flex-direction:column;gap:7px;font:400 13px/1.5 'Work Sans',sans-serif;color:#5E564B">
+              <span>2,910 km · avg 2 h 20 / travel day</span>
+              <span>8 camping · 10 lodge nights</span>
+              <span>Sossusvlei 3 nights, Etosha 2</span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span style="padding:5px 9px;border-radius:6px;background:#F3EADB;font:500 11px/1 'Work Sans',sans-serif;color:#5E564B">Most comfort</span>
+            </div>
+            <span style="flex:1"></span>
+            <button style="width:100%;padding:13px;border:1px solid #DDCFB9;border-radius:10px;background:#FAF6EF;color:#16283F;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="border-color:#C89A6E">Open this plan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:32px;flex-wrap:wrap;align-items:flex-start">
+
+    <div id="1f" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;max-width:640px">
+        <span style="padding:5px 10px;border-radius:6px;background:#16283F;color:#F7F1E6;font:500 12px/1 'IBM Plex Mono',monospace">1f</span>
+        <h2 style="margin:0;font:500 24px/1.2 'Newsreader',serif;color:#16283F">Detail modal</h2>
+        <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">Same shell for stays, activities and restaurants.</span>
+      </div>
+      <div style="width:640px;border:1px solid #DDCFB9;border-radius:16px;overflow:hidden;background:rgba(35,32,28,.55);padding:26px;box-shadow:0 30px 70px -34px rgba(35,32,28,.45)">
+        <div style="border-radius:16px;overflow:hidden;background:#FAF6EF;box-shadow:0 24px 60px -20px rgba(15,29,46,.55)">
+          <div style="position:relative;height:210px;background:repeating-linear-gradient(135deg,#E7D8C0 0 6px,#DFCDB0 6px 12px)">
+            <span style="position:absolute;bottom:10px;left:14px;font:400 10px/1 'IBM Plex Mono',monospace;color:#7A6A52">photo · farmhouse under camel thorn</span>
+            <span style="position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:50%;background:rgba(35,32,28,.6);color:#fff;font:400 15px/30px 'Work Sans',sans-serif;text-align:center;cursor:pointer">×</span>
+            <span style="position:absolute;bottom:10px;right:14px;padding:5px 10px;border-radius:6px;background:rgba(250,246,239,.92);font:400 10px/1 'IBM Plex Mono',monospace;color:#5E564B">1 / 12</span>
+          </div>
+          <div style="padding:22px 24px 24px;display:flex;flex-direction:column;gap:16px">
+            <div>
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#B4552D">Stay · night 2 &amp; 3</div>
+              <h3 style="margin:8px 0 6px;font:400 27px/1.2 'Newsreader',serif;color:#16283F">Okuti Kwa Dala Rest Camp</h3>
+              <div style="display:flex;align-items:center;gap:10px;font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">
+                <span style="color:#D9A34A;letter-spacing:1px">★★★★</span><span>4.4 · 86 reviews</span><span>·</span><span>Waterberg, Otjozondjupa</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <div style="flex:1;height:64px;border-radius:9px;background:repeating-linear-gradient(135deg,#E7D8C0 0 5px,#DFCDB0 5px 10px)"></div>
+              <div style="flex:1;height:64px;border-radius:9px;background:repeating-linear-gradient(135deg,#E7D8C0 0 5px,#DFCDB0 5px 10px)"></div>
+              <div style="flex:1;height:64px;border-radius:9px;background:repeating-linear-gradient(135deg,#E7D8C0 0 5px,#DFCDB0 5px 10px)"></div>
+              <div style="flex:1;height:64px;border-radius:9px;background:repeating-linear-gradient(135deg,#E7D8C0 0 5px,#DFCDB0 5px 10px);display:flex;align-items:center;justify-content:center;font:500 11px/1 'IBM Plex Mono',monospace;color:#6E6250">+9</div>
+            </div>
+            <p style="margin:0;font:400 14px/1.65 'Work Sans',sans-serif;color:#4A4238;text-wrap:pretty">A quiet self-catering farmhouse and shaded campsites beside a dam in the Waterberg region. Hiking, canoeing, bird watching and swimming on site; Waterberg Plateau Park is 45 minutes away.</p>
+            <div style="display:flex;gap:7px;flex-wrap:wrap">
+              <span style="padding:6px 11px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 12px/1 'Work Sans',sans-serif;color:#4A4238">Shaded campsites</span>
+              <span style="padding:6px 11px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 12px/1 'Work Sans',sans-serif;color:#4A4238">Dam swimming</span>
+              <span style="padding:6px 11px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 12px/1 'Work Sans',sans-serif;color:#4A4238">Self-catering</span>
+              <span style="padding:6px 11px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 12px/1 'Work Sans',sans-serif;color:#4A4238">Braai facilities</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid #EDE3D2;border-radius:12px;background:#FFFDF9">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#8A7F70">Group</span>
+                <span style="display:flex;gap:6px">
+                  <span style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:#EAF1EC;font:500 12px/1 'Work Sans',sans-serif;color:#3F7D5C;cursor:pointer">▲ 2</span>
+                  <span style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;border:1px solid #E4D9C6;font:500 12px/1 'Work Sans',sans-serif;color:#7A7064;cursor:pointer">▼ 0</span>
+                </span>
+              </div>
+              <div style="display:flex;gap:10px">
+                <span style="width:26px;height:26px;border-radius:50%;background:#B4552D;color:#fff;font:600 10px/26px 'Work Sans',sans-serif;text-align:center">LM</span>
+                <div style="flex:1;padding:9px 12px;border-radius:10px 10px 10px 3px;background:#F3EADB;font:400 13px/1.5 'Work Sans',sans-serif;color:#3A342C">Two nights here is right — the dam is worth a slow morning. <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">2 d ago</span></div>
+              </div>
+              <div style="display:flex;gap:9px;align-items:center">
+                <div style="flex:1;padding:9px 12px;border:1px solid #E4D9C6;border-radius:999px;background:#FAF6EF;font:400 13px/1 'Work Sans',sans-serif;color:#A2988A">Add a comment for the group…</div>
+                <span style="font:500 13px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">Post</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font:400 13px/1.4 'Work Sans',sans-serif;color:#5E564B">
+              <span>+264 81 785 3394 · <a href="#1f">website</a></span>
+              <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:#8A7F70">45 min to Waterberg Plateau</span>
+            </div>
+            <div style="display:flex;gap:10px">
+              <button style="flex:1;padding:14px;border:0;border-radius:10px;background:#16283F;color:#F7F1E6;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#0F1D2E">Keep in plan</button>
+              <button style="flex:1;padding:14px;border:1px solid #C89A6E;border-radius:10px;background:transparent;color:#B4552D;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#FBF2E8">Show alternatives</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1g" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;max-width:560px">
+        <span style="padding:5px 10px;border-radius:6px;background:#16283F;color:#F7F1E6;font:500 12px/1 'IBM Plex Mono',monospace">1g</span>
+        <h2 style="margin:0;font:500 24px/1.2 'Newsreader',serif;color:#16283F">Room &amp; price selection</h2>
+        <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">Inline, expanded under the night — prices are indicative until booking.</span>
+      </div>
+      <div style="width:560px;border:1px solid #DDCFB9;border-radius:16px;overflow:hidden;background:#FFFDF9;box-shadow:0 30px 70px -34px rgba(35,32,28,.45)">
+        <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #EDE3D2;background:#F6EEE1">
+          <span style="width:30px;height:30px;border-radius:50%;background:#16283F;color:#F7F1E6;font:600 13px/30px 'Work Sans',sans-serif;text-align:center">2</span>
+          <div style="flex:1">
+            <div style="font:600 15px/1.3 'Work Sans',sans-serif;color:#16283F">Okuti Kwa Dala Rest Camp</div>
+            <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:#8A7F70">2–4 Jan 2027 · 2 nights · 2 adults</div>
+          </div>
+          <span style="padding:5px 10px;border-radius:6px;background:#EAF1EC;font:500 11px/1 'Work Sans',sans-serif;color:#3F7D5C">available</span>
+        </div>
+        <div style="padding:16px 20px 8px">
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8A7F70">Choose room</div>
+          <div style="font:400 12px/1.6 'Work Sans',sans-serif;color:#8A7F70;font-style:italic;padding-top:5px">Example rooms — final choice and live prices come at booking.</div>
+        </div>
+        <div style="padding:8px 20px 4px;display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;gap:14px;padding:14px;border:2px solid #B4552D;border-radius:12px;background:#FBF2E8;cursor:pointer">
+            <span style="width:18px;height:18px;border-radius:50%;border:5px solid #B4552D;background:#FFFDF9"></span>
+            <div style="flex:1">
+              <div style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Campsite with power</div>
+              <div style="font:400 12px/1.5 'Work Sans',sans-serif;color:#7A7064">Shaded, own braai · roof tent friendly</div>
+            </div>
+            <div style="text-align:right"><div style="font:600 16px/1.2 'Work Sans',sans-serif;color:#23201C">€ 48</div><div style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">per night</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px;border:1px solid #E4D9C6;border-radius:12px;background:#FAF6EF;cursor:pointer" style-hover="border-color:#C89A6E">
+            <span style="width:18px;height:18px;border-radius:50%;border:2px solid #C7BBA7;background:#FFFDF9"></span>
+            <div style="flex:1">
+              <div style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Standard room</div>
+              <div style="font:400 12px/1.5 'Work Sans',sans-serif;color:#7A7064">Farmhouse · 2 adults · shared kitchen</div>
+            </div>
+            <div style="text-align:right"><div style="font:600 16px/1.2 'Work Sans',sans-serif;color:#23201C">€ 63</div><div style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">per night</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px;border:1px solid #E4D9C6;border-radius:12px;background:#FAF6EF;cursor:pointer" style-hover="border-color:#C89A6E">
+            <span style="width:18px;height:18px;border-radius:50%;border:2px solid #C7BBA7;background:#FFFDF9"></span>
+            <div style="flex:1">
+              <div style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Comfort room</div>
+              <div style="font:400 12px/1.5 'Work Sans',sans-serif;color:#7A7064">Private bathroom · veranda</div>
+            </div>
+            <div style="text-align:right"><div style="font:600 16px/1.2 'Work Sans',sans-serif;color:#23201C">€ 85</div><div style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">per night</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px;border:1px solid #EDE3D2;border-radius:12px;background:#FAF6EF;opacity:.55">
+            <span style="width:18px;height:18px;border-radius:50%;border:2px solid #C7BBA7;background:#FFFDF9"></span>
+            <div style="flex:1">
+              <div style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Family room</div>
+              <div style="font:400 12px/1.5 'Work Sans',sans-serif;color:#7A7064">3 adults · not needed for your party</div>
+            </div>
+            <div style="text-align:right"><div style="font:600 16px/1.2 'Work Sans',sans-serif;color:#23201C">€ 111</div><div style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">per night</div></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px;margin-top:12px;border-top:1px solid #EDE3D2;background:#F6EEE1">
+          <div><div style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">2 nights, 2 adults</div><div style="font:600 18px/1.3 'Work Sans',sans-serif;color:#23201C">€ 96</div></div>
+          <button style="padding:13px 22px;border:0;border-radius:10px;background:#16283F;color:#F7F1E6;font:600 13px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#0F1D2E">Use this room</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:32px;flex-wrap:wrap;align-items:flex-start">
+
+    <div id="1h" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;max-width:520px">
+        <span style="padding:5px 10px;border-radius:6px;background:#16283F;color:#F7F1E6;font:500 12px/1 'IBM Plex Mono',monospace">1h</span>
+        <h2 style="margin:0;font:500 24px/1.2 'Newsreader',serif;color:#16283F">Share link</h2>
+        <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">Token in the URL, no account for guests.</span>
+      </div>
+      <div style="width:520px;border:1px solid #DDCFB9;border-radius:16px;overflow:hidden;background:#FFFDF9;box-shadow:0 30px 70px -34px rgba(35,32,28,.45)">
+        <div style="padding:22px 24px 18px;border-bottom:1px solid #EDE3D2">
+          <h3 style="margin:0 0 6px;font:400 24px/1.2 'Newsreader',serif;color:#16283F">Share this plan</h3>
+          <p style="margin:0;font:400 13px/1.6 'Work Sans',sans-serif;color:#7A7064">Anyone with the link can join — no sign-up. You stay the owner.</p>
+        </div>
+        <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;gap:9px">
+            <div style="flex:1;padding:12px 14px;border:1px solid #E4D9C6;border-radius:10px;background:#FAF6EF;font:400 12px/1.3 'IBM Plex Mono',monospace;color:#5E564B;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">namibway.com/p/nam-loop-2027?t=9f3c…</div>
+            <button style="padding:0 18px;border:0;border-radius:10px;background:#B4552D;color:#fff;font:600 13px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#9E4726">Copy</button>
+          </div>
+          <div style="display:flex;gap:9px">
+            <div style="flex:1;padding:13px 14px;border:2px solid #B4552D;border-radius:10px;background:#FBF2E8;cursor:pointer">
+              <div style="font:600 13px/1.3 'Work Sans',sans-serif;color:#16283F">Can edit</div>
+              <div style="font:400 11px/1.5 'Work Sans',sans-serif;color:#7A7064">Change nights, vote, comment</div>
+            </div>
+            <div style="flex:1;padding:13px 14px;border:1px solid #E4D9C6;border-radius:10px;background:#FAF6EF;cursor:pointer" style-hover="border-color:#C89A6E">
+              <div style="font:600 13px/1.3 'Work Sans',sans-serif;color:#16283F">Read only</div>
+              <div style="font:400 11px/1.5 'Work Sans',sans-serif;color:#7A7064">View, vote, comment</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px">
+            <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8A7F70">In this plan</div>
+            <div style="display:flex;align-items:center;gap:11px">
+              <span style="width:30px;height:30px;border-radius:50%;background:#16283F;color:#F7F1E6;font:600 11px/30px 'Work Sans',sans-serif;text-align:center">JM</span>
+              <div style="flex:1"><div style="font:600 13px/1.3 'Work Sans',sans-serif;color:#23201C">You</div><div style="font:400 11px/1.4 'Work Sans',sans-serif;color:#8A7F70">owner · signed in</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:11px">
+              <span style="width:30px;height:30px;border-radius:50%;background:#B4552D;color:#fff;font:600 11px/30px 'Work Sans',sans-serif;text-align:center">LM</span>
+              <div style="flex:1"><div style="font:600 13px/1.3 'Work Sans',sans-serif;color:#23201C">Lena M.</div><div style="font:400 11px/1.4 'Work Sans',sans-serif;color:#8A7F70">guest via link · can edit</div></div>
+              <span style="font:400 12px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">Remove</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:11px">
+              <span style="width:30px;height:30px;border-radius:50%;background:#3F7D5C;color:#fff;font:600 11px/30px 'Work Sans',sans-serif;text-align:center">TK</span>
+              <div style="flex:1"><div style="font:600 13px/1.3 'Work Sans',sans-serif;color:#23201C">Tim K.</div><div style="font:400 11px/1.4 'Work Sans',sans-serif;color:#8A7F70">guest via link · read only</div></div>
+              <span style="font:400 12px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">Allow editing</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px dashed #DDCFB9;border-radius:10px;background:#FAF6EF">
+            <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#7A7064">Link expires 30 days after the trip ends</span>
+            <span style="font:500 12px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">Change</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:520px;border:1px solid #DDCFB9;border-radius:16px;overflow:hidden;background:rgba(35,32,28,.5);padding:22px;box-shadow:0 30px 70px -34px rgba(35,32,28,.45);margin-top:18px">
+        <div style="border-radius:14px;background:#FAF6EF;padding:26px 26px 24px;display:flex;flex-direction:column;gap:16px">
+          <div>
+            <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#B4552D">One step before saving</div>
+            <h3 style="margin:9px 0 6px;font:400 25px/1.2 'Newsreader',serif;color:#16283F">Keep this plan on your account</h3>
+            <p style="margin:0;font:400 13px/1.6 'Work Sans',sans-serif;color:#7A7064">Your draft is already here — signing in just makes it permanent, syncs it to the app and lets you get trip reminders.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <div style="padding:13px 14px;border:1px solid #E4D9C6;border-radius:10px;background:#FFFDF9;font:400 13px/1 'Work Sans',sans-serif;color:#A2988A">you@email.com</div>
+            <button style="padding:14px;border:0;border-radius:10px;background:#16283F;color:#F7F1E6;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#0F1D2E">Continue with email</button>
+            <div style="display:flex;align-items:center;gap:12px;padding:4px 0"><span style="flex:1;height:1px;background:#E4D9C6"></span><span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#A2988A">or</span><span style="flex:1;height:1px;background:#E4D9C6"></span></div>
+            <div style="display:flex;gap:9px">
+              <button style="flex:1;padding:13px;border:1px solid #E4D9C6;border-radius:10px;background:#FFFDF9;font:500 13px/1 'Work Sans',sans-serif;color:#23201C;cursor:pointer" style-hover="border-color:#C89A6E">Google</button>
+              <button style="flex:1;padding:13px;border:1px solid #E4D9C6;border-radius:10px;background:#FFFDF9;font:500 13px/1 'Work Sans',sans-serif;color:#23201C;cursor:pointer" style-hover="border-color:#C89A6E">Apple</button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;font:400 12px/1.5 'Work Sans',sans-serif;color:#8A7F70">
+            <span>Already have an account? <a href="#1h">Sign in</a></span>
+            <span style="cursor:pointer;color:#B4552D">Keep editing without saving</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1i" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;max-width:620px">
+        <span style="padding:5px 10px;border-radius:6px;background:#16283F;color:#F7F1E6;font:500 12px/1 'IBM Plex Mono',monospace">1i</span>
+        <h2 style="margin:0;font:500 24px/1.2 'Newsreader',serif;color:#16283F">Booking request</h2>
+        <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">Availability is asked per supplier; the plan stays the source of truth.</span>
+      </div>
+      <div style="width:620px;border:1px solid #DDCFB9;border-radius:16px;overflow:hidden;background:#FFFDF9;box-shadow:0 30px 70px -34px rgba(35,32,28,.45)">
+        <div style="padding:24px 26px 20px;border-bottom:1px solid #EDE3D2;background:#F6EEE1">
+          <h3 style="margin:0 0 6px;font:400 26px/1.2 'Newsreader',serif;color:#16283F">Request availability</h3>
+          <p style="margin:0;font:400 13px/1.6 'Work Sans',sans-serif;color:#7A7064">We send one enquiry per supplier and collect the answers here. Nothing is charged now.</p>
+        </div>
+        <div style="padding:20px 26px;display:flex;flex-direction:column;gap:11px">
+          <div style="display:flex;align-items:center;gap:13px;padding:13px 15px;border:1px solid #E4D9C6;border-radius:11px;background:#FAF6EF">
+            <span style="width:19px;height:19px;border-radius:5px;background:#3F7D5C;color:#fff;font:600 12px/19px 'Work Sans',sans-serif;text-align:center">✓</span>
+            <div style="flex:1"><div style="font:600 13px/1.3 'Work Sans',sans-serif;color:#23201C">Bushtrack Camper 4×4</div><div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:#8A7F70">1–19 Jan · 18 days · € 1,368</div></div>
+            <span style="padding:5px 10px;border-radius:6px;background:#EAF1EC;font:500 11px/1 'Work Sans',sans-serif;color:#3F7D5C">confirmed available</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:13px;padding:13px 15px;border:1px solid #E4D9C6;border-radius:11px;background:#FAF6EF">
+            <span style="width:19px;height:19px;border-radius:5px;background:#3F7D5C;color:#fff;font:600 12px/19px 'Work Sans',sans-serif;text-align:center">✓</span>
+            <div style="flex:1"><div style="font:600 13px/1.3 'Work Sans',sans-serif;color:#23201C">7 campsites · 4 suppliers</div><div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:#8A7F70">11 nights · € 462</div></div>
+            <span style="padding:5px 10px;border-radius:6px;background:#F6EEE1;font:500 11px/1 'Work Sans',sans-serif;color:#8A7F70">2 pending</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:13px;padding:13px 15px;border:1px solid #E4D9C6;border-radius:11px;background:#FAF6EF">
+            <span style="width:19px;height:19px;border-radius:5px;border:2px solid #C7BBA7;background:#FFFDF9"></span>
+            <div style="flex:1"><div style="font:600 13px/1.3 'Work Sans',sans-serif;color:#23201C">5 lodges</div><div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:#8A7F70">7 nights · € 578</div></div>
+            <span style="padding:5px 10px;border-radius:6px;background:#FBF2E8;font:500 11px/1 'Work Sans',sans-serif;color:#B4552D">1 waitlist</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:13px;padding:13px 15px;border:1px solid #E4D9C6;border-radius:11px;background:#FAF6EF">
+            <span style="width:19px;height:19px;border-radius:5px;border:2px solid #C7BBA7;background:#FFFDF9"></span>
+            <div style="flex:1"><div style="font:600 13px/1.3 'Work Sans',sans-serif;color:#23201C">4 activities · park fees</div><div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:#8A7F70">est. € 310 · pay on site</div></div>
+            <span style="font:400 12px/1 'Work Sans',sans-serif;color:#B4552D;cursor:pointer">Details</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:9px;padding:15px;border:1px dashed #DDCFB9;border-radius:12px;background:#FAF6EF;margin-top:5px">
+            <div style="display:flex;justify-content:space-between;font:400 13px/1.5 'Work Sans',sans-serif;color:#5E564B"><span>Accommodation &amp; camping</span><span>€ 1,040</span></div>
+            <div style="display:flex;justify-content:space-between;font:400 13px/1.5 'Work Sans',sans-serif;color:#5E564B"><span>Vehicle</span><span>€ 1,368</span></div>
+            <div style="display:flex;justify-content:space-between;font:400 13px/1.5 'Work Sans',sans-serif;color:#5E564B"><span>Activities &amp; fees (estimate)</span><span>€ 310</span></div>
+            <div style="height:1px;background:#E4D9C6"></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 14px/1.3 'Work Sans',sans-serif;color:#23201C">Total for 2</span><span style="font:600 22px/1.2 'Work Sans',sans-serif;color:#23201C">€ 2,718</span></div>
+            <div style="font:400 11px/1.5 'IBM Plex Mono',monospace;color:#8A7F70">€ 2,282 under your € 5,000 budget · excl. flights</div>
+          </div>
+          <div style="display:flex;gap:10px;padding-top:5px">
+            <button style="flex:1;padding:15px;border:0;border-radius:10px;background:#16283F;color:#F7F1E6;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="background:#0F1D2E">Send 9 enquiries</button>
+            <button style="padding:15px 20px;border:1px solid #E4D9C6;border-radius:10px;background:#FAF6EF;color:#4A4238;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer" style-hover="border-color:#C89A6E">Export PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="1j" style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;max-width:1000px">
+      <span style="padding:5px 10px;border-radius:6px;background:#16283F;color:#F7F1E6;font:500 12px/1 'IBM Plex Mono',monospace">1j</span>
+      <h2 style="margin:0;font:500 24px/1.2 'Newsreader',serif;color:#16283F">Mobile core — chat, itinerary, lists, live trip</h2>
+      <span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#7A7064">390 pt · same data, one column, thumb-reachable actions; the live view is the later app phase.</span>
+    </div>
+    <div style="display:flex;gap:26px;flex-wrap:wrap">
+
+      <div style="width:390px;height:800px;border-radius:34px;border:9px solid #23201C;overflow:hidden;background:linear-gradient(175deg,#16283F,#2A4462 45%,#9A6534);box-shadow:0 30px 70px -30px rgba(35,32,28,.55);display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;padding:12px 20px 6px;font:600 12px/1 'Work Sans',sans-serif;color:#F7F1E6"><span>9:41</span><span>▮▮▮ ◗</span></div>
+        <div style="padding:8px 20px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font:600 16px/1 'Work Sans',sans-serif;color:#F7F1E6">NamibWay</span>
+            <span style="padding:6px 10px;border:1px solid rgba(247,241,230,.3);border-radius:7px;font:500 11px/1 'Work Sans',sans-serif;color:#F7F1E6">EN</span>
+          </div>
+          <h3 style="margin:20px 0 6px;font:400 27px/1.15 'Newsreader',serif;color:#FBF6EC">Tell Kaia about your trip</h3>
+          <p style="margin:0;font:400 13px/1.5 'Work Sans',sans-serif;color:rgba(251,246,236,.7)">No account needed.</p>
+        </div>
+        <div style="flex:1;margin:6px 12px 12px;border-radius:20px;background:#FAF6EF;display:flex;flex-direction:column;overflow:hidden">
+          <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="align-self:flex-start;max-width:86%;padding:12px 14px;border-radius:15px 15px 15px 4px;background:#F3EADB;font:400 13px/1.55 'Work Sans',sans-serif;color:#3A342C">Hi, I'm Kaia. Where are you flying into, and for how long?</div>
+            <div style="align-self:flex-end;max-width:86%;padding:12px 14px;border-radius:15px 15px 4px 15px;background:#16283F;font:400 13px/1.55 'Work Sans',sans-serif;color:#EFE7DA">Windhoek, 1–18 Jan 2027. Two of us, 4×4 with roof tent, camping and lodges mixed. €5,000 without flights.</div>
+            <div style="align-self:flex-start;max-width:86%;padding:12px 14px;border-radius:15px 15px 15px 4px;background:#F3EADB;font:400 13px/1.55 'Work Sans',sans-serif;color:#3A342C">Got it. How long may a driving day be?</div>
+            <div style="display:flex;gap:7px;flex-wrap:wrap">
+              <span style="padding:11px 15px;border:1px solid #C89A6E;border-radius:999px;background:#FBF2E8;font:500 13px/1 'Work Sans',sans-serif;color:#B4552D">Up to 3 h</span>
+              <span style="padding:11px 15px;border:1px solid #E4D9C6;border-radius:999px;background:#FFFDF9;font:500 13px/1 'Work Sans',sans-serif;color:#5E564B">Up to 5 h</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;padding:12px 14px;border-top:1px solid #E4D9C6;background:#FFFDF9">
+            <div style="flex:1;padding:14px;border:1px solid #E4D9C6;border-radius:12px;background:#FAF6EF;font:400 13px/1 'Work Sans',sans-serif;color:#A2988A">Message Kaia…</div>
+            <button style="width:48px;height:48px;border:0;border-radius:12px;background:#B4552D;color:#fff;font:600 15px/1 'Work Sans',sans-serif;cursor:pointer">↑</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:390px;height:800px;border-radius:34px;border:9px solid #23201C;overflow:hidden;background:#FAF6EF;box-shadow:0 30px 70px -30px rgba(35,32,28,.55);display:flex;flex-direction:column">
+        <div style="background:#16283F;padding:12px 20px 14px">
+          <div style="display:flex;justify-content:space-between;font:600 12px/1 'Work Sans',sans-serif;color:#F7F1E6"><span>9:41</span><span>▮▮▮ ◗</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+            <div>
+              <div style="font:500 16px/1.25 'Newsreader',serif;font-size:18px;color:#F7F1E6">Extended Namibia Loop</div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:#A9BACD">18 nights · € 1,408 · draft</div>
+            </div>
+            <div style="display:flex">
+              <span style="width:26px;height:26px;border-radius:50%;background:#B4552D;color:#fff;font:600 10px/26px 'Work Sans',sans-serif;text-align:center;border:2px solid #16283F">LM</span>
+              <span style="width:26px;height:26px;border-radius:50%;background:#3F7D5C;color:#fff;font:600 10px/26px 'Work Sans',sans-serif;text-align:center;border:2px solid #16283F;margin-left:-8px">TK</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;padding:12px 16px;border-bottom:1px solid #E4D9C6;background:#FFFDF9;overflow:hidden">
+          <span style="padding:8px 13px;border-radius:999px;background:#16283F;color:#F7F1E6;font:500 12px/1 'Work Sans',sans-serif">Days</span>
+          <span style="padding:8px 13px;border-radius:999px;border:1px solid #E4D9C6;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B">Map</span>
+          <span style="padding:8px 13px;border-radius:999px;border:1px solid #E4D9C6;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B">Costs</span>
+          <span style="padding:8px 13px;border-radius:999px;border:1px solid #E4D9C6;font:500 12px/1 'Work Sans',sans-serif;color:#5E564B">Lists</span>
+        </div>
+        <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+          <div style="padding:13px 16px;border-bottom:1px solid #EDE3D2;background:#FFFDF9;display:flex;gap:12px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+              <span style="width:28px;height:28px;border-radius:50%;background:#16283F;color:#F7F1E6;font:600 12px/28px 'Work Sans',sans-serif;text-align:center">1</span>
+              <span style="font:400 9px/1.3 'IBM Plex Mono',monospace;color:#8A7F70;text-align:center">1–2 Jan</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+              <span style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Windhoek · Khomas</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B">Stay · <span style="color:#B4552D">Joe's Place Self-Catering</span></span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B">Do · City &amp; craft market walk</span>
+              <div style="display:flex;gap:6px;padding-top:3px">
+                <span style="padding:5px 9px;border-radius:999px;background:#EAF1EC;font:500 11px/1 'Work Sans',sans-serif;color:#3F7D5C">▲ 2</span>
+                <span style="padding:5px 9px;border-radius:999px;background:#F3EADB;font:500 11px/1 'Work Sans',sans-serif;color:#8A7F70">💬 1</span>
+              </div>
+            </div>
+            <span style="font:600 13px/1 'Work Sans',sans-serif;color:#23201C">€ 63</span>
+          </div>
+          <div style="padding:7px 16px 7px 56px;background:#F6EEE1;border-bottom:1px solid #EDE3D2;font:400 10px/1 'IBM Plex Mono',monospace;color:#8A7F70">Drive 4 h 45 · 285 km</div>
+          <div style="padding:13px 16px;border-bottom:1px solid #EDE3D2;background:#FFFDF9;display:flex;gap:12px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+              <span style="width:28px;height:28px;border-radius:50%;background:#16283F;color:#F7F1E6;font:600 12px/28px 'Work Sans',sans-serif;text-align:center">2</span>
+              <span style="font:400 9px/1.3 'IBM Plex Mono',monospace;color:#8A7F70;text-align:center">2–3 Jan</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+              <span style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Waterberg · Otjozondjupa</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B">Stay · <span style="color:#B4552D">Okuti Kwa Dala Rest Camp</span></span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B">Do · Waterberg Plateau hike</span>
+              <span style="padding:7px 11px;border:1px solid #E4D9C6;border-radius:8px;background:#FAF6EF;font:500 11px/1 'Work Sans',sans-serif;color:#4A4238;align-self:flex-start;margin-top:3px">Choose room</span>
+            </div>
+            <span style="font:600 13px/1 'Work Sans',sans-serif;color:#23201C">€ 48</span>
+          </div>
+          <div style="padding:13px 16px;border-bottom:1px solid #EDE3D2;background:#FFFDF9;display:flex;gap:12px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+              <span style="width:28px;height:28px;border-radius:50%;background:#16283F;color:#F7F1E6;font:600 12px/28px 'Work Sans',sans-serif;text-align:center">3</span>
+              <span style="font:400 9px/1.3 'IBM Plex Mono',monospace;color:#8A7F70;text-align:center">3–4 Jan</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+              <span style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Waterberg · second night</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B">Do · Cheetah Conservation Fund</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#8A7F70">Dinner · not set</span>
+            </div>
+            <span style="font:600 13px/1 'Work Sans',sans-serif;color:#23201C">€ 48</span>
+          </div>
+          <div style="padding:7px 16px 7px 56px;background:#F6EEE1;border-bottom:1px solid #EDE3D2;font:400 10px/1 'IBM Plex Mono',monospace;color:#8A7F70">Drive 3 h 20 · 240 km</div>
+          <div style="padding:13px 16px;background:#FFFDF9;display:flex;gap:12px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+              <span style="width:28px;height:28px;border-radius:50%;background:#16283F;color:#F7F1E6;font:600 12px/28px 'Work Sans',sans-serif;text-align:center">4</span>
+              <span style="font:400 9px/1.3 'IBM Plex Mono',monospace;color:#8A7F70;text-align:center">4–5 Jan</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+              <span style="font:600 14px/1.3 'Work Sans',sans-serif;color:#16283F">Etosha East · Oshikoto</span>
+              <span style="font:400 12px/1.5 'Work Sans',sans-serif;color:#5E564B">Stay · <span style="color:#B4552D">Etosha Safari Campsite</span></span>
+            </div>
+            <span style="font:600 13px/1 'Work Sans',sans-serif;color:#23201C">€ 41</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:9px;padding:12px 16px;border-top:1px solid #E4D9C6;background:#FFFDF9">
+          <button style="flex:1;padding:15px;border:0;border-radius:12px;background:#16283F;color:#F7F1E6;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer">Book</button>
+          <button style="width:52px;height:50px;border:1px solid #C89A6E;border-radius:12px;background:#FBF2E8;color:#B4552D;font:600 15px/1 'Work Sans',sans-serif;cursor:pointer">↗</button>
+          <button style="width:52px;height:50px;border:0;border-radius:12px;background:#D9A34A;color:#3A2A12;font:600 15px/1 'Work Sans',sans-serif;cursor:pointer">K</button>
+        </div>
+      </div>
+
+      <div style="width:390px;height:800px;border-radius:34px;border:9px solid #23201C;overflow:hidden;background:#FAF6EF;box-shadow:0 30px 70px -30px rgba(35,32,28,.55);display:flex;flex-direction:column">
+        <div style="background:#16283F;padding:12px 20px 14px">
+          <div style="display:flex;justify-content:space-between;font:600 12px/1 'Work Sans',sans-serif;color:#F7F1E6"><span>9:41</span><span>▮▮▮ ◗</span></div>
+          <div style="margin-top:14px;font:600 16px/1.2 'Work Sans',sans-serif;color:#F7F1E6">Trip lists</div>
+          <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:#A9BACD">shared with Lena &amp; Tim</div>
+        </div>
+        <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:14px;overflow:hidden">
+          <div style="border:1px solid #E4D9C6;border-radius:14px;background:#FFFDF9;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #EDE3D2">
+              <span style="font:600 14px/1 'Work Sans',sans-serif;color:#16283F">Packing list</span>
+              <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#3F7D5C">12 / 34</span>
+            </div>
+            <div style="padding:6px 16px 12px;display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;gap:11px;padding:9px 0"><span style="width:19px;height:19px;border-radius:5px;background:#3F7D5C;color:#fff;font:600 12px/19px 'Work Sans',sans-serif;text-align:center">✓</span><span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#8A7F70;text-decoration:line-through">Sleeping bags (2)</span></div>
+              <div style="display:flex;align-items:center;gap:11px;padding:9px 0"><span style="width:19px;height:19px;border-radius:5px;background:#3F7D5C;color:#fff;font:600 12px/19px 'Work Sans',sans-serif;text-align:center">✓</span><span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#8A7F70;text-decoration:line-through">Head torches</span></div>
+              <div style="display:flex;align-items:center;gap:11px;padding:9px 0"><span style="width:19px;height:19px;border-radius:5px;border:2px solid #C7BBA7"></span><span style="flex:1;font:400 13px/1.4 'Work Sans',sans-serif;color:#23201C">20 l water canister</span><span style="width:20px;height:20px;border-radius:50%;background:#B4552D;color:#fff;font:600 9px/20px 'Work Sans',sans-serif;text-align:center">LM</span></div>
+              <div style="display:flex;align-items:center;gap:11px;padding:9px 0"><span style="width:19px;height:19px;border-radius:5px;border:2px solid #C7BBA7"></span><span style="flex:1;font:400 13px/1.4 'Work Sans',sans-serif;color:#23201C">Dust-proof bags</span></div>
+              <div style="display:flex;align-items:center;gap:11px;padding:9px 0"><span style="width:19px;height:19px;border-radius:5px;border:2px solid #C7BBA7"></span><span style="flex:1;font:400 13px/1.4 'Work Sans',sans-serif;color:#23201C">Malaria prophylaxis</span><span style="padding:3px 7px;border-radius:5px;background:#FBF2E8;font:500 10px/1 'IBM Plex Mono',monospace;color:#B4552D">Etosha</span></div>
+              <div style="font:500 12px/1 'Work Sans',sans-serif;color:#B4552D;padding:9px 0 2px;cursor:pointer">+ Add item</div>
+            </div>
+          </div>
+          <div style="border:1px solid #E4D9C6;border-radius:14px;background:#FFFDF9;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #EDE3D2">
+              <span style="font:600 14px/1 'Work Sans',sans-serif;color:#16283F">Vehicle handover check</span>
+              <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">0 / 18</span>
+            </div>
+            <div style="padding:6px 16px 12px;display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;gap:11px;padding:9px 0"><span style="width:19px;height:19px;border-radius:5px;border:2px solid #C7BBA7"></span><span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#23201C">Two spare wheels + jack</span></div>
+              <div style="display:flex;align-items:center;gap:11px;padding:9px 0"><span style="width:19px;height:19px;border-radius:5px;border:2px solid #C7BBA7"></span><span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#23201C">Tyre pressure &amp; compressor</span></div>
+              <div style="display:flex;align-items:center;gap:11px;padding:9px 0"><span style="width:19px;height:19px;border-radius:5px;border:2px solid #C7BBA7"></span><span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#23201C">Roof tent zips &amp; ladder</span></div>
+              <div style="display:flex;align-items:center;gap:11px;padding:9px 0"><span style="width:19px;height:19px;border-radius:5px;border:2px solid #C7BBA7"></span><span style="font:400 13px/1.4 'Work Sans',sans-serif;color:#23201C">Photo walk-around for damage</span></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px dashed #DDCFB9;border-radius:14px;background:#FFFDF9">
+            <div style="flex:1"><div style="font:600 13px/1.3 'Work Sans',sans-serif;color:#16283F">Offline PDF</div><div style="font:400 11px/1.5 'Work Sans',sans-serif;color:#7A7064">Full plan, maps, contacts · A4</div></div>
+            <button style="padding:11px 15px;border:1px solid #C89A6E;border-radius:10px;background:#FBF2E8;color:#B4552D;font:600 12px/1 'Work Sans',sans-serif;cursor:pointer">Export</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:390px;height:800px;border-radius:34px;border:9px solid #23201C;overflow:hidden;background:#FAF6EF;box-shadow:0 30px 70px -30px rgba(35,32,28,.55);display:flex;flex-direction:column">
+        <div style="position:relative;height:352px;background:linear-gradient(160deg,#E9DFC9,#DFD0B4 60%,#D6C4A4)">
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.2) 0 1px,transparent 1px 30px),repeating-linear-gradient(90deg,rgba(255,255,255,.2) 0 1px,transparent 1px 30px)"></div>
+          <div style="position:absolute;top:12px;left:20px;right:20px;display:flex;justify-content:space-between;font:600 12px/1 'Work Sans',sans-serif;color:#3A342C"><span>9:41</span><span>▮▮▮ ◗</span></div>
+          <div style="position:absolute;top:46px;left:16px;right:16px;padding:11px 14px;border-radius:12px;background:rgba(255,253,249,.94);border:1px solid #E4D9C6;display:flex;align-items:center;gap:10px">
+            <span style="width:9px;height:9px;border-radius:50%;background:#3F7D5C;animation:nwPulse 2.2s ease-in-out infinite"></span>
+            <span style="flex:1;font:500 12px/1.4 'Work Sans',sans-serif;color:#23201C">Live · Day 5 of 18</span>
+            <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">GPS on</span>
+          </div>
+          <div style="position:absolute;left:118px;top:186px;width:20px;height:20px;border-radius:50%;background:#16283F;border:4px solid rgba(22,40,63,.25)"></div>
+          <div style="position:absolute;left:196px;top:118px;width:26px;height:26px;border-radius:50%;background:#B4552D;color:#fff;font:600 11px/26px 'Work Sans',sans-serif;text-align:center">6</div>
+          <div style="position:absolute;left:66px;top:250px;width:26px;height:26px;border-radius:50%;background:rgba(35,32,28,.35);color:#fff;font:600 11px/26px 'Work Sans',sans-serif;text-align:center">4</div>
+          <div style="position:absolute;left:146px;top:150px;padding:5px 9px;border-radius:6px;background:#FFFDF9;border:1px solid #E4D9C6;font:400 10px/1 'IBM Plex Mono',monospace;color:#5E564B">1 h 12 left</div>
+        </div>
+        <div style="flex:1;padding:18px 16px;display:flex;flex-direction:column;gap:14px;background:#FAF6EF">
+          <div>
+            <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#B4552D">On the way to</div>
+            <h3 style="margin:8px 0 5px;font:400 24px/1.2 'Newsreader',serif;color:#16283F">Olifantsrus Camp</h3>
+            <div style="font:400 12px/1.5 'Work Sans',sans-serif;color:#7A7064">Etosha West · arrive ~15:20 · 78 km left</div>
+          </div>
+          <div style="display:flex;gap:9px">
+            <div style="flex:1;padding:12px 13px;border:1px solid #E4D9C6;border-radius:11px;background:#FFFDF9"><div style="font:400 10px/1 'IBM Plex Mono',monospace;color:#8A7F70">GATE CLOSES</div><div style="font:600 15px/1.3 'Work Sans',sans-serif;color:#23201C">18:45</div></div>
+            <div style="flex:1;padding:12px 13px;border:1px solid #E4D9C6;border-radius:11px;background:#FFFDF9"><div style="font:400 10px/1 'IBM Plex Mono',monospace;color:#8A7F70">FUEL</div><div style="font:600 15px/1.3 'Work Sans',sans-serif;color:#23201C">Outjo · 62 km</div></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:11px;padding:13px 14px;border-radius:12px;background:#F6EEE1;border:1px solid #EDE3D2">
+            <span style="width:26px;height:26px;border-radius:50%;background:#D9A34A;color:#3A2A12;font:600 12px/26px 'Work Sans',sans-serif;text-align:center">K</span>
+            <span style="flex:1;font:400 13px/1.55 'Work Sans',sans-serif;color:#3A342C">Sunset hide is best from 17:30. Fill up in Outjo — next fuel is 190 km on.</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8A7F70">Next up</div>
+            <div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid #E4D9C6;border-radius:11px;background:#FFFDF9"><span style="width:26px;height:26px;border-radius:8px;background:#F3EADB;font:600 11px/26px 'Work Sans',sans-serif;color:#16283F;text-align:center">6</span><span style="flex:1;font:400 13px/1.4 'Work Sans',sans-serif;color:#23201C">Sunset hide at Olifantsrus</span><span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">today</span></div>
+            <div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid #E4D9C6;border-radius:11px;background:#FFFDF9"><span style="width:26px;height:26px;border-radius:8px;background:#F3EADB;font:600 11px/26px 'Work Sans',sans-serif;color:#16283F;text-align:center">7</span><span style="flex:1;font:400 13px/1.4 'Work Sans',sans-serif;color:#23201C">Desert elephant tracking</span><span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#8A7F70">tomorrow</span></div>
+          </div>
+          <span style="flex:1"></span>
+          <button style="width:100%;padding:15px;border:0;border-radius:12px;background:#16283F;color:#F7F1E6;font:600 14px/1 'Work Sans',sans-serif;cursor:pointer">Open full plan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:1100},&quot;showCollabLayer&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Collaboration&quot;},&quot;showDriveTimes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Itinerary&quot;}}">
+class Component extends DCLogic {
+  get days() {
+    return [
+      { n: 1, dates: "1–2 Jan", region: "Khomas", place: "Windhoek", stay: "Joe's Place Self-Catering", activity: "City & craft market walk", dinner: "Joe's Beerhouse", drive: null, km: null, depart: null, arrive: null, cost: "€ 63" },
+      { n: 2, dates: "2–3 Jan", region: "Otjozondjupa", place: "Waterberg", stay: "Okuti Kwa Dala Rest Camp", activity: "Waterberg Plateau hike", dinner: "Braai at camp", drive: "4 h 45", km: 285, depart: "08:30", arrive: "13:15", cost: "€ 48" },
+      { n: 3, dates: "3–4 Jan", region: "Otjozondjupa", place: "Waterberg", stay: "Okuti Kwa Dala Rest Camp", activity: "Cheetah Conservation Fund", dinner: "—", drive: null, km: null, depart: null, arrive: null, cost: "€ 48" },
+      { n: 4, dates: "4–5 Jan", region: "Oshikoto", place: "Etosha East", stay: "Etosha Safari Campsite", activity: "Namutoni waterhole drive", dinner: "Camp restaurant", drive: "3 h 20", km: 240, depart: "09:00", arrive: "12:20", cost: "€ 41" },
+      { n: 5, dates: "5–6 Jan", region: "Oshikoto", place: "Halali", stay: "Halali Camp", activity: "Game drive Halali → Okaukuejo", dinner: "—", drive: "1 h 40", km: 75, depart: "07:15", arrive: "08:55", cost: "€ 44" },
+      { n: 6, dates: "6–7 Jan", region: "Kunene", place: "Etosha West", stay: "Olifantsrus Camp", activity: "Sunset hide at Olifantsrus", dinner: "—", drive: "2 h 10", km: 120, depart: "10:00", arrive: "12:10", cost: "€ 38" },
+      { n: 7, dates: "7–8 Jan", region: "Kunene", place: "Palmwag", stay: "Palmwag Lodge Campsite", activity: "Desert elephant tracking", dinner: "Lodge à la carte", drive: "3 h 05", km: 195, depart: "09:30", arrive: "12:35", cost: "€ 52" }
+    ];
+  }
+  renderVals() {
+    return { days: this.days, collab: this.props.showCollabLayer ?? true };
+  }
+}
+</script>
+</body>
+</html>
