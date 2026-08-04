@@ -41,6 +41,13 @@ set -e
 export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
 export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
 
+# R2 akzeptiert als "Region" nur seine eigenen Jurisdiction-Hints (wnam/enam/
+# weur/eeur/apac/oc/auto) — ohne expliziten Wert greift aws-cli sonst auf
+# AWS_DEFAULT_REGION/~/.aws/config der Maschine zurück (z.B. eine echte
+# AWS-Region für etwas anderes wie SES), was R2 dann ablehnt. "auto" ist R2s
+# eigener Catch-all und immer gültig.
+export AWS_DEFAULT_REGION=auto
+
 APP_NAME_IN_BACKUP="NamibWay"   # muss zu APP_NAME in der geretteten .env passen (config/backup.php: backup.name)
 APP_DIR="${APP_DIR:-/var/www/namibway}"
 WORK_DIR="$(mktemp -d)"

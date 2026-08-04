@@ -39,6 +39,14 @@ set -e
 export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
 export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
 
+# R2 only accepts its own jurisdiction hints as a "region" (wnam/enam/weur/
+# eeur/apac/oc/auto) — aws-cli otherwise falls back to whatever
+# AWS_DEFAULT_REGION or ~/.aws/config on the machine happens to have (e.g. a
+# real AWS region set up for something unrelated, like SES), which R2 then
+# rejects outright. "auto" is R2's own catch-all and always valid. An env var
+# here overrides both an ambient AWS_DEFAULT_REGION and ~/.aws/config.
+export AWS_DEFAULT_REGION=auto
+
 APP_NAME_IN_BACKUP="NamibWay"
 APPLY=false
 [ "$1" = "--apply" ] && APPLY=true
