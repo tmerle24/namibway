@@ -2677,6 +2677,21 @@ body:has(.kaia-page) {
         display: flex;
         flex-direction: column;
         box-sizing: border-box;
+        /* The root `.kaia-page` rule (top of this file) sets an unconditional
+           `min-height: 100vh`. min-height always wins over a smaller `height`
+           on the same box — that's the CSS box model's normal clamping
+           behavior, not something selector specificity can override, since
+           they're two different properties. On a real phone, 100vh is the
+           browser's *large* viewport size (chrome hidden/collapsed), which
+           is taller than what's actually on screen whenever the browser's
+           address bar/toolbar is visible — so every previous attempt here
+           (100dvh, then 100svh) was silently clamped straight back up to the
+           too-tall 100vh the moment it produced a smaller value, which is
+           exactly why neither one visibly changed anything on a real iPhone
+           in Chrome or Safari despite working in every synthetic test.
+           `min-height: 0` cancels that inherited floor so the `height` below
+           can actually take effect. */
+        min-height: 0;
         /* `height`, not `min-height`: this must be a hard cap, not a floor.
            A floor lets the column grow past the viewport whenever the hero's
            own content (heading + subtitle + chat card) is taller than the
@@ -2686,23 +2701,16 @@ body:has(.kaia-page) {
            #kaia-hero scroll internally (below) keeps the nav pinned in view
            no matter how tall the hero content gets.
 
-           100svh, not 100dvh: dvh is *dynamic* — it's meant to track the
-           browser chrome shrinking/growing as the user scrolls. But on
-           first paint, before any scroll/resize has happened, both iPhone
-           Chrome and Safari were observed reporting a dvh taller than what's
-           actually visible with their chrome on screen (Chrome's toolbars
-           don't collapse on scroll at all, so its dvh never catches up;
-           Safari draws its compact bottom bar as an overlay on top of the
-           page rather than shrinking the layout viewport under it, so a
-           dvh-sized box renders partly behind it). Both bugs have the same
-           shape: the column ends up taller than the actually-visible
-           screen, so its last child — the footer nav — lands out of view or
-           under the browser's own bar. svh is the *smallest* possible
-           viewport (assumes the chrome is fully shown, never collapses),
-           which is exactly the conservative floor a pinned bottom nav
-           needs: it can never render taller than what's truly on screen. */
+           --app-vh (set in app.ts from window.visualViewport) is the
+           authoritative value: it's the browser reporting the real, current
+           pixel height directly, rather than us guessing which of vh/svh/dvh
+           semantics a given engine actually implements correctly — that
+           guessing is what went wrong with the two earlier attempts. The
+           vh/svh chain only matters for the brief window before that JS runs
+           (or on the rare chance it never does). */
         height: 100vh;
         height: 100svh;
+        height: var(--app-vh, 100svh);
         overflow: hidden;
         padding-bottom: 0;
     }
