@@ -2604,13 +2604,35 @@ body:has(.kaia-page) {
         display: flex;
         flex-direction: column;
         box-sizing: border-box;
-        min-height: 100vh;
-        min-height: 100dvh;
+        /* `height`, not `min-height`: this must be a hard cap, not a floor.
+           A floor lets the column grow past the viewport whenever the hero's
+           own content (heading + subtitle + chat card) is taller than the
+           available space — which pushes the footer nav below it, off the
+           bottom of the screen, since the nav is just this column's static
+           last child (see below). That's exactly what happened on iPhone
+           Chrome: its address bar + bottom toolbar together leave less
+           height than Safari's chrome does, so the hero routinely exceeded
+           100dvh and the nav became unreachable without scrolling — i.e.
+           not "fixed" at all from the user's point of view. Capping the
+           column's height and letting #kaia-hero scroll internally (below)
+           keeps the nav pinned in view no matter how tall the hero content
+           or how little height the browser chrome leaves. */
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
         padding-bottom: 0;
     }
 
     .kaia-page[data-mobile-section='kaia']:not(.has-plan) #kaia-hero {
         flex: 1;
+        /* Overrides .hero's own `min-height: 560px` floor, which would
+           otherwise force this element past the space flex:1 actually gives
+           it. min-height: 0 lets it shrink to that space and scroll its own
+           overflow internally instead of expanding the whole column past
+           the viewport. */
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     /* Two prior attempts tried to reserve exact pixel clearance above the
