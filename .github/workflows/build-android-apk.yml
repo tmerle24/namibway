@@ -66,4 +66,4 @@ jobs:
       - name: Print download URL
         run: |
           echo "### Android debug APK" >> "$GITHUB_STEP_SUMMARY"
-          echo "${{ secrets.CLOUDFLARE_R2_URL }}/app-builds/android/namibway-debug.apk" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ vars.CLOUDFLARE_R2_URL }}/app-builds/android/namibway-debug.apk" >> "$GITHUB_STEP_SUMMARY"
