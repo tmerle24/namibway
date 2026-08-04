@@ -9,6 +9,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false # Läufe nacheinander abarbeiten statt parallel SSHen — sonst Race Condition auf demselben Server-Verzeichnis bei schnell aufeinanderfolgenden Merges
+
 jobs:
   deploy:
     if: github.event.workflow_run.conclusion == 'success' # ...und erfolgreich waren
