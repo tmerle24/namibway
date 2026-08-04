@@ -1520,6 +1520,9 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         trip_params: currentTripParams,
                     }"
                     :token="savedTokens[variantIndex] ?? null"
+                    :existing-token="
+                        editableVariants.length === 1 ? currentToken : null
+                    "
                     :is-logged-in="isLoggedIn"
                     @saved="
                         (token) => {

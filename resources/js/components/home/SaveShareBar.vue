@@ -8,6 +8,13 @@ import SaveLoginModal from './SaveLoginModal.vue';
 const props = defineProps<{
     plan: ItineraryPlan;
     token: string | null;
+    // The whole-session token already sitting behind the ?trip= URL (see
+    // ItinerarySection's currentToken) — distinct from `token` above (a
+    // per-variant token minted by *this* component's own save). Passed
+    // only for the common single-variant case, where the plan is already
+    // persisted and a fresh save() would otherwise mint a redundant,
+    // diverging token.
+    existingToken?: string | null;
     isLoggedIn?: boolean;
 }>();
 
@@ -39,6 +46,18 @@ async function save() {
 
     if (props.isLoggedIn === false) {
         emit('need-auth');
+
+        return;
+    }
+
+    // Already auto-persisted under existingToken (the common single-variant
+    // case) — build the share link from that instead of minting a second,
+    // orphaned SavedPlan row whose token would diverge from the one already
+    // in the address bar.
+    if (props.existingToken) {
+        const url = `${window.location.origin}/trip/${props.existingToken}`;
+        shareUrl.value = url;
+        emit('saved', props.existingToken, url);
 
         return;
     }
