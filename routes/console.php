@@ -13,7 +13,9 @@ Schedule::command('backup:run')->dailyAt('02:00')->onOneServer();
 Schedule::command('backup:clean')->dailyAt('03:00')->onOneServer();
 Schedule::command('backup:monitor')->dailyAt('04:00')->onOneServer();
 
-Schedule::command('listings:nightly-enrich')->dailyAt('01:00')->onOneServer();
+// Paused 2026-08-04: Claude API costs from the enrichment pipeline were running too
+// high. Re-enable (with a smaller nightly_batch_size) once understood.
+// Schedule::command('listings:nightly-enrich')->dailyAt('01:00')->onOneServer();
 
 // One-off backlog of ~7000 listings with an address but no lat/lng (older data
 // predating ListingController::show()'s on-view geocode fallback). Cheap once the
