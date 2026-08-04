@@ -32,8 +32,12 @@ set -e
 # cp`/`sync`/`mv` that Cloudflare R2's S3-compatible API rejects with a plain
 # 400 on the HeadObject preflight — `aws s3api` calls (list-objects-v2 below)
 # are unaffected since they don't send these headers, which is why the listing
-# step can succeed while the download step 400s. Confirmed live 2026-08-04.
+# step can succeed while the download step 400s. Confirmed live 2026-08-04;
+# REQUEST alone wasn't enough to unblock a retry the next day (fresh SSH
+# session — or R2 also rejecting the response-checksum validation aws-cli
+# does on the way back), so both directions are disabled here.
 export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
+export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
 
 APP_NAME_IN_BACKUP="NamibWay"
 APPLY=false
