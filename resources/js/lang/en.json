@@ -127,6 +127,10 @@
         "chooseRoom": "Choose room",
         "changeRoom": "Change",
         "perNight": "night",
+        "stayLabel": "Stay",
+        "activityLabel": "Activity",
+        "dinnerLabel": "Dining",
+        "forTravelers": "for {count}",
         "roomPlaceholderNote": "Illustrative rooms — final selection and live rates come at booking.",
         "roomTypes": {
             "standard": "Standard Room",

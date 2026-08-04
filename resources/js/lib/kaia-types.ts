@@ -10,6 +10,7 @@ export interface ItineraryListingRef {
     image?: string | null;
     gallery?: string[];
     city?: string | null;
+    region?: string | null;
 }
 
 // Placeholder room-type content — not backed by RoomType/live availability

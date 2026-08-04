@@ -380,6 +380,7 @@ class ItineraryService
                 'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
                 'gallery' => $this->resolveGallery($listing),
                 'city' => $listing->city?->name,
+                'region' => $listing->region,
             ];
         }
 
@@ -388,7 +389,7 @@ class ItineraryService
                 return null;
             }
 
-            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null];
+            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'region' => null];
         };
 
         $plan['variants'] = array_map(function (array $variant) use ($resolve, $listings) {
@@ -508,6 +509,7 @@ class ItineraryService
                 'image' => $fallback->image ? Controller::resolveMediaUrl($fallback->image) : null,
                 'gallery' => $this->resolveGallery($fallback),
                 'city' => $fallback->city?->name,
+                'region' => $fallback->region,
             ];
         }
 
@@ -576,6 +578,7 @@ class ItineraryService
                 'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
                 'gallery' => $this->resolveGallery($listing),
                 'city' => $listing->city?->name,
+                'region' => $listing->region,
             ])
             ->values()
             ->all();
@@ -796,7 +799,7 @@ class ItineraryService
     }
 
     /**
-     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null}|null
+     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, region: string|null}|null
      */
     private function toAccommodationReference(?Listing $listing): ?array
     {
@@ -816,6 +819,7 @@ class ItineraryService
             'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
             'gallery' => $this->resolveGallery($listing),
             'city' => $listing->city?->name,
+            'region' => $listing->region,
         ];
     }
 
