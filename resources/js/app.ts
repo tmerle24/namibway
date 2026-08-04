@@ -60,3 +60,22 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js');
     });
 }
+
+// Expose the *actually visible* viewport height as a CSS custom property.
+// CSS's own svh/dvh/lvh units are each a guess at what a given mobile
+// browser's chrome (address bar, bottom toolbar) leaves on screen, and that
+// guess has repeatedly been wrong in practice — iPhone Chrome and Safari
+// both reported viewport-unit values taller than what's really visible with
+// their chrome on screen (see kaia-home.css's mobile Kaia-tab layout,
+// --app-vh's only consumer). window.visualViewport (or innerHeight as a
+// fallback for older WebKit/PWA/native-wrapper contexts without it) is the
+// browser telling us the real, current pixel count instead — no guessing
+// about which viewport-unit semantics a given engine implements.
+function updateAppViewportHeight() {
+    const height = window.visualViewport?.height ?? window.innerHeight;
+    document.documentElement.style.setProperty('--app-vh', `${height}px`);
+}
+updateAppViewportHeight();
+window.visualViewport?.addEventListener('resize', updateAppViewportHeight);
+window.addEventListener('resize', updateAppViewportHeight);
+window.addEventListener('orientationchange', updateAppViewportHeight);
