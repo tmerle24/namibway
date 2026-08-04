@@ -31,6 +31,13 @@
 #
 set -e
 
+# aws-cli v2.13+ schickt bei `s3 cp`/`sync`/`mv` standardmäßig zusätzliche
+# Request-Checksum-Header, die Cloudflare R2s S3-kompatible API mit einem
+# blanken 400 beim HeadObject-Preflight ablehnt — `aws s3api`-Aufrufe sind
+# davon nicht betroffen. Live bestätigt 2026-08-04 (siehe
+# restore-listing-city-ids.sh, das denselben Download-Schritt macht).
+export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
+
 APP_NAME_IN_BACKUP="NamibWay"   # muss zu APP_NAME in der geretteten .env passen (config/backup.php: backup.name)
 APP_DIR="${APP_DIR:-/var/www/namibway}"
 WORK_DIR="$(mktemp -d)"

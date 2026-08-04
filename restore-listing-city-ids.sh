@@ -28,6 +28,13 @@
 #
 set -e
 
+# aws-cli v2.13+ defaults to sending extra request-checksum headers on `s3
+# cp`/`sync`/`mv` that Cloudflare R2's S3-compatible API rejects with a plain
+# 400 on the HeadObject preflight — `aws s3api` calls (list-objects-v2 below)
+# are unaffected since they don't send these headers, which is why the listing
+# step can succeed while the download step 400s. Confirmed live 2026-08-04.
+export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
+
 APP_NAME_IN_BACKUP="NamibWay"
 APPLY=false
 [ "$1" = "--apply" ] && APPLY=true
