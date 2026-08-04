@@ -1153,6 +1153,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                             + {{ t('itinerary.addDay') }}
                         </button>
 
+                        <div class="itinerary-timeline">
                         <draggable
                             v-model="editableVariants[variantIndex].days"
                             item-key="day"
@@ -1170,9 +1171,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                     class="day-item"
                                 >
                                     <div v-if="dayIndex > 0" class="day-connector">
-                                        <div class="day-connector-rail">
-                                            <span class="day-connector-line"></span>
-                                        </div>
+                                        <div class="day-connector-rail"></div>
                                         <div class="day-connector-content">
                                         <div
                                             v-if="
@@ -1789,6 +1788,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                 </div>
                             </template>
                         </draggable>
+                        </div>
 
                         <button
                             type="button"

@@ -777,7 +777,7 @@ body:has(.kaia-page) {
     white-space: nowrap;
 }
 /* Timeline: .day-connector and .day-content are each their own 2-column
-   grid (rail | content) using the SAME template, so the connector line
+   grid (rail | content) using the SAME template, so the drive-time chip
    above a card and the marker/card below it always share the same rail
    x-position — no JS measurement needed, unlike the map column's
    sticky-height hack above. Each grid always gets exactly two children
@@ -786,7 +786,15 @@ body:has(.kaia-page) {
    CSS Grid auto-placement across a *varying* number of children here
    previously caused the rail and card to swap columns whenever the chip
    was absent, since auto-placement fills row-1's second slot with
-   whatever comes next rather than starting a new row. */
+   whatever comes next rather than starting a new row.
+
+   The connecting rail LINE itself is deliberately not drawn per-item
+   (a per-connector line segment left visible gaps above/below it, since
+   real spacing between a card and the next marker comes from margins/
+   padding outside that segment's own row — .day-card's margin-bottom,
+   .day-rail's padding-top — which the segment had no way to reach). It's
+   one continuous background line on .itinerary-timeline instead (below),
+   so it's never broken by any single item's box model. */
 .kaia-page .day-item {
     font-size: 13.5px;
 }
@@ -795,15 +803,6 @@ body:has(.kaia-page) {
     display: grid;
     grid-template-columns: 40px 1fr;
     column-gap: 14px;
-}
-.kaia-page .day-connector-rail {
-    display: flex;
-    justify-content: center;
-}
-.kaia-page .day-connector-line {
-    width: 2px;
-    min-height: 22px;
-    background: var(--sand-dark);
 }
 .kaia-page .day-connector-content {
     display: flex;
@@ -815,6 +814,8 @@ body:has(.kaia-page) {
     align-items: center;
     gap: 4px;
     padding-top: 14px;
+    position: relative;
+    z-index: 1;
 }
 .kaia-page .day-rail .drag-handle {
     font-size: 12px;
@@ -828,12 +829,30 @@ body:has(.kaia-page) {
     transform: none;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
+/* Wraps just the <draggable> day list (not the "+ Tag hinzufügen" buttons
+   outside it) so the ::before line's 0/100% top/bottom exactly spans the
+   day markers and nothing else. */
+.kaia-page .itinerary-timeline {
+    position: relative;
+}
+.kaia-page .itinerary-timeline::before {
+    content: '';
+    position: absolute;
+    top: 28px;
+    bottom: 0;
+    left: 20px;
+    width: 2px;
+    background: var(--sand-dark);
+    z-index: 0;
+}
 .kaia-page .day-card {
     background: var(--paper);
     border: 1px solid var(--sand-dark);
     border-radius: 12px;
     padding: 14px 16px;
     margin-bottom: 14px;
+    position: relative;
+    z-index: 1;
 }
 /* Continuation day within a multi-night stage (no marker, no header — see
    isStageStart in ItinerarySection.vue): sits close under the stage's own
@@ -890,9 +909,9 @@ body:has(.kaia-page) {
     margin: 2px 0 10px;
 }
 .kaia-page .day-card-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
-    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 .kaia-page .day-card-box {
     border: 1px solid var(--sand-dark);
