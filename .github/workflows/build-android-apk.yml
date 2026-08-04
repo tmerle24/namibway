@@ -29,7 +29,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
           cache: gradle
 
       - name: Install dependencies
@@ -48,3 +48,22 @@ jobs:
           name: namibway-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
+
+      # Also publish to the same public R2 bucket the app uses for media (see
+      # config/filesystems.php's `r2` disk) under a distinct prefix, so there's
+      # a stable, no-login-required URL to hand to testers (e.g. the co-founder)
+      # instead of a GitHub Actions artifact link, which requires repo access.
+      - name: Upload APK to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          aws s3 cp android/app/build/outputs/apk/debug/app-debug.apk \
+            "s3://${{ secrets.CLOUDFLARE_R2_BUCKET }}/app-builds/android/namibway-debug.apk" \
+            --endpoint-url "${{ secrets.CLOUDFLARE_R2_ENDPOINT }}"
+
+      - name: Print download URL
+        run: |
+          echo "### Android debug APK" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ secrets.CLOUDFLARE_R2_URL }}/app-builds/android/namibway-debug.apk" >> "$GITHUB_STEP_SUMMARY"
