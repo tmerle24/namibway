@@ -5,11 +5,13 @@ namespace App\Services\Kaia;
 use App\Connectors\ConnectorFactory;
 use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
 use App\Http\Controllers\Controller;
+use App\Models\City;
 use App\Models\Listing;
 use App\Models\RouteTemplate;
 use App\Models\RouteTemplateStop;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use RuntimeException;
@@ -45,16 +47,28 @@ class ItineraryService
 
     /**
      * Real one-way driving durations (hours) between Namibia's 14 political
-     * regions used on Listing::region, verified via OSRM against a
-     * representative town/waypoint per region (Windhoek, Otjiwarongo,
-     * Okaukuejo/Etosha, Swakopmund, Sesriem, Fish River Canyon area, Eenhana,
-     * Outapi, Oshakati, Tsumeb, Rundu, Nkurenkuru, Katima Mulilo, Gobabis) —
-     * not left to the model's memory (see CLAUDE.md: Claude is not the
-     * source of truth for Namibian driving distances). Keyed alphabetically
-     * ("A|B") so lookup doesn't care about direction. The original 6-region
-     * loop's pairs are hand-verified; the 8 later-added northern/eastern
-     * regions are OSRM-only (no current partner content there — see
-     * routingGuidance(), which still only recommends the original loop).
+     * regions, verified via OSRM against a representative town/waypoint per
+     * region (Windhoek, Otjiwarongo, Okaukuejo/Etosha, Swakopmund, Sesriem,
+     * Fish River Canyon area, Eenhana, Outapi, Oshakati, Tsumeb, Rundu,
+     * Nkurenkuru, Katima Mulilo, Gobabis) — not left to the model's memory
+     * (see CLAUDE.md: Claude is not the source of truth for Namibian driving
+     * distances). Keyed alphabetically ("A|B") so lookup doesn't care about
+     * direction. The original 6-region loop's pairs are hand-verified; the 8
+     * later-added northern/eastern regions are OSRM-only (no current partner
+     * content there — see routingGuidance(), which still only recommends the
+     * original loop).
+     *
+     * Kaia's day-by-day `location` field and its hard driving-time safety
+     * check now operate at City granularity (see the city_driving_hours DB
+     * table, populated by namibway:backfill-city-driving-hours via OSRM's
+     * Table API — regenerating a 100+-city equivalent of this constant by
+     * hand isn't practical). This table is kept as the fallback for city
+     * pairs the DB matrix doesn't cover (small settlements excluded from the
+     * backfill) and to drive the macro "which regions are reachable on a
+     * trip this long" prompt guidance (routingGuidance()/
+     * mediumLoopGuidance()/drivingSafetyGuidance()), which stays region-level
+     * since a city-level equivalent is too large to put in the prompt without
+     * blowing Kaia's latency budget.
      *
      * @var array<string, float>
      */
@@ -161,6 +175,19 @@ class ItineraryService
 
     /** Ideal target quoted in the prompt guidance; not itself enforced. */
     private const TARGET_DRIVING_HOURS = 5.0;
+
+    /**
+     * Lazily-loaded, instance-lifetime caches — this service is resolved
+     * fresh per request (no singleton binding), so caching here never leaks
+     * stale data across requests while still avoiding N queries across the
+     * ~30 day-pairs a single itinerary validation can touch.
+     *
+     * @var array<string, float>|null
+     */
+    private ?array $cityHoursCache = null;
+
+    /** @var Collection<string, City>|null keyed by lowercased city name */
+    private ?Collection $cityIndex = null;
 
     public function __construct(private readonly AnthropicClient $client) {}
 
@@ -432,7 +459,7 @@ class ItineraryService
      * marker. Backfill deterministically instead of trusting the model:
      * first from a neighboring day at the same location (keeps the
      * "same lodge for several nights" pattern), then as a last resort any
-     * published accommodation in that region, so every day gets a real point.
+     * published accommodation in that city, so every day gets a real point.
      *
      * @param  array<int, array<string, mixed>>  $days
      * @param  Collection<int, Listing>  $listings
@@ -454,16 +481,16 @@ class ItineraryService
             }
         }
 
-        $accommodationsByRegion = $listings
+        $accommodationsByCity = $listings
             ->filter(fn (Listing $listing) => $listing->type->value === 'accommodation')
-            ->groupBy(fn (Listing $listing) => mb_strtolower((string) $listing->region));
+            ->groupBy(fn (Listing $listing) => mb_strtolower((string) $listing->city?->name));
 
         foreach ($days as &$day) {
             if ($day['accommodation'] !== null) {
                 continue;
             }
 
-            $fallback = $accommodationsByRegion->get(mb_strtolower((string) $day['location']))?->first();
+            $fallback = $accommodationsByCity->get(mb_strtolower((string) $day['location']))?->first();
 
             if ($fallback === null) {
                 continue;
@@ -491,7 +518,8 @@ class ItineraryService
 
     /**
      * Find up to 5 published alternatives for a given listing — same type,
-     * preferring same region and adjacent budget tier. No AI involved.
+     * preferring same city, then same region, then adjacent budget tier
+     * alone. No AI involved.
      *
      * @return array<int, array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, image: string|null, gallery: array<int, string>, city: string|null}>
      */
@@ -511,21 +539,27 @@ class ItineraryService
         }
 
         $excludedTier = $excluded ? $this->budgetTier($excluded->price_from) : null;
+        $excludedCity = $excluded?->city?->name;
         $excludedRegion = $excluded?->region;
 
-        // Narrow: same region + adjacent budget tier
-        $narrow = $pool->filter(function (Listing $listing) use ($excludedRegion, $excludedTier) {
-            $regionMatch = $excludedRegion === null || $listing->region === $excludedRegion;
-            $tierMatch = $excludedTier === null || $this->budgetTierDistance($listing->price_from, $excludedTier) <= 1;
+        $tierMatches = fn (Listing $listing) => $excludedTier === null
+            || $this->budgetTierDistance($listing->price_from, $excludedTier) <= 1;
 
-            return $regionMatch && $tierMatch;
-        });
+        // Tier 1: same city + adjacent budget tier
+        $narrow = $pool->filter(fn (Listing $listing) => $excludedCity !== null
+            && $listing->city?->name === $excludedCity
+            && $tierMatches($listing));
 
-        // Fallback: adjacent budget tier only (ignore region)
+        // Tier 2: same region + adjacent budget tier
+        if ($narrow->isEmpty()) {
+            $narrow = $pool->filter(fn (Listing $listing) => $excludedRegion !== null
+                && $listing->region === $excludedRegion
+                && $tierMatches($listing));
+        }
+
+        // Tier 3: adjacent budget tier only (ignore city/region)
         if ($narrow->isEmpty() && $excludedTier !== null) {
-            $narrow = $pool->filter(
-                fn (Listing $listing) => $this->budgetTierDistance($listing->price_from, $excludedTier) <= 1
-            );
+            $narrow = $pool->filter($tierMatches);
         }
 
         $candidates = $narrow->isNotEmpty() ? $narrow : $pool;
@@ -830,11 +864,13 @@ class ItineraryService
             future version of this product may offer alternative variants again; for now, put all your
             effort into one excellent plan rather than splitting it across several.)
 
-            For each day's "location" field, use the listing's exact "region" value — e.g. "Khomas",
-            "Erongo", "Hardap", "Kunene", "Otjozondjupa", "Karas". Never use a park or tourist-area name
-            (e.g. "Etosha") even if that's what the traveler said — look up which of those region values
-            the chosen listing actually carries and use that instead. These values are used to draw the
-            route on the trip map and must match a real region exactly.
+            For each day's "location" field, use the listing's exact "city" value — e.g. "Swakopmund",
+            "Otjiwarongo", "Sesriem", "Windhoek". Never use a park or tourist-area name (e.g. "Etosha")
+            even if that's what the traveler said — look up which of those city values the chosen listing
+            actually carries and use that instead. These values are used to draw the route on the trip map
+            and to check real driving times between consecutive days, so they must match a real city
+            exactly — stay within the regions named in the ROUTE guidance above, but pick the specific city
+            each chosen listing is actually in.
 
             For each day's "date" field, compute the calendar date from the trip's "travel_period" start
             date: if travel_period is "14 August 2026", day 1 is "14 Aug 2026", day 2 is "15 Aug 2026",
@@ -866,12 +902,11 @@ class ItineraryService
             list, day-by-day plan, or any XML/tag-like markup inside it. "variants" must be a real JSON
             array value on the tool input, not a string.
 
-            Unlike a day's "location" field (which must be the political region — see above), the
-            "trip_summary" paragraph is read by the traveler and must speak in real place names: towns,
-            parks, and landmarks (e.g. "Windhoek", "Etosha", "Swakopmund", "Sossusvlei", "the Skeleton
-            Coast") rather than the formal region name that contains them (e.g. never say "Otjozondjupa"
-            or "Hardap" in the summary — say what's actually there, like "the Waterberg area" or "the red
-            dunes of Sossusvlei").
+            Unlike a day's "location" field (which must be the listing's exact city — see above), the
+            "trip_summary" paragraph is read by the traveler and can speak more freely: parks and
+            landmarks near the city, not just the city name itself (e.g. "Etosha" near Okaukuejo/Outjo,
+            "Sossusvlei" near Sesriem, "the Skeleton Coast" near Swakopmund) — say what's actually there for
+            the traveler, not just the town they're staying in.
 
             All text fields in the final plan (trip_summary, location, accommodation, activity, restaurant,
             vehicle) must be plain text — no markdown formatting or emoji.
@@ -1022,9 +1057,9 @@ class ItineraryService
     /**
      * Backstop for drivingSafetyGuidance() — a prompt instruction is a
      * request, not a guarantee. Walks each variant's days and flags any
-     * single-day region change whose real driving time exceeds the hard
-     * cap, so generate() can retry with corrective feedback instead of
-     * silently shipping a plan that would require illegal/unsafe driving.
+     * single-day city change whose real driving time exceeds the hard cap,
+     * so generate() can retry with corrective feedback instead of silently
+     * shipping a plan that would require illegal/unsafe driving.
      *
      * @param  array{variants: array<int, array<string, mixed>>}  $plan
      * @return array<int, string>
@@ -1035,26 +1070,26 @@ class ItineraryService
 
         foreach ($plan['variants'] as $variant) {
             $prevDay = null;
-            $prevRegion = null;
+            $prevCity = null;
 
             foreach ($variant['days'] ?? [] as $day) {
-                $region = $this->canonicalRegion((string) ($day['location'] ?? ''));
+                $city = $this->canonicalCity((string) ($day['location'] ?? ''));
 
-                if ($region === null) {
+                if ($city === null) {
                     continue;
                 }
 
-                if ($prevRegion !== null && $prevRegion !== $region) {
-                    $hours = $this->drivingHours($prevRegion, $region);
+                if ($prevCity !== null && $prevCity->id !== $city->id) {
+                    $hours = $this->drivingHours($prevCity, $city);
 
                     if ($hours !== null && $hours > self::MAX_DRIVING_HOURS) {
-                        $violations[] = "Day {$prevDay}\u{2192}{$day['day']}: {$prevRegion} \u{2192} "
-                            ."{$region} is ~{$hours}h driving, over the ".self::MAX_DRIVING_HOURS
+                        $violations[] = "Day {$prevDay}\u{2192}{$day['day']}: {$prevCity->name} \u{2192} "
+                            ."{$city->name} is ~{$hours}h driving, over the ".self::MAX_DRIVING_HOURS
                             .'h daily limit';
                     }
                 }
 
-                $prevRegion = $region;
+                $prevCity = $city;
                 $prevDay = $day['day'] ?? $prevDay;
             }
         }
@@ -1069,9 +1104,63 @@ class ItineraryService
     {
         return 'Your previous itinerary broke the daily driving-time safety limit on these legs: '
             .implode('; ', $violations).'. Fix this by keeping the traveler an extra night in the '
-            .'region they are departing from before continuing (splitting the drive across two days), '
+            .'city they are departing from before continuing (splitting the drive across two days), '
             .'not by attempting the whole distance in a single day. Re-plan the full itinerary with this '
-            .'correction — keep the total day count and start/end regions the same.';
+            .'correction — keep the total day count and start/end locations the same.';
+    }
+
+    /**
+     * Looks up the real driving time between two cities. Tries the
+     * city_driving_hours DB table first (real OSRM data, see
+     * OsrmDrivingTimeService / namibway:backfill-city-driving-hours). If the
+     * pair isn't covered there (e.g. one of the cities is a small settlement
+     * excluded from that backfill), falls back to the region-level
+     * DRIVING_HOURS table — but only when the two cities are in different
+     * regions; a same-region pair missing from the city matrix returns null
+     * ("can't validate, skip") rather than fabricating an intra-region
+     * estimate, consistent with the existing null-skip semantics for any
+     * unknown pair.
+     */
+    private function drivingHours(City $a, City $b): ?float
+    {
+        if ($a->id === $b->id) {
+            return 0.0;
+        }
+
+        $cityHours = $this->cityDrivingHours($a->id, $b->id);
+
+        if ($cityHours !== null) {
+            return $cityHours;
+        }
+
+        if ($a->region_id === $b->region_id || $a->region === null || $b->region === null) {
+            return null;
+        }
+
+        return $this->regionDrivingHours($a->region->name, $b->region->name);
+    }
+
+    /**
+     * @return array<string, float>
+     */
+    private function cityHoursIndex(): array
+    {
+        if ($this->cityHoursCache === null) {
+            $this->cityHoursCache = DB::table('city_driving_hours')
+                ->get(['city_a_id', 'city_b_id', 'hours'])
+                ->mapWithKeys(fn ($row) => ["{$row->city_a_id}|{$row->city_b_id}" => (float) $row->hours])
+                ->all();
+        }
+
+        return $this->cityHoursCache;
+    }
+
+    private function cityDrivingHours(int $cityAId, int $cityBId): ?float
+    {
+        $a = min($cityAId, $cityBId);
+        $b = max($cityAId, $cityBId);
+
+        return $this->cityHoursIndex()["{$a}|{$b}"] ?? null;
     }
 
     /**
@@ -1080,7 +1169,7 @@ class ItineraryService
      * only when the pair isn't in the table (shouldn't happen for any of
      * the 14 known regions) — callers treat null as "can't validate, skip".
      */
-    private function drivingHours(string $a, string $b): ?float
+    private function regionDrivingHours(string $a, string $b): ?float
     {
         if ($a === $b) {
             return 0.0;
@@ -1092,13 +1181,16 @@ class ItineraryService
     }
 
     /**
-     * Maps a possibly loosely-cased/whitespaced region string from the AI's
-     * output back to the canonical spelling used as a DRIVING_HOURS key.
-     * Returns null for anything that isn't one of the 14 known regions
-     * (park/tourist-area names Claude was told not to use, typos, etc.) —
-     * we simply can't validate driving time for those.
+     * Maps a possibly loosely-cased/whitespaced city string from the AI's
+     * `location` output back to the real City it names — the region-level
+     * fallback inside drivingHours() reads region_id/region straight off
+     * the returned model, so this returns a City, not just a canonical
+     * string (unlike the old region-string version this replaced). Returns
+     * null for anything that isn't a real city (park/tourist-area names
+     * Claude was told not to use, typos, etc.) — that day is simply skipped
+     * from driving-time validation.
      */
-    private function canonicalRegion(string $name): ?string
+    private function canonicalCity(string $name): ?City
     {
         $name = trim($name);
 
@@ -1106,13 +1198,11 @@ class ItineraryService
             return null;
         }
 
-        foreach (config('kaia.regions', []) as $region) {
-            if (mb_strtolower($region) === mb_strtolower($name)) {
-                return $region;
-            }
+        if ($this->cityIndex === null) {
+            $this->cityIndex = City::query()->with('region')->get()->keyBy(fn (City $city) => mb_strtolower($city->name));
         }
 
-        return null;
+        return $this->cityIndex->get(mb_strtolower($name));
     }
 
     /**
@@ -1171,7 +1261,7 @@ class ItineraryService
                                         'properties' => [
                                             'day' => ['type' => 'integer'],
                                             'date' => ['type' => 'string', 'description' => 'Calendar date for this day, e.g. "14 Aug 2026". Computed from travel_period start date.'],
-                                            'location' => ['type' => 'string', 'description' => 'Exact region value from the listing catalog, e.g. "Khomas", "Kunene", "Erongo" — never a park/tourist-area name like "Etosha"'],
+                                            'location' => ['type' => 'string', 'description' => 'Exact city value from the listing catalog, e.g. "Swakopmund", "Otjiwarongo", "Sesriem" — never a park/tourist-area name like "Etosha"'],
                                             'accommodation' => ['type' => 'string'],
                                             'activity' => ['type' => 'string'],
                                             'restaurant' => ['type' => 'string'],
@@ -1237,7 +1327,10 @@ class ItineraryService
             ->map(fn (Listing $listing) => [
                 'name' => $listing->getTranslation('name', 'en', useFallbackLocale: true),
                 'type' => $listing->type->value,
+                // Both sent: 'region' satisfies the macro ROUTE guidance ("which regions to
+                // visit"), 'city' is what the day-by-day "location" field must be filled with.
                 'region' => $listing->region,
+                'city' => $listing->city?->name,
                 'description' => $listing->getTranslation('description', 'en', useFallbackLocale: true),
                 'highlights' => $listing->getTranslation('highlights', 'en', useFallbackLocale: true) ?? [],
                 'price_from' => $listing->price_from,

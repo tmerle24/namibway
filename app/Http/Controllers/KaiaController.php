@@ -54,12 +54,11 @@ class KaiaController extends Controller
             ],
         ]);
 
-        // Also key by the political region itself (Listing::region / a day's
-        // "location") — a day's location is always one of the political
-        // regions, never a destination name, so it otherwise never gets an
-        // image for the itinerary day thumbnail fallback. First destination
-        // row per political region (by sort_order above) wins; never
-        // overrides a destination-name key since no seeded destination
+        // Also key by the political region itself — some older saved plans still
+        // carry a region-valued "location" (from before day-locations switched to
+        // city granularity), so this keeps their trip map/day thumbnails working.
+        // First destination row per political region (by sort_order above) wins;
+        // never overrides a destination-name key since no seeded destination
         // shares its name with its own political region.
         foreach ($destinations->groupBy(fn (Destination $d) => $d->region->name) as $politicalRegion => $group) {
             $key = mb_strtolower((string) $politicalRegion);
@@ -76,6 +75,25 @@ class KaiaController extends Controller
                 'image' => $first->image ? self::resolveMediaUrl($first->image) : null,
             ];
         }
+
+        // Also key by City — a day's "location" is now always a city (see
+        // ItineraryService), so this is what actually resolves the trip map's
+        // per-day marker/thumbnail today. Only cities with a published listing
+        // are included, mirroring cities()/regions() above. Never overrides a
+        // destination-name key (destinations have curated images; a bare city
+        // row has none).
+        City::query()
+            ->whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->whereHas('listings', fn ($q) => $q->where('is_published', true))
+            ->get(['id', 'name', 'lat', 'lng'])
+            ->each(function (City $city) use ($coords) {
+                $key = mb_strtolower($city->name);
+
+                if (! $coords->has($key)) {
+                    $coords[$key] = ['lat' => $city->lat, 'lng' => $city->lng, 'image' => null];
+                }
+            });
 
         return response()->json(['coords' => $coords]);
     }

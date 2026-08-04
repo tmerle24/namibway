@@ -61,7 +61,10 @@ class ListingResource extends Resource
                             ->label('City')
                             ->relationship('city', 'name')
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            // See the equivalent field in the admin ListingResource — without this,
+                            // the default 50-option preload silently drops later-alphabet cities.
+                            ->optionsLimit(300),
                         Forms\Components\TextInput::make('price_from')
                             ->numeric()
                             ->prefix('NAD')

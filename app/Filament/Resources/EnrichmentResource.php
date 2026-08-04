@@ -129,6 +129,9 @@ class EnrichmentResource extends Resource
                                 ->relationship('city', 'name')
                                 ->searchable()
                                 ->preload()
+                                // See the equivalent field in the admin ListingResource — without this,
+                                // the default 50-option preload silently drops later-alphabet cities.
+                                ->optionsLimit(300)
                                 ->extraInputAttributes(fn (): array => self::focusAttributes('city_id')),
                         ])->columns(2),
 
@@ -661,7 +664,10 @@ class EnrichmentResource extends Resource
                 Tables\Filters\SelectFilter::make('type')->label('Category')->options(ListingType::class),
                 Tables\Filters\SelectFilter::make('city_id')
                     ->label('City')
-                    ->relationship('city', 'name'),
+                    ->relationship('city', 'name')
+                    // SelectFilter truncates to 50 options by default too — see the city_id
+                    // form field above for why that's a problem with 100+ cities seeded.
+                    ->optionsLimit(300),
                 Tables\Filters\SelectFilter::make('completion')
                     ->label('Completion %')
                     ->options(['green' => '90–100% (green)', 'yellow' => '60–89% (yellow)', 'red' => '0–59% (red)'])

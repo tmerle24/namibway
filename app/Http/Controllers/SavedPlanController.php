@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\City;
 use App\Models\Destination;
 use App\Models\SavedPlan;
 use App\Services\Pdf\RouteMapImageService;
@@ -68,8 +69,27 @@ class SavedPlanController extends Controller
                     'lat' => $d->lat,
                     'lng' => $d->lng,
                 ],
-            ])
-            ->toArray();
+            ]);
+
+        // A day's "location" is now always a city (see ItineraryService) — this is
+        // what actually resolves most days' map markers/labels today. Never
+        // overrides a destination-name key (checked above). Unlike
+        // KaiaController::regionCoords(), not restricted to published-listing
+        // cities: a saved PDF can be for a plan generated before a listing's city
+        // was unpublished/reassigned, and the map should still place it.
+        City::query()
+            ->whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->get(['name', 'lat', 'lng'])
+            ->each(function (City $city) use ($regionCoords) {
+                $key = mb_strtolower($city->name);
+
+                if (! $regionCoords->has($key)) {
+                    $regionCoords[$key] = ['lat' => $city->lat, 'lng' => $city->lng];
+                }
+            });
+
+        $regionCoords = $regionCoords->toArray();
 
         $routeMaps = [];
 

@@ -120,7 +120,7 @@ function resolveCoords(day: ItineraryDay): [number, number] | null {
         return [acc.lat, acc.lng];
     }
 
-    // Fall back to region-level coordinates
+    // Fall back to city-level coordinates (day.location — see resolveCoords' caller)
     const key = day.location?.toLowerCase().trim();
 
     if (!key) {
@@ -195,10 +195,11 @@ function renderRoute() {
             seenCoords.add(ck);
             waypoints.push({
                 latlng,
-                // Kept as the region — driving-leg matching in
-                // ItinerarySection.vue compares against day.location, which
-                // is always the region too (see the AI contract). The popup
-                // below shows cityLabel instead so travelers see a real town.
+                // Kept as day.location (now always a city, see the AI contract
+                // in ItineraryService) — driving-leg matching in
+                // ItinerarySection.vue compares against this same value. The
+                // popup below shows cityLabel instead in case an older saved
+                // plan still has a region here rather than a city.
                 label: day.location,
                 cityLabel: day.accommodation?.city || day.location,
                 day: day.day,

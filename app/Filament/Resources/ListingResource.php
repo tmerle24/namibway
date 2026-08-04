@@ -127,6 +127,12 @@ class ListingResource extends Resource
                                             ->relationship('city', 'name')
                                             ->searchable()
                                             ->preload()
+                                            // Select's relationship() truncates preloaded options to 50 by
+                                            // default — with 100+ Namibian settlements seeded, that silently
+                                            // dropped later-alphabet cities (Windhoek, Walvis Bay...) from the
+                                            // list, so a listing's already-assigned city didn't appear as
+                                            // selected. Comfortably above the current ~105 rows.
+                                            ->optionsLimit(300)
                                             ->columnSpanFull(),
                                         Forms\Components\TextInput::make('latitude')
                                             ->numeric(),

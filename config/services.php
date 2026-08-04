@@ -64,4 +64,12 @@ return [
         'validate_cert' => env('POP3_VALIDATE_CERT', true),
     ],
 
+    // Free public OSRM demo server by default — fine for the one-time
+    // namibway:backfill-city-driving-hours batch run this powers (not called
+    // live per Kaia request). Override with a self-hosted instance's URL if
+    // the public demo's rate/size limits ever become a problem.
+    'osrm' => [
+        'base_url' => env('OSRM_BASE_URL', 'https://router.project-osrm.org'),
+    ],
+
 ];
