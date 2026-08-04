@@ -892,6 +892,43 @@ body:has(.kaia-page) {
     opacity: 1;
     color: var(--rust-dark);
 }
+/* Desktop, and only when a variant-card has the row to itself (a
+   :only-child card can be up to ~1040px wide; several side-by-side variants
+   — see .variants above — are always too narrow for a map column and stay a
+   single column, in DOM order: map then days). Etappen-Liste links (primary,
+   scannable content), Karte rechts sticky (reference surface) — matches the
+   list-left/map-right convention from Airbnb/Booking.com/Google Maps
+   results.
+   A container query would read a variant-card's actual width more directly
+   than this viewport check, but container-type on that ancestor turns out
+   to disable position: sticky on the map column entirely — so this uses
+   :only-child as a proxy instead, since .variants' max-width (1040px) means
+   a non-:only-child card is always too narrow for two columns regardless of
+   viewport width. */
+@media (min-width: 1024px) {
+    .kaia-page .variant-card:only-child .itinerary-layout {
+        display: grid;
+        grid-template-columns: 1fr minmax(320px, 420px);
+        gap: 24px;
+        /* Deliberately not align-items: start — the map column needs to be
+           stretched to the row's full height (the taller days column) so its
+           own box gives position: sticky room to stick within. With `start`
+           the column shrinks to the map's own content height and sticky runs
+           out of room to stick in almost immediately. */
+    }
+    .kaia-page .variant-card:only-child .itinerary-days-col {
+        order: 1;
+        min-width: 0;
+    }
+    .kaia-page .variant-card:only-child .itinerary-map-col {
+        order: 2;
+        position: sticky;
+        top: calc(
+            var(--admin-bar-height, 0px) + var(--site-header-height, 0px) +
+                16px
+        );
+    }
+}
 .kaia-page .variant-card .cta {
     margin-top: 16px;
     width: 100%;
