@@ -165,6 +165,7 @@ function renderRoute() {
         const waypoints: Array<{
             latlng: [number, number];
             label: string;
+            cityLabel: string;
             day: number;
             date: string | null;
             accommodationName: string | null;
@@ -194,7 +195,12 @@ function renderRoute() {
             seenCoords.add(ck);
             waypoints.push({
                 latlng,
+                // Kept as the region — driving-leg matching in
+                // ItinerarySection.vue compares against day.location, which
+                // is always the region too (see the AI contract). The popup
+                // below shows cityLabel instead so travelers see a real town.
                 label: day.location,
+                cityLabel: day.accommodation?.city || day.location,
                 day: day.day,
                 date: day.date ?? null,
                 accommodationName: day.accommodation?.name ?? null,
@@ -245,7 +251,7 @@ function renderRoute() {
             const popupLines = [
                 `<div class="map-popup">`,
                 `<div class="map-popup-day">Day ${wp.day}${wp.date ? `<span class="map-popup-date"> · ${wp.date}</span>` : ''}</div>`,
-                `<div class="map-popup-location">${wp.label}</div>`,
+                `<div class="map-popup-location">${wp.cityLabel}</div>`,
                 accHtml
                     ? `<div class="map-popup-accommodation">${accHtml}</div>`
                     : '',
@@ -257,6 +263,15 @@ function renderRoute() {
                 .bindPopup(popupLines, { maxWidth: 200 });
 
             marker.on('mouseover', () => marker.openPopup());
+
+            // On a round trip, day 1 and the last day often sit at the exact
+            // same coordinates (e.g. both in Windhoek). Leaflet stacks
+            // same-pane markers by zIndexOffset (falling back to add order),
+            // so without this the arrival marker — added last — would sit on
+            // top and hide the green "1" start marker underneath it.
+            if (isStart) {
+                marker.setZIndexOffset(1000);
+            }
 
             markers.push(marker);
         });
@@ -475,7 +490,7 @@ watch(() => [props.variant, props.regionCoords] as const, renderRoute, {
 }
 
 .trip-map-marker--end {
-    background: #2f5d7d;
+    background: #1a1a1a;
 }
 
 .map-popup {

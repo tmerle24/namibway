@@ -336,7 +336,7 @@ class ItineraryService
      */
     private function resolveReferences(array $plan, Collection $listings): array
     {
-        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string, lat: float|null, lng: float|null, image: string|null}> $index */
+        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null}> $index */
         $index = [];
 
         foreach ($listings as $listing) {
@@ -351,6 +351,7 @@ class ItineraryService
                 'lat' => $listing->latitude ? (float) $listing->latitude : null,
                 'lng' => $listing->longitude ? (float) $listing->longitude : null,
                 'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
+                'gallery' => $this->resolveGallery($listing),
                 'city' => $listing->city?->name,
             ];
         }
@@ -360,7 +361,7 @@ class ItineraryService
                 return null;
             }
 
-            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'lat' => null, 'lng' => null, 'image' => null, 'city' => null];
+            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null];
         };
 
         $plan['variants'] = array_map(function (array $variant) use ($resolve, $listings) {
@@ -478,6 +479,7 @@ class ItineraryService
                 'lat' => $fallback->latitude ? (float) $fallback->latitude : null,
                 'lng' => $fallback->longitude ? (float) $fallback->longitude : null,
                 'image' => $fallback->image ? Controller::resolveMediaUrl($fallback->image) : null,
+                'gallery' => $this->resolveGallery($fallback),
                 'city' => $fallback->city?->name,
             ];
         }
@@ -491,7 +493,7 @@ class ItineraryService
      * Find up to 5 published alternatives for a given listing — same type,
      * preferring same region and adjacent budget tier. No AI involved.
      *
-     * @return array<int, array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string}>
+     * @return array<int, array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, image: string|null, gallery: array<int, string>, city: string|null}>
      */
     public function alternatives(string $type, ?int $excludeId = null): array
     {
@@ -537,6 +539,8 @@ class ItineraryService
                 'type' => $listing->type->value,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
+                'gallery' => $this->resolveGallery($listing),
                 'city' => $listing->city?->name,
             ])
             ->values()
@@ -758,7 +762,7 @@ class ItineraryService
     }
 
     /**
-     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, lat: float|null, lng: float|null, image: string|null}|null
+     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null}|null
      */
     private function toAccommodationReference(?Listing $listing): ?array
     {
@@ -776,7 +780,25 @@ class ItineraryService
             'lat' => $listing->latitude ? (float) $listing->latitude : null,
             'lng' => $listing->longitude ? (float) $listing->longitude : null,
             'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
+            'gallery' => $this->resolveGallery($listing),
+            'city' => $listing->city?->name,
         ];
+    }
+
+    /**
+     * Shared by every place that turns a Listing into the ItineraryListingRef
+     * shape the frontend consumes — e.g. so RoomTypePicker's "choose a room"
+     * flow has real property photos to show (there's no per-room-type photo
+     * yet, see RoomType model) instead of just the single hero `image`.
+     *
+     * @return array<int, string>
+     */
+    private function resolveGallery(Listing $listing): array
+    {
+        return array_map(
+            fn (string $path) => Controller::resolveMediaUrl($path),
+            $listing->gallery ?? [],
+        );
     }
 
     /**
@@ -843,6 +865,13 @@ class ItineraryService
             call. "trip_summary" must contain ONLY the short summary paragraph — never embed the variants
             list, day-by-day plan, or any XML/tag-like markup inside it. "variants" must be a real JSON
             array value on the tool input, not a string.
+
+            Unlike a day's "location" field (which must be the political region — see above), the
+            "trip_summary" paragraph is read by the traveler and must speak in real place names: towns,
+            parks, and landmarks (e.g. "Windhoek", "Etosha", "Swakopmund", "Sossusvlei", "the Skeleton
+            Coast") rather than the formal region name that contains them (e.g. never say "Otjozondjupa"
+            or "Hardap" in the summary — say what's actually there, like "the Waterberg area" or "the red
+            dunes of Sossusvlei").
 
             All text fields in the final plan (trip_summary, location, accommodation, activity, restaurant,
             vehicle) must be plain text — no markdown formatting or emoji.
