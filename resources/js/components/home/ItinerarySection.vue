@@ -1088,16 +1088,19 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                 : undefined
                         "
                     >
-                        <TripMap
-                            :map-id="`trip-map-${variantIndex}`"
-                            :variant="variant"
-                            :region-coords="regionCoords"
-                            @driving-legs="
-                                (legs) => {
-                                    drivingLegsPerVariant[variantIndex] = legs;
-                                }
-                            "
-                        />
+                        <div class="itinerary-map-sticky">
+                            <TripMap
+                                :map-id="`trip-map-${variantIndex}`"
+                                :variant="variant"
+                                :region-coords="regionCoords"
+                                @driving-legs="
+                                    (legs) => {
+                                        drivingLegsPerVariant[variantIndex] =
+                                            legs;
+                                    }
+                                "
+                            />
+                        </div>
                     </div>
                     <div
                         class="itinerary-days-col"

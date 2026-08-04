@@ -924,15 +924,23 @@ body:has(.kaia-page) {
         min-width: 0;
     }
     /* The map column needs to be as tall as the (taller) days column for
-       sticky below to have room to stick within — that'd normally be
-       align-items: stretch, but Chromium has a real, reproducible bug where
-       position: sticky never engages on a grid item whose height comes from
-       stretch specifically. ItinerarySection.vue's setDaysColRef() measures
-       the days column via ResizeObserver instead and applies it here as an
-       explicit inline height, which sidesteps the bug entirely (align-items
-       is `start` above, so nothing implicitly stretches this column). */
+       .itinerary-map-sticky below to have room to stick within.
+       ItinerarySection.vue's setDaysColRef() measures the days column via
+       ResizeObserver and applies it here as an explicit inline height. */
     .kaia-page .variant-card:only-child .itinerary-map-col {
         order: 2;
+    }
+    /* position: sticky lives on this inner wrapper, not on .itinerary-map-col
+       itself (the grid item) — confirmed via live testing (both in-browser
+       DevTools and this repo's own preview tooling) that position: sticky
+       never engages on a CSS Grid item in this Chromium build, regardless of
+       how its height is derived (stretch, or a genuine explicit pixel
+       height — both fail identically). A plain sticky div OUTSIDE the grid
+       works fine on the very same page. Nesting sticky one level deeper, as
+       an ordinary block child of the (tall) grid item, sidesteps the bug:
+       sticky then resolves against a normal parent/child containing block
+       instead of the grid-item case it's specific to. */
+    .kaia-page .variant-card:only-child .itinerary-map-sticky {
         position: sticky;
         top: calc(
             var(--admin-bar-height, 0px) + var(--site-header-height, 0px) +
