@@ -776,27 +776,50 @@ body:has(.kaia-page) {
 .kaia-page .drive-time-arrival {
     white-space: nowrap;
 }
-.kaia-page .day-row {
-    display: flex;
-    gap: 12px;
-    padding: 10px 0;
-    border-top: 1px solid var(--sand-dark);
+/* Timeline: .day-connector and .day-content are each their own 2-column
+   grid (rail | content) using the SAME template, so the drive-time chip
+   above a card and the marker/card below it always share the same rail
+   x-position — no JS measurement needed, unlike the map column's
+   sticky-height hack above. Each grid always gets exactly two children
+   (.day-connector-content is rendered even when the drive-time chip inside
+   it isn't, and likewise .day-rail when empty of a marker) — relying on
+   CSS Grid auto-placement across a *varying* number of children here
+   previously caused the rail and card to swap columns whenever the chip
+   was absent, since auto-placement fills row-1's second slot with
+   whatever comes next rather than starting a new row.
+
+   The connecting rail LINE itself is deliberately not drawn per-item
+   (a per-connector line segment left visible gaps above/below it, since
+   real spacing between a card and the next marker comes from margins/
+   padding outside that segment's own row — .day-card's margin-bottom,
+   .day-rail's padding-top — which the segment had no way to reach). It's
+   one continuous background line on .itinerary-timeline instead (below),
+   so it's never broken by any single item's box model. */
+.kaia-page .day-item {
     font-size: 13.5px;
 }
-.kaia-page .day-item:first-child > .day-row {
-    border-top: none;
+.kaia-page .day-connector,
+.kaia-page .day-content {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    column-gap: 14px;
 }
-.kaia-page .day-num {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    min-width: 52px;
-}
-.kaia-page .day-num-top {
+.kaia-page .day-connector-content {
     display: flex;
     align-items: center;
-    gap: 6px;
+}
+.kaia-page .day-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding-top: 14px;
+    position: relative;
+    z-index: 1;
+}
+.kaia-page .day-rail .drag-handle {
+    font-size: 12px;
+    margin-bottom: 0;
 }
 .kaia-page .day-num-badge {
     font-family: 'Inter', sans-serif;
@@ -806,12 +829,42 @@ body:has(.kaia-page) {
     transform: none;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
-.kaia-page .day-date {
-    display: block;
-    font-family: inherit;
-    font-size: 11px;
-    color: #7a6f63;
-    font-weight: 400;
+/* Wraps just the <draggable> day list (not the "+ Tag hinzufügen" buttons
+   outside it) so the ::before line's 0/100% top/bottom exactly spans the
+   day markers and nothing else. */
+.kaia-page .itinerary-timeline {
+    position: relative;
+}
+.kaia-page .itinerary-timeline::before {
+    content: '';
+    position: absolute;
+    top: 28px;
+    bottom: 0;
+    left: 20px;
+    width: 2px;
+    background: var(--sand-dark);
+    z-index: 0;
+}
+.kaia-page .day-card {
+    background: var(--paper);
+    border: 1px solid var(--sand-dark);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    position: relative;
+    z-index: 1;
+}
+/* Continuation day within a multi-night stage (no marker, no header — see
+   isStageStart in ItinerarySection.vue): sits close under the stage's own
+   card instead of getting a full gap, without the border-merging hack a
+   true "one card" look would need. */
+.kaia-page .day-card--continuation {
+    margin-top: -6px;
+}
+.kaia-page .day-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
 }
 .kaia-page .day-thumb {
     width: 44px;
@@ -822,14 +875,66 @@ body:has(.kaia-page) {
     border: 1px solid var(--sand-dark);
     flex-shrink: 0;
 }
-.kaia-page .day-detail div {
+.kaia-page .day-card-title {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex: 1;
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+}
+.kaia-page .day-card-region {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    color: #8a7f68;
+}
+.kaia-page .day-card-header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.kaia-page .day-card-price {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink);
+    white-space: nowrap;
+}
+.kaia-page .day-card-sub {
+    display: block;
+    font-size: 11.5px;
+    color: #7a6f63;
+    margin: 2px 0 10px;
+}
+.kaia-page .day-card-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.kaia-page .day-card-box {
+    border: 1px solid var(--sand-dark);
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: rgba(36, 28, 21, 0.02);
+}
+.kaia-page .day-card-box-label {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #a89b82;
+    margin-bottom: 4px;
+}
+.kaia-page .day-card-box div {
     margin-bottom: 2px;
     color: #4a4438;
 }
-.kaia-page .day-detail b {
+.kaia-page .day-card-box b {
     color: var(--ink);
 }
-.kaia-page .day-detail a,
+.kaia-page .day-card-box a,
 .kaia-page .variant-vehicle a {
     color: var(--rust-dark);
     font-weight: 600;
@@ -837,7 +942,7 @@ body:has(.kaia-page) {
     text-decoration-color: var(--sand-dark);
     text-underline-offset: 2px;
 }
-.kaia-page .day-detail a:hover,
+.kaia-page .day-card-box a:hover,
 .kaia-page .variant-vehicle a:hover {
     text-decoration-color: currentColor;
 }
@@ -857,28 +962,17 @@ body:has(.kaia-page) {
 .kaia-page .line-item-link:hover {
     text-decoration-color: currentColor;
 }
-.kaia-page .line-item,
-.kaia-page .day-detail > div:first-child {
+.kaia-page .line-item {
     display: flex;
     align-items: baseline;
     gap: 6px;
     flex-wrap: wrap;
 }
+.kaia-page .line-item--bare {
+    margin: 0;
+}
 .kaia-page .line-item-value {
     display: contents;
-}
-/* Continuation day within a multi-night stage: the city heading is hidden
-   (shown once, on the stage's first day), so its row collapses to just the
-   remove-day button. */
-.kaia-page .day-detail--continuation > div:first-child {
-    min-height: 18px;
-}
-/* Continuation rows skip the .day-thumb (only the stage's first day shows
-   one — see isStageStart in ItinerarySection.vue), so .day-detail would
-   otherwise sit 44px + 12px gap to the left of where it lines up on stage
-   rows. Indent by exactly that to keep the text column aligned. */
-.kaia-page .day-detail--continuation {
-    margin-left: 56px;
 }
 .kaia-page .item-price {
     color: #8a7f68;
@@ -2209,12 +2303,12 @@ body:has(.kaia-page) {
 .kaia-page .drag-handle:hover {
     opacity: 0.8;
 }
-.kaia-page .day-row:active .drag-handle {
+.kaia-page .day-item:active .drag-handle {
     cursor: grabbing;
 }
 
 /* Ghost element shown at drop target while dragging */
-.kaia-page .day-row--ghost {
+.kaia-page .day-item--ghost {
     opacity: 0.35;
     background: var(--sand);
     border-radius: 8px;
