@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { useI18n } from 'vue-i18n';
 import draggable from 'vuedraggable';
 import { formatPrice } from '@/lib/currency';
 import {
+    fetchAllCities,
     fetchAlternatives,
     fetchCities,
     fetchRegionCoords,
@@ -53,9 +55,43 @@ const editableVariants = ref<ItineraryVariant[]>([]);
 const swap = ref<SwapState | null>(null);
 const roomPickerKey = ref<string | null>(null);
 const dbCities = ref<string[]>([]);
+// Unfiltered city list for Startort/Zielort — see fetchAllCities().
+const dbAllCities = ref<string[]>([]);
 const regionCoords = ref<Record<string, RegionCoords>>({});
 const savedTokens = ref<Record<number, string>>({});
 const drivingLegsPerVariant = ref<Record<number, DrivingLeg[]>>({});
+
+// Explicit, JS-measured height for the sticky map column (desktop two-col
+// layout — see .itinerary-layout in kaia-home.css), keyed by variantIndex.
+// CSS align-items: stretch would do this declaratively, but Chromium has a
+// reproducible bug where position: sticky never engages on a grid item
+// whose height comes from stretch specifically — giving the item an
+// explicit pixel height instead (updated live as day rows are
+// added/removed/loaded) sidesteps that entirely.
+const daysColHeights = ref<Record<number, number>>({});
+const daysColObservers: Record<number, ResizeObserver> = {};
+
+function setDaysColRef(
+    variantIndex: number,
+    el: Element | ComponentPublicInstance | null,
+) {
+    daysColObservers[variantIndex]?.disconnect();
+    delete daysColObservers[variantIndex];
+
+    if (!el || !(el instanceof Element)) {
+        return;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+        daysColHeights.value[variantIndex] = entries[0].contentRect.height;
+    });
+    observer.observe(el);
+    daysColObservers[variantIndex] = observer;
+}
+
+onBeforeUnmount(() => {
+    Object.values(daysColObservers).forEach((o) => o.disconnect());
+});
 
 // Traveler-editable "approx. departure" per drive-time row, keyed like
 // roomPickerKey (`${variantIndex}-${dayIndex}` of the arrival day) — purely
@@ -669,10 +705,9 @@ function dismissVariant(variantIndex: number) {
 }
 
 onMounted(async () => {
-    [regionCoords.value, dbCities.value] = await Promise.all([
-        fetchRegionCoords(),
-        fetchCities(),
-    ]);
+    [regionCoords.value, dbCities.value, dbAllCities.value] = await Promise.all(
+        [fetchRegionCoords(), fetchCities(), fetchAllCities()],
+    );
 });
 
 // Combine DB cities with locations already in the plan — deduplicated. Used
@@ -686,9 +721,13 @@ const locationSuggestions = computed(() => {
     return [...new Set([...planLocations, ...dbCities.value])].sort();
 });
 
-// Real city names (not regions) for the trip-wide Startort/Zielort fields.
+// Real city names (not regions) for the trip-wide Startort/Zielort fields —
+// dbAllCities, not dbCities: a start/end point doesn't need a published
+// listing of its own (see fetchAllCities()).
 const startEndLocationSuggestions = computed(() =>
-    [...new Set([routeStart.value, routeEnd.value, ...dbCities.value])].sort(),
+    [
+        ...new Set([routeStart.value, routeEnd.value, ...dbAllCities.value]),
+    ].sort(),
 );
 
 function renumberDays(variantIndex: number) {
@@ -1039,7 +1078,16 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                 </div>
 
                 <div class="itinerary-layout">
-                    <div class="itinerary-map-col">
+                    <div
+                        class="itinerary-map-col"
+                        :style="
+                            daysColHeights[variantIndex]
+                                ? {
+                                      height: `${daysColHeights[variantIndex]}px`,
+                                  }
+                                : undefined
+                        "
+                    >
                         <TripMap
                             :map-id="`trip-map-${variantIndex}`"
                             :variant="variant"
@@ -1051,7 +1099,10 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                             "
                         />
                     </div>
-                    <div class="itinerary-days-col">
+                    <div
+                        class="itinerary-days-col"
+                        :ref="(el) => setDaysColRef(variantIndex, el)"
+                    >
                         <button
                             type="button"
                             class="add-day-btn"

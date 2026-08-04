@@ -873,6 +873,13 @@ body:has(.kaia-page) {
 .kaia-page .day-detail--continuation > div:first-child {
     min-height: 18px;
 }
+/* Continuation rows skip the .day-thumb (only the stage's first day shows
+   one — see isStageStart in ItinerarySection.vue), so .day-detail would
+   otherwise sit 44px + 12px gap to the left of where it lines up on stage
+   rows. Indent by exactly that to keep the text column aligned. */
+.kaia-page .day-detail--continuation {
+    margin-left: 56px;
+}
 .kaia-page .item-price {
     color: #8a7f68;
     font-size: 11.5px;
@@ -910,16 +917,20 @@ body:has(.kaia-page) {
         display: grid;
         grid-template-columns: 1fr minmax(320px, 420px);
         gap: 24px;
-        /* Deliberately not align-items: start — the map column needs to be
-           stretched to the row's full height (the taller days column) so its
-           own box gives position: sticky room to stick within. With `start`
-           the column shrinks to the map's own content height and sticky runs
-           out of room to stick in almost immediately. */
+        align-items: start;
     }
     .kaia-page .variant-card:only-child .itinerary-days-col {
         order: 1;
         min-width: 0;
     }
+    /* The map column needs to be as tall as the (taller) days column for
+       sticky below to have room to stick within — that'd normally be
+       align-items: stretch, but Chromium has a real, reproducible bug where
+       position: sticky never engages on a grid item whose height comes from
+       stretch specifically. ItinerarySection.vue's setDaysColRef() measures
+       the days column via ResizeObserver instead and applies it here as an
+       explicit inline height, which sidesteps the bug entirely (align-items
+       is `start` above, so nothing implicitly stretches this column). */
     .kaia-page .variant-card:only-child .itinerary-map-col {
         order: 2;
         position: sticky;

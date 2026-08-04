@@ -45,6 +45,20 @@ export async function fetchCities(): Promise<string[]> {
     return data.cities ?? [];
 }
 
+// Unlike fetchCities() above, not filtered to cities with a published
+// listing — Startort/Zielort are routing endpoints, not bookable
+// destinations, so e.g. Windhoek must stay selectable even if it has no
+// lodge listings of its own.
+export async function fetchAllCities(): Promise<string[]> {
+    const response = await fetch('/kaia/cities?all=1', {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    const data = await response.json();
+
+    return data.cities ?? [];
+}
+
 export interface RegionCoords {
     lat: number;
     lng: number;

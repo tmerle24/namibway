@@ -27,14 +27,20 @@ class KaiaController extends Controller
         return response()->json(['regions' => $regions]);
     }
 
-    public function cities(): JsonResponse
+    public function cities(Request $request): JsonResponse
     {
-        $cities = City::query()
-            ->whereHas('listings', fn ($q) => $q->where('is_published', true))
-            ->orderBy('name')
-            ->pluck('name');
+        $query = City::query()->orderBy('name');
 
-        return response()->json(['cities' => $cities]);
+        // Day-location editing (LocationPicker) needs this filtered to
+        // cities Kaia can actually book something in. Startort/Zielort are
+        // pure routing endpoints — the traveler may start/end anywhere
+        // (e.g. Windhoek, which itself often has no published lodge
+        // listings) — so that caller passes ?all=1 to skip the filter.
+        if (! $request->boolean('all')) {
+            $query->whereHas('listings', fn ($q) => $q->where('is_published', true));
+        }
+
+        return response()->json(['cities' => $query->pluck('name')]);
     }
 
     public function regionCoords(): JsonResponse
