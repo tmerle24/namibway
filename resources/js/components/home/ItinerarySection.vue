@@ -350,6 +350,17 @@ function formatDateRange(day: {
     return `${day.date} – ${day.date_to}`;
 }
 
+// Non-stage-start days (e.g. an activity added on day 2 of a multi-night
+// stay) only show the day's own end date, not a from/to range — the stay's
+// full check-in/check-out range is already shown once on the stage's first
+// day via stageDateRangeLabel().
+function dayEndDateLabel(day: {
+    date?: string | null;
+    date_to?: string | null;
+}): string {
+    return day.date_to || day.date || '';
+}
+
 // Accommodation photo first (what the traveler is actually booking), falling
 // back to a representative photo for the day's region — regionCoords is
 // keyed by both destination name and, since fetchRegionCoords()'s backing
@@ -568,6 +579,18 @@ async function runPersist() {
     }
 }
 
+// Registered before the immediate `props.plan` watcher below, on purpose:
+// that watcher's very first (immediate) run is what populates
+// editableVariants/routeStart/routeEnd/currentTripParams for a brand-new
+// plan, and this watcher has to already be active to catch that initial
+// write — otherwise the first-ever plan silently never gets persisted (no
+// token, no ?trip= URL) until the traveler happens to make a manual edit.
+watch(
+    [editableVariants, routeStart, routeEnd, currentTripParams],
+    schedulePersist,
+    { deep: true },
+);
+
 watch(
     () => props.plan,
     (plan) => {
@@ -606,12 +629,6 @@ watch(
             currentToken.value = token;
         }
     },
-);
-
-watch(
-    [editableVariants, routeStart, routeEnd, currentTripParams],
-    schedulePersist,
-    { deep: true },
 );
 
 // Shifts the keys of an index-keyed record down by one past the removed
@@ -1167,7 +1184,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                   variantIndex,
                                                   dayIndex,
                                               )
-                                            : formatDateRange(day)
+                                            : dayEndDateLabel(day)
                                     }}</span>
                                 </div>
                                 <img
