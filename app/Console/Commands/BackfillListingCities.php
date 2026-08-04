@@ -23,6 +23,19 @@ use Illuminate\Support\Str;
  * match. Listings whose address doesn't name a recognizable city keep their
  * current city_id untouched rather than being cleared — the rough regional
  * default is still better than nothing. Safe to rerun.
+ *
+ * WINDHOEK GUARD (added after a real production incident): many remote/rural
+ * Namibian tourism operators give a postal/PO-Box address routed through
+ * Windhoek (the capital) regardless of where the business physically is — a
+ * campsite right by Etosha's Andersson Gate had an address literally ending
+ * "...C38, Windhoek, Namibia", which is the ACTUAL stored address text, not a
+ * parsing bug, yet is nowhere near Windhoek. A first version of this command
+ * trusted any city-name match unconditionally and overwrote many listings'
+ * decent per-region default with the wrong city this way. A "Windhoek" match
+ * is therefore never allowed to CHANGE an existing city_id — it only fills in
+ * a listing that has none yet — since a false negative (leaving a possibly-
+ * correct existing value alone) is far less harmful than a false positive
+ * (moving a listing to the wrong region entirely, visibly, on the live site).
  */
 class BackfillListingCities extends Command
 {
@@ -55,6 +68,8 @@ class BackfillListingCities extends Command
             return self::FAILURE;
         }
 
+        $windhoekId = City::where('slug', 'windhoek')->value('id');
+
         $query = Listing::whereNotNull('address')->where('address', '!=', '');
         $total = $query->count();
 
@@ -70,12 +85,13 @@ class BackfillListingCities extends Command
         $updated = 0;
         $alreadyCorrect = 0;
         $noMatch = 0;
+        $windhoekSkipped = 0;
         $unmatchedSamples = [];
         $bar = $this->output->createProgressBar($toProcess);
         $bar->start();
 
         $query->select(['id', 'name', 'address', 'city_id'])
-            ->chunkById(200, function ($listings) use (&$updated, &$alreadyCorrect, &$noMatch, &$unmatchedSamples, &$toProcess, $dry, $matchers, $bar) {
+            ->chunkById(200, function ($listings) use (&$updated, &$alreadyCorrect, &$noMatch, &$windhoekSkipped, &$unmatchedSamples, &$toProcess, $dry, $matchers, $windhoekId, $bar) {
                 foreach ($listings as $listing) {
                     if ($toProcess <= 0) {
                         return false;
@@ -91,6 +107,8 @@ class BackfillListingCities extends Command
                         }
                     } elseif ((int) $listing->city_id === $match->id) {
                         $alreadyCorrect++;
+                    } elseif ($match->id === $windhoekId && $listing->city_id !== null) {
+                        $windhoekSkipped++;
                     } else {
                         $updated++;
 
@@ -107,8 +125,8 @@ class BackfillListingCities extends Command
         $bar->finish();
         $this->newLine(2);
         $this->table(
-            ['Updated', 'Already correct', 'No city found in address'],
-            [[$updated, $alreadyCorrect, $noMatch]],
+            ['Updated', 'Already correct', 'Windhoek match skipped (guard)', 'No city found in address'],
+            [[$updated, $alreadyCorrect, $windhoekSkipped, $noMatch]],
         );
 
         if ($unmatchedSamples !== []) {
