@@ -28,6 +28,21 @@
 .kaia-page * {
     box-sizing: border-box;
 }
+
+/* app.blade.php sets a flat white/near-black <html> background for the
+   shadcn-themed dashboard/admin pages. With viewport-fit=cover in the
+   viewport meta tag (needed so the header/footer nav can read a real
+   safe-area-inset in the wrapped iOS app), mobile Safari's collapsing
+   address bar animates the page in and out from behind that raw <html>
+   background — for a moment during the animation it's visible at the very
+   top (and, depending on scroll position, bottom) of the page, flashing
+   white/black against this page's navy header instead of blending in.
+   Match it to this page's own top-of-page color so any such reveal is
+   invisible instead of reading as a rendering glitch. */
+html:has(.kaia-page),
+body:has(.kaia-page) {
+    background-color: #1b2a4a;
+}
 .kaia-page h1,
 .kaia-page h2,
 .kaia-page h3 {
