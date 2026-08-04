@@ -2682,16 +2682,27 @@ body:has(.kaia-page) {
            own content (heading + subtitle + chat card) is taller than the
            available space — which pushes the footer nav below it, off the
            bottom of the screen, since the nav is just this column's static
-           last child (see below). That's exactly what happened on iPhone
-           Chrome: its address bar + bottom toolbar together leave less
-           height than Safari's chrome does, so the hero routinely exceeded
-           100dvh and the nav became unreachable without scrolling — i.e.
-           not "fixed" at all from the user's point of view. Capping the
-           column's height and letting #kaia-hero scroll internally (below)
-           keeps the nav pinned in view no matter how tall the hero content
-           or how little height the browser chrome leaves. */
+           last child (see below). Capping the column's height and letting
+           #kaia-hero scroll internally (below) keeps the nav pinned in view
+           no matter how tall the hero content gets.
+
+           100svh, not 100dvh: dvh is *dynamic* — it's meant to track the
+           browser chrome shrinking/growing as the user scrolls. But on
+           first paint, before any scroll/resize has happened, both iPhone
+           Chrome and Safari were observed reporting a dvh taller than what's
+           actually visible with their chrome on screen (Chrome's toolbars
+           don't collapse on scroll at all, so its dvh never catches up;
+           Safari draws its compact bottom bar as an overlay on top of the
+           page rather than shrinking the layout viewport under it, so a
+           dvh-sized box renders partly behind it). Both bugs have the same
+           shape: the column ends up taller than the actually-visible
+           screen, so its last child — the footer nav — lands out of view or
+           under the browser's own bar. svh is the *smallest* possible
+           viewport (assumes the chrome is fully shown, never collapses),
+           which is exactly the conservative floor a pinned bottom nav
+           needs: it can never render taller than what's truly on screen. */
         height: 100vh;
-        height: 100dvh;
+        height: 100svh;
         overflow: hidden;
         padding-bottom: 0;
     }
