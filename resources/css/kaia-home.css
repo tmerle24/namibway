@@ -2633,6 +2633,16 @@
         right: 0;
         bottom: 0;
         z-index: 100;
+        /* content-box, not the .kaia-page * default of border-box: with
+           border-box, the safe-area padding-bottom below is carved out of
+           the 64px instead of added on top, so on a device with a real
+           inset (the wrapped iOS app; a plain mobile browser's own chrome
+           already covers that strip, so it reads ~0 there and the bug is
+           invisible) the icons/labels get squeezed into whatever's left —
+           as little as ~30px — and crowd the very bottom edge. content-box
+           keeps the full 64px for content and lets the inset add real
+           clearance below it instead of eating into it. */
+        box-sizing: content-box;
         height: 64px;
         padding-bottom: env(safe-area-inset-bottom, 0px);
         background: var(--night);
