@@ -863,8 +863,19 @@ async function onAuthSuccess() {
 
 async function saveAllVariants() {
     const results = await Promise.allSettled(
-        editableVariants.value.map((variant, i) =>
-            savePlan({
+        editableVariants.value.map((variant, i) => {
+            // The common case (a single variant) is already sitting behind
+            // currentToken from auto-persist — reuse that instead of
+            // minting a second, orphaned token whose /trip/ link would
+            // silently diverge from the ?trip= link already in the address
+            // bar (same plan content, two different saved rows/tokens).
+            if (editableVariants.value.length === 1 && currentToken.value) {
+                savedTokens.value[i] = currentToken.value;
+
+                return Promise.resolve();
+            }
+
+            return savePlan({
                 trip_summary: currentTripSummary.value,
                 variants: [variant],
                 start_location: routeStart.value,
@@ -872,8 +883,8 @@ async function saveAllVariants() {
                 trip_params: currentTripParams.value,
             }).then((result) => {
                 savedTokens.value[i] = result.token;
-            }),
-        ),
+            });
+        }),
     );
     // Log any failures silently — the UI will keep the Save button for failed ones
     results.forEach((r, i) => {
