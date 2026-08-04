@@ -30,6 +30,12 @@ function detailUrl(slug: string): string {
                 :key="String(alt.id)"
                 class="alternative-item"
             >
+                <img
+                    v-if="alt.image"
+                    :src="alt.image"
+                    :alt="alt.name"
+                    class="alt-thumb"
+                />
                 <span class="alt-name">{{ alt.name }}</span>
                 <span v-if="formatPrice(alt.price_from)" class="alt-price">{{
                     formatPrice(alt.price_from)

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import ImageLightbox from '@/components/ImageLightbox.vue';
 import { formatPrice } from '@/lib/currency';
 import type { RoomOption } from '@/lib/kaia-types';
 
@@ -9,6 +10,10 @@ const props = defineProps<{
     currency: string;
     adults: number;
     children: number;
+    // Property photos (the accommodation's own gallery) — there's no
+    // per-room-type photo yet (see RoomType model), so these stand in as a
+    // preview of what the stay looks like until real room photos exist.
+    images?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -16,6 +21,10 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const roomImages = computed(() => props.images ?? []);
+const thumbnail = computed(() => roomImages.value[0] ?? null);
+const lightboxIndex = ref<number | null>(null);
 
 // Placeholder content, not a live availability/rate lookup — see the
 // room_selection field's doc comment in kaia-types.ts. Scaled off the
@@ -74,6 +83,14 @@ const options = computed<RoomOption[]>(() => {
             class="alternative-item room-option-item"
             @click="emit('select', option)"
         >
+            <span
+                v-if="thumbnail"
+                class="room-option-thumb"
+                :title="t('itinerary.viewPhotos')"
+                @click.stop="lightboxIndex = 0"
+            >
+                <img :src="thumbnail" :alt="option.name" />
+            </span>
             <span class="alt-name">{{ option.name }}</span>
             <span class="room-option-capacity">{{ option.capacity }}</span>
             <span class="alt-price">{{
@@ -81,6 +98,14 @@ const options = computed<RoomOption[]>(() => {
             }}</span>
             <span class="alt-use-btn">{{ t('itinerary.useThis') }}</span>
         </button>
+
+        <ImageLightbox
+            v-if="lightboxIndex !== null && roomImages.length"
+            :images="roomImages"
+            :index="lightboxIndex"
+            @update:index="lightboxIndex = $event"
+            @close="lightboxIndex = null"
+        />
     </div>
 </template>
 
@@ -102,5 +127,20 @@ const options = computed<RoomOption[]>(() => {
 .room-option-capacity {
     font-size: 11.5px;
     color: #8a7f68;
+}
+.room-option-thumb {
+    display: block;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+    cursor: zoom-in;
+}
+.room-option-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 </style>

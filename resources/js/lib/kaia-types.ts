@@ -8,6 +8,7 @@ export interface ItineraryListingRef {
     lat?: number | null;
     lng?: number | null;
     image?: string | null;
+    gallery?: string[];
     city?: string | null;
 }
 

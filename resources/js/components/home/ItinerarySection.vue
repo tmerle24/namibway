@@ -59,6 +59,18 @@ const regionCoords = ref<Record<string, RegionCoords>>({});
 const savedTokens = ref<Record<number, string>>({});
 const drivingLegsPerVariant = ref<Record<number, DrivingLeg[]>>({});
 
+// Traveler-editable "approx. departure" per drive-time row, keyed like
+// roomPickerKey (`${variantIndex}-${dayIndex}` of the arrival day) — purely
+// local UI state, not persisted with the plan. Arrival time is derived from
+// it plus the OSRM leg duration rather than stored.
+const departureTimes = ref<Record<string, string>>({});
+const DEFAULT_DEPARTURE_TIME = '08:00';
+
+// Long AI-generated summaries force a lot of scrolling before the plan
+// itself is visible — collapse to a couple of lines behind a toggle.
+const summaryExpanded = ref(false);
+const SUMMARY_TRUNCATE_LENGTH = 220;
+
 // Whole-session token (all surviving variants together) — distinct from
 // savedTokens above, which are per-variant tokens minted by the manual
 // "Save & share" button. This one drives the ?trip= URL param so reloading
@@ -81,6 +93,9 @@ const showAuthModal = ref(false);
 const currentTripSummary = ref(props.plan.trip_summary);
 const currentTripParams = ref<TripParams | null | undefined>(
     props.plan.trip_params,
+);
+const summaryIsLong = computed(
+    () => (currentTripSummary.value?.length ?? 0) > SUMMARY_TRUNCATE_LENGTH,
 );
 
 // --- Trip-params edit popup (regenerates the whole plan via Kaia) ---
@@ -158,11 +173,13 @@ async function applyParamsEdit(values: TripParamsFormValues) {
         routeEnd.value = newPlan.end_location || routeStart.value;
         currentTripSummary.value = newPlan.trip_summary;
         currentTripParams.value = newPlan.trip_params;
+        summaryExpanded.value = false;
         newPlan.variants.forEach((_, i) => applyDates(i));
         swap.value = null;
         roomPickerKey.value = null;
         savedTokens.value = {};
         drivingLegsPerVariant.value = {};
+        departureTimes.value = {};
         paramsModalOpen.value = false;
     } catch (e) {
         regenerateError.value =
@@ -212,6 +229,77 @@ function drivingTimeBetween(
     );
 
     return leg ? formatDrivingTime(leg.seconds) : null;
+}
+
+function drivingLegSeconds(
+    variantIndex: number,
+    fromLocation: string | null | undefined,
+    toLocation: string | null | undefined,
+): number | null {
+    const legs = drivingLegsPerVariant.value[variantIndex];
+
+    if (!legs || !fromLocation || !toLocation) {
+        return null;
+    }
+
+    const from = fromLocation.toLowerCase().trim();
+    const to = toLocation.toLowerCase().trim();
+
+    const leg = legs.find(
+        (l) =>
+            l.from?.toLowerCase().trim() === from &&
+            l.to?.toLowerCase().trim() === to,
+    );
+
+    return leg ? leg.seconds : null;
+}
+
+function driveLegKey(variantIndex: number, dayIndex: number): string {
+    return `${variantIndex}-${dayIndex}`;
+}
+
+function departureTime(variantIndex: number, dayIndex: number): string {
+    return (
+        departureTimes.value[driveLegKey(variantIndex, dayIndex)] ??
+        DEFAULT_DEPARTURE_TIME
+    );
+}
+
+function setDepartureTime(
+    variantIndex: number,
+    dayIndex: number,
+    value: string,
+) {
+    if (!value) {
+        return;
+    }
+
+    departureTimes.value[driveLegKey(variantIndex, dayIndex)] = value;
+}
+
+// Approximate arrival — departure plus the OSRM leg duration, wrapped to a
+// 24h clock. Purely illustrative (no real scheduled departure exists yet),
+// which is why it's rendered with a "ca." / "≈" prefix in the template.
+function arrivalTime(
+    variantIndex: number,
+    dayIndex: number,
+    fromLocation: string | null | undefined,
+    toLocation: string | null | undefined,
+): string | null {
+    const seconds = drivingLegSeconds(variantIndex, fromLocation, toLocation);
+
+    if (seconds === null) {
+        return null;
+    }
+
+    const [h, m] = departureTime(variantIndex, dayIndex).split(':').map(Number);
+    const totalMinutes = h * 60 + m + Math.round(seconds / 60);
+    const wrapped = ((totalMinutes % 1440) + 1440) % 1440;
+
+    return (
+        `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:` +
+        `${String(wrapped % 60).padStart(2, '0')}`
+    );
 }
 
 function parseDayDate(dateStr: string | null | undefined): Date | null {
@@ -291,9 +379,29 @@ function dayCity(day: {
     return day.accommodation?.city || day.location;
 }
 
+// Identifies a day's accommodation for stay-grouping purposes — null (no
+// accommodation) never matches anything, including another blank day, so a
+// gap never gets accidentally merged into a "stay".
+function stayIdentity(day: {
+    accommodation?: {
+        id: number | null;
+        slug: string | null;
+        name: string;
+    } | null;
+}): string | null {
+    const acc = day.accommodation;
+
+    if (!acc) {
+        return null;
+    }
+
+    return String(acc.id ?? acc.slug ?? acc.name);
+}
+
 // A day starts a new "stage" (Etappe) when it's the first day, or its
-// location differs from the previous day's — consecutive days sharing a
-// location are one stage and only show the city heading once.
+// accommodation differs from the previous day's — consecutive days at the
+// same accommodation are one stage: the city heading, thumbnail, and
+// "Unterkunft" line only show once, on the stage's first day.
 function isStageStart(variantIndex: number, dayIndex: number): boolean {
     if (dayIndex === 0) {
         return true;
@@ -301,7 +409,52 @@ function isStageStart(variantIndex: number, dayIndex: number): boolean {
 
     const days = editableVariants.value[variantIndex].days;
 
-    return days[dayIndex].location !== days[dayIndex - 1].location;
+    return stayIdentity(days[dayIndex]) !== stayIdentity(days[dayIndex - 1]);
+}
+
+// Last day index (inclusive) of the stay that starts at dayIndex — walks
+// forward while the accommodation stays the same.
+function stageEndIndex(variantIndex: number, dayIndex: number): number {
+    const days = editableVariants.value[variantIndex].days;
+    const identity = stayIdentity(days[dayIndex]);
+
+    if (identity === null) {
+        return dayIndex;
+    }
+
+    let end = dayIndex;
+
+    while (end + 1 < days.length && stayIdentity(days[end + 1]) === identity) {
+        end++;
+    }
+
+    return end;
+}
+
+// A day beyond a stage's first is only worth showing at all once it's
+// collapsed down to "is there anything left on it" — its own accommodation
+// line/marker/date are already summarized on the stage's first day.
+function dayHasActivityOrRestaurant(day: {
+    activity?: unknown;
+    restaurant?: unknown;
+}): boolean {
+    return !!day.activity || !!day.restaurant;
+}
+
+// The stage's first day shows the whole stay's check-in -> check-out range
+// (not just its own single-night range) when it spans more than one day.
+function stageDateRangeLabel(variantIndex: number, dayIndex: number): string {
+    const days = editableVariants.value[variantIndex].days;
+    const endIndex = stageEndIndex(variantIndex, dayIndex);
+
+    if (endIndex === dayIndex) {
+        return formatDateRange(days[dayIndex]);
+    }
+
+    return formatDateRange({
+        date: days[dayIndex].date,
+        date_to: days[endIndex].date_to,
+    });
 }
 
 // The LocationPicker only renders on stage-start days, so `dayIndex` is
@@ -313,13 +466,9 @@ function setStageLocation(
     newLocation: string,
 ) {
     const days = editableVariants.value[variantIndex].days;
-    const oldLocation = days[dayIndex].location;
+    const endIndex = stageEndIndex(variantIndex, dayIndex);
 
-    for (
-        let i = dayIndex;
-        i < days.length && days[i].location === oldLocation;
-        i++
-    ) {
+    for (let i = dayIndex; i <= endIndex; i++) {
         days[i].location = newLocation;
     }
 
@@ -430,8 +579,10 @@ watch(
         routeEnd.value = plan.end_location || routeStart.value;
         currentTripSummary.value = plan.trip_summary;
         currentTripParams.value = plan.trip_params;
+        summaryExpanded.value = false;
         swap.value = null;
         roomPickerKey.value = null;
+        departureTimes.value = {};
 
         // Claude doesn't always fill in every day's date field consistently —
         // normalize all days from day 1's date right away rather than only
@@ -499,6 +650,7 @@ function dismissVariant(variantIndex: number) {
     );
     swap.value = null;
     roomPickerKey.value = null;
+    departureTimes.value = {};
 }
 
 onMounted(async () => {
@@ -746,9 +898,28 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
             <div class="eyebrow">{{ t('itinerary.eyebrow') }}</div>
             <h2>{{ t('itinerary.title') }}</h2>
             <p>{{ t('itinerary.subtitle') }}</p>
-            <p v-if="currentTripSummary" class="trip-summary-text">
+            <p
+                v-if="currentTripSummary"
+                class="trip-summary-text"
+                :class="{
+                    'trip-summary-text--clamped':
+                        summaryIsLong && !summaryExpanded,
+                }"
+            >
                 {{ currentTripSummary }}
             </p>
+            <button
+                v-if="summaryIsLong"
+                type="button"
+                class="trip-summary-toggle"
+                @click="summaryExpanded = !summaryExpanded"
+            >
+                {{
+                    summaryExpanded
+                        ? t('itinerary.showLess')
+                        : t('itinerary.readMore')
+                }}
+            </button>
         </div>
         <div class="variants">
             <div
@@ -794,20 +965,28 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                 </div>
 
                 <template v-if="variant.vehicle">
-                    <ItineraryLineItem
-                        keypath="itinerary.vehicle"
-                        :item-ref="variant.vehicle"
-                        class="variant-vehicle"
-                        @remove="variant.vehicle = null"
-                        @swap="
-                            openSwap(
-                                variantIndex,
-                                null,
-                                'vehicle',
-                                variant.vehicle!,
-                            )
-                        "
-                    />
+                    <div class="vehicle-card">
+                        <img
+                            v-if="variant.vehicle.image"
+                            :src="variant.vehicle.image"
+                            :alt="variant.vehicle.name"
+                            class="vehicle-card-img"
+                        />
+                        <ItineraryLineItem
+                            keypath="itinerary.vehicle"
+                            :item-ref="variant.vehicle"
+                            class="variant-vehicle"
+                            @remove="variant.vehicle = null"
+                            @swap="
+                                openSwap(
+                                    variantIndex,
+                                    null,
+                                    'vehicle',
+                                    variant.vehicle!,
+                                )
+                            "
+                        />
+                    </div>
                     <AlternativesPanel
                         v-if="
                             swap?.key === swapKey(variantIndex, null, 'vehicle')
@@ -862,7 +1041,13 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     @end="renumberDays(variantIndex)"
                 >
                     <template #item="{ element: day, index: dayIndex }">
-                        <div class="day-item">
+                        <div
+                            v-show="
+                                isStageStart(variantIndex, dayIndex) ||
+                                dayHasActivityOrRestaurant(day)
+                            "
+                            class="day-item"
+                        >
                             <div
                                 v-if="
                                     dayIndex > 0 &&
@@ -893,10 +1078,64 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                         )
                                     }}
                                 </span>
+                                <span class="drive-time-schedule">
+                                    <label class="drive-time-departure">
+                                        {{ t('itinerary.departure') }}
+                                        <input
+                                            type="time"
+                                            class="drive-time-input"
+                                            :value="
+                                                departureTime(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                )
+                                            "
+                                            @input="
+                                                setDepartureTime(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                    (
+                                                        $event.target as HTMLInputElement
+                                                    ).value,
+                                                )
+                                            "
+                                        />
+                                    </label>
+                                    <span
+                                        v-if="
+                                            arrivalTime(
+                                                variantIndex,
+                                                dayIndex,
+                                                editableVariants[variantIndex]
+                                                    .days[dayIndex - 1]
+                                                    .location,
+                                                day.location,
+                                            )
+                                        "
+                                        class="drive-time-arrival"
+                                    >
+                                        · {{ t('itinerary.arrival') }} ≈
+                                        {{
+                                            arrivalTime(
+                                                variantIndex,
+                                                dayIndex,
+                                                editableVariants[variantIndex]
+                                                    .days[dayIndex - 1]
+                                                    .location,
+                                                day.location,
+                                            )
+                                        }}
+                                    </span>
+                                </span>
                             </div>
                             <div class="day-row">
                                 <div class="day-num">
-                                    <div class="day-num-top">
+                                    <div
+                                        v-if="
+                                            isStageStart(variantIndex, dayIndex)
+                                        "
+                                        class="day-num-top"
+                                    >
                                         <span
                                             class="drag-handle"
                                             :title="
@@ -923,11 +1162,19 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                         >
                                     </div>
                                     <span v-if="day.date" class="day-date">{{
-                                        formatDateRange(day)
+                                        isStageStart(variantIndex, dayIndex)
+                                            ? stageDateRangeLabel(
+                                                  variantIndex,
+                                                  dayIndex,
+                                              )
+                                            : formatDateRange(day)
                                     }}</span>
                                 </div>
                                 <img
-                                    v-if="dayThumbnail(day)"
+                                    v-if="
+                                        dayThumbnail(day) &&
+                                        isStageStart(variantIndex, dayIndex)
+                                    "
                                     :src="dayThumbnail(day)!"
                                     alt=""
                                     class="day-thumb"
@@ -978,66 +1225,111 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                         </button>
                                     </div>
 
-                                    <ItineraryLineItem
-                                        keypath="itinerary.stay"
-                                        :item-ref="day.accommodation"
-                                        @remove="
-                                            removeItem(
-                                                variantIndex,
-                                                dayIndex,
-                                                'accommodation',
-                                            )
-                                        "
-                                        @swap="
-                                            openSwap(
-                                                variantIndex,
-                                                dayIndex,
-                                                'accommodation',
-                                                day.accommodation!,
-                                            )
-                                        "
-                                        @add="
-                                            openSwap(
-                                                variantIndex,
-                                                dayIndex,
-                                                'accommodation',
-                                            )
-                                        "
-                                    />
-                                    <AlternativesPanel
+                                    <template
                                         v-if="
-                                            swap?.key ===
-                                            swapKey(
-                                                variantIndex,
-                                                dayIndex,
-                                                'accommodation',
-                                            )
+                                            isStageStart(variantIndex, dayIndex)
                                         "
-                                        :loading="swap.loading"
-                                        :alternatives="swap.alternatives"
-                                        @select="applySwap"
-                                    />
-                                    <div
-                                        v-if="day.accommodation"
-                                        class="room-selection-row"
                                     >
-                                        <template v-if="day.room_selection">
-                                            <span class="room-selection-chip">
-                                                🛏️
-                                                {{ day.room_selection.name }}
-                                                ·
-                                                {{
-                                                    formatPrice(
-                                                        String(
-                                                            day.room_selection
-                                                                .price_per_night,
-                                                        ),
-                                                    )
-                                                }}/{{ t('itinerary.perNight') }}
-                                            </span>
+                                        <ItineraryLineItem
+                                            keypath="itinerary.stay"
+                                            :item-ref="day.accommodation"
+                                            @remove="
+                                                removeItem(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                    'accommodation',
+                                                )
+                                            "
+                                            @swap="
+                                                openSwap(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                    'accommodation',
+                                                    day.accommodation!,
+                                                )
+                                            "
+                                            @add="
+                                                openSwap(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                    'accommodation',
+                                                )
+                                            "
+                                        />
+                                        <AlternativesPanel
+                                            v-if="
+                                                swap?.key ===
+                                                swapKey(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                    'accommodation',
+                                                )
+                                            "
+                                            :loading="swap.loading"
+                                            :alternatives="swap.alternatives"
+                                            @select="applySwap"
+                                        />
+                                        <div
+                                            v-if="day.accommodation"
+                                            class="room-selection-row"
+                                        >
+                                            <template v-if="day.room_selection">
+                                                <span
+                                                    class="room-selection-chip"
+                                                >
+                                                    🛏️
+                                                    {{
+                                                        day.room_selection.name
+                                                    }}
+                                                    ·
+                                                    {{
+                                                        formatPrice(
+                                                            String(
+                                                                day
+                                                                    .room_selection
+                                                                    .price_per_night,
+                                                            ),
+                                                        )
+                                                    }}/{{
+                                                        t('itinerary.perNight')
+                                                    }}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    class="room-selection-link"
+                                                    @click="
+                                                        toggleRoomPicker(
+                                                            variantIndex,
+                                                            dayIndex,
+                                                        )
+                                                    "
+                                                >
+                                                    {{
+                                                        t(
+                                                            'itinerary.changeRoom',
+                                                        )
+                                                    }}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="remove-btn"
+                                                    :aria-label="
+                                                        t('itinerary.remove')
+                                                    "
+                                                    @click="
+                                                        clearRoom(
+                                                            variantIndex,
+                                                            dayIndex,
+                                                        )
+                                                    "
+                                                >
+                                                    ×
+                                                </button>
+                                            </template>
                                             <button
+                                                v-else
                                                 type="button"
-                                                class="room-selection-link"
+                                                class="room-selection-add-btn"
                                                 @click="
                                                     toggleRoomPicker(
                                                         variantIndex,
@@ -1045,68 +1337,54 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                     )
                                                 "
                                             >
-                                                {{ t('itinerary.changeRoom') }}
+                                                🛏️
+                                                {{ t('itinerary.chooseRoom') }}
                                             </button>
-                                            <button
-                                                type="button"
-                                                class="remove-btn"
-                                                :aria-label="
-                                                    t('itinerary.remove')
-                                                "
-                                                @click="
-                                                    clearRoom(
-                                                        variantIndex,
-                                                        dayIndex,
-                                                    )
-                                                "
-                                            >
-                                                ×
-                                            </button>
-                                        </template>
-                                        <button
-                                            v-else
-                                            type="button"
-                                            class="room-selection-add-btn"
-                                            @click="
-                                                toggleRoomPicker(
+                                        </div>
+                                        <RoomTypePicker
+                                            v-if="
+                                                roomPickerKey ===
+                                                roomSelectionKey(
                                                     variantIndex,
                                                     dayIndex,
                                                 )
                                             "
-                                        >
-                                            🛏️ {{ t('itinerary.chooseRoom') }}
-                                        </button>
-                                    </div>
-                                    <RoomTypePicker
-                                        v-if="
-                                            roomPickerKey ===
-                                            roomSelectionKey(
-                                                variantIndex,
-                                                dayIndex,
-                                            )
-                                        "
-                                        :base-price="
-                                            day.accommodation?.price_from ??
-                                            null
-                                        "
-                                        :currency="
-                                            day.accommodation?.price_currency ??
-                                            'NAD'
-                                        "
-                                        :adults="currentTripParams?.adults ?? 2"
-                                        :children="
-                                            currentTripParams?.children_under_13 ??
-                                            0
-                                        "
-                                        @select="
-                                            (option) =>
-                                                selectRoom(
-                                                    variantIndex,
-                                                    dayIndex,
-                                                    option,
-                                                )
-                                        "
-                                    />
+                                            :base-price="
+                                                day.accommodation?.price_from ??
+                                                null
+                                            "
+                                            :currency="
+                                                day.accommodation
+                                                    ?.price_currency ?? 'NAD'
+                                            "
+                                            :adults="
+                                                currentTripParams?.adults ?? 2
+                                            "
+                                            :children="
+                                                currentTripParams?.children_under_13 ??
+                                                0
+                                            "
+                                            :images="
+                                                day.accommodation?.gallery
+                                                    ?.length
+                                                    ? day.accommodation.gallery
+                                                    : day.accommodation?.image
+                                                      ? [
+                                                            day.accommodation
+                                                                .image,
+                                                        ]
+                                                      : []
+                                            "
+                                            @select="
+                                                (option) =>
+                                                    selectRoom(
+                                                        variantIndex,
+                                                        dayIndex,
+                                                        option,
+                                                    )
+                                            "
+                                        />
+                                    </template>
 
                                     <ItineraryLineItem
                                         keypath="itinerary.activity"
