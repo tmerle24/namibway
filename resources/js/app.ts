@@ -7,9 +7,15 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeCurrency } from '@/lib/currency';
 import { initializeFlashToast } from '@/lib/flashToast';
 import { initializeLocale } from '@/lib/locale';
+import { initializeViewportHeightVar } from '@/lib/viewportHeight';
 
 const appName = import.meta.env.VITE_APP_NAME || 'NamibWay';
 const slogan = 'The smartest way to experience Namibia.';
+
+// Set as early as possible, before the app mounts, so the fullscreen mobile
+// Kaia tab (kaia-home.css's --app-vvh consumer) never paints against a stale
+// height.
+initializeViewportHeightVar();
 
 createInertiaApp({
     title: (title) =>

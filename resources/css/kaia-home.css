@@ -2700,9 +2700,23 @@ body:has(.kaia-page) {
            under the browser's own bar. svh is the *smallest* possible
            viewport (assumes the chrome is fully shown, never collapses),
            which is exactly the conservative floor a pinned bottom nav
-           needs: it can never render taller than what's truly on screen. */
+           needs: it can never render taller than what's truly on screen.
+
+           --app-vvh (set in resources/js/lib/viewportHeight.ts from
+           window.visualViewport.height, the one number every mobile engine
+           keeps accurate — it already nets out whatever chrome is currently
+           on screen) is layered on top as the final override: svh alone
+           still measured taller than the real visible area in the field —
+           Mobile Safari (plain tab *and* installed PWA/home-screen mode)
+           and Chrome for Android both still clipped or hid the footer nav
+           behind their own bars on first paint even with svh. Kept as a
+           progressive-enhancement stack, not a replacement: 100vh covers
+           browsers with neither unit, 100svh covers svh-capable browsers
+           before the JS var is set (or if visualViewport is unsupported),
+           and --app-vvh — falling back to svh — wins once it's available. */
         height: 100vh;
         height: 100svh;
+        height: var(--app-vvh, 100svh);
         overflow: hidden;
         padding-bottom: 0;
     }
