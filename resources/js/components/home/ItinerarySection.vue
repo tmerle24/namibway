@@ -29,6 +29,7 @@ import ItineraryLineItem from './ItineraryLineItem.vue';
 import KebabMenu from './KebabMenu.vue';
 import ListingSwapModal from './ListingSwapModal.vue';
 import LocationPicker from './LocationPicker.vue';
+import MapViewModal from './MapViewModal.vue';
 import RoomTypePicker from './RoomTypePicker.vue';
 import SaveLoginModal from './SaveLoginModal.vue';
 import SaveShareBar from './SaveShareBar.vue';
@@ -58,6 +59,10 @@ const isLoggedIn = computed(() => !!page.props.auth?.user);
 const editableVariants = ref<ItineraryVariant[]>([]);
 const swap = ref<SwapState | null>(null);
 const roomPickerKey = ref<string | null>(null);
+// The inline map is hidden on mobile for the single-variant page (see
+// .itinerary-map-col in kaia-home.css) — this opens it in a full modal
+// instead, triggered by the floating map button.
+const mapModalOpen = ref(false);
 const dbCities = ref<string[]>([]);
 // Unfiltered city list for Startort/Zielort — see fetchAllCities().
 const dbAllCities = ref<string[]>([]);
@@ -2316,6 +2321,30 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
             :cities="dbCities"
             @select="applySwap"
             @close="swap = null"
+        />
+
+        <button
+            v-if="editableVariants.length === 1"
+            type="button"
+            class="mobile-map-fab"
+            :aria-label="t('itinerary.showMap')"
+            :title="t('itinerary.showMap')"
+            @click="mapModalOpen = true"
+        >
+            🗺️
+        </button>
+
+        <MapViewModal
+            v-if="mapModalOpen && editableVariants.length === 1"
+            :variant="editableVariants[0]"
+            :region-coords="regionCoords"
+            map-id="trip-map-modal-0"
+            @close="mapModalOpen = false"
+            @driving-legs="
+                (legs) => {
+                    drivingLegsPerVariant[0] = legs;
+                }
+            "
         />
     </section>
 </template>

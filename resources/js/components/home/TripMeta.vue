@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { TripParams } from '@/lib/kaia-types';
 
@@ -116,33 +117,109 @@ const items = computed<MetaItem[]>(() => {
 
     return list.filter((item): item is MetaItem => item !== null);
 });
+
+// Collapses the chip row to ~2 lines on narrow screens, revealed via a
+// "show more" toggle — chips wrap to as many rows as content needs (route +
+// dates + duration + travelers + preferences + budget easily reaches 4-5 on
+// a phone), which otherwise pushes the itinerary itself far down the page.
+// scrollHeight vs clientHeight (rather than counting chips) accounts for
+// how much actual chip content varies in width.
+//
+// The clamped row itself is the wrong thing to ResizeObserve: overflow:
+// hidden + a fixed max-height means its own box never changes size no
+// matter how much content is stuffed inside, so it never re-fires. Instead,
+// measure it directly on mount/content-change, and again whenever the
+// (unclamped) wrapper's width changes — e.g. the viewport being resized —
+// since that's what actually changes how the chips wrap.
+const expanded = ref(false);
+const hasOverflow = ref(false);
+let rowEl: HTMLElement | null = null;
+let wrapObserver: ResizeObserver | null = null;
+
+function measureOverflow() {
+    if (!rowEl) {
+        return;
+    }
+
+    hasOverflow.value = rowEl.scrollHeight > rowEl.clientHeight + 1;
+}
+
+function setRowRef(el: Element | ComponentPublicInstance | null) {
+    rowEl = el instanceof HTMLElement ? el : null;
+    // The element isn't necessarily flushed into the live DOM yet at the
+    // moment this ref callback fires — scrollHeight/clientHeight would both
+    // read 0 here. nextTick() waits for that flush before measuring.
+    nextTick(measureOverflow);
+}
+
+function setWrapRef(el: Element | ComponentPublicInstance | null) {
+    wrapObserver?.disconnect();
+    wrapObserver = null;
+
+    if (!el || !(el instanceof HTMLElement)) {
+        return;
+    }
+
+    wrapObserver = new ResizeObserver(() => measureOverflow());
+    wrapObserver.observe(el);
+}
+
+watch(items, () => nextTick(measureOverflow));
+
+onBeforeUnmount(() => wrapObserver?.disconnect());
 </script>
 
 <template>
     <div
         v-if="items.length || editable"
-        class="trip-meta-row"
-        :class="{ 'trip-meta-row--editable': editable }"
-        :role="editable ? 'button' : undefined"
-        :tabindex="editable ? 0 : undefined"
-        @click="editable && emit('edit')"
-        @keydown.enter="editable && emit('edit')"
+        :ref="setWrapRef"
+        class="trip-meta-wrap"
     >
-        <div v-for="item in items" :key="item.label" class="trip-meta-chip">
-            <span class="trip-meta-icon" aria-hidden="true">{{
-                item.icon
-            }}</span>
-            <span class="trip-meta-text"
-                ><strong>{{ item.label }}:</strong> {{ item.value }}</span
+        <div
+            :ref="setRowRef"
+            class="trip-meta-row"
+            :class="{
+                'trip-meta-row--editable': editable,
+                'trip-meta-row--clamped': !expanded,
+            }"
+            :role="editable ? 'button' : undefined"
+            :tabindex="editable ? 0 : undefined"
+            @click="editable && emit('edit')"
+            @keydown.enter="editable && emit('edit')"
+        >
+            <div
+                v-for="item in items"
+                :key="item.label"
+                class="trip-meta-chip"
+                :aria-label="`${item.label}: ${item.value}`"
             >
+                <span class="trip-meta-icon" aria-hidden="true">{{
+                    item.icon
+                }}</span>
+                <span class="trip-meta-text" aria-hidden="true">{{
+                    item.value
+                }}</span>
+            </div>
+            <button
+                v-if="editable"
+                type="button"
+                class="trip-meta-edit-btn"
+                @click.stop="emit('edit')"
+            >
+                ✏️ {{ t('itinerary.meta.edit') }}
+            </button>
         </div>
         <button
-            v-if="editable"
+            v-if="hasOverflow || expanded"
             type="button"
-            class="trip-meta-edit-btn"
-            @click.stop="emit('edit')"
+            class="trip-meta-toggle"
+            @click="expanded = !expanded"
         >
-            ✏️ {{ t('itinerary.meta.edit') }}
+            {{
+                expanded
+                    ? t('itinerary.showLess')
+                    : t('itinerary.meta.showMore')
+            }}
         </button>
     </div>
 </template>

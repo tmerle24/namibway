@@ -565,11 +565,20 @@ body:has(.kaia-page) {
 .kaia-page .trip-summary-toggle:hover {
     text-decoration-color: currentColor;
 }
+.kaia-page .trip-meta-wrap {
+    margin-top: 14px;
+}
 .kaia-page .trip-meta-row {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 14px;
+}
+/* Collapsed state — caps the row to ~2 chip lines; TripMeta.vue measures
+   scrollHeight against this to decide whether the "show more" toggle is
+   needed at all, so a row that already fits never gets one. */
+.kaia-page .trip-meta-row--clamped {
+    max-height: 66px;
+    overflow: hidden;
 }
 .kaia-page .trip-meta-chip {
     display: flex;
@@ -586,9 +595,22 @@ body:has(.kaia-page) {
 .kaia-page .trip-meta-icon {
     font-size: 12px;
 }
-.kaia-page .trip-meta-text strong {
+.kaia-page .trip-meta-toggle {
+    display: inline-block;
+    background: none;
+    border: none;
+    padding: 0;
+    margin-top: 6px;
+    font-size: 12.5px;
     font-weight: 600;
     color: var(--rust-dark);
+    text-decoration: underline;
+    text-decoration-color: var(--sand-dark);
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+.kaia-page .trip-meta-toggle:hover {
+    text-decoration-color: currentColor;
 }
 .kaia-page .trip-meta-row--editable {
     cursor: pointer;
@@ -756,7 +778,7 @@ body:has(.kaia-page) {
     font-size: 14px;
     margin-bottom: 4px;
 }
-.kaia-page .variant-card .trip-meta-row {
+.kaia-page .variant-card .trip-meta-wrap {
     margin-top: 0;
     margin-bottom: 16px;
 }
@@ -1177,6 +1199,42 @@ body:has(.kaia-page) {
         top: calc(
             var(--admin-bar-height, 0px) + var(--site-header-height, 0px) + 16px
         );
+    }
+}
+/* Below the two-column breakpoint, the map would otherwise sit inline above
+   the day list, pushing it far down the page on a phone — hidden here in
+   favor of .mobile-map-fab opening the same route in MapViewModal instead.
+   The component itself stays mounted (just invisible): it's still the only
+   source of the driving-time labels shown in the day timeline (see
+   drivingLegsPerVariant in ItinerarySection.vue), which must keep working
+   even though the map's own visual chrome doesn't render. */
+@media (max-width: 1023px) {
+    .kaia-page .variant-card:only-child .itinerary-map-col {
+        display: none;
+    }
+}
+.kaia-page .mobile-map-fab {
+    display: none;
+}
+@media (max-width: 1023px) {
+    .kaia-page .mobile-map-fab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: var(--night);
+        color: var(--paper);
+        border: 3px solid var(--paper);
+        font-size: 22px;
+        box-shadow: 0 6px 16px rgba(16, 26, 48, 0.35);
+        z-index: 90;
+        cursor: pointer;
     }
 }
 .kaia-page .variant-card .cta {

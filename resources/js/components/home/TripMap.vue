@@ -360,6 +360,13 @@ watch(() => [props.variant, props.regionCoords] as const, renderRoute, {
     background: var(--paper, #fbf8f1);
     border: 1px solid var(--sand-dark, #d6c9b5);
     box-shadow: 0 8px 22px rgba(36, 28, 21, 0.14);
+    /* Leaflet's own stylesheet gives its zoom control/attribution panes
+       z-index values up to 1000 — harmless while this frame has its own
+       stacking context, but without one those values compare directly
+       against page-level fixed elements (e.g. the mobile footer nav) and
+       paint on top of them regardless of the footer's own z-index. */
+    position: relative;
+    isolation: isolate;
 }
 
 .trip-map-wrapper {
