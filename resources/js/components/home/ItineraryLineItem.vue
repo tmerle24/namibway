@@ -13,6 +13,10 @@ const props = defineProps<{
     // timeline's labeled boxes (SCHLAFEN/ERLEBEN/ESSEN), where the box's own
     // caption already conveys what `keypath` would otherwise spell out.
     hideLabel?: boolean;
+    // Renders the swap trigger as a labeled pill ("Change") instead of the
+    // bare "⇄" icon — used for the vehicle card, where a lone icon button
+    // reads as too subtle for the plan's single most prominent swap action.
+    swapLabel?: string;
 }>();
 
 defineEmits<{
@@ -48,7 +52,15 @@ const previewSlug = ref<string | null>(null);
                 >
                 <template v-if="!props.readonly">
                     <button
-                        v-if="props.itemRef.id"
+                        v-if="props.itemRef.id && swapLabel"
+                        type="button"
+                        class="swap-btn swap-btn--labeled"
+                        @click="$emit('swap')"
+                    >
+                        ⇄ {{ swapLabel }}
+                    </button>
+                    <button
+                        v-else-if="props.itemRef.id"
                         type="button"
                         class="swap-btn"
                         :aria-label="t('itinerary.swap')"
@@ -99,7 +111,15 @@ const previewSlug = ref<string | null>(null);
                     >
                     <template v-if="!props.readonly">
                         <button
-                            v-if="props.itemRef.id"
+                            v-if="props.itemRef.id && swapLabel"
+                            type="button"
+                            class="swap-btn swap-btn--labeled"
+                            @click="$emit('swap')"
+                        >
+                            ⇄ {{ swapLabel }}
+                        </button>
+                        <button
+                            v-else-if="props.itemRef.id"
                             type="button"
                             class="swap-btn"
                             :aria-label="t('itinerary.swap')"

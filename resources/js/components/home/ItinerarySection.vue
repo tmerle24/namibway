@@ -1051,7 +1051,18 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                 :key="variant.name"
                 class="variant-card"
             >
-                <div class="variant-head">
+                <div
+                    class="variant-head"
+                    :class="{ 'variant-head--single': editableVariants.length === 1 }"
+                >
+                    <a
+                        v-if="editableVariants.length === 1"
+                        href="/"
+                        class="plan-back-btn"
+                        :aria-label="t('itinerary.back')"
+                        :title="t('itinerary.back')"
+                        >←</a
+                    >
                     <h3>{{ variant.name }}</h3>
                     <div class="variant-head-actions">
                         <button
@@ -1060,6 +1071,14 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                             @click="reverseVariant(variantIndex)"
                         >
                             ⇄ {{ t('itinerary.reverseRoute') }}
+                        </button>
+                        <button
+                            v-if="editableVariants.length === 1"
+                            type="button"
+                            class="plan-edit-btn"
+                            @click="openParamsEditor"
+                        >
+                            ✏️ {{ t('itinerary.editPlan') }}
                         </button>
                         <button
                             v-if="editableVariants.length > 1"
@@ -1086,7 +1105,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     :trip-params="currentTripParams"
                     :route-start="routeStart"
                     :route-end="routeEnd"
-                    editable
+                    :editable="editableVariants.length > 1"
                     @edit="openParamsEditor"
                 />
                 <div v-if="regenerating" class="params-regenerating-note">
@@ -1104,6 +1123,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         <ItineraryLineItem
                             keypath="itinerary.vehicle"
                             :item-ref="variant.vehicle"
+                            :swap-label="t('itinerary.changeRoom')"
                             class="variant-vehicle"
                             @remove="
                                 confirmAndRun(

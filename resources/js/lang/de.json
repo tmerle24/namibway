@@ -47,6 +47,8 @@
         "route": "Route",
         "roundTrip": "Rundreise",
         "reverseRoute": "Route umkehren",
+        "editPlan": "Plan bearbeiten",
+        "back": "Zurück",
         "estimated": "~{price} geschätzt",
         "stay": "Unterkunft: {value}",
         "activity": "Aktivität: {value}",
