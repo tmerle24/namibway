@@ -1101,8 +1101,7 @@ body:has(.kaia-page) {
     .kaia-page .variant-card:only-child .itinerary-map-sticky {
         position: sticky;
         top: calc(
-            var(--admin-bar-height, 0px) + var(--site-header-height, 0px) +
-                16px
+            var(--admin-bar-height, 0px) + var(--site-header-height, 0px) + 16px
         );
     }
 }
