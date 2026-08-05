@@ -71,8 +71,23 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 // fallback for older WebKit/PWA/native-wrapper contexts without it) is the
 // browser telling us the real, current pixel count instead — no guessing
 // about which viewport-unit semantics a given engine implements.
+// Some WebKit/WebView builds fire a visualViewport `resize` event with a
+// too-small (sometimes 0) height mid-animation while the on-screen keyboard
+// is opening/closing. Since --app-vh drives a `height` + `overflow: hidden`
+// container (the mobile Kaia-tab layout in kaia-home.css), accepting one of
+// these readings collapses that container to near-zero and exposes the raw
+// <body> background behind it — reported as the whole page flashing solid
+// navy blue and the chat disappearing. Ignoring implausibly small readings
+// keeps the last good height until a real one arrives.
+const MIN_PLAUSIBLE_VIEWPORT_HEIGHT = 150;
+
 function updateAppViewportHeight() {
     const height = window.visualViewport?.height ?? window.innerHeight;
+
+    if (height < MIN_PLAUSIBLE_VIEWPORT_HEIGHT) {
+        return;
+    }
+
     document.documentElement.style.setProperty('--app-vh', `${height}px`);
 }
 updateAppViewportHeight();
