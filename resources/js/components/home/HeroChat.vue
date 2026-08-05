@@ -221,6 +221,34 @@ onUnmounted(() => {
     }
 });
 
+// On mobile, before a plan exists, the Kaia tab is a fullscreen column
+// capped to the visible viewport height via --app-vh (see kaia-home.css),
+// with the footer nav as a normal static flex child — nothing in this state
+// should ever need the *outer* page to scroll, only #kaia-hero's own
+// internal overflow. But focusing this input triggers the OS's native
+// "scroll focused input into view" behavior, which acts on the outer
+// document using its pre-keyboard (taller) height — before our --app-vh
+// resize handler has caught up — and scrolls the whole column up, dragging
+// the footer nav off the top edge. It only partially self-corrects once
+// something else (e.g. typing) forces a reflow. Since outer-page scroll is
+// never legitimate in this exact state, just pin it back to zero once the
+// keyboard/viewport settle.
+function resetOuterScrollIfFullscreenMobile() {
+    const page = chatInput.value?.closest('.kaia-page');
+
+    if (
+        !page ||
+        page.classList.contains('has-plan') ||
+        !window.matchMedia('(hover: none), (pointer: coarse)').matches
+    ) {
+        return;
+    }
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => window.scrollTo(0, 0));
+    });
+}
+
 function syncScroll() {
     if (chatLog.value) {
         chatLog.value.scrollTop = chatLog.value.scrollHeight;
@@ -513,6 +541,7 @@ async function retryLastMessage() {
                         autocomplete="off"
                         :readonly="isTyping"
                         @keydown.enter="sendMessage"
+                        @focus="resetOuterScrollIfFullscreenMobile"
                     />
                     <button
                         v-if="isVoiceSupported"
