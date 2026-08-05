@@ -30,6 +30,16 @@ export interface ItineraryDay {
     date_to?: string | null;
     location: string;
     accommodation?: ItineraryListingRef | null;
+    // Arrays — Kaia itself still only ever fills in one of each, but the
+    // traveler can add a 2nd/3rd manually (see ItinerarySection.vue's
+    // openSwap 'add' mode). Plans coming straight from the backend (or
+    // older saved plans) carry the singular `activity`/`restaurant` fields
+    // instead — normalizeVariants() in ItinerarySection.vue wraps those into
+    // these arrays before they ever reach the rest of the UI.
+    activities?: ItineraryListingRef[];
+    restaurants?: ItineraryListingRef[];
+    // Raw shape as sent by the backend — never read directly outside
+    // normalizeVariants().
     activity?: ItineraryListingRef | null;
     restaurant?: ItineraryListingRef | null;
     room_selection?: RoomOption | null;

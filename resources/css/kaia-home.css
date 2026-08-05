@@ -978,15 +978,6 @@ body:has(.kaia-page) {
     align-items: flex-start;
     gap: 10px;
 }
-/* Drag handle lives inside the card now (not out in the narrow rail column,
-   where it read as a stray mark next to the map-pin marker) — vertically
-   centered against the thumbnail so it doesn't look tacked onto the title
-   line. */
-.kaia-page .day-card-header .drag-handle {
-    align-self: center;
-    margin-bottom: 0;
-    margin-right: -2px;
-}
 .kaia-page .day-thumb {
     width: 44px;
     height: 44px;
@@ -1016,6 +1007,17 @@ body:has(.kaia-page) {
     align-items: center;
     gap: 6px;
     flex-shrink: 0;
+}
+/* Kebab menu on top, drag handle underneath — see KebabMenu.vue and the
+   day-card-header markup in ItinerarySection.vue. */
+.kaia-page .day-card-header-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+.kaia-page .day-card-header-actions .drag-handle {
+    margin-bottom: 0;
 }
 .kaia-page .day-card-price {
     font-weight: 600;
@@ -1173,8 +1175,7 @@ body:has(.kaia-page) {
     .kaia-page .variant-card:only-child .itinerary-map-sticky {
         position: sticky;
         top: calc(
-            var(--admin-bar-height, 0px) + var(--site-header-height, 0px) +
-                16px
+            var(--admin-bar-height, 0px) + var(--site-header-height, 0px) + 16px
         );
     }
 }
@@ -2214,6 +2215,82 @@ body:has(.kaia-page) {
 .kaia-page .swap-btn--labeled:hover {
     background: var(--sand);
     border-color: var(--rust);
+}
+
+/* Kebab (⋮) context menu — day cards, and Stay/Activity/Dining line items.
+   See KebabMenu.vue. */
+.kaia-page .kebab-menu {
+    position: relative;
+    display: inline-flex;
+}
+/* Push to the end of the line-item row (Stay/Activity/Dining) — not applied
+   inside .day-card-header-actions, where it instead stacks above the drag
+   handle in a centered column. */
+.kaia-page .line-item .kebab-menu {
+    margin-left: auto;
+}
+.kaia-page .kebab-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    color: #8a7f68;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.7;
+    cursor: pointer;
+    transition:
+        opacity 0.15s,
+        background 0.15s,
+        color 0.15s;
+}
+.kaia-page .kebab-menu-trigger:hover,
+.kaia-page .kebab-menu-trigger[aria-expanded='true'] {
+    opacity: 1;
+    background: var(--sand);
+    color: var(--rust-dark);
+}
+.kaia-page .kebab-menu-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 20;
+    min-width: 140px;
+    background: var(--paper);
+    border: 1px solid var(--sand-dark);
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(36, 28, 21, 0.14);
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+}
+.kaia-page .kebab-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    cursor: pointer;
+}
+.kaia-page .kebab-menu-item:hover {
+    background: var(--sand);
+}
+.kaia-page .kebab-menu-item--danger {
+    color: var(--danger);
+}
+.kaia-page .kebab-menu-item--danger:hover {
+    background: var(--danger-light);
 }
 
 /* Alternatives panel — inline below the line item */
@@ -3349,6 +3426,7 @@ body:has(.kaia-page) {
     .trip-plan-page .dismiss-variant-btn,
     .trip-plan-page .swap-btn,
     .trip-plan-page .remove-btn,
+    .trip-plan-page .kebab-menu,
     .trip-plan-page .add-item-btn,
     .trip-plan-page .add-day-btn,
     .trip-plan-page .room-selection-row,

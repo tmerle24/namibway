@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatPrice } from '@/lib/currency';
 import type { ItineraryListingRef } from '@/lib/kaia-types';
+import KebabMenu from './KebabMenu.vue';
 import ListingPreviewModal from './ListingPreviewModal.vue';
 
 const props = defineProps<{
@@ -14,12 +15,16 @@ const props = defineProps<{
     // caption already conveys what `keypath` would otherwise spell out.
     hideLabel?: boolean;
     // Renders the swap trigger as a labeled pill ("Change") instead of the
-    // bare "⇄" icon — used for the vehicle card, where a lone icon button
+    // context menu — used for the vehicle card, where a lone icon button
     // reads as too subtle for the plan's single most prominent swap action.
     swapLabel?: string;
+    // Shows a "Add" entry in the item's context menu — for fields that
+    // allow more than one entry per day (activities, restaurants); see
+    // ItinerarySection.vue's day.activities/day.restaurants arrays.
+    allowAdd?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
     (e: 'remove'): void;
     (e: 'swap'): void;
     (e: 'add'): void;
@@ -30,6 +35,32 @@ const { t } = useI18n();
 // Listing names open a preview modal rather than navigating away — on a
 // phone, leaving the page loses the traveler's place in the itinerary.
 const previewSlug = ref<string | null>(null);
+
+const menuItems = computed(() => {
+    const items: { key: string; label: string; danger?: boolean }[] = [];
+
+    if (props.itemRef?.id) {
+        items.push({ key: 'swap', label: t('itinerary.change') });
+    }
+
+    if (props.allowAdd) {
+        items.push({ key: 'add', label: t('itinerary.add') });
+    }
+
+    items.push({ key: 'delete', label: t('itinerary.remove'), danger: true });
+
+    return items;
+});
+
+function onMenuSelect(key: string) {
+    if (key === 'swap') {
+        emit('swap');
+    } else if (key === 'add') {
+        emit('add');
+    } else if (key === 'delete') {
+        emit('remove');
+    }
+}
 </script>
 
 <template>
@@ -51,31 +82,30 @@ const previewSlug = ref<string | null>(null);
                     >{{ formatPrice(props.itemRef.price_from) }}</span
                 >
                 <template v-if="!props.readonly">
-                    <button
-                        v-if="props.itemRef.id && swapLabel"
-                        type="button"
-                        class="swap-btn swap-btn--labeled"
-                        @click="$emit('swap')"
-                    >
-                        ⇄ {{ swapLabel }}
-                    </button>
-                    <button
-                        v-else-if="props.itemRef.id"
-                        type="button"
-                        class="swap-btn"
-                        :aria-label="t('itinerary.swap')"
-                        @click="$emit('swap')"
-                    >
-                        ⇄
-                    </button>
-                    <button
-                        type="button"
-                        class="remove-btn"
-                        :aria-label="t('itinerary.remove')"
-                        @click="$emit('remove')"
-                    >
-                        ×
-                    </button>
+                    <template v-if="swapLabel">
+                        <button
+                            v-if="props.itemRef.id"
+                            type="button"
+                            class="swap-btn swap-btn--labeled"
+                            @click="$emit('swap')"
+                        >
+                            ⇄ {{ swapLabel }}
+                        </button>
+                        <button
+                            type="button"
+                            class="remove-btn"
+                            :aria-label="t('itinerary.remove')"
+                            @click="$emit('remove')"
+                        >
+                            ×
+                        </button>
+                    </template>
+                    <KebabMenu
+                        v-else
+                        :items="menuItems"
+                        :label="t('itinerary.moreOptions')"
+                        @select="onMenuSelect"
+                    />
                 </template>
             </template>
             <template v-else>
@@ -110,31 +140,30 @@ const previewSlug = ref<string | null>(null);
                         >{{ formatPrice(props.itemRef.price_from) }}</span
                     >
                     <template v-if="!props.readonly">
-                        <button
-                            v-if="props.itemRef.id && swapLabel"
-                            type="button"
-                            class="swap-btn swap-btn--labeled"
-                            @click="$emit('swap')"
-                        >
-                            ⇄ {{ swapLabel }}
-                        </button>
-                        <button
-                            v-else-if="props.itemRef.id"
-                            type="button"
-                            class="swap-btn"
-                            :aria-label="t('itinerary.swap')"
-                            @click="$emit('swap')"
-                        >
-                            ⇄
-                        </button>
-                        <button
-                            type="button"
-                            class="remove-btn"
-                            :aria-label="t('itinerary.remove')"
-                            @click="$emit('remove')"
-                        >
-                            ×
-                        </button>
+                        <template v-if="swapLabel">
+                            <button
+                                v-if="props.itemRef.id"
+                                type="button"
+                                class="swap-btn swap-btn--labeled"
+                                @click="$emit('swap')"
+                            >
+                                ⇄ {{ swapLabel }}
+                            </button>
+                            <button
+                                type="button"
+                                class="remove-btn"
+                                :aria-label="t('itinerary.remove')"
+                                @click="$emit('remove')"
+                            >
+                                ×
+                            </button>
+                        </template>
+                        <KebabMenu
+                            v-else
+                            :items="menuItems"
+                            :label="t('itinerary.moreOptions')"
+                            @select="onMenuSelect"
+                        />
                     </template>
                 </template>
                 <template v-else>

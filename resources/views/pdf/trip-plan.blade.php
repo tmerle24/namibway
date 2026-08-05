@@ -94,12 +94,20 @@
                 @if(!empty($day['accommodation']))
                 <div class="day-item"><span>Stay: </span>{{ $day['accommodation']['name'] ?? $day['accommodation'] }}</div>
                 @endif
-                @if(!empty($day['activity']))
-                <div class="day-item"><span>Activity: </span>{{ $day['activity']['name'] ?? $day['activity'] }}</div>
-                @endif
-                @if(!empty($day['restaurant']))
-                <div class="day-item"><span>Dinner: </span>{{ $day['restaurant']['name'] ?? $day['restaurant'] }}</div>
-                @endif
+                {{-- `activities`/`restaurants` (arrays) is the current shape — a
+                     traveler can add a 2nd/3rd of each. Older saved plans, from
+                     before that feature, still carry the singular
+                     `activity`/`restaurant` field instead. --}}
+                @php
+                    $activities = $day['activities'] ?? (!empty($day['activity']) ? [$day['activity']] : []);
+                    $restaurants = $day['restaurants'] ?? (!empty($day['restaurant']) ? [$day['restaurant']] : []);
+                @endphp
+                @foreach($activities as $activity)
+                <div class="day-item"><span>Activity: </span>{{ $activity['name'] ?? $activity }}</div>
+                @endforeach
+                @foreach($restaurants as $restaurant)
+                <div class="day-item"><span>Dinner: </span>{{ $restaurant['name'] ?? $restaurant }}</div>
+                @endforeach
             </div>
         </div>
     </div>
