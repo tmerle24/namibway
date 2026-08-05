@@ -16,6 +16,7 @@ import {
 } from '@/lib/kaia-client';
 import type { RegionCoords } from '@/lib/kaia-client';
 import type {
+    ItineraryDay,
     ItineraryListingRef,
     ItineraryPlan,
     ItineraryVariant,
@@ -25,6 +26,8 @@ import type {
 import AlternativesPanel from './AlternativesPanel.vue';
 import ConfirmModal from './ConfirmModal.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
+import KebabMenu from './KebabMenu.vue';
+import ListingSwapModal from './ListingSwapModal.vue';
 import LocationPicker from './LocationPicker.vue';
 import RoomTypePicker from './RoomTypePicker.vue';
 import SaveLoginModal from './SaveLoginModal.vue';
@@ -220,7 +223,9 @@ async function applyParamsEdit(values: TripParamsFormValues) {
             end_location: values.endLocation,
         });
 
-        editableVariants.value = JSON.parse(JSON.stringify(newPlan.variants));
+        editableVariants.value = normalizeVariants(
+            JSON.parse(JSON.stringify(newPlan.variants)),
+        );
         startDates.value = newPlan.variants.map((v) =>
             parseDayDate(v.days[0]?.date),
         );
@@ -357,6 +362,28 @@ function arrivalTime(
     );
 }
 
+// Kaia (and older saved plans) still carry a single `activity`/`restaurant`
+// field per day — the traveler-added "2nd/3rd activity" feature needs an
+// array instead. Normalize once, right where a plan enters editableVariants,
+// so every function/template downstream can assume day.activities/
+// day.restaurants always exist and never has to look at the singular fields.
+function normalizeDay(day: ItineraryDay): ItineraryDay {
+    const { activity, restaurant, ...rest } = day;
+
+    return {
+        ...rest,
+        activities: day.activities ?? (activity ? [activity] : []),
+        restaurants: day.restaurants ?? (restaurant ? [restaurant] : []),
+    };
+}
+
+function normalizeVariants(variants: ItineraryVariant[]): ItineraryVariant[] {
+    return variants.map((variant) => ({
+        ...variant,
+        days: variant.days.map(normalizeDay),
+    }));
+}
+
 function parseDayDate(dateStr: string | null | undefined): Date | null {
     if (!dateStr) {
         return null;
@@ -466,7 +493,13 @@ function dayItemsPriceLabel(
     let amount = 0;
     let hasAnyPrice = false;
 
-    for (const item of [day.accommodation, day.activity, day.restaurant]) {
+    const items = [
+        day.accommodation,
+        ...(day.activities ?? []),
+        ...(day.restaurants ?? []),
+    ];
+
+    for (const item of items) {
         if (item?.price_from) {
             amount += Number(item.price_from);
             hasAnyPrice = true;
@@ -543,10 +576,10 @@ function stageEndIndex(variantIndex: number, dayIndex: number): number {
 // collapsed down to "is there anything left on it" — its own accommodation
 // line/marker/date are already summarized on the stage's first day.
 function dayHasActivityOrRestaurant(day: {
-    activity?: unknown;
-    restaurant?: unknown;
+    activities?: unknown[];
+    restaurants?: unknown[];
 }): boolean {
-    return !!day.activity || !!day.restaurant;
+    return !!day.activities?.length || !!day.restaurants?.length;
 }
 
 // The stage's first day shows the whole stay's check-in -> check-out range
@@ -691,7 +724,9 @@ watch(
 watch(
     () => props.plan,
     (plan) => {
-        editableVariants.value = JSON.parse(JSON.stringify(plan.variants));
+        editableVariants.value = normalizeVariants(
+            JSON.parse(JSON.stringify(plan.variants)),
+        );
         startDates.value = plan.variants.map((v) =>
             parseDayDate(v.days[0]?.date),
         );
@@ -810,12 +845,22 @@ function reverseVariant(variantIndex: number) {
     roomPickerKey.value = null;
 }
 
-function removeItem(
+function removeItem(variantIndex: number, dayIndex: number) {
+    editableVariants.value[variantIndex].days[dayIndex].accommodation = null;
+    swap.value = null;
+    roomPickerKey.value = null;
+}
+
+function removeArrayItem(
     variantIndex: number,
     dayIndex: number,
-    field: 'accommodation' | 'activity' | 'restaurant',
+    field: 'activities' | 'restaurants',
+    itemIndex: number,
 ) {
-    editableVariants.value[variantIndex].days[dayIndex][field] = null;
+    editableVariants.value[variantIndex].days[dayIndex][field]?.splice(
+        itemIndex,
+        1,
+    );
     swap.value = null;
     roomPickerKey.value = null;
 }
@@ -840,8 +885,8 @@ function addDay(variantIndex: number, afterDayIndex: number) {
         day: 0,
         location: prevLocation,
         accommodation: null,
-        activity: null,
-        restaurant: null,
+        activities: [],
+        restaurants: [],
     });
     days.forEach((day, index) => {
         day.day = index + 1;
@@ -884,26 +929,41 @@ interface SwapState {
     variantIndex: number;
     dayIndex: number | null;
     field: SwapField;
+    // Which entry in day.activities/day.restaurants this swap targets — null
+    // both for accommodation/vehicle (never arrays) and for an "add another"
+    // panel (appends instead of replacing an entry at an index).
+    itemIndex: number | null;
+    // Only used for the vehicle field, which still shows the small inline
+    // AlternativesPanel — accommodation/activity/restaurant swaps open
+    // ListingSwapModal instead, which fetches its own results.
     loading: boolean;
     alternatives: ItineraryListingRef[];
+    // The listing currently occupying this slot, if any — kept out of its
+    // own alternatives list.
+    excludeId: number | null;
 }
 
 function swapKey(
     variantIndex: number,
     dayIndex: number | null,
     field: SwapField,
+    itemIndex?: number | null,
 ): string {
-    return `${variantIndex}-${dayIndex ?? 'v'}-${field}`;
+    return `${variantIndex}-${dayIndex ?? 'v'}-${field}-${itemIndex ?? 'new'}`;
 }
 
-// itemRef is undefined when opening as "add" (empty slot), defined when swapping an existing item.
+// itemRef is undefined when opening as "add" (empty slot, or appending
+// another activity/restaurant alongside existing ones), defined when
+// swapping an existing item. itemIndex only applies to the activities/
+// restaurants arrays — omit it to append rather than replace.
 async function openSwap(
     variantIndex: number,
     dayIndex: number | null,
     field: SwapField,
     itemRef?: ItineraryListingRef,
+    itemIndex?: number | null,
 ) {
-    const key = swapKey(variantIndex, dayIndex, field);
+    const key = swapKey(variantIndex, dayIndex, field, itemIndex);
 
     if (swap.value?.key === key) {
         swap.value = null;
@@ -917,9 +977,18 @@ async function openSwap(
         variantIndex,
         dayIndex,
         field,
-        loading: true,
+        itemIndex: itemIndex ?? null,
+        loading: field === 'vehicle',
         alternatives: [],
+        excludeId: itemRef?.id ?? null,
     };
+
+    // accommodation/activity/restaurant swaps are handled entirely by
+    // ListingSwapModal (search + filter against /listings/search) — only
+    // the vehicle field still uses this eagerly-fetched, unfiltered list.
+    if (field !== 'vehicle') {
+        return;
+    }
 
     const results = await fetchAlternatives(field, itemRef?.id ?? undefined);
 
@@ -929,18 +998,61 @@ async function openSwap(
     }
 }
 
+// The day this swap targets — used to default ListingSwapModal's city filter
+// to "the same city" the day is already in.
+const swapDayLocation = computed<string | null>(() => {
+    if (!swap.value || swap.value.dayIndex === null) {
+        return null;
+    }
+
+    return (
+        editableVariants.value[swap.value.variantIndex]?.days[
+            swap.value.dayIndex
+        ]?.location ?? null
+    );
+});
+
+const swapModalTitle = computed(() => {
+    if (!swap.value) {
+        return '';
+    }
+
+    const fieldLabel = {
+        accommodation: t('itinerary.stayLabel'),
+        activity: t('itinerary.activityLabel'),
+        restaurant: t('itinerary.dinnerLabel'),
+        vehicle: '',
+    }[swap.value.field];
+
+    const verb =
+        swap.value.excludeId === null
+            ? t('itinerary.add')
+            : t('itinerary.change');
+
+    return `${verb}: ${fieldLabel}`;
+});
+
 function applySwap(alternative: ItineraryListingRef) {
     if (!swap.value) {
         return;
     }
 
-    const { variantIndex, dayIndex, field } = swap.value;
+    const { variantIndex, dayIndex, field, itemIndex } = swap.value;
     const variant = editableVariants.value[variantIndex];
 
     if (field === 'vehicle') {
         variant.vehicle = alternative;
+    } else if (field === 'accommodation' && dayIndex !== null) {
+        variant.days[dayIndex].accommodation = alternative;
     } else if (dayIndex !== null) {
-        variant.days[dayIndex][field] = alternative;
+        const listField = field === 'activity' ? 'activities' : 'restaurants';
+        const list = (variant.days[dayIndex][listField] ??= []);
+
+        if (itemIndex !== null) {
+            list[itemIndex] = alternative;
+        } else {
+            list.push(alternative);
+        }
     }
 
     swap.value = null;
@@ -998,7 +1110,13 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
     let hasAnyPrice = false;
 
     for (const day of variant.days) {
-        for (const item of [day.accommodation, day.activity, day.restaurant]) {
+        const items = [
+            day.accommodation,
+            ...(day.activities ?? []),
+            ...(day.restaurants ?? []),
+        ];
+
+        for (const item of items) {
             if (item?.price_from) {
                 amount += Number(item.price_from);
                 hasAnyPrice = true;
@@ -1054,7 +1172,20 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                 :key="variant.name"
                 class="variant-card"
             >
-                <div class="variant-head">
+                <div
+                    class="variant-head"
+                    :class="{
+                        'variant-head--single': editableVariants.length === 1,
+                    }"
+                >
+                    <a
+                        v-if="editableVariants.length === 1"
+                        href="/"
+                        class="plan-back-btn"
+                        :aria-label="t('itinerary.back')"
+                        :title="t('itinerary.back')"
+                        >←</a
+                    >
                     <h3>{{ variant.name }}</h3>
                     <div class="variant-head-actions">
                         <button
@@ -1063,6 +1194,14 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                             @click="reverseVariant(variantIndex)"
                         >
                             ⇄ {{ t('itinerary.reverseRoute') }}
+                        </button>
+                        <button
+                            v-if="editableVariants.length === 1"
+                            type="button"
+                            class="plan-edit-btn"
+                            @click="openParamsEditor"
+                        >
+                            ✏️ {{ t('itinerary.editPlan') }}
                         </button>
                         <button
                             v-if="editableVariants.length > 1"
@@ -1089,7 +1228,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     :trip-params="currentTripParams"
                     :route-start="routeStart"
                     :route-end="routeEnd"
-                    editable
+                    :editable="editableVariants.length > 1"
                     @edit="openParamsEditor"
                 />
                 <div v-if="regenerating" class="params-regenerating-note">
@@ -1107,6 +1246,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         <ItineraryLineItem
                             keypath="itinerary.vehicle"
                             :item-ref="variant.vehicle"
+                            :swap-label="t('itinerary.changeRoom')"
                             class="variant-vehicle"
                             @remove="
                                 confirmAndRun(
@@ -1445,15 +1585,6 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                     <div
                                                         class="day-card-header"
                                                     >
-                                                        <span
-                                                            class="drag-handle"
-                                                            :title="
-                                                                t(
-                                                                    'itinerary.dragToReorder',
-                                                                )
-                                                            "
-                                                            >⠿</span
-                                                        >
                                                         <img
                                                             v-if="
                                                                 dayThumbnail(
@@ -1521,29 +1652,47 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                     )
                                                                 }}</span
                                                             >
-                                                            <button
-                                                                type="button"
-                                                                class="remove-btn"
-                                                                :aria-label="
-                                                                    t(
-                                                                        'itinerary.removeDay',
-                                                                    )
-                                                                "
-                                                                @click="
-                                                                    confirmAndRun(
-                                                                        t(
-                                                                            'itinerary.confirmRemove.day',
-                                                                        ),
-                                                                        () =>
-                                                                            removeDay(
-                                                                                variantIndex,
-                                                                                dayIndex,
-                                                                            ),
-                                                                    )
-                                                                "
+                                                            <div
+                                                                class="day-card-header-actions"
                                                             >
-                                                                ×
-                                                            </button>
+                                                                <KebabMenu
+                                                                    :items="[
+                                                                        {
+                                                                            key: 'delete',
+                                                                            label: t(
+                                                                                'itinerary.removeDay',
+                                                                            ),
+                                                                            danger: true,
+                                                                        },
+                                                                    ]"
+                                                                    :label="
+                                                                        t(
+                                                                            'itinerary.dayOptions',
+                                                                        )
+                                                                    "
+                                                                    @select="
+                                                                        confirmAndRun(
+                                                                            t(
+                                                                                'itinerary.confirmRemove.day',
+                                                                            ),
+                                                                            () =>
+                                                                                removeDay(
+                                                                                    variantIndex,
+                                                                                    dayIndex,
+                                                                                ),
+                                                                        )
+                                                                    "
+                                                                />
+                                                                <span
+                                                                    class="drag-handle"
+                                                                    :title="
+                                                                        t(
+                                                                            'itinerary.dragToReorder',
+                                                                        )
+                                                                    "
+                                                                    >⠿</span
+                                                                >
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div
@@ -1586,7 +1735,6 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                             removeItem(
                                                                                 variantIndex,
                                                                                 dayIndex,
-                                                                                'accommodation',
                                                                             ),
                                                                     )
                                                                 "
@@ -1715,21 +1863,26 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                 }}
                                                             </div>
                                                             <ItineraryLineItem
+                                                                v-for="(
+                                                                    item,
+                                                                    itemIndex
+                                                                ) in day.activities"
+                                                                :key="`activity-${itemIndex}-${item.id ?? item.name}`"
                                                                 hide-label
                                                                 keypath="itinerary.activity"
-                                                                :item-ref="
-                                                                    day.activity
-                                                                "
+                                                                :item-ref="item"
+                                                                allow-add
                                                                 @remove="
                                                                     confirmAndRun(
                                                                         t(
                                                                             'itinerary.confirmRemove.item',
                                                                         ),
                                                                         () =>
-                                                                            removeItem(
+                                                                            removeArrayItem(
                                                                                 variantIndex,
                                                                                 dayIndex,
-                                                                                'activity',
+                                                                                'activities',
+                                                                                itemIndex,
                                                                             ),
                                                                     )
                                                                 "
@@ -1738,9 +1891,27 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                         variantIndex,
                                                                         dayIndex,
                                                                         'activity',
-                                                                        day.activity!,
+                                                                        item,
+                                                                        itemIndex,
                                                                     )
                                                                 "
+                                                                @add="
+                                                                    openSwap(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                        'activity',
+                                                                    )
+                                                                "
+                                                            />
+                                                            <ItineraryLineItem
+                                                                v-if="
+                                                                    !day
+                                                                        .activities
+                                                                        ?.length
+                                                                "
+                                                                hide-label
+                                                                keypath="itinerary.activity"
+                                                                :item-ref="null"
                                                                 @add="
                                                                     openSwap(
                                                                         variantIndex,
@@ -1764,21 +1935,26 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                 }}
                                                             </div>
                                                             <ItineraryLineItem
+                                                                v-for="(
+                                                                    item,
+                                                                    itemIndex
+                                                                ) in day.restaurants"
+                                                                :key="`restaurant-${itemIndex}-${item.id ?? item.name}`"
                                                                 hide-label
                                                                 keypath="itinerary.dinner"
-                                                                :item-ref="
-                                                                    day.restaurant
-                                                                "
+                                                                :item-ref="item"
+                                                                allow-add
                                                                 @remove="
                                                                     confirmAndRun(
                                                                         t(
                                                                             'itinerary.confirmRemove.item',
                                                                         ),
                                                                         () =>
-                                                                            removeItem(
+                                                                            removeArrayItem(
                                                                                 variantIndex,
                                                                                 dayIndex,
-                                                                                'restaurant',
+                                                                                'restaurants',
+                                                                                itemIndex,
                                                                             ),
                                                                     )
                                                                 "
@@ -1787,9 +1963,27 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                         variantIndex,
                                                                         dayIndex,
                                                                         'restaurant',
-                                                                        day.restaurant!,
+                                                                        item,
+                                                                        itemIndex,
                                                                     )
                                                                 "
+                                                                @add="
+                                                                    openSwap(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                        'restaurant',
+                                                                    )
+                                                                "
+                                                            />
+                                                            <ItineraryLineItem
+                                                                v-if="
+                                                                    !day
+                                                                        .restaurants
+                                                                        ?.length
+                                                                "
+                                                                hide-label
+                                                                keypath="itinerary.dinner"
+                                                                :item-ref="null"
                                                                 @add="
                                                                     openSwap(
                                                                         variantIndex,
@@ -1867,15 +2061,22 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                 )
                                                             }}</span
                                                         >
-                                                        <button
-                                                            type="button"
-                                                            class="remove-btn"
-                                                            :aria-label="
+                                                        <KebabMenu
+                                                            :items="[
+                                                                {
+                                                                    key: 'delete',
+                                                                    label: t(
+                                                                        'itinerary.removeDay',
+                                                                    ),
+                                                                    danger: true,
+                                                                },
+                                                            ]"
+                                                            :label="
                                                                 t(
-                                                                    'itinerary.removeDay',
+                                                                    'itinerary.dayOptions',
                                                                 )
                                                             "
-                                                            @click="
+                                                            @select="
                                                                 confirmAndRun(
                                                                     t(
                                                                         'itinerary.confirmRemove.day',
@@ -1887,9 +2088,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                         ),
                                                                 )
                                                             "
-                                                        >
-                                                            ×
-                                                        </button>
+                                                        />
                                                     </div>
                                                     <div class="day-card-grid">
                                                         <div
@@ -1905,21 +2104,26 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                 }}
                                                             </div>
                                                             <ItineraryLineItem
+                                                                v-for="(
+                                                                    item,
+                                                                    itemIndex
+                                                                ) in day.activities"
+                                                                :key="`activity-${itemIndex}-${item.id ?? item.name}`"
                                                                 hide-label
                                                                 keypath="itinerary.activity"
-                                                                :item-ref="
-                                                                    day.activity
-                                                                "
+                                                                :item-ref="item"
+                                                                allow-add
                                                                 @remove="
                                                                     confirmAndRun(
                                                                         t(
                                                                             'itinerary.confirmRemove.item',
                                                                         ),
                                                                         () =>
-                                                                            removeItem(
+                                                                            removeArrayItem(
                                                                                 variantIndex,
                                                                                 dayIndex,
-                                                                                'activity',
+                                                                                'activities',
+                                                                                itemIndex,
                                                                             ),
                                                                     )
                                                                 "
@@ -1928,9 +2132,27 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                         variantIndex,
                                                                         dayIndex,
                                                                         'activity',
-                                                                        day.activity!,
+                                                                        item,
+                                                                        itemIndex,
                                                                     )
                                                                 "
+                                                                @add="
+                                                                    openSwap(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                        'activity',
+                                                                    )
+                                                                "
+                                                            />
+                                                            <ItineraryLineItem
+                                                                v-if="
+                                                                    !day
+                                                                        .activities
+                                                                        ?.length
+                                                                "
+                                                                hide-label
+                                                                keypath="itinerary.activity"
+                                                                :item-ref="null"
                                                                 @add="
                                                                     openSwap(
                                                                         variantIndex,
@@ -1953,21 +2175,26 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                 }}
                                                             </div>
                                                             <ItineraryLineItem
+                                                                v-for="(
+                                                                    item,
+                                                                    itemIndex
+                                                                ) in day.restaurants"
+                                                                :key="`restaurant-${itemIndex}-${item.id ?? item.name}`"
                                                                 hide-label
                                                                 keypath="itinerary.dinner"
-                                                                :item-ref="
-                                                                    day.restaurant
-                                                                "
+                                                                :item-ref="item"
+                                                                allow-add
                                                                 @remove="
                                                                     confirmAndRun(
                                                                         t(
                                                                             'itinerary.confirmRemove.item',
                                                                         ),
                                                                         () =>
-                                                                            removeItem(
+                                                                            removeArrayItem(
                                                                                 variantIndex,
                                                                                 dayIndex,
-                                                                                'restaurant',
+                                                                                'restaurants',
+                                                                                itemIndex,
                                                                             ),
                                                                     )
                                                                 "
@@ -1976,9 +2203,27 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                         variantIndex,
                                                                         dayIndex,
                                                                         'restaurant',
-                                                                        day.restaurant!,
+                                                                        item,
+                                                                        itemIndex,
                                                                     )
                                                                 "
+                                                                @add="
+                                                                    openSwap(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                        'restaurant',
+                                                                    )
+                                                                "
+                                                            />
+                                                            <ItineraryLineItem
+                                                                v-if="
+                                                                    !day
+                                                                        .restaurants
+                                                                        ?.length
+                                                                "
+                                                                hide-label
+                                                                keypath="itinerary.dinner"
+                                                                :item-ref="null"
                                                                 @add="
                                                                     openSwap(
                                                                         variantIndex,
@@ -1990,21 +2235,6 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                         </div>
                                                     </div>
                                                 </template>
-
-                                                <AlternativesPanel
-                                                    v-if="
-                                                        swap &&
-                                                        swap.variantIndex ===
-                                                            variantIndex &&
-                                                        swap.dayIndex ===
-                                                            dayIndex
-                                                    "
-                                                    :loading="swap.loading"
-                                                    :alternatives="
-                                                        swap.alternatives
-                                                    "
-                                                    @select="applySwap"
-                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -2075,6 +2305,17 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
             :message="confirmDialog.message"
             @confirm="resolveConfirm"
             @cancel="cancelConfirm"
+        />
+
+        <ListingSwapModal
+            v-if="swap && swap.field !== 'vehicle'"
+            :type="swap.field"
+            :title="swapModalTitle"
+            :exclude-id="swap.excludeId"
+            :default-city="swapDayLocation"
+            :cities="dbCities"
+            @select="applySwap"
+            @close="swap = null"
         />
     </section>
 </template>

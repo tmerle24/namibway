@@ -27,6 +27,14 @@ class ListingController extends Controller
     {
         $query = Listing::query()->where('is_published', true)->with('city.region')->filterBy($request->query());
 
+        // Used by the itinerary's "change" modal to keep the currently-assigned
+        // listing out of its own alternatives list.
+        $excludeId = $request->query('exclude_id');
+
+        if (is_numeric($excludeId)) {
+            $query->where('id', '!=', (int) $excludeId);
+        }
+
         $sort = $request->query('sort', 'featured');
 
         if ($sort === 'price_asc') {
@@ -49,6 +57,9 @@ class ListingController extends Controller
                 'slug' => $l->slug,
                 'description' => $l->description,
                 'image' => $l->image ? self::resolveMediaUrl($l->image) : null,
+                'gallery' => collect($l->gallery ?? [])
+                    ->map(fn (string $path) => self::resolveMediaUrl($path))
+                    ->values(),
                 'region' => $l->region,
                 'city' => $l->city?->name,
                 'price_from' => $l->price_from,

@@ -623,7 +623,11 @@ body:has(.kaia-page) {
 /* ---------- ITINERARY VARIANTS ---------- */
 .kaia-page .variants {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    /* min(300px, 100%) instead of a bare 300px floor — a phone narrower than
+       ~392px (itinerary-section's 48px side padding + variant-card's 44px
+       side padding + 300px) would otherwise force a fixed-width column
+       wider than the viewport and cause horizontal overflow/scroll. */
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
     gap: 20px;
 }
 .kaia-page .variant-card {
@@ -641,6 +645,74 @@ body:has(.kaia-page) {
 .kaia-page .variant-card h3 {
     font-size: 19px;
     margin-bottom: 4px;
+}
+/* Single-plan case (the common one, once a traveler has settled on one
+   itinerary) — promotes the variant-head into a page-header-style bar
+   (back arrow + larger title + Reverse route/Edit plan pills) instead of
+   the compact multi-variant row above. */
+.kaia-page .variant-head--single {
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    margin-bottom: 4px;
+}
+.kaia-page .variant-head--single h3 {
+    font-size: 24px;
+    margin-bottom: 0;
+    flex: 1;
+    min-width: 200px;
+}
+/* The two header pills (Reverse route / Edit plan) are wide enough
+   together that .variant-head-actions' own flex-shrink: 0 (fine for the
+   compact multi-variant row) would otherwise force them off the edge of a
+   narrow phone-width card instead of wrapping. */
+.kaia-page .variant-head--single .variant-head-actions {
+    flex-wrap: wrap;
+    flex-shrink: 1;
+}
+.kaia-page .plan-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--sand-dark);
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 16px;
+    text-decoration: none;
+    transition:
+        background 0.15s,
+        border-color 0.15s;
+}
+.kaia-page .plan-back-btn:hover {
+    background: var(--sand);
+    border-color: var(--rust);
+}
+.kaia-page .plan-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: 1.5px solid var(--rust);
+    border-radius: 999px;
+    color: var(--rust-dark);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 14px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.kaia-page .plan-edit-btn:hover {
+    background: var(--rust-light);
+}
+@media (max-width: 640px) {
+    .kaia-page .variant-head--single h3 {
+        font-size: 19px;
+        min-width: 140px;
+    }
 }
 .kaia-page .reverse-route-btn {
     background: none;
@@ -906,15 +978,6 @@ body:has(.kaia-page) {
     align-items: flex-start;
     gap: 10px;
 }
-/* Drag handle lives inside the card now (not out in the narrow rail column,
-   where it read as a stray mark next to the map-pin marker) — vertically
-   centered against the thumbnail so it doesn't look tacked onto the title
-   line. */
-.kaia-page .day-card-header .drag-handle {
-    align-self: center;
-    margin-bottom: 0;
-    margin-right: -2px;
-}
 .kaia-page .day-thumb {
     width: 44px;
     height: 44px;
@@ -944,6 +1007,17 @@ body:has(.kaia-page) {
     align-items: center;
     gap: 6px;
     flex-shrink: 0;
+}
+/* Kebab menu on top, drag handle underneath — see KebabMenu.vue and the
+   day-card-header markup in ItinerarySection.vue. */
+.kaia-page .day-card-header-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+.kaia-page .day-card-header-actions .drag-handle {
+    margin-bottom: 0;
 }
 .kaia-page .day-card-price {
     font-weight: 600;
@@ -2124,6 +2198,100 @@ body:has(.kaia-page) {
     opacity: 1;
     color: var(--rust);
 }
+/* Labeled variant ("⇄ Change") — used for the vehicle card, see
+   ItineraryLineItem's swapLabel prop. */
+.kaia-page .swap-btn--labeled {
+    opacity: 1;
+    margin-left: auto;
+    flex-shrink: 0;
+    border: 1px solid var(--sand-dark);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--rust-dark);
+    background: var(--paper);
+}
+.kaia-page .swap-btn--labeled:hover {
+    background: var(--sand);
+    border-color: var(--rust);
+}
+
+/* Kebab (⋮) context menu — day cards, and Stay/Activity/Dining line items.
+   See KebabMenu.vue. */
+.kaia-page .kebab-menu {
+    position: relative;
+    display: inline-flex;
+}
+/* Push to the end of the line-item row (Stay/Activity/Dining) — not applied
+   inside .day-card-header-actions, where it instead stacks above the drag
+   handle in a centered column. */
+.kaia-page .line-item .kebab-menu {
+    margin-left: auto;
+}
+.kaia-page .kebab-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    color: #8a7f68;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.7;
+    cursor: pointer;
+    transition:
+        opacity 0.15s,
+        background 0.15s,
+        color 0.15s;
+}
+.kaia-page .kebab-menu-trigger:hover,
+.kaia-page .kebab-menu-trigger[aria-expanded='true'] {
+    opacity: 1;
+    background: var(--sand);
+    color: var(--rust-dark);
+}
+.kaia-page .kebab-menu-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 20;
+    min-width: 140px;
+    background: var(--paper);
+    border: 1px solid var(--sand-dark);
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(36, 28, 21, 0.14);
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+}
+.kaia-page .kebab-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    cursor: pointer;
+}
+.kaia-page .kebab-menu-item:hover {
+    background: var(--sand);
+}
+.kaia-page .kebab-menu-item--danger {
+    color: var(--danger);
+}
+.kaia-page .kebab-menu-item--danger:hover {
+    background: var(--danger-light);
+}
 
 /* Alternatives panel — inline below the line item */
 .kaia-page .alternatives-panel {
@@ -3253,9 +3421,12 @@ body:has(.kaia-page) {
     }
     .trip-plan-page .trip-meta-edit-btn,
     .trip-plan-page .reverse-route-btn,
+    .trip-plan-page .plan-back-btn,
+    .trip-plan-page .plan-edit-btn,
     .trip-plan-page .dismiss-variant-btn,
     .trip-plan-page .swap-btn,
     .trip-plan-page .remove-btn,
+    .trip-plan-page .kebab-menu,
     .trip-plan-page .add-item-btn,
     .trip-plan-page .add-day-btn,
     .trip-plan-page .room-selection-row,

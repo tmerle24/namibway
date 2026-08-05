@@ -204,6 +204,77 @@ export async function fetchAlternatives(
     return data.alternatives ?? [];
 }
 
+export interface ListingSearchResult {
+    id: number;
+    type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
+    name: string;
+    slug: string;
+    image: string | null;
+    gallery: string[];
+    region: string | null;
+    city: string | null;
+    price_from: string | null;
+    price_currency: string;
+    rating: number | null;
+    rating_count: number | null;
+}
+
+export interface ListingSearchMeta {
+    current_page: number;
+    last_page: number;
+    total: number;
+    per_page: number;
+}
+
+export interface ListingSearchParams {
+    type: string;
+    city?: string;
+    keyword?: string;
+    budget?: string;
+    minRating?: string;
+    excludeId?: number | null;
+    page?: number;
+}
+
+// Backs the itinerary's "change" modal (ListingSwapModal.vue) — the same
+// `/listings/search` endpoint the Explore page's filter bar uses, so the two
+// never drift on what "city"/"budget"/"keyword" mean.
+export async function searchListings(
+    params: ListingSearchParams,
+): Promise<{ data: ListingSearchResult[]; meta: ListingSearchMeta }> {
+    const query = new URLSearchParams({ type: params.type });
+
+    if (params.city) {
+        query.set('city', params.city);
+    }
+
+    if (params.keyword) {
+        query.set('keyword', params.keyword);
+    }
+
+    if (params.budget) {
+        query.set('budget', params.budget);
+    }
+
+    if (params.minRating) {
+        query.set('min_rating', params.minRating);
+    }
+
+    if (params.excludeId != null) {
+        query.set('exclude_id', String(params.excludeId));
+    }
+
+    query.set('page', String(params.page ?? 1));
+
+    const response = await fetch(`/listings/search?${query}`, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    const data = await response.json();
+
+    return { data: data.data ?? [], meta: data.meta };
+}
+
 export interface SavedPlanResult {
     token: string;
     url: string;
