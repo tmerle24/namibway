@@ -153,6 +153,16 @@
                 "premium": "Premium"
             }
         },
+        "confirmRemove": {
+            "title": "Remove this?",
+            "day": "Remove this day from your itinerary? Its stay, activity and dinner will be lost.",
+            "item": "Remove this from your plan?",
+            "room": "Remove your room selection?",
+            "plan": "Discard this plan?",
+            "vehicle": "Remove the vehicle from this plan?",
+            "confirm": "Remove",
+            "cancel": "Cancel"
+        },
         "paramsEditor": {
             "title": "Edit trip details",
             "subtitle": "Update anything below — Kaia will re-plan the trip to match.",

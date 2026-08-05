@@ -738,16 +738,19 @@ body:has(.kaia-page) {
     flex-wrap: wrap;
     row-gap: 4px;
     column-gap: 10px;
+    width: 100%;
     padding: 8px 12px;
     margin: 8px 0;
     border-radius: 10px;
-    background: var(--rust-light);
+    background: var(--sand);
     font-size: 11.5px;
     color: var(--rust-dark);
 }
 .kaia-page .drive-time-icon {
-    font-size: 14px;
-    line-height: 1;
+    width: 22px;
+    height: 14px;
+    flex-shrink: 0;
+    fill: var(--rust-dark);
 }
 .kaia-page .drive-time-label {
     font-weight: 600;
@@ -806,7 +809,44 @@ body:has(.kaia-page) {
 }
 .kaia-page .day-connector-content {
     display: flex;
+    flex-direction: column;
     align-items: center;
+    width: 100%;
+    gap: 4px;
+}
+/* Discreet "insert a day here" button between every visible stage — sits
+   centered under the drive-time row (or alone, when the two days share a
+   location and there's no drive-time row to hang off of). */
+.kaia-page .add-day-inline-btn {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 1.5px dashed var(--sand-dark);
+    color: #8a7f68;
+    font-size: 13px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 2px 0;
+    cursor: pointer;
+    opacity: 0.5;
+    transition:
+        opacity 0.15s,
+        border-color 0.15s,
+        color 0.15s,
+        background 0.15s,
+        transform 0.15s;
+}
+.kaia-page .add-day-inline-btn:hover {
+    opacity: 1;
+    border-color: var(--rust);
+    color: var(--rust);
+    background: var(--sand);
+    transform: scale(1.1);
 }
 .kaia-page .day-rail {
     display: flex;
@@ -816,10 +856,6 @@ body:has(.kaia-page) {
     padding-top: 14px;
     position: relative;
     z-index: 1;
-}
-.kaia-page .day-rail .drag-handle {
-    font-size: 12px;
-    margin-bottom: 0;
 }
 .kaia-page .day-num-badge {
     font-family: 'Inter', sans-serif;
@@ -841,8 +877,12 @@ body:has(.kaia-page) {
     top: 28px;
     bottom: 0;
     left: 20px;
-    width: 2px;
-    background: var(--sand-dark);
+    width: 3px;
+    /* Distinct from the sand-toned borders used everywhere else (day-card,
+       day-card-box, etc.) — tinted to match .trip-map-marker's rust-red so
+       the timeline visually ties back to the numbered map pins. */
+    background: rgba(192, 83, 58, 0.45);
+    border-radius: 2px;
     z-index: 0;
 }
 .kaia-page .day-card {
@@ -865,6 +905,15 @@ body:has(.kaia-page) {
     display: flex;
     align-items: flex-start;
     gap: 10px;
+}
+/* Drag handle lives inside the card now (not out in the narrow rail column,
+   where it read as a stray mark next to the map-pin marker) — vertically
+   centered against the thumbnail so it doesn't look tacked onto the title
+   line. */
+.kaia-page .day-card-header .drag-handle {
+    align-self: center;
+    margin-bottom: 0;
+    margin-right: -2px;
 }
 .kaia-page .day-thumb {
     width: 44px;
@@ -980,18 +1029,33 @@ body:has(.kaia-page) {
     font-weight: 600;
 }
 .kaia-page .remove-btn {
-    background: none;
-    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    background: var(--sand);
+    border: 1px solid var(--sand-dark);
+    border-radius: 50%;
     color: #8a7f68;
     font-size: 14px;
     line-height: 1;
-    padding: 0 2px;
+    padding: 0;
     margin-left: auto;
-    opacity: 0.6;
+    opacity: 0.75;
+    cursor: pointer;
+    transition:
+        opacity 0.15s,
+        background 0.15s,
+        border-color 0.15s,
+        color 0.15s;
 }
 .kaia-page .remove-btn:hover {
     opacity: 1;
-    color: var(--rust-dark);
+    background: var(--danger-light);
+    border-color: var(--danger);
+    color: var(--danger);
 }
 /* Desktop, and only when a variant-card has the row to itself (a
    :only-child card can be up to ~1040px wide; several side-by-side variants
