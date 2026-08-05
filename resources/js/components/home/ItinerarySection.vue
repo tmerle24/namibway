@@ -23,6 +23,7 @@ import type {
     TripParams,
 } from '@/lib/kaia-types';
 import AlternativesPanel from './AlternativesPanel.vue';
+import ConfirmModal from './ConfirmModal.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
 import LocationPicker from './LocationPicker.vue';
 import RoomTypePicker from './RoomTypePicker.vue';
@@ -120,6 +121,26 @@ const routeEnd = ref('Windhoek');
 
 // --- Auth-gate for saving ---
 const showAuthModal = ref(false);
+
+// --- Confirm dialog for all "×" removal actions — a real modal, not
+// window.confirm(), so it matches the rest of the UI. A single pending
+// action is enough since only one removal can be triggered at a time.
+const confirmDialog = ref<{ message: string; onConfirm: () => void } | null>(
+    null,
+);
+
+function confirmAndRun(message: string, action: () => void) {
+    confirmDialog.value = { message, onConfirm: action };
+}
+
+function resolveConfirm() {
+    confirmDialog.value?.onConfirm();
+    confirmDialog.value = null;
+}
+
+function cancelConfirm() {
+    confirmDialog.value = null;
+}
 
 // Local, editable shadows of the plan-level (not per-variant) fields —
 // same reasoning as editableVariants above: regenerating the plan from the
@@ -1046,7 +1067,12 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                             class="dismiss-variant-btn"
                             :aria-label="t('itinerary.dismissPlan')"
                             :title="t('itinerary.dismissPlan')"
-                            @click="dismissVariant(variantIndex)"
+                            @click="
+                                confirmAndRun(
+                                    t('itinerary.confirmRemove.plan'),
+                                    () => dismissVariant(variantIndex),
+                                )
+                            "
                         >
                             ×
                         </button>
@@ -1079,7 +1105,14 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                             keypath="itinerary.vehicle"
                             :item-ref="variant.vehicle"
                             class="variant-vehicle"
-                            @remove="variant.vehicle = null"
+                            @remove="
+                                confirmAndRun(
+                                    t('itinerary.confirmRemove.vehicle'),
+                                    () => {
+                                        variant.vehicle = null;
+                                    },
+                                )
+                            "
                             @swap="
                                 openSwap(
                                     variantIndex,
@@ -1191,7 +1224,56 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                             "
                                             class="drive-time-row"
                                         >
-                                            <span class="drive-time-icon">🚗</span>
+                                            <svg
+                                                class="drive-time-icon"
+                                                viewBox="0 0 28 18"
+                                                aria-hidden="true"
+                                                focusable="false"
+                                            >
+                                                <rect
+                                                    x="1"
+                                                    y="8"
+                                                    width="24"
+                                                    height="5"
+                                                    rx="1.2"
+                                                />
+                                                <rect
+                                                    x="6"
+                                                    y="3.2"
+                                                    width="12"
+                                                    height="5.3"
+                                                    rx="1"
+                                                />
+                                                <rect
+                                                    x="7.5"
+                                                    y="0.8"
+                                                    width="1.6"
+                                                    height="2.6"
+                                                    rx="0.5"
+                                                />
+                                                <rect
+                                                    x="16.4"
+                                                    y="0.8"
+                                                    width="1.6"
+                                                    height="2.6"
+                                                    rx="0.5"
+                                                />
+                                                <circle
+                                                    cx="21.5"
+                                                    cy="9.6"
+                                                    r="2.1"
+                                                />
+                                                <circle
+                                                    cx="6.2"
+                                                    cy="15.2"
+                                                    r="2.6"
+                                                />
+                                                <circle
+                                                    cx="19.5"
+                                                    cy="15.2"
+                                                    r="2.6"
+                                                />
+                                            </svg>
                                             <span class="drive-time-label">
                                                 {{
                                                     drivingTimeBetween(
@@ -1259,6 +1341,20 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                 </span>
                                             </span>
                                         </div>
+                                        <button
+                                            type="button"
+                                            class="add-day-inline-btn"
+                                            :title="t('itinerary.addDay')"
+                                            :aria-label="t('itinerary.addDay')"
+                                            @click="
+                                                addDay(
+                                                    variantIndex,
+                                                    dayIndex - 1,
+                                                )
+                                            "
+                                        >
+                                            +
+                                        </button>
                                         </div>
                                     </div>
 
@@ -1272,15 +1368,6 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                     )
                                                 "
                                             >
-                                                <span
-                                                    class="drag-handle"
-                                                    :title="
-                                                        t(
-                                                            'itinerary.dragToReorder',
-                                                        )
-                                                    "
-                                                    >⠿</span
-                                                >
                                                 <span
                                                     class="trip-map-marker day-num-badge"
                                                     :class="{
@@ -1320,6 +1407,15 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                 "
                                             >
                                                 <div class="day-card-header">
+                                                    <span
+                                                        class="drag-handle"
+                                                        :title="
+                                                            t(
+                                                                'itinerary.dragToReorder',
+                                                            )
+                                                        "
+                                                        >⠿</span
+                                                    >
                                                     <img
                                                         v-if="dayThumbnail(day)"
                                                         :src="dayThumbnail(day)!"
@@ -1378,9 +1474,15 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                 )
                                                             "
                                                             @click="
-                                                                removeDay(
-                                                                    variantIndex,
-                                                                    dayIndex,
+                                                                confirmAndRun(
+                                                                    t(
+                                                                        'itinerary.confirmRemove.day',
+                                                                    ),
+                                                                    () =>
+                                                                        removeDay(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                        ),
                                                                 )
                                                             "
                                                         >
@@ -1418,10 +1520,16 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                 day.accommodation
                                                             "
                                                             @remove="
-                                                                removeItem(
-                                                                    variantIndex,
-                                                                    dayIndex,
-                                                                    'accommodation',
+                                                                confirmAndRun(
+                                                                    t(
+                                                                        'itinerary.confirmRemove.item',
+                                                                    ),
+                                                                    () =>
+                                                                        removeItem(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            'accommodation',
+                                                                        ),
                                                                 )
                                                             "
                                                             @swap="
@@ -1500,9 +1608,15 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                         )
                                                                     "
                                                                     @click="
-                                                                        clearRoom(
-                                                                            variantIndex,
-                                                                            dayIndex,
+                                                                        confirmAndRun(
+                                                                            t(
+                                                                                'itinerary.confirmRemove.room',
+                                                                            ),
+                                                                            () =>
+                                                                                clearRoom(
+                                                                                    variantIndex,
+                                                                                    dayIndex,
+                                                                                ),
                                                                         )
                                                                     "
                                                                 >
@@ -1547,10 +1661,16 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                 day.activity
                                                             "
                                                             @remove="
-                                                                removeItem(
-                                                                    variantIndex,
-                                                                    dayIndex,
-                                                                    'activity',
+                                                                confirmAndRun(
+                                                                    t(
+                                                                        'itinerary.confirmRemove.item',
+                                                                    ),
+                                                                    () =>
+                                                                        removeItem(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            'activity',
+                                                                        ),
                                                                 )
                                                             "
                                                             @swap="
@@ -1588,10 +1708,16 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                 day.restaurant
                                                             "
                                                             @remove="
-                                                                removeItem(
-                                                                    variantIndex,
-                                                                    dayIndex,
-                                                                    'restaurant',
+                                                                confirmAndRun(
+                                                                    t(
+                                                                        'itinerary.confirmRemove.item',
+                                                                    ),
+                                                                    () =>
+                                                                        removeItem(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            'restaurant',
+                                                                        ),
                                                                 )
                                                             "
                                                             @swap="
@@ -1677,9 +1803,15 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                             )
                                                         "
                                                         @click="
-                                                            removeDay(
-                                                                variantIndex,
-                                                                dayIndex,
+                                                            confirmAndRun(
+                                                                t(
+                                                                    'itinerary.confirmRemove.day',
+                                                                ),
+                                                                () =>
+                                                                    removeDay(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                    ),
                                                             )
                                                         "
                                                     >
@@ -1704,10 +1836,16 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                 day.activity
                                                             "
                                                             @remove="
-                                                                removeItem(
-                                                                    variantIndex,
-                                                                    dayIndex,
-                                                                    'activity',
+                                                                confirmAndRun(
+                                                                    t(
+                                                                        'itinerary.confirmRemove.item',
+                                                                    ),
+                                                                    () =>
+                                                                        removeItem(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            'activity',
+                                                                        ),
                                                                 )
                                                             "
                                                             @swap="
@@ -1744,10 +1882,16 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                 day.restaurant
                                                             "
                                                             @remove="
-                                                                removeItem(
-                                                                    variantIndex,
-                                                                    dayIndex,
-                                                                    'restaurant',
+                                                                confirmAndRun(
+                                                                    t(
+                                                                        'itinerary.confirmRemove.item',
+                                                                    ),
+                                                                    () =>
+                                                                        removeItem(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            'restaurant',
+                                                                        ),
                                                                 )
                                                             "
                                                             @swap="
@@ -1846,6 +1990,13 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
             :error="regenerateError"
             @close="paramsModalOpen = false"
             @save="applyParamsEdit"
+        />
+
+        <ConfirmModal
+            v-if="confirmDialog"
+            :message="confirmDialog.message"
+            @confirm="resolveConfirm"
+            @cancel="cancelConfirm"
         />
     </section>
 </template>
