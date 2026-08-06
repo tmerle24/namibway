@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Ellipsis } from '@lucide/vue';
 import { onBeforeUnmount, ref, watch } from 'vue';
 
 interface MenuItem {
@@ -71,7 +72,7 @@ onBeforeUnmount(() => {
             :aria-expanded="open"
             @click.stop="toggle"
         >
-            ⋮
+            <Ellipsis :size="17" />
         </button>
         <div v-if="open" class="kebab-menu-panel" role="menu">
             <button

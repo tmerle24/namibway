@@ -30,6 +30,7 @@ import ListingSwapModal from './ListingSwapModal.vue';
 import LocationPicker from './LocationPicker.vue';
 import MapViewModal from './MapViewModal.vue';
 import RoomTypePicker from './RoomTypePicker.vue';
+import SaveButton from './SaveButton.vue';
 import SaveLoginModal from './SaveLoginModal.vue';
 import SaveShareBar from './SaveShareBar.vue';
 import ShareButton from './ShareButton.vue';
@@ -1101,7 +1102,7 @@ async function saveAllVariants() {
     });
 }
 
-function estimatedLabel(variant: ItineraryVariant): string | null {
+function estimatedTotal(variant: ItineraryVariant): number | null {
     let amount = 0;
     let hasAnyPrice = false;
 
@@ -1125,11 +1126,29 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
         hasAnyPrice = true;
     }
 
-    if (!hasAnyPrice) {
+    return hasAnyPrice ? amount : null;
+}
+
+function estimatedLabel(variant: ItineraryVariant): string | null {
+    const amount = estimatedTotal(variant);
+
+    return amount === null
+        ? null
+        : t('itinerary.estimated', { price: formatPrice(amount) });
+}
+
+// Total ÷ trip length — a pure display derivation of estimatedTotal() above,
+// not a separately tracked figure, so it can't drift out of sync with it.
+function estimatedPerDayLabel(variant: ItineraryVariant): string | null {
+    const amount = estimatedTotal(variant);
+
+    if (amount === null || variant.days.length === 0) {
         return null;
     }
 
-    return t('itinerary.estimated', { price: formatPrice(amount) });
+    return t('itinerary.estimatedPerDay', {
+        price: formatPrice(amount / variant.days.length),
+    });
 }
 </script>
 
@@ -1184,13 +1203,24 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                     >
                     <h3>{{ variant.name }}</h3>
                     <div class="variant-head-actions">
-                        <button
-                            type="button"
-                            class="reverse-route-btn"
-                            @click="reverseVariant(variantIndex)"
-                        >
-                            ⇄ {{ t('itinerary.reverseRoute') }}
-                        </button>
+                        <SaveButton
+                            v-if="editableVariants.length === 1"
+                            :plan="{
+                                trip_summary: currentTripSummary,
+                                variants: [variant],
+                                start_location: routeStart,
+                                end_location: routeEnd,
+                                trip_params: currentTripParams,
+                            }"
+                            :existing-token="currentToken"
+                            :is-logged-in="isLoggedIn"
+                            @saved="
+                                (token) => {
+                                    savedTokens[variantIndex] = token;
+                                }
+                            "
+                            @need-auth="onNeedAuth"
+                        />
                         <ShareButton
                             v-if="editableVariants.length === 1"
                             :plan="{
@@ -1236,6 +1266,11 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                 </div>
                 <div v-if="estimatedLabel(variant)" class="variant-price">
                     {{ estimatedLabel(variant) }}
+                    <span
+                        v-if="estimatedPerDayLabel(variant)"
+                        class="variant-price-per-day"
+                        >({{ estimatedPerDayLabel(variant) }})</span
+                    >
                 </div>
 
                 <TripMeta
@@ -1326,13 +1361,22 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         class="itinerary-days-col"
                         :ref="(el) => setDaysColRef(variantIndex, el)"
                     >
-                        <button
-                            type="button"
-                            class="add-day-btn"
-                            @click="addDay(variantIndex, -1)"
-                        >
-                            + {{ t('itinerary.addDay') }}
-                        </button>
+                        <div class="days-col-top-row">
+                            <button
+                                type="button"
+                                class="add-day-btn"
+                                @click="addDay(variantIndex, -1)"
+                            >
+                                + {{ t('itinerary.addDay') }}
+                            </button>
+                            <button
+                                type="button"
+                                class="reverse-route-btn"
+                                @click="reverseVariant(variantIndex)"
+                            >
+                                ⇄ {{ t('itinerary.reverseRoute') }}
+                            </button>
+                        </div>
 
                         <div class="itinerary-timeline">
                             <draggable

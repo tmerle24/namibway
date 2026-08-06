@@ -75,7 +75,10 @@ function onMenuSelect(key: string) {
                 <span
                     v-if="formatPrice(props.itemRef.price_from)"
                     class="item-price"
-                    >{{ formatPrice(props.itemRef.price_from) }}</span
+                    >{{ formatPrice(props.itemRef.price_from)
+                    }}<template v-if="props.itemRef.type === 'vehicle'"
+                        >/{{ t('itinerary.perDay') }}</template
+                    ></span
                 >
                 <template v-if="!props.readonly">
                     <KebabMenu
