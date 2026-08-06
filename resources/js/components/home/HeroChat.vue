@@ -249,49 +249,71 @@ function resetOuterScrollIfFullscreenMobile() {
     });
 }
 
-// TEMPORARY diagnostic overlay for the mobile "screen turns blue on keyboard
-// open" bug — two prior fix attempts (the --app-vh floor in app.ts and
-// resetOuterScrollIfFullscreenMobile above) shipped to production and did
-// not change the reported behavior at all, so guessing further without real
-// device data isn't productive. This logs a timestamped trail of every
-// visualViewport/scroll event from focus onward so a single screenshot
-// captures the whole sequence, not just one instant. Remove once the real
-// cause is found.
+// TEMPORARY diagnostic overlay for the mobile "screen turns blue/black on
+// keyboard open" bug. Three prior fix attempts (the --app-vh floor in
+// app.ts, resetOuterScrollIfFullscreenMobile above, and the rAF-deferred
+// --app-vh write + compositing-layer promotion in app.ts/kaia-home.css)
+// shipped to production without resolving it, so this now casts a much
+// wider net instead of guessing at another specific mechanism:
+//   - a requestAnimationFrame heartbeat, logged at most every ~300ms, for
+//     as long as the diagnostic session runs. If this keeps ticking through
+//     the broken period, the main thread is fine and it's a pure paint/
+//     compositing stall (nothing to do with our JS); if it also stalls,
+//     something is genuinely blocking the main thread.
+//   - a PerformanceObserver for `longtask` entries (where supported), which
+//     directly reports if/when/how-long JS blocked the main thread.
+//   - wall-clock time on every line (not just t+Nms), so a line's timestamp
+//     can be checked directly against the phone's own status-bar clock in a
+//     screenshot — proof of a multi-second gap doesn't depend on trusting
+//     our own elapsed-time math.
+//   - a wider spread of events (visibility, touch, orientation, page
+//     show/hide) in case the freeze is tied to something other than the
+//     visualViewport/scroll events we were already watching.
+// The overlay stays up for 10s after focus (not just until blur), so a
+// screenshot taken right after the keyboard closes still shows the trail.
+// Remove this whole block, its template overlay, and the @focus/@blur
+// wiring on the chat input once the real cause is found.
 const diagnosticLog = ref<string[]>([]);
 const showDiagnostics = ref(false);
 let diagnosticStart = 0;
+let diagnosticRafId: number | null = null;
+let diagnosticHideTimer: ReturnType<typeof setTimeout> | null = null;
+let diagnosticLongtaskObserver: PerformanceObserver | null = null;
+let diagnosticLastHeartbeat = 0;
+
+function diagnosticWallClock(): string {
+    const d = new Date();
+
+    return (
+        `${d.getHours().toString().padStart(2, '0')}:` +
+        `${d.getMinutes().toString().padStart(2, '0')}:` +
+        `${d.getSeconds().toString().padStart(2, '0')}.` +
+        `${d.getMilliseconds().toString().padStart(3, '0')}`
+    );
+}
 
 function logDiagnostic(label: string) {
     const vv = window.visualViewport;
     const elapsed = (performance.now() - diagnosticStart)
         .toFixed(0)
-        .padStart(4, ' ');
+        .padStart(5, ' ');
     const appVh = getComputedStyle(document.documentElement).getPropertyValue(
         '--app-vh',
     );
     const entry =
-        `t+${elapsed}ms ${label} | vv.h=${vv?.height.toFixed(0)} vv.scale=${vv?.scale.toFixed(3)} ` +
-        `vv.top=${vv?.offsetTop.toFixed(0)} win.h=${window.innerHeight} scrollY=${window.scrollY} appVh=${appVh.trim()}`;
+        `${diagnosticWallClock()} t+${elapsed}ms ${label} | vv.h=${vv?.height.toFixed(0)} vv.scale=${vv?.scale.toFixed(3)} ` +
+        `vv.top=${vv?.offsetTop.toFixed(0)} win.h=${window.innerHeight} scrollY=${window.scrollY} appVh=${appVh.trim()} vis=${document.visibilityState}`;
 
-    diagnosticLog.value = [entry, ...diagnosticLog.value].slice(0, 30);
+    diagnosticLog.value = [entry, ...diagnosticLog.value].slice(0, 200);
 }
 
-function startDiagnostics() {
-    diagnosticStart = performance.now();
-    diagnosticLog.value = [];
-    showDiagnostics.value = true;
-    logDiagnostic('focus');
+function diagnosticHeartbeatTick(now: number) {
+    if (now - diagnosticLastHeartbeat >= 300) {
+        diagnosticLastHeartbeat = now;
+        logDiagnostic('tick');
+    }
 
-    window.visualViewport?.addEventListener('resize', diagnosticOnVvResize);
-    window.visualViewport?.addEventListener('scroll', diagnosticOnVvScroll);
-    window.addEventListener('scroll', diagnosticOnWindowScroll);
-}
-
-function stopDiagnostics() {
-    logDiagnostic('blur');
-    window.visualViewport?.removeEventListener('resize', diagnosticOnVvResize);
-    window.visualViewport?.removeEventListener('scroll', diagnosticOnVvScroll);
-    window.removeEventListener('scroll', diagnosticOnWindowScroll);
+    diagnosticRafId = requestAnimationFrame(diagnosticHeartbeatTick);
 }
 
 function diagnosticOnVvResize() {
@@ -302,6 +324,87 @@ function diagnosticOnVvScroll() {
 }
 function diagnosticOnWindowScroll() {
     logDiagnostic('win-scroll');
+}
+function diagnosticOnVisibility() {
+    logDiagnostic(`visibilitychange`);
+}
+function diagnosticOnPageshow() {
+    logDiagnostic('pageshow');
+}
+function diagnosticOnPagehide() {
+    logDiagnostic('pagehide');
+}
+function diagnosticOnTouchstart() {
+    logDiagnostic('touchstart');
+}
+function diagnosticOnOrientation() {
+    logDiagnostic('orientationchange');
+}
+
+function startDiagnostics() {
+    diagnosticStart = performance.now();
+    diagnosticLastHeartbeat = diagnosticStart;
+    diagnosticLog.value = [];
+    showDiagnostics.value = true;
+    logDiagnostic(
+        `focus | ua=${navigator.userAgent} standalone=${window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true}`,
+    );
+
+    window.visualViewport?.addEventListener('resize', diagnosticOnVvResize);
+    window.visualViewport?.addEventListener('scroll', diagnosticOnVvScroll);
+    window.addEventListener('scroll', diagnosticOnWindowScroll);
+    document.addEventListener('visibilitychange', diagnosticOnVisibility);
+    window.addEventListener('pageshow', diagnosticOnPageshow);
+    window.addEventListener('pagehide', diagnosticOnPagehide);
+    window.addEventListener('touchstart', diagnosticOnTouchstart, {
+        passive: true,
+    });
+    window.addEventListener('orientationchange', diagnosticOnOrientation);
+
+    if ('PerformanceObserver' in window) {
+        try {
+            diagnosticLongtaskObserver = new PerformanceObserver((list) => {
+                for (const e of list.getEntries()) {
+                    logDiagnostic(`longtask dur=${e.duration.toFixed(0)}ms`);
+                }
+            });
+            diagnosticLongtaskObserver.observe({ entryTypes: ['longtask'] });
+        } catch {
+            // Long Tasks API unsupported on this engine — skip silently.
+        }
+    }
+
+    diagnosticRafId = requestAnimationFrame(diagnosticHeartbeatTick);
+
+    if (diagnosticHideTimer) {
+        clearTimeout(diagnosticHideTimer);
+    }
+    diagnosticHideTimer = setTimeout(() => {
+        showDiagnostics.value = false;
+    }, 10000);
+}
+
+function stopDiagnostics() {
+    logDiagnostic('blur');
+    window.visualViewport?.removeEventListener('resize', diagnosticOnVvResize);
+    window.visualViewport?.removeEventListener('scroll', diagnosticOnVvScroll);
+    window.removeEventListener('scroll', diagnosticOnWindowScroll);
+    document.removeEventListener('visibilitychange', diagnosticOnVisibility);
+    window.removeEventListener('pageshow', diagnosticOnPageshow);
+    window.removeEventListener('pagehide', diagnosticOnPagehide);
+    window.removeEventListener('touchstart', diagnosticOnTouchstart);
+    window.removeEventListener('orientationchange', diagnosticOnOrientation);
+
+    if (diagnosticRafId !== null) {
+        cancelAnimationFrame(diagnosticRafId);
+        diagnosticRafId = null;
+    }
+
+    diagnosticLongtaskObserver?.disconnect();
+    diagnosticLongtaskObserver = null;
+    // The overlay itself stays visible (auto-hidden by the timer set in
+    // startDiagnostics) so a screenshot taken right as the keyboard closes
+    // still shows the full trail, not just whatever was on screen at blur.
 }
 
 function handleChatInputFocus() {
