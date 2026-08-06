@@ -244,7 +244,7 @@ async function onGuestSubmit(details: GuestDetails) {
         <HeroChat
             @plan-ready="onPlanReady"
             @search-intent="onSearchIntent"
-            @chat-active="chatFullscreen = true"
+            @chat-active="chatFullscreen = $event"
         />
         <ItinerarySection
             v-if="plan"

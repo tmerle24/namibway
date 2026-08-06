@@ -38,7 +38,8 @@
         "retry": "Opnieuw proberen",
         "voiceInput": "Spreek met Kaia",
         "stopListening": "Opname stoppen",
-        "listening": "Ik luister…"
+        "listening": "Ik luister…",
+        "back": "Terug"
     },
     "itinerary": {
         "eyebrow": "Jouw plan",

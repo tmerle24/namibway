@@ -38,7 +38,8 @@
         "retry": "Reintentar",
         "voiceInput": "Habla con Kaia",
         "stopListening": "Detener grabación",
-        "listening": "Escuchando…"
+        "listening": "Escuchando…",
+        "back": "Atrás"
     },
     "itinerary": {
         "eyebrow": "Tu plan",
