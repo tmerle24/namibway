@@ -3031,99 +3031,57 @@ body:has(.kaia-page) {
     }
 
     /* Before Kaia has produced an itinerary, the Kaia tab is just the hero +
-       chat — stretch it down to fill the screen above the footer nav instead
-       of trailing off into the site footer, which reads as an odd dead end
-       this early in the flow. Once a plan exists, ItinerarySection gives the
-       tab real content again, so the hero goes back to its natural height. */
-    .kaia-page[data-mobile-section='kaia']:not(.has-plan) {
-        display: flex;
-        flex-direction: column;
-        box-sizing: border-box;
-        /* The root `.kaia-page` rule (top of this file) sets an unconditional
-           `min-height: 100vh`. min-height always wins over a smaller `height`
-           on the same box — that's the CSS box model's normal clamping
-           behavior, not something selector specificity can override, since
-           they're two different properties. On a real phone, 100vh is the
-           browser's *large* viewport size (chrome hidden/collapsed), which
-           is taller than what's actually on screen whenever the browser's
-           address bar/toolbar is visible — so every previous attempt here
-           (100dvh, then 100svh) was silently clamped straight back up to the
-           too-tall 100vh the moment it produced a smaller value, which is
-           exactly why neither one visibly changed anything on a real iPhone
-           in Chrome or Safari despite working in every synthetic test.
-           `min-height: 0` cancels that inherited floor so the `height` below
-           can actually take effect. */
-        min-height: 0;
-        /* `height`, not `min-height`: this must be a hard cap, not a floor.
-           A floor lets the column grow past the viewport whenever the hero's
-           own content (heading + subtitle + chat card) is taller than the
-           available space — which pushes the footer nav below it, off the
-           bottom of the screen, since the nav is just this column's static
-           last child (see below). Capping the column's height and letting
-           #kaia-hero scroll internally (below) keeps the nav pinned in view
-           no matter how tall the hero content gets.
+       chat. Header and footer nav are genuinely `position: fixed` here (see
+       the .hero-nav and .mobile-footer-nav overrides below), and #kaia-hero
+       just needs top/bottom clearance to sit between them — the page scrolls
+       normally, the same as every other tab/page.
 
-           --app-vh (set in app.ts from window.visualViewport) is the
-           authoritative value: it's the browser reporting the real, current
-           pixel height directly, rather than us guessing which of vh/svh/dvh
-           semantics a given engine actually implements correctly — that
-           guessing is what went wrong with the two earlier attempts. The
-           vh/svh chain only matters for the brief window before that JS runs
-           (or on the rare chance it never does). */
-        height: 100vh;
-        height: 100svh;
-        height: var(--app-vh, 100svh);
-        overflow: hidden;
+       Five earlier attempts in this exact spot (see git history) instead
+       capped this column to exactly the visible viewport height (via
+       --app-vh) with `overflow: hidden`, and made the footer nav a plain
+       static flex child rather than truly fixed, specifically to sidestep
+       the safe-area-inset arithmetic below. On-device diagnostics (a
+       temporary logging overlay, since removed) showed that approach caused
+       a *worse* bug: focusing the chat input triggers iOS's native "scroll
+       input above the keyboard" behavior, which — fighting a column whose
+       height was itself being resized live by our own JS in that same
+       instant — launched a multi-second elastic overscroll (rubber-band)
+       animation that visibly dragged the entire layout, including
+       position:fixed elements, up and off screen before slowly settling
+       back (captured as `scrollY` sweeping from -26px back to 0 over ~2s in
+       the diagnostic log). Normal document scroll with genuinely fixed
+       header/footer is the standard mobile-web pattern for exactly this
+       reason: the browser's own keyboard-avoidance logic is built for it
+       and handles it correctly without any of this. */
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) {
         padding-bottom: 0;
-        /* On-device diagnostics confirmed a WebKit paint stall: after the
-           keyboard resizes the viewport and the --app-vh custom property
-           above changes, this element (and everything painted inside it —
-           header, hero, chat) can simply stop being repainted for several
-           seconds, showing only the flat <body> background underneath,
-           until an unrelated interaction (typing) forces a repaint. Even a
-           brand-new `position: fixed` debug overlay added straight to the
-           DOM failed to appear during the stall, which is what points at
-           WebKit's paint/compositing step rather than anything about this
-           element's own layout. Promoting it to its own compositing layer
-           keeps it painting independently of that stalled main-thread
-           paint. Safe here specifically: in this exact state (mobile, Kaia
-           tab, no plan yet) nothing inside this subtree uses `position:
-           fixed` — .mobile-footer-nav is forced to `position: static` right
-           below, and the modals that do use `fixed` (ListingSwapModal,
-           TripParamsEditModal, ListingPreviewModal) only ever mount once a
-           plan/itinerary exists — so this never becomes their containing
-           block. */
-        transform: translateZ(0);
+    }
+
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) .hero-nav {
+        position: fixed;
+        top: var(--admin-bar-height, 0px);
+        left: 0;
+        right: 0;
     }
 
     .kaia-page[data-mobile-section='kaia']:not(.has-plan) #kaia-hero {
-        flex: 1;
-        /* Overrides .hero's own `min-height: 560px` floor, which would
-           otherwise force this element past the space flex:1 actually gives
-           it. min-height: 0 lets it shrink to that space and scroll its own
-           overflow internally instead of expanding the whole column past
-           the viewport. */
-        min-height: 0;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        /* Clears the now-fixed header above. --site-header-height is
+           measured live by SiteHeader.vue via ResizeObserver (see its own
+           comment) — it tracks the header's real rendered height, which
+           varies with the safe-area inset, instead of a guessed constant. */
+        padding-top: var(--site-header-height, 0px);
+        /* Clears the now-fixed footer nav below: 64px of nav content + 8px
+           breathing room + whatever safe-area inset applies — the same math
+           the site-wide `.kaia-page` padding-bottom above uses, just moved
+           onto this element now that the page itself no longer sets that
+           padding in this particular state. */
+        padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
     }
 
-    /* Two prior attempts tried to reserve exact pixel clearance above the
-       fixed footer nav (padding-bottom, then a min-height subtraction) and
-       both drifted out of sync with the nav's real rendered height — it
-       differs between a plain mobile browser (env(safe-area-inset-bottom)
-       reads 0; Safari's own chrome already covers the home-indicator area)
-       and the wrapped iOS app (WKWebView is genuinely edge-to-edge, so the
-       same env() reads ~34pt), producing a gap in one and an overlap in the
-       other depending on which value was assumed. Sidestep the arithmetic
-       entirely: in this fullscreen state the nav is just the last flex
-       child after the flex:1 hero, so its layout position falls out of
-       normal flex flow — correct in both contexts with no measurement of
-       the nav's height needed anywhere. */
-    .kaia-page[data-mobile-section='kaia']:not(.has-plan) .mobile-footer-nav {
-        position: static;
-        flex-shrink: 0;
-    }
+    /* No .mobile-footer-nav override needed here anymore — it falls through
+       to the site-wide `position: fixed` rule below. This state used to
+       force `position: static` instead; see the comment above for why that
+       traded one bug for a worse one. */
 
     .kaia-page[data-mobile-section='kaia']:not(.has-plan) footer {
         display: none;
