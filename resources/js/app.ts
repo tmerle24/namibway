@@ -81,6 +81,15 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 // keeps the last good height until a real one arrives.
 const MIN_PLAUSIBLE_VIEWPORT_HEIGHT = 150;
 
+// On-device diagnostics (see HeroChat.vue's temporary overlay) confirmed the
+// actual bug: mutating a layout-affecting style synchronously inside a
+// visualViewport `resize` callback can make WebKit skip compositing that
+// frame entirely — the page (including a brand-new, dead-simple
+// `position: fixed` debug overlay) stops painting for seconds after the
+// keyboard opens, until an unrelated interaction (e.g. typing) forces a
+// repaint. Deferring the actual mutation to the next animation frame, so it
+// no longer runs synchronously inside the resize event, avoids triggering
+// that WebKit stall in the first place.
 function updateAppViewportHeight() {
     const height = window.visualViewport?.height ?? window.innerHeight;
 
@@ -88,7 +97,9 @@ function updateAppViewportHeight() {
         return;
     }
 
-    document.documentElement.style.setProperty('--app-vh', `${height}px`);
+    requestAnimationFrame(() => {
+        document.documentElement.style.setProperty('--app-vh', `${height}px`);
+    });
 }
 updateAppViewportHeight();
 window.visualViewport?.addEventListener('resize', updateAppViewportHeight);
