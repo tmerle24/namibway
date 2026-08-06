@@ -215,6 +215,7 @@ function stopThinking() {
 onUnmounted(() => {
     stopThinking();
     stopListening();
+    unlockBodyScroll();
 
     if (isNativePlatform) {
         void NativeSpeechRecognition.removeAllListeners();
@@ -384,8 +385,48 @@ function stopDiagnostics() {
     // still shows the full trail, not just whatever was on screen at blur.
 }
 
+// Same fix already proven out in Wisherful (git/wishlist's ListToolbar.vue)
+// for its own fixed-overlay text input: on iOS, focusing an input triggers
+// the OS's native "scroll it above the keyboard" behavior, which — however
+// the surrounding layout is built — ends up dragging the whole page (and
+// even position:fixed elements) around while the keyboard opens. Taking the
+// body out of normal flow entirely while the input is focused removes the
+// one thing that behavior needs to act on: there's no scrollable document
+// left to scroll. Restored (and the real scroll position reapplied) on blur.
+let savedBodyScrollY = 0;
+
+function lockBodyScrollForMobileKeyboard() {
+    if (!window.matchMedia('(hover: none), (pointer: coarse)').matches) {
+        return;
+    }
+
+    savedBodyScrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${savedBodyScrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+}
+
+function unlockBodyScroll() {
+    if (document.body.style.position !== 'fixed') {
+        return;
+    }
+
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    window.scrollTo(0, savedBodyScrollY);
+}
+
 function handleChatInputFocus() {
+    lockBodyScrollForMobileKeyboard();
     startDiagnostics();
+}
+
+function handleChatInputBlur() {
+    unlockBodyScroll();
+    stopDiagnostics();
 }
 
 function syncScroll() {
@@ -681,7 +722,7 @@ async function retryLastMessage() {
                         :readonly="isTyping"
                         @keydown.enter="sendMessage"
                         @focus="handleChatInputFocus"
-                        @blur="stopDiagnostics"
+                        @blur="handleChatInputBlur"
                     />
                     <button
                         v-if="isVoiceSupported"
