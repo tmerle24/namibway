@@ -1750,6 +1750,14 @@ body:has(.kaia-page) {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    /* Without an explicit axis, the browser has to heuristically guess
+       whether a touch is meant to scroll this row or the page beneath it —
+       WKWebView (the iOS app's wrapper) resolves that guess less crisply
+       than mobile Safari, so a swipe here can feel like it "catches" before
+       committing to a direction. Declaring the axis up front removes the
+       guess entirely. */
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
 }
 .kaia-page .destinations-scroll::-webkit-scrollbar {
     display: none;
