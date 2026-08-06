@@ -221,40 +221,16 @@ onUnmounted(() => {
     }
 });
 
-// On mobile, before a plan exists, the Kaia tab is a fullscreen column
-// capped to the visible viewport height via --app-vh (see kaia-home.css),
-// with the footer nav as a normal static flex child — nothing in this state
-// should ever need the *outer* page to scroll, only #kaia-hero's own
-// internal overflow. But focusing this input triggers the OS's native
-// "scroll focused input into view" behavior, which acts on the outer
-// document using its pre-keyboard (taller) height — before our --app-vh
-// resize handler has caught up — and scrolls the whole column up, dragging
-// the footer nav off the top edge. It only partially self-corrects once
-// something else (e.g. typing) forces a reflow. Since outer-page scroll is
-// never legitimate in this exact state, just pin it back to zero once the
-// keyboard/viewport settle.
-function resetOuterScrollIfFullscreenMobile() {
-    const page = chatInput.value?.closest('.kaia-page');
-
-    if (
-        !page ||
-        page.classList.contains('has-plan') ||
-        !window.matchMedia('(hover: none), (pointer: coarse)').matches
-    ) {
-        return;
-    }
-
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => window.scrollTo(0, 0));
-    });
-}
-
 // TEMPORARY diagnostic overlay for the mobile "screen turns blue/black on
-// keyboard open" bug. Three prior fix attempts (the --app-vh floor in
-// app.ts, resetOuterScrollIfFullscreenMobile above, and the rAF-deferred
-// --app-vh write + compositing-layer promotion in app.ts/kaia-home.css)
-// shipped to production without resolving it, so this now casts a much
-// wider net instead of guessing at another specific mechanism:
+// keyboard open" bug. The real cause turned out to be the mobile Kaia-tab's
+// old --app-vh-capped, overflow:hidden, static-footer layout fighting iOS's
+// native keyboard-avoidance scroll — kaia-home.css now uses a normal
+// scrolling layout with genuinely `position: fixed` header/footer instead
+// (see the comment on that rule). Kept running for now to confirm the fix
+// actually holds on-device; three earlier attempts (the --app-vh floor in
+// app.ts, a since-removed scrollTo(0,0)-on-focus reset, and the rAF-deferred
+// --app-vh write + compositing-layer promotion) shipped without resolving
+// it, so this casts a much wider net instead of guessing at one mechanism:
 //   - a requestAnimationFrame heartbeat, logged at most every ~300ms, for
 //     as long as the diagnostic session runs. If this keeps ticking through
 //     the broken period, the main thread is fine and it's a pure paint/
@@ -409,7 +385,6 @@ function stopDiagnostics() {
 }
 
 function handleChatInputFocus() {
-    resetOuterScrollIfFullscreenMobile();
     startDiagnostics();
 }
 
