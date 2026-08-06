@@ -409,6 +409,19 @@ body:has(.kaia-page) {
     outline: 2px solid var(--rust);
     outline-offset: 1px;
 }
+/* Clearance for the scrollIntoView({block:'start'}) call in
+   lockBodyScrollForMobileKeyboard (HeroChat.vue) — without this the input
+   scrolls flush to the top of the viewport, right behind the fixed mobile
+   header (.hero-nav). Same admin-bar/site-header stack used elsewhere
+   (kaia-home.css:1187) plus a little breathing room. */
+@media (hover: none), (pointer: coarse) {
+    .kaia-page .chat-input-row input {
+        scroll-margin-top: calc(
+            var(--admin-bar-height, 0px) + var(--site-header-height, 0px) +
+                16px
+        );
+    }
+}
 .kaia-page .chat-input-row button {
     background: var(--rust);
     color: var(--paper);
