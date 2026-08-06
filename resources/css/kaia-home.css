@@ -3075,6 +3075,13 @@ body:has(.kaia-page) {
     }
 
     .kaia-page[data-mobile-section='kaia']:not(.has-plan) #kaia-hero {
+        /* Cancels .hero's own sitewide `min-height: 560px` floor. That
+           floor is fine on a normal scrolling page, but here — where the
+           header/footer are fixed and this element sits in the exact space
+           between them — it can be a few px taller than what's actually
+           available on a short phone screen, leaving the page scrollable
+           by that tiny sliver even though there's nothing more to see. */
+        min-height: 0;
         /* Clears the now-fixed header above. --site-header-height is
            measured live by SiteHeader.vue via ResizeObserver (see its own
            comment) — it tracks the header's real rendered height, which
