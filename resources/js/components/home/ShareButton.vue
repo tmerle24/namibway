@@ -111,8 +111,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         type="button"
         class="share-icon-btn"
         :disabled="resolving"
-        :aria-label="t('itinerary.saveShare')"
-        :title="t('itinerary.saveShare')"
+        :aria-label="t('itinerary.share')"
+        :title="t('itinerary.share')"
         @click="onShareClick"
     >
         <Share2 :size="17" />
