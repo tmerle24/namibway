@@ -19,10 +19,6 @@ Route::get('kaia/cities', [KaiaController::class, 'cities'])
     ->middleware('throttle:30,1')
     ->name('kaia.cities');
 
-Route::get('kaia/alternatives', [KaiaController::class, 'alternatives'])
-    ->middleware('throttle:60,1')
-    ->name('kaia.alternatives');
-
 Route::get('kaia/region-coords', [KaiaController::class, 'regionCoords'])
     ->middleware('throttle:30,1')
     ->name('kaia.region-coords');

@@ -571,29 +571,32 @@ body:has(.kaia-page) {
 .kaia-page .trip-meta-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    align-items: center;
+    gap: 4px 12px;
 }
-/* Collapsed state — caps the row to ~2 chip lines; TripMeta.vue measures
+/* Collapsed state — caps the row to ~2 lines; TripMeta.vue measures
    scrollHeight against this to decide whether the "show more" toggle is
    needed at all, so a row that already fits never gets one. */
 .kaia-page .trip-meta-row--clamped {
-    max-height: 66px;
+    max-height: 44px;
     overflow: hidden;
 }
-.kaia-page .trip-meta-chip {
-    display: flex;
-    align-items: baseline;
+/* Plain text, not a button/pill — these aren't individually clickable, so
+   they shouldn't read as though they were. */
+.kaia-page .trip-meta-entry {
+    display: inline-flex;
+    align-items: center;
     gap: 5px;
-    background: var(--sand);
-    border: 1px solid var(--sand-dark);
-    border-radius: 999px;
-    padding: 5px 12px;
-    font-size: 12px;
+    font-size: 13px;
     color: #4a4438;
-    line-height: 1.3;
+    white-space: nowrap;
 }
+/* One uniform brand color for every param icon — same treatment as the
+   vehicle/drive-time icon (see .drive-time-icon) — rather than each item
+   carrying its own emoji's inherent color. */
 .kaia-page .trip-meta-icon {
-    font-size: 12px;
+    color: var(--rust-dark);
+    flex-shrink: 0;
 }
 .kaia-page .trip-meta-toggle {
     display: inline-block;
@@ -712,23 +715,6 @@ body:has(.kaia-page) {
 .kaia-page .plan-back-btn:hover {
     background: var(--sand);
     border-color: var(--rust);
-}
-.kaia-page .plan-edit-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: transparent;
-    border: 1.5px solid var(--rust);
-    border-radius: 999px;
-    color: var(--rust-dark);
-    font-size: 12.5px;
-    font-weight: 600;
-    padding: 6px 14px;
-    white-space: nowrap;
-    cursor: pointer;
-}
-.kaia-page .plan-edit-btn:hover {
-    background: var(--rust-light);
 }
 @media (max-width: 640px) {
     .kaia-page .variant-head--single h3 {
@@ -988,6 +974,12 @@ body:has(.kaia-page) {
     position: relative;
     z-index: 1;
 }
+/* Extra clearance for .drag-handle sitting centered along the top edge —
+   only the stage-start card gets one (continuation days aren't
+   individually draggable), so this is skipped for those. */
+.kaia-page .day-card:not(.day-card--continuation) {
+    padding-top: 22px;
+}
 /* Continuation day within a multi-night stage (no marker, no header — see
    isStageStart in ItinerarySection.vue): sits close under the stage's own
    card instead of getting a full gap, without the border-merging hack a
@@ -1034,12 +1026,7 @@ body:has(.kaia-page) {
    day-card-header markup in ItinerarySection.vue. */
 .kaia-page .day-card-header-actions {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 2px;
-}
-.kaia-page .day-card-header-actions .drag-handle {
-    margin-bottom: 0;
 }
 .kaia-page .day-card-price {
     font-weight: 600;
@@ -2241,40 +2228,6 @@ body:has(.kaia-page) {
     color: var(--gold);
 }
 
-/* Swap button (⇄) alongside remove-btn */
-.kaia-page .swap-btn {
-    background: none;
-    border: none;
-    color: #8a7f68;
-    font-size: 13px;
-    line-height: 1;
-    padding: 0 2px;
-    opacity: 0.6;
-    cursor: pointer;
-}
-.kaia-page .swap-btn:hover {
-    opacity: 1;
-    color: var(--rust);
-}
-/* Labeled variant ("⇄ Change") — used for the vehicle card, see
-   ItineraryLineItem's swapLabel prop. */
-.kaia-page .swap-btn--labeled {
-    opacity: 1;
-    margin-left: auto;
-    flex-shrink: 0;
-    border: 1px solid var(--sand-dark);
-    border-radius: 999px;
-    padding: 5px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--rust-dark);
-    background: var(--paper);
-}
-.kaia-page .swap-btn--labeled:hover {
-    background: var(--sand);
-    border-color: var(--rust);
-}
-
 /* Kebab (⋮) context menu — day cards, and Stay/Activity/Dining line items.
    See KebabMenu.vue. */
 .kaia-page .kebab-menu {
@@ -2282,8 +2235,8 @@ body:has(.kaia-page) {
     display: inline-flex;
 }
 /* Push to the end of the line-item row (Stay/Activity/Dining) — not applied
-   inside .day-card-header-actions, where it instead stacks above the drag
-   handle in a centered column. */
+   inside .day-card-header-actions, which already sits at the end of its own
+   row (see .day-card-header-right). */
 .kaia-page .line-item .kebab-menu {
     margin-left: auto;
 }
@@ -2351,12 +2304,9 @@ body:has(.kaia-page) {
     background: var(--danger-light);
 }
 
-/* Alternatives panel — inline below the line item */
-.kaia-page .alternatives-panel {
-    margin: 4px 0 6px 0;
-    border-left: 2px solid var(--sand-dark);
-    padding-left: 10px;
-}
+/* Alternatives — RoomTypePicker's own inline room list (the swap/add flow
+   for accommodation/activity/restaurant/vehicle now opens ListingSwapModal
+   instead, which has its own .swap-modal-* styles). */
 .kaia-page .alternatives-title {
     font-size: 11px;
     font-weight: 700;
@@ -2364,12 +2314,6 @@ body:has(.kaia-page) {
     letter-spacing: 0.05em;
     color: #8a7f68;
     margin-bottom: 4px;
-}
-.kaia-page .alternatives-loading,
-.kaia-page .alternatives-empty {
-    font-size: 12.5px;
-    color: #8a7f68;
-    padding: 2px 0;
 }
 .kaia-page .alternative-item {
     display: flex;
@@ -2386,14 +2330,6 @@ body:has(.kaia-page) {
 .kaia-page .alternative-item:hover {
     background: var(--sand);
 }
-.kaia-page .alt-thumb {
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    border-radius: 6px;
-    object-fit: cover;
-    align-self: center;
-}
 .kaia-page .alt-name {
     font-size: 13px;
     color: var(--ink);
@@ -2403,17 +2339,6 @@ body:has(.kaia-page) {
     font-size: 11.5px;
     font-weight: 600;
     color: #8a7f68;
-}
-.kaia-page .alt-use {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--rust);
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.15s;
-}
-.kaia-page .alternative-item:hover .alt-use {
-    opacity: 1;
 }
 
 /* Editable location — click to switch to an inline input */
@@ -2495,18 +2420,6 @@ body:has(.kaia-page) {
     color: var(--rust);
 }
 
-/* AlternativesPanel — replace old span-based use with button + detail link */
-.kaia-page .alt-detail-link {
-    font-size: 11px;
-    color: #8a7f68;
-    text-decoration: none;
-    opacity: 0.6;
-    padding: 0 2px;
-}
-.kaia-page .alt-detail-link:hover {
-    opacity: 1;
-    color: var(--rust);
-}
 .kaia-page .alt-use-btn {
     background: none;
     border: none;
@@ -2578,19 +2491,29 @@ body:has(.kaia-page) {
     color: var(--rust);
 }
 
-/* Drag handle */
+/* Drag handle — a horizontal grip centered along the day-card's own top
+   edge, out of the way of .day-card-header-actions' kebab menu (the two
+   used to share a corner and crowd each other). */
 .kaia-page .drag-handle {
-    display: block;
-    cursor: grab;
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 14px;
+    border-radius: 999px;
+    background: var(--sand);
     color: #8a7f68;
-    opacity: 0.35;
-    font-size: 15px;
-    line-height: 1;
-    margin-bottom: 2px;
+    opacity: 0.55;
+    cursor: grab;
     user-select: none;
 }
 .kaia-page .drag-handle:hover {
-    opacity: 0.8;
+    opacity: 0.9;
 }
 .kaia-page .day-item:active .drag-handle {
     cursor: grabbing;
@@ -3480,9 +3403,8 @@ body:has(.kaia-page) {
     .trip-plan-page .trip-meta-edit-btn,
     .trip-plan-page .reverse-route-btn,
     .trip-plan-page .plan-back-btn,
-    .trip-plan-page .plan-edit-btn,
+    .trip-plan-page .share-icon-btn,
     .trip-plan-page .dismiss-variant-btn,
-    .trip-plan-page .swap-btn,
     .trip-plan-page .remove-btn,
     .trip-plan-page .kebab-menu,
     .trip-plan-page .add-item-btn,

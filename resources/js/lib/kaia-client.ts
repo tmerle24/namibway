@@ -2,7 +2,6 @@ import type {
     ChatMessage,
     GuestDetails,
     ItineraryDay,
-    ItineraryListingRef,
     ItineraryPlan,
     ListingRecommendation,
     SearchIntent,
@@ -185,25 +184,6 @@ export async function fetchListingPreview(
     return data.listing as ListingPreview;
 }
 
-export async function fetchAlternatives(
-    type: string,
-    excludeId?: number,
-): Promise<ItineraryListingRef[]> {
-    const params = new URLSearchParams({ type });
-
-    if (excludeId !== undefined) {
-        params.set('exclude_id', String(excludeId));
-    }
-
-    const response = await fetch(`/kaia/alternatives?${params}`, {
-        credentials: 'same-origin',
-        headers: { Accept: 'application/json' },
-    });
-    const data = await response.json();
-
-    return data.alternatives ?? [];
-}
-
 export interface ListingSearchResult {
     id: number;
     type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
@@ -211,12 +191,16 @@ export interface ListingSearchResult {
     slug: string;
     image: string | null;
     gallery: string[];
+    highlights: string[];
     region: string | null;
     city: string | null;
     price_from: string | null;
     price_currency: string;
     rating: number | null;
     rating_count: number | null;
+    is_featured: boolean;
+    // Only present when a `referenceCity` was resolvable server-side.
+    distance_km: number | null;
 }
 
 export interface ListingSearchMeta {
@@ -226,12 +210,25 @@ export interface ListingSearchMeta {
     per_page: number;
 }
 
+export type ListingSearchSort =
+    | 'featured'
+    | 'price_asc'
+    | 'price_desc'
+    | 'rating'
+    | 'popularity'
+    | 'distance';
+
 export interface ListingSearchParams {
     type: string;
     city?: string;
     keyword?: string;
     budget?: string;
     minRating?: string;
+    // A city name the backend resolves to coordinates for `distance_km` and
+    // `sort: 'distance'` — independent of `city` above, which just filters.
+    referenceCity?: string;
+    maxDistanceKm?: string;
+    sort?: ListingSearchSort;
     excludeId?: number | null;
     page?: number;
 }
@@ -258,6 +255,18 @@ export async function searchListings(
 
     if (params.minRating) {
         query.set('min_rating', params.minRating);
+    }
+
+    if (params.referenceCity) {
+        query.set('reference_city', params.referenceCity);
+    }
+
+    if (params.maxDistanceKm) {
+        query.set('max_distance_km', params.maxDistanceKm);
+    }
+
+    if (params.sort) {
+        query.set('sort', params.sort);
     }
 
     if (params.excludeId != null) {

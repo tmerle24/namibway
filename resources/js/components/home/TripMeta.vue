@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import type { ComponentPublicInstance } from 'vue';
+import {
+    Calendar,
+    Compass,
+    Moon,
+    Pencil,
+    Sparkles,
+    Users,
+    Wallet,
+} from '@lucide/vue';
+import type { ComponentPublicInstance, FunctionalComponent } from 'vue';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { TripParams } from '@/lib/kaia-types';
@@ -45,7 +54,7 @@ const durationLabel = computed(() => {
 });
 
 interface MetaItem {
-    icon: string;
+    icon: FunctionalComponent;
     label: string;
     value: string;
 }
@@ -66,7 +75,7 @@ const items = computed<MetaItem[]>(() => {
     const list: (MetaItem | null)[] = [
         routeLabel.value
             ? {
-                  icon: '🧭',
+                  icon: Compass,
                   label: t('itinerary.route'),
                   value: routeLabel.value,
               }
@@ -80,35 +89,35 @@ const items = computed<MetaItem[]>(() => {
     list.push(
         p.travel_period
             ? {
-                  icon: '📅',
+                  icon: Calendar,
                   label: t('itinerary.meta.travelPeriod'),
                   value: p.travel_period,
               }
             : null,
         durationLabel.value
             ? {
-                  icon: '🌙',
+                  icon: Moon,
                   label: t('itinerary.meta.duration'),
                   value: durationLabel.value,
               }
             : null,
         travelersLabel.value
             ? {
-                  icon: '👥',
+                  icon: Users,
                   label: t('itinerary.meta.travelers'),
                   value: travelersLabel.value,
               }
             : null,
         p.interests
             ? {
-                  icon: '✨',
+                  icon: Sparkles,
                   label: t('itinerary.meta.preferences'),
                   value: p.interests,
               }
             : null,
         p.budget_tier
             ? {
-                  icon: '💰',
+                  icon: Wallet,
                   label: t('itinerary.meta.budget'),
                   value: t(`itinerary.meta.budgetTiers.${p.budget_tier}`),
               }
@@ -187,26 +196,32 @@ onBeforeUnmount(() => wrapObserver?.disconnect());
             @click="editable && emit('edit')"
             @keydown.enter="editable && emit('edit')"
         >
-            <div
-                v-for="item in items"
+            <span
+                v-for="(item, index) in items"
                 :key="item.label"
-                class="trip-meta-chip"
+                class="trip-meta-entry"
                 :aria-label="`${item.label}: ${item.value}`"
             >
-                <span class="trip-meta-icon" aria-hidden="true">{{
-                    item.icon
-                }}</span>
-                <span class="trip-meta-text" aria-hidden="true">{{
-                    item.value
-                }}</span>
-            </div>
+                <component
+                    :is="item.icon"
+                    :size="13"
+                    class="trip-meta-icon"
+                    aria-hidden="true"
+                />
+                <span aria-hidden="true"
+                    >{{ item.value
+                    }}<template v-if="index < items.length - 1">
+                        ·</template
+                    ></span
+                >
+            </span>
             <button
                 v-if="editable"
                 type="button"
                 class="trip-meta-edit-btn"
                 @click.stop="emit('edit')"
             >
-                ✏️ {{ t('itinerary.meta.edit') }}
+                <Pencil :size="12" /> {{ t('itinerary.meta.edit') }}
             </button>
         </div>
         <button

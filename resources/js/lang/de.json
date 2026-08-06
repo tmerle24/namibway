@@ -54,6 +54,7 @@
         "activity": "Aktivität: {value}",
         "dinner": "Abendessen: {value}",
         "vehicle": "Fahrzeug: {value}",
+        "vehicleLabel": "Fahrzeug",
         "remove": "Entfernen",
         "removeDay": "Tag entfernen",
         "dismissPlan": "Diesen Plan verwerfen",
@@ -223,6 +224,10 @@
             "rating45": "4,5+ Sterne",
             "rating4": "4+ Sterne",
             "rating3": "3+ Sterne",
+            "anyDistance": "Beliebige Entfernung",
+            "distance10": "≤ 10 km",
+            "distance25": "≤ 25 km",
+            "distance50": "≤ 50 km",
             "empty": "Keine Treffer — versuch, einen Filter zu entfernen.",
             "clearFilters": "Filter zurücksetzen"
         },
@@ -262,6 +267,8 @@
             "sortPriceAsc": "Preis: günstigste zuerst",
             "sortPriceDesc": "Preis: teuerste zuerst",
             "sortRating": "Bestbewertet",
+            "sortPopularity": "Beliebtheit",
+            "sortDistance": "Entfernung",
             "showMap": "Karte anzeigen",
             "hideMap": "Karte ausblenden"
         }
@@ -304,6 +311,7 @@
             "vehicle": "Fahrzeug"
         },
         "from": "Ab",
+        "popular": "Beliebt",
         "gallery": "Galerie",
         "about": "Über",
         "steckbrief": "Auf einen Blick",

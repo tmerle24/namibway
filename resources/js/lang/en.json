@@ -96,6 +96,7 @@
         "activity": "Activity: {value}",
         "dinner": "Dinner: {value}",
         "vehicle": "Vehicle: {value}",
+        "vehicleLabel": "Vehicle",
         "remove": "Remove",
         "removeDay": "Remove day",
         "dismissPlan": "Dismiss this plan",
@@ -281,6 +282,10 @@
             "rating45": "4.5+ stars",
             "rating4": "4+ stars",
             "rating3": "3+ stars",
+            "anyDistance": "Any distance",
+            "distance10": "≤ 10 km",
+            "distance25": "≤ 25 km",
+            "distance50": "≤ 50 km",
             "empty": "No matches — try clearing a filter.",
             "clearFilters": "Clear filters"
         },
@@ -320,6 +325,8 @@
             "sortPriceAsc": "Price: low to high",
             "sortPriceDesc": "Price: high to low",
             "sortRating": "Highest rated",
+            "sortPopularity": "Popularity",
+            "sortDistance": "Distance",
             "showMap": "Show map",
             "hideMap": "Hide map"
         }
@@ -362,6 +369,7 @@
             "vehicle": "Vehicle"
         },
         "from": "From",
+        "popular": "Popular",
         "gallery": "Gallery",
         "about": "About",
         "steckbrief": "At a glance",
