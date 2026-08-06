@@ -14,6 +14,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 use Spatie\Translatable\HasTranslations;
 
+/**
+ * @property-read float|null $distance_km Only present when ListingController::search()
+ *  added it via a raw SELECT (a reference city was resolvable) — never a real column.
+ */
 class Listing extends Model
 {
     /** @use HasFactory<ListingFactory> */
