@@ -222,169 +222,6 @@ onUnmounted(() => {
     }
 });
 
-// TEMPORARY diagnostic overlay for the mobile "screen turns blue/black on
-// keyboard open" bug. The real cause turned out to be the mobile Kaia-tab's
-// old --app-vh-capped, overflow:hidden, static-footer layout fighting iOS's
-// native keyboard-avoidance scroll — kaia-home.css now uses a normal
-// scrolling layout with genuinely `position: fixed` header/footer instead
-// (see the comment on that rule). Kept running for now to confirm the fix
-// actually holds on-device; three earlier attempts (the --app-vh floor in
-// app.ts, a since-removed scrollTo(0,0)-on-focus reset, and the rAF-deferred
-// --app-vh write + compositing-layer promotion) shipped without resolving
-// it, so this casts a much wider net instead of guessing at one mechanism:
-//   - a requestAnimationFrame heartbeat, logged at most every ~300ms, for
-//     as long as the diagnostic session runs. If this keeps ticking through
-//     the broken period, the main thread is fine and it's a pure paint/
-//     compositing stall (nothing to do with our JS); if it also stalls,
-//     something is genuinely blocking the main thread.
-//   - a PerformanceObserver for `longtask` entries (where supported), which
-//     directly reports if/when/how-long JS blocked the main thread.
-//   - wall-clock time on every line (not just t+Nms), so a line's timestamp
-//     can be checked directly against the phone's own status-bar clock in a
-//     screenshot — proof of a multi-second gap doesn't depend on trusting
-//     our own elapsed-time math.
-//   - a wider spread of events (visibility, touch, orientation, page
-//     show/hide) in case the freeze is tied to something other than the
-//     visualViewport/scroll events we were already watching.
-// The overlay stays up for 10s after focus (not just until blur), so a
-// screenshot taken right after the keyboard closes still shows the trail.
-// Remove this whole block, its template overlay, and the @focus/@blur
-// wiring on the chat input once the real cause is found.
-const diagnosticLog = ref<string[]>([]);
-const showDiagnostics = ref(false);
-let diagnosticStart = 0;
-let diagnosticRafId: number | null = null;
-let diagnosticHideTimer: ReturnType<typeof setTimeout> | null = null;
-let diagnosticLongtaskObserver: PerformanceObserver | null = null;
-let diagnosticLastHeartbeat = 0;
-
-function diagnosticWallClock(): string {
-    const d = new Date();
-
-    return (
-        `${d.getHours().toString().padStart(2, '0')}:` +
-        `${d.getMinutes().toString().padStart(2, '0')}:` +
-        `${d.getSeconds().toString().padStart(2, '0')}.` +
-        `${d.getMilliseconds().toString().padStart(3, '0')}`
-    );
-}
-
-function logDiagnostic(label: string) {
-    const vv = window.visualViewport;
-    const elapsed = (performance.now() - diagnosticStart)
-        .toFixed(0)
-        .padStart(5, ' ');
-    const appVh = getComputedStyle(document.documentElement).getPropertyValue(
-        '--app-vh',
-    );
-    const entry =
-        `${diagnosticWallClock()} t+${elapsed}ms ${label} | vv.h=${vv?.height.toFixed(0)} vv.scale=${vv?.scale.toFixed(3)} ` +
-        `vv.top=${vv?.offsetTop.toFixed(0)} win.h=${window.innerHeight} scrollY=${window.scrollY} appVh=${appVh.trim()} vis=${document.visibilityState}`;
-
-    diagnosticLog.value = [entry, ...diagnosticLog.value].slice(0, 200);
-}
-
-function diagnosticHeartbeatTick(now: number) {
-    if (now - diagnosticLastHeartbeat >= 300) {
-        diagnosticLastHeartbeat = now;
-        logDiagnostic('tick');
-    }
-
-    diagnosticRafId = requestAnimationFrame(diagnosticHeartbeatTick);
-}
-
-function diagnosticOnVvResize() {
-    logDiagnostic('vv-resize');
-}
-function diagnosticOnVvScroll() {
-    logDiagnostic('vv-scroll');
-}
-function diagnosticOnWindowScroll() {
-    logDiagnostic('win-scroll');
-}
-function diagnosticOnVisibility() {
-    logDiagnostic(`visibilitychange`);
-}
-function diagnosticOnPageshow() {
-    logDiagnostic('pageshow');
-}
-function diagnosticOnPagehide() {
-    logDiagnostic('pagehide');
-}
-function diagnosticOnTouchstart() {
-    logDiagnostic('touchstart');
-}
-function diagnosticOnOrientation() {
-    logDiagnostic('orientationchange');
-}
-
-function startDiagnostics() {
-    diagnosticStart = performance.now();
-    diagnosticLastHeartbeat = diagnosticStart;
-    diagnosticLog.value = [];
-    showDiagnostics.value = true;
-    logDiagnostic(
-        `focus | ua=${navigator.userAgent} standalone=${window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true}`,
-    );
-
-    window.visualViewport?.addEventListener('resize', diagnosticOnVvResize);
-    window.visualViewport?.addEventListener('scroll', diagnosticOnVvScroll);
-    window.addEventListener('scroll', diagnosticOnWindowScroll);
-    document.addEventListener('visibilitychange', diagnosticOnVisibility);
-    window.addEventListener('pageshow', diagnosticOnPageshow);
-    window.addEventListener('pagehide', diagnosticOnPagehide);
-    window.addEventListener('touchstart', diagnosticOnTouchstart, {
-        passive: true,
-    });
-    window.addEventListener('orientationchange', diagnosticOnOrientation);
-
-    if ('PerformanceObserver' in window) {
-        try {
-            diagnosticLongtaskObserver = new PerformanceObserver((list) => {
-                for (const e of list.getEntries()) {
-                    logDiagnostic(`longtask dur=${e.duration.toFixed(0)}ms`);
-                }
-            });
-            diagnosticLongtaskObserver.observe({ entryTypes: ['longtask'] });
-        } catch {
-            // Long Tasks API unsupported on this engine — skip silently.
-        }
-    }
-
-    diagnosticRafId = requestAnimationFrame(diagnosticHeartbeatTick);
-
-    if (diagnosticHideTimer) {
-        clearTimeout(diagnosticHideTimer);
-    }
-
-    diagnosticHideTimer = setTimeout(() => {
-        showDiagnostics.value = false;
-    }, 10000);
-}
-
-function stopDiagnostics() {
-    logDiagnostic('blur');
-    window.visualViewport?.removeEventListener('resize', diagnosticOnVvResize);
-    window.visualViewport?.removeEventListener('scroll', diagnosticOnVvScroll);
-    window.removeEventListener('scroll', diagnosticOnWindowScroll);
-    document.removeEventListener('visibilitychange', diagnosticOnVisibility);
-    window.removeEventListener('pageshow', diagnosticOnPageshow);
-    window.removeEventListener('pagehide', diagnosticOnPagehide);
-    window.removeEventListener('touchstart', diagnosticOnTouchstart);
-    window.removeEventListener('orientationchange', diagnosticOnOrientation);
-
-    if (diagnosticRafId !== null) {
-        cancelAnimationFrame(diagnosticRafId);
-        diagnosticRafId = null;
-    }
-
-    diagnosticLongtaskObserver?.disconnect();
-    diagnosticLongtaskObserver = null;
-    // The overlay itself stays visible (auto-hidden by the timer set in
-    // startDiagnostics) so a screenshot taken right as the keyboard closes
-    // still shows the full trail, not just whatever was on screen at blur.
-}
-
 // Same fix already proven out in Wisherful (git/wishlist's ListToolbar.vue)
 // for its own fixed-overlay text input: on iOS, focusing an input triggers
 // the OS's native "scroll it above the keyboard" behavior, which — however
@@ -417,16 +254,6 @@ function unlockBodyScroll() {
     document.body.style.left = '';
     document.body.style.right = '';
     window.scrollTo(0, savedBodyScrollY);
-}
-
-function handleChatInputFocus() {
-    lockBodyScrollForMobileKeyboard();
-    startDiagnostics();
-}
-
-function handleChatInputBlur() {
-    unlockBodyScroll();
-    stopDiagnostics();
 }
 
 function syncScroll() {
@@ -721,8 +548,8 @@ async function retryLastMessage() {
                         autocomplete="off"
                         :readonly="isTyping"
                         @keydown.enter="sendMessage"
-                        @focus="handleChatInputFocus"
-                        @blur="handleChatInputBlur"
+                        @focus="lockBodyScrollForMobileKeyboard"
+                        @blur="unlockBodyScroll"
                     />
                     <button
                         v-if="isVoiceSupported"
@@ -767,29 +594,5 @@ async function retryLastMessage() {
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- TEMPORARY diagnostic overlay — see comment on diagnosticLog in the
-         script block. Remove together with that code once the mobile
-         keyboard-open bug is diagnosed. -->
-    <div
-        v-if="showDiagnostics"
-        style="
-            position: fixed;
-            inset: 0;
-            z-index: 99999;
-            background: rgba(0, 0, 0, 0.85);
-            color: #0f0;
-            font-family: monospace;
-            font-size: 10px;
-            line-height: 1.4;
-            padding: 8px;
-            overflow-y: auto;
-            pointer-events: none;
-            white-space: pre-wrap;
-            word-break: break-all;
-        "
-    >
-        <div v-for="(entry, i) in diagnosticLog" :key="i">{{ entry }}</div>
     </div>
 </template>
