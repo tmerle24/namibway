@@ -249,6 +249,66 @@ function resetOuterScrollIfFullscreenMobile() {
     });
 }
 
+// TEMPORARY diagnostic overlay for the mobile "screen turns blue on keyboard
+// open" bug — two prior fix attempts (the --app-vh floor in app.ts and
+// resetOuterScrollIfFullscreenMobile above) shipped to production and did
+// not change the reported behavior at all, so guessing further without real
+// device data isn't productive. This logs a timestamped trail of every
+// visualViewport/scroll event from focus onward so a single screenshot
+// captures the whole sequence, not just one instant. Remove once the real
+// cause is found.
+const diagnosticLog = ref<string[]>([]);
+const showDiagnostics = ref(false);
+let diagnosticStart = 0;
+
+function logDiagnostic(label: string) {
+    const vv = window.visualViewport;
+    const elapsed = (performance.now() - diagnosticStart)
+        .toFixed(0)
+        .padStart(4, ' ');
+    const appVh = getComputedStyle(document.documentElement).getPropertyValue(
+        '--app-vh',
+    );
+    const entry =
+        `t+${elapsed}ms ${label} | vv.h=${vv?.height.toFixed(0)} vv.scale=${vv?.scale.toFixed(3)} ` +
+        `vv.top=${vv?.offsetTop.toFixed(0)} win.h=${window.innerHeight} scrollY=${window.scrollY} appVh=${appVh.trim()}`;
+
+    diagnosticLog.value = [entry, ...diagnosticLog.value].slice(0, 30);
+}
+
+function startDiagnostics() {
+    diagnosticStart = performance.now();
+    diagnosticLog.value = [];
+    showDiagnostics.value = true;
+    logDiagnostic('focus');
+
+    window.visualViewport?.addEventListener('resize', diagnosticOnVvResize);
+    window.visualViewport?.addEventListener('scroll', diagnosticOnVvScroll);
+    window.addEventListener('scroll', diagnosticOnWindowScroll);
+}
+
+function stopDiagnostics() {
+    logDiagnostic('blur');
+    window.visualViewport?.removeEventListener('resize', diagnosticOnVvResize);
+    window.visualViewport?.removeEventListener('scroll', diagnosticOnVvScroll);
+    window.removeEventListener('scroll', diagnosticOnWindowScroll);
+}
+
+function diagnosticOnVvResize() {
+    logDiagnostic('vv-resize');
+}
+function diagnosticOnVvScroll() {
+    logDiagnostic('vv-scroll');
+}
+function diagnosticOnWindowScroll() {
+    logDiagnostic('win-scroll');
+}
+
+function handleChatInputFocus() {
+    resetOuterScrollIfFullscreenMobile();
+    startDiagnostics();
+}
+
 function syncScroll() {
     if (chatLog.value) {
         chatLog.value.scrollTop = chatLog.value.scrollHeight;
@@ -541,7 +601,8 @@ async function retryLastMessage() {
                         autocomplete="off"
                         :readonly="isTyping"
                         @keydown.enter="sendMessage"
-                        @focus="resetOuterScrollIfFullscreenMobile"
+                        @focus="handleChatInputFocus"
+                        @blur="stopDiagnostics"
                     />
                     <button
                         v-if="isVoiceSupported"
@@ -586,5 +647,29 @@ async function retryLastMessage() {
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- TEMPORARY diagnostic overlay — see comment on diagnosticLog in the
+         script block. Remove together with that code once the mobile
+         keyboard-open bug is diagnosed. -->
+    <div
+        v-if="showDiagnostics"
+        style="
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: rgba(0, 0, 0, 0.85);
+            color: #0f0;
+            font-family: monospace;
+            font-size: 10px;
+            line-height: 1.4;
+            padding: 8px;
+            overflow-y: auto;
+            pointer-events: none;
+            white-space: pre-wrap;
+            word-break: break-all;
+        "
+    >
+        <div v-for="(entry, i) in diagnosticLog" :key="i">{{ entry }}</div>
     </div>
 </template>
