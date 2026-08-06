@@ -14,10 +14,6 @@ const props = defineProps<{
     // timeline's labeled boxes (SCHLAFEN/ERLEBEN/ESSEN), where the box's own
     // caption already conveys what `keypath` would otherwise spell out.
     hideLabel?: boolean;
-    // Renders the swap trigger as a labeled pill ("Change") instead of the
-    // context menu — used for the vehicle card, where a lone icon button
-    // reads as too subtle for the plan's single most prominent swap action.
-    swapLabel?: string;
     // Shows a "Add" entry in the item's context menu — for fields that
     // allow more than one entry per day (activities, restaurants); see
     // ItinerarySection.vue's day.activities/day.restaurants arrays.
@@ -82,26 +78,7 @@ function onMenuSelect(key: string) {
                     >{{ formatPrice(props.itemRef.price_from) }}</span
                 >
                 <template v-if="!props.readonly">
-                    <template v-if="swapLabel">
-                        <button
-                            v-if="props.itemRef.id"
-                            type="button"
-                            class="swap-btn swap-btn--labeled"
-                            @click="$emit('swap')"
-                        >
-                            ⇄ {{ swapLabel }}
-                        </button>
-                        <button
-                            type="button"
-                            class="remove-btn"
-                            :aria-label="t('itinerary.remove')"
-                            @click="$emit('remove')"
-                        >
-                            ×
-                        </button>
-                    </template>
                     <KebabMenu
-                        v-else
                         :items="menuItems"
                         :label="t('itinerary.moreOptions')"
                         @select="onMenuSelect"
@@ -140,26 +117,7 @@ function onMenuSelect(key: string) {
                         >{{ formatPrice(props.itemRef.price_from) }}</span
                     >
                     <template v-if="!props.readonly">
-                        <template v-if="swapLabel">
-                            <button
-                                v-if="props.itemRef.id"
-                                type="button"
-                                class="swap-btn swap-btn--labeled"
-                                @click="$emit('swap')"
-                            >
-                                ⇄ {{ swapLabel }}
-                            </button>
-                            <button
-                                type="button"
-                                class="remove-btn"
-                                :aria-label="t('itinerary.remove')"
-                                @click="$emit('remove')"
-                            >
-                                ×
-                            </button>
-                        </template>
                         <KebabMenu
-                            v-else
                             :items="menuItems"
                             :label="t('itinerary.moreOptions')"
                             @select="onMenuSelect"

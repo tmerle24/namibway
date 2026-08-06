@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\ConnectorType;
 use App\Enums\InquiryStatus;
 use App\Jobs\EnrichListingJob;
+use App\Models\City;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Review;
@@ -32,7 +33,44 @@ class ListingController extends Controller
         $excludeId = $request->query('exclude_id');
 
         if (is_numeric($excludeId)) {
-            $query->where('id', '!=', (int) $excludeId);
+            $query->where('listings.id', '!=', (int) $excludeId);
+        }
+
+        // "Nähe" (proximity) — resolved server-side from a city name (e.g. the
+        // itinerary day's own location) so the frontend never handles raw
+        // coordinates. Correlated subqueries (rather than a join on `cities`)
+        // sidestep any risk of an ambiguous `id`/`name` column once this query
+        // already has plenty of unqualified references baked in via filterBy().
+        // Falls back to the city's own lat/lng for listings that don't have
+        // their own pinned (mirrors TripMap.vue's resolveCoords()).
+        $referenceCity = $request->query('reference_city');
+        $hasDistance = false;
+
+        if (is_string($referenceCity) && $referenceCity !== '') {
+            $ref = City::where('name', 'ilike', $referenceCity)->first();
+
+            if ($ref && $ref->lat !== null && $ref->lng !== null) {
+                $hasDistance = true;
+                $cityLat = '(select lat from cities where cities.id = listings.city_id)';
+                $cityLng = '(select lng from cities where cities.id = listings.city_id)';
+                $distanceSql = "6371 * acos(least(1, greatest(-1,
+                    cos(radians(?)) * cos(radians(coalesce(listings.latitude, {$cityLat}))) * cos(radians(coalesce(listings.longitude, {$cityLng})) - radians(?))
+                    + sin(radians(?)) * sin(radians(coalesce(listings.latitude, {$cityLat})))
+                )))";
+
+                $query->select('listings.*')
+                    ->selectRaw("{$distanceSql} as distance_km", [$ref->lat, $ref->lng, $ref->lat]);
+
+                $maxDistanceKm = $request->query('max_distance_km');
+
+                if (is_numeric($maxDistanceKm)) {
+                    // Can't filter on the `distance_km` alias here: without a
+                    // GROUP BY, HAVING would treat the whole result as one
+                    // aggregate group. WHERE can't see a SELECT-list alias
+                    // either, so the expression is simply repeated.
+                    $query->whereRaw("{$distanceSql} <= ?", [$ref->lat, $ref->lng, $ref->lat, (float) $maxDistanceKm]);
+                }
+            }
         }
 
         $sort = $request->query('sort', 'featured');
@@ -43,6 +81,13 @@ class ListingController extends Controller
             $query->orderByDesc('price_from');
         } elseif ($sort === 'rating') {
             $query->orderByDesc('rating');
+        } elseif ($sort === 'popularity') {
+            // No booking/click-through data to rank on yet — the closest honest
+            // proxy is a curated "featured" flag plus how many travelers have
+            // already reviewed the place.
+            $query->orderByDesc('is_featured')->orderByDesc('rating_count')->orderByDesc('rating');
+        } elseif ($sort === 'distance' && $hasDistance) {
+            $query->orderByRaw('distance_km ASC NULLS LAST');
         } else {
             $query->orderByDesc('is_featured')->orderByDesc('rating');
         }
@@ -60,12 +105,15 @@ class ListingController extends Controller
                 'gallery' => collect($l->gallery ?? [])
                     ->map(fn (string $path) => self::resolveMediaUrl($path))
                     ->values(),
+                'highlights' => $l->highlights ?? [],
                 'region' => $l->region,
                 'city' => $l->city?->name,
                 'price_from' => $l->price_from,
                 'price_currency' => $l->price_currency,
                 'rating' => $l->rating !== null ? (float) $l->rating : null,
                 'rating_count' => $l->rating_count,
+                'is_featured' => $l->is_featured,
+                'distance_km' => $l->distance_km !== null ? round((float) $l->distance_km, 1) : null,
                 'accepts_inquiries' => $l->accepts_inquiries,
             ])->all(),
             'meta' => [

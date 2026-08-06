@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
+import { GripHorizontal } from '@lucide/vue';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -7,7 +8,6 @@ import draggable from 'vuedraggable';
 import { formatPrice } from '@/lib/currency';
 import {
     fetchAllCities,
-    fetchAlternatives,
     fetchCities,
     fetchRegionCoords,
     regeneratePlan,
@@ -23,7 +23,6 @@ import type {
     RoomOption,
     TripParams,
 } from '@/lib/kaia-types';
-import AlternativesPanel from './AlternativesPanel.vue';
 import ConfirmModal from './ConfirmModal.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
 import KebabMenu from './KebabMenu.vue';
@@ -33,6 +32,7 @@ import MapViewModal from './MapViewModal.vue';
 import RoomTypePicker from './RoomTypePicker.vue';
 import SaveLoginModal from './SaveLoginModal.vue';
 import SaveShareBar from './SaveShareBar.vue';
+import ShareButton from './ShareButton.vue';
 import TripMap from './TripMap.vue';
 import type { DrivingLeg } from './TripMap.vue';
 import TripMeta from './TripMeta.vue';
@@ -938,11 +938,6 @@ interface SwapState {
     // both for accommodation/vehicle (never arrays) and for an "add another"
     // panel (appends instead of replacing an entry at an index).
     itemIndex: number | null;
-    // Only used for the vehicle field, which still shows the small inline
-    // AlternativesPanel — accommodation/activity/restaurant swaps open
-    // ListingSwapModal instead, which fetches its own results.
-    loading: boolean;
-    alternatives: ItineraryListingRef[];
     // The listing currently occupying this slot, if any — kept out of its
     // own alternatives list.
     excludeId: number | null;
@@ -961,7 +956,7 @@ function swapKey(
 // another activity/restaurant alongside existing ones), defined when
 // swapping an existing item. itemIndex only applies to the activities/
 // restaurants arrays — omit it to append rather than replace.
-async function openSwap(
+function openSwap(
     variantIndex: number,
     dayIndex: number | null,
     field: SwapField,
@@ -977,36 +972,32 @@ async function openSwap(
         return;
     }
 
+    // ListingSwapModal fetches its own results (search + filter against
+    // /listings/search) once it opens — nothing to pre-fetch here.
     swap.value = {
         key,
         variantIndex,
         dayIndex,
         field,
         itemIndex: itemIndex ?? null,
-        loading: field === 'vehicle',
-        alternatives: [],
         excludeId: itemRef?.id ?? null,
     };
-
-    // accommodation/activity/restaurant swaps are handled entirely by
-    // ListingSwapModal (search + filter against /listings/search) — only
-    // the vehicle field still uses this eagerly-fetched, unfiltered list.
-    if (field !== 'vehicle') {
-        return;
-    }
-
-    const results = await fetchAlternatives(field, itemRef?.id ?? undefined);
-
-    if (swap.value?.key === key) {
-        swap.value.loading = false;
-        swap.value.alternatives = results;
-    }
 }
 
 // The day this swap targets — used to default ListingSwapModal's city filter
-// to "the same city" the day is already in.
+// to "the same city" the day is already in. The vehicle field has no day of
+// its own (dayIndex is always null for it), so it falls back to the trip's
+// own start location — most rentals are picked up where the trip begins.
 const swapDayLocation = computed<string | null>(() => {
-    if (!swap.value || swap.value.dayIndex === null) {
+    if (!swap.value) {
+        return null;
+    }
+
+    if (swap.value.field === 'vehicle') {
+        return routeStart.value;
+    }
+
+    if (swap.value.dayIndex === null) {
         return null;
     }
 
@@ -1026,7 +1017,7 @@ const swapModalTitle = computed(() => {
         accommodation: t('itinerary.stayLabel'),
         activity: t('itinerary.activityLabel'),
         restaurant: t('itinerary.dinnerLabel'),
-        vehicle: '',
+        vehicle: t('itinerary.vehicleLabel'),
     }[swap.value.field];
 
     const verb =
@@ -1200,14 +1191,32 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         >
                             ⇄ {{ t('itinerary.reverseRoute') }}
                         </button>
-                        <button
+                        <ShareButton
                             v-if="editableVariants.length === 1"
-                            type="button"
-                            class="plan-edit-btn"
-                            @click="openParamsEditor"
-                        >
-                            ✏️ {{ t('itinerary.editPlan') }}
-                        </button>
+                            :plan="{
+                                trip_summary: currentTripSummary,
+                                variants: [variant],
+                                start_location: routeStart,
+                                end_location: routeEnd,
+                                trip_params: currentTripParams,
+                            }"
+                            :existing-token="currentToken"
+                            :is-logged-in="isLoggedIn"
+                            @saved="
+                                (token) => {
+                                    savedTokens[variantIndex] = token;
+                                }
+                            "
+                            @need-auth="onNeedAuth"
+                        />
+                        <KebabMenu
+                            v-if="editableVariants.length === 1"
+                            :items="[
+                                { key: 'edit', label: t('itinerary.editPlan') },
+                            ]"
+                            :label="t('itinerary.editPlan')"
+                            @select="openParamsEditor"
+                        />
                         <button
                             v-if="editableVariants.length > 1"
                             type="button"
@@ -1251,7 +1260,6 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                         <ItineraryLineItem
                             keypath="itinerary.vehicle"
                             :item-ref="variant.vehicle"
-                            :swap-label="t('itinerary.changeRoom')"
                             class="variant-vehicle"
                             @remove="
                                 confirmAndRun(
@@ -1271,14 +1279,6 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                             "
                         />
                     </div>
-                    <AlternativesPanel
-                        v-if="
-                            swap?.key === swapKey(variantIndex, null, 'vehicle')
-                        "
-                        :loading="swap.loading"
-                        :alternatives="swap.alternatives"
-                        @select="applySwap"
-                    />
                 </template>
 
                 <div v-if="!startDates[variantIndex]" class="start-date-prompt">
@@ -1579,6 +1579,24 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                         ),
                                                 }"
                                             >
+                                                <span
+                                                    v-if="
+                                                        isStageStart(
+                                                            variantIndex,
+                                                            dayIndex,
+                                                        )
+                                                    "
+                                                    class="drag-handle"
+                                                    :title="
+                                                        t(
+                                                            'itinerary.dragToReorder',
+                                                        )
+                                                    "
+                                                >
+                                                    <GripHorizontal
+                                                        :size="14"
+                                                    />
+                                                </span>
                                                 <template
                                                     v-if="
                                                         isStageStart(
@@ -1688,15 +1706,6 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
                                                                         )
                                                                     "
                                                                 />
-                                                                <span
-                                                                    class="drag-handle"
-                                                                    :title="
-                                                                        t(
-                                                                            'itinerary.dragToReorder',
-                                                                        )
-                                                                    "
-                                                                    >⠿</span
-                                                                >
                                                             </div>
                                                         </div>
                                                     </div>
@@ -2313,7 +2322,7 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
         />
 
         <ListingSwapModal
-            v-if="swap && swap.field !== 'vehicle'"
+            v-if="swap"
             :type="swap.field"
             :title="swapModalTitle"
             :exclude-id="swap.excludeId"

@@ -312,6 +312,10 @@ class Listing extends Model
                 $q->whereRaw('lower(cast(name as text)) like ?', [$kw])
                     ->orWhereRaw('lower(cast(description as text)) like ?', [$kw])
                     ->orWhereRaw('lower(cast(type as text)) like ?', [$kw])
+                    // facilities is a plain (untranslated) string array — e.g. "Pool",
+                    // "WiFi" — so a traveler can find listings by amenity through the
+                    // same keyword box rather than needing a dedicated filter for it.
+                    ->orWhereRaw('lower(cast(facilities as text)) like ?', [$kw])
                     ->orWhereHas('city', fn ($q2) => $q2->whereRaw('lower(cast(name as text)) like ?', [$kw])
                         ->orWhereHas('region', fn ($q3) => $q3->whereRaw('lower(cast(name as text)) like ?', [$kw])));
             });

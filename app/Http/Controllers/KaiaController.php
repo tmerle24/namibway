@@ -104,19 +104,6 @@ class KaiaController extends Controller
         return response()->json(['coords' => $coords]);
     }
 
-    public function alternatives(Request $request, ItineraryService $itinerary): JsonResponse
-    {
-        $validated = $request->validate([
-            'type' => ['required', 'string', 'in:accommodation,activity,restaurant,vehicle'],
-            'exclude_id' => ['nullable', 'integer', 'min:1'],
-        ]);
-
-        $excludeId = isset($validated['exclude_id']) ? (int) $validated['exclude_id'] : null;
-        $results = $itinerary->alternatives($validated['type'], $excludeId);
-
-        return response()->json(['alternatives' => $results]);
-    }
-
     public function savePlan(Request $request): JsonResponse
     {
         $request->validate(['variant' => 'required|array']);

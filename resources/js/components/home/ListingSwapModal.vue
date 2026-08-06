@@ -2,13 +2,17 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatPrice } from '@/lib/currency';
-import type { ListingSearchMeta, ListingSearchResult } from '@/lib/kaia-client';
+import type {
+    ListingSearchMeta,
+    ListingSearchResult,
+    ListingSearchSort,
+} from '@/lib/kaia-client';
 import { searchListings } from '@/lib/kaia-client';
 import type { ItineraryListingRef } from '@/lib/kaia-types';
 import { show } from '@/routes/listings';
 
 const props = defineProps<{
-    type: 'accommodation' | 'activity' | 'restaurant';
+    type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
     title: string;
     excludeId?: number | null;
     // The day's own city ("same city") — preselected but not locked, so the
@@ -29,7 +33,14 @@ const keyword = ref('');
 const city = ref(props.defaultCity ?? '');
 const budget = ref('');
 const minRating = ref('');
+const maxDistanceKm = ref('');
+const sort = ref<ListingSearchSort>('featured');
 const filtersOpen = ref(false);
+
+// Distance is always relative to the day's own city, regardless of which
+// city the traveler is currently filtering by — "how far is this from where
+// I'll actually be" doesn't change just because they widened the search.
+const hasReferencePoint = !!props.defaultCity;
 
 const results = ref<ListingSearchResult[]>([]);
 const meta = ref<ListingSearchMeta>({
@@ -57,6 +68,9 @@ async function runSearch(page = 1, append = false) {
             keyword: keyword.value || undefined,
             budget: budget.value || undefined,
             minRating: minRating.value || undefined,
+            referenceCity: props.defaultCity || undefined,
+            maxDistanceKm: maxDistanceKm.value || undefined,
+            sort: sort.value,
             excludeId: props.excludeId ?? undefined,
             page,
         });
@@ -91,7 +105,9 @@ watch(keyword, () => {
     debounceHandle = setTimeout(() => runSearch(1, false), 350);
 });
 
-watch([city, budget, minRating], () => runSearch(1, false));
+watch([city, budget, minRating, maxDistanceKm, sort], () =>
+    runSearch(1, false),
+);
 
 function detailUrl(slug: string): string {
     return show({ listing: slug }).url;
@@ -165,6 +181,26 @@ onUnmounted(() => {
                         {{ c }}
                     </option>
                 </select>
+                <select v-model="sort" class="swap-modal-select">
+                    <option value="featured">
+                        {{ t('explore.results.sortFeatured') }}
+                    </option>
+                    <option value="price_asc">
+                        {{ t('explore.results.sortPriceAsc') }}
+                    </option>
+                    <option value="price_desc">
+                        {{ t('explore.results.sortPriceDesc') }}
+                    </option>
+                    <option value="rating">
+                        {{ t('explore.results.sortRating') }}
+                    </option>
+                    <option value="popularity">
+                        {{ t('explore.results.sortPopularity') }}
+                    </option>
+                    <option v-if="hasReferencePoint" value="distance">
+                        {{ t('explore.results.sortDistance') }}
+                    </option>
+                </select>
                 <button
                     type="button"
                     class="swap-modal-more-filters"
@@ -210,6 +246,24 @@ onUnmounted(() => {
                         {{ t('explore.filters.rating3') }}
                     </option>
                 </select>
+                <select
+                    v-if="hasReferencePoint"
+                    v-model="maxDistanceKm"
+                    class="swap-modal-select"
+                >
+                    <option value="">
+                        {{ t('explore.filters.anyDistance') }}
+                    </option>
+                    <option value="10">
+                        {{ t('explore.filters.distance10') }}
+                    </option>
+                    <option value="25">
+                        {{ t('explore.filters.distance25') }}
+                    </option>
+                    <option value="50">
+                        {{ t('explore.filters.distance50') }}
+                    </option>
+                </select>
             </div>
 
             <div class="swap-modal-results">
@@ -239,11 +293,40 @@ onUnmounted(() => {
                                 class="swap-modal-item-location"
                                 >{{ result.city || result.region }}</span
                             >
+                            <span class="swap-modal-item-meta">
+                                <span
+                                    v-if="result.is_featured"
+                                    class="swap-modal-item-badge"
+                                    >{{ t('listing.popular') }}</span
+                                >
+                                <span
+                                    v-if="result.rating !== null"
+                                    class="swap-modal-item-rating"
+                                    >★ {{ result.rating.toFixed(1)
+                                    }}<template v-if="result.rating_count">
+                                        ({{ result.rating_count }})</template
+                                    ></span
+                                >
+                                <span
+                                    v-if="result.distance_km !== null"
+                                    class="swap-modal-item-distance"
+                                    >{{
+                                        Math.round(result.distance_km)
+                                    }}
+                                    km</span
+                                >
+                            </span>
                             <span
-                                v-if="result.rating !== null"
-                                class="swap-modal-item-rating"
-                                >★ {{ result.rating.toFixed(1) }}</span
+                                v-if="result.highlights.length"
+                                class="swap-modal-item-tags"
                             >
+                                <span
+                                    v-for="h in result.highlights.slice(0, 3)"
+                                    :key="h"
+                                    class="swap-modal-item-tag"
+                                    >{{ h }}</span
+                                >
+                            </span>
                         </span>
                         <span
                             v-if="formatPrice(result.price_from)"
@@ -444,9 +527,43 @@ onUnmounted(() => {
     color: #8a7f68;
 }
 
-.swap-modal-item-rating {
+.swap-modal-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.swap-modal-item-rating,
+.swap-modal-item-distance {
     font-size: 12px;
     color: #8a7f68;
+}
+
+.swap-modal-item-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--rust-dark, #8a3d24);
+    background: var(--rust-light, #f3e2d8);
+    border-radius: 999px;
+    padding: 2px 7px;
+}
+
+.swap-modal-item-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.swap-modal-item-tag {
+    font-size: 10.5px;
+    color: #7a6f63;
+    background: var(--sand, #f2ead9);
+    border-radius: 5px;
+    padding: 1px 6px;
 }
 
 .swap-modal-item-price {
