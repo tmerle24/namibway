@@ -237,6 +237,18 @@ function lockBodyScrollForMobileKeyboard() {
         return;
     }
 
+    // Bring the input row into view *before* freezing scroll below. Once the
+    // body is taken out of flow there's no scrollable document left for
+    // iOS's native "scroll the focused input above the keyboard" behavior to
+    // act on, so if we freeze at whatever position the page already happened
+    // to be at, an input sitting in the lower half of the screen ends up
+    // permanently covered by the keyboard with no way to reach it. Aligning
+    // it to the top — comfortably clear of the fixed header via the
+    // scroll-margin-top on `.chat-input-row input` — keeps it well above
+    // where a keyboard (which only ever eats the bottom portion of the
+    // screen) can reach, regardless of where the page was scrolled to.
+    chatInput.value?.scrollIntoView({ block: 'start' });
+
     savedBodyScrollY = window.scrollY;
     document.body.style.position = 'fixed';
     document.body.style.top = `-${savedBodyScrollY}px`;
