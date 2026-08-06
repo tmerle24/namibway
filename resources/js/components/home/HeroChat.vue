@@ -379,6 +379,7 @@ function startDiagnostics() {
     if (diagnosticHideTimer) {
         clearTimeout(diagnosticHideTimer);
     }
+
     diagnosticHideTimer = setTimeout(() => {
         showDiagnostics.value = false;
     }, 10000);
