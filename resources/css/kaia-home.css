@@ -1553,6 +1553,34 @@ body:has(.kaia-page) {
     color: #8a7f68;
     padding: 6px 2px 0;
 }
+/* Region + city (and, in "more filters", budget + rating) are related
+   narrow selects that read fine side by side — pair them so they always
+   share a row instead of leaving it to chance whether their selected
+   option text happens to be short enough to fit two per line. */
+.kaia-page .filter-pair {
+    display: flex;
+    gap: 10px;
+    flex: 1 1 auto;
+}
+.kaia-page .filter-pair select {
+    flex: 1;
+    min-width: 0;
+}
+/* Text inputs already flex to full width via `.filter-bar input[type='text']`
+   above; standalone selects don't grow by default, so on mobile they're
+   stuck at content width instead of matching the inputs. Force the
+   category select (and the equivalent budget/rating pair) to fill the row. */
+@media (max-width: 640px) {
+    .kaia-page .filter-pair,
+    .kaia-page .filter-row > select,
+    .kaia-page .filter-more {
+        width: 100%;
+    }
+    .kaia-page .filter-more select {
+        flex: 1;
+        min-width: 0;
+    }
+}
 .kaia-page .flatpickr-day.selected,
 .kaia-page .flatpickr-day.startRange,
 .kaia-page .flatpickr-day.endRange {

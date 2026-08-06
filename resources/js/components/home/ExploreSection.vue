@@ -724,30 +724,32 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
         </div>
         <div class="filter-bar" ref="filterBar">
             <div class="filter-row">
-                <select v-model="filterRegion">
-                    <option value="">
-                        {{ t('explore.filters.allRegions') }}
-                    </option>
-                    <option
-                        v-for="region in availableRegions"
-                        :key="region"
-                        :value="region"
-                    >
-                        {{ region }}
-                    </option>
-                </select>
-                <select v-model="filterCity">
-                    <option value="">
-                        {{ t('explore.filters.allCities') }}
-                    </option>
-                    <option
-                        v-for="city in availableCities"
-                        :key="city"
-                        :value="city"
-                    >
-                        {{ city }}
-                    </option>
-                </select>
+                <div class="filter-pair">
+                    <select v-model="filterRegion">
+                        <option value="">
+                            {{ t('explore.filters.allRegions') }}
+                        </option>
+                        <option
+                            v-for="region in availableRegions"
+                            :key="region"
+                            :value="region"
+                        >
+                            {{ region }}
+                        </option>
+                    </select>
+                    <select v-model="filterCity">
+                        <option value="">
+                            {{ t('explore.filters.allCities') }}
+                        </option>
+                        <option
+                            v-for="city in availableCities"
+                            :key="city"
+                            :value="city"
+                        >
+                            {{ city }}
+                        </option>
+                    </select>
+                </div>
                 <select v-model="filterCategory">
                     <option value="">
                         {{ t('explore.filters.allCategories') }}
