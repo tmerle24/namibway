@@ -3062,6 +3062,16 @@ body:has(.kaia-page) {
         top: var(--admin-bar-height, 0px);
         left: 0;
         right: 0;
+        /* Matches the .bottom-nav-safari fix proven out in Wisherful
+           (git/wishlist's resources/css/app.css): iOS Safari can "drop" a
+           fixed layer — stop compositing it independently and let it get
+           dragged around with whatever's scrolling underneath — around
+           viewport changes like the keyboard opening. Forcing this element
+           onto its own GPU compositing layer keeps it correctly pinned. */
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        -webkit-transform: translate3d(0, 0, 0);
+        transform: translate3d(0, 0, 0);
     }
 
     .kaia-page[data-mobile-section='kaia']:not(.has-plan) #kaia-hero {
@@ -3115,6 +3125,20 @@ body:has(.kaia-page) {
         padding-bottom: env(safe-area-inset-bottom, 0px);
         background: var(--night);
         border-top: 1px solid rgba(251, 248, 241, 0.15);
+        /* Matches the .bottom-nav-safari fix proven out in Wisherful
+           (git/wishlist's resources/css/app.css): iOS Safari can "drop" a
+           fixed layer — stop compositing it independently and let it get
+           dragged around with whatever's scrolling underneath — around
+           viewport changes like the keyboard opening. Forcing this element
+           onto its own GPU compositing layer keeps it correctly pinned.
+           No will-change: transform — Wisherful's own comment notes it
+           creates a compositing layer that clips child box-shadows at the
+           element boundary in Safari; translate3d achieves the same
+           promotion without that side effect. */
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        -webkit-transform: translate3d(0, 0, 0);
+        transform: translate3d(0, 0, 0);
     }
 }
 .kaia-page .mobile-footer-nav-item {
