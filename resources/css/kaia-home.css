@@ -1540,6 +1540,29 @@ body:has(.kaia-page) {
     color: #8a7f68;
     padding: 6px 2px 0;
 }
+/* Text inputs already flex to full width via `.filter-bar input[type='text']`
+   above; selects and buttons don't grow by default, so on mobile (where every
+   filter wraps to its own row anyway) they're stuck at content width instead
+   of matching the inputs. Force the whole row to fill the container. */
+@media (max-width: 640px) {
+    .kaia-page .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .kaia-page .filter-bar select,
+    .kaia-page .filter-bar input[type='text'],
+    .kaia-page .filter-bar input[type='date'],
+    .kaia-page .filter-bar button.search-btn {
+        width: 100%;
+    }
+    .kaia-page .filter-more {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .kaia-page .filter-more select {
+        width: 100%;
+    }
+}
 .kaia-page .flatpickr-day.selected,
 .kaia-page .flatpickr-day.startRange,
 .kaia-page .flatpickr-day.endRange {
