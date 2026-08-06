@@ -3075,6 +3075,25 @@ body:has(.kaia-page) {
         height: var(--app-vh, 100svh);
         overflow: hidden;
         padding-bottom: 0;
+        /* On-device diagnostics confirmed a WebKit paint stall: after the
+           keyboard resizes the viewport and the --app-vh custom property
+           above changes, this element (and everything painted inside it —
+           header, hero, chat) can simply stop being repainted for several
+           seconds, showing only the flat <body> background underneath,
+           until an unrelated interaction (typing) forces a repaint. Even a
+           brand-new `position: fixed` debug overlay added straight to the
+           DOM failed to appear during the stall, which is what points at
+           WebKit's paint/compositing step rather than anything about this
+           element's own layout. Promoting it to its own compositing layer
+           keeps it painting independently of that stalled main-thread
+           paint. Safe here specifically: in this exact state (mobile, Kaia
+           tab, no plan yet) nothing inside this subtree uses `position:
+           fixed` — .mobile-footer-nav is forced to `position: static` right
+           below, and the modals that do use `fixed` (ListingSwapModal,
+           TripParamsEditModal, ListingPreviewModal) only ever mount once a
+           plan/itinerary exists — so this never becomes their containing
+           block. */
+        transform: translateZ(0);
     }
 
     .kaia-page[data-mobile-section='kaia']:not(.has-plan) #kaia-hero {
