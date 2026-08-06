@@ -67,6 +67,18 @@ const bookingTripId = ref<number | null>(null);
 const guestName = ref<string | null>(null);
 const guestEmail = ref<string | null>(null);
 const mobileSection = ref<MobileSection>('kaia');
+// Full-screen mobile chat mode, entered once the user taps into the Kaia
+// panel/input (see HeroChat.vue's `chat-active` emit and kaia-home.css's
+// `chat-fullscreen` rules). Reset whenever the user leaves the Kaia tab, so
+// switching back later starts fresh at the hero view instead of skipping
+// straight to full-screen chat.
+const chatFullscreen = ref(false);
+
+watch(mobileSection, (section) => {
+    if (section !== 'kaia') {
+        chatFullscreen.value = false;
+    }
+});
 
 async function scrollTo(id: string) {
     await nextTick();
@@ -225,11 +237,15 @@ async function onGuestSubmit(details: GuestDetails) {
 <template>
     <div
         class="kaia-page"
-        :class="{ 'has-plan': plan }"
+        :class="{ 'has-plan': plan, 'chat-fullscreen': chatFullscreen }"
         :data-mobile-section="mobileSection"
     >
         <AdminBar />
-        <HeroChat @plan-ready="onPlanReady" @search-intent="onSearchIntent" />
+        <HeroChat
+            @plan-ready="onPlanReady"
+            @search-intent="onSearchIntent"
+            @chat-active="chatFullscreen = true"
+        />
         <ItinerarySection
             v-if="plan"
             :plan="plan"

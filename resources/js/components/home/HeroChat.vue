@@ -56,6 +56,7 @@ function recommendationImage(rec: ListingRecommendation): string {
 const emit = defineEmits<{
     (e: 'plan-ready', plan: ItineraryPlan): void;
     (e: 'search-intent', intent: SearchIntent): void;
+    (e: 'chat-active'): void;
 }>();
 
 const { t, tm, locale } = useI18n();
@@ -231,6 +232,17 @@ onUnmounted(() => {
 // one thing that behavior needs to act on: there's no scrollable document
 // left to scroll. Restored (and the real scroll position reapplied) on blur.
 let savedBodyScrollY = 0;
+
+// Tells Welcome.vue to switch the mobile Kaia tab into full-screen chat
+// mode (hero title/illustrations and the bottom tab bar hidden, chat panel
+// stretched to fill the screen below the header) — see the `chat-fullscreen`
+// rules in kaia-home.css. Sticky on purpose: once the conversation has
+// started, tapping the log or briefly blurring the input to hit "send"
+// shouldn't collapse it back to the hero view. Welcome.vue resets it when
+// the user switches away from the Kaia tab.
+function activateChat() {
+    emit('chat-active');
+}
 
 function lockBodyScrollForMobileKeyboard() {
     if (!window.matchMedia('(hover: none), (pointer: coarse)').matches) {
@@ -474,7 +486,7 @@ async function retryLastMessage() {
 
             <div class="hero-sun" aria-hidden="true"></div>
 
-            <div class="chat-panel" ref="chatPanel">
+            <div class="chat-panel" ref="chatPanel" @click="activateChat">
                 <div class="chat-log" ref="chatLog">
                     <div
                         v-for="(msg, i) in messages"
@@ -560,7 +572,10 @@ async function retryLastMessage() {
                         autocomplete="off"
                         :readonly="isTyping"
                         @keydown.enter="sendMessage"
-                        @focus="lockBodyScrollForMobileKeyboard"
+                        @focus="
+                            activateChat();
+                            lockBodyScrollForMobileKeyboard();
+                        "
                         @blur="unlockBodyScroll"
                     />
                     <button

@@ -3212,6 +3212,60 @@ body:has(.kaia-page) {
     .kaia-page[data-mobile-section='kaia']:not(.has-plan) footer {
         display: none;
     }
+
+    /* Full-screen chat mode: entered once the user taps into the Kaia panel
+       (HeroChat.vue emits `chat-active`, Welcome.vue toggles this class).
+       Deliberately does NOT resurrect the reverted --app-vh/overflow:hidden
+       approach documented above — it stays inside the same "fixed header,
+       normal document flow" pattern and just removes everything from that
+       flow except the chat panel, so the panel (and its input) end up
+       filling essentially the whole screen without any JS-driven height
+       animation or extra scroll locking beyond what already exists for the
+       input itself. */
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        .mobile-footer-nav {
+        display: none;
+    }
+
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        #kaia-hero {
+        display: flex;
+        flex-direction: column;
+        /* The footer nav this was clearing is hidden in this state. */
+        padding-bottom: 0;
+        min-height: calc(
+            100dvh - var(--admin-bar-height, 0px) -
+                var(--site-header-height, 0px)
+        );
+    }
+
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        #kaia-hero
+        :is(.hero-head, .hero-sun, svg.hero-bg, svg.hero-tree) {
+        display: none;
+    }
+
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        .hero-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 10px 12px;
+    }
+
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        .chat-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        max-width: none;
+    }
+
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        .chat-log {
+        flex: 1;
+        max-height: none;
+    }
 }
 
 .kaia-page .mobile-footer-nav {
