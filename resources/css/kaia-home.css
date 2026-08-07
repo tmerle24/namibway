@@ -3294,8 +3294,19 @@ body:has(.kaia-page) {
            element — needs subtracting. Subtracting site-header-height *as
            well* (an earlier version of this rule did) double-counts it and
            leaves #kaia-hero short by exactly one header-height, showing as
-           a gap of bare hero background below the chat panel. */
-        min-height: calc(100dvh - var(--admin-bar-height, 0px));
+           a gap of bare hero background below the chat panel.
+           `height`, not `min-height`: this needs to be a hard cap, not a
+           floor. A floor let a longer conversation grow #kaia-hero (and the
+           whole page) taller than the viewport instead of scrolling inside
+           .chat-log — which, combined with the input-focus body-scroll-lock
+           elsewhere in this file, could make the page's lower portion
+           (including the input itself) completely unreachable while the
+           keyboard was open. See the min-height: 0 chain below — a fixed
+           height on the outermost box only contains overflow if every flex
+           descendant between it and .chat-log is *allowed* to shrink below
+           its content size, which needs min-height: 0 at each level since
+           flex items default to min-height: auto. */
+        height: calc(100dvh - var(--admin-bar-height, 0px));
     }
 
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
@@ -3307,6 +3318,7 @@ body:has(.kaia-page) {
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
         .hero-content {
         flex: 1;
+        min-height: 0;
         display: flex;
         flex-direction: column;
         padding: 10px 12px;
@@ -3325,14 +3337,25 @@ body:has(.kaia-page) {
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
         .chat-panel {
         flex: 1;
+        min-height: 0;
         display: flex;
         flex-direction: column;
         max-width: none;
     }
 
+    /* min-height: 0 is what actually makes this scroll internally (via the
+       overflow-y: auto already on the base .chat-log rule) instead of
+       growing past its flex-allocated space — flex items default to
+       min-height: auto (= their content's size), which silently overrides
+       `flex: 1` shrinking whenever content is taller than the available
+       space. Without it, a chat-log full of messages just pushes
+       .chat-panel/#kaia-hero/the whole page taller than the viewport,
+       which is exactly what full-screen mode exists to prevent: the input
+       row ends up scrolled out of reach instead of pinned at the bottom. */
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
         .chat-log {
         flex: 1;
+        min-height: 0;
         max-height: none;
     }
 
