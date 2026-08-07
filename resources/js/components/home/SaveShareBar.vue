@@ -20,7 +20,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     (e: 'saved', token: string, url: string): void;
-    (e: 'need-auth'): void;
 }>();
 
 const { t } = useI18n();
@@ -44,11 +43,8 @@ async function save() {
         return;
     }
 
-    if (props.isLoggedIn === false) {
-        emit('need-auth');
-
-        return;
-    }
+    // Building the share link only needs a token, not an account — savePlan()
+    // persists anonymously, same as ItinerarySection's own auto-save.
 
     // Already auto-persisted under existingToken (the common single-variant
     // case) — build the share link from that instead of minting a second,

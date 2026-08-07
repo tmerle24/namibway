@@ -1231,13 +1231,11 @@ function estimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                 trip_params: currentTripParams,
                             }"
                             :existing-token="currentToken"
-                            :is-logged-in="isLoggedIn"
                             @saved="
                                 (token) => {
                                     savedTokens[variantIndex] = token;
                                 }
                             "
-                            @need-auth="onNeedAuth"
                         />
                         <KebabMenu
                             v-if="editableVariants.length === 1"
@@ -2334,7 +2332,6 @@ function estimatedPerDayLabel(variant: ItineraryVariant): string | null {
                             savedTokens[variantIndex] = token;
                         }
                     "
-                    @need-auth="onNeedAuth"
                 />
             </div>
         </div>
