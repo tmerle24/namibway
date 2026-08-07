@@ -846,10 +846,26 @@ body:has(.kaia-page) {
     object-fit: cover;
     border: 1px solid var(--sand-dark);
 }
+.kaia-page .vehicle-card-body {
+    flex: 1;
+    min-width: 0;
+}
 .kaia-page .variant-vehicle {
     color: #5b5346;
     font-size: 12.5px;
     margin-bottom: 0;
+}
+.kaia-page .vehicle-price {
+    color: var(--rust-dark);
+    font-weight: 600;
+    font-size: 12.5px;
+    margin-top: 2px;
+}
+.kaia-page .vehicle-price-per-day {
+    color: #8a7f68;
+    font-weight: 500;
+    font-size: 11.5px;
+    margin-left: 2px;
 }
 .kaia-page .start-date-prompt {
     margin: 6px 0 10px;
