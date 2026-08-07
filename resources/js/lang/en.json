@@ -364,6 +364,12 @@
     "footer": {
         "tagline": "AI-assisted travel planning for Namibia. Kaia's interview and itinerary generation are live; real partner booking and availability are coming as the platform develops."
     },
+    "vehicle": {
+        "category": {
+            "self_drive": "Self-Drive",
+            "guided_tour": "Guided Tour"
+        }
+    },
     "listing": {
         "backToHome": "← Back to explore",
         "types": {

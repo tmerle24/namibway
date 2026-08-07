@@ -3,6 +3,8 @@ export interface ItineraryListingRef {
     slug: string | null;
     name: string;
     type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
+    // Only meaningful when type === 'vehicle'.
+    vehicle_category?: 'self_drive' | 'guided_tour' | null;
     price_from: string | null;
     price_currency: string;
     lat?: number | null;

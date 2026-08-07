@@ -28,6 +28,7 @@ class ListingController extends Controller
      * internal Explore search (see Listing::scopeFilterBy()).
      *
      * @queryParam type string Filter by listing type. Example: accommodation
+     * @queryParam vehicle_category string Filter vehicle listings by category: `self_drive` or `guided_tour`. Example: self_drive
      * @queryParam region string Filter by region (partial match). Example: Erongo
      * @queryParam keyword string Free-text search across name/description/region/type. Example: dune
      * @queryParam budget string One of `budget`, `mid-range`, `premium` (price_from bands). Example: mid-range

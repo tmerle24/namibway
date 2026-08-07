@@ -37,6 +37,12 @@ const maxDistanceKm = ref('');
 const sort = ref<ListingSearchSort>('featured');
 const filtersOpen = ref(false);
 
+// Vehicles are either self-drive rentals or guided tours with a
+// driver-guide included — different enough that mixing them in one
+// undifferentiated list would bury the distinction the traveler most
+// needs to make. Defaults to self-drive, the more common request.
+const vehicleCategory = ref<'self_drive' | 'guided_tour'>('self_drive');
+
 // Distance is always relative to the day's own city, regardless of which
 // city the traveler is currently filtering by — "how far is this from where
 // I'll actually be" doesn't change just because they widened the search.
@@ -64,6 +70,8 @@ async function runSearch(page = 1, append = false) {
     try {
         const response = await searchListings({
             type: props.type,
+            vehicleCategory:
+                props.type === 'vehicle' ? vehicleCategory.value : undefined,
             city: city.value || undefined,
             keyword: keyword.value || undefined,
             budget: budget.value || undefined,
@@ -105,7 +113,7 @@ watch(keyword, () => {
     debounceHandle = setTimeout(() => runSearch(1, false), 350);
 });
 
-watch([city, budget, minRating, maxDistanceKm, sort], () =>
+watch([city, budget, minRating, maxDistanceKm, sort, vehicleCategory], () =>
     runSearch(1, false),
 );
 
@@ -119,6 +127,7 @@ function select(result: ListingSearchResult) {
         slug: result.slug,
         name: result.name,
         type: result.type,
+        vehicle_category: result.vehicle_category,
         price_from: result.price_from,
         price_currency: result.price_currency,
         image: result.image,
@@ -163,6 +172,31 @@ onUnmounted(() => {
                     @click="emit('close')"
                 >
                     ×
+                </button>
+            </div>
+
+            <div v-if="type === 'vehicle'" class="swap-modal-vehicle-tabs">
+                <button
+                    type="button"
+                    class="swap-modal-vehicle-tab"
+                    :class="{
+                        'swap-modal-vehicle-tab--active':
+                            vehicleCategory === 'self_drive',
+                    }"
+                    @click="vehicleCategory = 'self_drive'"
+                >
+                    {{ t('vehicle.category.self_drive') }}
+                </button>
+                <button
+                    type="button"
+                    class="swap-modal-vehicle-tab"
+                    :class="{
+                        'swap-modal-vehicle-tab--active':
+                            vehicleCategory === 'guided_tour',
+                    }"
+                    @click="vehicleCategory = 'guided_tour'"
+                >
+                    {{ t('vehicle.category.guided_tour') }}
                 </button>
             </div>
 
@@ -295,6 +329,16 @@ onUnmounted(() => {
                             >
                             <span class="swap-modal-item-meta">
                                 <span
+                                    v-if="result.vehicle_category"
+                                    class="swap-modal-item-badge swap-modal-item-badge--vehicle"
+                                    :class="`swap-modal-item-badge--${result.vehicle_category}`"
+                                    >{{
+                                        t(
+                                            `vehicle.category.${result.vehicle_category}`,
+                                        )
+                                    }}</span
+                                >
+                                <span
                                     v-if="result.is_featured"
                                     class="swap-modal-item-badge"
                                     >{{ t('listing.popular') }}</span
@@ -423,6 +467,30 @@ onUnmounted(() => {
     background: rgba(16, 26, 48, 0.16);
 }
 
+.swap-modal-vehicle-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 10px 20px 0;
+}
+
+.swap-modal-vehicle-tab {
+    flex: 1 1 0;
+    padding: 9px 10px;
+    border: 1px solid var(--sand-dark, #d8cdb4);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--ink, #241c15);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.swap-modal-vehicle-tab--active {
+    background: var(--night, #1b2a4a);
+    border-color: var(--night, #1b2a4a);
+    color: var(--paper, #fbf8f1);
+}
+
 .swap-modal-filters {
     display: flex;
     flex-wrap: wrap;
@@ -549,6 +617,16 @@ onUnmounted(() => {
     background: var(--rust-light, #f3e2d8);
     border-radius: 999px;
     padding: 2px 7px;
+}
+
+.swap-modal-item-badge--self_drive {
+    color: var(--rust-dark, #8a3d24);
+    background: var(--rust-light, #f3e2d8);
+}
+
+.swap-modal-item-badge--guided_tour {
+    color: var(--sage, #4c5d46);
+    background: var(--sage-light, #dce4d6);
 }
 
 .swap-modal-item-tags {

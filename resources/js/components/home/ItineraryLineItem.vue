@@ -119,6 +119,19 @@ function onMenuSelect(key: string) {
                         class="item-price"
                         >{{ formatPrice(props.itemRef.price_from) }}</span
                     >
+                    <span
+                        v-if="
+                            props.itemRef.type === 'vehicle' &&
+                            props.itemRef.vehicle_category
+                        "
+                        class="item-vehicle-badge"
+                        :class="`item-vehicle-badge--${props.itemRef.vehicle_category}`"
+                        >{{
+                            t(
+                                `vehicle.category.${props.itemRef.vehicle_category}`,
+                            )
+                        }}</span
+                    >
                     <template v-if="!props.readonly">
                         <KebabMenu
                             :items="menuItems"

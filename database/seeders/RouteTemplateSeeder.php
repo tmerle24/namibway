@@ -28,8 +28,8 @@ class RouteTemplateSeeder extends Seeder
                 'sort' => 10,
                 'stops' => [
                     ['region' => 'Otjozondjupa', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Waterberg Plateau hiking'],
-                    ['region' => 'Kunene', 'min_nights' => 3, 'max_nights' => 5, 'highlights' => 'Etosha safari, waterhole game viewing'],
-                    ['region' => 'Erongo', 'min_nights' => 2, 'max_nights' => 4, 'highlights' => 'Spitzkoppe, Skeleton Coast, Swakopmund'],
+                    ['region' => 'Kunene', 'min_nights' => 3, 'max_nights' => 5, 'highlights' => 'Etosha safari, waterhole game viewing, Damaraland, Twyfelfontein rock engravings'],
+                    ['region' => 'Erongo', 'min_nights' => 2, 'max_nights' => 4, 'highlights' => 'Spitzkoppe, Erongo Mountains, Skeleton Coast, Swakopmund'],
                     ['region' => 'Hardap', 'min_nights' => 2, 'max_nights' => 4, 'highlights' => 'Sossusvlei, Sesriem, Naukluft'],
                 ],
             ],
@@ -64,6 +64,57 @@ class RouteTemplateSeeder extends Seeder
                     ['region' => 'Hardap', 'min_nights' => 3, 'max_nights' => 6, 'highlights' => 'Sossusvlei, Sesriem, Naukluft'],
                 ],
             ],
+            [
+                // The classic loop above deliberately stays out of Karas — that
+                // decision predates the per-city driving-hours backfill
+                // (2026-08-04) and was based on the coarse REGION-level
+                // Hardap|Karas figure (6.7h, over the 6h cap). The actual
+                // city_driving_hours table now has a same-region-cheap bridge
+                // (Mariental<->Keetmanshoop, 2.44h) that makes Karas reachable
+                // within the per-day cap after all — see ItineraryService's
+                // cityDrivingHours() which is checked before the region
+                // fallback. Hardap appears twice: once northbound (Sossusvlei)
+                // and once again as the final stop before Windhoek (Kalahari,
+                // near Mariental) — that second Hardap leg is what keeps the
+                // Karas->Windhoek return under the driving-time cap, instead of
+                // jumping straight from Karas to Khomas (7.3h, over cap).
+                'name' => 'Grand Namibia Loop',
+                'trip_type' => 'adventure',
+                'min_nights' => 18,
+                'max_nights' => 28,
+                'notes' => 'The full country loop for travelers with 3+ weeks — everything in the Classic Safari Loop plus a deep run south to Fish River Canyon, the Kalahari and Lüderitz.',
+                'sort' => 40,
+                'stops' => [
+                    ['region' => 'Otjozondjupa', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Waterberg Plateau hiking'],
+                    ['region' => 'Kunene', 'min_nights' => 3, 'max_nights' => 6, 'highlights' => 'Etosha safari, waterhole game viewing, Damaraland, Twyfelfontein rock engravings'],
+                    ['region' => 'Erongo', 'min_nights' => 2, 'max_nights' => 4, 'highlights' => 'Spitzkoppe, Erongo Mountains, Skeleton Coast, Swakopmund'],
+                    ['region' => 'Hardap', 'min_nights' => 1, 'max_nights' => 3, 'highlights' => 'Sossusvlei, Sesriem, Naukluft'],
+                    ['region' => 'Karas', 'min_nights' => 4, 'max_nights' => 7, 'highlights' => 'Fish River Canyon, quiver tree forest, Lüderitz, Kolmanskop ghost town, wild desert horses'],
+                    ['region' => 'Hardap', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Kalahari Desert (Mariental area), final stop before Windhoek'],
+                ],
+            ],
+            [
+                // Zambezi (Caprivi) is the single most remote region in the
+                // DRIVING_HOURS table (10.4h+ from every neighbor except
+                // Kavango East/West) — no direct day-leg from or to it is ever
+                // safe, region-fallback or city-level. Kavango East appears
+                // twice (outbound and return) specifically so Claude has an
+                // explicit overnight bridge in both directions instead of
+                // improvising one; Zambezi<->Kavango East is 5.4h, within cap.
+                'name' => 'Caprivi Green North Extension',
+                'trip_type' => 'adventure',
+                'min_nights' => 21,
+                'max_nights' => 32,
+                'notes' => 'Only for travelers with 3+ weeks — extends the classic north loop into the water-rich, tropical Zambezi (Caprivi) region: elephants, hippos and river life near the Botswana border. Skips the coast to keep total driving time reasonable.',
+                'sort' => 50,
+                'stops' => [
+                    ['region' => 'Otjozondjupa', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Waterberg Plateau hiking'],
+                    ['region' => 'Kunene', 'min_nights' => 3, 'max_nights' => 6, 'highlights' => 'Etosha safari, waterhole game viewing'],
+                    ['region' => 'Kavango East', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Popa Falls, Okavango River, Bwabwata National Park (west)'],
+                    ['region' => 'Zambezi', 'min_nights' => 3, 'max_nights' => 6, 'highlights' => 'Caprivi wetlands, elephants and hippos, Chobe/Zambezi river confluence, day trips toward the Botswana border'],
+                    ['region' => 'Kavango East', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Return via Rundu, Okavango riverside'],
+                ],
+            ],
         ];
 
         foreach ($templates as $template) {
@@ -82,7 +133,7 @@ class RouteTemplateSeeder extends Seeder
                 'max_nights' => $template['max_nights'],
                 'notes' => $template['notes'],
                 'sort_order' => $template['sort'],
-                'is_published' => true,
+                'is_published' => $template['published'] ?? true,
             ])->save();
 
             $model->stops()->delete();

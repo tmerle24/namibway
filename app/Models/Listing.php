@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ConnectorType;
 use App\Enums\ListingType;
+use App\Enums\VehicleCategory;
 use Database\Factories\ListingFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -29,6 +30,7 @@ class Listing extends Model
     protected $fillable = [
         'partner_id',
         'type',
+        'vehicle_category',
         'name',
         'slug',
         'wetu_id',
@@ -90,6 +92,7 @@ class Listing extends Model
 
     protected $casts = [
         'type' => ListingType::class,
+        'vehicle_category' => VehicleCategory::class,
         'gallery' => 'array',
         'pending_gallery' => 'array',
         'photos_approved_at' => 'datetime',
@@ -290,6 +293,12 @@ class Listing extends Model
 
         if (is_string($type) && $type !== '') {
             $query->where('type', $type);
+        }
+
+        $vehicleCategory = $filters['vehicle_category'] ?? null;
+
+        if (is_string($vehicleCategory) && $vehicleCategory !== '') {
+            $query->where('vehicle_category', $vehicleCategory);
         }
 
         $region = $filters['region'] ?? null;
