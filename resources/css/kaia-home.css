@@ -3330,8 +3330,17 @@ body:has(.kaia-page) {
            element — needs subtracting. Subtracting site-header-height *as
            well* (an earlier version of this rule did) double-counts it and
            leaves #kaia-hero short by exactly one header-height, showing as
-           a gap of bare hero background below the chat panel. */
-        min-height: calc(100dvh - var(--admin-bar-height, 0px));
+           a gap of bare hero background below the chat panel.
+
+           --keyboard-inset (set by HeroChat.vue via window.visualViewport,
+           which — unlike `dvh` — actually tracks the on-screen keyboard)
+           is subtracted too: without it, opening the keyboard leaves this
+           column sized for the pre-keyboard screen, so .chat-input-row
+           (the last flex child at its bottom) ends up positioned behind
+           the keyboard instead of riding up above it. */
+        min-height: calc(
+            100dvh - var(--admin-bar-height, 0px) - var(--keyboard-inset, 0px)
+        );
     }
 
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
@@ -3356,6 +3365,14 @@ body:has(.kaia-page) {
            overflowed past the viewport edge. Pin both back to fill width. */
         margin: 0;
         max-width: none;
+        /* A flex item's default min-height is `auto` (its content size),
+           not 0 — without overriding it, this column can't shrink below
+           the chat log's content height, which defeats #kaia-hero's own
+           --keyboard-inset-aware min-height above: the keyboard opens, the
+           column is told to get shorter, but this child (and .chat-panel/
+           .chat-log below) refuse to follow, so the input row stays put
+           behind the keyboard instead of riding back into view. */
+        min-height: 0;
     }
 
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
@@ -3364,12 +3381,14 @@ body:has(.kaia-page) {
         display: flex;
         flex-direction: column;
         max-width: none;
+        min-height: 0;
     }
 
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
         .chat-log {
         flex: 1;
         max-height: none;
+        min-height: 0;
     }
 
     /* The mobile tab bar is hidden for the whole time this mode is active,
