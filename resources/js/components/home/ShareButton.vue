@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Share2 } from '@lucide/vue';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { savePlan } from '@/lib/kaia-client';
 import type { ItineraryPlan } from '@/lib/kaia-types';
@@ -11,12 +11,10 @@ const props = defineProps<{
     // SaveShareBar's identical prop for why this takes priority over
     // minting a fresh one via savePlan().
     existingToken?: string | null;
-    isLoggedIn?: boolean;
 }>();
 
 const emit = defineEmits<{
     (e: 'saved', token: string, url: string): void;
-    (e: 'need-auth'): void;
 }>();
 
 const { t } = useI18n();
@@ -30,17 +28,27 @@ const shareUrl = ref<string | null>(
 const modalOpen = ref(false);
 const copied = ref(false);
 
+// The plan often hasn't finished auto-persisting (ItinerarySection's
+// debounced runPersist) by the time this button mounts, so existingToken
+// can still be null on mount and arrive a moment later — pick that up
+// instead of leaving shareUrl stuck at null forever.
+watch(
+    () => props.existingToken,
+    (token) => {
+        if (token && !shareUrl.value) {
+            shareUrl.value = `${window.location.origin}/trip/${token}`;
+        }
+    },
+);
+
 async function resolveUrl(): Promise<string | null> {
     if (shareUrl.value) {
         return shareUrl.value;
     }
 
-    if (props.isLoggedIn === false) {
-        emit('need-auth');
-
-        return null;
-    }
-
+    // Sharing only needs a token, not an account — savePlan() persists
+    // anonymously (session-scoped) just like ItinerarySection's own
+    // auto-save, so there's nothing here that requires being logged in.
     resolving.value = true;
 
     try {
