@@ -892,9 +892,11 @@ function dayEntries(variantIndex: number, dayIndex: number): DayEntry[] {
                     a.order - b.order
                 );
             }
+
             if (a.entry.item.time) {
                 return -1;
             }
+
             if (b.entry.item.time) {
                 return 1;
             }
