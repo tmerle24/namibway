@@ -1150,29 +1150,6 @@ function estimatedPerDayLabel(variant: ItineraryVariant): string | null {
         price: formatPrice(amount / variant.days.length),
     });
 }
-
-function vehicleEstimatedLabel(variant: ItineraryVariant): string | null {
-    if (!variant.vehicle?.price_from) {
-        return null;
-    }
-
-    const amount = Number(variant.vehicle.price_from) * variant.days.length;
-
-    return t('itinerary.estimated', { price: formatPrice(amount) });
-}
-
-// price_from is already the vehicle's daily rate, so no division needed here
-// (unlike estimatedPerDayLabel(), which derives a per-day figure from a mix
-// of per-stay and per-night items).
-function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
-    if (!variant.vehicle?.price_from) {
-        return null;
-    }
-
-    return t('itinerary.estimatedPerDay', {
-        price: formatPrice(variant.vehicle.price_from),
-    });
-}
 </script>
 
 <template>
@@ -1313,42 +1290,27 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                             :alt="variant.vehicle.name"
                             class="vehicle-card-img"
                         />
-                        <div class="vehicle-card-body">
-                            <ItineraryLineItem
-                                keypath="itinerary.vehicle"
-                                :item-ref="variant.vehicle"
-                                class="variant-vehicle"
-                                @remove="
-                                    confirmAndRun(
-                                        t('itinerary.confirmRemove.vehicle'),
-                                        () => {
-                                            variant.vehicle = null;
-                                        },
-                                    )
-                                "
-                                @swap="
-                                    openSwap(
-                                        variantIndex,
-                                        null,
-                                        'vehicle',
-                                        variant.vehicle!,
-                                    )
-                                "
-                            />
-                            <div
-                                v-if="vehicleEstimatedLabel(variant)"
-                                class="vehicle-price"
-                            >
-                                {{ vehicleEstimatedLabel(variant) }}
-                                <span
-                                    v-if="vehicleEstimatedPerDayLabel(variant)"
-                                    class="vehicle-price-per-day"
-                                    >({{
-                                        vehicleEstimatedPerDayLabel(variant)
-                                    }})</span
-                                >
-                            </div>
-                        </div>
+                        <ItineraryLineItem
+                            keypath="itinerary.vehicle"
+                            :item-ref="variant.vehicle"
+                            class="variant-vehicle"
+                            @remove="
+                                confirmAndRun(
+                                    t('itinerary.confirmRemove.vehicle'),
+                                    () => {
+                                        variant.vehicle = null;
+                                    },
+                                )
+                            "
+                            @swap="
+                                openSwap(
+                                    variantIndex,
+                                    null,
+                                    'vehicle',
+                                    variant.vehicle!,
+                                )
+                            "
+                        />
                     </div>
                 </template>
 
