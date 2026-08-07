@@ -857,6 +857,67 @@ function removeItem(variantIndex: number, dayIndex: number) {
     roomPickerKey.value = null;
 }
 
+interface DayEntry {
+    type: 'activity' | 'restaurant';
+    item: ItineraryListingRef;
+    itemIndex: number;
+}
+
+// Merges a day's activities and restaurants into one chronological list —
+// entries with a `time` sort ascending; entries without one keep their
+// original relative order and sink to the end, so a plan with no times set
+// yet (the common case today) renders exactly as before.
+function dayEntries(variantIndex: number, dayIndex: number): DayEntry[] {
+    const day = editableVariants.value[variantIndex].days[dayIndex];
+
+    const entries: DayEntry[] = [
+        ...(day.activities ?? []).map((item, itemIndex): DayEntry => ({
+            type: 'activity',
+            item,
+            itemIndex,
+        })),
+        ...(day.restaurants ?? []).map((item, itemIndex): DayEntry => ({
+            type: 'restaurant',
+            item,
+            itemIndex,
+        })),
+    ];
+
+    return entries
+        .map((entry, order) => ({ entry, order }))
+        .sort((a, b) => {
+            if (a.entry.item.time && b.entry.item.time) {
+                return (
+                    a.entry.item.time.localeCompare(b.entry.item.time) ||
+                    a.order - b.order
+                );
+            }
+            if (a.entry.item.time) {
+                return -1;
+            }
+            if (b.entry.item.time) {
+                return 1;
+            }
+
+            return a.order - b.order;
+        })
+        .map(({ entry }) => entry);
+}
+
+function setEntryTime(
+    variantIndex: number,
+    dayIndex: number,
+    entry: DayEntry,
+    value: string | null,
+) {
+    const field = entry.type === 'activity' ? 'activities' : 'restaurants';
+    const list = editableVariants.value[variantIndex].days[dayIndex][field];
+
+    if (list?.[entry.itemIndex]) {
+        list[entry.itemIndex].time = value;
+    }
+}
+
 function removeArrayItem(
     variantIndex: number,
     dayIndex: number,
@@ -1907,92 +1968,53 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                             >
                                                                 {{
                                                                     t(
-                                                                        'itinerary.activityLabel',
+                                                                        'itinerary.dayPlanLabel',
                                                                     )
                                                                 }}
                                                             </div>
                                                             <ItineraryLineItem
-                                                                v-for="(
-                                                                    item,
-                                                                    itemIndex
-                                                                ) in day.activities"
-                                                                :key="`activity-${itemIndex}-${item.id ?? item.name}`"
+                                                                v-for="entry in dayEntries(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                )"
+                                                                :key="`${entry.type}-${entry.itemIndex}-${entry.item.id ?? entry.item.name}`"
                                                                 hide-label
-                                                                keypath="itinerary.activity"
-                                                                :item-ref="item"
-                                                                allow-add
-                                                                @remove="
-                                                                    confirmAndRun(
-                                                                        t(
-                                                                            'itinerary.confirmRemove.item',
-                                                                        ),
-                                                                        () =>
-                                                                            removeArrayItem(
-                                                                                variantIndex,
-                                                                                dayIndex,
-                                                                                'activities',
-                                                                                itemIndex,
-                                                                            ),
-                                                                    )
+                                                                :keypath="
+                                                                    entry.type ===
+                                                                    'activity'
+                                                                        ? 'itinerary.activity'
+                                                                        : 'itinerary.dinner'
                                                                 "
-                                                                @swap="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        'activity',
-                                                                        item,
-                                                                        itemIndex,
-                                                                    )
+                                                                :item-ref="
+                                                                    entry.item
                                                                 "
-                                                                @add="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        'activity',
-                                                                    )
+                                                                :icon="
+                                                                    entry.type ===
+                                                                    'activity'
+                                                                        ? '📷'
+                                                                        : '🍴'
                                                                 "
-                                                            />
-                                                            <ItineraryLineItem
-                                                                v-if="
-                                                                    !day
-                                                                        .activities
-                                                                        ?.length
-                                                                "
-                                                                hide-label
-                                                                keypath="itinerary.activity"
-                                                                :item-ref="null"
-                                                                @add="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        'activity',
-                                                                    )
-                                                                "
-                                                            />
-                                                        </div>
-
-                                                        <div
-                                                            class="day-card-box"
-                                                        >
-                                                            <div
-                                                                class="day-card-box-label"
-                                                            >
-                                                                {{
+                                                                :type-label="
                                                                     t(
-                                                                        'itinerary.dinnerLabel',
+                                                                        entry.type ===
+                                                                            'activity'
+                                                                            ? 'itinerary.activityLabel'
+                                                                            : 'itinerary.dinnerLabel',
                                                                     )
-                                                                }}
-                                                            </div>
-                                                            <ItineraryLineItem
-                                                                v-for="(
-                                                                    item,
-                                                                    itemIndex
-                                                                ) in day.restaurants"
-                                                                :key="`restaurant-${itemIndex}-${item.id ?? item.name}`"
-                                                                hide-label
-                                                                keypath="itinerary.dinner"
-                                                                :item-ref="item"
-                                                                allow-add
+                                                                "
+                                                                :time="
+                                                                    entry.item
+                                                                        .time
+                                                                "
+                                                                @update:time="
+                                                                    (value) =>
+                                                                        setEntryTime(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            entry,
+                                                                            value,
+                                                                        )
+                                                                "
                                                                 @remove="
                                                                     confirmAndRun(
                                                                         t(
@@ -2002,8 +2024,11 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                             removeArrayItem(
                                                                                 variantIndex,
                                                                                 dayIndex,
-                                                                                'restaurants',
-                                                                                itemIndex,
+                                                                                entry.type ===
+                                                                                    'activity'
+                                                                                    ? 'activities'
+                                                                                    : 'restaurants',
+                                                                                entry.itemIndex,
                                                                             ),
                                                                     )
                                                                 "
@@ -2011,36 +2036,52 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                     openSwap(
                                                                         variantIndex,
                                                                         dayIndex,
-                                                                        'restaurant',
-                                                                        item,
-                                                                        itemIndex,
-                                                                    )
-                                                                "
-                                                                @add="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        'restaurant',
+                                                                        entry.type,
+                                                                        entry.item,
+                                                                        entry.itemIndex,
                                                                     )
                                                                 "
                                                             />
-                                                            <ItineraryLineItem
-                                                                v-if="
-                                                                    !day
-                                                                        .restaurants
-                                                                        ?.length
-                                                                "
-                                                                hide-label
-                                                                keypath="itinerary.dinner"
-                                                                :item-ref="null"
-                                                                @add="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        'restaurant',
-                                                                    )
-                                                                "
-                                                            />
+                                                            <div
+                                                                class="day-plan-add-row"
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    class="add-item-btn"
+                                                                    @click="
+                                                                        openSwap(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            'activity',
+                                                                        )
+                                                                    "
+                                                                >
+                                                                    +
+                                                                    {{
+                                                                        t(
+                                                                            'itinerary.addActivity',
+                                                                        )
+                                                                    }}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    class="add-item-btn"
+                                                                    @click="
+                                                                        openSwap(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            'restaurant',
+                                                                        )
+                                                                    "
+                                                                >
+                                                                    +
+                                                                    {{
+                                                                        t(
+                                                                            'itinerary.addRestaurant',
+                                                                        )
+                                                                    }}
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
 
@@ -2148,91 +2189,53 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                             >
                                                                 {{
                                                                     t(
-                                                                        'itinerary.activityLabel',
+                                                                        'itinerary.dayPlanLabel',
                                                                     )
                                                                 }}
                                                             </div>
                                                             <ItineraryLineItem
-                                                                v-for="(
-                                                                    item,
-                                                                    itemIndex
-                                                                ) in day.activities"
-                                                                :key="`activity-${itemIndex}-${item.id ?? item.name}`"
+                                                                v-for="entry in dayEntries(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                )"
+                                                                :key="`${entry.type}-${entry.itemIndex}-${entry.item.id ?? entry.item.name}`"
                                                                 hide-label
-                                                                keypath="itinerary.activity"
-                                                                :item-ref="item"
-                                                                allow-add
-                                                                @remove="
-                                                                    confirmAndRun(
-                                                                        t(
-                                                                            'itinerary.confirmRemove.item',
-                                                                        ),
-                                                                        () =>
-                                                                            removeArrayItem(
-                                                                                variantIndex,
-                                                                                dayIndex,
-                                                                                'activities',
-                                                                                itemIndex,
-                                                                            ),
-                                                                    )
+                                                                :keypath="
+                                                                    entry.type ===
+                                                                    'activity'
+                                                                        ? 'itinerary.activity'
+                                                                        : 'itinerary.dinner'
                                                                 "
-                                                                @swap="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        'activity',
-                                                                        item,
-                                                                        itemIndex,
-                                                                    )
+                                                                :item-ref="
+                                                                    entry.item
                                                                 "
-                                                                @add="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        'activity',
-                                                                    )
+                                                                :icon="
+                                                                    entry.type ===
+                                                                    'activity'
+                                                                        ? '📷'
+                                                                        : '🍴'
                                                                 "
-                                                            />
-                                                            <ItineraryLineItem
-                                                                v-if="
-                                                                    !day
-                                                                        .activities
-                                                                        ?.length
-                                                                "
-                                                                hide-label
-                                                                keypath="itinerary.activity"
-                                                                :item-ref="null"
-                                                                @add="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        'activity',
-                                                                    )
-                                                                "
-                                                            />
-                                                        </div>
-                                                        <div
-                                                            class="day-card-box"
-                                                        >
-                                                            <div
-                                                                class="day-card-box-label"
-                                                            >
-                                                                {{
+                                                                :type-label="
                                                                     t(
-                                                                        'itinerary.dinnerLabel',
+                                                                        entry.type ===
+                                                                            'activity'
+                                                                            ? 'itinerary.activityLabel'
+                                                                            : 'itinerary.dinnerLabel',
                                                                     )
-                                                                }}
-                                                            </div>
-                                                            <ItineraryLineItem
-                                                                v-for="(
-                                                                    item,
-                                                                    itemIndex
-                                                                ) in day.restaurants"
-                                                                :key="`restaurant-${itemIndex}-${item.id ?? item.name}`"
-                                                                hide-label
-                                                                keypath="itinerary.dinner"
-                                                                :item-ref="item"
-                                                                allow-add
+                                                                "
+                                                                :time="
+                                                                    entry.item
+                                                                        .time
+                                                                "
+                                                                @update:time="
+                                                                    (value) =>
+                                                                        setEntryTime(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            entry,
+                                                                            value,
+                                                                        )
+                                                                "
                                                                 @remove="
                                                                     confirmAndRun(
                                                                         t(
@@ -2242,8 +2245,11 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                             removeArrayItem(
                                                                                 variantIndex,
                                                                                 dayIndex,
-                                                                                'restaurants',
-                                                                                itemIndex,
+                                                                                entry.type ===
+                                                                                    'activity'
+                                                                                    ? 'activities'
+                                                                                    : 'restaurants',
+                                                                                entry.itemIndex,
                                                                             ),
                                                                     )
                                                                 "
@@ -2251,36 +2257,52 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                     openSwap(
                                                                         variantIndex,
                                                                         dayIndex,
-                                                                        'restaurant',
-                                                                        item,
-                                                                        itemIndex,
-                                                                    )
-                                                                "
-                                                                @add="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        'restaurant',
+                                                                        entry.type,
+                                                                        entry.item,
+                                                                        entry.itemIndex,
                                                                     )
                                                                 "
                                                             />
-                                                            <ItineraryLineItem
-                                                                v-if="
-                                                                    !day
-                                                                        .restaurants
-                                                                        ?.length
-                                                                "
-                                                                hide-label
-                                                                keypath="itinerary.dinner"
-                                                                :item-ref="null"
-                                                                @add="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        'restaurant',
-                                                                    )
-                                                                "
-                                                            />
+                                                            <div
+                                                                class="day-plan-add-row"
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    class="add-item-btn"
+                                                                    @click="
+                                                                        openSwap(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            'activity',
+                                                                        )
+                                                                    "
+                                                                >
+                                                                    +
+                                                                    {{
+                                                                        t(
+                                                                            'itinerary.addActivity',
+                                                                        )
+                                                                    }}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    class="add-item-btn"
+                                                                    @click="
+                                                                        openSwap(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            'restaurant',
+                                                                        )
+                                                                    "
+                                                                >
+                                                                    +
+                                                                    {{
+                                                                        t(
+                                                                            'itinerary.addRestaurant',
+                                                                        )
+                                                                    }}
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </template>

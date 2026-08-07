@@ -1108,12 +1108,19 @@ body:has(.kaia-page) {
 }
 /* Pin the item's kebab to the box's top-right corner, independent of the
    line-item text wrapping below it (a long lodge/activity name would
-   otherwise drag the trailing .kebab-menu down/around with it). */
+   otherwise drag the trailing .kebab-menu down/around with it). Only safe
+   for boxes holding a single line-item (e.g. the SCHLAFEN/stay box) — the
+   merged day-plan list below holds several .line-item--entry rows, whose
+   kebabs are un-pinned back to inline flow just below. */
 .kaia-page .day-card-box .line-item .kebab-menu {
     position: absolute;
     top: 6px;
     right: 6px;
     margin-left: 0;
+}
+.kaia-page .day-card-box .line-item--entry .kebab-menu {
+    position: static;
+    margin-left: 4px;
 }
 .kaia-page .day-card-box-label {
     font-size: 10px;
@@ -1166,6 +1173,46 @@ body:has(.kaia-page) {
 }
 .kaia-page .line-item--bare {
     margin: 0;
+}
+/* One row of the merged day-plan timeline (an activity or a restaurant
+   entry sharing one chronological list — see ItinerarySection.vue's
+   dayEntries()). Stacked rows get a hairline divider instead of each
+   living in its own bordered box. */
+.kaia-page .line-item--entry {
+    align-items: center;
+    padding: 3px 0;
+}
+.kaia-page .line-item--entry + .line-item--entry {
+    border-top: 1px solid var(--sand-dark);
+}
+.kaia-page .line-item-time {
+    font-size: 11px;
+    padding: 1px 4px;
+    border: 1px solid var(--rust-dark);
+    border-radius: 5px;
+    background: var(--paper);
+    color: var(--ink);
+    flex-shrink: 0;
+}
+.kaia-page .line-item-icon {
+    flex-shrink: 0;
+}
+.kaia-page .line-item-type {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #a89b82;
+    margin-left: auto;
+    flex-shrink: 0;
+    padding-left: 6px;
+}
+/* The always-visible "+ Activity" / "+ Restaurant" row at the bottom of a
+   day's merged entry list — replaces the old per-box empty-state button,
+   which only appeared once, before anything had been added. */
+.kaia-page .day-plan-add-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
 }
 .kaia-page .line-item-value {
     display: contents;
