@@ -38,7 +38,8 @@
         "retry": "Erneut versuchen",
         "voiceInput": "Kaia etwas sagen",
         "stopListening": "Aufnahme stoppen",
-        "listening": "Ich höre zu…"
+        "listening": "Ich höre zu…",
+        "back": "Zurück"
     },
     "itinerary": {
         "eyebrow": "Dein Plan",

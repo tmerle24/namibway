@@ -56,6 +56,7 @@ function recommendationImage(rec: ListingRecommendation): string {
 const emit = defineEmits<{
     (e: 'plan-ready', plan: ItineraryPlan): void;
     (e: 'search-intent', intent: SearchIntent): void;
+    (e: 'chat-active', active: boolean): void;
 }>();
 
 const { t, tm, locale } = useI18n();
@@ -232,28 +233,94 @@ onUnmounted(() => {
 // left to scroll. Restored (and the real scroll position reapplied) on blur.
 let savedBodyScrollY = 0;
 
+// Tells Welcome.vue to switch the mobile Kaia tab into full-screen chat
+// mode (hero title/illustrations and the bottom tab bar hidden, chat panel
+// stretched to fill the screen below the header) — see the `chat-fullscreen`
+// rules in kaia-home.css. Sticky on purpose: once the conversation has
+// started, tapping the log or briefly blurring the input to hit "send"
+// shouldn't collapse it back to the hero view. Welcome.vue resets it when
+// the user switches away from the Kaia tab.
+//
+// Guarded by `activated` so repeat calls (every subsequent focus) don't
+// keep re-running the scroll reset below — only the first activation needs
+// it, and running it again while the user is mid-conversation would yank
+// their scroll position for no reason.
+let chatActivated = false;
+
+async function activateChat() {
+    if (chatActivated) {
+        return;
+    }
+
+    chatActivated = true;
+    emit('chat-active', true);
+
+    if (!window.matchMedia('(hover: none), (pointer: coarse)').matches) {
+        return;
+    }
+
+    // Wait for Welcome.vue's `chat-fullscreen` class — and the CSS reflow it
+    // drives (hero content hidden, chat panel stretched to fill the screen,
+    // input pinned at the very bottom of it) — to actually land before
+    // touching scroll. Resetting scroll against the *old* layout would just
+    // leave whatever offset the page happened to be at, which then throws
+    // off the new one: the full-screen column is sized to exactly fill the
+    // viewport on the assumption that it starts flush at scrollY 0.
+    await nextTick();
+    window.scrollTo(0, 0);
+}
+
+// The mobile tab bar is hidden while full-screen chat mode is active (see
+// activateChat above), so without this there'd be no way back to the hero
+// view / other tabs before Kaia has produced an itinerary — only a visible
+// "Back" control (wired to this in the template) can get the user out.
+function collapseChat() {
+    chatActivated = false;
+    emit('chat-active', false);
+}
+
 function lockBodyScrollForMobileKeyboard() {
     if (!window.matchMedia('(hover: none), (pointer: coarse)').matches) {
         return;
     }
 
-    // Bring the input row into view *before* freezing scroll below. Once the
-    // body is taken out of flow there's no scrollable document left for
-    // iOS's native "scroll the focused input above the keyboard" behavior to
-    // act on, so if we freeze at whatever position the page already happened
-    // to be at, an input sitting in the lower half of the screen ends up
+    // In full-screen chat mode (see activateChat above) the input is
+    // already pinned at the bottom of a column sized to exactly fill the
+    // viewport — there's nothing to scroll into view, and doing so anyway
+    // would fight the scroll-to-0 that just ran. Outside that mode (a plan
+    // already exists, or this is the non-fullscreen embedded chat), bring
+    // the input row into view *before* freezing scroll below: once the body
+    // is taken out of flow there's no scrollable document left for iOS's
+    // native "scroll the focused input above the keyboard" behavior to act
+    // on, so if we freeze at whatever position the page already happened to
+    // be at, an input sitting in the lower half of the screen ends up
     // permanently covered by the keyboard with no way to reach it. Aligning
     // it to the top — comfortably clear of the fixed header via the
     // scroll-margin-top on `.chat-input-row input` — keeps it well above
     // where a keyboard (which only ever eats the bottom portion of the
     // screen) can reach, regardless of where the page was scrolled to.
-    chatInput.value?.scrollIntoView({ block: 'start' });
+    const kaiaPage = document.querySelector('.kaia-page');
+    const isFullscreenChat =
+        kaiaPage?.classList.contains('chat-fullscreen') &&
+        !kaiaPage?.classList.contains('has-plan');
+
+    if (!isFullscreenChat) {
+        chatInput.value?.scrollIntoView({ block: 'start' });
+    }
 
     savedBodyScrollY = window.scrollY;
     document.body.style.position = 'fixed';
     document.body.style.top = `-${savedBodyScrollY}px`;
     document.body.style.left = '0';
     document.body.style.right = '0';
+}
+
+// activateChat's scroll-to-0 (for entering full-screen chat mode) has to
+// finish *before* lockBodyScrollForMobileKeyboard reads window.scrollY —
+// otherwise the lock freezes the page at its old, pre-fullscreen offset.
+async function onInputFocus() {
+    await activateChat();
+    lockBodyScrollForMobileKeyboard();
 }
 
 function unlockBodyScroll() {
@@ -474,7 +541,30 @@ async function retryLastMessage() {
 
             <div class="hero-sun" aria-hidden="true"></div>
 
-            <div class="chat-panel" ref="chatPanel">
+            <div class="chat-panel" ref="chatPanel" @click="activateChat">
+                <button
+                    type="button"
+                    class="chat-fullscreen-back"
+                    :aria-label="t('chat.back')"
+                    @click.stop="collapseChat"
+                >
+                    <svg
+                        viewBox="0 0 24 24"
+                        width="18"
+                        height="18"
+                        aria-hidden="true"
+                    >
+                        <path
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M15 18l-6-6 6-6"
+                        />
+                    </svg>
+                    {{ t('chat.back') }}
+                </button>
                 <div class="chat-log" ref="chatLog">
                     <div
                         v-for="(msg, i) in messages"
@@ -560,7 +650,7 @@ async function retryLastMessage() {
                         autocomplete="off"
                         :readonly="isTyping"
                         @keydown.enter="sendMessage"
-                        @focus="lockBodyScrollForMobileKeyboard"
+                        @focus="onInputFocus"
                         @blur="unlockBodyScroll"
                     />
                     <button

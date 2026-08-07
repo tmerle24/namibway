@@ -327,6 +327,27 @@ body:has(.kaia-page) {
     max-width: 640px;
     overflow: hidden;
 }
+/* Hidden by default (desktop, or mobile before full-screen chat mode is
+   entered) — shown only via the `.chat-fullscreen` override further down,
+   the one state where the tab bar is hidden and this becomes the only way
+   back. */
+.kaia-page .chat-fullscreen-back {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    align-self: flex-start;
+    margin: 10px 0 0 10px;
+    padding: 6px 10px 6px 6px;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+}
+.kaia-page .chat-fullscreen-back:hover {
+    background: var(--sand);
+}
 .kaia-page .chat-log {
     max-height: 340px;
     overflow-y: auto;
@@ -417,8 +438,7 @@ body:has(.kaia-page) {
 @media (hover: none), (pointer: coarse) {
     .kaia-page .chat-input-row input {
         scroll-margin-top: calc(
-            var(--admin-bar-height, 0px) + var(--site-header-height, 0px) +
-                16px
+            var(--admin-bar-height, 0px) + var(--site-header-height, 0px) + 16px
         );
     }
 }
@@ -3211,6 +3231,85 @@ body:has(.kaia-page) {
 
     .kaia-page[data-mobile-section='kaia']:not(.has-plan) footer {
         display: none;
+    }
+
+    /* Full-screen chat mode: entered once the user taps into the Kaia panel
+       (HeroChat.vue emits `chat-active`, Welcome.vue toggles this class).
+       Deliberately does NOT resurrect the reverted --app-vh/overflow:hidden
+       approach documented above — it stays inside the same "fixed header,
+       normal document flow" pattern and just removes everything from that
+       flow except the chat panel, so the panel (and its input) end up
+       filling essentially the whole screen without any JS-driven height
+       animation or extra scroll locking beyond what already exists for the
+       input itself. */
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        .mobile-footer-nav {
+        display: none;
+    }
+
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        #kaia-hero {
+        display: flex;
+        flex-direction: column;
+        /* The footer nav this was clearing is hidden in this state. */
+        padding-bottom: 0;
+        /* #kaia-hero is the only in-flow content on the page here (hero-nav
+           is `position: fixed`, out of flow entirely — its clearance comes
+           from padding-top below, not from subtracting it here too). With
+           box-sizing: border-box that padding-top is already carved out of
+           this box's own height, so only admin-bar-height — which, being
+           `position: sticky`, genuinely does consume flow space above this
+           element — needs subtracting. Subtracting site-header-height *as
+           well* (an earlier version of this rule did) double-counts it and
+           leaves #kaia-hero short by exactly one header-height, showing as
+           a gap of bare hero background below the chat panel. */
+        min-height: calc(100dvh - var(--admin-bar-height, 0px));
+    }
+
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        #kaia-hero
+        :is(.hero-head, .hero-sun, svg.hero-bg, svg.hero-tree) {
+        display: none;
+    }
+
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        .hero-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 10px 12px;
+        /* .hero-content's sitewide rule sets `margin: 0 auto` to center it
+           under its own `max-width: 1040px`. A non-auto cross-axis margin
+           on a flex item disables `align-items: stretch`, so inside this
+           column-direction #kaia-hero it was shrinking to fit its content
+           (the chat panel) instead of stretching to the container's width —
+           and since that content's own width was itself flex-grown against
+           an indeterminate container, the two fed back into each other and
+           overflowed past the viewport edge. Pin both back to fill width. */
+        margin: 0;
+        max-width: none;
+    }
+
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        .chat-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        max-width: none;
+    }
+
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        .chat-log {
+        flex: 1;
+        max-height: none;
+    }
+
+    /* The mobile tab bar is hidden for the whole time this mode is active,
+       so this is the only way back to the hero view / other tabs before an
+       itinerary exists — see collapseChat() in HeroChat.vue. */
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+        .chat-fullscreen-back {
+        display: flex;
     }
 }
 

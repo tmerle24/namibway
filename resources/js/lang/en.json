@@ -80,7 +80,8 @@
         "retry": "Retry",
         "voiceInput": "Speak to Kaia",
         "stopListening": "Stop recording",
-        "listening": "Listening…"
+        "listening": "Listening…",
+        "back": "Back"
     },
     "itinerary": {
         "eyebrow": "Your plan",
