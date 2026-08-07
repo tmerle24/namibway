@@ -84,7 +84,6 @@ class RouteTemplateSeeder extends Seeder
                 'max_nights' => 28,
                 'notes' => 'The full country loop for travelers with 3+ weeks — everything in the Classic Safari Loop plus a deep run south to Fish River Canyon, the Kalahari and Lüderitz.',
                 'sort' => 40,
-                'published' => false,
                 'stops' => [
                     ['region' => 'Otjozondjupa', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Waterberg Plateau hiking'],
                     ['region' => 'Kunene', 'min_nights' => 3, 'max_nights' => 6, 'highlights' => 'Etosha safari, waterhole game viewing, Damaraland, Twyfelfontein rock engravings'],
@@ -108,7 +107,6 @@ class RouteTemplateSeeder extends Seeder
                 'max_nights' => 32,
                 'notes' => 'Only for travelers with 3+ weeks — extends the classic north loop into the water-rich, tropical Zambezi (Caprivi) region: elephants, hippos and river life near the Botswana border. Skips the coast to keep total driving time reasonable.',
                 'sort' => 50,
-                'published' => false,
                 'stops' => [
                     ['region' => 'Otjozondjupa', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Waterberg Plateau hiking'],
                     ['region' => 'Kunene', 'min_nights' => 3, 'max_nights' => 6, 'highlights' => 'Etosha safari, waterhole game viewing'],
