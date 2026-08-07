@@ -20,6 +20,7 @@ class ListingResource extends JsonResource
         return [
             'id' => $this->id,
             'type' => $this->type->value,
+            'vehicle_category' => $this->vehicle_category?->value,
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,

@@ -98,6 +98,7 @@ class ListingController extends Controller
             'data' => $paginator->getCollection()->map(fn (Listing $l) => [
                 'id' => $l->id,
                 'type' => $l->type->value,
+                'vehicle_category' => $l->vehicle_category?->value,
                 'name' => $l->name,
                 'slug' => $l->slug,
                 'description' => $l->description,
@@ -144,6 +145,7 @@ class ListingController extends Controller
             'listing' => [
                 'id' => $listing->id,
                 'type' => $listing->type->value,
+                'vehicle_category' => $listing->vehicle_category?->value,
                 'name' => $listing->name,
                 'slug' => $listing->slug,
                 'description' => $listing->description,
@@ -250,6 +252,7 @@ class ListingController extends Controller
             'listing' => [
                 'id' => $listing->id,
                 'type' => $listing->type->value,
+                'vehicle_category' => $listing->vehicle_category?->value,
                 'name' => $listing->name,
                 'slug' => $listing->slug,
                 'description' => $listing->description,

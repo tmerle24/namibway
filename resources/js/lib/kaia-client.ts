@@ -187,6 +187,8 @@ export async function fetchListingPreview(
 export interface ListingSearchResult {
     id: number;
     type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
+    // Only present when type === 'vehicle'.
+    vehicle_category: 'self_drive' | 'guided_tour' | null;
     name: string;
     slug: string;
     image: string | null;
@@ -220,6 +222,8 @@ export type ListingSearchSort =
 
 export interface ListingSearchParams {
     type: string;
+    // Only meaningful when type === 'vehicle'.
+    vehicleCategory?: string;
     city?: string;
     keyword?: string;
     budget?: string;
@@ -240,6 +244,10 @@ export async function searchListings(
     params: ListingSearchParams,
 ): Promise<{ data: ListingSearchResult[]; meta: ListingSearchMeta }> {
     const query = new URLSearchParams({ type: params.type });
+
+    if (params.vehicleCategory) {
+        query.set('vehicle_category', params.vehicleCategory);
+    }
 
     if (params.city) {
         query.set('city', params.city);

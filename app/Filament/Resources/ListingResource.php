@@ -6,6 +6,7 @@ use App\Connectors\ConnectorFactory;
 use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
 use App\Enums\ConnectorType;
 use App\Enums\ListingType;
+use App\Enums\VehicleCategory;
 use App\Filament\Resources\ListingResource\Pages;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
@@ -50,7 +51,14 @@ class ListingResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('type')
                                     ->options(ListingType::class)
+                                    ->live()
                                     ->required(),
+                                Forms\Components\Select::make('vehicle_category')
+                                    ->label('Vehicle category')
+                                    ->options(VehicleCategory::class)
+                                    ->helperText('Self-drive rental vs. a guided tour with a driver-guide included.')
+                                    ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value)
+                                    ->required(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
                                 Forms\Components\Select::make('partner_id')
                                     ->label('Partner')
                                     ->relationship('partner', 'name')
@@ -319,6 +327,10 @@ class ListingResource extends Resource
                 Tables\Columns\TextColumn::make('type')
                     ->badge()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('vehicle_category')
+                    ->label('Vehicle category')
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->wrap(),
@@ -381,6 +393,9 @@ class ListingResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('type')
                     ->options(ListingType::class),
+                Tables\Filters\SelectFilter::make('vehicle_category')
+                    ->label('Vehicle category')
+                    ->options(VehicleCategory::class),
                 Tables\Filters\SelectFilter::make('claim_status')
                     ->options([
                         'unclaimed' => 'Unclaimed',

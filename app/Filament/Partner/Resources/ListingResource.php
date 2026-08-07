@@ -2,6 +2,8 @@
 
 namespace App\Filament\Partner\Resources;
 
+use App\Enums\ListingType;
+use App\Enums\VehicleCategory;
 use App\Filament\Partner\Resources\ListingResource\Pages;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
@@ -69,6 +71,12 @@ class ListingResource extends Resource
                             ->numeric()
                             ->prefix('NAD')
                             ->label('Price from (per night)'),
+                        Forms\Components\Select::make('vehicle_category')
+                            ->label('Vehicle category')
+                            ->options(VehicleCategory::class)
+                            ->helperText('Self-drive rental vs. a guided tour with a driver-guide included.')
+                            ->visible(fn (?Listing $record): bool => $record?->type === ListingType::Vehicle)
+                            ->required(fn (?Listing $record): bool => $record?->type === ListingType::Vehicle),
                     ])
                     ->columns(2),
 
@@ -201,6 +209,10 @@ class ListingResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('type')
                     ->badge(),
+                Tables\Columns\TextColumn::make('vehicle_category')
+                    ->label('Vehicle category')
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('city.name')
                     ->label('City')
                     ->sortable(),
