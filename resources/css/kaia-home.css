@@ -1311,6 +1311,15 @@ body:has(.kaia-page) {
         cursor: pointer;
     }
 }
+@media (max-width: 640px) {
+    .kaia-page .mobile-map-fab {
+        right: 10px;
+        width: 42px;
+        height: 42px;
+        border-width: 0;
+        font-size: 18px;
+    }
+}
 .kaia-page .variant-card .cta {
     margin-top: 16px;
     width: 100%;
