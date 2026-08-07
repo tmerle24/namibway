@@ -901,8 +901,8 @@ body:has(.kaia-page) {
     color: var(--rust-dark);
 }
 .kaia-page .drive-time-icon {
-    width: 22px;
-    height: 14px;
+    width: 20px;
+    height: 17px;
     flex-shrink: 0;
     fill: var(--rust-dark);
 }
