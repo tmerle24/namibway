@@ -1216,14 +1216,6 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                         'variant-head--single': editableVariants.length === 1,
                     }"
                 >
-                    <a
-                        v-if="editableVariants.length === 1"
-                        href="/"
-                        class="plan-back-btn"
-                        :aria-label="t('itinerary.back')"
-                        :title="t('itinerary.back')"
-                        >←</a
-                    >
                     <h3>{{ variant.name }}</h3>
                     <div class="variant-head-actions">
                         <SaveButton

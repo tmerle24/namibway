@@ -728,27 +728,6 @@ body:has(.kaia-page) {
     flex-wrap: wrap;
     flex-shrink: 1;
 }
-.kaia-page .plan-back-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    min-width: 34px;
-    border-radius: 50%;
-    border: 1px solid var(--sand-dark);
-    background: var(--paper);
-    color: var(--ink);
-    font-size: 16px;
-    text-decoration: none;
-    transition:
-        background 0.15s,
-        border-color 0.15s;
-}
-.kaia-page .plan-back-btn:hover {
-    background: var(--sand);
-    border-color: var(--rust);
-}
 @media (max-width: 640px) {
     .kaia-page .variant-head--single h3 {
         font-size: 19px;
@@ -837,6 +816,7 @@ body:has(.kaia-page) {
     align-items: center;
     gap: 10px;
     margin-bottom: 16px;
+    padding-top: 15px;
 }
 .kaia-page .vehicle-card-img {
     width: 64px;
@@ -3650,7 +3630,6 @@ body:has(.kaia-page) {
     }
     .trip-plan-page .trip-meta-edit-btn,
     .trip-plan-page .reverse-route-btn,
-    .trip-plan-page .plan-back-btn,
     .trip-plan-page .save-icon-btn,
     .trip-plan-page .share-icon-btn,
     .trip-plan-page .dismiss-variant-btn,
