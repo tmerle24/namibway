@@ -409,6 +409,26 @@ and two of them were exploitable by anyone holding a link.
 - 18 tests in `tests/Feature/BookingAccountGateTest.php`. Same Postgres caveat
   as session 5 — `phpunit.xml`'s sqlite can't run the migrations.
 
+**Decided, don't undo it:** a single listing inquiry from the Explore path
+requires an account too, not just a plan booking. This *is* new friction on a
+path that had none, and it was raised and deliberately kept (Till, 2026-08-08).
+Two reasons, so nobody "fixes" it later: an inquiry is not a cheap question —
+it creates a real `Inquiry`, notifies the partner owner, and occupies the
+one-active-request slot, which is precisely what the governance mechanic exists
+to protect. And leaving that path anonymous would reopen the email-swap bypass
+on it, since an anonymous inquiry has no account to recognise it by.
+
+The middle path that was considered and *not* taken: splitting inquiries into
+non-binding questions (no account) and binding booking requests (account). It
+needs an inactive `InquiryStatus`, an `InquiryObserver` branch that skips
+`ProcessInquiry`, its own partner-side treatment in both Filament panels and
+its own mail templates — and it opens an unauthenticated channel to real
+business owners. With no partner live yet, that is the wrong first impression
+to make. If the friction turns out to cost conversions, shrink the *account
+step* instead (create the account from the name and email already typed into
+the form, password set later via the confirmation mail) rather than removing
+the identity behind the request.
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its
