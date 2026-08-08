@@ -388,9 +388,28 @@ Worst case sat in this very feature: the trip plan's day thumbnail renders at
   Checklist: **DEPLOYMENT.md → "Bild-Thumbnails"**. The one win that lands
   immediately is the Unsplash placeholder heroes, which resize off their own
   query string for free.
+- ✅ **Pre-flight command** `namibway:check-media-transforms`. Fetches real
+  catalog photos twice — as stored and through `/cdn-cgi/image/` — and compares
+  status, type and bytes. Probes the transformed URL *even while the flag is
+  off*, so the Cloudflare side can be confirmed before production depends on it.
+  Separates the two failure modes a status check would miss: 404 on the variant
+  (domain/Transformations missing) vs. 200 at original size (pass-through, not a
+  resize).
+- ⚠️ **Found while building it: images stranded on a stale origin.**
+  `GooglePlacesPhotoFinder` stores `Storage::disk('r2')->url(...)` — an
+  *absolute* bucket URL — into `listings.image`. Point `CLOUDFLARE_R2_URL` at a
+  custom domain and every existing row still carries the old
+  `pub-<hash>.r2.dev` host, so neither `resolveMediaUrl` nor `MediaUrl::thumb`
+  touches it and it keeps being served full-size. Since the enrichment pipeline
+  is the main photo source, this is probably *most* listing photos, not an edge
+  case. The command counts them (the object being in our bucket is what tells
+  them apart from a genuinely foreign URL); the fix is still open — see
+  "Known gaps".
 - Tests: `tests/Feature/Support/MediaUrlTest.php` — pins that a foreign URL is
   never rewritten, that the helper is inert while disabled, and that an
   already-transformed URL isn't nested inside itself.
+  `tests/Feature/Commands/CheckMediaTransformsCommandTest.php` — 7 tests
+  including both directions of the stale-origin detection.
 
 ### Known gaps / next up
 
@@ -432,6 +451,13 @@ Worst case sat in this very feature: the trip plan's day thumbnail renders at
   Still open: participants/identities, per-person write grants, comments,
   and change attribution — i.e. everything that needs a person attached to
   a change rather than just a token.
+- ⬜ **Rehome images stranded on an old media origin.** Blocks the switch-on
+  below from being effective — see session 6's ⚠️ entry. Two options:
+  (a) a `legacy_origins` config so `MediaUrl` rehomes a known old bucket host
+  onto the current origin before transforming (same bucket, same path — no data
+  touched), or (b) a one-off rewrite of the stored URLs, which is a bulk update
+  over existing non-null data and therefore exactly the class of operation
+  CLAUDE.md's "Data-loss lesson" warns about. (a) is the safer one.
 - ⬜ **Switch the thumbnails on.** All the code shipped in session 6, but
   `MEDIA_TRANSFORMS_ENABLED` is still false in production: it needs a custom
   domain on the R2 media bucket plus Transformations enabled for the

@@ -341,8 +341,27 @@ nicht auf der namibway.com-Zone und kennt kein `/cdn-cgi/image/`. Zum Einschalte
    CLOUDFLARE_R2_URL=https://cdn.namibway.com   # statt der pub-<hash>.r2.dev-URL
    MEDIA_TRANSFORMS_ENABLED=true
    ```
-4. `bash deploy_namibway.sh` (oder mindestens `php artisan config:cache`), danach im Browser
-   prüfen, dass ein Listen-Thumbnail eine `/cdn-cgi/image/...`-URL lädt und **200** liefert.
+4. `bash deploy_namibway.sh` (oder mindestens `php artisan config:cache`).
+
+**Prüfen — am besten schon vor Schritt 3:**
+
+```bash
+php artisan namibway:check-media-transforms
+```
+
+Das Command zieht echte Katalogfotos einmal im Original und einmal über
+`/cdn-cgi/image/` und vergleicht Status, Content-Type und Bytes. Es probiert die
+transformierte URL **auch dann**, wenn `MEDIA_TRANSFORMS_ENABLED` noch `false` ist — so
+lässt sich die Cloudflare-Seite bestätigen, bevor Produktion sich darauf verlässt.
+Exit-Code ≠ 0 heißt: es greift nicht. Zwei Fälle, die es explizit auseinanderhält —
+404 auf der Variante (Custom Domain oder Transformations fehlen) und 200 in
+Originalgröße (Cloudflare reicht durch, statt zu skalieren).
+
+Zusätzlich meldet es Bilder, die als absolute URL auf einem **alten** Media-Origin
+liegen: Google-Places-Fotos speichern zum Download-Zeitpunkt die volle Bucket-URL
+(`GooglePlacesPhotoFinder`), also tragen bestehende Zeilen weiter die
+`pub-<hash>.r2.dev`-Adresse, wenn `CLOUDFLARE_R2_URL` auf die Custom Domain wechselt.
+Solche Bilder werden weiter unverkleinert ausgeliefert.
 
 **Solange das aus ist, funktioniert alles weiter** — jede URL wird unverändert durchgereicht,
 die Bilder sind nur so groß wie das Original. Einzige Ausnahme: Unsplash-Platzhalter werden
@@ -361,6 +380,7 @@ bash deploy_namibway.sh                # volles Update/Deploy
 bash deploy_namibway.sh --no-npm       # Deploy ohne npm-Build
 bash deploy_namibway.sh --no-migrate   # Deploy ohne Migrationen
 php artisan make:filament-user         # neuen Admin-User anlegen
+php artisan namibway:check-media-transforms   # Bild-Thumbnails: greift Cloudflare?
 php artisan migrate:status             # Migrationsstatus prüfen
 docker-compose up -d                   # lokal: Postgres + Redis starten
 php artisan horizon                    # lokal: Horizon im Vordergrund starten
