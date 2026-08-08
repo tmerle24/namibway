@@ -133,7 +133,7 @@ class RouteTemplateSeeder extends Seeder
                 'max_nights' => $template['max_nights'],
                 'notes' => $template['notes'],
                 'sort_order' => $template['sort'],
-                'is_published' => $template['published'] ?? true,
+                'is_published' => true,
             ])->save();
 
             $model->stops()->delete();
