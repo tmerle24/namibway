@@ -6,6 +6,22 @@ Slogan: "The smartest way to experience Namibia."
 ## What this is
 A conversational, magazine-style travel platform. Instead of search forms, travelers chat with an AI travel companion ("Kaia") that interviews them and generates a bookable, multi-part itinerary (accommodation + activities + restaurants + vehicle + routing). A classic filter/search UI ("Explore") exists as a secondary path for browsing. The platform then manages the request/booking flow with partners (lodges, activity operators, restaurants), and offers after-sales support (checklist, on-trip help, feedback).
 
+## Current focus — the Kaia trip plan (Reiseplan)
+**This is the product.** It's what differentiates NamibWay from every filter-and-list competitor, and it's where effort goes right now. When prioritising work or trading off scope, the trip plan wins.
+
+What "good" means here, in the order it gets judged:
+- **Ergonomics & usability** — planning has to feel effortless: few taps, obvious next step, nothing that needs explaining.
+- **Fun to use** — planning a trip should be enjoyable, not a form to fill in. Delight is a feature, not polish-later.
+- **Reliability** — no lost plans, no half-generated itineraries, no dead ends. A plan the traveler can't trust is worse than no plan.
+- **Responsiveness across every surface** — mobile browser, PWA, and the iOS/Android Capacitor apps are first-class, not adaptations of a desktop layout. Test mobile viewports and the native shells, not just a wide browser.
+- **Looks** — magazine-quality visual quality; the plan is what people screenshot and share.
+
+`TRAVEL_PLAN.md` is the working log for exactly this — read its "Known gaps / next up" before starting, and add a dated entry when you finish something.
+
+## Brand & expansion
+- **NamibWay** and **Kaia** are being registered as trademarks. Use the names exactly and consistently in UI, copy, and assets; don't rename, abbreviate, or invent alternative names for the assistant.
+- The concept is intended to expand to **other African countries** later — Namibia is the first market, not the only one. Don't hardcode country assumptions in code you're writing anyway: keep country-specific data in config or the database, the way `config/region.php` already handles dial codes/trunk prefixes for NA + ZA. Known Namibia-bound spots that will need attention at expansion time (fine to leave for now, don't add more): the region list in `config/kaia.php`, NAD-as-base-currency with the NAD↔ZAR peg in `config/currencies.php`, `RouteTemplate` seed data, and the `city_driving_hours` dataset. This is a "don't paint us into a corner" rule, not a reason to build multi-country abstractions today.
+
 ## Companion docs in this repo
 This file is the condensed, load-bearing summary. The detail lives next to it:
 - `DEPLOYMENT.md` (DE) — local setup, production install, Supervisor/Horizon, scheduler cron, disaster recovery, troubleshooting.
@@ -86,17 +102,19 @@ Status of the governance rules:
 Revenue: commission on bookings (modeled minimal, ~5%, deliberately below OTA rates), government/tourism-sector funding, advertising (featured partner listings), after-sales/e-shop (Phase 2/3, deferred).
 
 ## Partner landscape
-Systems common in the Southern African lodge market, all now represented by a connector: ResRequest (dominant PMS, free ResConnect API), NightsBridge (channel manager), HOPE Software / hopeCloud (Namibia-specific, Tourism Levy + NTB/HAN reporting), Wetu (guest-facing itineraries, useful as a content source). Namibia Wildlife Resorts (state-run camps in Etosha, Sossusvlei, Fish River Canyon) has a known-unreliable booking system — handled as a deliberate special case (`NwrConnector`, `InquiryStatus::NwrPending` = manual concierge check), and it's the likely source of the "marked full but actually available" problem that motivated this whole project. Connector credentials/behaviour still need validating against real partner accounts.
+**No partner is live yet.** Every connector is written against documented/expected behaviour and has never run against a real partner account — treat all of them as unvalidated, and expect the first real integration to turn up surprises.
+
+Systems common in the Southern African lodge market, all represented by a connector: ResRequest (dominant PMS, free ResConnect API), NightsBridge (channel manager), HOPE Software / hopeCloud (Namibia-specific, Tourism Levy + NTB/HAN reporting), Wetu (guest-facing itineraries, useful as a content source). Namibia Wildlife Resorts (state-run camps in Etosha, Sossusvlei, Fish River Canyon) has a known-unreliable booking system — handled as a deliberate special case (`NwrConnector`, `InquiryStatus::NwrPending` = manual concierge check), and it's the likely source of the "marked full but actually available" problem that motivated this whole project.
 
 ## MVP scope (5 workstreams) — status
 1. **Technology & Platform Foundation** — ✅ Laravel/Inertia/Vue/Postgres live, auto-deploying, backed up, with iOS/Android shells.
 2. **Core Engine** — ✅ Kaia interview → itinerary; ✅ request governance except staged confirmations (see above).
 3. **Content Creation** — ✅ Filament admin + R2 media + scrapers + AI enrichment + partner claim flow. Ongoing: real photos with rights confirmation, pricing, room types.
-4. **Interfaces / Partner Integration** — 🟡 all connectors implemented; none validated end-to-end against a live partner account yet. Public `/api/v1` + Scribe docs + partner API guide PDF exist for the other direction.
+4. **Interfaces / Partner Integration** — 🟡 all connectors implemented, **none live** — no partner is connected yet, so none of them is validated against a real account. Public `/api/v1` + Scribe docs + partner API guide PDF exist for the other direction.
 5. **After-Sales / Up-Sell** — 🟡 support/feedback endpoints + `TripFeedback` exist; the on-trip progress tracker is designed but not built (`TRAVEL_PLAN.md`). E-shop still deferred.
 
 ## UX reference
 `namibia_travel_prototype.html` is the original vanilla-JS prototype and is now mostly ported into real Vue components (hero + live chat, itinerary variants, Explore rows + filters, after-sales cards). Still unported: the booking-request-queue animation that illustrated the one-active-request rule. Its branding ("Namibia Travel & Life") is obsolete — current branding is the tan compass mark on `#3b2418` brown (`public/images/pwa/icon-512.png`), which all app icons and splash screens derive from.
 
 ## Where to work next
-Don't scaffold — pick up the backlog. Read `TRAVEL_PLAN.md` → "Known gaps / next up" first, then choose (or ask which is most urgent). The named open items: real per-room-type photos + availability wired into `RoomTypePicker`, the richer vehicle-type + daily-budget picker, the on-trip progress tracker, staged booking confirmations, and validating a connector against a real partner account. Add a dated entry under `TRAVEL_PLAN.md`'s Backlog when you finish something there.
+Don't scaffold — pick up the backlog, and default to the trip plan (see "Current focus"). Read `TRAVEL_PLAN.md` → "Known gaps / next up" first, then choose (or ask which is most urgent). The named open items: real per-room-type photos + availability wired into `RoomTypePicker`, the richer vehicle-type + daily-budget picker, the on-trip progress tracker, staged booking confirmations, and — once a partner is actually signed — validating a connector against a real account. Add a dated entry under `TRAVEL_PLAN.md`'s Backlog when you finish something there.
