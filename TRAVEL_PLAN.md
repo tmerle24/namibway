@@ -269,6 +269,52 @@ design Till supplied — the entries themselves, not the card around them.
 - ✅ **Add buttons are one full-width 50/50 row**, taller, instead of two
   small pills floating at the left edge.
 
+### Session 4 — 2026-08-08
+
+Reworking the stage card's accommodation box against a reference design Till
+supplied, plus a pass over how prices read across the whole plan.
+
+- ✅ **Missing gap under the stage heading.** Session 2 moved the date range
+  into `.day-card-title` and brought `.day-card-title .day-card-sub {
+  margin: 0 }` with it, which silently removed the `10px` bottom margin that
+  was the only separation between the heading and the box below — the date
+  sat flush against the UNTERKUNFT border. The clearance now lives on
+  `.day-card-header` itself, which is where it belongs: a stage without dates
+  ends on the city name, so hanging the gap off the date line was always
+  conditional on content.
+- ✅ **`ItineraryStayCard.vue` extracted.** The accommodation used to render
+  through `ItineraryLineItem` (built around a one-line "Stay: {value}"
+  sentence) with the room picker bolted underneath as a separate row. It's
+  now its own component matching the reference: photo, name + price, a
+  "room · date range (n nights)" line, a details line, and both actions as
+  labelled buttons — "Zimmer ändern"/"Unterkunft ändern" — instead of hidden
+  behind the kebab. The stay is the plan's most expensive and most-looked-at
+  line; it shouldn't render like a one-line list item.
+- ✅ **`short_description` + `rating`/`rating_count` on the plan's listing
+  refs**, so the stay card has a "why this one" line to show. Added to all
+  five places in `ItineraryService` that build the ref shape, plus the
+  `/listings/search` payload behind the swap modal.
+- ✅ **One price look across the plan.** Prices were styled per component —
+  muted tan on line items and alternatives, ink on the day badge, rust on the
+  variant/vehicle totals — so the per-item ones read as incidental grey text.
+  All of them now share one rust-dark/semibold rule in `kaia-home.css`; only
+  the size varies with the surrounding type.
+- ✅ **A price on every line.** `ItineraryLineItem`, `ItineraryEntryRow` and
+  the stay card all hid the price entirely when a listing had no
+  `price_from` — common on scraped listings, and it reads as "included" or as
+  a bug. They now fall back to `itinerary.priceOnRequest`.
+- ✅ **Swapped-in listings keep their map marker.** `alternatives()` and
+  `ListingSwapModal`'s `select()` both built an `ItineraryListingRef` without
+  `lat`/`lng`, so swapping a stay silently dropped it off `TripMap`. Both
+  carry coordinates now (`/listings/search` gained `latitude`/`longitude`).
+- ⏭️ **Deliberately not built:** the reference's "Etappeninfos" button and the
+  pencil next to the city name. Per Till, the stage summary becomes a modal +
+  printable PDF later, reached from the burger menu.
+- ⚠️ **Two sessions in the same files.** Mid-session a parallel chat was
+  editing `ItineraryService`/`kaia-types.ts`/`ListingSwapModal` for
+  `duration_minutes`. Check `git status` before starting and before
+  committing — `a429213`/`6727d9d` are what happens when that goes unnoticed.
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its

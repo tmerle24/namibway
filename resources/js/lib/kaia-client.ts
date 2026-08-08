@@ -192,11 +192,16 @@ export interface ListingSearchResult {
     vehicle_category: 'self_drive' | 'guided_tour' | null;
     name: string;
     slug: string;
+    short_description: string | null;
     image: string | null;
     gallery: string[];
     highlights: string[];
     region: string | null;
     city: string | null;
+    // Needed so a listing picked here keeps its trip-map marker once it
+    // lands in the plan as an ItineraryListingRef.
+    latitude: number | null;
+    longitude: number | null;
     price_from: string | null;
     price_currency: string;
     duration_minutes: number | null;

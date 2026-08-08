@@ -131,10 +131,16 @@ function select(result: ListingSearchResult) {
         price_from: result.price_from,
         price_currency: result.price_currency,
         duration_minutes: result.duration_minutes,
+        // Without coordinates the swapped-in listing drops off the trip map.
+        lat: result.latitude,
+        lng: result.longitude,
         image: result.image,
         gallery: result.gallery,
         city: result.city,
         region: result.region,
+        short_description: result.short_description,
+        rating: result.rating,
+        rating_count: result.rating_count,
     });
 }
 

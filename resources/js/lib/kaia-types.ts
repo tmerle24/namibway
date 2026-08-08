@@ -18,6 +18,12 @@ export interface ItineraryListingRef {
     gallery?: string[];
     city?: string | null;
     region?: string | null;
+    // The one-line "why this one" detail the stay card shows under the name
+    // (see ItineraryStayCard.vue). Carried in the plan's own copy of the
+    // listing so a saved/shared plan renders without refetching listings.
+    short_description?: string | null;
+    rating?: number | null;
+    rating_count?: number | null;
     // Time of day this entry happens (24h "HH:MM") — only meaningful for
     // type === 'activity' | 'restaurant'. Drives the merged day timeline's
     // sort order in ItinerarySection.vue; null/unset entries sink to the end.

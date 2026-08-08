@@ -28,6 +28,7 @@ import type {
 import ConfirmModal from './ConfirmModal.vue';
 import ItineraryDayPlanCard from './ItineraryDayPlanCard.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
+import ItineraryStayCard from './ItineraryStayCard.vue';
 import KebabMenu from './KebabMenu.vue';
 import ListingSwapModal from './ListingSwapModal.vue';
 import LocationPicker from './LocationPicker.vue';
@@ -645,6 +646,17 @@ function stageDateRangeLabel(variantIndex: number, dayIndex: number): string {
         date: days[dayIndex].date,
         date_to: days[endIndex].date_to,
     });
+}
+
+// How many nights the stage's stay covers — one per day in the run, shown
+// next to the date range on the stay card. Zero when the plan has no dates
+// yet, which is the card's cue to leave the count off entirely.
+function stageNights(variantIndex: number, dayIndex: number): number {
+    if (!editableVariants.value[variantIndex].days[dayIndex].date) {
+        return 0;
+    }
+
+    return stageEndIndex(variantIndex, dayIndex) - dayIndex + 1;
 }
 
 // The LocationPicker only renders on stage-start days, so `dayIndex` is
@@ -1870,147 +1882,73 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                         <div
                                                             class="day-card-grid"
                                                         >
-                                                            <div
-                                                                class="day-card-box"
-                                                            >
-                                                                <div
-                                                                    class="day-card-box-label"
-                                                                >
-                                                                    {{
+                                                            <ItineraryStayCard
+                                                                :stay="
+                                                                    day.accommodation
+                                                                "
+                                                                :date-range-label="
+                                                                    day.date
+                                                                        ? stageDateRangeLabel(
+                                                                              variantIndex,
+                                                                              dayIndex,
+                                                                          )
+                                                                        : ''
+                                                                "
+                                                                :nights="
+                                                                    stageNights(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                    )
+                                                                "
+                                                                :room-selection="
+                                                                    day.room_selection
+                                                                "
+                                                                @add="
+                                                                    openSwap(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                        'accommodation',
+                                                                    )
+                                                                "
+                                                                @swap="
+                                                                    openSwap(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                        'accommodation',
+                                                                        day.accommodation!,
+                                                                    )
+                                                                "
+                                                                @remove="
+                                                                    confirmAndRun(
                                                                         t(
-                                                                            'itinerary.stayLabel',
-                                                                        )
-                                                                    }}
-                                                                </div>
-                                                                <ItineraryLineItem
-                                                                    hide-label
-                                                                    keypath="itinerary.stay"
-                                                                    :item-ref="
-                                                                        day.accommodation
-                                                                    "
-                                                                    @remove="
-                                                                        confirmAndRun(
-                                                                            t(
-                                                                                'itinerary.confirmRemove.item',
-                                                                            ),
-                                                                            () =>
-                                                                                removeItem(
-                                                                                    variantIndex,
-                                                                                    dayIndex,
-                                                                                ),
-                                                                        )
-                                                                    "
-                                                                    @swap="
-                                                                        openSwap(
-                                                                            variantIndex,
-                                                                            dayIndex,
-                                                                            'accommodation',
-                                                                            day.accommodation!,
-                                                                        )
-                                                                    "
-                                                                    @add="
-                                                                        openSwap(
-                                                                            variantIndex,
-                                                                            dayIndex,
-                                                                            'accommodation',
-                                                                        )
-                                                                    "
-                                                                />
-                                                                <div
-                                                                    v-if="
-                                                                        day.accommodation
-                                                                    "
-                                                                    class="room-selection-row"
-                                                                >
-                                                                    <template
-                                                                        v-if="
-                                                                            day.room_selection
-                                                                        "
-                                                                    >
-                                                                        <span
-                                                                            class="room-selection-chip"
-                                                                        >
-                                                                            🛏️
-                                                                            {{
-                                                                                day
-                                                                                    .room_selection
-                                                                                    .name
-                                                                            }}
-                                                                            ·
-                                                                            {{
-                                                                                formatPrice(
-                                                                                    String(
-                                                                                        day
-                                                                                            .room_selection
-                                                                                            .price_per_night,
-                                                                                    ),
-                                                                                )
-                                                                            }}/{{
-                                                                                t(
-                                                                                    'itinerary.perNight',
-                                                                                )
-                                                                            }}
-                                                                        </span>
-                                                                        <button
-                                                                            type="button"
-                                                                            class="room-selection-link"
-                                                                            @click="
-                                                                                toggleRoomPicker(
-                                                                                    variantIndex,
-                                                                                    dayIndex,
-                                                                                )
-                                                                            "
-                                                                        >
-                                                                            {{
-                                                                                t(
-                                                                                    'itinerary.changeRoom',
-                                                                                )
-                                                                            }}
-                                                                        </button>
-                                                                        <button
-                                                                            type="button"
-                                                                            class="remove-btn"
-                                                                            :aria-label="
-                                                                                t(
-                                                                                    'itinerary.remove',
-                                                                                )
-                                                                            "
-                                                                            @click="
-                                                                                confirmAndRun(
-                                                                                    t(
-                                                                                        'itinerary.confirmRemove.room',
-                                                                                    ),
-                                                                                    () =>
-                                                                                        clearRoom(
-                                                                                            variantIndex,
-                                                                                            dayIndex,
-                                                                                        ),
-                                                                                )
-                                                                            "
-                                                                        >
-                                                                            ×
-                                                                        </button>
-                                                                    </template>
-                                                                    <button
-                                                                        v-else
-                                                                        type="button"
-                                                                        class="room-selection-add-btn"
-                                                                        @click="
-                                                                            toggleRoomPicker(
+                                                                            'itinerary.confirmRemove.item',
+                                                                        ),
+                                                                        () =>
+                                                                            removeItem(
                                                                                 variantIndex,
                                                                                 dayIndex,
-                                                                            )
-                                                                        "
-                                                                    >
-                                                                        🛏️
-                                                                        {{
-                                                                            t(
-                                                                                'itinerary.chooseRoom',
-                                                                            )
-                                                                        }}
-                                                                    </button>
-                                                                </div>
-                                                            </div>
+                                                                            ),
+                                                                    )
+                                                                "
+                                                                @choose-room="
+                                                                    toggleRoomPicker(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                    )
+                                                                "
+                                                                @clear-room="
+                                                                    confirmAndRun(
+                                                                        t(
+                                                                            'itinerary.confirmRemove.room',
+                                                                        ),
+                                                                        () =>
+                                                                            clearRoom(
+                                                                                variantIndex,
+                                                                                dayIndex,
+                                                                            ),
+                                                                    )
+                                                                "
+                                                            />
                                                         </div>
 
                                                         <RoomTypePicker

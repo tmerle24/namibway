@@ -62,6 +62,14 @@ function onTimeInput(event: Event) {
 
 const icon = computed(() => (props.type === 'activity' ? '📷' : '🍴'));
 
+// Every row in the plan states a price. Plenty of scraped listings carry no
+// rate yet, and silently omitting it there reads either as "included" or as a
+// bug — "on request" is the honest version and keeps the column from looking
+// ragged down the day.
+const priceLabel = computed(
+    () => formatPrice(props.item.price_from) ?? t('itinerary.priceOnRequest'),
+);
+
 // The second line: what the traveler is actually booking, in the order it
 // matters. Kept as a list so booking-time facts (reference number, pickup
 // point, confirmation state) can slot in here once inquiries are linked to
@@ -171,9 +179,7 @@ function onMenuSelect(key: string) {
                     {{ item.name }}
                 </button>
                 <template v-else>{{ item.name }}</template>
-                <span v-if="formatPrice(item.price_from)" class="item-price">{{
-                    formatPrice(item.price_from)
-                }}</span>
+                <span class="item-price">{{ priceLabel }}</span>
             </div>
             <div class="entry-row-details">
                 <template v-for="(part, i) in details" :key="part">

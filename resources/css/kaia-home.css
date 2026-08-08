@@ -790,8 +790,6 @@ body:has(.kaia-page) {
     color: var(--rust-dark);
 }
 .kaia-page .variant-price {
-    color: var(--rust-dark);
-    font-weight: 600;
     font-size: 14px;
     margin-bottom: 4px;
 }
@@ -836,8 +834,6 @@ body:has(.kaia-page) {
     margin-bottom: 0;
 }
 .kaia-page .vehicle-price {
-    color: var(--rust-dark);
-    font-weight: 600;
     font-size: 12.5px;
     margin-top: 2px;
 }
@@ -1052,10 +1048,16 @@ body:has(.kaia-page) {
 .kaia-page .day-card--continuation {
     margin-top: -6px;
 }
+/* The clearance down to .day-card-grid belongs here, not on the date line
+   inside .day-card-title — the date is no longer the header's last element in
+   every state (a stage without dates ends on the city name), and a margin on
+   a flex child of .day-card-title wouldn't push the header's own box down
+   anyway. */
 .kaia-page .day-card-header {
     display: flex;
     align-items: flex-start;
     gap: 10px;
+    margin-bottom: 10px;
 }
 /* Bare button wrapper so the stage photo is keyboard-reachable and opens the
    ImageLightbox — no visual chrome of its own, the <img> inside keeps looking
@@ -1100,9 +1102,6 @@ body:has(.kaia-page) {
     font-family: 'Fraunces', serif;
     font-size: 16px;
 }
-.kaia-page .day-card-title .day-card-sub {
-    margin: 0;
-}
 .kaia-page .day-card-region {
     font-family: 'Inter', sans-serif;
     font-size: 12px;
@@ -1122,16 +1121,14 @@ body:has(.kaia-page) {
     align-items: center;
 }
 .kaia-page .day-card-price {
-    font-weight: 600;
     font-size: 13px;
-    color: var(--ink);
     white-space: nowrap;
 }
 .kaia-page .day-card-sub {
     display: block;
     font-size: 11.5px;
     color: #7a6f63;
-    margin: 2px 0 10px;
+    margin: 0;
 }
 .kaia-page .day-card-grid {
     display: flex;
@@ -1205,9 +1202,6 @@ body:has(.kaia-page) {
     align-items: baseline;
     gap: 6px;
     flex-wrap: wrap;
-}
-.kaia-page .line-item--bare {
-    margin: 0;
 }
 /* One row of the merged day-plan timeline (an activity or a restaurant
    entry sharing one chronological list — see ItinerarySection.vue's
@@ -1357,10 +1351,21 @@ body:has(.kaia-page) {
 .kaia-page .line-item-value {
     display: contents;
 }
-.kaia-page .item-price {
-    color: #8a7f68;
-    font-size: 11.5px;
+/* One price look across the whole plan — rust-dark and semibold, whatever the
+   context. Prices used to be styled per-component (muted tan on line items and
+   alternatives, ink on the day badge, rust on the variant/vehicle totals),
+   which made the per-item ones read as incidental grey text. Only the size
+   varies now, with the surrounding type. Keep new price styles on this list. */
+.kaia-page .item-price,
+.kaia-page .alt-price,
+.kaia-page .day-card-price,
+.kaia-page .variant-price,
+.kaia-page .vehicle-price {
+    color: var(--rust-dark);
     font-weight: 600;
+}
+.kaia-page .item-price {
+    font-size: 12.5px;
 }
 .kaia-page .item-vehicle-badge {
     font-size: 10.5px;
@@ -2655,9 +2660,7 @@ body:has(.kaia-page) {
     flex: 1;
 }
 .kaia-page .alt-price {
-    font-size: 11.5px;
-    font-weight: 600;
-    color: #8a7f68;
+    font-size: 12.5px;
 }
 
 /* Editable location — click to switch to an inline input */
@@ -2699,44 +2702,120 @@ body:has(.kaia-page) {
     color: var(--rust);
 }
 
-/* Room-type selection row — sits under the accommodation line item */
-.kaia-page .room-selection-row {
+/* The stay card (ItineraryStayCard.vue). The accommodation is the plan's most
+   expensive and most-looked-at line, so unlike the compact activity/restaurant
+   rows it gets a photo, a details line, and both of its actions spelled out as
+   buttons instead of buried in the kebab. Reuses .day-card-box for the border/
+   background, but drops that rule's 30px right padding: its kebab sits in the
+   flex row rather than pinned to the corner. */
+.kaia-page .stay-card {
+    padding-right: 10px;
+}
+.kaia-page .stay-card-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+.kaia-page .stay-card-thumb {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid var(--sand-dark);
+}
+.kaia-page .stay-card-body {
+    flex: 1;
+    min-width: 0;
+}
+/* Price beside the name, but it drops to its own right-aligned line rather
+   than squeezing the name into a narrow column — on a phone the body is only
+   ~160px wide, and holding both on one line wrapped a lodge name over three
+   lines. */
+.kaia-page .stay-card-title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+}
+.kaia-page .stay-card-name {
+    flex: 1 1 auto;
+    min-width: 55%;
+    font-weight: 600;
+    color: var(--ink);
+    text-align: left;
+}
+.kaia-page .stay-card-price {
+    white-space: nowrap;
+    margin-left: auto;
+}
+.kaia-page .stay-card-meta {
+    font-size: 11.5px;
+    color: #7a6f63;
+    margin-top: 2px;
+}
+/* Capped at two lines — a long lodge blurb must not push the actions out of
+   view on a phone. */
+.kaia-page .stay-card-details {
+    font-size: 11.5px;
+    color: #8a7f68;
+    margin-top: 3px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.kaia-page .stay-card-rating {
+    color: var(--rust-dark);
+    font-weight: 600;
+}
+.kaia-page .stay-card-actions {
     display: flex;
     align-items: center;
     gap: 6px;
     flex-wrap: wrap;
-    margin: 2px 0 2px;
+    margin-top: 8px;
 }
-.kaia-page .room-selection-chip {
-    font-size: 12px;
-    color: #4a4438;
-}
-.kaia-page .room-selection-link {
+.kaia-page .stay-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     background: none;
-    border: none;
-    font-size: 11px;
+    border: 1px solid var(--sand-dark);
+    border-radius: 999px;
+    color: #5b5346;
+    font-size: 11.5px;
     font-weight: 600;
-    color: var(--rust);
+    padding: 3px 10px;
     cursor: pointer;
-    padding: 0;
 }
-.kaia-page .room-selection-link:hover {
-    text-decoration: underline;
-}
-.kaia-page .room-selection-add-btn {
-    background: none;
-    border: 1px dashed var(--sand-dark);
-    border-radius: 5px;
-    color: #8a7f68;
-    font-size: 11px;
-    padding: 1px 7px;
-    cursor: pointer;
-    opacity: 0.85;
-}
-.kaia-page .room-selection-add-btn:hover {
-    opacity: 1;
+.kaia-page .stay-action-btn:hover {
     border-color: var(--rust);
     color: var(--rust);
+}
+.kaia-page .stay-card-empty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #4a4438;
+}
+/* The timeline rail and day-number column leave the card ~250px on a phone,
+   so the text body is barely 130px once the thumb and kebab take their share.
+   Give the width back: smaller thumb, tighter gaps, and the price always on
+   its own line so the name never wraps inside a ~85px column. */
+@media (max-width: 640px) {
+    .kaia-page .stay-card-main {
+        gap: 8px;
+    }
+    .kaia-page .stay-card-thumb {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+    }
+    .kaia-page .stay-card-name {
+        min-width: 100%;
+    }
 }
 
 .kaia-page .alt-use-btn {
@@ -3874,7 +3953,7 @@ body:has(.kaia-page) {
     .trip-plan-page .kebab-menu,
     .trip-plan-page .add-item-btn,
     .trip-plan-page .add-day-btn,
-    .trip-plan-page .room-selection-row,
+    .trip-plan-page .stay-card-actions,
     .trip-plan-page .drag-handle,
     .trip-plan-page .cta {
         display: none !important;

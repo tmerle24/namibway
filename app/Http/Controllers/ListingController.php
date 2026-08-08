@@ -102,6 +102,7 @@ class ListingController extends Controller
                 'name' => $l->name,
                 'slug' => $l->slug,
                 'description' => $l->description,
+                'short_description' => $l->short_description,
                 'image' => $l->image ? self::resolveMediaUrl($l->image) : null,
                 'gallery' => collect($l->gallery ?? [])
                     ->map(fn (string $path) => self::resolveMediaUrl($path))
@@ -109,6 +110,10 @@ class ListingController extends Controller
                 'highlights' => $l->highlights ?? [],
                 'region' => $l->region,
                 'city' => $l->city?->name,
+                // Carried through so a listing swapped into a trip plan keeps
+                // its map marker (see ListingSwapModal.vue's select()).
+                'latitude' => $l->latitude !== null ? (float) $l->latitude : null,
+                'longitude' => $l->longitude !== null ? (float) $l->longitude : null,
                 'price_from' => $l->price_from,
                 'price_currency' => $l->price_currency,
                 'duration_minutes' => $l->duration_minutes,
