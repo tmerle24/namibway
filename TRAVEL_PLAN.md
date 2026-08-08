@@ -410,6 +410,13 @@ Worst case sat in this very feature: the trip plan's day thumbnail renders at
   already-transformed URL isn't nested inside itself.
   `tests/Feature/Commands/CheckMediaTransformsCommandTest.php` — 7 tests
   including both directions of the stale-origin detection.
+- ⚠️ **phpstan is CI-blocking and nothing else catches it** — cost one red CI
+  here (a `list<string>` return that `Collection::values()->all()` can't prove;
+  `array_values()` can). If `composer install` can't fetch phpstan in your
+  environment, its release phar downloads fine and runs against the project's
+  own `phpstan.neon`:
+  `curl -sSL -o /tmp/phpstan.phar https://github.com/phpstan/phpstan/releases/download/2.2.5/phpstan.phar && php /tmp/phpstan.phar analyse -c phpstan.neon`
+  (larastan still has to be in `vendor/` for the include to resolve).
 
 ### Known gaps / next up
 

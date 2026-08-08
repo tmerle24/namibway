@@ -251,15 +251,18 @@ class CheckMediaTransforms extends Command
     /** @return list<string> */
     private function sampleCatalogUrls(int $limit): array
     {
-        return Listing::query()
+        $urls = Listing::query()
             ->whereNotNull('image')
             ->where('is_published', true)
             ->orderBy('id')
             ->limit($limit)
             ->pluck('image')
             ->map(fn (string $image): string => Controller::resolveMediaUrl($image))
-            ->values()
             ->all();
+
+        // array_values rather than Collection::values(): phpstan can prove the
+        // former returns a list, which is what this method promises.
+        return array_values($urls);
     }
 
     private function verdict(bool $enabled, int $probed, int $transformed): int
