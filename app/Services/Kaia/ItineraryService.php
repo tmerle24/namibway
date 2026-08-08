@@ -398,7 +398,13 @@ class ItineraryService
             $variant['days'] = array_map(function (array $day) use ($resolve) {
                 $day['accommodation'] = $resolve($day['accommodation'] ?? null, 'accommodation');
                 $day['activity'] = $resolve($day['activity'] ?? null, 'activity');
+                if ($day['activity'] !== null) {
+                    $day['activity']['time'] = $day['activity_time'] ?? null;
+                }
                 $day['restaurant'] = $resolve($day['restaurant'] ?? null, 'restaurant');
+                if ($day['restaurant'] !== null) {
+                    $day['restaurant']['time'] = $day['restaurant_time'] ?? null;
+                }
 
                 return $day;
             }, $variant['days']);
@@ -891,6 +897,11 @@ class ItineraryService
             the activity or restaurant field may be left blank on a given day if nothing suitable is
             available.
 
+            When an activity or restaurant naturally happens at a particular time of day (a sunrise game
+            drive, a sundowner cruise, dinner), set "activity_time"/"restaurant_time" to that 24h "HH:MM"
+            start time (e.g. "06:00", "19:00"). Omit these fields when no specific time applies — don't
+            invent a time just to fill the field.
+
             The traveler's vehicle_type trip parameter is either "car" or "camper". Pick ONE vehicle listing
             per variant that matches — one whose highlights include "Camper" for vehicle_type "camper", or a
             plain self-drive vehicle otherwise. If vehicle_type is "camper", prefer accommodations whose
@@ -1268,7 +1279,9 @@ class ItineraryService
                                             'location' => ['type' => 'string', 'description' => 'Exact city value from the listing catalog, e.g. "Swakopmund", "Otjiwarongo", "Sesriem" — never a park/tourist-area name like "Etosha"'],
                                             'accommodation' => ['type' => 'string'],
                                             'activity' => ['type' => 'string'],
+                                            'activity_time' => ['type' => 'string', 'description' => 'Optional 24h "HH:MM" start time for the activity, e.g. "06:00" for a sunrise game drive. Omit if no particular time of day applies.'],
                                             'restaurant' => ['type' => 'string'],
+                                            'restaurant_time' => ['type' => 'string', 'description' => 'Optional 24h "HH:MM" start time for the restaurant, e.g. "19:00" for dinner. Omit if no particular time of day applies.'],
                                         ],
                                         'required' => ['day', 'location'],
                                     ],

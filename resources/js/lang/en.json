@@ -141,6 +141,10 @@
         "stayLabel": "Stay",
         "activityLabel": "Activity",
         "dinnerLabel": "Dining",
+        "dayPlanLabel": "Day plan",
+        "addActivity": "Add activity",
+        "addRestaurant": "Add restaurant",
+        "entryTime": "Time",
         "forTravelers": "for {count}",
         "roomPlaceholderNote": "Illustrative rooms — final selection and live rates come at booking.",
         "roomTypes": {

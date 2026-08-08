@@ -13,6 +13,10 @@ export interface ItineraryListingRef {
     gallery?: string[];
     city?: string | null;
     region?: string | null;
+    // Time of day this entry happens (24h "HH:MM") — only meaningful for
+    // type === 'activity' | 'restaurant'. Drives the merged day timeline's
+    // sort order in ItinerarySection.vue; null/unset entries sink to the end.
+    time?: string | null;
 }
 
 // Placeholder room-type content — not backed by RoomType/live availability

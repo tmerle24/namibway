@@ -99,6 +99,10 @@
         "stayLabel": "Schlafen",
         "activityLabel": "Erleben",
         "dinnerLabel": "Essen",
+        "dayPlanLabel": "Tagesplan",
+        "addActivity": "Aktivität hinzufügen",
+        "addRestaurant": "Restaurant hinzufügen",
+        "entryTime": "Uhrzeit",
         "forTravelers": "für {count}",
         "roomPlaceholderNote": "Beispielhafte Zimmer — endgültige Auswahl und aktuelle Preise gibt es bei der Buchung.",
         "roomTypes": {

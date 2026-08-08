@@ -728,27 +728,6 @@ body:has(.kaia-page) {
     flex-wrap: wrap;
     flex-shrink: 1;
 }
-.kaia-page .plan-back-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    min-width: 34px;
-    border-radius: 50%;
-    border: 1px solid var(--sand-dark);
-    background: var(--paper);
-    color: var(--ink);
-    font-size: 16px;
-    text-decoration: none;
-    transition:
-        background 0.15s,
-        border-color 0.15s;
-}
-.kaia-page .plan-back-btn:hover {
-    background: var(--sand);
-    border-color: var(--rust);
-}
 @media (max-width: 640px) {
     .kaia-page .variant-head--single h3 {
         font-size: 19px;
@@ -837,6 +816,7 @@ body:has(.kaia-page) {
     align-items: center;
     gap: 10px;
     margin-bottom: 16px;
+    padding-top: 15px;
 }
 .kaia-page .vehicle-card-img {
     width: 64px;
@@ -1039,6 +1019,17 @@ body:has(.kaia-page) {
     border-radius: 2px;
     z-index: 0;
 }
+/* A stage's first day renders two stacked .day-card elements — the
+   accommodation card, then a continuation-styled card for that same day's
+   own activity/restaurant plan — as a plain block column so .day-content's
+   grid (see the comment above) still only ever sees ONE second-column
+   child, whether that's this wrapper (stage-start) or a bare .day-card
+   (every later day in the stay). No layout rules of its own needed: each
+   child .day-card already carries its own spacing/negative-margin. */
+.kaia-page .day-card-column {
+    display: flex;
+    flex-direction: column;
+}
 .kaia-page .day-card {
     background: var(--paper);
     border: 1px solid var(--sand-dark);
@@ -1128,12 +1119,19 @@ body:has(.kaia-page) {
 }
 /* Pin the item's kebab to the box's top-right corner, independent of the
    line-item text wrapping below it (a long lodge/activity name would
-   otherwise drag the trailing .kebab-menu down/around with it). */
+   otherwise drag the trailing .kebab-menu down/around with it). Only safe
+   for boxes holding a single line-item (e.g. the SCHLAFEN/stay box) — the
+   merged day-plan list below holds several .line-item--entry rows, whose
+   kebabs are un-pinned back to inline flow just below. */
 .kaia-page .day-card-box .line-item .kebab-menu {
     position: absolute;
     top: 6px;
     right: 6px;
     margin-left: 0;
+}
+.kaia-page .day-card-box .line-item--entry .kebab-menu {
+    position: static;
+    margin-left: 4px;
 }
 .kaia-page .day-card-box-label {
     font-size: 10px;
@@ -1186,6 +1184,46 @@ body:has(.kaia-page) {
 }
 .kaia-page .line-item--bare {
     margin: 0;
+}
+/* One row of the merged day-plan timeline (an activity or a restaurant
+   entry sharing one chronological list — see ItinerarySection.vue's
+   dayEntries()). Stacked rows get a hairline divider instead of each
+   living in its own bordered box. */
+.kaia-page .line-item--entry {
+    align-items: center;
+    padding: 3px 0;
+}
+.kaia-page .line-item--entry + .line-item--entry {
+    border-top: 1px solid var(--sand-dark);
+}
+.kaia-page .line-item-time {
+    font-size: 11px;
+    padding: 1px 4px;
+    border: 1px solid var(--rust-dark);
+    border-radius: 5px;
+    background: var(--paper);
+    color: var(--ink);
+    flex-shrink: 0;
+}
+.kaia-page .line-item-icon {
+    flex-shrink: 0;
+}
+.kaia-page .line-item-type {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #a89b82;
+    margin-left: auto;
+    flex-shrink: 0;
+    padding-left: 6px;
+}
+/* The always-visible "+ Activity" / "+ Restaurant" row at the bottom of a
+   day's merged entry list — replaces the old per-box empty-state button,
+   which only appeared once, before anything had been added. */
+.kaia-page .day-plan-add-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
 }
 .kaia-page .line-item-value {
     display: contents;
@@ -1329,6 +1367,15 @@ body:has(.kaia-page) {
         box-shadow: 0 6px 16px rgba(16, 26, 48, 0.35);
         z-index: 90;
         cursor: pointer;
+    }
+}
+@media (max-width: 640px) {
+    .kaia-page .mobile-map-fab {
+        right: 10px;
+        width: 42px;
+        height: 42px;
+        border-width: 0;
+        font-size: 18px;
     }
 }
 .kaia-page .variant-card .cta {
@@ -3295,6 +3342,7 @@ body:has(.kaia-page) {
            well* (an earlier version of this rule did) double-counts it and
            leaves #kaia-hero short by exactly one header-height, showing as
            a gap of bare hero background below the chat panel.
+
            `height`, not `min-height`: this needs to be a hard cap, not a
            floor. A floor let a longer conversation grow #kaia-hero (and the
            whole page) taller than the viewport instead of scrolling inside
@@ -3305,8 +3353,17 @@ body:has(.kaia-page) {
            height on the outermost box only contains overflow if every flex
            descendant between it and .chat-log is *allowed* to shrink below
            its content size, which needs min-height: 0 at each level since
-           flex items default to min-height: auto. */
-        height: calc(100dvh - var(--admin-bar-height, 0px));
+           flex items default to min-height: auto.
+
+           --keyboard-inset (set by HeroChat.vue via window.visualViewport,
+           which — unlike `dvh` — actually tracks the on-screen keyboard)
+           is subtracted too: without it, opening the keyboard leaves this
+           column sized for the pre-keyboard screen, so .chat-input-row
+           (the last flex child at its bottom) ends up positioned behind
+           the keyboard instead of riding up above it. */
+        height: calc(
+            100dvh - var(--admin-bar-height, 0px) - var(--keyboard-inset, 0px)
+        );
     }
 
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
@@ -3318,7 +3375,6 @@ body:has(.kaia-page) {
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
         .hero-content {
         flex: 1;
-        min-height: 0;
         display: flex;
         flex-direction: column;
         padding: 10px 12px;
@@ -3332,6 +3388,15 @@ body:has(.kaia-page) {
            overflowed past the viewport edge. Pin both back to fill width. */
         margin: 0;
         max-width: none;
+        /* A flex item's default min-height is `auto` (its content size),
+           not 0 — without overriding it, this column can't shrink below
+           the chat log's content height, which defeats #kaia-hero's own
+           hard-capped, --keyboard-inset-aware `height` above: the keyboard
+           opens (or the log fills up), the column is told to get shorter,
+           but this child (and .chat-panel/.chat-log below) refuse to
+           follow, so the input row ends up stuck behind the keyboard — or
+           the whole page grows past one viewport — instead. */
+        min-height: 0;
     }
 
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
@@ -3673,7 +3738,6 @@ body:has(.kaia-page) {
     }
     .trip-plan-page .trip-meta-edit-btn,
     .trip-plan-page .reverse-route-btn,
-    .trip-plan-page .plan-back-btn,
     .trip-plan-page .save-icon-btn,
     .trip-plan-page .share-icon-btn,
     .trip-plan-page .dismiss-variant-btn,
