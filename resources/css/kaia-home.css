@@ -3405,13 +3405,25 @@ body:has(.kaia-page) {
            leaves #kaia-hero short by exactly one header-height, showing as
            a gap of bare hero background below the chat panel.
 
+           `height`, not `min-height`: this needs to be a hard cap, not a
+           floor. A floor let a longer conversation grow #kaia-hero (and the
+           whole page) taller than the viewport instead of scrolling inside
+           .chat-log — which, combined with the input-focus body-scroll-lock
+           elsewhere in this file, could make the page's lower portion
+           (including the input itself) completely unreachable while the
+           keyboard was open. See the min-height: 0 chain below — a fixed
+           height on the outermost box only contains overflow if every flex
+           descendant between it and .chat-log is *allowed* to shrink below
+           its content size, which needs min-height: 0 at each level since
+           flex items default to min-height: auto.
+
            --keyboard-inset (set by HeroChat.vue via window.visualViewport,
            which — unlike `dvh` — actually tracks the on-screen keyboard)
            is subtracted too: without it, opening the keyboard leaves this
            column sized for the pre-keyboard screen, so .chat-input-row
            (the last flex child at its bottom) ends up positioned behind
            the keyboard instead of riding up above it. */
-        min-height: calc(
+        height: calc(
             100dvh - var(--admin-bar-height, 0px) - var(--keyboard-inset, 0px)
         );
     }
@@ -3441,27 +3453,37 @@ body:has(.kaia-page) {
         /* A flex item's default min-height is `auto` (its content size),
            not 0 — without overriding it, this column can't shrink below
            the chat log's content height, which defeats #kaia-hero's own
-           --keyboard-inset-aware min-height above: the keyboard opens, the
-           column is told to get shorter, but this child (and .chat-panel/
-           .chat-log below) refuse to follow, so the input row stays put
-           behind the keyboard instead of riding back into view. */
+           hard-capped, --keyboard-inset-aware `height` above: the keyboard
+           opens (or the log fills up), the column is told to get shorter,
+           but this child (and .chat-panel/.chat-log below) refuse to
+           follow, so the input row ends up stuck behind the keyboard — or
+           the whole page grows past one viewport — instead. */
         min-height: 0;
     }
 
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
         .chat-panel {
         flex: 1;
+        min-height: 0;
         display: flex;
         flex-direction: column;
         max-width: none;
-        min-height: 0;
     }
 
+    /* min-height: 0 is what actually makes this scroll internally (via the
+       overflow-y: auto already on the base .chat-log rule) instead of
+       growing past its flex-allocated space — flex items default to
+       min-height: auto (= their content's size), which silently overrides
+       `flex: 1` shrinking whenever content is taller than the available
+       space. Without it, a chat-log full of messages just pushes
+       .chat-panel/#kaia-hero/the whole page taller than the viewport,
+       which is exactly what full-screen mode exists to prevent: the input
+       row ends up scrolled out of reach instead of pinned at the bottom. */
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
         .chat-log {
         flex: 1;
-        max-height: none;
         min-height: 0;
+        max-height: none;
     }
 
     /* The mobile tab bar is hidden for the whole time this mode is active,
