@@ -33,6 +33,55 @@ nothing gets lost between sessions.
   availability logic for the Native connector) but is **not yet wired** to
   the frontend's room picker — see "Known gaps" below.
 
+## Future concept: collaborative trip plan (not built yet)
+
+A trip is rarely planned alone. The plan should be shareable with fellow
+travelers who can **join the planning**, not just look at the result:
+
+- **Share read-only or with write access** — two different link levels (or
+  per-person grants), not today's one-link-does-everything.
+- **Co-planning** — a participant with write access can do what the owner
+  can: swap items, reorder days, edit trip params.
+- **Comments** — on the plan as a whole and on individual items/days
+  ("do we really want two nights here?"), with **follow-ups** (replies on
+  a comment, and a resolved/open state so a settled question stops
+  cluttering the plan).
+- **Log** — a visible history of who changed or commented on what, and
+  when. This is what makes shared editing safe: without it, a co-planner's
+  change is indistinguishable from a bug.
+
+Where this collides with what exists today:
+
+- `SavedPlan` is a single row with a `token`, `plan_json`, and a `user_id`/
+  `session_id` that are **recorded but never checked**.
+  `KaiaController::updatePlan` accepts a PATCH from anyone who has the
+  token, so the current share link is effectively full write access, and
+  `loadPlan` likewise gates on nothing. There is no read-only mode to give
+  someone today.
+- Whole-document `plan_json` overwrites mean two people editing at once
+  silently clobber each other (last write wins, no merge, no conflict
+  signal). Concurrent editing needs at least item-level writes or a version
+  check before this is safe to hand to several people.
+- Nothing is attributable: a change leaves no trace of who made it, so the
+  log has nowhere to come from yet.
+
+Open questions to settle before building:
+
+- Do participants need accounts, or is a named-but-anonymous "who are you?"
+  prompt on opening a write link enough? (Today's flow deliberately avoids
+  forcing login — see "Drop login requirement from trip-plan sharing".)
+- Live/simultaneous editing, or is "refresh to see changes" acceptable for
+  v1? Live collaboration is a much bigger build (broadcasting, presence).
+- Does the owner keep special rights (revoke access, delete the plan,
+  final say on bookings)? Booking a shared plan especially needs one clear
+  responsible person — the request-governance rules in `CLAUDE.md` are
+  written around a single traveler.
+
+Not scoped or started — flagged here so plan-related work doesn't get built
+in a way that has to be torn up. Concretely: assume a plan has **several
+people with different permissions** and that **every change is
+attributable**, even while only the owner path exists.
+
 ## Future concept: on-trip progress tracker (not built yet)
 
 Once a plan is booked and the traveler is actually on the road, they need a
@@ -137,6 +186,10 @@ Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
   side (today "camper" detection is a `highlights` string match, nothing
   richer). Scoped out of session 1 rather than shipping a dropdown that
   doesn't actually change results.
+- ⬜ **Collaborative trip plan** (read-only vs. write sharing, co-planning,
+  comments with follow-ups, change log) — see the dedicated section above.
+  Note the security side of this is already live-relevant, not just future
+  work: today's share token grants write access to anyone who has the link.
 - ⬜ **On-trip progress tracker** — see the dedicated section above.
 - ⬜ Removing a single day from inside a collapsed multi-night stay isn't
   possible from the UI anymore (only the stay's first day and any day with

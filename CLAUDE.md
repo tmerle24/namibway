@@ -16,6 +16,8 @@ What "good" means here, in the order it gets judged:
 - **Responsiveness across every surface** — mobile browser, PWA, and the iOS/Android Capacitor apps are first-class, not adaptations of a desktop layout. Test mobile viewports and the native shells, not just a wide browser.
 - **Looks** — magazine-quality visual quality; the plan is what people screenshot and share.
 
+**Direction of travel: the plan becomes collaborative.** A trip is rarely planned by one person, so a plan is meant to be shared with fellow travelers who can join in — shared **read-only or with write access**, co-planning or commenting, with follow-ups on comments and a log of who changed what. Today's sharing is a single link that is implicitly full-write (`SavedPlan` token; `KaiaController::updatePlan` authorizes nothing beyond knowing the token, and the recorded `user_id`/`session_id` are unused), and there are no participants, comments, or history — so this is a real data-model step, not a UI toggle. Build new plan features so they don't have to be torn up for it: assume a plan has multiple people with different permissions, and that every change is attributable. Shape and open questions: `TRAVEL_PLAN.md` → "Future concept: collaborative trip plan".
+
 `TRAVEL_PLAN.md` is the working log for exactly this — read its "Known gaps / next up" before starting, and add a dated entry when you finish something.
 
 ## Brand & expansion
