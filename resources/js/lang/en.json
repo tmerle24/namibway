@@ -145,6 +145,10 @@
         "dinnerLabel": "Dining",
         "dayPlansLabel": "Day plans",
         "dayPlansHint": "Activities and restaurants, ordered by day",
+        "conflict": {
+            "message": "This plan was changed somewhere else. Your latest change was not saved.",
+            "reload": "Reload"
+        },
         "addActivity": "Add activity",
         "addRestaurant": "Add restaurant",
         "entryTime": "Time",

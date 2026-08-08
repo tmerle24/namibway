@@ -58,6 +58,9 @@ defineProps<{
 
 const plan = ref<ItineraryPlan | null>(null);
 const tripToken = ref<string | null>(null);
+// Only set when arriving on an existing ?trip= token; a freshly generated plan
+// has no server version until ItinerarySection's first autosave mints one.
+const tripVersion = ref<number | null>(null);
 const searchIntent = ref<SearchIntent | null>(null);
 const bookingVariant = ref<ItineraryVariant | null>(null);
 const bookingActive = ref(false);
@@ -126,7 +129,9 @@ onMounted(async () => {
 
     if (tripParam) {
         try {
-            plan.value = await loadPlan(tripParam);
+            const loaded = await loadPlan(tripParam);
+            plan.value = loaded.plan;
+            tripVersion.value = loaded.version;
             tripToken.value = tripParam;
         } catch {
             // Unknown/expired token — fall through to a normal fresh visit.
@@ -192,6 +197,7 @@ onMounted(async () => {
 
 async function onPlanReady(newPlan: ItineraryPlan) {
     tripToken.value = null;
+    tripVersion.value = null;
     plan.value = newPlan;
     bookingVariant.value = null;
     bookingActive.value = false;
@@ -250,6 +256,7 @@ async function onGuestSubmit(details: GuestDetails) {
             v-if="plan"
             :plan="plan"
             :token="tripToken"
+            :version="tripVersion"
             @book="onBook"
             @update:token="tripToken = $event"
         />

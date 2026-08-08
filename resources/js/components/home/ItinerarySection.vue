@@ -11,6 +11,7 @@ import {
     fetchAllCities,
     fetchCities,
     fetchRegionCoords,
+    PlanConflictError,
     regeneratePlan,
     savePlan,
     updatePlan,
@@ -47,6 +48,10 @@ import type { TripParamsFormValues } from './TripParamsEditModal.vue';
 const props = defineProps<{
     plan: ItineraryPlan;
     token: string | null;
+    // The plan's server version when it was loaded, for the stale-write check
+    // in KaiaController::updatePlan. Null for a freshly generated plan that
+    // hasn't been persisted yet — the first autosave mints it.
+    version?: number | null;
 }>();
 
 const emit = defineEmits<{
@@ -124,6 +129,26 @@ const SUMMARY_TRUNCATE_LENGTH = 220;
 // "Save & share" button. This one drives the ?trip= URL param so reloading
 // or revisiting the link restores exactly what's in editableVariants now.
 const currentToken = ref<string | null>(props.token);
+
+// Moves with every successful save. Sent back on the next one so the server
+// can reject a write made against a plan that has since changed elsewhere —
+// the share link is the same token, so "elsewhere" is a real scenario, as is
+// simply having the plan open in two tabs.
+const currentVersion = ref<number | null>(props.version ?? null);
+
+// Set once the server has rejected a write as stale. Autosaving stops at that
+// point: the local plan and the stored one have diverged, and continuing to
+// retry would either spam 409s or, worse, overwrite whatever the other editor
+// did. The traveler is told, and reloading is the way out.
+const planConflict = ref(false);
+
+// Deliberately a full page reload rather than re-fetching into the existing
+// state: the unsaved local edits are the losing side of the conflict, and
+// quietly swapping the plan out from under them mid-edit would be worse than
+// an obvious reload the traveler chose.
+function reloadPlan() {
+    window.location.reload();
+}
 
 // Trip-level start/end — same for every variant. Reversing a variant's
 // direction (below) doesn't touch these; it only reorders that variant's
@@ -726,6 +751,11 @@ function schedulePersist() {
         return;
     }
 
+    // Diverged from the stored plan — see planConflict.
+    if (planConflict.value) {
+        return;
+    }
+
     if (persistTimer) {
         clearTimeout(persistTimer);
     }
@@ -752,14 +782,23 @@ async function runPersist() {
 
     try {
         if (currentToken.value) {
-            await updatePlan(currentToken.value, combined);
+            currentVersion.value = await updatePlan(
+                currentToken.value,
+                combined,
+                currentVersion.value,
+            );
         } else {
             const result = await savePlan(combined);
             currentToken.value = result.token;
+            currentVersion.value = result.version;
             emit('update:token', result.token);
         }
     } catch (e) {
-        console.warn('Failed to auto-save plan:', e);
+        if (e instanceof PlanConflictError) {
+            planConflict.value = true;
+        } else {
+            console.warn('Failed to auto-save plan:', e);
+        }
     } finally {
         persistInFlight = false;
 
@@ -811,6 +850,11 @@ watch(
         // no token yet, so it must NOT be skipped — that's the save that
         // mints the token and updates the URL in the first place.
         skipNextPersist = !!currentToken.value;
+
+        // A replacement plan (regenerated from edited trip params) supersedes
+        // whatever the conflict was about, so autosaving may resume.
+        planConflict.value = false;
+        currentVersion.value = props.version ?? null;
     },
     { immediate: true },
 );
@@ -821,6 +865,13 @@ watch(
         if (token !== currentToken.value) {
             currentToken.value = token;
         }
+    },
+);
+
+watch(
+    () => props.version,
+    (version) => {
+        currentVersion.value = version ?? null;
     },
 );
 
@@ -1289,6 +1340,21 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
 
 <template>
     <section id="itinerary-section">
+        <!-- The stored plan moved on under us (same link open elsewhere, or
+             another tab). Autosaving has stopped rather than overwrite the
+             other side — say so plainly instead of letting edits pile up
+             looking saved. -->
+        <div v-if="planConflict" class="plan-conflict-banner" role="alert">
+            <span>{{ t('itinerary.conflict.message') }}</span>
+            <button
+                type="button"
+                class="plan-conflict-reload"
+                @click="reloadPlan()"
+            >
+                {{ t('itinerary.conflict.reload') }}
+            </button>
+        </div>
+
         <div class="section-head">
             <div class="eyebrow">{{ t('itinerary.eyebrow') }}</div>
             <h2>{{ t('itinerary.title') }}</h2>

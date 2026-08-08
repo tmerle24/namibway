@@ -302,6 +302,21 @@ export async function searchListings(
 export interface SavedPlanResult {
     token: string;
     url: string;
+    version: number;
+}
+
+// Thrown by updatePlan() when the server rejected the write because the plan
+// moved on since it was loaded — the share link is the same token everyone
+// edits with, so this is a normal outcome, not a transport failure. Carries
+// the server's current state so a caller can show it rather than guess.
+export class PlanConflictError extends Error {
+    constructor(
+        readonly serverVersion: number | null,
+        readonly serverPlan: ItineraryPlan | null,
+    ) {
+        super('Plan changed elsewhere');
+        this.name = 'PlanConflictError';
+    }
 }
 
 export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
@@ -323,10 +338,21 @@ export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
     const data = await response.json();
     const token = data.token as string;
 
-    return { token, url: `${window.location.origin}/trip/${token}` };
+    return {
+        token,
+        url: `${window.location.origin}/trip/${token}`,
+        version: (data.version as number) ?? 1,
+    };
 }
 
-export async function loadPlan(token: string): Promise<ItineraryPlan> {
+export interface LoadedPlan {
+    plan: ItineraryPlan;
+    // What the next updatePlan() has to send back for the server to be able to
+    // spot a stale write.
+    version: number;
+}
+
+export async function loadPlan(token: string): Promise<LoadedPlan> {
     const response = await fetch(`/kaia/plans/${token}`, {
         credentials: 'same-origin',
         headers: { Accept: 'application/json' },
@@ -338,13 +364,18 @@ export async function loadPlan(token: string): Promise<ItineraryPlan> {
 
     const data = await response.json();
 
-    return data.variant as ItineraryPlan;
+    return {
+        plan: data.variant as ItineraryPlan,
+        version: (data.version as number) ?? 1,
+    };
 }
 
+/** Returns the plan's new version. Throws PlanConflictError on a stale write. */
 export async function updatePlan(
     token: string,
     plan: ItineraryPlan,
-): Promise<void> {
+    version: number | null,
+): Promise<number> {
     const response = await fetch(`/kaia/plans/${token}`, {
         method: 'PATCH',
         credentials: 'same-origin',
@@ -353,12 +384,27 @@ export async function updatePlan(
             Accept: 'application/json',
             'X-XSRF-TOKEN': xsrfToken(),
         },
-        body: JSON.stringify({ variant: plan }),
+        body: JSON.stringify(
+            version === null ? { variant: plan } : { variant: plan, version },
+        ),
     });
+
+    if (response.status === 409) {
+        const data = await response.json().catch(() => ({}));
+
+        throw new PlanConflictError(
+            (data.version as number) ?? null,
+            (data.variant as ItineraryPlan) ?? null,
+        );
+    }
 
     if (!response.ok) {
         throw new Error('Failed to update plan');
     }
+
+    const data = await response.json();
+
+    return (data.version as number) ?? (version ?? 0) + 1;
 }
 
 export async function createTrip(

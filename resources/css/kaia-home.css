@@ -561,6 +561,40 @@ body:has(.kaia-page) {
 .kaia-page #itinerary-section .section-head {
     max-width: 100%;
 }
+/* Shown when the server rejected an autosave because the plan changed
+   elsewhere (see planConflict in ItinerarySection.vue). Deliberately at the
+   very top of the section and in the warning rust tone — from here on the
+   traveler's edits are no longer being saved, so it must not read as a
+   dismissible nicety. */
+.kaia-page .plan-conflict-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 10px 14px;
+    border: 1px solid var(--rust);
+    border-radius: 10px;
+    background: var(--rust-light);
+    color: var(--rust-dark);
+    font-size: 13.5px;
+}
+.kaia-page .plan-conflict-reload {
+    flex-shrink: 0;
+    padding: 4px 12px;
+    border: 1px solid var(--rust-dark);
+    border-radius: 6px;
+    background: var(--paper);
+    color: var(--rust-dark);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+.kaia-page .plan-conflict-reload:hover {
+    background: var(--rust-dark);
+    color: var(--paper);
+}
 .kaia-page .section-head h2 {
     font-size: 28px;
     margin-bottom: 8px;

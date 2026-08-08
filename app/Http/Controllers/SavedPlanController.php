@@ -51,6 +51,9 @@ class SavedPlanController extends Controller
             'plan' => $saved->plan_json,
             'title' => $saved->title,
             'token' => $saved->token,
+            // Seeds the conflict check for edits made from this page — see
+            // KaiaController::updatePlan.
+            'version' => $saved->version,
             'shareUrl' => route('trip.show', $token),
         ]);
     }

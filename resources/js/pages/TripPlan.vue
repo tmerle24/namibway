@@ -18,6 +18,7 @@ const props = defineProps<{
     plan: ItineraryPlan;
     title: string | null;
     token: string;
+    version: number;
     shareUrl: string;
 }>();
 
@@ -119,6 +120,7 @@ async function onGuestSubmit(details: GuestDetails) {
             <ItinerarySection
                 :plan="plan"
                 :token="tripToken"
+                :version="version"
                 @book="onBook"
                 @update:token="tripToken = $event"
             />

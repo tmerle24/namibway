@@ -103,6 +103,10 @@
         "dinnerLabel": "Essen",
         "dayPlansLabel": "Tagespläne",
         "dayPlansHint": "Aktivitäten und Restaurants nach Tag geordnet",
+        "conflict": {
+            "message": "Dieser Plan wurde an anderer Stelle geändert. Deine letzte Änderung wurde nicht gespeichert.",
+            "reload": "Neu laden"
+        },
         "addActivity": "Aktivität hinzufügen",
         "addRestaurant": "Restaurant hinzufügen",
         "entryTime": "Uhrzeit",
