@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
  * @property string $token
  * @property string|null $title
  * @property array<string, mixed> $plan_json
+ * @property int $version
  * @property int|null $user_id
  * @property string|null $session_id
  */
@@ -26,6 +27,16 @@ class SavedPlan extends Model
 
     protected $casts = [
         'plan_json' => 'array',
+        'version' => 'integer',
+    ];
+
+    // Mirrors the column default so a freshly created model already carries
+    // version 1 in memory — the DB default alone leaves $saved->version null
+    // until the row is re-read, which savePlan() would otherwise hand straight
+    // back to the client as its starting version. Deliberately not $fillable:
+    // the version is the server's to move, never the request's.
+    protected $attributes = [
+        'version' => 1,
     ];
 
     protected static function booted(): void

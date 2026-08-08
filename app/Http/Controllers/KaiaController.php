@@ -121,6 +121,7 @@ class KaiaController extends Controller
         return response()->json([
             'token' => $saved->token,
             'url' => route('trip.show', $saved->token),
+            'version' => $saved->version,
         ]);
     }
 
@@ -128,26 +129,72 @@ class KaiaController extends Controller
     {
         $plan = SavedPlan::where('token', $token)->firstOrFail();
 
-        return response()->json(['variant' => $plan->plan_json]);
+        // `version` is what the client must hand back on its next update for
+        // the conflict check in updatePlan() to be able to spot a stale write.
+        return response()->json([
+            'variant' => $plan->plan_json,
+            'version' => $plan->version,
+        ]);
     }
 
     // Re-saves an existing token's plan in place (edits made after the
     // itinerary was first generated — swapped items, dismissed variants,
     // reordered days) rather than minting a new token for every change.
+    //
+    // Optimistic concurrency: the whole plan_json document is overwritten on
+    // every autosave, so without a guard two editors of the same token (the
+    // share link is the same token, and one person can just have two tabs
+    // open) silently overwrite each other, last write wins. A client that
+    // sends the `version` it loaded gets a 409 — carrying the current server
+    // state so it can resolve — instead of clobbering. The check and the write
+    // are one atomic conditional UPDATE, so two simultaneous requests can't
+    // both pass it.
+    //
+    // `version` is optional so a client that predates it keeps working
+    // unchanged (it just gets the old last-write-wins behaviour); it still
+    // bumps the counter, so a versioned client editing alongside it is
+    // protected.
     public function updatePlan(Request $request, string $token): JsonResponse
     {
-        $request->validate(['variant' => 'required|array']);
+        $validated = $request->validate([
+            'variant' => 'required|array',
+            'version' => 'sometimes|integer|min:1',
+        ]);
 
         $saved = SavedPlan::where('token', $token)->firstOrFail();
 
-        $planData = $request->input('variant');
+        $planData = $validated['variant'];
+        $title = Str::limit($planData['trip_summary'] ?? '', 80, '');
+        $expected = $validated['version'] ?? null;
 
-        $saved->update([
-            'title' => Str::limit($planData['trip_summary'] ?? '', 80, ''),
-            'plan_json' => $planData,
-        ]);
+        if ($expected === null) {
+            $saved->update(['title' => $title, 'plan_json' => $planData]);
+            $saved->increment('version');
 
-        return response()->json(['token' => $saved->token]);
+            return response()->json(['token' => $saved->token, 'version' => $saved->version]);
+        }
+
+        // json_encode by hand: an Eloquent *builder* update bypasses the
+        // model's `array` cast (unlike $model->update()), so plan_json would
+        // otherwise be handed to the driver as a PHP array.
+        $written = SavedPlan::query()
+            ->whereKey($saved->id)
+            ->where('version', $expected)
+            ->update([
+                'title' => $title,
+                'plan_json' => json_encode($planData),
+                'version' => $expected + 1,
+            ]);
+
+        if ($written === 0) {
+            return response()->json([
+                'message' => 'This plan was changed somewhere else since you opened it.',
+                'version' => $saved->fresh()?->version,
+                'variant' => $saved->fresh()?->plan_json,
+            ], 409);
+        }
+
+        return response()->json(['token' => $saved->token, 'version' => $expected + 1]);
     }
 
     // Re-runs itinerary generation from scratch with traveler-edited trip
