@@ -51,6 +51,18 @@ export interface ItineraryDay {
     room_selection?: RoomOption | null;
 }
 
+// One row of a day's merged chronological plan — an activity and a restaurant
+// entry live in the same list, told apart by `type` rather than by which array
+// they came from. `itemIndex` is the entry's position in its OWN source array
+// (day.activities / day.restaurants), not in the merged list, so remove/swap
+// keep addressing the right element after sorting. Built by dayEntries() in
+// ItinerarySection.vue, consumed by ItineraryDayPlanCard.vue.
+export interface DayEntry {
+    type: 'activity' | 'restaurant';
+    item: ItineraryListingRef;
+    itemIndex: number;
+}
+
 export interface ItineraryVariant {
     name: string;
     vehicle?: ItineraryListingRef | null;
