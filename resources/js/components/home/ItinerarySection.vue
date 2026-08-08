@@ -8,6 +8,7 @@ import draggable from 'vuedraggable';
 import ImageLightbox from '@/components/ImageLightbox.vue';
 import { formatPrice } from '@/lib/currency';
 import {
+    claimPlan,
     fetchAllCities,
     fetchCities,
     fetchRegionCoords,
@@ -59,6 +60,10 @@ const props = defineProps<{
     // server rejects writes regardless; this stops the UI from offering edits
     // it knows will fail, and stops the autosave from firing at all.
     canEdit?: boolean;
+    // Whether the plan already sits in this traveler's account. Separate from
+    // having a token: the autosave persists anonymously, and only an
+    // authenticated claim (KaiaController::claimPlan) makes a plan owned.
+    owned?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -145,6 +150,11 @@ const currentVersion = ref<number | null>(props.version ?? null);
 
 const currentShareToken = ref<string | null>(props.shareToken ?? null);
 
+// Moves to true the moment the plan is attached to an account — either because
+// the traveler was already logged in when it was first persisted, or because
+// they pressed Save (which claims it). Drives the Save button's state.
+const currentOwned = ref<boolean>(props.owned ?? false);
+
 // Everything editable in this section is gated on this. Defaults to editable
 // so the ordinary chat -> plan flow (which passes no canEdit at all) is
 // unaffected; only a read-only share link turns it off.
@@ -171,8 +181,12 @@ function reloadPlan() {
 const routeStart = ref('Windhoek');
 const routeEnd = ref('Windhoek');
 
-// --- Auth-gate for saving ---
+// --- Auth-gate for saving and booking ---
 const showAuthModal = ref(false);
+// What the modal was opened for, so logging in continues the thing the
+// traveler actually pressed instead of always falling through to "save".
+const authIntent = ref<'save' | 'book'>('save');
+const pendingBookVariant = ref<ItineraryVariant | null>(null);
 
 // --- Confirm dialog for all "×" removal actions — a real modal, not
 // window.confirm(), so it matches the rest of the UI. A single pending
@@ -812,6 +826,7 @@ async function runPersist() {
             currentToken.value = result.token;
             currentVersion.value = result.version;
             currentShareToken.value = result.shareToken;
+            currentOwned.value = result.owned;
             emit('update:token', result.token);
         }
     } catch (e) {
@@ -1251,12 +1266,45 @@ function applySwap(alternative: ItineraryListingRef) {
 
 // Called by SaveShareBar when the user isn't logged in
 function onNeedAuth() {
+    authIntent.value = 'save';
     showAuthModal.value = true;
 }
 
-// After successful login in the modal: save ALL variants so none is lost
+/**
+ * Booking needs an account (TripController::store is behind `auth`), so ask for
+ * one here rather than letting the traveler fill in the whole guest form and
+ * get bounced on submit. Nothing is lost either way — the plan itself keeps
+ * autosaving on its token throughout.
+ */
+function onBookClick(variant: ItineraryVariant) {
+    if (!isLoggedIn.value) {
+        authIntent.value = 'book';
+        pendingBookVariant.value = variant;
+        showAuthModal.value = true;
+
+        return;
+    }
+
+    emit('book', variant);
+}
+
+// After a successful login in the modal, pick up whatever was interrupted.
 async function onAuthSuccess() {
     showAuthModal.value = false;
+
+    if (authIntent.value === 'book') {
+        const variant = pendingBookVariant.value;
+        pendingBookVariant.value = null;
+
+        if (variant) {
+            // No explicit save first: booking claims the plan for this account
+            // server-side, which is the same thing saving would have done.
+            emit('book', variant);
+        }
+
+        return;
+    }
+
     await saveAllVariants();
 }
 
@@ -1264,14 +1312,21 @@ async function saveAllVariants() {
     const results = await Promise.allSettled(
         editableVariants.value.map((variant, i) => {
             // The common case (a single variant) is already sitting behind
-            // currentToken from auto-persist — reuse that instead of
-            // minting a second, orphaned token whose /trip/ link would
-            // silently diverge from the ?trip= link already in the address
-            // bar (same plan content, two different saved rows/tokens).
+            // currentToken from auto-persist — claim that row for the account
+            // instead of minting a second, orphaned token whose /trip/ link
+            // would silently diverge from the ?trip= link already in the
+            // address bar (same plan content, two different saved rows).
+            //
+            // Claiming is the whole point of this call: the plan was persisted
+            // anonymously while the traveler was logged out, so without it the
+            // row keeps user_id = null and never reaches their dashboard —
+            // which is exactly what "save" was silently failing to do before.
             if (editableVariants.value.length === 1 && currentToken.value) {
                 savedTokens.value[i] = currentToken.value;
 
-                return Promise.resolve();
+                return claimPlan(currentToken.value).then(() => {
+                    currentOwned.value = true;
+                });
             }
 
             return savePlan({
@@ -1424,8 +1479,14 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                 >
                     <h3>{{ variant.name }}</h3>
                     <div class="variant-head-actions">
+                        <!--
+                            Hidden for a read-only visitor: the only token they
+                            hold is the share one, which claimPlan rejects.
+                            "Save someone else's plan to my account" would have
+                            to mean copying it, and that isn't built.
+                        -->
                         <SaveButton
-                            v-if="editableVariants.length === 1"
+                            v-if="!readonly && editableVariants.length === 1"
                             :plan="{
                                 trip_summary: currentTripSummary,
                                 variants: [variant],
@@ -1435,10 +1496,12 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                             }"
                             :existing-token="currentToken"
                             :share-token="currentShareToken"
+                            :owned="currentOwned"
                             :is-logged-in="isLoggedIn"
                             @saved="
                                 (token) => {
                                     savedTokens[variantIndex] = token;
+                                    currentOwned = true;
                                 }
                             "
                             @need-auth="onNeedAuth"
@@ -2297,7 +2360,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                 <button
                     v-if="!readonly"
                     class="cta"
-                    @click="emit('book', variant)"
+                    @click="onBookClick(variant)"
                 >
                     {{ t('itinerary.bookCta') }}
                 </button>
@@ -2327,6 +2390,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
 
         <SaveLoginModal
             v-if="showAuthModal"
+            :intent="authIntent"
             @close="showAuthModal = false"
             @authenticated="onAuthSuccess"
         />

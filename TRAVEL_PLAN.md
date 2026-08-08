@@ -83,20 +83,19 @@ Decided — where the account line sits:
   one-active-request-per-traveler rule in `CLAUDE.md` coherent: exactly one
   responsible person per booking pipeline.
 
-That resolves who needs an account, but it isn't implemented as stated:
+✅ *All three enforced as of session 6.* This used to be a statement of intent
+with no server behind it; it is now what the code actually does:
 
-- Saving is gated in the frontend only (`SaveButton` emits `need-auth` when
-  `isLoggedIn === false`); `SavedPlanController::store` happily accepts an
-  anonymous save with a null `user_id`, which is what the token auto-persist
-  path (`runPersist`) relies on. So "saving needs an account" is a UI rule,
-  not a server rule — fine while the two paths are one and the same, but it
-  needs a real distinction once plans have owners.
-- Booking requires neither login nor plan ownership today:
-  `ListingController::storeInquiry` / `storeBatchInquiry` and
-  `TripController::store` are unauthenticated, and the active-request gate
-  keys on the submitted email address. There is no "creator" concept being
-  checked anywhere, so "only the creator can book" has no enforcement point
-  yet — `SavedPlan.user_id` is the obvious anchor, but nothing reads it.
+- Creating and editing a plan still need no account (the autosave path is
+  untouched), but an anonymous request can only ever produce an *unowned* plan.
+  Attaching one to an account goes through `KaiaController::claimPlan`, which
+  is behind `auth` — that's the account line, and it's the only thing that
+  writes `SavedPlan.user_id`.
+- `ListingController::storeInquiry` / `storeBatchInquiry` and
+  `TripController::store` are all behind `auth`.
+- "Only the creator can book" resolves from the plan token the booking is made
+  against: it must be the plan's *edit* token, and a plan that already has an
+  owner may only be booked by that owner.
 
 Still open:
 
@@ -104,9 +103,11 @@ Still open:
   v1? Live collaboration is a much bigger build (broadcasting, presence).
 - Beyond booking, what else stays creator-only — revoking access, deleting
   the plan, changing trip params that invalidate others' work?
-- What happens to a plan created anonymously (token only) once someone
-  wants to collaborate on it: claim it into the creating account first, or
-  can a token-only plan gain participants?
+- Partly answered in session 6: an anonymous plan is claimed into an account
+  the first time its holder saves or books it, and claiming is first-come
+  (a plan that has an owner keeps it). What's still open is the other half —
+  whether a *token-only* plan can gain participants without being claimed
+  first, which only matters once participants exist at all.
 
 Not scoped or started — flagged here so plan-related work doesn't get built
 in a way that has to be torn up. Concretely: assume a plan has **several
@@ -350,6 +351,51 @@ the share link *is* the creator's edit token.
   the Postgres test DB, not `phpunit.xml`'s sqlite:
   `DB_DATABASE=namibway_test DB_CONNECTION=pgsql ... php artisan test`.
 
+### Session 6 — 2026-08-08
+
+Closing the gap between the account line CLAUDE.md *states* and what the server
+actually enforced. Picked for the same reason as session 5: these were live,
+and two of them were exploitable by anyone holding a link.
+
+- ✅ **Saving to an account is a server rule.** New `POST
+  /kaia/plans/{token}/claim` behind `auth` (`KaiaController::claimPlan`) — the
+  only path that ever writes `SavedPlan.user_id`. Creating and autosaving a
+  plan stay open, so the frictionless chat → plan path is untouched; what an
+  anonymous request can no longer do is produce an owned plan.
+  - This also fixes a plain bug: `SaveButton` treated *having a token* as
+    "saved", and `saveAllVariants()` short-circuited to a no-op when the plan
+    was already auto-persisted. So a logged-out traveler who pressed Save, then
+    logged in, got a saved-looking bookmark on a row that kept `user_id = null`
+    forever and never appeared on their dashboard. The button now tracks real
+    ownership (`owned`, reported by `savePlan`/`loadPlan`/the `/trip` page) and
+    claims the existing row instead of silently doing nothing.
+- ✅ **Booking requires an account.** `trips.store`,
+  `listings.inquiries.store` and `inquiries.batch.store` are all behind `auth`.
+  The UI asks first rather than letting a form bounce: the plan's Book button
+  opens the login modal (with booking-specific copy — `intent` prop on
+  `SaveLoginModal`), and the listing/shortlist inquiry forms render a login CTA
+  in place of the form. Name and email prefill from the account once in.
+- ✅ **Only the plan's creator can book it.** `TripController::store` now takes
+  a required `plan_token`, resolved against the *edit* token only — a
+  read-only share token gets the same 403 as an unknown token, so it can't be
+  used to probe for its editable twin. A plan owned by someone else is refused;
+  an unowned one is claimed by the booker, since possession of the edit token
+  is what "creator" means until an identity is attached.
+- ✅ **The one-active-request gate follows the account, not the typed email.**
+  Three copies of the same query became `ActiveRequestGate` (matches on
+  `user_id` OR `email`). Keying on email alone meant the rule was avoidable by
+  typing a second address — which is the one thing it exists to prevent.
+- ✅ **`trips.user_id` / `trips.saved_plan_id` / `inquiries.user_id`** (one
+  migration). Bookings had no owner at all before, which is why none of the
+  above had a column to check. `saved_plan_id` is also the anchor the "booking
+  facts on a plan entry" backlog item needs.
+- ✅ **Fixed while here:** `GET /trips/{trip}/inquiries` was unauthenticated
+  and the id is a plain auto-increment, so counting upwards listed any
+  traveler's booked lodges and their confirmation states. Now scoped to the
+  trip's owner.
+- 18 tests in `tests/Feature/BookingAccountGateTest.php`. Same Postgres caveat
+  as session 5 — `phpunit.xml`'s sqlite can't run the migrations.
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its
@@ -385,11 +431,12 @@ the share link *is* the creator's edit token.
   doesn't actually change results.
 - 🟡 **Collaborative trip plan** (read-only vs. write sharing, co-planning,
   comments with follow-ups, change log) — see the dedicated section above.
-  The two live-relevant halves are now done (session 5): the share link is
-  read-only, and a stale write is rejected instead of silently clobbering.
-  Still open: participants/identities, per-person write grants, comments,
-  and change attribution — i.e. everything that needs a person attached to
-  a change rather than just a token.
+  The live-relevant halves are done: the share link is read-only and a stale
+  write is rejected instead of silently clobbering (session 5), and a plan now
+  has a real owner that saving and booking are checked against (session 6).
+  Still open: participants as first-class rows, per-person write grants,
+  comments, and change attribution — i.e. everything that needs a person
+  attached to *each change* rather than a single owner per plan.
 - ⬜ **On-trip progress tracker** — see the dedicated section above.
 - ⬜ Removing a single day from inside a collapsed multi-night stay isn't
   possible from the UI anymore (only the stay's first day and any day with

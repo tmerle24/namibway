@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+
+const props = withDefaults(
+    defineProps<{
+        // Why the modal is up. Both paths need the same account, but a
+        // traveler asked to log in halfway through booking should be told
+        // that's what it's for — "Save your plan" reads like the wrong dialog.
+        intent?: 'save' | 'book';
+    }>(),
+    { intent: 'save' },
+);
 
 const emit = defineEmits<{
     (e: 'close'): void;
@@ -9,6 +19,15 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const heading = computed(() =>
+    props.intent === 'book' ? t('saveModal.bookTitle') : t('saveModal.title'),
+);
+const subheading = computed(() =>
+    props.intent === 'book'
+        ? t('saveModal.bookSubtitle')
+        : t('saveModal.subtitle'),
+);
 
 type Tab = 'login' | 'register';
 const tab = ref<Tab>('login');
@@ -148,8 +167,8 @@ function flattenErrors(data: unknown): string {
                 ×
             </button>
 
-            <h3>{{ t('saveModal.title') }}</h3>
-            <p class="modal-sub">{{ t('saveModal.subtitle') }}</p>
+            <h3>{{ heading }}</h3>
+            <p class="modal-sub">{{ subheading }}</p>
 
             <div class="modal-tabs">
                 <button

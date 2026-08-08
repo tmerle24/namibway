@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Form } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Form, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import InputError from '@/components/InputError.vue';
 import batch from '@/routes/inquiries/batch';
@@ -17,6 +17,23 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const formOpen = ref(false);
+
+// A shortlist request is a booking request, and those need an account
+// (inquiries.batch.store is behind `auth`). Show that up front instead of a
+// form whose submit would bounce to the login page and lose the shortlist.
+const account = computed(
+    () =>
+        (
+            usePage().props.auth as
+                { user: { name?: string; email?: string } | null } | undefined
+        )?.user ?? null,
+);
+
+function loginUrl(): string {
+    return `/login/start?redirect=${encodeURIComponent(
+        window.location.pathname + window.location.search,
+    )}`;
+}
 </script>
 
 <template>
@@ -37,7 +54,14 @@ const formOpen = ref(false);
             </button>
         </div>
         <div v-if="formOpen" class="shortlist-panel">
+            <div v-if="!account" class="shortlist-login">
+                <p>{{ t('explore.shortlist.loginRequired') }}</p>
+                <a :href="loginUrl()" class="cta">{{
+                    t('explore.shortlist.login')
+                }}</a>
+            </div>
             <Form
+                v-else
                 v-bind="batch.store.form()"
                 reset-on-success
                 :transform="
@@ -52,12 +76,22 @@ const formOpen = ref(false);
             >
                 <label>
                     {{ t('explore.shortlist.name') }}
-                    <input name="name" type="text" required />
+                    <input
+                        name="name"
+                        type="text"
+                        required
+                        :value="account.name"
+                    />
                     <InputError :message="errors.name" />
                 </label>
                 <label>
                     {{ t('explore.shortlist.email') }}
-                    <input name="email" type="email" required />
+                    <input
+                        name="email"
+                        type="email"
+                        required
+                        :value="account.email"
+                    />
                     <InputError :message="errors.email" />
                 </label>
                 <label>
@@ -177,6 +211,24 @@ const formOpen = ref(false);
 .shortlist-form .cta:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+.shortlist-login {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 13px;
+    color: #5b5346;
+}
+
+.shortlist-login .cta {
+    align-self: flex-start;
+    border-radius: 999px;
+    padding: 10px 20px;
+    background: var(--rust, #b5651d);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
 }
 
 .confirm-note {

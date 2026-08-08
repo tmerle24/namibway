@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { GuestDetails, ItineraryVariant } from '@/lib/kaia-types';
 
@@ -76,8 +77,19 @@ function deriveCheckOut(variant: ItineraryVariant): string {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const name = ref('');
-const email = ref('');
+// Booking requires an account, so the two fields the account already knows
+// shouldn't be retyped. Still editable: the traveler booking may want the
+// confirmation to go to a different address than the one they log in with.
+const account = computed(
+    () =>
+        (
+            usePage().props.auth as
+                { user: { name?: string; email?: string } | null } | undefined
+        )?.user ?? null,
+);
+
+const name = ref(account.value?.name ?? '');
+const email = ref(account.value?.email ?? '');
 const phone = ref('');
 const checkIn = ref(parseDateToIso(props.variant.days[0]?.date));
 const checkOut = ref(deriveCheckOut(props.variant));

@@ -34,3 +34,10 @@ Route::get('kaia/plans/{token}', [KaiaController::class, 'loadPlan'])
 Route::patch('kaia/plans/{token}', [KaiaController::class, 'updatePlan'])
     ->middleware('throttle:60,1')
     ->name('kaia.plans.update');
+
+// "Save to my account" — the account line, enforced here rather than in the
+// frontend. Creating and editing a plan stay open (token only); attaching one
+// to an account does not.
+Route::post('kaia/plans/{token}/claim', [KaiaController::class, 'claimPlan'])
+    ->middleware(['auth', 'throttle:20,1'])
+    ->name('kaia.plans.claim');

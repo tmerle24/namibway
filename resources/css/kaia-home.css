@@ -2516,6 +2516,28 @@ body:has(.kaia-page) {
     opacity: 0.5;
     cursor: default;
 }
+/* Shown in place of the inquiry form when nobody is logged in — sending an
+   inquiry is a booking request, and those need an account. */
+.kaia-page .inquiry-login {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    font-size: 13px;
+    color: #5b5346;
+}
+.kaia-page .inquiry-login .cta {
+    background: var(--rust);
+    color: var(--paper);
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    text-align: center;
+    text-decoration: none;
+}
+.kaia-page .inquiry-login .cta:hover {
+    background: var(--rust-dark);
+}
 .kaia-page .detail-hero-overlay .detail-rating {
     color: var(--gold);
     font-weight: 600;

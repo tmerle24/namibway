@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
-import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Globe, Pencil, UserPlus } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -103,6 +103,22 @@ const props = defineProps<{
     preview_token?: string | null;
     claim_url?: string | null;
 }>();
+
+// The logged-in account, if any — an inquiry is a booking request and needs
+// one. Also used to prefill the two fields it already knows.
+const account = computed(
+    () =>
+        (
+            usePage().props.auth as
+                { user: { name?: string; email?: string } | null } | undefined
+        )?.user ?? null,
+);
+
+function inquiryLoginUrl(): string {
+    return `/login/start?redirect=${encodeURIComponent(
+        window.location.pathname,
+    )}`;
+}
 
 const showPublishModal = ref(false);
 const lightboxIndex = ref<number | null>(null);
@@ -661,7 +677,20 @@ const websiteUrl = computed(
                                     : t('listing.inquiry.subtitleGeneric')
                             }}
                         </p>
+                        <!--
+                            Sending an inquiry is a booking request, so it needs
+                            an account (listings.inquiries.store is behind
+                            `auth`). Ask for the login instead of a form whose
+                            submit would bounce, losing everything typed into it.
+                        -->
+                        <div v-if="!account" class="inquiry-login">
+                            <p>{{ t('listing.inquiry.loginRequired') }}</p>
+                            <a :href="inquiryLoginUrl()" class="cta">{{
+                                t('listing.inquiry.login')
+                            }}</a>
+                        </div>
                         <Form
+                            v-else
                             v-bind="
                                 inquiries.store.form({
                                     listing: props.listing.slug,
@@ -673,12 +702,22 @@ const websiteUrl = computed(
                         >
                             <label>
                                 {{ t('listing.inquiry.name') }}
-                                <input name="name" type="text" required />
+                                <input
+                                    name="name"
+                                    type="text"
+                                    required
+                                    :value="account.name"
+                                />
                                 <InputError :message="errors.name" />
                             </label>
                             <label>
                                 {{ t('listing.inquiry.email') }}
-                                <input name="email" type="email" required />
+                                <input
+                                    name="email"
+                                    type="email"
+                                    required
+                                    :value="account.email"
+                                />
                                 <InputError :message="errors.email" />
                             </label>
                             <label>

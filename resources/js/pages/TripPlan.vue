@@ -21,6 +21,8 @@ const props = defineProps<{
     version: number;
     // False when this page was opened through a read-only share link.
     canEdit: boolean;
+    // Whether this plan is already in the viewer's own account.
+    owned: boolean;
     // The plan's read-only token — always the one handed out, even when this
     // page was reached via the edit link.
     shareToken: string | null;
@@ -71,11 +73,16 @@ async function onGuestSubmit(details: GuestDetails) {
     bookingError.value = null;
 
     try {
+        // The plan's own token — the server books against it to establish that
+        // this is the creator and not someone the plan was shared with. Safe to
+        // pass props.token: a read-only visitor never gets this far (the book
+        // CTA is hidden for them), and the share token would be refused anyway.
         const result = await createTrip(
             details,
             bookingVariant.value.name,
             props.plan,
             bookingVariant.value.days,
+            props.token,
         );
         bookingTripId.value = result.trip_id;
         bookingActive.value = true;
@@ -128,6 +135,7 @@ async function onGuestSubmit(details: GuestDetails) {
                 :version="version"
                 :share-token="shareToken"
                 :can-edit="canEdit"
+                :owned="owned"
                 @book="onBook"
                 @update:token="tripToken = $event"
             />
