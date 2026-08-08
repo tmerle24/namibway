@@ -65,17 +65,45 @@ Where this collides with what exists today:
 - Nothing is attributable: a change leaves no trace of who made it, so the
   log has nowhere to come from yet.
 
-Open questions to settle before building:
+Decided — where the account line sits:
 
-- Do participants need accounts, or is a named-but-anonymous "who are you?"
-  prompt on opening a write link enough? (Today's flow deliberately avoids
-  forcing login — see "Drop login requirement from trip-plan sharing".)
+- **No account:** viewing and editing the plan that just came out of the
+  Kaia chat (swap items, reorder days, edit trip params), via the
+  `SavedPlan` token. This path stays frictionless — it's the product's
+  first impression, and the login requirement was deliberately dropped
+  here (see "Drop login requirement from trip-plan sharing").
+- **Account required:** saving a plan to your account, **collaborative
+  editing** (a co-planner needs an identity — that's also what makes the
+  change log meaningful), and booking.
+- **Only the creator can book, for now.** Sharing a plan for co-planning
+  does not hand over the ability to send booking requests. This keeps the
+  one-active-request-per-traveler rule in `CLAUDE.md` coherent: exactly one
+  responsible person per booking pipeline.
+
+That resolves who needs an account, but it isn't implemented as stated:
+
+- Saving is gated in the frontend only (`SaveButton` emits `need-auth` when
+  `isLoggedIn === false`); `SavedPlanController::store` happily accepts an
+  anonymous save with a null `user_id`, which is what the token auto-persist
+  path (`runPersist`) relies on. So "saving needs an account" is a UI rule,
+  not a server rule — fine while the two paths are one and the same, but it
+  needs a real distinction once plans have owners.
+- Booking requires neither login nor plan ownership today:
+  `ListingController::storeInquiry` / `storeBatchInquiry` and
+  `TripController::store` are unauthenticated, and the active-request gate
+  keys on the submitted email address. There is no "creator" concept being
+  checked anywhere, so "only the creator can book" has no enforcement point
+  yet — `SavedPlan.user_id` is the obvious anchor, but nothing reads it.
+
+Still open:
+
 - Live/simultaneous editing, or is "refresh to see changes" acceptable for
   v1? Live collaboration is a much bigger build (broadcasting, presence).
-- Does the owner keep special rights (revoke access, delete the plan,
-  final say on bookings)? Booking a shared plan especially needs one clear
-  responsible person — the request-governance rules in `CLAUDE.md` are
-  written around a single traveler.
+- Beyond booking, what else stays creator-only — revoking access, deleting
+  the plan, changing trip params that invalidate others' work?
+- What happens to a plan created anonymously (token only) once someone
+  wants to collaborate on it: claim it into the creating account first, or
+  can a token-only plan gain participants?
 
 Not scoped or started — flagged here so plan-related work doesn't get built
 in a way that has to be torn up. Concretely: assume a plan has **several

@@ -18,6 +18,13 @@ What "good" means here, in the order it gets judged:
 
 **Direction of travel: the plan becomes collaborative.** A trip is rarely planned by one person, so a plan is meant to be shared with fellow travelers who can join in — shared **read-only or with write access**, co-planning or commenting, with follow-ups on comments and a log of who changed what. Today's sharing is a single link that is implicitly full-write (`SavedPlan` token; `KaiaController::updatePlan` authorizes nothing beyond knowing the token, and the recorded `user_id`/`session_id` are unused), and there are no participants, comments, or history — so this is a real data-model step, not a UI toggle. Build new plan features so they don't have to be torn up for it: assume a plan has multiple people with different permissions, and that every change is attributable. Shape and open questions: `TRAVEL_PLAN.md` → "Future concept: collaborative trip plan".
 
+**Where the account line sits.** Getting a plan and playing with it costs nothing — an account is only required once the plan becomes *durable, shared, or real*:
+- **No account:** everything straight out of the Kaia chat — viewing the generated plan and editing it (swap items, reorder days, change trip params). This runs on the `SavedPlan` token and must stay frictionless; it's the first impression of the product.
+- **Account required:** saving a plan to your account, collaborative editing (a co-planner is a person, so they need an identity), and booking.
+- **Booking is the creator's alone, for now.** A shared plan does not turn co-planners into bookers — this keeps the one-active-request-per-traveler governance below coherent, which assumes exactly one responsible person per pipeline.
+
+Enforcement today only partly matches: the save-to-account gate is client-side (`SaveButton` checks `isLoggedIn`; `SavedPlanController::store` still accepts anonymous saves, which the token auto-persist path relies on), and the booking endpoints (`ListingController::storeInquiry`, `TripController::store`) require neither login nor any notion of plan ownership — the active-request gate keys on the email address. Closing that gap is part of the collaborative work, not a separate cleanup.
+
 `TRAVEL_PLAN.md` is the working log for exactly this — read its "Known gaps / next up" before starting, and add a dated entry when you finish something.
 
 ## Brand & expansion
