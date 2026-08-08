@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Capacitor } from '@capacitor/core';
 import { SpeechRecognition as NativeSpeechRecognition } from '@capgo/capacitor-speech-recognition';
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import SiteHeader from '@/components/SiteHeader.vue';
 import { formatPrice } from '@/lib/currency';
@@ -213,10 +213,44 @@ function stopThinking() {
     }
 }
 
+// #kaia-hero's `100dvh`-based min-height in the mobile full-screen chat
+// state (see the `chat-fullscreen` rules in kaia-home.css) accounts for
+// Safari's collapsing toolbar but not the on-screen keyboard — WebKit
+// treats the keyboard as an overlay on top of the page, not a change to
+// the viewport, so `dvh` stays sized for the pre-keyboard screen. Left
+// alone, the chat column (and the input row riding at its bottom) never
+// shrinks to make room, so the input ends up positioned behind the
+// keyboard with nothing visible to bring it back into view.
+// window.visualViewport is the one API that does track the keyboard —
+// mirror the gap between it and the layout viewport into a CSS var so the
+// fullscreen min-height calc can subtract it instead.
+function updateKeyboardInset() {
+    const vv = window.visualViewport;
+
+    if (!vv) {
+        return;
+    }
+
+    const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    document.documentElement.style.setProperty(
+        '--keyboard-inset',
+        `${inset}px`,
+    );
+}
+
+onMounted(() => {
+    updateKeyboardInset();
+    window.visualViewport?.addEventListener('resize', updateKeyboardInset);
+    window.visualViewport?.addEventListener('scroll', updateKeyboardInset);
+});
+
 onUnmounted(() => {
     stopThinking();
     stopListening();
     unlockBodyScroll();
+    window.visualViewport?.removeEventListener('resize', updateKeyboardInset);
+    window.visualViewport?.removeEventListener('scroll', updateKeyboardInset);
+    document.documentElement.style.removeProperty('--keyboard-inset');
 
     if (isNativePlatform) {
         void NativeSpeechRecognition.removeAllListeners();
