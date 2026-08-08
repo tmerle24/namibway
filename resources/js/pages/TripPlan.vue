@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
-import { usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import BookingSection from '@/components/home/BookingSection.vue';
 import GuestDetailsForm from '@/components/home/GuestDetailsForm.vue';
 import ItinerarySection from '@/components/home/ItinerarySection.vue';
-import { createTrip } from '@/lib/kaia-client';
+import SaveLoginModal from '@/components/home/SaveLoginModal.vue';
+import { claimPlan, createTrip } from '@/lib/kaia-client';
 import type {
     GuestDetails,
     ItineraryPlan,
@@ -33,8 +34,30 @@ const page = usePage();
 const auth = computed(() => page.props.auth as { user: { id: number } | null });
 const isLoggedIn = computed(() => auth.value.user !== null);
 
-function loginUrl(): string {
-    return `/login/start?redirect=/trip/${props.token}`;
+const showLogin = ref(false);
+const loginTab = ref<'login' | 'register'>('login');
+
+function openLogin(tab: 'login' | 'register') {
+    loginTab.value = tab;
+    showLogin.value = true;
+}
+
+async function onBannerAuthenticated() {
+    showLogin.value = false;
+
+    // Claim the plan for the account that just logged in — that's what "keep
+    // this trip plan" means. Only possible from the edit link; a read-only
+    // visitor is not its creator, and claimPlan would refuse anyway.
+    if (props.canEdit) {
+        try {
+            await claimPlan(props.token);
+        } catch (e) {
+            console.warn('Failed to save plan to account:', e);
+        }
+    }
+
+    // Reload so the banner, `owned` and the shared auth prop all reflect it.
+    router.reload();
 }
 
 const { t } = useI18n();
@@ -114,20 +137,41 @@ async function onGuestSubmit(details: GuestDetails) {
                 </div>
             </header>
 
+            <!--
+                "Keep this trip plan" is the save-to-account pitch, so it opens
+                the same modal the Save button does rather than navigating away
+                — and logging in from here claims the plan, which is what the
+                banner promises.
+            -->
             <div v-if="!isLoggedIn" class="login-banner">
                 <div class="login-banner-text">
                     <strong>{{ t('tripPlan.loginCta.title') }}</strong>
                     <span>{{ t('tripPlan.loginCta.subtitle') }}</span>
                 </div>
                 <div class="login-banner-actions">
-                    <a :href="loginUrl()" class="login-btn">{{
-                        t('tripPlan.loginCta.login')
-                    }}</a>
-                    <a href="/register" class="register-btn">{{
-                        t('tripPlan.loginCta.register')
-                    }}</a>
+                    <button
+                        type="button"
+                        class="login-btn"
+                        @click="openLogin('login')"
+                    >
+                        {{ t('tripPlan.loginCta.login') }}
+                    </button>
+                    <button
+                        type="button"
+                        class="register-btn"
+                        @click="openLogin('register')"
+                    >
+                        {{ t('tripPlan.loginCta.register') }}
+                    </button>
                 </div>
             </div>
+
+            <SaveLoginModal
+                v-if="showLogin"
+                :initial-tab="loginTab"
+                @close="showLogin = false"
+                @authenticated="onBannerAuthenticated"
+            />
 
             <ItinerarySection
                 :plan="plan"
@@ -225,6 +269,12 @@ async function onGuestSubmit(details: GuestDetails) {
     background: #c0533a;
     color: #fff;
     text-decoration: none;
+    /* Both of these became <button>s when the banner started opening the
+       login modal instead of navigating — a button brings its own border,
+       font and cursor defaults that an <a> never had. */
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
 }
 
 .login-btn:hover {
@@ -241,6 +291,8 @@ async function onGuestSubmit(details: GuestDetails) {
     color: #c0533a;
     border: 1px solid #c0533a;
     text-decoration: none;
+    font-family: inherit;
+    cursor: pointer;
 }
 
 .register-btn:hover {

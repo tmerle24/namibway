@@ -2,13 +2,14 @@
 import '../../css/kaia-home.css';
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Globe, Pencil, UserPlus } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import ExploreMap from '@/components/home/ExploreMap.vue';
 import type { ExploreMapMarker } from '@/components/home/ExploreMap.vue';
 import MobileFooterNav from '@/components/home/MobileFooterNav.vue';
+import SaveLoginModal from '@/components/home/SaveLoginModal.vue';
 import ImageLightbox from '@/components/ImageLightbox.vue';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
@@ -105,7 +106,8 @@ const props = defineProps<{
 }>();
 
 // The logged-in account, if any — an inquiry is a booking request and needs
-// one. Also used to prefill the two fields it already knows.
+// one. Reactive, because logging in through the modal below resolves it
+// without leaving the page.
 const account = computed(
     () =>
         (
@@ -114,10 +116,39 @@ const account = computed(
         )?.user ?? null,
 );
 
-function inquiryLoginUrl(): string {
-    return `/login/start?redirect=${encodeURIComponent(
-        window.location.pathname,
-    )}`;
+// A deliberate one-shot snapshot for prefilling: a reactive :value would
+// overwrite whatever the traveler typed the moment they log in, and send the
+// account's name instead of the one they entered for this trip.
+const initialAccount = account.value;
+
+const inquiryForm = ref<{ submit: () => void } | null>(null);
+const showInquiryLogin = ref(false);
+
+function onInquirySend(event: MouseEvent) {
+    // Logged in: the button is a real submit and this does nothing.
+    if (account.value) {
+        return;
+    }
+
+    // type="button" skips the browser's own required-field check, so run it
+    // by hand — otherwise an empty form sends the traveler through a login
+    // only to come back with validation errors.
+    const form = (event.currentTarget as HTMLElement).closest('form');
+
+    if (form && !form.reportValidity()) {
+        return;
+    }
+
+    showInquiryLogin.value = true;
+}
+
+async function onInquiryAuthenticated() {
+    showInquiryLogin.value = false;
+
+    // Let the refreshed auth prop land before submitting, so the button is a
+    // submit again and the request carries the new session.
+    await nextTick();
+    inquiryForm.value?.submit();
 }
 
 const showPublishModal = ref(false);
@@ -680,17 +711,12 @@ const websiteUrl = computed(
                         <!--
                             Sending an inquiry is a booking request, so it needs
                             an account (listings.inquiries.store is behind
-                            `auth`). Ask for the login instead of a form whose
-                            submit would bounce, losing everything typed into it.
+                            `auth`). The form is shown either way; the login is
+                            asked for in a modal at the moment of sending, so
+                            nothing typed in here is lost to a page change.
                         -->
-                        <div v-if="!account" class="inquiry-login">
-                            <p>{{ t('listing.inquiry.loginRequired') }}</p>
-                            <a :href="inquiryLoginUrl()" class="cta">{{
-                                t('listing.inquiry.login')
-                            }}</a>
-                        </div>
                         <Form
-                            v-else
+                            ref="inquiryForm"
                             v-bind="
                                 inquiries.store.form({
                                     listing: props.listing.slug,
@@ -706,7 +732,7 @@ const websiteUrl = computed(
                                     name="name"
                                     type="text"
                                     required
-                                    :value="account.name"
+                                    :value="initialAccount?.name"
                                 />
                                 <InputError :message="errors.name" />
                             </label>
@@ -716,7 +742,7 @@ const websiteUrl = computed(
                                     name="email"
                                     type="email"
                                     required
-                                    :value="account.email"
+                                    :value="initialAccount?.email"
                                 />
                                 <InputError :message="errors.email" />
                             </label>
@@ -782,10 +808,18 @@ const websiteUrl = computed(
                                 <textarea name="message" rows="3"></textarea>
                                 <InputError :message="errors.message" />
                             </label>
+                            <!--
+                                type="button" while logged out, so the click
+                                opens the login modal instead of firing a
+                                request the server would only bounce. The typed
+                                values stay in the form and are sent as soon as
+                                the modal reports back.
+                            -->
                             <button
-                                type="submit"
+                                :type="account ? 'submit' : 'button'"
                                 class="cta"
                                 :disabled="processing"
+                                @click="onInquirySend"
                             >
                                 {{
                                     processing
@@ -793,6 +827,9 @@ const websiteUrl = computed(
                                         : t('listing.inquiry.send')
                                 }}
                             </button>
+                            <p v-if="!account" class="inquiry-login-note">
+                                {{ t('listing.inquiry.loginRequired') }}
+                            </p>
                             <p v-if="recentlySuccessful" class="confirm-note">
                                 {{ t('listing.inquiry.success') }}
                             </p>
@@ -898,6 +935,14 @@ const websiteUrl = computed(
                 </Form>
             </div>
         </section>
+
+        <!-- Opened by the inquiry form's send button while logged out. -->
+        <SaveLoginModal
+            v-if="showInquiryLogin"
+            intent="book"
+            @close="showInquiryLogin = false"
+            @authenticated="onInquiryAuthenticated"
+        />
 
         <SiteFooter />
         <MobileFooterNav />

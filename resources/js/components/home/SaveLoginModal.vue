@@ -9,8 +9,11 @@ const props = withDefaults(
         // traveler asked to log in halfway through booking should be told
         // that's what it's for — "Save your plan" reads like the wrong dialog.
         intent?: 'save' | 'book';
+        // Which tab to open on, for callers whose own button already said
+        // "create account" — landing them on the login tab is a wasted click.
+        initialTab?: 'login' | 'register';
     }>(),
-    { intent: 'save' },
+    { intent: 'save', initialTab: 'login' },
 );
 
 const emit = defineEmits<{
@@ -30,7 +33,7 @@ const subheading = computed(() =>
 );
 
 type Tab = 'login' | 'register';
-const tab = ref<Tab>('login');
+const tab = ref<Tab>(props.initialTab);
 
 // --- Login form ---
 const loginEmail = ref('');

@@ -368,13 +368,26 @@ and two of them were exploitable by anyone holding a link.
     logged in, got a saved-looking bookmark on a row that kept `user_id = null`
     forever and never appeared on their dashboard. The button now tracks real
     ownership (`owned`, reported by `savePlan`/`loadPlan`/the `/trip` page) and
-    claims the existing row instead of silently doing nothing.
+    claims the existing row instead of silently doing nothing. `SaveShareBar`'s
+    own "save to account" had the same shape of bug from the other side — it
+    called `savePlan()` again and minted a duplicate row whose token diverged
+    from the link the traveler may already have shared; it claims now too.
 - ✅ **Booking requires an account.** `trips.store`,
   `listings.inquiries.store` and `inquiries.batch.store` are all behind `auth`.
-  The UI asks first rather than letting a form bounce: the plan's Book button
-  opens the login modal (with booking-specific copy — `intent` prop on
-  `SaveLoginModal`), and the listing/shortlist inquiry forms render a login CTA
-  in place of the form. Name and email prefill from the account once in.
+  **Every** entry point asks in the same modal (`SaveLoginModal`, now with an
+  `intent` prop for booking-specific copy and an `initialTab` so a "create
+  account" button lands on the right tab) — never a redirect to `/login`:
+  - the plan's Book button opens it before the guest form,
+  - the listing and shortlist inquiry forms stay on screen and open it when
+    Send is pressed, then submit themselves once the traveler is in, so
+    nothing typed is lost. While logged out the button is `type="button"`, so
+    it runs `reportValidity()` by hand first — otherwise an empty form would
+    send someone through a login only to come back with errors.
+  - the `/trip` page's "keep this plan" banner opens it too, and claims the
+    plan on success rather than navigating away.
+  - Prefill from the account is a one-shot read (`initialAccount`), never a
+    reactive binding: a live one would overwrite a name the traveler had
+    already typed the instant they logged in, and send the account's instead.
 - ✅ **Only the plan's creator can book it.** `TripController::store` now takes
   a required `plan_token`, resolved against the *edit* token only — a
   read-only share token gets the same 403 as an unknown token, so it can't be

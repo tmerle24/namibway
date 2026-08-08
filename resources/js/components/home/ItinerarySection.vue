@@ -2378,6 +2378,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                         editableVariants.length === 1 ? currentToken : null
                     "
                     :share-token="currentShareToken"
+                    :owned="currentOwned"
                     :is-logged-in="isLoggedIn"
                     @saved="
                         (token) => {
