@@ -7,6 +7,7 @@ Diese Doku beschreibt, wie man NamibWay lokal zum Laufen bringt und auf einem Pr
 - [Voraussetzungen](#voraussetzungen)
 - [Lokale Entwicklung](#lokale-entwicklung)
 - [Produktions-Deployment](#produktions-deployment)
+- [Bild-Thumbnails](#bild-thumbnails)
 - [Nützliche Befehle](#nützliche-befehle)
 - [Troubleshooting](#troubleshooting)
 
@@ -310,6 +311,46 @@ bash deploy.sh
 `restore.sh` sichert ein eventuell schon vorhandenes `.env` vor dem Überschreiben nach
 `.env.bak-restore`. `APP_URL`/`DB_HOST` in der wiederhergestellten `.env` prüfen, falls sich
 Hostname oder DB-Standort gegenüber dem alten Server geändert haben.
+
+---
+
+## Bild-Thumbnails
+
+Die App speichert von jedem Foto **nur das Original** — Google-Places-Fotos kommen mit
+1200px herein (`GooglePlacesPhotoFinder`), Filament-Uploads werden clientseitig auf 2000px
+gedeckelt (`AppServiceProvider`), gescrapte Heros sind fremde URLs. Ein 44px großes
+Tages-Thumbnail im Reiseplan würde ohne Weiteres das volle Original laden.
+
+Statt Derivate zu erzeugen und zu speichern, wird dasselbe Original von **Cloudflare Image
+Transformations** in der gewünschten Breite ausgeliefert (`/cdn-cgi/image/<optionen>/<pfad>`).
+Vorteil: kein Backfill über die Bestandsbibliothek, keine zweite Kopie, und `format=auto`
+liefert automatisch AVIF/WebP.
+
+**Das funktioniert nicht auf der Standard-Bucket-URL.** `https://pub-<hash>.r2.dev` liegt
+nicht auf der namibway.com-Zone und kennt kein `/cdn-cgi/image/`. Zum Einschalten:
+
+1. Im Cloudflare-Dashboard eine **Custom Domain** an den Media-Bucket hängen
+   (R2 → Bucket `namibway` → Settings → Public access → Custom Domain), z.B. `cdn.namibway.com`.
+   Der Bucket für Backups (`namibway-backups`) bekommt **keine** Custom Domain.
+2. Für die Zone `namibway.com` **Transformations** aktivieren
+   (Images → Transformations → Zone auf `on`). Kostet pro *einzigartiger* Transformation —
+   deshalb rastet `config/media.php` angefragte Breiten auf eine kurze Leiter
+   (64/128/256/400/800/1600), statt jede CSS-Pixelbreite durchzureichen.
+3. In der `.env` auf dem Server:
+   ```bash
+   CLOUDFLARE_R2_URL=https://cdn.namibway.com   # statt der pub-<hash>.r2.dev-URL
+   MEDIA_TRANSFORMS_ENABLED=true
+   ```
+4. `bash deploy_namibway.sh` (oder mindestens `php artisan config:cache`), danach im Browser
+   prüfen, dass ein Listen-Thumbnail eine `/cdn-cgi/image/...`-URL lädt und **200** liefert.
+
+**Solange das aus ist, funktioniert alles weiter** — jede URL wird unverändert durchgereicht,
+die Bilder sind nur so groß wie das Original. Einzige Ausnahme: Unsplash-Platzhalter werden
+über deren eigene Query-Parameter verkleinert, das läuft ohne Cloudflare und ohne Kosten.
+
+Wenn nach Schritt 4 Bilder verschwinden, ist fast immer Schritt 1 oder 2 unvollständig
+(Custom Domain fehlt, oder Transformations für die Zone nicht aktiv). `MEDIA_TRANSFORMS_ENABLED=false`
++ `php artisan config:cache` stellt den alten Zustand sofort wieder her.
 
 ---
 

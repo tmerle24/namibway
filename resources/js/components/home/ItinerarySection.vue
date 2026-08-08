@@ -26,6 +26,7 @@ import type {
     RoomOption,
     TripParams,
 } from '@/lib/kaia-types';
+import { thumbAttrs } from '@/lib/media';
 import ConfirmModal from './ConfirmModal.vue';
 import ItineraryDayPlanCard from './ItineraryDayPlanCard.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
@@ -1509,9 +1510,13 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                     <div class="vehicle-card">
                         <img
                             v-if="variant.vehicle.image"
-                            :src="variant.vehicle.image"
+                            v-bind="thumbAttrs(variant.vehicle.image, 64)"
                             :alt="variant.vehicle.name"
                             class="vehicle-card-img"
+                            width="64"
+                            height="48"
+                            loading="lazy"
+                            decoding="async"
                         />
                         <div class="vehicle-card-body">
                             <ItineraryLineItem
@@ -1867,13 +1872,20 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                 "
                                                             >
                                                                 <img
-                                                                    :src="
-                                                                        dayThumbnail(
-                                                                            day,
-                                                                        )!
+                                                                    v-bind="
+                                                                        thumbAttrs(
+                                                                            dayThumbnail(
+                                                                                day,
+                                                                            )!,
+                                                                            44,
+                                                                        )
                                                                     "
                                                                     alt=""
                                                                     class="day-thumb"
+                                                                    width="44"
+                                                                    height="44"
+                                                                    loading="lazy"
+                                                                    decoding="async"
                                                                 />
                                                             </button>
                                                             <div

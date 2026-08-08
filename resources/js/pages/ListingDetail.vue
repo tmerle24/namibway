@@ -17,6 +17,7 @@ import PublishConsentModal from '@/components/PublishConsentModal.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import { formatPrice } from '@/lib/currency';
+import { thumb, thumbAttrs } from '@/lib/media';
 import { home } from '@/routes';
 import inquiries from '@/routes/listings/inquiries';
 import reviewRoutes from '@/routes/listings/reviews';
@@ -156,6 +157,11 @@ const heroImage = computed(() => {
 
     return fallbacks[props.listing.id % fallbacks.length];
 });
+
+// The hero is a CSS background, so it can't carry a srcset — ask for the top
+// of the width ladder and let format=auto do the rest. `heroImage` itself stays
+// unresized, because exploreMarkers reuses it at 48px.
+const heroImageCss = computed(() => thumb(heroImage.value, 1600));
 
 // Carries forward whatever explore filters were active when this listing
 // was opened (see ExploreSection.vue's listingUrl()), so "back" restores
@@ -316,14 +322,18 @@ const websiteUrl = computed(
             <div class="pending-photos-thumbs">
                 <img
                     v-if="props.listing.pending_image"
-                    :src="props.listing.pending_image"
+                    v-bind="thumbAttrs(props.listing.pending_image, 56)"
                     alt="Pending hero image"
+                    loading="lazy"
+                    decoding="async"
                 />
                 <img
                     v-for="(src, i) in props.listing.pending_gallery"
                     :key="i"
-                    :src="src"
+                    v-bind="thumbAttrs(src, 56)"
                     :alt="`Pending gallery image ${i + 1}`"
+                    loading="lazy"
+                    decoding="async"
                 />
             </div>
         </div>
@@ -361,8 +371,10 @@ const websiteUrl = computed(
             >
                 <img
                     v-if="props.listing.pending_image"
-                    :src="props.listing.pending_image"
+                    v-bind="thumbAttrs(props.listing.pending_image, 64)"
                     alt="Pending hero image"
+                    loading="lazy"
+                    decoding="async"
                     style="
                         height: 64px;
                         width: 64px;
@@ -374,8 +386,10 @@ const websiteUrl = computed(
                 <img
                     v-for="(src, i) in props.listing.pending_gallery"
                     :key="i"
-                    :src="src"
+                    v-bind="thumbAttrs(src, 64)"
                     :alt="`Pending gallery image ${i + 1}`"
+                    loading="lazy"
+                    decoding="async"
                     style="
                         height: 64px;
                         width: 64px;
@@ -449,7 +463,7 @@ const websiteUrl = computed(
 
         <div
             class="detail-hero"
-            :style="{ backgroundImage: `url(${heroImage})` }"
+            :style="{ backgroundImage: `url(${heroImageCss})` }"
         >
             <div class="detail-hero-overlay">
                 <Link
@@ -508,9 +522,12 @@ const websiteUrl = computed(
                     @click="lightboxIndex = i"
                 >
                     <img
-                        :src="src"
+                        v-bind="thumbAttrs(src, 280)"
                         :alt="`${props.listing.name} ${i + 1}`"
+                        width="280"
+                        height="160"
                         loading="lazy"
+                        decoding="async"
                     />
                 </button>
             </div>

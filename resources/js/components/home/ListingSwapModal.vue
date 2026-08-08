@@ -9,6 +9,7 @@ import type {
 } from '@/lib/kaia-client';
 import { searchListings } from '@/lib/kaia-client';
 import type { ItineraryListingRef } from '@/lib/kaia-types';
+import { thumbAttrs } from '@/lib/media';
 import { show } from '@/routes/listings';
 
 const props = defineProps<{
@@ -321,9 +322,13 @@ onUnmounted(() => {
                     >
                         <img
                             v-if="result.image"
-                            :src="result.image"
+                            v-bind="thumbAttrs(result.image, 48)"
                             :alt="result.name"
                             class="swap-modal-item-thumb"
+                            width="48"
+                            height="48"
+                            loading="lazy"
+                            decoding="async"
                         />
                         <span class="swap-modal-item-body">
                             <span class="swap-modal-item-name">{{
