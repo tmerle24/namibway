@@ -33,7 +33,7 @@ nothing gets lost between sessions.
   availability logic for the Native connector) but is **not yet wired** to
   the frontend's room picker — see "Known gaps" below.
 
-## Future concept: collaborative trip plan (not built yet)
+## Future concept: collaborative trip plan (partly built — see session 5)
 
 A trip is rarely planned alone. The plan should be shareable with fellow
 travelers who can **join the planning**, not just look at the result:
@@ -52,18 +52,21 @@ travelers who can **join the planning**, not just look at the result:
 
 Where this collides with what exists today:
 
-- `SavedPlan` is a single row with a `token`, `plan_json`, and a `user_id`/
-  `session_id` that are **recorded but never checked**.
-  `KaiaController::updatePlan` accepts a PATCH from anyone who has the
-  token, so the current share link is effectively full write access, and
-  `loadPlan` likewise gates on nothing. There is no read-only mode to give
-  someone today.
-- Whole-document `plan_json` overwrites mean two people editing at once
-  silently clobber each other (last write wins, no merge, no conflict
-  signal). Concurrent editing needs at least item-level writes or a version
-  check before this is safe to hand to several people.
-- Nothing is attributable: a change leaves no trace of who made it, so the
-  log has nowhere to come from yet.
+- ✅ *Fixed in session 5.* A plan now has two tokens: `token` (edit) and
+  `share_token` (read-only, rejected by `updatePlan`). The Share button, the
+  PDF link and the `/trip` page all hand out the read-only one, and a
+  read-only view renders the plan with no writing affordances at all. So
+  there *is* a read-only mode to give someone now.
+- ✅ *Fixed in session 5.* `plan_json` is still overwritten wholesale, but a
+  `version` counter makes a stale write fail with a 409 instead of silently
+  clobbering, via a single conditional `UPDATE ... WHERE version = ?`. Note
+  this is conflict *detection*, not merging — the losing editor is told to
+  reload. Item-level writes are still the real answer for simultaneous
+  co-editing.
+- ⬜ Still true: nothing is attributable. `user_id`/`session_id` are recorded
+  but never checked, and a change leaves no trace of who made it, so the log
+  has nowhere to come from yet. This is the next real step — and the one
+  that needs identities, not just tokens.
 
 Decided — where the account line sits:
 
@@ -315,6 +318,38 @@ supplied, plus a pass over how prices read across the whole plan.
   `duration_minutes`. Check `git status` before starting and before
   committing — `a429213`/`6727d9d` are what happens when that goes unnoticed.
 
+### Session 5 — 2026-08-08
+
+Securing the plan's write access — picked as the top priority because it was
+the one open item that was **live and harmful**, not just unbuilt:
+`KaiaController::updatePlan` authorized nothing beyond knowing the token, and
+the share link *is* the creator's edit token.
+
+- ✅ **Stale writes are rejected instead of silently winning** (`b0ab1f9`,
+  `46ce4a2`). A `version` counter on `saved_plans`; the client sends the
+  version it loaded and gets a 409 carrying the current server state. Check
+  and write are one conditional `UPDATE ... WHERE version = ?`, so two
+  simultaneous requests can't both pass it. On a conflict the traveler gets a
+  banner and **autosaving stops** — continuing would either spam 409s or
+  overwrite the other editor. `version` is not `$fillable`.
+  - Gotcha worth remembering: a DB column `default(1)` leaves `$model->version`
+    **null in memory** after `create()` until re-read — `savePlan()` was
+    returning `"version": null`. Fixed with `protected $attributes`.
+- ✅ **The share link is read-only** (`b8e522e`). Second token per plan:
+  `token` still edits (so links already out there are unaffected),
+  `share_token` reads only and is rejected by `updatePlan`. Share button,
+  SaveShareBar and the PDF's printed link all emit the read-only URL; the
+  `/trip` page never hands the edit token to a read-only visitor.
+  - The concrete leak: `SaveShareBar` built its link from
+    `window.location.href`, which on the creator's own `/trip/{token}` page
+    *is* the edit URL.
+  - Read-only rendering hides every writing affordance and disables the
+    autosave outright — otherwise `savePlan()` would mint a viewer their own
+    private copy of someone else's plan.
+- 10 tests in `tests/Feature/SavedPlanConcurrencyTest.php`. Local runs need
+  the Postgres test DB, not `phpunit.xml`'s sqlite:
+  `DB_DATABASE=namibway_test DB_CONNECTION=pgsql ... php artisan test`.
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its
@@ -348,10 +383,13 @@ supplied, plus a pass over how prices read across the whole plan.
   side (today "camper" detection is a `highlights` string match, nothing
   richer). Scoped out of session 1 rather than shipping a dropdown that
   doesn't actually change results.
-- ⬜ **Collaborative trip plan** (read-only vs. write sharing, co-planning,
+- 🟡 **Collaborative trip plan** (read-only vs. write sharing, co-planning,
   comments with follow-ups, change log) — see the dedicated section above.
-  Note the security side of this is already live-relevant, not just future
-  work: today's share token grants write access to anyone who has the link.
+  The two live-relevant halves are now done (session 5): the share link is
+  read-only, and a stale write is rejected instead of silently clobbering.
+  Still open: participants/identities, per-person write grants, comments,
+  and change attribution — i.e. everything that needs a person attached to
+  a change rather than just a token.
 - ⬜ **On-trip progress tracker** — see the dedicated section above.
 - ⬜ Removing a single day from inside a collapsed multi-night stay isn't
   possible from the UI anymore (only the stay's first day and any day with
