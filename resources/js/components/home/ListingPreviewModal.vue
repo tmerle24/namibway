@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ImageLightbox from '@/components/ImageLightbox.vue';
 import { formatPrice } from '@/lib/currency';
+import { formatDuration } from '@/lib/duration';
 import { fetchListingPreview } from '@/lib/kaia-client';
 import type { ListingPreview } from '@/lib/kaia-client';
 import { show } from '@/routes/listings';
@@ -112,6 +113,13 @@ const fullPageUrl = show({ listing: props.slug }).url;
                                 })
                             }})
                         </span>
+                    </p>
+                    <p
+                        v-if="formatDuration(listing.duration_minutes, t)"
+                        class="preview-modal-duration"
+                    >
+                        {{ t('itinerary.meta.duration') }}:
+                        {{ formatDuration(listing.duration_minutes, t) }}
                     </p>
                     <p
                         v-if="formatPrice(listing.price_from)"
@@ -298,6 +306,12 @@ const fullPageUrl = show({ listing: props.slug }).url;
     margin: 0 0 4px;
     font-size: 13.5px;
     color: var(--ink, #241c15);
+}
+
+.preview-modal-duration {
+    margin: 0 0 4px;
+    font-size: 13.5px;
+    color: #5b5346;
 }
 
 .preview-modal-price {

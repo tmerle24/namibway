@@ -162,6 +162,7 @@ export interface ListingPreview {
     website: string | null;
     price_from: string | null;
     price_currency: string;
+    duration_minutes: number | null;
     rating: number | null;
     rating_count: number | null;
     accepts_inquiries: boolean;
@@ -198,6 +199,7 @@ export interface ListingSearchResult {
     city: string | null;
     price_from: string | null;
     price_currency: string;
+    duration_minutes: number | null;
     rating: number | null;
     rating_count: number | null;
     is_featured: boolean;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import type { DayEntry } from '@/lib/kaia-types';
-import ItineraryLineItem from './ItineraryLineItem.vue';
+import ItineraryEntryRow from './ItineraryEntryRow.vue';
 import KebabMenu from './KebabMenu.vue';
 
 defineProps<{
@@ -62,24 +62,11 @@ const { t } = useI18n();
             </button>
         </div>
 
-        <ItineraryLineItem
+        <ItineraryEntryRow
             v-for="entry in entries"
             :key="`${entry.type}-${entry.itemIndex}-${entry.item.id ?? entry.item.name}`"
-            hide-label
-            :keypath="
-                entry.type === 'activity'
-                    ? 'itinerary.activity'
-                    : 'itinerary.dinner'
-            "
-            :item-ref="entry.item"
-            :icon="entry.type === 'activity' ? '📷' : '🍴'"
-            :type-label="
-                t(
-                    entry.type === 'activity'
-                        ? 'itinerary.activityLabel'
-                        : 'itinerary.dinnerLabel',
-                )
-            "
+            :type="entry.type"
+            :item="entry.item"
             :time="entry.item.time"
             @update:time="(value) => emit('update-time', entry, value)"
             @remove="emit('remove', entry)"

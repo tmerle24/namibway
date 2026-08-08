@@ -71,6 +71,13 @@ class ListingResource extends Resource
                             ->numeric()
                             ->prefix('NAD')
                             ->label('Price from (per night)'),
+                        Forms\Components\TextInput::make('duration_minutes')
+                            ->label('Typical duration (minutes)')
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(2880)
+                            ->helperText('How long the experience takes, e.g. 120 for a 2-hour quad ride. Shown to travelers in their trip plan.')
+                            ->visible(fn (?Listing $record): bool => in_array($record?->type, [ListingType::Activity, ListingType::Vehicle], true)),
                         Forms\Components\Select::make('vehicle_category')
                             ->label('Vehicle category')
                             ->options(VehicleCategory::class)

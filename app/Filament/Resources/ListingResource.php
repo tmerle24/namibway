@@ -162,6 +162,12 @@ class ListingResource extends Resource
                                             ->required()
                                             ->maxLength(3)
                                             ->default('NAD'),
+                                        Forms\Components\TextInput::make('duration_minutes')
+                                            ->label('Typical duration (minutes)')
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->maxValue(2880)
+                                            ->helperText('How long the experience takes, e.g. 120 for a 2-hour quad ride. Shown next to the entry in the traveler\'s trip plan; mainly relevant for activities and guided tours.'),
                                         Forms\Components\TextInput::make('rating')
                                             ->numeric()
                                             ->minValue(0)

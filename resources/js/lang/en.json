@@ -146,6 +146,20 @@
         "addActivity": "Add activity",
         "addRestaurant": "Add restaurant",
         "entryTime": "Time",
+        "changeTime": "Change time",
+        "viewDetails": "Details",
+        "durationHours": "~{value} h",
+        "durationMinutes": "~{value} min",
+        "durationHoursMinutes": "~{hours} h {minutes} min",
+        "entryType": {
+            "activity": "Activity",
+            "restaurant": "Restaurant"
+        },
+        "meal": {
+            "breakfast": "Breakfast",
+            "lunch": "Lunch",
+            "dinner": "Dinner"
+        },
         "forTravelers": "for {count}",
         "roomPlaceholderNote": "Illustrative rooms — final selection and live rates come at booking.",
         "roomTypes": {

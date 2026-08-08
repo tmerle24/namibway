@@ -11,24 +11,17 @@ const props = defineProps<{
     itemRef: ItineraryListingRef | null | undefined;
     readonly?: boolean;
     // Skips the i18n-t sentence wrapper ("Stay: {value}") — used inside the
-    // timeline's labeled boxes (the SCHLAFEN accommodation box, and the
-    // merged day-plan entry list below), where the box's own caption/icon
-    // already conveys what `keypath` would otherwise spell out.
+    // timeline's labeled boxes (e.g. the accommodation box), where the box's
+    // own caption already conveys what `keypath` would otherwise spell out.
+    // Activity/restaurant entries have their own row component
+    // (ItineraryEntryRow.vue), not this one.
     hideLabel?: boolean;
-    // Icon + small caption shown next to the name, and an inline time-of-day
-    // input — used by the merged activity/restaurant day timeline in
-    // ItinerarySection.vue, where entries of different types share one list
-    // and are told apart by icon rather than by which box they're in.
-    icon?: string;
-    typeLabel?: string;
-    time?: string | null;
 }>();
 
 const emit = defineEmits<{
     (e: 'remove'): void;
     (e: 'swap'): void;
     (e: 'add'): void;
-    (e: 'update:time', value: string | null): void;
 }>();
 
 const { t } = useI18n();
@@ -59,28 +52,7 @@ function onMenuSelect(key: string) {
 </script>
 
 <template>
-    <div
-        v-if="hideLabel"
-        class="line-item line-item--bare"
-        :class="{ 'line-item--entry': !!icon }"
-    >
-        <input
-            v-if="icon && itemRef && !readonly"
-            type="time"
-            class="line-item-time"
-            :value="time ?? ''"
-            :aria-label="t('itinerary.entryTime')"
-            @input="
-                emit(
-                    'update:time',
-                    ($event.target as HTMLInputElement).value || null,
-                )
-            "
-        />
-        <span v-else-if="icon && itemRef && time" class="line-item-time">{{
-            time
-        }}</span>
-        <span v-if="icon" class="line-item-icon">{{ icon }}</span>
+    <div v-if="hideLabel" class="line-item line-item--bare">
         <span class="line-item-value">
             <template v-if="props.itemRef">
                 <button
@@ -120,9 +92,6 @@ function onMenuSelect(key: string) {
                 </button>
             </template>
         </span>
-        <span v-if="icon && typeLabel && itemRef" class="line-item-type">{{
-            typeLabel
-        }}</span>
     </div>
     <i18n-t v-else :keypath="keypath" tag="div" class="line-item">
         <template #value>

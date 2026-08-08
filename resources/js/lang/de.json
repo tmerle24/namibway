@@ -104,6 +104,20 @@
         "addActivity": "Aktivität hinzufügen",
         "addRestaurant": "Restaurant hinzufügen",
         "entryTime": "Uhrzeit",
+        "changeTime": "Uhrzeit ändern",
+        "viewDetails": "Details",
+        "durationHours": "~{value} Std.",
+        "durationMinutes": "~{value} Min.",
+        "durationHoursMinutes": "~{hours} Std. {minutes} Min.",
+        "entryType": {
+            "activity": "Aktivität",
+            "restaurant": "Restaurant"
+        },
+        "meal": {
+            "breakfast": "Frühstück",
+            "lunch": "Mittagessen",
+            "dinner": "Abendessen"
+        },
         "forTravelers": "für {count}",
         "roomPlaceholderNote": "Beispielhafte Zimmer — endgültige Auswahl und aktuelle Preise gibt es bei der Buchung.",
         "roomTypes": {

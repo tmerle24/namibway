@@ -1149,17 +1149,13 @@ body:has(.kaia-page) {
    line-item text wrapping below it (a long lodge/activity name would
    otherwise drag the trailing .kebab-menu down/around with it). Only safe
    for boxes holding a single line-item (e.g. the SCHLAFEN/stay box) — the
-   merged day-plan list below holds several .line-item--entry rows, whose
-   kebabs are un-pinned back to inline flow just below. */
+   merged day-plan list holds several .entry-row rows instead, which align
+   their own kebabs (see .entry-row below). */
 .kaia-page .day-card-box .line-item .kebab-menu {
     position: absolute;
     top: 6px;
     right: 6px;
     margin-left: 0;
-}
-.kaia-page .day-card-box .line-item--entry .kebab-menu {
-    position: static;
-    margin-left: 4px;
 }
 .kaia-page .day-card-box-label {
     font-size: 10px;
@@ -1215,35 +1211,97 @@ body:has(.kaia-page) {
 }
 /* One row of the merged day-plan timeline (an activity or a restaurant
    entry sharing one chronological list — see ItinerarySection.vue's
-   dayEntries()). Stacked rows get a hairline divider instead of each
-   living in its own bordered box. */
-.kaia-page .line-item--entry {
-    align-items: center;
-    padding: 3px 0;
+   dayEntries()). Four fixed columns — time, icon, name+details, menu — so
+   entries line up down the day regardless of how long a name runs, and the
+   kebab always sits flush right. Stacked rows get a hairline divider
+   instead of each living in its own bordered box. */
+.kaia-page .entry-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 7px 0;
 }
-.kaia-page .line-item--entry + .line-item--entry {
+.kaia-page .entry-row + .entry-row {
     border-top: 1px solid var(--sand-dark);
 }
-.kaia-page .line-item-time {
-    font-size: 11px;
-    padding: 1px 4px;
-    border: 1px solid var(--rust-dark);
-    border-radius: 5px;
-    background: var(--paper);
+/* Time and the read-only display of it share one class so switching between
+   them doesn't shift the row: same width, same box, only the chrome differs. */
+.kaia-page .entry-row-time {
+    flex-shrink: 0;
+    width: 46px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 20px;
+    text-align: left;
     color: var(--ink);
-    flex-shrink: 0;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 0 3px;
+    cursor: pointer;
 }
-.kaia-page .line-item-icon {
-    flex-shrink: 0;
+.kaia-page .entry-row-time--empty {
+    color: #b3a894;
+    font-weight: 500;
 }
-.kaia-page .line-item-type {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #a89b82;
+.kaia-page .entry-row-time:hover:not(:disabled),
+.kaia-page .entry-row-time:focus-visible {
+    border-color: var(--sand-dark);
+    color: var(--rust-dark);
+}
+.kaia-page .entry-row-time:disabled {
+    cursor: default;
+}
+.kaia-page .entry-row-time--input {
+    border-color: var(--rust-dark);
+    background: var(--paper);
+    cursor: text;
+}
+/* Tinted tile rather than a bare emoji — at 12px type the glyph alone reads
+   as noise, and the tint is what tells activity from restaurant at a glance. */
+.kaia-page .entry-row-icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1;
+}
+.kaia-page .entry-row-icon--activity {
+    background: var(--sage-light);
+}
+.kaia-page .entry-row-icon--restaurant {
+    background: var(--rust-light);
+}
+.kaia-page .entry-row-main {
+    flex: 1;
+    min-width: 0;
+}
+.kaia-page .entry-row-title {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+    line-height: 1.3;
+}
+/* Second line: type, duration, and later the booking's own facts. */
+.kaia-page .entry-row-details {
+    font-size: 11px;
+    color: #8a7f68;
+    margin-top: 2px;
+}
+.kaia-page .entry-row-details-sep {
+    padding: 0 4px;
+    color: #b3a894;
+}
+.kaia-page .entry-row .kebab-menu {
+    flex-shrink: 0;
     margin-left: auto;
-    flex-shrink: 0;
-    padding-left: 6px;
 }
 /* Section heading between a stage's accommodation card and its per-day cards
    ("Day plans" + one line of explanation), so the day cards below read as a
@@ -1284,8 +1342,17 @@ body:has(.kaia-page) {
    thing offered rather than something found below an empty list. */
 .kaia-page .day-plan-add-row {
     display: flex;
-    gap: 10px;
-    margin: 6px 0 2px;
+    gap: 8px;
+    margin: 8px 0 2px;
+}
+/* Both halves of the row, full width — an empty day's only call to action
+   shouldn't be two small pills floating at the left edge, and a wide target
+   is what makes this workable one-handed on a phone. */
+.kaia-page .day-plan-add-row .add-item-btn {
+    flex: 1 1 0;
+    padding: 7px 6px;
+    font-size: 11.5px;
+    text-align: center;
 }
 .kaia-page .line-item-value {
     display: contents;
@@ -3811,6 +3878,10 @@ body:has(.kaia-page) {
     .trip-plan-page .drag-handle,
     .trip-plan-page .cta {
         display: none !important;
+    }
+    /* An unset time prints as an empty slot, not as "--:--" placeholder text. */
+    .trip-plan-page .entry-row-time--empty {
+        visibility: hidden;
     }
     .trip-plan-page .variant-card {
         border: none;

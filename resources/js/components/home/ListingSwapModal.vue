@@ -130,6 +130,7 @@ function select(result: ListingSearchResult) {
         vehicle_category: result.vehicle_category,
         price_from: result.price_from,
         price_currency: result.price_currency,
+        duration_minutes: result.duration_minutes,
         image: result.image,
         gallery: result.gallery,
         city: result.city,

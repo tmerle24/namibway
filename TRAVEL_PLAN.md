@@ -234,7 +234,50 @@ Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
   blocked the deploy (`deploy.yml` only runs after `tests` succeeds). Run
   `npx eslint resources/js` before pushing frontend changes.
 
+### Session 3 — 2026-08-08
+
+Reworking the activity/restaurant rows of a day plan against a reference
+design Till supplied — the entries themselves, not the card around them.
+
+- ✅ **`ItineraryEntryRow.vue` extracted.** Activity/restaurant entries no
+  longer reuse `ItineraryLineItem` (which is built around a one-line
+  "Stay: {value}" sentence). They now have their own component with a
+  four-column layout — time · icon · (name + details) · kebab — so entries
+  line up down the day no matter how long a name runs, and the kebab always
+  sits flush right. `ItineraryLineItem` lost its `icon`/`typeLabel`/`time`
+  props again, which only that one caller ever used.
+- ✅ **Time is text until you touch it.** Every row used to carry a
+  permanently mounted `<input type="time">`, i.e. a boxed form control on
+  every line for something most travelers never set. It now renders as
+  plain text (`--:--` when unset) and swaps to a focused input — with
+  `showPicker()` where supported — on click, or via "Change time" in the
+  kebab. Same width in both states, so nothing shifts.
+- ✅ **A second line per entry.** Under the name: type, then the estimated
+  duration, then (for restaurants) which meal it is, derived from its own
+  time rather than stored. Built as a list on purpose — booking facts
+  (reference number, confirmation state, instructions) slot in here once
+  inquiries are linked to plan entries.
+- ✅ **`listings.duration_minutes` added** (migration, both Filament
+  panels, listing preview + search payloads, and the plan's own listing
+  refs) — for an activity the duration *is* part of what gets booked: a 2h
+  quad ride is a different product from a full-day one. Rendered by a
+  shared `formatDuration()` (`resources/js/lib/duration.ts`) as
+  "~2 h" / "~1 h 30 min", never as decimal hours.
+- ✅ **Detail modal reachable two ways** — clicking the entry name (as
+  before) and now "Details" in the kebab. `ListingPreviewModal` also shows
+  the duration.
+- ✅ **Add buttons are one full-width 50/50 row**, taller, instead of two
+  small pills floating at the left edge.
+
 ### Known gaps / next up
+
+- ⬜ **Booking facts on a plan entry.** The entry's detail line and its
+  modal are both structured to take them, but nothing links an `Inquiry`
+  to the plan entry it came from — so there is no booking reference,
+  confirmation state, or partner instruction to show yet. This is the
+  natural next step after staged confirmations (see CLAUDE.md's "core
+  product mechanic"), and it wants the collaborative data model to land
+  first so "who booked this" has an answer.
 
 - ⬜ **Real city/destination photo galleries.** The stage thumbnail opens a
   slider, but there is no gallery column for places — `destinations` and

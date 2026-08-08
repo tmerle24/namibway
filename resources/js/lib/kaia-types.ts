@@ -7,6 +7,11 @@ export interface ItineraryListingRef {
     vehicle_category?: 'self_drive' | 'guided_tour' | null;
     price_from: string | null;
     price_currency: string;
+    // Typical length of the experience in minutes (activities and guided
+    // tours). Part of what the traveler books — a 2h quad ride is a different
+    // product from a full-day one — so it rides along in the plan's own copy
+    // of the listing rather than being looked up again at display time.
+    duration_minutes?: number | null;
     lat?: number | null;
     lng?: number | null;
     image?: string | null;

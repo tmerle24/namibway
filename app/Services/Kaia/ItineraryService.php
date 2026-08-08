@@ -363,7 +363,7 @@ class ItineraryService
      */
     private function resolveReferences(array $plan, Collection $listings): array
     {
-        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null}> $index */
+        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string, duration_minutes: int|null, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null}> $index */
         $index = [];
 
         foreach ($listings as $listing) {
@@ -375,6 +375,7 @@ class ItineraryService
                 'type' => $listing->type->value,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                'duration_minutes' => $listing->duration_minutes,
                 'lat' => $listing->latitude ? (float) $listing->latitude : null,
                 'lng' => $listing->longitude ? (float) $listing->longitude : null,
                 'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
@@ -389,7 +390,7 @@ class ItineraryService
                 return null;
             }
 
-            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'region' => null];
+            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'duration_minutes' => null, 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'region' => null];
         };
 
         $plan['variants'] = array_map(function (array $variant) use ($resolve, $listings) {
@@ -510,6 +511,7 @@ class ItineraryService
                 'type' => 'accommodation',
                 'price_from' => $fallback->price_from,
                 'price_currency' => $fallback->price_currency,
+                'duration_minutes' => $fallback->duration_minutes,
                 'lat' => $fallback->latitude ? (float) $fallback->latitude : null,
                 'lng' => $fallback->longitude ? (float) $fallback->longitude : null,
                 'image' => $fallback->image ? Controller::resolveMediaUrl($fallback->image) : null,
@@ -529,7 +531,7 @@ class ItineraryService
      * preferring same city, then same region, then adjacent budget tier
      * alone. No AI involved.
      *
-     * @return array<int, array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, image: string|null, gallery: array<int, string>, city: string|null}>
+     * @return array<int, array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, duration_minutes: int|null, image: string|null, gallery: array<int, string>, city: string|null}>
      */
     public function alternatives(string $type, ?int $excludeId = null): array
     {
@@ -581,6 +583,7 @@ class ItineraryService
                 'type' => $listing->type->value,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                'duration_minutes' => $listing->duration_minutes,
                 'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
                 'gallery' => $this->resolveGallery($listing),
                 'city' => $listing->city?->name,
