@@ -9,8 +9,12 @@ const props = defineProps<{
     plan: ItineraryPlan;
     // The whole-session token already sitting behind the ?trip= URL — see
     // SaveShareBar's identical prop for why this takes priority over
-    // minting a fresh one via savePlan().
+    // minting a fresh one via savePlan(). This is the *edit* token; it is
+    // only used to know a plan already exists, never to build a link.
     existingToken?: string | null;
+    // The plan's read-only token — what actually gets handed out. Sharing the
+    // edit token would give every recipient write access to the plan.
+    shareToken?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -21,19 +25,19 @@ const { t } = useI18n();
 
 const resolving = ref(false);
 const shareUrl = ref<string | null>(
-    props.existingToken
-        ? `${window.location.origin}/trip/${props.existingToken}`
+    props.shareToken
+        ? `${window.location.origin}/trip/${props.shareToken}`
         : null,
 );
 const modalOpen = ref(false);
 const copied = ref(false);
 
 // The plan often hasn't finished auto-persisting (ItinerarySection's
-// debounced runPersist) by the time this button mounts, so existingToken
+// debounced runPersist) by the time this button mounts, so shareToken
 // can still be null on mount and arrive a moment later — pick that up
 // instead of leaving shareUrl stuck at null forever.
 watch(
-    () => props.existingToken,
+    () => props.shareToken,
     (token) => {
         if (token && !shareUrl.value) {
             shareUrl.value = `${window.location.origin}/trip/${token}`;
@@ -53,10 +57,10 @@ async function resolveUrl(): Promise<string | null> {
 
     try {
         const result = await savePlan(props.plan);
-        shareUrl.value = result.url;
+        shareUrl.value = result.shareUrl ?? result.url;
         emit('saved', result.token, result.url);
 
-        return result.url;
+        return shareUrl.value;
     } finally {
         resolving.value = false;
     }

@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 /**
  * @property int $id
  * @property string $token
+ * @property string|null $share_token
  * @property string|null $title
  * @property array<string, mixed> $plan_json
  * @property int $version
@@ -47,7 +48,34 @@ class SavedPlan extends Model
                     $plan->token = Str::random(12);
                 } while (self::where('token', $plan->token)->exists());
             }
+
+            if (blank($plan->share_token)) {
+                do {
+                    $plan->share_token = Str::random(12);
+                } while (self::where('share_token', $plan->share_token)->exists());
+            }
         });
+    }
+
+    /**
+     * Resolves a plan from either of its two tokens, reporting which one was
+     * used. `token` grants editing (it's the creator's own link); `share_token`
+     * is read-only. Callers must respect $canEdit — nothing below this enforces
+     * it.
+     *
+     * @return array{0: self, 1: bool}|null
+     */
+    public static function resolveByAnyToken(string $token): ?array
+    {
+        $plan = self::where('token', $token)->first();
+
+        if ($plan !== null) {
+            return [$plan, true];
+        }
+
+        $plan = self::where('share_token', $token)->first();
+
+        return $plan === null ? null : [$plan, false];
     }
 
     /** @phpstan-ignore missingType.generics */

@@ -121,4 +121,62 @@ class SavedPlanConcurrencyTest extends TestCase
 
         $this->assertSame(1, $saved->version);
     }
+
+    public function test_a_plan_gets_a_share_token_distinct_from_its_edit_token(): void
+    {
+        $saved = $this->makePlan();
+
+        $this->assertNotNull($saved->share_token);
+        $this->assertNotSame($saved->token, $saved->share_token);
+    }
+
+    public function test_the_share_token_can_read_the_plan_but_is_marked_read_only(): void
+    {
+        $saved = $this->makePlan();
+
+        $this->getJson(route('kaia.plans.load', $saved->token))
+            ->assertOk()
+            ->assertJsonPath('can_edit', true);
+
+        $this->getJson(route('kaia.plans.load', $saved->share_token))
+            ->assertOk()
+            ->assertJsonPath('can_edit', false)
+            ->assertJsonPath('variant.trip_summary', 'Original');
+    }
+
+    public function test_the_share_token_cannot_write(): void
+    {
+        $saved = $this->makePlan();
+
+        $this->patchJson(route('kaia.plans.update', $saved->share_token), [
+            'variant' => $this->plan('Read-only viewer'),
+            'version' => 1,
+        ])->assertNotFound();
+
+        $saved->refresh();
+        $this->assertSame('Original', $saved->plan_json['trip_summary']);
+        $this->assertSame(1, $saved->version);
+    }
+
+    public function test_the_trip_page_renders_for_both_tokens_and_only_shares_the_read_only_one(): void
+    {
+        $saved = $this->makePlan();
+
+        $this->get(route('trip.show', $saved->token))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('canEdit', true)
+                ->where('token', $saved->token)
+                // Even the creator's own page hands out the read-only link.
+                ->where('shareUrl', route('trip.show', $saved->share_token))
+            );
+
+        $this->get(route('trip.show', $saved->share_token))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('canEdit', false)
+                // A read-only visitor must never be handed the edit token.
+                ->where('token', $saved->share_token)
+            );
+    }
 }

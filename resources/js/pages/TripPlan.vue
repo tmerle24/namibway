@@ -19,6 +19,11 @@ const props = defineProps<{
     title: string | null;
     token: string;
     version: number;
+    // False when this page was opened through a read-only share link.
+    canEdit: boolean;
+    // The plan's read-only token — always the one handed out, even when this
+    // page was reached via the edit link.
+    shareToken: string | null;
     shareUrl: string;
 }>();
 
@@ -121,6 +126,8 @@ async function onGuestSubmit(details: GuestDetails) {
                 :plan="plan"
                 :token="tripToken"
                 :version="version"
+                :share-token="shareToken"
+                :can-edit="canEdit"
                 @book="onBook"
                 @update:token="tripToken = $event"
             />

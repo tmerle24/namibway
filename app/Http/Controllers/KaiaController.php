@@ -121,19 +121,32 @@ class KaiaController extends Controller
         return response()->json([
             'token' => $saved->token,
             'url' => route('trip.show', $saved->token),
+            // The link to hand to other people: same plan, no write access.
+            'share_token' => $saved->share_token,
+            'share_url' => route('trip.show', $saved->share_token),
             'version' => $saved->version,
         ]);
     }
 
     public function loadPlan(string $token): JsonResponse
     {
-        $plan = SavedPlan::where('token', $token)->firstOrFail();
+        $resolved = SavedPlan::resolveByAnyToken($token);
+
+        abort_if($resolved === null, 404);
+
+        [$plan, $canEdit] = $resolved;
 
         // `version` is what the client must hand back on its next update for
         // the conflict check in updatePlan() to be able to spot a stale write.
+        // `can_edit` is false for a read-only share link — the UI hides its
+        // editing affordances, but updatePlan() below is the actual gate.
         return response()->json([
             'variant' => $plan->plan_json,
             'version' => $plan->version,
+            'can_edit' => $canEdit,
+            // Safe to hand to either audience: it's the reader's own token for
+            // a read-only visitor, and the link an editor would want to share.
+            'share_token' => $plan->share_token,
         ]);
     }
 
@@ -161,6 +174,9 @@ class KaiaController extends Controller
             'version' => 'sometimes|integer|min:1',
         ]);
 
+        // Deliberately only the edit token: a read-only share link resolves to
+        // a real plan but must not be able to write to it. 404 rather than 403
+        // so a share link doesn't advertise that an editable twin exists.
         $saved = SavedPlan::where('token', $token)->firstOrFail();
 
         $planData = $validated['variant'];

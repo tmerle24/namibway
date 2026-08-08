@@ -45,22 +45,39 @@ class SavedPlanController extends Controller
 
     public function show(string $token): Response
     {
-        $saved = SavedPlan::where('token', $token)->firstOrFail();
+        $resolved = SavedPlan::resolveByAnyToken($token);
+
+        abort_if($resolved === null, 404);
+
+        [$saved, $canEdit] = $resolved;
 
         return Inertia::render('TripPlan', [
             'plan' => $saved->plan_json,
             'title' => $saved->title,
-            'token' => $saved->token,
+            // Only ever the token this visitor actually arrived on: handing a
+            // read-only viewer the edit token would defeat the whole split, and
+            // the frontend uses this for its update calls.
+            'token' => $canEdit ? $saved->token : $saved->share_token,
+            'canEdit' => $canEdit,
+            'shareToken' => $saved->share_token,
             // Seeds the conflict check for edits made from this page — see
             // KaiaController::updatePlan.
             'version' => $saved->version,
-            'shareUrl' => route('trip.show', $token),
+            // Always the read-only link, whichever way the viewer got here —
+            // "share" should never pass on write access.
+            'shareUrl' => route('trip.show', $saved->share_token),
         ]);
     }
 
     public function pdf(Request $request, string $token, RouteMapImageService $mapImages): HttpResponse
     {
-        $saved = SavedPlan::where('token', $token)->firstOrFail();
+        // Either token: downloading the PDF is a read operation, so a
+        // read-only share link is entitled to it.
+        $resolved = SavedPlan::resolveByAnyToken($token);
+
+        abort_if($resolved === null, 404);
+
+        [$saved] = $resolved;
         $plan = $saved->plan_json;
 
         $regionCoords = Destination::query()
@@ -107,7 +124,9 @@ class SavedPlanController extends Controller
             'plan' => $plan,
             'title' => $saved->title,
             'routeMaps' => $routeMaps,
-            'shareUrl' => route('trip.show', $token),
+            // The printed link is for passing around, so it's the read-only
+            // one even when the PDF was downloaded from the edit link.
+            'shareUrl' => route('trip.show', $saved->share_token),
             'logoDataUri' => $this->logoDataUri(),
             'dateRange' => $this->tripDateRange($plan),
         ]);

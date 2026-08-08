@@ -5,6 +5,8 @@ const props = defineProps<{
     modelValue: string;
     suggestions: string[];
     label?: string;
+    // Read-only share view: still shows the place name, just isn't editable.
+    readonly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -46,7 +48,7 @@ function handleBlur() {
 
 <template>
     <div class="location-picker-wrap">
-        <template v-if="open">
+        <template v-if="open && !readonly">
             <input
                 :ref="(el) => el && (el as HTMLInputElement).focus()"
                 v-model="query"
@@ -73,8 +75,9 @@ function handleBlur() {
         <b
             v-else
             class="location-editable"
+            :class="{ 'location-editable--static': readonly }"
             :title="modelValue"
-            @click="openPicker"
+            @click="readonly || openPicker()"
             >{{ label || modelValue || '—' }}</b
         >
     </div>

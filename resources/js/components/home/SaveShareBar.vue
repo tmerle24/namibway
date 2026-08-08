@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { savePlan } from '@/lib/kaia-client';
 import type { ItineraryPlan } from '@/lib/kaia-types';
@@ -15,6 +15,10 @@ const props = defineProps<{
     // persisted and a fresh save() would otherwise mint a redundant,
     // diverging token.
     existingToken?: string | null;
+    // The plan's read-only token — the only thing that may be handed out.
+    // Never build a share link from the address bar: on the creator's own
+    // /trip/{token} page that URL *is* the edit link.
+    shareToken?: string | null;
     isLoggedIn?: boolean;
 }>();
 
@@ -34,9 +38,20 @@ const copyFailed = ref(false);
 // that were already shared when this component mounted (e.g. /trip/{token}).
 const viewingExistingShare = computed(() => !!props.token);
 
-if (props.token) {
-    shareUrl.value = window.location.href;
+if (props.token && props.shareToken) {
+    shareUrl.value = `${window.location.origin}/trip/${props.shareToken}`;
 }
+
+// The read-only token can arrive after mount (the first autosave mints it),
+// so pick it up rather than leaving the bar without a link.
+watch(
+    () => props.shareToken,
+    (token) => {
+        if (token && !shareUrl.value) {
+            shareUrl.value = `${window.location.origin}/trip/${token}`;
+        }
+    },
+);
 
 async function save() {
     if (saving.value || shareUrl.value) {
@@ -46,12 +61,15 @@ async function save() {
     // Building the share link only needs a token, not an account — savePlan()
     // persists anonymously, same as ItinerarySection's own auto-save.
 
-    // Already auto-persisted under existingToken (the common single-variant
-    // case) — build the share link from that instead of minting a second,
-    // orphaned SavedPlan row whose token would diverge from the one already
-    // in the address bar.
+    // Already auto-persisted (the common single-variant case) — reuse that
+    // plan's read-only token instead of minting a second, orphaned SavedPlan
+    // row whose token would diverge from the one already in the address bar.
     if (props.existingToken) {
-        const url = `${window.location.origin}/trip/${props.existingToken}`;
+        if (!props.shareToken) {
+            return;
+        }
+
+        const url = `${window.location.origin}/trip/${props.shareToken}`;
         shareUrl.value = url;
         emit('saved', props.existingToken, url);
 
@@ -62,7 +80,7 @@ async function save() {
 
     try {
         const result = await savePlan(props.plan);
-        shareUrl.value = result.url;
+        shareUrl.value = result.shareUrl ?? result.url;
         emit('saved', result.token, result.url);
     } finally {
         saving.value = false;

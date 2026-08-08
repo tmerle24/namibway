@@ -14,6 +14,9 @@ defineProps<{
     // card, which already carries the day's "remove day" menu — a second one
     // here would act on the same day twice over.
     showDayMenu?: boolean;
+    // Opened through a read-only share link: the day is still shown in full,
+    // it just offers nothing that would try to write.
+    readonly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -32,7 +35,7 @@ const { t } = useI18n();
         <div class="day-plan-head">
             <span class="day-plan-date">{{ dateLabel }}</span>
             <KebabMenu
-                v-if="showDayMenu"
+                v-if="showDayMenu && !readonly"
                 :items="[
                     {
                         key: 'delete',
@@ -45,7 +48,7 @@ const { t } = useI18n();
             />
         </div>
 
-        <div class="day-plan-add-row">
+        <div v-if="!readonly" class="day-plan-add-row">
             <button
                 type="button"
                 class="add-item-btn"
@@ -67,6 +70,7 @@ const { t } = useI18n();
             :key="`${entry.type}-${entry.itemIndex}-${entry.item.id ?? entry.item.name}`"
             :type="entry.type"
             :item="entry.item"
+            :readonly="readonly"
             :time="entry.item.time"
             @update:time="(value) => emit('update-time', entry, value)"
             @remove="emit('remove', entry)"

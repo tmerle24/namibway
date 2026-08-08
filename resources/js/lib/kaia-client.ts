@@ -300,8 +300,12 @@ export async function searchListings(
 }
 
 export interface SavedPlanResult {
+    /** Grants editing — the creator's own link. Never hand this to anyone else. */
     token: string;
     url: string;
+    /** Read-only counterpart: same plan, no write access. This is what "share" means. */
+    shareToken: string | null;
+    shareUrl: string | null;
     version: number;
 }
 
@@ -338,9 +342,15 @@ export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
     const data = await response.json();
     const token = data.token as string;
 
+    const shareToken = (data.share_token as string) ?? null;
+
     return {
         token,
         url: `${window.location.origin}/trip/${token}`,
+        shareToken,
+        shareUrl: shareToken
+            ? `${window.location.origin}/trip/${shareToken}`
+            : null,
         version: (data.version as number) ?? 1,
     };
 }
@@ -350,6 +360,10 @@ export interface LoadedPlan {
     // What the next updatePlan() has to send back for the server to be able to
     // spot a stale write.
     version: number;
+    // False when the token used was a read-only share link. The server rejects
+    // writes either way; this is what lets the UI stop offering them.
+    canEdit: boolean;
+    shareToken: string | null;
 }
 
 export async function loadPlan(token: string): Promise<LoadedPlan> {
@@ -367,6 +381,8 @@ export async function loadPlan(token: string): Promise<LoadedPlan> {
     return {
         plan: data.variant as ItineraryPlan,
         version: (data.version as number) ?? 1,
+        canEdit: (data.can_edit as boolean) ?? true,
+        shareToken: (data.share_token as string) ?? null,
     };
 }
 

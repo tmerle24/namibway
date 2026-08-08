@@ -52,6 +52,13 @@ const props = defineProps<{
     // in KaiaController::updatePlan. Null for a freshly generated plan that
     // hasn't been persisted yet — the first autosave mints it.
     version?: number | null;
+    // The plan's read-only token — what the share affordances hand out. Never
+    // `token`, which grants editing.
+    shareToken?: string | null;
+    // False when this plan was opened through a read-only share link. The
+    // server rejects writes regardless; this stops the UI from offering edits
+    // it knows will fail, and stops the autosave from firing at all.
+    canEdit?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -135,6 +142,13 @@ const currentToken = ref<string | null>(props.token);
 // the share link is the same token, so "elsewhere" is a real scenario, as is
 // simply having the plan open in two tabs.
 const currentVersion = ref<number | null>(props.version ?? null);
+
+const currentShareToken = ref<string | null>(props.shareToken ?? null);
+
+// Everything editable in this section is gated on this. Defaults to editable
+// so the ordinary chat -> plan flow (which passes no canEdit at all) is
+// unaffected; only a read-only share link turns it off.
+const readonly = computed(() => props.canEdit === false);
 
 // Set once the server has rejected a write as stale. Autosaving stops at that
 // point: the local plan and the stored one have diverged, and continuing to
@@ -751,6 +765,12 @@ function schedulePersist() {
         return;
     }
 
+    // A read-only viewer has no business writing, and savePlan() would happily
+    // mint them a private copy of someone else's plan if we let it through.
+    if (readonly.value) {
+        return;
+    }
+
     // Diverged from the stored plan — see planConflict.
     if (planConflict.value) {
         return;
@@ -791,6 +811,7 @@ async function runPersist() {
             const result = await savePlan(combined);
             currentToken.value = result.token;
             currentVersion.value = result.version;
+            currentShareToken.value = result.shareToken;
             emit('update:token', result.token);
         }
     } catch (e) {
@@ -872,6 +893,13 @@ watch(
     () => props.version,
     (version) => {
         currentVersion.value = version ?? null;
+    },
+);
+
+watch(
+    () => props.shareToken,
+    (token) => {
+        currentShareToken.value = token ?? null;
     },
 );
 
@@ -1406,6 +1434,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                 trip_params: currentTripParams,
                             }"
                             :existing-token="currentToken"
+                            :share-token="currentShareToken"
                             :is-logged-in="isLoggedIn"
                             @saved="
                                 (token) => {
@@ -1424,6 +1453,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                 trip_params: currentTripParams,
                             }"
                             :existing-token="currentToken"
+                            :share-token="currentShareToken"
                             @saved="
                                 (token) => {
                                     savedTokens[variantIndex] = token;
@@ -1431,7 +1461,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                             "
                         />
                         <KebabMenu
-                            v-if="editableVariants.length === 1"
+                            v-if="!readonly && editableVariants.length === 1"
                             :items="[
                                 { key: 'edit', label: t('itinerary.editPlan') },
                             ]"
@@ -1468,7 +1498,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                     :trip-params="currentTripParams"
                     :route-start="routeStart"
                     :route-end="routeEnd"
-                    :editable="editableVariants.length > 1"
+                    :editable="!readonly && editableVariants.length > 1"
                     @edit="openParamsEditor"
                 />
                 <div v-if="regenerating" class="params-regenerating-note">
@@ -1487,6 +1517,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                             <ItineraryLineItem
                                 keypath="itinerary.vehicle"
                                 :item-ref="variant.vehicle"
+                                :readonly="readonly"
                                 class="variant-vehicle"
                                 @remove="
                                     confirmAndRun(
@@ -1569,6 +1600,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                     >
                         <div class="days-col-top-row">
                             <button
+                                v-if="!readonly"
                                 type="button"
                                 class="add-day-btn"
                                 @click="addDay(variantIndex, -1)"
@@ -1576,6 +1608,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                 + {{ t('itinerary.addDay') }}
                             </button>
                             <button
+                                v-if="!readonly"
                                 type="button"
                                 class="reverse-route-btn"
                                 @click="reverseVariant(variantIndex)"
@@ -1673,6 +1706,9 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                             <input
                                                                 type="time"
                                                                 class="drive-time-input"
+                                                                :disabled="
+                                                                    readonly
+                                                                "
                                                                 :value="
                                                                     departureTime(
                                                                         variantIndex,
@@ -1730,6 +1766,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                     </span>
                                                 </div>
                                                 <button
+                                                    v-if="!readonly"
                                                     type="button"
                                                     class="add-day-inline-btn"
                                                     :title="
@@ -1793,6 +1830,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                 <div class="day-card-column">
                                                     <div class="day-card">
                                                         <span
+                                                            v-if="!readonly"
                                                             class="drag-handle"
                                                             :title="
                                                                 t(
@@ -1845,6 +1883,9 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                     class="day-card-title-row"
                                                                 >
                                                                     <LocationPicker
+                                                                        :readonly="
+                                                                            readonly
+                                                                        "
                                                                         :model-value="
                                                                             day.location
                                                                         "
@@ -1914,6 +1955,9 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                     class="day-card-header-actions"
                                                                 >
                                                                     <KebabMenu
+                                                                        v-if="
+                                                                            !readonly
+                                                                        "
                                                                         :items="[
                                                                             {
                                                                                 key: 'delete',
@@ -1949,6 +1993,9 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                             class="day-card-grid"
                                                         >
                                                             <ItineraryStayCard
+                                                                :readonly="
+                                                                    readonly
+                                                                "
                                                                 :stay="
                                                                     day.accommodation
                                                                 "
@@ -2019,11 +2066,12 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
 
                                                         <RoomTypePicker
                                                             v-if="
+                                                                !readonly &&
                                                                 roomPickerKey ===
-                                                                roomSelectionKey(
-                                                                    variantIndex,
-                                                                    dayIndex,
-                                                                )
+                                                                    roomSelectionKey(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                    )
                                                             "
                                                             :base-price="
                                                                 day
@@ -2096,6 +2144,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                     </div>
 
                                                     <ItineraryDayPlanCard
+                                                        :readonly="readonly"
                                                         :date-label="
                                                             dayDateLabel(day)
                                                         "
@@ -2156,6 +2205,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
 
                                             <template v-else>
                                                 <ItineraryDayPlanCard
+                                                    :readonly="readonly"
                                                     :date-label="
                                                         dayDateLabel(day)
                                                     "
@@ -2232,6 +2282,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                         </div>
 
                         <button
+                            v-if="!readonly"
                             type="button"
                             class="add-day-btn"
                             @click="
@@ -2243,7 +2294,11 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                     </div>
                 </div>
 
-                <button class="cta" @click="emit('book', variant)">
+                <button
+                    v-if="!readonly"
+                    class="cta"
+                    @click="emit('book', variant)"
+                >
                     {{ t('itinerary.bookCta') }}
                 </button>
 
@@ -2259,6 +2314,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                     :existing-token="
                         editableVariants.length === 1 ? currentToken : null
                     "
+                    :share-token="currentShareToken"
                     :is-logged-in="isLoggedIn"
                     @saved="
                         (token) => {

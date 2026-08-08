@@ -2706,6 +2706,14 @@ body:has(.kaia-page) {
 .kaia-page .location-editable:hover {
     border-bottom-color: var(--rust);
 }
+/* Read-only share view — drop the affordance so the city name doesn't
+   invite a click that does nothing. */
+.kaia-page .location-editable--static {
+    cursor: default;
+}
+.kaia-page .location-editable--static:hover {
+    border-bottom-color: transparent;
+}
 .kaia-page .location-input {
     font: inherit;
     font-weight: 700;
