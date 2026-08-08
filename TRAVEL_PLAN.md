@@ -196,8 +196,53 @@ Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
   (Jeep/Mid-range/Camper/…) with a per-day budget field. Deferred — see
   "Known gaps".
 
+### Session 2 — 2026-08-07/08
+
+- ✅ **One chronological day list instead of ERLEBEN/ESSEN boxes.** A day's
+  activities and restaurants used to sit in two separate labelled boxes.
+  They're now one time-sorted list per day, told apart by icon (📷/🍴) plus
+  a small type caption. Added an optional `time` ("HH:MM") to
+  `ItineraryListingRef` end-to-end — including Kaia's tool schema
+  (`activity_time`/`restaurant_time` in `proposeItineraryTool()`), its
+  prompt, and `resolveReferences()` — so generated plans can carry a time
+  too, not just manually added entries. Entries without a time keep their
+  original order and sink below timed ones, so existing plans render
+  unchanged. Replaced the per-box empty-state "+ Add" (which vanished once
+  one item existed) with two always-visible add buttons.
+- ✅ **Stage card split in two.** A stage's first day used to bundle
+  location + dates + accommodation + that day's plan into one card. Now:
+  an accommodation card (city, region, date range, stay, room picker),
+  then that day's own day-plan card beneath it — so the arrival day joins
+  the same card stack as every later day of the stay.
+- ✅ **Date bug found while splitting.** `dayEndDateLabel()` preferred
+  `date_to` (the *next* day's date) over the day's own `date`, so every
+  continuation-day card was showing a date one day ahead of the entries it
+  held. Renamed to `dayDateLabel()` and fixed to prefer `date`.
+- ✅ **Stage card restructure** (after a prod review): date range moved
+  under the city name to the right of the thumbnail; thumbnail became a
+  button opening `ImageLightbox`; "Schlafen"/"Stay" renamed to
+  "Unterkunft"/"Accommodation"; a "Tagespläne" group heading + one-line
+  hint now sits between the accommodation card and the day cards, so each
+  day card no longer repeats a label — just its own date, then the add
+  buttons, then its entries.
+- ✅ **`ItineraryDayPlanCard.vue` extracted.** The arrival day and every
+  later day rendered the same ~120-line block twice in two template
+  branches, which had already drifted apart once. Both now render one
+  component.
+- ⚠️ **ESLint is CI-blocking and `vue-tsc`/`npm run build` do not catch
+  it.** An `import/order` violation passed both and would have silently
+  blocked the deploy (`deploy.yml` only runs after `tests` succeeds). Run
+  `npx eslint resources/js` before pushing frontend changes.
+
 ### Known gaps / next up
 
+- ⬜ **Real city/destination photo galleries.** The stage thumbnail opens a
+  slider, but there is no gallery column for places — `destinations` and
+  `cities` each hold a single `image` (and no city row has one set), so the
+  lightbox is mostly filled with the *accommodation's* photos. Needs a
+  `gallery` column on both tables, Filament fields, and sourced photos.
+  Full plan, including which 16 places actually need photos and the
+  verified Unsplash sourcing method: **`CITY_GALLERIES.md`**.
 - ⬜ **Real per-room-type photos.** `RoomType` (the real bookable
   room/unit model, used by the Native connector's availability logic) has
   no `gallery`/image field, and the frontend's `RoomTypePicker.vue` room
