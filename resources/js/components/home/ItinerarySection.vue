@@ -438,15 +438,15 @@ function formatDateRange(day: {
     return `${day.date} – ${day.date_to}`;
 }
 
-// Non-stage-start days (e.g. an activity added on day 2 of a multi-night
-// stay) only show the day's own end date, not a from/to range — the stay's
-// full check-in/check-out range is already shown once on the stage's first
-// day via stageDateRangeLabel().
-function dayEndDateLabel(day: {
+// A single day-plan card's own date — used both for the arrival day's own
+// activity card and every later day within the same stay. The stay's full
+// check-in/check-out range is shown once, separately, on the accommodation
+// card via stageDateRangeLabel().
+function dayDateLabel(day: {
     date?: string | null;
     date_to?: string | null;
 }): string {
-    return day.date_to || day.date || '';
+    return day.date || day.date_to || '';
 }
 
 // Accommodation photo first (what the traveler is actually booking), falling
@@ -1665,243 +1665,274 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                 </template>
                                             </div>
 
-                                            <div
-                                                class="day-card"
-                                                :class="{
-                                                    'day-card--continuation':
-                                                        !isStageStart(
-                                                            variantIndex,
-                                                            dayIndex,
-                                                        ),
-                                                }"
+                                            <template
+                                                v-if="
+                                                    isStageStart(
+                                                        variantIndex,
+                                                        dayIndex,
+                                                    )
+                                                "
                                             >
-                                                <span
-                                                    v-if="
-                                                        isStageStart(
-                                                            variantIndex,
-                                                            dayIndex,
-                                                        )
-                                                    "
-                                                    class="drag-handle"
-                                                    :title="
-                                                        t(
-                                                            'itinerary.dragToReorder',
-                                                        )
-                                                    "
-                                                >
-                                                    <GripHorizontal
-                                                        :size="14"
-                                                    />
-                                                </span>
-                                                <template
-                                                    v-if="
-                                                        isStageStart(
-                                                            variantIndex,
-                                                            dayIndex,
-                                                        )
-                                                    "
-                                                >
-                                                    <div
-                                                        class="day-card-header"
-                                                    >
-                                                        <img
-                                                            v-if="
-                                                                dayThumbnail(
-                                                                    day,
+                                                <div class="day-card-column">
+                                                    <div class="day-card">
+                                                        <span
+                                                            class="drag-handle"
+                                                            :title="
+                                                                t(
+                                                                    'itinerary.dragToReorder',
                                                                 )
                                                             "
-                                                            :src="
-                                                                dayThumbnail(
-                                                                    day,
-                                                                )!
-                                                            "
-                                                            alt=""
-                                                            class="day-thumb"
-                                                        />
-                                                        <div
-                                                            class="day-card-title"
                                                         >
-                                                            <LocationPicker
-                                                                :model-value="
-                                                                    day.location
-                                                                "
-                                                                :label="
-                                                                    dayCity(day)
-                                                                "
-                                                                :suggestions="
-                                                                    locationSuggestions
-                                                                "
-                                                                @update:model-value="
-                                                                    setStageLocation(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        $event,
-                                                                    )
-                                                                "
+                                                            <GripHorizontal
+                                                                :size="14"
                                                             />
-                                                            <span
-                                                                v-if="
-                                                                    dayRegion(
-                                                                        day,
-                                                                    )
-                                                                "
-                                                                class="day-card-region"
-                                                                >{{
-                                                                    dayRegion(
-                                                                        day,
-                                                                    )
-                                                                }}</span
-                                                            >
-                                                        </div>
+                                                        </span>
                                                         <div
-                                                            class="day-card-header-right"
+                                                            class="day-card-header"
                                                         >
-                                                            <span
+                                                            <img
                                                                 v-if="
-                                                                    dayItemsPriceLabel(
-                                                                        variantIndex,
-                                                                        dayIndex,
+                                                                    dayThumbnail(
+                                                                        day,
                                                                     )
                                                                 "
-                                                                class="day-card-price"
-                                                                >{{
-                                                                    dayItemsPriceLabel(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                    )
-                                                                }}</span
-                                                            >
+                                                                :src="
+                                                                    dayThumbnail(
+                                                                        day,
+                                                                    )!
+                                                                "
+                                                                alt=""
+                                                                class="day-thumb"
+                                                            />
                                                             <div
-                                                                class="day-card-header-actions"
+                                                                class="day-card-title"
                                                             >
-                                                                <KebabMenu
-                                                                    :items="[
-                                                                        {
-                                                                            key: 'delete',
-                                                                            label: t(
-                                                                                'itinerary.removeDay',
-                                                                            ),
-                                                                            danger: true,
-                                                                        },
-                                                                    ]"
+                                                                <LocationPicker
+                                                                    :model-value="
+                                                                        day.location
+                                                                    "
                                                                     :label="
-                                                                        t(
-                                                                            'itinerary.dayOptions',
+                                                                        dayCity(
+                                                                            day,
                                                                         )
                                                                     "
-                                                                    @select="
+                                                                    :suggestions="
+                                                                        locationSuggestions
+                                                                    "
+                                                                    @update:model-value="
+                                                                        setStageLocation(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            $event,
+                                                                        )
+                                                                    "
+                                                                />
+                                                                <span
+                                                                    v-if="
+                                                                        dayRegion(
+                                                                            day,
+                                                                        )
+                                                                    "
+                                                                    class="day-card-region"
+                                                                    >{{
+                                                                        dayRegion(
+                                                                            day,
+                                                                        )
+                                                                    }}</span
+                                                                >
+                                                            </div>
+                                                            <div
+                                                                class="day-card-header-right"
+                                                            >
+                                                                <span
+                                                                    v-if="
+                                                                        dayItemsPriceLabel(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                        )
+                                                                    "
+                                                                    class="day-card-price"
+                                                                    >{{
+                                                                        dayItemsPriceLabel(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                        )
+                                                                    }}</span
+                                                                >
+                                                                <div
+                                                                    class="day-card-header-actions"
+                                                                >
+                                                                    <KebabMenu
+                                                                        :items="[
+                                                                            {
+                                                                                key: 'delete',
+                                                                                label: t(
+                                                                                    'itinerary.removeDay',
+                                                                                ),
+                                                                                danger: true,
+                                                                            },
+                                                                        ]"
+                                                                        :label="
+                                                                            t(
+                                                                                'itinerary.dayOptions',
+                                                                            )
+                                                                        "
+                                                                        @select="
+                                                                            confirmAndRun(
+                                                                                t(
+                                                                                    'itinerary.confirmRemove.day',
+                                                                                ),
+                                                                                () =>
+                                                                                    removeDay(
+                                                                                        variantIndex,
+                                                                                        dayIndex,
+                                                                                    ),
+                                                                            )
+                                                                        "
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div
+                                                            v-if="day.date"
+                                                            class="day-card-sub"
+                                                        >
+                                                            {{
+                                                                stageDateRangeLabel(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                )
+                                                            }}
+                                                        </div>
+
+                                                        <div
+                                                            class="day-card-grid"
+                                                        >
+                                                            <div
+                                                                class="day-card-box"
+                                                            >
+                                                                <div
+                                                                    class="day-card-box-label"
+                                                                >
+                                                                    {{
+                                                                        t(
+                                                                            'itinerary.stayLabel',
+                                                                        )
+                                                                    }}
+                                                                </div>
+                                                                <ItineraryLineItem
+                                                                    hide-label
+                                                                    keypath="itinerary.stay"
+                                                                    :item-ref="
+                                                                        day.accommodation
+                                                                    "
+                                                                    @remove="
                                                                         confirmAndRun(
                                                                             t(
-                                                                                'itinerary.confirmRemove.day',
+                                                                                'itinerary.confirmRemove.item',
                                                                             ),
                                                                             () =>
-                                                                                removeDay(
+                                                                                removeItem(
                                                                                     variantIndex,
                                                                                     dayIndex,
                                                                                 ),
                                                                         )
                                                                     "
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div
-                                                        v-if="day.date"
-                                                        class="day-card-sub"
-                                                    >
-                                                        {{
-                                                            stageDateRangeLabel(
-                                                                variantIndex,
-                                                                dayIndex,
-                                                            )
-                                                        }}
-                                                    </div>
-
-                                                    <div class="day-card-grid">
-                                                        <div
-                                                            class="day-card-box"
-                                                        >
-                                                            <div
-                                                                class="day-card-box-label"
-                                                            >
-                                                                {{
-                                                                    t(
-                                                                        'itinerary.stayLabel',
-                                                                    )
-                                                                }}
-                                                            </div>
-                                                            <ItineraryLineItem
-                                                                hide-label
-                                                                keypath="itinerary.stay"
-                                                                :item-ref="
-                                                                    day.accommodation
-                                                                "
-                                                                @remove="
-                                                                    confirmAndRun(
-                                                                        t(
-                                                                            'itinerary.confirmRemove.item',
-                                                                        ),
-                                                                        () =>
-                                                                            removeItem(
-                                                                                variantIndex,
-                                                                                dayIndex,
-                                                                            ),
-                                                                    )
-                                                                "
-                                                                @swap="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        'accommodation',
-                                                                        day.accommodation!,
-                                                                    )
-                                                                "
-                                                                @add="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        'accommodation',
-                                                                    )
-                                                                "
-                                                            />
-                                                            <div
-                                                                v-if="
-                                                                    day.accommodation
-                                                                "
-                                                                class="room-selection-row"
-                                                            >
-                                                                <template
-                                                                    v-if="
-                                                                        day.room_selection
+                                                                    @swap="
+                                                                        openSwap(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            'accommodation',
+                                                                            day.accommodation!,
+                                                                        )
                                                                     "
+                                                                    @add="
+                                                                        openSwap(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            'accommodation',
+                                                                        )
+                                                                    "
+                                                                />
+                                                                <div
+                                                                    v-if="
+                                                                        day.accommodation
+                                                                    "
+                                                                    class="room-selection-row"
                                                                 >
-                                                                    <span
-                                                                        class="room-selection-chip"
+                                                                    <template
+                                                                        v-if="
+                                                                            day.room_selection
+                                                                        "
                                                                     >
-                                                                        🛏️
-                                                                        {{
-                                                                            day
-                                                                                .room_selection
-                                                                                .name
-                                                                        }}
-                                                                        ·
-                                                                        {{
-                                                                            formatPrice(
-                                                                                String(
-                                                                                    day
-                                                                                        .room_selection
-                                                                                        .price_per_night,
-                                                                                ),
-                                                                            )
-                                                                        }}/{{
-                                                                            t(
-                                                                                'itinerary.perNight',
-                                                                            )
-                                                                        }}
-                                                                    </span>
+                                                                        <span
+                                                                            class="room-selection-chip"
+                                                                        >
+                                                                            🛏️
+                                                                            {{
+                                                                                day
+                                                                                    .room_selection
+                                                                                    .name
+                                                                            }}
+                                                                            ·
+                                                                            {{
+                                                                                formatPrice(
+                                                                                    String(
+                                                                                        day
+                                                                                            .room_selection
+                                                                                            .price_per_night,
+                                                                                    ),
+                                                                                )
+                                                                            }}/{{
+                                                                                t(
+                                                                                    'itinerary.perNight',
+                                                                                )
+                                                                            }}
+                                                                        </span>
+                                                                        <button
+                                                                            type="button"
+                                                                            class="room-selection-link"
+                                                                            @click="
+                                                                                toggleRoomPicker(
+                                                                                    variantIndex,
+                                                                                    dayIndex,
+                                                                                )
+                                                                            "
+                                                                        >
+                                                                            {{
+                                                                                t(
+                                                                                    'itinerary.changeRoom',
+                                                                                )
+                                                                            }}
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            class="remove-btn"
+                                                                            :aria-label="
+                                                                                t(
+                                                                                    'itinerary.remove',
+                                                                                )
+                                                                            "
+                                                                            @click="
+                                                                                confirmAndRun(
+                                                                                    t(
+                                                                                        'itinerary.confirmRemove.room',
+                                                                                    ),
+                                                                                    () =>
+                                                                                        clearRoom(
+                                                                                            variantIndex,
+                                                                                            dayIndex,
+                                                                                        ),
+                                                                                )
+                                                                            "
+                                                                        >
+                                                                            ×
+                                                                        </button>
+                                                                    </template>
                                                                     <button
+                                                                        v-else
                                                                         type="button"
-                                                                        class="room-selection-link"
+                                                                        class="room-selection-add-btn"
                                                                         @click="
                                                                             toggleRoomPicker(
                                                                                 variantIndex,
@@ -1909,244 +1940,231 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                             )
                                                                         "
                                                                     >
+                                                                        🛏️
                                                                         {{
                                                                             t(
-                                                                                'itinerary.changeRoom',
+                                                                                'itinerary.chooseRoom',
+                                                                            )
+                                                                        }}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <RoomTypePicker
+                                                            v-if="
+                                                                roomPickerKey ===
+                                                                roomSelectionKey(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                )
+                                                            "
+                                                            :base-price="
+                                                                day
+                                                                    .accommodation
+                                                                    ?.price_from ??
+                                                                null
+                                                            "
+                                                            :currency="
+                                                                day
+                                                                    .accommodation
+                                                                    ?.price_currency ??
+                                                                'NAD'
+                                                            "
+                                                            :adults="
+                                                                currentTripParams?.adults ??
+                                                                2
+                                                            "
+                                                            :children="
+                                                                currentTripParams?.children_under_13 ??
+                                                                0
+                                                            "
+                                                            :images="
+                                                                day
+                                                                    .accommodation
+                                                                    ?.gallery
+                                                                    ?.length
+                                                                    ? day
+                                                                          .accommodation
+                                                                          .gallery
+                                                                    : day
+                                                                            .accommodation
+                                                                            ?.image
+                                                                      ? [
+                                                                            day
+                                                                                .accommodation
+                                                                                .image,
+                                                                        ]
+                                                                      : []
+                                                            "
+                                                            @select="
+                                                                (option) =>
+                                                                    selectRoom(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                        option,
+                                                                    )
+                                                            "
+                                                        />
+                                                    </div>
+
+                                                    <div
+                                                        class="day-card day-card--continuation"
+                                                    >
+                                                        <div
+                                                            class="day-card-sub"
+                                                        >
+                                                            {{
+                                                                dayDateLabel(
+                                                                    day,
+                                                                )
+                                                            }}
+                                                        </div>
+                                                        <div
+                                                            class="day-card-grid"
+                                                        >
+                                                            <div
+                                                                class="day-card-box"
+                                                            >
+                                                                <div
+                                                                    class="day-card-box-label"
+                                                                >
+                                                                    {{
+                                                                        t(
+                                                                            'itinerary.dayPlanLabel',
+                                                                        )
+                                                                    }}
+                                                                </div>
+                                                                <ItineraryLineItem
+                                                                    v-for="entry in dayEntries(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                    )"
+                                                                    :key="`${entry.type}-${entry.itemIndex}-${entry.item.id ?? entry.item.name}`"
+                                                                    hide-label
+                                                                    :keypath="
+                                                                        entry.type ===
+                                                                        'activity'
+                                                                            ? 'itinerary.activity'
+                                                                            : 'itinerary.dinner'
+                                                                    "
+                                                                    :item-ref="
+                                                                        entry.item
+                                                                    "
+                                                                    :icon="
+                                                                        entry.type ===
+                                                                        'activity'
+                                                                            ? '📷'
+                                                                            : '🍴'
+                                                                    "
+                                                                    :type-label="
+                                                                        t(
+                                                                            entry.type ===
+                                                                                'activity'
+                                                                                ? 'itinerary.activityLabel'
+                                                                                : 'itinerary.dinnerLabel',
+                                                                        )
+                                                                    "
+                                                                    :time="
+                                                                        entry
+                                                                            .item
+                                                                            .time
+                                                                    "
+                                                                    @update:time="
+                                                                        (
+                                                                            value,
+                                                                        ) =>
+                                                                            setEntryTime(
+                                                                                variantIndex,
+                                                                                dayIndex,
+                                                                                entry,
+                                                                                value,
+                                                                            )
+                                                                    "
+                                                                    @remove="
+                                                                        confirmAndRun(
+                                                                            t(
+                                                                                'itinerary.confirmRemove.item',
+                                                                            ),
+                                                                            () =>
+                                                                                removeArrayItem(
+                                                                                    variantIndex,
+                                                                                    dayIndex,
+                                                                                    entry.type ===
+                                                                                        'activity'
+                                                                                        ? 'activities'
+                                                                                        : 'restaurants',
+                                                                                    entry.itemIndex,
+                                                                                ),
+                                                                        )
+                                                                    "
+                                                                    @swap="
+                                                                        openSwap(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                            entry.type,
+                                                                            entry.item,
+                                                                            entry.itemIndex,
+                                                                        )
+                                                                    "
+                                                                />
+                                                                <div
+                                                                    class="day-plan-add-row"
+                                                                >
+                                                                    <button
+                                                                        type="button"
+                                                                        class="add-item-btn"
+                                                                        @click="
+                                                                            openSwap(
+                                                                                variantIndex,
+                                                                                dayIndex,
+                                                                                'activity',
+                                                                            )
+                                                                        "
+                                                                    >
+                                                                        +
+                                                                        {{
+                                                                            t(
+                                                                                'itinerary.addActivity',
                                                                             )
                                                                         }}
                                                                     </button>
                                                                     <button
                                                                         type="button"
-                                                                        class="remove-btn"
-                                                                        :aria-label="
-                                                                            t(
-                                                                                'itinerary.remove',
-                                                                            )
-                                                                        "
+                                                                        class="add-item-btn"
                                                                         @click="
-                                                                            confirmAndRun(
-                                                                                t(
-                                                                                    'itinerary.confirmRemove.room',
-                                                                                ),
-                                                                                () =>
-                                                                                    clearRoom(
-                                                                                        variantIndex,
-                                                                                        dayIndex,
-                                                                                    ),
+                                                                            openSwap(
+                                                                                variantIndex,
+                                                                                dayIndex,
+                                                                                'restaurant',
                                                                             )
                                                                         "
                                                                     >
-                                                                        ×
+                                                                        +
+                                                                        {{
+                                                                            t(
+                                                                                'itinerary.addRestaurant',
+                                                                            )
+                                                                        }}
                                                                     </button>
-                                                                </template>
-                                                                <button
-                                                                    v-else
-                                                                    type="button"
-                                                                    class="room-selection-add-btn"
-                                                                    @click="
-                                                                        toggleRoomPicker(
-                                                                            variantIndex,
-                                                                            dayIndex,
-                                                                        )
-                                                                    "
-                                                                >
-                                                                    🛏️
-                                                                    {{
-                                                                        t(
-                                                                            'itinerary.chooseRoom',
-                                                                        )
-                                                                    }}
-                                                                </button>
-                                                            </div>
-                                                        </div>
-
-                                                        <div
-                                                            class="day-card-box"
-                                                        >
-                                                            <div
-                                                                class="day-card-box-label"
-                                                            >
-                                                                {{
-                                                                    t(
-                                                                        'itinerary.dayPlanLabel',
-                                                                    )
-                                                                }}
-                                                            </div>
-                                                            <ItineraryLineItem
-                                                                v-for="entry in dayEntries(
-                                                                    variantIndex,
-                                                                    dayIndex,
-                                                                )"
-                                                                :key="`${entry.type}-${entry.itemIndex}-${entry.item.id ?? entry.item.name}`"
-                                                                hide-label
-                                                                :keypath="
-                                                                    entry.type ===
-                                                                    'activity'
-                                                                        ? 'itinerary.activity'
-                                                                        : 'itinerary.dinner'
-                                                                "
-                                                                :item-ref="
-                                                                    entry.item
-                                                                "
-                                                                :icon="
-                                                                    entry.type ===
-                                                                    'activity'
-                                                                        ? '📷'
-                                                                        : '🍴'
-                                                                "
-                                                                :type-label="
-                                                                    t(
-                                                                        entry.type ===
-                                                                            'activity'
-                                                                            ? 'itinerary.activityLabel'
-                                                                            : 'itinerary.dinnerLabel',
-                                                                    )
-                                                                "
-                                                                :time="
-                                                                    entry.item
-                                                                        .time
-                                                                "
-                                                                @update:time="
-                                                                    (value) =>
-                                                                        setEntryTime(
-                                                                            variantIndex,
-                                                                            dayIndex,
-                                                                            entry,
-                                                                            value,
-                                                                        )
-                                                                "
-                                                                @remove="
-                                                                    confirmAndRun(
-                                                                        t(
-                                                                            'itinerary.confirmRemove.item',
-                                                                        ),
-                                                                        () =>
-                                                                            removeArrayItem(
-                                                                                variantIndex,
-                                                                                dayIndex,
-                                                                                entry.type ===
-                                                                                    'activity'
-                                                                                    ? 'activities'
-                                                                                    : 'restaurants',
-                                                                                entry.itemIndex,
-                                                                            ),
-                                                                    )
-                                                                "
-                                                                @swap="
-                                                                    openSwap(
-                                                                        variantIndex,
-                                                                        dayIndex,
-                                                                        entry.type,
-                                                                        entry.item,
-                                                                        entry.itemIndex,
-                                                                    )
-                                                                "
-                                                            />
-                                                            <div
-                                                                class="day-plan-add-row"
-                                                            >
-                                                                <button
-                                                                    type="button"
-                                                                    class="add-item-btn"
-                                                                    @click="
-                                                                        openSwap(
-                                                                            variantIndex,
-                                                                            dayIndex,
-                                                                            'activity',
-                                                                        )
-                                                                    "
-                                                                >
-                                                                    +
-                                                                    {{
-                                                                        t(
-                                                                            'itinerary.addActivity',
-                                                                        )
-                                                                    }}
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    class="add-item-btn"
-                                                                    @click="
-                                                                        openSwap(
-                                                                            variantIndex,
-                                                                            dayIndex,
-                                                                            'restaurant',
-                                                                        )
-                                                                    "
-                                                                >
-                                                                    +
-                                                                    {{
-                                                                        t(
-                                                                            'itinerary.addRestaurant',
-                                                                        )
-                                                                    }}
-                                                                </button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
+                                                </div>
+                                            </template>
 
-                                                    <RoomTypePicker
-                                                        v-if="
-                                                            roomPickerKey ===
-                                                            roomSelectionKey(
-                                                                variantIndex,
-                                                                dayIndex,
-                                                            )
-                                                        "
-                                                        :base-price="
-                                                            day.accommodation
-                                                                ?.price_from ??
-                                                            null
-                                                        "
-                                                        :currency="
-                                                            day.accommodation
-                                                                ?.price_currency ??
-                                                            'NAD'
-                                                        "
-                                                        :adults="
-                                                            currentTripParams?.adults ??
-                                                            2
-                                                        "
-                                                        :children="
-                                                            currentTripParams?.children_under_13 ??
-                                                            0
-                                                        "
-                                                        :images="
-                                                            day.accommodation
-                                                                ?.gallery
-                                                                ?.length
-                                                                ? day
-                                                                      .accommodation
-                                                                      .gallery
-                                                                : day
-                                                                        .accommodation
-                                                                        ?.image
-                                                                  ? [
-                                                                        day
-                                                                            .accommodation
-                                                                            .image,
-                                                                    ]
-                                                                  : []
-                                                        "
-                                                        @select="
-                                                            (option) =>
-                                                                selectRoom(
-                                                                    variantIndex,
-                                                                    dayIndex,
-                                                                    option,
-                                                                )
-                                                        "
-                                                    />
-                                                </template>
-
-                                                <template v-else>
+                                            <template v-else>
+                                                <div
+                                                    class="day-card day-card--continuation"
+                                                >
                                                     <div
                                                         class="day-card-header"
                                                     >
                                                         <span
                                                             class="day-card-sub"
                                                             >{{
-                                                                dayEndDateLabel(
+                                                                dayDateLabel(
                                                                     day,
                                                                 )
                                                             }}</span
@@ -2305,8 +2323,8 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </template>
-                                            </div>
+                                                </div>
+                                            </template>
                                         </div>
                                     </div>
                                 </template>

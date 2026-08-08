@@ -1019,6 +1019,17 @@ body:has(.kaia-page) {
     border-radius: 2px;
     z-index: 0;
 }
+/* A stage's first day renders two stacked .day-card elements — the
+   accommodation card, then a continuation-styled card for that same day's
+   own activity/restaurant plan — as a plain block column so .day-content's
+   grid (see the comment above) still only ever sees ONE second-column
+   child, whether that's this wrapper (stage-start) or a bare .day-card
+   (every later day in the stay). No layout rules of its own needed: each
+   child .day-card already carries its own spacing/negative-margin. */
+.kaia-page .day-card-column {
+    display: flex;
+    flex-direction: column;
+}
 .kaia-page .day-card {
     background: var(--paper);
     border: 1px solid var(--sand-dark);
