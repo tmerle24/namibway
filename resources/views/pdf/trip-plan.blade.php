@@ -111,6 +111,34 @@
             </div>
         </div>
     </div>
+    {{-- The checkout morning after a stage's last night — a `days` entry is a
+         night, so what's planned for the departure day itself rides on the
+         last night as `departure_activities`/`departure_restaurants`. --}}
+    @php
+        $departureActivities = $day['departure_activities'] ?? [];
+        $departureRestaurants = $day['departure_restaurants'] ?? [];
+    @endphp
+    @if(!empty($departureActivities) || !empty($departureRestaurants))
+    <div class="day-row">
+        <div class="day-col">
+            <div class="day-num">&rarr;</div>
+            @if(!empty($day['date_to']))
+            <div class="day-date">{{ $day['date_to'] }}</div>
+            @endif
+        </div>
+        <div>
+            <div class="day-location">{{ $day['location'] }} &middot; Departure day</div>
+            <div class="day-items">
+                @foreach($departureActivities as $activity)
+                <div class="day-item"><span>Activity: </span>{{ $activity['name'] ?? $activity }}</div>
+                @endforeach
+                @foreach($departureRestaurants as $restaurant)
+                <div class="day-item"><span>Dinner: </span>{{ $restaurant['name'] ?? $restaurant }}</div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
     @endforeach
 </div>
 @endforeach

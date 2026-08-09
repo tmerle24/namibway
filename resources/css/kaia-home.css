@@ -1060,6 +1060,13 @@ body:has(.kaia-page) {
     /* Against the paper, not the timeline line running behind it. */
     border: 2px solid var(--paper);
 }
+/* The departure-day row's marker: hollow, because checkout morning is not
+   another night — the filled dots are the nights, this is the morning after
+   the last one. Same footprint as .day-dot so the rail's centreline holds. */
+.kaia-page .day-dot--departure {
+    background: var(--paper);
+    border-color: var(--sage-light);
+}
 .kaia-page .day-rail-date {
     font-size: 11px;
     font-weight: 600;

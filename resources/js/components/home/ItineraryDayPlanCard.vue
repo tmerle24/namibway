@@ -10,6 +10,9 @@ defineProps<{
     // Opened through a read-only share link: the day is still shown in full,
     // it just offers nothing that would try to write.
     readonly?: boolean;
+    // The departure-day row's card has no day of its own to remove — it is
+    // derived from the stage's last night — so it hides the day menu.
+    hideDayMenu?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -44,6 +47,7 @@ const { t } = useI18n();
                 + {{ t('itinerary.addRestaurant') }}
             </button>
             <KebabMenu
+                v-if="!hideDayMenu"
                 :items="[
                     {
                         key: 'delete',

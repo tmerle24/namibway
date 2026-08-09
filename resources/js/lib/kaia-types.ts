@@ -73,6 +73,15 @@ export interface ItineraryDay {
     // these arrays before they ever reach the rest of the UI.
     activities?: ItineraryListingRef[];
     restaurants?: ItineraryListingRef[];
+    // A `days` entry is a *night*, so the morning the traveler checks out
+    // (this day's `date_to`) has no entry of its own — these hold what's
+    // planned for that departure day, before driving on to the next stage.
+    // Only ever meaningful on the last night of a stage; the timeline renders
+    // them as a separate "Abreise" row after the stage's day rows, and
+    // consolidateDepartureEntries() in ItinerarySection.vue moves them along
+    // whenever an edit changes which day ends the stage.
+    departure_activities?: ItineraryListingRef[];
+    departure_restaurants?: ItineraryListingRef[];
     // Raw shape as sent by the backend — never read directly outside
     // normalizeVariants().
     activity?: ItineraryListingRef | null;
