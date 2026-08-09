@@ -161,11 +161,13 @@ function onMenuSelect(key: string) {
             :disabled="readonly"
             @click="startTimeEdit"
         >
-            <!-- No placeholder dash when unset: the column stays (so rows
-                 align on the icon), but empty — "Zeit festlegen" on the
-                 details line is the labelled way in, this button is just
-                 the same target at the spot where the time will appear. -->
-            {{ time }}
+            <!-- An unset time shows a quiet dash inside the fixed column —
+                 "time not specified", nothing more. It stays in the column
+                 (not beside the icon) so rows keep aligning on the icon;
+                 "Zeit festlegen" on the details line is the labelled way in,
+                 this button is just the same target at the spot where the
+                 time will appear. -->
+            {{ time || '—' }}
         </button>
 
         <span class="entry-row-icon" :class="`entry-row-icon--${type}`">{{
@@ -202,12 +204,11 @@ function onMenuSelect(key: string) {
                         {{ t('itinerary.setTime') }}
                     </button>
                 </template>
-                <!-- The price rides at the end of the details line: it is
-                     secondary to the name (especially "Preis auf Anfrage",
-                     which is most of the catalog), and on the same line it
-                     can't visually compete with it. -->
-                <span class="entry-row-details-sep">·</span
-                ><span class="item-price">{{ priceLabel }}</span>
+                <!-- The price rides at the end of the details line, in the
+                     line's own colour and weight: it is secondary metadata
+                     (especially "Preis auf Anfrage", which is most of the
+                     catalog) and must not compete with the name above. -->
+                <span class="entry-row-details-sep">·</span>{{ priceLabel }}
             </div>
         </div>
 
