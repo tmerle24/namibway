@@ -131,4 +131,124 @@ class MediaUrlTest extends TestCase
         $this->assertNull(MediaUrl::thumb(null, 44));
         $this->assertNull(MediaUrl::thumb('', 44));
     }
+
+    /**
+     * The 2026-08-09 breakage, made impossible. An r2.dev bucket URL cannot
+     * serve /cdn-cgi/image/, so enabling transforms against one must be a
+     * no-op rather than a 404 on every listing photo.
+     */
+    public function test_an_r2_native_host_is_never_treated_as_transform_capable(): void
+    {
+        config([
+            'media.transforms.enabled' => true,
+            'media.transforms.origins' => ['https://pub-abc123.r2.dev'],
+            'media.transforms.widths' => [64, 128, 256, 400, 800, 1600],
+            'media.transforms.quality' => 80,
+        ]);
+
+        $url = 'https://pub-abc123.r2.dev/listings/lodge.jpg';
+
+        $this->assertSame($url, MediaUrl::thumb($url, 44));
+        $this->assertSame([], MediaUrl::clientConfig()['origins']);
+    }
+
+    public function test_the_s3_api_endpoint_is_rejected_too(): void
+    {
+        config([
+            'media.transforms.enabled' => true,
+            'media.transforms.origins' => ['https://acc.r2.cloudflarestorage.com'],
+        ]);
+
+        $this->assertSame([], MediaUrl::clientConfig()['origins']);
+    }
+
+    public function test_a_custom_domain_still_qualifies(): void
+    {
+        $this->enableTransforms();
+
+        $this->assertSame(
+            ['https://cdn.namibway.test'],
+            MediaUrl::clientConfig()['origins'],
+        );
+        $this->assertTrue(MediaUrl::canTransform('https://cdn.namibway.com'));
+    }
+
+    /**
+     * What production actually does today: no custom domain, so Cloudflare is
+     * out and the app resizes the image itself.
+     */
+    public function test_a_bucket_image_falls_back_to_our_own_thumbnail_route(): void
+    {
+        config([
+            'media.transforms.enabled' => false,
+            'media.thumbnails.enabled' => true,
+            'media.transforms.widths' => [64, 128, 256, 400, 800, 1600],
+            'filesystems.disks.r2.url' => 'https://pub-abc123.r2.dev',
+        ]);
+
+        $this->assertSame(
+            '/thumbs/64/listings/lodge.jpg',
+            MediaUrl::thumb('https://pub-abc123.r2.dev/listings/lodge.jpg', 44),
+        );
+    }
+
+    public function test_cloudflare_wins_when_it_is_actually_available(): void
+    {
+        config([
+            'media.transforms.enabled' => true,
+            'media.transforms.origins' => ['https://cdn.namibway.test'],
+            'media.transforms.widths' => [64, 128, 256, 400, 800, 1600],
+            'media.transforms.quality' => 80,
+            'media.thumbnails.enabled' => true,
+            'filesystems.disks.r2.url' => 'https://cdn.namibway.test',
+        ]);
+
+        $this->assertStringContainsString(
+            '/cdn-cgi/image/',
+            (string) MediaUrl::thumb('https://cdn.namibway.test/listings/lodge.jpg', 44),
+        );
+    }
+
+    public function test_it_does_not_thumbnail_a_thumbnail(): void
+    {
+        config([
+            'media.transforms.enabled' => false,
+            'media.thumbnails.enabled' => true,
+            'media.transforms.widths' => [64, 128, 256, 400, 800, 1600],
+            'filesystems.disks.r2.url' => 'https://pub-abc123.r2.dev',
+        ]);
+
+        $once = (string) MediaUrl::thumb('https://pub-abc123.r2.dev/listings/lodge.jpg', 44);
+
+        $this->assertSame($once, MediaUrl::thumb($once, 44));
+    }
+
+    public function test_a_foreign_url_gets_no_thumbnail_route(): void
+    {
+        config([
+            'media.transforms.enabled' => false,
+            'media.thumbnails.enabled' => true,
+            'filesystems.disks.r2.url' => 'https://pub-abc123.r2.dev',
+        ]);
+
+        // Not in our bucket, so there is nothing for the route to fetch.
+        $url = 'https://some-lodge.com.na/hero.jpg';
+
+        $this->assertSame($url, MediaUrl::thumb($url, 44));
+    }
+
+    public function test_srcset_offers_two_real_densities_through_the_route(): void
+    {
+        config([
+            'media.transforms.enabled' => false,
+            'media.thumbnails.enabled' => true,
+            'media.transforms.widths' => [64, 128, 256, 400, 800, 1600],
+            'filesystems.disks.r2.url' => 'https://pub-abc123.r2.dev',
+        ]);
+
+        $this->assertSame(
+            '/thumbs/400/listings/lodge.jpg 1x, /thumbs/800/listings/lodge.jpg 2x',
+            MediaUrl::srcset('https://pub-abc123.r2.dev/listings/lodge.jpg', 400),
+        );
+    }
 }

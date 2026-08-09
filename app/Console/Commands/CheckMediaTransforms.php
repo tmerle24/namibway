@@ -84,6 +84,17 @@ class CheckMediaTransforms extends Command
         $this->line('  origins : '.(implode(', ', MediaUrl::clientConfig()['origins']) ?: '(none)'));
         $this->line('  widths  : '.implode('/', MediaUrl::clientConfig()['widths']));
         $this->line('  quality : '.MediaUrl::clientConfig()['quality']);
+
+        // The specific trap: CLOUDFLARE_R2_URL is set, but to a host that can
+        // never serve /cdn-cgi/image/. Without saying so, "origins: (none)"
+        // looks like the variable is missing rather than rejected.
+        foreach ((array) config('media.transforms.origins', []) as $candidate) {
+            if (! MediaUrl::canTransform((string) $candidate)) {
+                $this->warn("  ! {$candidate} cannot serve /cdn-cgi/image/ and is ignored.");
+                $this->line('    R2\'s own hostnames are not Cloudflare-proxied zones. Attach a');
+                $this->line('    custom domain to the bucket and point CLOUDFLARE_R2_URL at it.');
+            }
+        }
     }
 
     /**

@@ -779,6 +779,46 @@ after the last night had no row anywhere.
   artisan). eslint, prettier and `vue-tsc` are clean; the consolidation
   logic ran green against a standalone scenario harness.
 
+### Session 12 — 2026-08-09 (thumbnails, for real)
+
+Thumbnails, for real this time. Session 6 built the half where every component
+asks for the width it actually renders at; nothing existed to answer that ask.
+The plan was Cloudflare Image Transformations, which turned out to be
+unreachable: an R2 custom domain requires the zone to sit in the same Cloudflare
+account, and namibway.com's DNS is at OVH. Moving it was rejected as
+disproportionate — the same DNS carries the mailbox and the partner-mail poller.
+
+- ✅ **`/thumbs/{width}/{key}`** (`ThumbnailController` + `ThumbnailGenerator`).
+  First request resizes the stored original once with GD, writes the WebP copy
+  to the same bucket under `thumbs/`, and **redirects** there. Later requests
+  only redirect. Nothing to configure: no DNS, no Cloudflare account, no env
+  var.
+- ✅ **Redirect, not passthrough.** Serving the bytes through Laravel would tie
+  up one PHP-FPM worker per image for the length of the transfer — a page with
+  20 thumbnails would hold 20 of them. The redirect costs one small round trip,
+  which the immutable cache header removes for returning visitors.
+- ✅ **Derivatives are a cache, not data.** The original is the only truth, so
+  `thumbs/` can be deleted wholesale at any time and simply gets remade. That is
+  also how a changed width ladder or quality is applied — there is no migration
+  and no backfill, and it is why the R2 cleanup was never actually a blocker.
+- ✅ **Guards on a route that generates files from user input:** only widths on
+  the configured ladder are served (otherwise `/thumbs/1/…` through
+  `/thumbs/9999/…` fills the bucket), no `..`, no thumbnailing a thumbnail, and
+  a 25 MP decode ceiling so GD can't repeat the 128 MB exhaustion that took
+  `/kaia/message` down the same day. Anything unresizable falls back to the
+  original: slower, but the photo still shows.
+- ✅ Cloudflare stays wired as an optional upgrade and takes precedence when
+  genuinely available — but an origin on `*.r2.dev` or the S3 endpoint is now
+  rejected outright, so the flag cannot 404 every photo again (2026-08-09).
+- Verified end-to-end in a real browser, not just in tests: the Explore page
+  issues **30 requests to `/thumbs/…`** at the right per-slot widths (800 for
+  the featured pick, 256 for destination cards) and **zero** to the originals.
+  272/272 against Postgres, plus phpstan, pint, eslint, prettier, vue-tsc and a
+  production build.
+- Tests: `tests/Feature/ThumbnailRouteTest.php` (8 — generation, reuse,
+  no-upscale, ladder, traversal, recursion, missing and unreadable originals,
+  cache header) and 5 more in `MediaUrlTest` for the URL building.
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its
@@ -817,19 +857,12 @@ after the last night had no row anywhere.
   Still open: participants as first-class rows, per-person write grants,
   comments, and change attribution — i.e. everything that needs a person
   attached to *each change* rather than a single owner per plan.
-- ⬜ **Rehome images stranded on an old media origin.** Blocks the switch-on
-  below from being effective — see session 7's ⚠️ entry. Two options:
-  (a) a `legacy_origins` config so `MediaUrl` rehomes a known old bucket host
-  onto the current origin before transforming (same bucket, same path — no data
-  touched), or (b) a one-off rewrite of the stored URLs, which is a bulk update
-  over existing non-null data and therefore exactly the class of operation
-  CLAUDE.md's "Data-loss lesson" warns about. (a) is the safer one.
-- ⬜ **Switch the thumbnails on.** All the code shipped in session 7, but
-  `MEDIA_TRANSFORMS_ENABLED` is still false in production: it needs a custom
-  domain on the R2 media bucket plus Transformations enabled for the
-  namibway.com zone (a dashboard + `.env` task, not a code one). Until then
-  images are still served at their original size. Steps:
-  **DEPLOYMENT.md → "Bild-Thumbnails"**.
+- ⬜ **Images stranded on an old media origin** — only matters if
+  `CLOUDFLARE_R2_URL` ever changes. Google Places photos store an absolute
+  bucket URL at download time, so such a change leaves those rows pointing at
+  the old host. Since session 11 this no longer blocks thumbnails (the route
+  keys off the bucket path, and `photos:audit-r2` matches on filename), so it
+  is a tidiness item, not a correctness one.
 - ⬜ **On-trip progress tracker** — see the dedicated section above.
 - ✅ ~~Removing a single day from inside a collapsed multi-night stay isn't
   possible from the UI anymore~~ — fixed in session 8: every day of a stage

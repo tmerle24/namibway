@@ -10,6 +10,7 @@ use App\Http\Controllers\ListingController;
 use App\Http\Controllers\ListingsPartnerHandbookPdfController;
 use App\Http\Controllers\PartnerApiGuideController;
 use App\Http\Controllers\SavedPlanController;
+use App\Http\Controllers\ThumbnailController;
 use App\Http\Controllers\TripController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,16 @@ Route::get('admin/listings-partner-handbook.pdf', ListingsPartnerHandbookPdfCont
 Route::post('currency', [CurrencyController::class, 'update'])
     ->middleware('throttle:30,1')
     ->name('currency.update');
+
+// Width-limited copies of catalog photos, made on first request (see
+// ThumbnailController). `.*` because the tail is a bucket key with slashes in
+// it. Throttled generously: a single page legitimately asks for a couple of
+// dozen of these at once, and only a first-ever view reaches PHP at all — once
+// the variant exists the response is a cacheable redirect.
+Route::get('thumbs/{width}/{path}', ThumbnailController::class)
+    ->where('path', '.*')
+    ->middleware('throttle:240,1')
+    ->name('thumbs.show');
 
 Route::get('listings/search', [ListingController::class, 'search'])->name('listings.search');
 Route::get('listings/{listing:slug}/preview', [ListingController::class, 'preview'])->name('listings.preview');
