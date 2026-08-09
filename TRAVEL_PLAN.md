@@ -497,7 +497,59 @@ Worst case sat in this very feature: the trip plan's day thumbnail renders at
   `curl -sSL -o /tmp/phpstan.phar https://github.com/phpstan/phpstan/releases/download/2.2.5/phpstan.phar && php /tmp/phpstan.phar analyse -c phpstan.neon`
   (larastan still has to be in `vendor/` for the include to resolve).
 
-### Session 8 — 2026-08-09
+### Session 8 — 2026-08-09 (trip plan timeline rows)
+
+Reiseplan layout, from a mockup Till supplied. The old shape showed a stage
+card and then, under a "Tagespläne" heading, only the stage's *first* day —
+every later day was hidden unless it happened to have an activity or a
+restaurant on it. So a three-night stay looked like one day, and days 2–3 had
+nowhere to add anything.
+
+- ✅ **Every day of a stage is now its own timeline row.** Day number, date and
+  "Ankunft"/"Abreise" moved out of the card onto the rail
+  (`.day-rail--day`); the card itself is only the add buttons plus that day's
+  entries. `ItineraryDayPlanCard` lost its `dateLabel`/`showDayMenu` props
+  along with the header they fed — every day carries its own menu now, at the
+  end of the add row.
+- ✅ **The stage heading means the stage.** Its date line gained the nights
+  count (`stageDateSubLabel`), its price badge sums the whole run rather than
+  just the first day (`dayItemsPriceLabel` → `stagePriceLabel`), and its menu
+  removes the whole stage (`removeStage`) rather than one day of it — the day
+  rows below own single-day removal.
+- ✅ **"+ Tag hinzufügen" → "+ Etappe hinzufügen"** on the top/bottom buttons
+  and the inline "+" between stages. All three insert an accommodation-less
+  day, which is a stage of its own by definition, so the old label described
+  the mechanism rather than the result.
+- ✅ **Drive-time connectors only render between stages.** Inside one there is
+  nothing to drive, and a connector per day broke the block up visually.
+- ✅ Each day row folds shut from its rail (`collapsedDays`). Purely a viewing
+  state — never persisted, and cleared whenever days are added, removed or
+  dragged, since its keys are indices.
+- ✅ Fixed alongside: two accommodation-less days in a row used to merge into
+  one stage in `isStageStart` while `stageEndIndex` treated each as its own —
+  so the second one rendered as a continuation and never offered a way to pick
+  a stay. A null identity now always starts its own stage.
+- ✅ **"Nacht hinzufügen" on the stay block** (`addNight`) — copies the stage's
+  last day, stay and room included, and inserts it into the run so the stage
+  grows rather than splitting into two. Removing a night is the day row's own
+  menu, so the pair sits on the two objects it belongs to.
+- ⚠️ **Every stay control had to be widened to the stage first.** `applySwap`,
+  `selectRoom`, `clearRoom` and `removeItem` all wrote a single day while the
+  card they hang off spans the whole run — so swapping the lodge on a
+  three-night stage produced "one night at the new place, two at the old one",
+  and a picked room only applied to the first night despite the card saying
+  otherwise. They now write across `stageDayIndices()`. Pre-existing, but
+  latent while multi-night stages were mostly invisible; adding nights makes
+  them the normal case.
+- Deliberately **not** taken from the mockup, per Till: the "Etappeninfos"
+  button and the pencil next to the city name.
+- Not verifiable in this environment: `composer install` couldn't complete
+  (dist downloads fell back to full git clones), so the app itself was never
+  booted. The layout was checked against a static harness of the new markup
+  plus the real stylesheet at 900px and 390px; eslint, prettier and `vue-tsc`
+  are clean.
+
+### Session 9 — 2026-08-09 (city vs. region)
 
 Region names had crept back into the plan as stage headings ("Khomas",
 "Otjozondjupa" where "Windhoek", "Otjiwarongo" belong). Session 1 fixed the
@@ -576,7 +628,18 @@ when seeded, but not when imported:
     `vendor/bin`. `--prefer-source`, a warm cache, and feeding `COMPOSER_AUTH`
     the ambient `GITHUB_TOKEN` (which is the literal string `proxy-injected`)
     all fail the same way. Plain `curl` to github.com works, which is why the
-    phars are the way through.
+    pint phar is the way through.
+  - **The phpstan phar does *not* rescue that environment**, unlike what the
+    session 7 note above implies — it assumes a populated `vendor/` that is
+    merely missing phpstan. Here `composer install` leaves `vendor/larastan/`
+    an *empty directory*, so `phpstan.neon`'s include of
+    `vendor/larastan/larastan/extension.neon` fails before analysis starts,
+    and larastan couldn't resolve Illuminate classes without an autoloader
+    anyway. phpstan cost a second red CI on this branch for that reason
+    (`$city->region?->name` widening a fixed array shape). If you can't run
+    `composer test`, pint is coverable locally and phpstan is not — so read
+    new phpstan-sensitive code twice: nullable relation access, and return
+    types narrower than what `Collection` methods can prove.
 
 ### Known gaps / next up
 
@@ -633,12 +696,14 @@ when seeded, but not when imported:
   images are still served at their original size. Steps:
   **DEPLOYMENT.md → "Bild-Thumbnails"**.
 - ⬜ **On-trip progress tracker** — see the dedicated section above.
-- ⬜ Removing a single day from inside a collapsed multi-night stay isn't
-  possible from the UI anymore (only the stay's first day and any day with
-  its own activity/restaurant are shown/removable) — shortening a stay
-  today means editing trip dates via the params editor instead. Worth a
-  small follow-up (e.g. a "−1 night" control on the stay block) if this
-  turns out to matter in practice.
+- ✅ ~~Removing a single day from inside a collapsed multi-night stay isn't
+  possible from the UI anymore~~ — fixed in session 7: every day of a stage
+  has its own row and its own menu, so a stay can be shortened a night at a
+  time again without going through the params editor.
+- ✅ ~~Adding a night to an existing stage has no direct control~~ — fixed in
+  session 7: "Nacht hinzufügen" on the stay block copies the stage's last day
+  (same place, same stay, same room, empty day plan) and inserts it into the
+  run, so the stage grows instead of splitting.
 - ⬜ Everything else from the original prototype
   (`namibia_travel_prototype.html`) not yet ported: the booking-request
   queue animation (one-active-request-at-a-time), after-sales cards,

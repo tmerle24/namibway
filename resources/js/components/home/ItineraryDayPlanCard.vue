@@ -5,15 +5,8 @@ import ItineraryEntryRow from './ItineraryEntryRow.vue';
 import KebabMenu from './KebabMenu.vue';
 
 defineProps<{
-    // Already formatted for display by the parent (dayDateLabel) — this card
-    // only ever shows one day, so it needs no date logic of its own.
-    dateLabel: string;
     // Pre-merged and pre-sorted by the parent's dayEntries().
     entries: DayEntry[];
-    // A stage's first day renders this card directly under its accommodation
-    // card, which already carries the day's "remove day" menu — a second one
-    // here would act on the same day twice over.
-    showDayMenu?: boolean;
     // Opened through a read-only share link: the day is still shown in full,
     // it just offers nothing that would try to write.
     readonly?: boolean;
@@ -31,23 +24,10 @@ const { t } = useI18n();
 </script>
 
 <template>
+    <!-- The day's own date and its arrival/departure label live on the
+         timeline rail beside this card (see ItinerarySection.vue), so the card
+         itself carries nothing but what happens that day. -->
     <div class="day-card day-card--continuation day-card--day-plan">
-        <div class="day-plan-head">
-            <span class="day-plan-date">{{ dateLabel }}</span>
-            <KebabMenu
-                v-if="showDayMenu && !readonly"
-                :items="[
-                    {
-                        key: 'delete',
-                        label: t('itinerary.removeDay'),
-                        danger: true,
-                    },
-                ]"
-                :label="t('itinerary.dayOptions')"
-                @select="emit('remove-day')"
-            />
-        </div>
-
         <div v-if="!readonly" class="day-plan-add-row">
             <button
                 type="button"
@@ -63,7 +43,26 @@ const { t } = useI18n();
             >
                 + {{ t('itinerary.addRestaurant') }}
             </button>
+            <KebabMenu
+                :items="[
+                    {
+                        key: 'delete',
+                        label: t('itinerary.removeDay'),
+                        danger: true,
+                    },
+                ]"
+                :label="t('itinerary.dayOptions')"
+                @select="emit('remove-day')"
+            />
         </div>
+
+        <!-- Every day now has a row of its own, empty ones included. In edit
+             mode the add buttons above already say what an empty day is for;
+             a shared or printed plan has no buttons, so it says so in words
+             rather than showing a blank box. -->
+        <p v-if="readonly && !entries.length" class="day-plan-empty">
+            {{ t('itinerary.dayEmpty') }}
+        </p>
 
         <ItineraryEntryRow
             v-for="entry in entries"
