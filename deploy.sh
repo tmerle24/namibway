@@ -19,6 +19,30 @@ REPO_URL="git@github.com:tmerle24/namibway.git"
 BRANCH="main"
 QUEUE_WORKER_NAME="namibway-horizon"                  # Supervisor-Programmname (php artisan horizon)
 
+# ── Abbruch sichtbar machen ─────────────────────────────────────────
+# `set -e` beendet das Skript bei jedem Fehler — steht der Wartungsmodus aus
+# Schritt 1 dann schon, bleibt Produktion als 503 hängen, ohne dass irgendwo
+# steht warum. Genau das passierte am 2026-08-09 (Build-Abbruch in Schritt 7,
+# Seite stand danach ~2h im Wartungsmodus). Der Wartungsmodus wird hier bewusst
+# NICHT automatisch beendet: nach einem abgebrochenen Build wäre der Stand
+# halbfertig (neuer PHP-Code, alte/kaputte Assets), und eine kaputte Seite ist
+# schwerer zu diagnostizieren als eine ehrliche Wartungsseite.
+on_failure() {
+    local code=$?
+    [ "$code" -eq 0 ] && return 0
+    echo ""
+    echo "════════════════════════════════════════════════════════════════"
+    echo "❌ DEPLOY ABGEBROCHEN (Exit-Code $code)"
+    echo "   Produktion steht weiterhin im WARTUNGSMODUS (HTTP 503)."
+    echo ""
+    echo "   Ursache oben im Log suchen, dann entweder:"
+    echo "     cd $APP_DIR && bash deploy.sh      # Deploy erneut vollständig durchlaufen"
+    echo "   oder — wenn der Stand nachweislich in Ordnung ist —"
+    echo "     cd $APP_DIR && php artisan up      # nur den Wartungsmodus beenden"
+    echo "════════════════════════════════════════════════════════════════"
+}
+trap on_failure EXIT
+
 SKIP_NPM=false
 SKIP_MIGRATE=false
 for arg in "$@"; do
@@ -82,24 +106,25 @@ echo "═══ 5/15 Storage-Rechte + View-Cache früh aufbauen ═══"
 # Während der Wartung (php artisan down läuft seit Schritt 1 bis fast zum Schluss)
 # kompiliert PHP-FPM (als www-data) neue Blade-Views live bei jedem Request, die noch
 # nicht im Cache liegen — z.B. die neue errors/503.blade.php. touch() verlangt aber
-# Eigentümerschaft der Datei (Schreibrecht über die Gruppe reicht nicht). Deshalb
-# MÜSSEN die kompilierten Views www-data gehören: BladeCompiler::compile() ruft
-# touch($compiled, mtime) auf, sobald eine Quell-View neuer ist als ihr Kompilat bei
-# identischem Inhalt — z.B. weil scribe:generate (Schritt 10) die Doku-View bei jedem
-# Deploy neu schreibt. Lief view:cache als Deploy-User (bzw. hat der chown -R in
-# Schritt 13 die Kompilate wieder dem Deploy-User zugeschlagen), schlug dieses touch()
-# als www-data dauerhaft mit EPERM fehl — jeder Render der betroffenen View war ein
-# 500er, bis jemand manuell eingriff (Incident 2026-08-09, siehe CLAUDE.md).
-# Fix: view:clear/view:cache als www-data ausführen, und storage/framework/views
-# bleibt www-data-owned (Schritt 13 nimmt das Verzeichnis vom globalen chown aus).
+# Eigentümerschaft der Datei (Schreibrecht über die Gruppe reicht nicht) — der
+# eigentliche Fix dafür ist Schritt 13b, siehe dort. Hier geht es nur darum, das
+# Zeitfenster klein zu halten, in dem www-data während der Wartung eine noch nicht
+# kompilierte View (z.B. errors/503.blade.php) live übersetzen muss.
+#
+# Dieser Lauf MUSS als Deploy-User laufen und das Verzeichnis MUSS für ihn
+# beschreibbar bleiben: Schritt 7 (`npm run build`) ruft über das Vite-Plugin
+# `wayfinder:generate` auf, das Blade-Templates rendert und dafür nach
+# storage/framework/views schreibt. Ein Versuch, das Verzeichnis schon hier an
+# www-data zu übergeben, ließ tempnam() dort scheitern → ErrorException → Build-
+# Abbruch → `set -e` beendete das Skript VOR `php artisan up`, und Produktion blieb
+# im Wartungsmodus hängen (2026-08-09, siehe CLAUDE.md).
 sudo chown -R "$(whoami):www-data" "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
 sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
 sudo find "$APP_DIR/bootstrap/cache" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/bootstrap/cache" -type f -exec chmod 664 {} \;
-sudo chown -R www-data:www-data "$APP_DIR/storage/framework/views"
-sudo -u www-data php artisan view:clear
-sudo -u www-data php artisan view:cache
+php artisan view:clear
+php artisan view:cache
 
 if [ "$SKIP_NPM" = false ]; then
     echo "═══ 6/15 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
@@ -144,10 +169,32 @@ sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
 sudo find "$APP_DIR/bootstrap/cache" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/bootstrap/cache" -type f -exec chmod 664 {} \;
-# Kompilierte Views zurück an www-data — der globale chown oben hat sie gerade dem
-# Deploy-User zugeschlagen, womit das touch() des BladeCompilers als www-data mit
-# EPERM fehlschlagen würde (500er auf jeder betroffenen View, siehe Schritt 5).
+echo "═══ 13b/15 View-Cache final als www-data aufbauen ═══"
+# Das hier ist der eigentliche Fix gegen die wiederkehrenden 500er
+# "touch(): Utime failed: Operation not permitted" (Incident 2026-08-09, CLAUDE.md).
+#
+# BladeCompiler::compile() ruft touch($compiled, $mtime) auf, sobald eine Quell-View
+# neuer ist als ihr Kompilat, der Inhalt aber byte-identisch — was bei JEDEM Deploy
+# passiert, weil scribe:generate (Schritt 10) seine Doku-View nach dem view:cache aus
+# Schritt 5 neu schreibt. touch() mit explizitem Zeitstempel verlangt Eigentümerschaft
+# der Datei; Gruppen-Schreibrecht reicht NICHT. Kompilierte www-data eine View, die der
+# Deploy-User angelegt hat, war das ein dauerhafter 500er auf jedem Render dieser View.
+#
+# Deshalb hier, ganz am Ende und nach scribe:generate:
+#   1. alles einmal als www-data neu kompilieren → www-data besitzt jedes Kompilat,
+#      und jedes Kompilat ist jünger als seine Quelle (der touch()-Pfad wird zur
+#      Laufzeit also gar nicht erst betreten)
+#   2. das VERZEICHNIS selbst bleibt dem Deploy-User gehören (Gruppe www-data, 775),
+#      damit Schritt 5 und der Wayfinder-Lauf im nächsten Deploy dort weiter anlegen
+#      und löschen dürfen. Nur die Dateien darin gehören www-data.
+# Genau diese Trennung Verzeichnis/Dateien ist nötig: gehört das Verzeichnis www-data,
+# scheitert der nächste Build (siehe Kommentar in Schritt 5); gehören die Dateien dem
+# Deploy-User, kommt der EPERM-500er zurück.
+sudo -u www-data php artisan view:clear
+sudo -u www-data php artisan view:cache
 sudo chown -R www-data:www-data "$APP_DIR/storage/framework/views"
+sudo chown "$(whoami):www-data" "$APP_DIR/storage/framework/views"
+sudo chmod 775 "$APP_DIR/storage/framework/views"
 
 sudo supervisorctl restart "${QUEUE_WORKER_NAME}:*" 2>/dev/null || echo "  → Supervisor-Worker '$QUEUE_WORKER_NAME' noch nicht eingerichtet, übersprungen"
 
