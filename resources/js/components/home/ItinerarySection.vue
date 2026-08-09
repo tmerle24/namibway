@@ -443,6 +443,8 @@ function normalizeDay(day: ItineraryDay): ItineraryDay {
         ...rest,
         activities: day.activities ?? (activity ? [activity] : []),
         restaurants: day.restaurants ?? (restaurant ? [restaurant] : []),
+        departure_activities: day.departure_activities ?? [],
+        departure_restaurants: day.departure_restaurants ?? [],
     };
 }
 
@@ -633,6 +635,10 @@ function stagePriceLabel(
             day.accommodation,
             ...(day.activities ?? []),
             ...(day.restaurants ?? []),
+            // The checkout morning belongs to this stage — its entries count
+            // here, same as the departure row renders under this heading.
+            ...(day.departure_activities ?? []),
+            ...(day.departure_restaurants ?? []),
         ];
 
         for (const item of items) {
@@ -807,17 +813,38 @@ function isStageEnd(variantIndex: number, dayIndex: number): boolean {
     );
 }
 
-// "Ankunft"/"Abreise" under a day's date on the rail. A single-day stage is
-// both at once, so it says arrival only — labelling the same row as departure
-// too would just be noise.
+// "Ankunft" under a day's date on the rail. Only the arrival day carries a
+// label here — departure is not one of the stage's nights but the morning
+// after the last one, so it gets a row of its own (see the departure-day row
+// in the template) instead of mislabelling the last night as the departure.
 function dayRailLabel(variantIndex: number, dayIndex: number): string | null {
-    if (isStageStart(variantIndex, dayIndex)) {
-        return t('itinerary.dayArrival');
-    }
-
-    return isStageEnd(variantIndex, dayIndex)
-        ? t('itinerary.dayDeparture')
+    return isStageStart(variantIndex, dayIndex)
+        ? t('itinerary.dayArrival')
         : null;
+}
+
+// Whether the stage ending at dayIndex gets a departure-day row: the checkout
+// morning is only worth a row of its own once there is an actual stay to
+// check out of. A freshly added, still-empty stage would otherwise render two
+// rows (arrival + departure) before the traveler has picked anything. Entries
+// already planned for the departure day always keep their row, so nothing a
+// traveler added can silently disappear.
+function hasDepartureRow(variantIndex: number, dayIndex: number): boolean {
+    const day = editableVariants.value[variantIndex].days[dayIndex];
+
+    return (
+        stayIdentity(day) !== null ||
+        (day.departure_activities?.length ?? 0) > 0 ||
+        (day.departure_restaurants?.length ?? 0) > 0
+    );
+}
+
+// Short "4 Jan" for the departure-day row — the checkout date is the last
+// night's `date_to`, shortened the same way dayRailDate() shortens `date`.
+function departureRailDate(day: { date_to?: string | null }): string {
+    const [dayNumber, month] = (day.date_to ?? '').split(' ');
+
+    return dayNumber ? [dayNumber, month].filter(Boolean).join(' ') : '';
 }
 
 // Short "15 Aug" for the narrow timeline rail — dates are stored as
@@ -832,16 +859,34 @@ function dayRailDate(day: {
     return dayNumber ? [dayNumber, month].filter(Boolean).join(' ') : '';
 }
 
-function dayCollapseKey(variantIndex: number, dayIndex: number): string {
-    return `${variantIndex}-${dayIndex}`;
+// `departure` keys the stage-end's extra departure-day row, which folds
+// independently of the last night it hangs off.
+function dayCollapseKey(
+    variantIndex: number,
+    dayIndex: number,
+    departure = false,
+): string {
+    return `${variantIndex}-${dayIndex}${departure ? '-departure' : ''}`;
 }
 
-function isDayCollapsed(variantIndex: number, dayIndex: number): boolean {
-    return collapsedDays.value[dayCollapseKey(variantIndex, dayIndex)] === true;
+function isDayCollapsed(
+    variantIndex: number,
+    dayIndex: number,
+    departure = false,
+): boolean {
+    return (
+        collapsedDays.value[
+            dayCollapseKey(variantIndex, dayIndex, departure)
+        ] === true
+    );
 }
 
-function toggleDayCollapsed(variantIndex: number, dayIndex: number) {
-    const key = dayCollapseKey(variantIndex, dayIndex);
+function toggleDayCollapsed(
+    variantIndex: number,
+    dayIndex: number,
+    departure = false,
+) {
+    const key = dayCollapseKey(variantIndex, dayIndex, departure);
 
     collapsedDays.value = {
         ...collapsedDays.value,
@@ -1020,7 +1065,10 @@ watch(
         // Claude doesn't always fill in every day's date field consistently —
         // normalize all days from day 1's date right away rather than only
         // after the traveler drags/adds/removes something.
-        plan.variants.forEach((_, i) => applyDates(i));
+        plan.variants.forEach((_, i) => {
+            consolidateDepartureEntries(i);
+            applyDates(i);
+        });
 
         // Only skip the immediate re-save when hydrating a plan that's
         // *already* got a token (restored via ?trip=token — saving it right
@@ -1125,10 +1173,42 @@ const startEndLocationSuggestions = computed(() =>
     ].sort(),
 );
 
+// Departure-day entries live on the last night of their stage (see
+// ItineraryDay.departure_activities). Any edit that changes which day that is
+// — a night added, days dragged around, neighbouring stages merged by a swap
+// — would leave them stranded mid-stage, where no departure row renders them.
+// Move them onto whichever day ends the stage now instead of losing them.
+function consolidateDepartureEntries(variantIndex: number) {
+    const days = editableVariants.value[variantIndex].days;
+
+    days.forEach((day, index) => {
+        const hasEntries =
+            (day.departure_activities?.length ?? 0) > 0 ||
+            (day.departure_restaurants?.length ?? 0) > 0;
+
+        if (!hasEntries || isStageEnd(variantIndex, index)) {
+            return;
+        }
+
+        const end = days[stageEndIndex(variantIndex, index)];
+        end.departure_activities = [
+            ...(end.departure_activities ?? []),
+            ...(day.departure_activities ?? []),
+        ];
+        end.departure_restaurants = [
+            ...(end.departure_restaurants ?? []),
+            ...(day.departure_restaurants ?? []),
+        ];
+        day.departure_activities = [];
+        day.departure_restaurants = [];
+    });
+}
+
 function renumberDays(variantIndex: number) {
     editableVariants.value[variantIndex].days.forEach((day, index) => {
         day.day = index + 1;
     });
+    consolidateDepartureEntries(variantIndex);
     applyDates(variantIndex);
     collapsedDays.value = {};
 }
@@ -1196,35 +1276,63 @@ function addNight(variantIndex: number, dayIndex: number) {
         room_selection: cloneRef(last.room_selection),
         activities: [],
         restaurants: [],
+        departure_activities: [],
+        departure_restaurants: [],
     });
 
-    days.forEach((day, index) => {
-        day.day = index + 1;
-    });
-    applyDates(variantIndex);
+    renumberDays(variantIndex);
     swap.value = null;
     roomPickerKey.value = null;
-    collapsedDays.value = {};
+}
+
+// A day owns two pairs of entry lists: the day itself, and the departure
+// morning after its night (only ever populated on a stage's last day). Every
+// read or write of an entry goes through this mapping, so "which list" is a
+// single boolean everywhere instead of four field names.
+type EntryListField =
+    | 'activities'
+    | 'restaurants'
+    | 'departure_activities'
+    | 'departure_restaurants';
+
+function entryListField(
+    type: 'activity' | 'restaurant',
+    departure: boolean,
+): EntryListField {
+    if (type === 'activity') {
+        return departure ? 'departure_activities' : 'activities';
+    }
+
+    return departure ? 'departure_restaurants' : 'restaurants';
 }
 
 // Merges a day's activities and restaurants into one chronological list —
 // entries with a `time` sort ascending; entries without one keep their
 // original relative order and sink to the end, so a plan with no times set
-// yet (the common case today) renders exactly as before.
-function dayEntries(variantIndex: number, dayIndex: number): DayEntry[] {
+// yet (the common case today) renders exactly as before. With `departure`,
+// the same merge over the departure-day lists instead.
+function dayEntries(
+    variantIndex: number,
+    dayIndex: number,
+    departure = false,
+): DayEntry[] {
     const day = editableVariants.value[variantIndex].days[dayIndex];
 
     const entries: DayEntry[] = [
-        ...(day.activities ?? []).map((item, itemIndex): DayEntry => ({
-            type: 'activity',
-            item,
-            itemIndex,
-        })),
-        ...(day.restaurants ?? []).map((item, itemIndex): DayEntry => ({
-            type: 'restaurant',
-            item,
-            itemIndex,
-        })),
+        ...(day[entryListField('activity', departure)] ?? []).map(
+            (item, itemIndex): DayEntry => ({
+                type: 'activity',
+                item,
+                itemIndex,
+            }),
+        ),
+        ...(day[entryListField('restaurant', departure)] ?? []).map(
+            (item, itemIndex): DayEntry => ({
+                type: 'restaurant',
+                item,
+                itemIndex,
+            }),
+        ),
     ];
 
     return entries
@@ -1255,8 +1363,9 @@ function setEntryTime(
     dayIndex: number,
     entry: DayEntry,
     value: string | null,
+    departure = false,
 ) {
-    const field = entry.type === 'activity' ? 'activities' : 'restaurants';
+    const field = entryListField(entry.type, departure);
     const list = editableVariants.value[variantIndex].days[dayIndex][field];
 
     if (list?.[entry.itemIndex]) {
@@ -1267,7 +1376,7 @@ function setEntryTime(
 function removeArrayItem(
     variantIndex: number,
     dayIndex: number,
-    field: 'activities' | 'restaurants',
+    field: EntryListField,
     itemIndex: number,
 ) {
     editableVariants.value[variantIndex].days[dayIndex][field]?.splice(
@@ -1281,13 +1390,9 @@ function removeArrayItem(
 function removeDay(variantIndex: number, dayIndex: number) {
     const days = editableVariants.value[variantIndex].days;
     days.splice(dayIndex, 1);
-    days.forEach((day, index) => {
-        day.day = index + 1;
-    });
-    applyDates(variantIndex);
+    renumberDays(variantIndex);
     swap.value = null;
     roomPickerKey.value = null;
-    collapsedDays.value = {};
 }
 
 // The stage heading spans every night at one place, so its own menu removes
@@ -1298,13 +1403,9 @@ function removeStage(variantIndex: number, dayIndex: number) {
     const endIndex = stageEndIndex(variantIndex, dayIndex);
 
     days.splice(dayIndex, endIndex - dayIndex + 1);
-    days.forEach((day, index) => {
-        day.day = index + 1;
-    });
-    applyDates(variantIndex);
+    renumberDays(variantIndex);
     swap.value = null;
     roomPickerKey.value = null;
-    collapsedDays.value = {};
 }
 
 // afterDayIndex = -1 inserts before the first day
@@ -1321,14 +1422,12 @@ function addDay(variantIndex: number, afterDayIndex: number) {
         accommodation: null,
         activities: [],
         restaurants: [],
+        departure_activities: [],
+        departure_restaurants: [],
     });
-    days.forEach((day, index) => {
-        day.day = index + 1;
-    });
-    applyDates(variantIndex);
+    renumberDays(variantIndex);
     swap.value = null;
     roomPickerKey.value = null;
-    collapsedDays.value = {};
 }
 
 // --- Room type picker (real availability, see RoomTypePicker.vue) ---
@@ -1380,6 +1479,10 @@ interface SwapState {
     // both for accommodation/vehicle (never arrays) and for an "add another"
     // panel (appends instead of replacing an entry at an index).
     itemIndex: number | null;
+    // Targets the day's departure-morning lists (departure_activities/
+    // departure_restaurants) instead of the day's own — set by the stage-end
+    // departure row's card.
+    departure: boolean;
     // The listing currently occupying this slot, if any — kept out of its
     // own alternatives list.
     excludeId: number | null;
@@ -1390,8 +1493,9 @@ function swapKey(
     dayIndex: number | null,
     field: SwapField,
     itemIndex?: number | null,
+    departure = false,
 ): string {
-    return `${variantIndex}-${dayIndex ?? 'v'}-${field}-${itemIndex ?? 'new'}`;
+    return `${variantIndex}-${dayIndex ?? 'v'}-${field}-${itemIndex ?? 'new'}${departure ? '-departure' : ''}`;
 }
 
 // itemRef is undefined when opening as "add" (empty slot, or appending
@@ -1404,8 +1508,9 @@ function openSwap(
     field: SwapField,
     itemRef?: ItineraryListingRef,
     itemIndex?: number | null,
+    departure = false,
 ) {
-    const key = swapKey(variantIndex, dayIndex, field, itemIndex);
+    const key = swapKey(variantIndex, dayIndex, field, itemIndex, departure);
 
     if (swap.value?.key === key) {
         swap.value = null;
@@ -1422,6 +1527,7 @@ function openSwap(
         dayIndex,
         field,
         itemIndex: itemIndex ?? null,
+        departure,
         excludeId: itemRef?.id ?? null,
     };
 }
@@ -1475,7 +1581,7 @@ function applySwap(alternative: ItineraryListingRef) {
         return;
     }
 
-    const { variantIndex, dayIndex, field, itemIndex } = swap.value;
+    const { variantIndex, dayIndex, field, itemIndex, departure } = swap.value;
     const variant = editableVariants.value[variantIndex];
 
     if (field === 'vehicle') {
@@ -1486,8 +1592,12 @@ function applySwap(alternative: ItineraryListingRef) {
             variant.days[i].accommodation = cloneRef(alternative);
             variant.days[i].room_selection = null;
         }
-    } else if (dayIndex !== null) {
-        const listField = field === 'activity' ? 'activities' : 'restaurants';
+
+        // The new lodge may match a neighbouring stage's, merging the two
+        // runs — whichever day ended the stage before may not end it now.
+        consolidateDepartureEntries(variantIndex);
+    } else if (dayIndex !== null && field !== 'accommodation') {
+        const listField = entryListField(field, departure);
         const list = (variant.days[dayIndex][listField] ??= []);
 
         if (itemIndex !== null) {
@@ -1596,6 +1706,8 @@ function estimatedTotal(variant: ItineraryVariant): number | null {
             day.accommodation,
             ...(day.activities ?? []),
             ...(day.restaurants ?? []),
+            ...(day.departure_activities ?? []),
+            ...(day.departure_restaurants ?? []),
         ];
 
         for (const item of items) {
@@ -2572,10 +2684,10 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                 removeArrayItem(
                                                                     variantIndex,
                                                                     dayIndex,
-                                                                    entry.type ===
-                                                                        'activity'
-                                                                        ? 'activities'
-                                                                        : 'restaurants',
+                                                                    entryListField(
+                                                                        entry.type,
+                                                                        false,
+                                                                    ),
                                                                     entry.itemIndex,
                                                                 ),
                                                         )
@@ -2600,6 +2712,153 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                 dayIndex,
                                                             ),
                                                     )
+                                                "
+                                            />
+                                        </div>
+
+                                        <!-- The departure day: checkout is the
+                                             morning after the stage's last
+                                             night (`date_to`), so it gets its
+                                             own row — there is still time for
+                                             an activity before driving on. -->
+                                        <div
+                                            v-if="
+                                                isStageEnd(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                ) &&
+                                                hasDepartureRow(
+                                                    variantIndex,
+                                                    dayIndex,
+                                                )
+                                            "
+                                            class="day-content day-content--day"
+                                        >
+                                            <div class="day-rail day-rail--day">
+                                                <span
+                                                    class="day-dot day-dot--departure"
+                                                ></span>
+                                                <span
+                                                    v-if="
+                                                        departureRailDate(day)
+                                                    "
+                                                    class="day-rail-date"
+                                                    >{{
+                                                        departureRailDate(day)
+                                                    }}</span
+                                                >
+                                                <span class="day-rail-label">{{
+                                                    t('itinerary.dayDeparture')
+                                                }}</span>
+                                                <button
+                                                    type="button"
+                                                    class="day-collapse-btn"
+                                                    :class="{
+                                                        'day-collapse-btn--collapsed':
+                                                            isDayCollapsed(
+                                                                variantIndex,
+                                                                dayIndex,
+                                                                true,
+                                                            ),
+                                                    }"
+                                                    :aria-expanded="
+                                                        !isDayCollapsed(
+                                                            variantIndex,
+                                                            dayIndex,
+                                                            true,
+                                                        )
+                                                    "
+                                                    :aria-label="
+                                                        isDayCollapsed(
+                                                            variantIndex,
+                                                            dayIndex,
+                                                            true,
+                                                        )
+                                                            ? t(
+                                                                  'itinerary.expandDay',
+                                                              )
+                                                            : t(
+                                                                  'itinerary.collapseDay',
+                                                              )
+                                                    "
+                                                    @click="
+                                                        toggleDayCollapsed(
+                                                            variantIndex,
+                                                            dayIndex,
+                                                            true,
+                                                        )
+                                                    "
+                                                >
+                                                    <ChevronDown :size="14" />
+                                                </button>
+                                            </div>
+
+                                            <ItineraryDayPlanCard
+                                                v-show="
+                                                    !isDayCollapsed(
+                                                        variantIndex,
+                                                        dayIndex,
+                                                        true,
+                                                    )
+                                                "
+                                                :readonly="readonly"
+                                                :entries="
+                                                    dayEntries(
+                                                        variantIndex,
+                                                        dayIndex,
+                                                        true,
+                                                    )
+                                                "
+                                                hide-day-menu
+                                                @add="
+                                                    (type) =>
+                                                        openSwap(
+                                                            variantIndex,
+                                                            dayIndex,
+                                                            type,
+                                                            undefined,
+                                                            null,
+                                                            true,
+                                                        )
+                                                "
+                                                @swap="
+                                                    (entry) =>
+                                                        openSwap(
+                                                            variantIndex,
+                                                            dayIndex,
+                                                            entry.type,
+                                                            entry.item,
+                                                            entry.itemIndex,
+                                                            true,
+                                                        )
+                                                "
+                                                @remove="
+                                                    (entry) =>
+                                                        confirmAndRun(
+                                                            t(
+                                                                'itinerary.confirmRemove.item',
+                                                            ),
+                                                            () =>
+                                                                removeArrayItem(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                    entryListField(
+                                                                        entry.type,
+                                                                        true,
+                                                                    ),
+                                                                    entry.itemIndex,
+                                                                ),
+                                                        )
+                                                "
+                                                @update-time="
+                                                    (entry, value) =>
+                                                        setEntryTime(
+                                                            variantIndex,
+                                                            dayIndex,
+                                                            entry,
+                                                            value,
+                                                            true,
+                                                        )
                                                 "
                                             />
                                         </div>
