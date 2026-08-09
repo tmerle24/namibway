@@ -131,4 +131,45 @@ class MediaUrlTest extends TestCase
         $this->assertNull(MediaUrl::thumb(null, 44));
         $this->assertNull(MediaUrl::thumb('', 44));
     }
+
+    /**
+     * The 2026-08-09 breakage, made impossible. An r2.dev bucket URL cannot
+     * serve /cdn-cgi/image/, so enabling transforms against one must be a
+     * no-op rather than a 404 on every listing photo.
+     */
+    public function test_an_r2_native_host_is_never_treated_as_transform_capable(): void
+    {
+        config([
+            'media.transforms.enabled' => true,
+            'media.transforms.origins' => ['https://pub-abc123.r2.dev'],
+            'media.transforms.widths' => [64, 128, 256, 400, 800, 1600],
+            'media.transforms.quality' => 80,
+        ]);
+
+        $url = 'https://pub-abc123.r2.dev/listings/lodge.jpg';
+
+        $this->assertSame($url, MediaUrl::thumb($url, 44));
+        $this->assertSame([], MediaUrl::clientConfig()['origins']);
+    }
+
+    public function test_the_s3_api_endpoint_is_rejected_too(): void
+    {
+        config([
+            'media.transforms.enabled' => true,
+            'media.transforms.origins' => ['https://acc.r2.cloudflarestorage.com'],
+        ]);
+
+        $this->assertSame([], MediaUrl::clientConfig()['origins']);
+    }
+
+    public function test_a_custom_domain_still_qualifies(): void
+    {
+        $this->enableTransforms();
+
+        $this->assertSame(
+            ['https://cdn.namibway.test'],
+            MediaUrl::clientConfig()['origins'],
+        );
+        $this->assertTrue(MediaUrl::canTransform('https://cdn.namibway.com'));
+    }
 }

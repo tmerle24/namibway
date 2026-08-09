@@ -105,13 +105,39 @@ class MediaUrl
     {
         return [
             'enabled' => (bool) config('media.transforms.enabled'),
-            'origins' => array_values(array_map(
-                static fn (string $origin): string => rtrim($origin, '/'),
-                (array) config('media.transforms.origins', []),
+            'origins' => array_values(array_filter(
+                array_map(
+                    static fn (string $origin): string => rtrim($origin, '/'),
+                    (array) config('media.transforms.origins', []),
+                ),
+                self::canTransform(...),
             )),
             'widths' => array_values((array) config('media.transforms.widths', [])),
             'quality' => (int) config('media.transforms.quality', 80),
         ];
+    }
+
+    /**
+     * Whether `/cdn-cgi/image/` can exist on this origin at all.
+     *
+     * R2's own hostnames are not Cloudflare-proxied zones, so the path is
+     * simply absent there: `pub-<hash>.r2.dev` serves the bucket, and the
+     * `*.r2.cloudflarestorage.com` endpoint is the S3 API. Rewriting onto
+     * either turns every listing photo into a 404 that then falls back to a
+     * stock image — the 2026-08-09 breakage — and each photo pays for the
+     * failed request first, which is what made loading look slow afterwards.
+     *
+     * Enforcing it here rather than trusting the env var means switching
+     * MEDIA_TRANSFORMS_ENABLED on before a custom domain is attached does
+     * nothing at all, which is the correct outcome for a half-finished setup.
+     */
+    public static function canTransform(string $origin): bool
+    {
+        $host = strtolower((string) parse_url($origin, PHP_URL_HOST));
+
+        return $host !== ''
+            && ! str_ends_with($host, '.r2.dev')
+            && ! str_ends_with($host, '.r2.cloudflarestorage.com');
     }
 
     /**

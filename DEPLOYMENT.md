@@ -349,6 +349,14 @@ nicht auf der namibway.com-Zone und kennt kein `/cdn-cgi/image/`. Zum Einschalte
    ```
 4. `bash deploy_namibway.sh` (oder mindestens `php artisan config:cache`).
 
+> `MEDIA_TRANSFORMS_ENABLED=true` allein reicht nicht und schadet auch nicht:
+> Solange `CLOUDFLARE_R2_URL` auf `pub-<hash>.r2.dev` (oder den S3-Endpunkt)
+> zeigt, wird die Einstellung **ignoriert**. Diese Hostnamen liegen nicht auf
+> einer Cloudflare-Zone, `/cdn-cgi/image/` gibt es dort nicht — am 2026-08-09
+> hat genau das jedes Listing-Foto in einen 404 verwandelt, der dann auf ein
+> Ersatzbild zurückfiel. Erst die Custom Domain aus Schritt 1 macht den
+> Schalter wirksam.
+
 **Prüfen — am besten schon vor Schritt 3:**
 
 ```bash

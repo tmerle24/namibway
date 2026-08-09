@@ -41,6 +41,10 @@ return [
          | bundled fallback image and every legacy /storage upload on
          | 2026-08-09. If the main zone ever moves behind the Cloudflare proxy,
          | adding APP_URL back is a conscious decision, not a default.
+         |
+         | These are only *candidates*: MediaUrl::clientConfig() drops any that
+         | provably cannot transform (the R2-native hostnames), so listing one
+         | here is not the same as trusting it.
          */
         'origins' => array_filter([
             env('CLOUDFLARE_R2_URL'),
