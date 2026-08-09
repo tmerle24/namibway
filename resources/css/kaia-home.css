@@ -1385,16 +1385,14 @@ body:has(.kaia-page) {
     line-height: 1.3;
 }
 /* Second line: type, duration, the price, and later the booking's own
-   facts. The price keeps the shared .item-price colour but rides at the
-   details line's own size — the name above is the row's strongest text,
-   and "Preis auf Anfrage" especially must not compete with it. */
+   facts. The price is plain metadata here — the details line's own colour,
+   size and weight, no .item-price accent — because the name above is the
+   row's strongest text and "Preis auf Anfrage" especially must not
+   compete with it. */
 .kaia-page .entry-row-details {
     font-size: 11px;
     color: #8a7f68;
     margin-top: 2px;
-}
-.kaia-page .entry-row-details .item-price {
-    font-size: inherit;
 }
 .kaia-page .entry-row-details-sep {
     padding: 0 4px;
@@ -1450,7 +1448,7 @@ body:has(.kaia-page) {
 .kaia-page .day-plan-section {
     /* The hairline under each date is the day separator — the gap between
        sections stays small so a 4–6 day stay fits one viewport. */
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 /* The header line doubles as the fold toggle — the date stays visible when
    the day is folded shut, so a collapsed day still says which day it is. */
@@ -1543,7 +1541,11 @@ body:has(.kaia-page) {
    context. Prices used to be styled per-component (muted tan on line items and
    alternatives, ink on the day badge, rust on the variant/vehicle totals),
    which made the per-item ones read as incidental grey text. Only the size
-   varies now, with the surrounding type. Keep new price styles on this list. */
+   varies now, with the surrounding type. Keep new price styles on this list.
+   Deliberate exception: the day-plan entry rows (.entry-row-details) render
+   their price as unstyled metadata — the item name is the strongest element
+   there, and an accented "Preis auf Anfrage" on most of the catalog would
+   outshout it. */
 .kaia-page .item-price,
 .kaia-page .alt-price,
 .kaia-page .day-card-price,
@@ -4175,7 +4177,8 @@ body:has(.kaia-page) {
     .trip-plan-page .cta {
         display: none !important;
     }
-    /* An unset time prints as an empty slot, not as "--:--" placeholder text. */
+    /* An unset time prints as an empty slot — on paper even the quiet "—"
+       is noise, and the column alignment alone carries the layout. */
     .trip-plan-page .entry-row-time--empty {
         visibility: hidden;
     }
