@@ -33,12 +33,25 @@ export interface ItineraryListingRef {
 // Placeholder room-type content — not backed by RoomType/live availability
 // yet (see RoomTypePicker.vue). Good enough to demo the picking UX; swap
 // the generator for a real per-stay availability call once that's wired up.
+/**
+ * A room the traveler picked for a stay. Stored in the plan document, so this
+ * shape has to stay readable for plans saved before real room data existed:
+ * `capacity` is a pre-rendered string rather than numbers, and everything the
+ * real endpoint adds is optional.
+ */
 export interface RoomOption {
+    /** Matches RoomType.code — what gets reserved on the booking request. */
     code: string;
     name: string;
     capacity: string;
     price_per_night: number;
     currency: string;
+    /** Rate × nights, as the server counted them. */
+    total_price?: number | null;
+    /** Units still free for these dates. Absent when unknown. */
+    units_left?: number | null;
+    /** The room's own photo, not the property's. */
+    image?: string | null;
 }
 
 export interface ItineraryDay {

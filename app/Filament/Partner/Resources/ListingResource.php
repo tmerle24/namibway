@@ -5,6 +5,7 @@ namespace App\Filament\Partner\Resources;
 use App\Enums\ListingType;
 use App\Enums\VehicleCategory;
 use App\Filament\Partner\Resources\ListingResource\Pages;
+use App\Filament\Resources\ListingResource\RelationManagers as AdminRelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
@@ -239,6 +240,19 @@ class ListingResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->paginated(false);
+    }
+
+    /**
+     * Partners are the people who actually know their own room inventory, so
+     * they get the same editor the team has. Scoping is inherited: the relation
+     * manager only ever operates on the listing it was opened from, and this
+     * panel already restricts which listings a partner can reach.
+     */
+    public static function getRelations(): array
+    {
+        return [
+            AdminRelationManagers\RoomTypesRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

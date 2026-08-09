@@ -14,6 +14,7 @@ use App\Jobs\ExpireNativeHoldJob;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\RoomType;
+use App\Services\Booking\RoomAvailability;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -156,19 +157,16 @@ class NativeConnector implements BookingConnector
         return true;
     }
 
+    /**
+     * Thin pass-through to RoomAvailability, which the trip plan's room picker
+     * also asks — one definition of "free", not two that can drift apart.
+     */
     private function availableUnits(
         int $listingId,
         RoomType $roomType,
         CarbonInterface $checkIn,
         CarbonInterface $checkOut,
     ): int {
-        $overlapping = Inquiry::where('listing_id', $listingId)
-            ->where('room_type_code', $roomType->code)
-            ->whereIn('status', [InquiryStatus::OnRequest, InquiryStatus::Confirmed])
-            ->where('check_in', '<', $checkOut)
-            ->where('check_out', '>', $checkIn)
-            ->count();
-
-        return $roomType->total_units - $overlapping;
+        return RoomAvailability::unitsLeft($listingId, $roomType, $checkIn, $checkOut);
     }
 }

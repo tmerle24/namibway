@@ -103,15 +103,30 @@ class TripController extends Controller
         /** @var list<array<string, mixed>> $variantDays */
         $variantDays = $validated['variant_days'];
 
-        /** @var array<int, int> $accommodationIds */
-        $accommodationIds = collect($variantDays)
-            ->map(fn (array $day) => isset($day['accommodation']['id']) ? (int) $day['accommodation']['id'] : null)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+        // One inquiry per accommodation, carrying the room the traveler picked
+        // for it. Without `room_type_code` the choice was decorative — the
+        // connector received a request with no room on it and every option
+        // ended up the same booking. First pick wins for a multi-night stay:
+        // the picker sets the same selection across the run, and a plan edited
+        // into disagreeing with itself shouldn't silently reserve the later
+        // room.
+        /** @var array<int, string|null> $roomByListing */
+        $roomByListing = [];
 
-        foreach ($accommodationIds as $listingId) {
+        foreach ($variantDays as $day) {
+            $listingId = isset($day['accommodation']['id']) ? (int) $day['accommodation']['id'] : null;
+
+            if ($listingId === null) {
+                continue;
+            }
+
+            if (! array_key_exists($listingId, $roomByListing)) {
+                $code = $day['room_selection']['code'] ?? null;
+                $roomByListing[$listingId] = is_string($code) && $code !== '' ? $code : null;
+            }
+        }
+
+        foreach ($roomByListing as $listingId => $roomTypeCode) {
             Inquiry::create([
                 'listing_id' => $listingId,
                 'trip_id' => $trip->id,
@@ -123,13 +138,14 @@ class TripController extends Controller
                 'check_out' => $validated['check_out'],
                 'adults' => $validated['adults'],
                 'children' => $validated['children'] ?? 0,
+                'room_type_code' => $roomTypeCode,
                 'status' => InquiryStatus::Pending,
             ]);
         }
 
         return response()->json([
             'trip_id' => $trip->id,
-            'inquiry_count' => count($accommodationIds),
+            'inquiry_count' => count($roomByListing),
         ]);
     }
 

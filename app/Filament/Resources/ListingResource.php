@@ -8,6 +8,7 @@ use App\Enums\ConnectorType;
 use App\Enums\ListingType;
 use App\Enums\VehicleCategory;
 use App\Filament\Resources\ListingResource\Pages;
+use App\Filament\Resources\ListingResource\RelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
@@ -652,7 +653,9 @@ class ListingResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            RelationManagers\RoomTypesRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
