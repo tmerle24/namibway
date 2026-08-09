@@ -22,16 +22,19 @@ nothing gets lost between sessions.
 - `resources/js/components/home/AlternativesPanel.vue` — the "swap" list
   used by all four of the above.
 - `resources/js/components/home/RoomTypePicker.vue` — the "Zimmer wählen"
-  panel (currently placeholder room data, see below).
+  panel. Fetches real room types for the stay's dates from
+  `/listings/{slug}/room-types`; shows an "the partner confirms the room"
+  note when a listing has none, which is currently every listing.
 - `resources/js/components/home/TripMeta.vue`, `TripParamsEditModal.vue` —
   trip-level params display/edit (regenerates the plan via Kaia).
 - `app/Services/Kaia/ItineraryService.php` — builds/resolves the plan
   server-side: Claude tool-use schema, listing resolution, alternatives,
   routing/driving-distance guidance, availability pre-checks.
 - `app/Models/Listing.php`, `RoomType.php`, `SavedPlan.php` — the backing
-  data. `RoomType` exists (per-listing room/unit types with real
-  availability logic for the Native connector) but is **not yet wired** to
-  the frontend's room picker — see "Known gaps" below.
+  data. `RoomType` holds per-listing room/unit types; availability is derived
+  by `app/Services/Booking/RoomAvailability.php`, which both the Native
+  connector and the plan's room picker go through. Edited via the
+  `RoomTypesRelationManager` on the listing in the admin *and* partner panels.
 
 ## Future concept: collaborative trip plan (partly built — see session 5)
 
@@ -497,6 +500,53 @@ Worst case sat in this very feature: the trip plan's day thumbnail renders at
   `curl -sSL -o /tmp/phpstan.phar https://github.com/phpstan/phpstan/releases/download/2.2.5/phpstan.phar && php /tmp/phpstan.phar analyse -c phpstan.neon`
   (larastan still has to be in `vendor/` for the include to resolve).
 
+### Session 7 — 2026-08-09
+
+Real room data in the plan's room picker. Picked because the picker was the
+most visible untruth left in the flagship feature: it invented three tiers
+client-side by scaling the property's `price_from`, and rendered them next to
+the Book button that session 6 had just put a real account behind.
+
+- ✅ **The picker asks the server instead of making things up.** New
+  `GET /listings/{slug}/room-types?check_in&check_out&adults&children` →
+  `ListingController::roomTypes`, returning the listing's active `RoomType`
+  rows with their real rate, the stay total, remaining units and the room's own
+  photos. `RoomTypePicker.vue` fetches on open and re-fetches when the trip's
+  dates or party change. Open like the rest of browsing — booking one is what
+  needs an account.
+- ✅ **An honest empty state.** Most listings hold no room inventory with us
+  (scraped listings, partners on their own PMS), so the common answer is an
+  empty list — and the picker says the partner will confirm the room rather
+  than substituting invented options. `itinerary.roomTypes` and
+  `roomPlaceholderNote` are gone from all five locales; loading, failure,
+  empty, scarcity and stay-total strings replace them.
+- ✅ **`room_types.gallery`** (migration) — a room type had no photo of its
+  own, so every option showed the same four pictures of the lodge. Rooms with
+  no photo of their own still fall back to the property gallery, but dimmed and
+  labelled as a stand-in rather than passed off as the room.
+- ✅ **A Filament editor for room types at all.** There was none: `room_types`
+  could only be populated by seeder or tinker, which is *why* every production
+  listing has none and the picker was inventing. A `RoomTypesRelationManager`
+  now hangs off the listing in both panels — the team's and the partner's, since
+  partners are the people who actually know their own inventory.
+- ✅ **`RoomAvailability`** — the derived-availability query (`total_units`
+  minus overlapping active inquiries) was private to `NativeConnector`; the
+  picker needs the same answer, and a second copy would be a second thing to
+  keep correct. The connector now calls through to it.
+- ✅ **The chosen room reaches the booking.** `TripController::store` writes
+  `room_selection.code` to `Inquiry.room_type_code`, so the connector actually
+  receives the room. Before this the choice was decorative — every option
+  produced the same request. First pick wins across a multi-night stay.
+- 14 tests in `tests/Feature/RoomTypeAvailabilityTest.php` (overlap maths
+  including same-day turnover, party fit, sold-out and inactive rooms, the
+  empty answer, past dates, and the booking hand-off).
+
+**Still not real, and deliberately so:** availability is only as true as the
+inventory someone entered. Until a partner is live, every listing returns the
+empty answer — which is the correct thing to show, but it means the rich path
+is untested against real data. The first partner to enter room types is also
+the first real test of this.
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its
@@ -514,14 +564,11 @@ Worst case sat in this very feature: the trip plan's day thumbnail renders at
   `gallery` column on both tables, Filament fields, and sourced photos.
   Full plan, including which 16 places actually need photos and the
   verified Unsplash sourcing method: **`CITY_GALLERIES.md`**.
-- ⬜ **Real per-room-type photos.** `RoomType` (the real bookable
-  room/unit model, used by the Native connector's availability logic) has
-  no `gallery`/image field, and the frontend's `RoomTypePicker.vue` room
-  options are still 100% synthetic (scaled off the accommodation's
-  `price_from`, not real rates/availability). Wiring this up for real needs:
-  a `gallery` column + Filament admin field on `RoomType`, and switching
-  `RoomTypePicker` from its client-side placeholder generator to an actual
-  per-stay availability call.
+- ✅ **Real per-room-type photos and availability** — done in session 7. What
+  remains is not code: no listing has room types entered yet, so the picker
+  shows its empty state everywhere in production. Filling that in is content
+  work (and, for partner-owned listings, the partner's own job now that they
+  have the editor).
 - ⬜ **Vehicle type + daily budget picker.** The trip already carries a
   binary `vehicle_type` ("car" | "camper") in `TripParams`. The ask is a
   richer selector (Jeep, Mid-range, Camper, etc.) plus a budget-per-day

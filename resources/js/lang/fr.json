@@ -80,7 +80,13 @@
         "savedToAccount": "Enregistré !",
         "copyFailed": "Impossible de copier automatiquement — le lien est sélectionné, copiez-le manuellement.",
         "setStartDate": "Définir la date de départ",
-        "drivingTime": "Trajet"
+        "drivingTime": "Trajet",
+        "roomsLoading": "Vérification des chambres…",
+        "roomsFailed": "Impossible de charger les chambres pour l'instant. Le partenaire confirme la chambre de toute façon.",
+        "roomsUnavailable": "Aucune chambre n'est réservée en ligne pour ce séjour — le partenaire confirmera la chambre avec vous après la demande.",
+        "roomsLeft": "Dernière à ces dates | Plus que {count} à ces dates",
+        "roomTotalForNights": "Total {total} pour {count} nuit | Total {total} pour {count} nuits",
+        "roomPhotoStandIn": "Photo de l'établissement — pas encore de photo de cette chambre"
     },
     "booking": {
         "eyebrow": "Assistant de réservation",

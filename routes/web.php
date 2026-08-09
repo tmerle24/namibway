@@ -34,6 +34,12 @@ Route::post('currency', [CurrencyController::class, 'update'])
 
 Route::get('listings/search', [ListingController::class, 'search'])->name('listings.search');
 Route::get('listings/{listing:slug}/preview', [ListingController::class, 'preview'])->name('listings.preview');
+// Real room types + remaining units for a stay, for the trip plan's room
+// picker. Open like the rest of browsing — booking one is what needs an
+// account.
+Route::get('listings/{listing:slug}/room-types', [ListingController::class, 'roomTypes'])
+    ->middleware('throttle:60,1')
+    ->name('listings.room-types');
 Route::get('listings/{listing:slug}', [ListingController::class, 'show'])->name('listings.show');
 Route::post('listings/{listing:slug}/publish', [ListingController::class, 'publish'])->name('listings.publish');
 Route::post('listings/{listing:slug}/approve-photos', [ListingController::class, 'approvePhotos'])->name('listings.approve-photos');

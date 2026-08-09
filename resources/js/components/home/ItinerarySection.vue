@@ -702,6 +702,47 @@ function stageDateRangeLabel(variantIndex: number, dayIndex: number): string {
     });
 }
 
+// The stage's stay as ISO dates, for anything that has to ask the server about
+// it — currently the room picker's availability lookup. Null when the plan has
+// no dates yet: availability is a property of a date range, so there is nothing
+// to ask without one.
+//
+// Check-out is the day after the stage's last night. `date_to` already means
+// that where Kaia filled it in; otherwise it's derived, rather than sending a
+// zero-night range the server would reject.
+function stageDateRangeIso(
+    variantIndex: number,
+    dayIndex: number,
+): { checkIn: string; checkOut: string } | null {
+    const days = editableVariants.value[variantIndex].days;
+    const endIndex = stageEndIndex(variantIndex, dayIndex);
+
+    const checkIn = parseDayDate(days[dayIndex].date);
+
+    if (!checkIn) {
+        return null;
+    }
+
+    let checkOut = parseDayDate(days[endIndex].date_to);
+
+    if (!checkOut || checkOut <= checkIn) {
+        const lastNight = parseDayDate(days[endIndex].date) ?? checkIn;
+        checkOut = new Date(lastNight);
+        checkOut.setDate(checkOut.getDate() + 1);
+    }
+
+    return { checkIn: toIsoDate(checkIn), checkOut: toIsoDate(checkOut) };
+}
+
+// Local calendar date, not UTC: toISOString() would shift a date back a day
+// for anyone east of Greenwich, which is every traveler in Namibia.
+function toIsoDate(date: Date): string {
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${date.getFullYear()}-${month}-${day}`;
+}
+
 // How many nights the stage's stay covers — one per day in the run, shown
 // next to the date range on the stay card. Zero when the plan has no dates
 // yet, which is the card's cue to leave the count off entirely.
@@ -2148,17 +2189,25 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                         dayIndex,
                                                                     )
                                                             "
-                                                            :base-price="
+                                                            :slug="
                                                                 day
                                                                     .accommodation
-                                                                    ?.price_from ??
+                                                                    ?.slug ??
                                                                 null
                                                             "
-                                                            :currency="
-                                                                day
-                                                                    .accommodation
-                                                                    ?.price_currency ??
-                                                                'NAD'
+                                                            :check-in="
+                                                                stageDateRangeIso(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                )?.checkIn ??
+                                                                null
+                                                            "
+                                                            :check-out="
+                                                                stageDateRangeIso(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                )?.checkOut ??
+                                                                null
                                                             "
                                                             :adults="
                                                                 currentTripParams?.adults ??

@@ -299,6 +299,66 @@ export async function searchListings(
     return { data: data.data ?? [], meta: data.meta };
 }
 
+/** One real, bookable room type — see ListingController::roomTypes. */
+export interface RoomTypeOffer {
+    code: string;
+    name: string;
+    description: string | null;
+    max_adults: number;
+    max_children: number;
+    price_per_night: number;
+    total_price: number;
+    currency: string;
+    units_left: number;
+    /** The room's own photos. Empty is normal — no room photos uploaded yet. */
+    gallery: string[];
+}
+
+/**
+ * What a listing actually has free for a stay. An empty `rooms` list is the
+ * ordinary answer for most listings today (no room inventory held for them),
+ * and means "ask the partner" — never "make something up", which is what the
+ * picker used to do.
+ */
+export async function fetchRoomTypes(
+    slug: string,
+    params: {
+        checkIn: string;
+        checkOut: string;
+        adults?: number;
+        children?: number;
+    },
+): Promise<{ nights: number; rooms: RoomTypeOffer[] }> {
+    const query = new URLSearchParams({
+        check_in: params.checkIn,
+        check_out: params.checkOut,
+    });
+
+    if (params.adults) {
+        query.set('adults', String(params.adults));
+    }
+
+    if (params.children) {
+        query.set('children', String(params.children));
+    }
+
+    const response = await fetch(`/listings/${slug}/room-types?${query}`, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to load room types');
+    }
+
+    const data = await response.json();
+
+    return {
+        nights: (data.nights as number) ?? 1,
+        rooms: (data.rooms as RoomTypeOffer[]) ?? [],
+    };
+}
+
 export interface SavedPlanResult {
     /** Grants editing — the creator's own link. Never hand this to anyone else. */
     token: string;

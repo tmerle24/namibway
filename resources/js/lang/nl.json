@@ -80,7 +80,13 @@
         "savedToAccount": "Opgeslagen!",
         "copyFailed": "Automatisch kopiëren is niet gelukt — de link is geselecteerd, kopieer hem handmatig.",
         "setStartDate": "Startdatum instellen",
-        "drivingTime": "Rijtijd"
+        "drivingTime": "Rijtijd",
+        "roomsLoading": "Kamers worden gecontroleerd…",
+        "roomsFailed": "Kamers konden nu niet worden geladen. De partner bevestigt de kamer sowieso.",
+        "roomsUnavailable": "Voor dit verblijf zijn online geen kamers vastgelegd — de partner stemt de kamer na de aanvraag met je af.",
+        "roomsLeft": "Laatste op deze data | Nog maar {count} op deze data",
+        "roomTotalForNights": "Totaal {total} voor {count} nacht | Totaal {total} voor {count} nachten",
+        "roomPhotoStandIn": "Foto van de accommodatie — van deze kamer nog geen foto"
     },
     "booking": {
         "eyebrow": "Boekingsassistent",
