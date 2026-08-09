@@ -168,6 +168,8 @@
         "addRestaurant": "Add restaurant",
         "entryTime": "Time",
         "changeTime": "Change time",
+        "setTime": "Set a time",
+        "dayNumber": "Day {n}",
         "viewDetails": "Details",
         "durationHours": "~{value} h",
         "durationMinutes": "~{value} min",

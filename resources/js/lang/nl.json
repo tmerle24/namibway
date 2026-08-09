@@ -70,6 +70,8 @@
         "addNight": "Nacht toevoegen",
         "dayArrival": "Aankomst",
         "dayDeparture": "Vertrek",
+        "setTime": "Tijd instellen",
+        "dayNumber": "Dag {n}",
         "collapseDay": "Dag inklappen",
         "expandDay": "Dag uitklappen",
         "dragToReorder": "Slepen om te herschikken",

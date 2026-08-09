@@ -126,6 +126,8 @@
         "addRestaurant": "Restaurant hinzufügen",
         "entryTime": "Uhrzeit",
         "changeTime": "Uhrzeit ändern",
+        "setTime": "Zeit festlegen",
+        "dayNumber": "Tag {n}",
         "viewDetails": "Details",
         "durationHours": "~{value} Std.",
         "durationMinutes": "~{value} Min.",

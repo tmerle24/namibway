@@ -161,7 +161,7 @@ function onMenuSelect(key: string) {
             :disabled="readonly"
             @click="startTimeEdit"
         >
-            {{ time || '--:--' }}
+            {{ time || '—' }}
         </button>
 
         <span class="entry-row-icon" :class="`entry-row-icon--${type}`">{{
@@ -185,6 +185,19 @@ function onMenuSelect(key: string) {
                 <template v-for="(part, i) in details" :key="part">
                     <span v-if="i > 0" class="entry-row-details-sep">·</span
                     >{{ part }}
+                </template>
+                <!-- A timeless entry offers setting one right here, instead of
+                     leaving the bare "—" up front as the only (unlabelled) way
+                     in. Never invents a time — tapping opens the picker. -->
+                <template v-if="!time && !readonly">
+                    <span class="entry-row-details-sep">·</span>
+                    <button
+                        type="button"
+                        class="entry-row-set-time"
+                        @click="startTimeEdit"
+                    >
+                        {{ t('itinerary.setTime') }}
+                    </button>
                 </template>
             </div>
         </div>

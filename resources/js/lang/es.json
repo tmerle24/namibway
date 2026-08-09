@@ -70,6 +70,8 @@
         "addNight": "Añadir noche",
         "dayArrival": "Llegada",
         "dayDeparture": "Salida",
+        "setTime": "Definir la hora",
+        "dayNumber": "Día {n}",
         "collapseDay": "Contraer día",
         "expandDay": "Expandir día",
         "dragToReorder": "Arrastrar para reordenar",
