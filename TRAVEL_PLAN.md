@@ -739,7 +739,47 @@ when seeded, but not when imported:
   (Deploy-User verlor Schreibrecht auf `storage/framework/views`, Build brach ab,
   Produktion hing ~2h im Wartungsmodus).
 
-### Session 11 — 2026-08-09 (thumbnails, for real)
+### Session 11 — 2026-08-09 (the departure day exists now)
+
+From a prod screenshot Till supplied: a 1–4 Jan stage rendered day rows for
+1/2/3 Jan only, with "Abreise" on 3 Jan — but 3 Jan is the last *night*;
+checkout is the morning of the 4th, and there was nowhere to plan anything
+for that morning before driving on. The trip's final day was missing
+entirely for the same reason: a `days` entry is a night, so the calendar day
+after the last night had no row anywhere.
+
+- ✅ **Every stage ends with a departure-day row.** A new timeline row on the
+  checkout date (the last night's `date_to`): hollow rail dot (nights are the
+  filled ones), short date, the "Abreise" label that used to sit wrongly on
+  the last night, its own fold toggle, and a full `ItineraryDayPlanCard` —
+  so an activity/restaurant fits on the departure morning, in the *old*
+  stage's city (the swap modal's city filter follows `day.location`). The
+  last night's rail label is gone; `dayRailLabel` only says "Ankunft" now.
+- ✅ **Storage: `departure_activities`/`departure_restaurants` on the stage's
+  last night** (`ItineraryDay`, optional → old saved plans unaffected;
+  `normalizeDay` defaults them). Kaia doesn't fill them — they're a manual
+  planning surface, like 2nd/3rd activities. `updatePlan`/`savePlan` store
+  the document verbatim, so nothing server-side had to change for persistence.
+- ✅ **`consolidateDepartureEntries()`** — any edit that changes which day
+  ends a stage (drag, reverse, add night, swap merging neighbouring stages)
+  moves the entries onto the new stage-end night instead of stranding them
+  where no row renders them. Hooked into `renumberDays` (which `addNight`/
+  `addDay`/`removeDay`/`removeStage` now call instead of each repeating its
+  body) and the accommodation branch of `applySwap`. Scenario-tested
+  standalone (addNight, stage-merge, own-stage days, untouched stage ends).
+- ✅ **Freshly added empty stages don't get the row** (`hasDepartureRow`):
+  a stay must exist first — otherwise "+ Etappe" would spawn two rows before
+  anything is picked. Entries already planned always keep their row, even if
+  the stay is removed afterwards, so nothing a traveler added can vanish.
+- ✅ Departure entries count into the stage price badge and the trip total,
+  and the PDF renders them as their own "→ / Departure day" row after the
+  stage's last night.
+- Not verifiable in this environment (same as session 8): `composer install`
+  can't complete, so no booted app and no `npm run build` (wayfinder needs
+  artisan). eslint, prettier and `vue-tsc` are clean; the consolidation
+  logic ran green against a standalone scenario harness.
+
+### Session 12 — 2026-08-09 (thumbnails, for real)
 
 Thumbnails, for real this time. Session 6 built the half where every component
 asks for the width it actually renders at; nothing existed to answer that ask.
