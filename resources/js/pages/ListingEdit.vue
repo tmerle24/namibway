@@ -7,6 +7,7 @@ import { reactive, ref } from 'vue';
 import AdminBar from '@/components/AdminBar.vue';
 import LocationPicker from '@/components/LocationPicker.vue';
 import PublishConsentModal from '@/components/PublishConsentModal.vue';
+import { thumbAttrs } from '@/lib/media';
 import logoDark from '../../images/logo-dark.png';
 
 interface Listing {
@@ -358,10 +359,16 @@ function handleUnpublishClick() {
 
                 <div class="edit-hero-image">
                     <div class="edit-hero-preview">
+                        <!-- Also fed by URL.createObjectURL for a just-picked
+                             file; a blob: URL isn't ours to resize, so it falls
+                             through thumbAttrs untouched. -->
                         <img
                             v-if="heroImagePreview"
-                            :src="heroImagePreview"
+                            v-bind="thumbAttrs(heroImagePreview, 160)"
                             alt=""
+                            width="160"
+                            height="90"
+                            decoding="async"
                         />
                         <span v-else class="edit-hero-preview-empty"
                             >No hero image yet</span
@@ -398,7 +405,12 @@ function handleUnpublishClick() {
                             :key="item.key"
                             class="edit-gallery-item"
                         >
-                            <img :src="item.url" alt="" />
+                            <img
+                                v-bind="thumbAttrs(item.url, 90)"
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                            />
                             <button
                                 type="button"
                                 aria-label="Remove photo"

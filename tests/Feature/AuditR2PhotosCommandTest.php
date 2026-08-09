@@ -57,4 +57,59 @@ class AuditR2PhotosCommandTest extends TestCase
         $disk->assertExists('listings/website-crawl/pending.jpg');
         $disk->assertMissing('listings/website-crawl/orphan.jpg');
     }
+
+    /**
+     * The dangerous case. Scraper photos are stored as absolute URLs built from
+     * CLOUDFLARE_R2_URL at download time, so a later change to that setting
+     * leaves every stored URL pointing at the previous host. Matching on URLs
+     * would then classify the entire referenced library as orphaned — and
+     * --delete-orphaned would delete it.
+     */
+    public function test_a_changed_bucket_url_does_not_turn_live_photos_into_orphans(): void
+    {
+        $disk = Storage::fake('r2');
+
+        $disk->put('listings/google-places/live.jpg', 'x');
+        $disk->put('listings/google-places/orphan.jpg', 'x');
+
+        // Downloaded while the bucket answered on its r2.dev address...
+        Listing::factory()->create([
+            'is_published' => true,
+            'image' => 'https://pub-oldhash.r2.dev/listings/google-places/live.jpg',
+        ]);
+
+        // ...and today it answers on a custom domain.
+        config(['filesystems.disks.r2.url' => 'https://cdn.namibway.test']);
+
+        $this->artisan('photos:audit-r2', [
+            '--prefix' => ['listings/google-places'],
+            '--delete-orphaned' => true,
+        ])
+            ->expectsConfirmation('1 orphaned file(s) under listings/google-places will be permanently deleted. Continue?', 'yes')
+            ->assertSuccessful();
+
+        $disk->assertExists('listings/google-places/live.jpg');
+        $disk->assertMissing('listings/google-places/orphan.jpg');
+    }
+
+    public function test_it_matches_relative_paths_too(): void
+    {
+        $disk = Storage::fake('r2');
+
+        $disk->put('listings/hero.jpg', 'x');
+        $disk->put('listings/nobody.jpg', 'x');
+
+        // Filament uploads store a path relative to the disk, not a URL.
+        Listing::factory()->create(['is_published' => true, 'image' => 'listings/hero.jpg']);
+
+        $this->artisan('photos:audit-r2', [
+            '--prefix' => ['listings'],
+            '--delete-orphaned' => true,
+        ])
+            ->expectsConfirmation('1 orphaned file(s) under listings will be permanently deleted. Continue?', 'yes')
+            ->assertSuccessful();
+
+        $disk->assertExists('listings/hero.jpg');
+        $disk->assertMissing('listings/nobody.jpg');
+    }
 }

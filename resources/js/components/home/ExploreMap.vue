@@ -2,6 +2,7 @@
 import { router } from '@inertiajs/vue3';
 import type { Map as LeafletMap, Marker, MarkerClusterGroup } from 'leaflet';
 import { onMounted, onUnmounted, watch } from 'vue';
+import { thumb } from '@/lib/media';
 import { show } from '@/routes/listings';
 
 export interface ExploreMapMarker {
@@ -113,7 +114,7 @@ function renderMarkers() {
 
                 const popupLines = [
                     '<div class="explore-map-popup">',
-                    `<img src="${escapeHtml(item.image)}" alt="" class="explore-map-popup-img" />`,
+                    `<img src="${escapeHtml(thumb(item.image, 48))}" alt="" width="48" height="48" loading="lazy" decoding="async" class="explore-map-popup-img" />`,
                     '<div class="explore-map-popup-body">',
                     `<div class="explore-map-popup-tag">${escapeHtml(item.typeLabel)}</div>`,
                     `<div class="explore-map-popup-title">${escapeHtml(item.title)}</div>`,

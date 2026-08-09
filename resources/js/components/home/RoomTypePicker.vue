@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import ImageLightbox from '@/components/ImageLightbox.vue';
 import { formatPrice } from '@/lib/currency';
 import type { RoomOption } from '@/lib/kaia-types';
+import { thumbAttrs } from '@/lib/media';
 
 const props = defineProps<{
     basePrice: string | null;
@@ -89,7 +90,14 @@ const options = computed<RoomOption[]>(() => {
                 :title="t('itinerary.viewPhotos')"
                 @click.stop="lightboxIndex = 0"
             >
-                <img :src="thumbnail" :alt="option.name" />
+                <img
+                    v-bind="thumbAttrs(thumbnail, 36)"
+                    :alt="option.name"
+                    width="36"
+                    height="36"
+                    loading="lazy"
+                    decoding="async"
+                />
             </span>
             <span class="alt-name">{{ option.name }}</span>
             <span class="room-option-capacity">{{ option.capacity }}</span>

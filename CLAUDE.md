@@ -47,7 +47,7 @@ This file is the condensed, load-bearing summary. The detail lives next to it:
 - **Auth:** Fortify (incl. 2FA), Socialite (Google/Facebook), passkeys
 - **AI:** Claude API via `App\Services\Kaia\AnthropicClient` — structured output / forced tool calls, same pattern as Wisherful
 - **Queue/rate-limiting:** Laravel Queues + Redis + Horizon (Supervisor-managed)
-- **Media storage:** Cloudflare R2 (`r2` disk). Legacy uploads on the local `public` disk predate 2026-08-02 — see `Controller::resolveMediaUrl`
+- **Media storage:** Cloudflare R2 (`r2` disk). Legacy uploads on the local `public` disk predate 2026-08-02 — see `Controller::resolveMediaUrl`. Only originals are stored; thumbnails are resized at the edge by Cloudflare Image Transformations via `App\Support\MediaUrl` / `resources/js/lib/media.ts` (the render width is a property of the component, not of the payload). Currently **off** in production until a custom domain is on the bucket — `config/media.php`, DEPLOYMENT.md → "Bild-Thumbnails"
 - **Backups:** spatie/laravel-backup → separate **non-public** R2 bucket (`r2-backups`), AES-256 encrypted, nightly 02:00, failure-only mail notifications. `restore.sh` is the counterpart to `deploy.sh` for a total server loss
 - **PDF output:** Laravel PDF service (trip plan PDF, partner API guide, listings partner handbook)
 - **Public API:** `/api/v1` (Sanctum + `EnsureApiClientActive`), documented with Scribe; `ApiClient` model gates access
@@ -92,6 +92,8 @@ The MVP foundation is live in production; work now is depth and polish, not scaf
 
 ### Data-loss lesson
 `namibway:backfill-listing-cities` once overwrote correct `city_id` values because a "Windhoek" hit in a free-text address field (many remote operators use a Windhoek postal address) beat the real location. The command is fixed, but re-running it does **not** repair already-corrupted rows — `restore-listing-city-ids.sh` surgically restores just that column from a backup. Treat any bulk backfill over existing non-null data as destructive: gate on "currently empty" or dry-run first.
+
+A near miss of the same class, found 2026-08-09 before it fired: `photos:audit-r2 --delete-orphaned` decided what was referenced by comparing the raw DB value against `Storage::disk('r2')->url($key)`. Scraper photos are stored as **absolute** URLs built from `CLOUDFLARE_R2_URL` at download time, so changing that variable — exactly what attaching a custom domain to the bucket requires — would have made every referenced photo look orphaned and deleted the entire live library on confirm. It now matches on filename, which no host or prefix change can affect, and which errs toward "referenced" (leaves an orphan) rather than toward deletion. General rule for anything that deletes: never key the keep/delete decision on a value derived from mutable config.
 
 ## The core product mechanic — read before touching the booking flow
 The central design problem: **turning an AI-generated plan into confirmed bookings without flooding partner owners with speculative requests.**

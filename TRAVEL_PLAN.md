@@ -429,6 +429,74 @@ step* instead (create the account from the name and email already typed into
 the form, password set later via the confirmation mail) rather than removing
 the identity behind the request.
 
+### Session 7 — 2026-08-08
+
+Image thumbnails. Reported symptom: photos in lists load in slowly. Confirmed
+— there was **no thumbnail layer at all**. `Controller::resolveMediaUrl()` maps
+a stored path to a disk URL and takes no size, so every consumer got the
+original; nothing generated derivatives (no Intervention Image, no
+`imageResizeTargetWidth` on any Filament `FileUpload`); Google Places photos
+are downloaded once at `maxwidth=1200` and that is the *only* size that exists.
+Worst case sat in this very feature: the trip plan's day thumbnail renders at
+**44 × 44 px** (`kaia-home.css`) and was pulling the full 1200px file.
+
+- ✅ **Resize at the edge, don't store derivatives** (`config/media.php`,
+  `App\Support\MediaUrl`, `resources/js/lib/media.ts`). Cloudflare Image
+  Transformations serve the same stored original at the requested width, so
+  there is no backfill over the existing library and no second copy to keep in
+  sync. `format=auto` also buys AVIF/WebP on images we can't shrink further.
+- ✅ **The width lives in the component, not the payload.** The same listing
+  `image` feeds a 44px day thumbnail, a 48px swap row and a full-bleed hero, so
+  the backend can't pick one size. Components call `thumbAttrs(url, width)`,
+  which emits `src` + a 1x/2x `srcset`. The PHP twin exists for server-side
+  callers and is what the tests pin.
+- ✅ **Requested widths snap to a ladder** (64/128/256/400/800/1600).
+  Cloudflare bills per *unique* transformation; without this the 44/48/52px
+  thumbnails would bill three variants for what reads as one image.
+- ✅ **Frontend hygiene alongside it.** `loading="lazy"` was on 4 of 28 `<img>`;
+  `decoding="async"` and intrinsic `width`/`height` (layout shift) were absent
+  everywhere. Both added across the list/thumbnail renders.
+- ✅ **New uploads are capped at 2000px** (`AppServiceProvider`, one
+  `FileUpload::configureUsing` for both panels — every upload in the codebase is
+  an image). Previously a partner's straight-from-the-phone photo became the one
+  and only copy we serve.
+- ⚠️ **Ships switched OFF.** `MEDIA_TRANSFORMS_ENABLED` defaults to false,
+  because `CLOUDFLARE_R2_URL` still points at `pub-<hash>.r2.dev`, which cannot
+  serve `/cdn-cgi/image/`. Until a custom domain is attached to the bucket and
+  Transformations are enabled for the zone, every URL passes through untouched.
+  Checklist: **DEPLOYMENT.md → "Bild-Thumbnails"**. The one win that lands
+  immediately is the Unsplash placeholder heroes, which resize off their own
+  query string for free.
+- ✅ **Pre-flight command** `namibway:check-media-transforms`. Fetches real
+  catalog photos twice — as stored and through `/cdn-cgi/image/` — and compares
+  status, type and bytes. Probes the transformed URL *even while the flag is
+  off*, so the Cloudflare side can be confirmed before production depends on it.
+  Separates the two failure modes a status check would miss: 404 on the variant
+  (domain/Transformations missing) vs. 200 at original size (pass-through, not a
+  resize).
+- ⚠️ **Found while building it: images stranded on a stale origin.**
+  `GooglePlacesPhotoFinder` stores `Storage::disk('r2')->url(...)` — an
+  *absolute* bucket URL — into `listings.image`. Point `CLOUDFLARE_R2_URL` at a
+  custom domain and every existing row still carries the old
+  `pub-<hash>.r2.dev` host, so neither `resolveMediaUrl` nor `MediaUrl::thumb`
+  touches it and it keeps being served full-size. Since the enrichment pipeline
+  is the main photo source, this is probably *most* listing photos, not an edge
+  case. The command counts them (the object being in our bucket is what tells
+  them apart from a genuinely foreign URL); the fix is still open — see
+  "Known gaps".
+- Tests: `tests/Feature/Support/MediaUrlTest.php` — pins that a foreign URL is
+  never rewritten, that the helper is inert while disabled, and that an
+  already-transformed URL isn't nested inside itself.
+  `tests/Feature/Commands/CheckMediaTransformsCommandTest.php` — 7 tests
+  including both directions of the stale-origin detection.
+- ⚠️ **phpstan is CI-blocking and nothing else catches it** — cost one red CI
+  here (a `list<string>` return that `Collection::values()->all()` can't prove;
+  `array_values()` can). If `composer install` can't fetch phpstan in your
+  environment, its release phar downloads fine and runs against the project's
+  own `phpstan.neon`:
+  `curl -sSL -o /tmp/phpstan.phar https://github.com/phpstan/phpstan/releases/download/2.2.5/phpstan.phar && php /tmp/phpstan.phar analyse -c phpstan.neon`
+  (larastan still has to be in `vendor/` for the include to resolve).
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its
@@ -470,6 +538,19 @@ the identity behind the request.
   Still open: participants as first-class rows, per-person write grants,
   comments, and change attribution — i.e. everything that needs a person
   attached to *each change* rather than a single owner per plan.
+- ⬜ **Rehome images stranded on an old media origin.** Blocks the switch-on
+  below from being effective — see session 7's ⚠️ entry. Two options:
+  (a) a `legacy_origins` config so `MediaUrl` rehomes a known old bucket host
+  onto the current origin before transforming (same bucket, same path — no data
+  touched), or (b) a one-off rewrite of the stored URLs, which is a bulk update
+  over existing non-null data and therefore exactly the class of operation
+  CLAUDE.md's "Data-loss lesson" warns about. (a) is the safer one.
+- ⬜ **Switch the thumbnails on.** All the code shipped in session 7, but
+  `MEDIA_TRANSFORMS_ENABLED` is still false in production: it needs a custom
+  domain on the R2 media bucket plus Transformations enabled for the
+  namibway.com zone (a dashboard + `.env` task, not a code one). Until then
+  images are still served at their original size. Steps:
+  **DEPLOYMENT.md → "Bild-Thumbnails"**.
 - ⬜ **On-trip progress tracker** — see the dedicated section above.
 - ⬜ Removing a single day from inside a collapsed multi-night stay isn't
   possible from the UI anymore (only the stay's first day and any day with
