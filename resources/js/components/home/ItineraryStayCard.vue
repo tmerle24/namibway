@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeftRight, BedDouble } from '@lucide/vue';
+import { ArrowLeftRight, BedDouble, MoonStar } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatPrice } from '@/lib/currency';
@@ -24,6 +24,7 @@ const emit = defineEmits<{
     (e: 'add'): void;
     (e: 'choose-room'): void;
     (e: 'clear-room'): void;
+    (e: 'add-night'): void;
 }>();
 
 const { t } = useI18n();
@@ -103,11 +104,11 @@ function onMenuSelect(key: string) {
             <div class="stay-card-main">
                 <img
                     v-if="stay.image"
-                    v-bind="thumbAttrs(stay.image, 52)"
+                    v-bind="thumbAttrs(stay.image, 64)"
                     alt=""
                     class="stay-card-thumb"
-                    width="52"
-                    height="52"
+                    width="64"
+                    height="64"
                     loading="lazy"
                     decoding="async"
                 />
@@ -180,6 +181,17 @@ function onMenuSelect(key: string) {
                 >
                     <ArrowLeftRight :size="13" />
                     {{ t('itinerary.changeStay') }}
+                </button>
+                <!-- Lengthening a stay belongs to the stay, not to the day
+                     list: the counterpart control, removing a night, is the
+                     menu on each day row. -->
+                <button
+                    type="button"
+                    class="stay-action-btn"
+                    @click="emit('add-night')"
+                >
+                    <MoonStar :size="13" />
+                    {{ t('itinerary.addNight') }}
                 </button>
                 <button
                     v-if="roomSelection"
