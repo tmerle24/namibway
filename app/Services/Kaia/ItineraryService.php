@@ -189,6 +189,9 @@ class ItineraryService
     /** @var Collection<string, City>|null keyed by lowercased city name */
     private ?Collection $cityIndex = null;
 
+    /** @var Collection<string, City>|null keyed by lowercased political region name */
+    private ?Collection $regionHubCache = null;
+
     public function __construct(private readonly AnthropicClient $client) {}
 
     /**
@@ -417,6 +420,7 @@ class ItineraryService
             }, $variant['days']);
 
             $variant['days'] = $this->backfillAccommodation($variant['days'], $listings);
+            $variant['days'] = $this->normalizeDayLocations($variant['days']);
             $variant['days'] = $this->addDateRanges($variant['days']);
 
             return $variant;
@@ -533,6 +537,103 @@ class ItineraryService
         unset($day);
 
         return $days;
+    }
+
+    /**
+     * A day's `location` is what the whole trip plan calls the stage: the
+     * stage card's heading, the map popup, the driving-time check. The AI
+     * contract says it must be the accommodation's exact city (see
+     * systemPrompt()), but a prompt instruction is a request, not a
+     * guarantee — the model regularly falls back to the political region
+     * ("Khomas", "Otjozondjupa") it was given as macro ROUTE guidance, and
+     * a region name as a stage heading is exactly what the traveler should
+     * never see. So resolve it deterministically here instead of trusting
+     * the model, in decreasing order of trustworthiness:
+     *
+     *  1. the city of the day's own accommodation — where the traveler
+     *     physically sleeps, so the truest answer for the map and for the
+     *     drive from the previous day;
+     *  2. `location` itself, when it already names a real city;
+     *  3. the busiest city of the region `location` names, when it named a
+     *     region rather than a city — a stand-in, but a real place with
+     *     coordinates, which a region centroid is not.
+     *
+     * Also attaches the resolved city's political region as `region`, so
+     * the UI can show it as a subtitle beside the city without depending on
+     * the accommodation carrying a `city_id` of its own (many scraped
+     * listings still don't). Anything unresolvable — a park/tourist-area
+     * name the model was told not to use, a typo — is left exactly as the
+     * model wrote it rather than blanked, same fail-open stance as the rest
+     * of the pipeline.
+     *
+     * Runs after backfillAccommodation(), which still matches on the raw
+     * model-written `location`, and before validateDrivingTimes(), which
+     * only validates days whose location resolves to a real city.
+     *
+     * @param  array<int, array<string, mixed>>  $days
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeDayLocations(array $days): array
+    {
+        foreach ($days as &$day) {
+            $location = (string) ($day['location'] ?? '');
+            $accommodation = $day['accommodation'] ?? null;
+            $accommodationCity = is_array($accommodation) ? ($accommodation['city'] ?? null) : null;
+
+            $city = is_string($accommodationCity) ? $this->canonicalCity($accommodationCity) : null;
+            $city ??= $this->canonicalCity($location);
+            $city ??= $this->busiestCityOfRegion($location);
+
+            if ($city === null) {
+                $day['region'] ??= null;
+
+                continue;
+            }
+
+            $day['location'] = $city->name;
+            $day['region'] = $city->region?->name;
+        }
+
+        unset($day);
+
+        return $days;
+    }
+
+    /**
+     * The city standing in for a political region when that's all the AI
+     * gave us — the one with the most published listings, i.e. the region's
+     * tourism hub (Windhoek for Khomas, Swakopmund for Erongo), not an
+     * arbitrary settlement that happens to sort first. Returns null for
+     * anything that isn't one of the 14 region names.
+     */
+    private function busiestCityOfRegion(string $regionName): ?City
+    {
+        $name = mb_strtolower(trim($regionName));
+
+        if ($name === '') {
+            return null;
+        }
+
+        if ($this->regionHubCache === null) {
+            $key = fn (City $city) => mb_strtolower((string) $city->region?->name);
+
+            $this->regionHubCache = City::query()
+                ->with('region')
+                ->whereHas('region')
+                ->whereHas('listings', fn ($q) => $q->where('is_published', true))
+                ->withCount(['listings' => fn ($q) => $q->where('is_published', true)])
+                // Name as the tiebreaker keeps the pick stable rather than
+                // letting it drift with whatever order Postgres returns.
+                ->orderByDesc('listings_count')
+                ->orderBy('name')
+                ->get()
+                // unique() keeps the first of each region — the busiest city,
+                // given the ordering above. keyBy() alone would keep the last.
+                ->unique($key)
+                ->keyBy($key);
+        }
+
+        return $this->regionHubCache->get($name);
     }
 
     /**
@@ -890,7 +991,9 @@ class ItineraryService
             min_nights/max_nights range so the stops' nights sum to the trip's total night count (the
             Windhoek start/end days from the ROUTE guidance above are separate from and in addition to the
             stops). This takes priority over freely inventing your own route. If the list is empty, ignore
-            this paragraph and follow the ROUTE guidance above instead.
+            this paragraph and follow the ROUTE guidance above instead. A stop's "region" says which area
+            that leg covers — it is not the day's "location"; pick a city inside that region and write the
+            city.
 
             Build exactly 1 variant — a single, focused itinerary that best fits the trip parameters. (A
             future version of this product may offer alternative variants again; for now, put all your
@@ -996,11 +1099,21 @@ class ItineraryService
 
         $safety = $this->drivingSafetyGuidance();
 
+        // Region names below name AREAS to route through, never a day's
+        // "location" — that stays the listing's exact city (see
+        // systemPrompt()). Spelled out at the end of both branches because
+        // this is the one place in the prompt where regions are discussed at
+        // length, and the model used to copy them straight into `location`.
+        $granularity = 'The region names above are only there to say WHICH AREAS the trip passes '
+            .'through. They are never a valid value for a day\'s "location" field — that must always '
+            .'be the exact city of that day\'s accommodation (e.g. "Windhoek", not "Khomas"; '
+            .'"Otjiwarongo", not "Otjozondjupa").';
+
         if (mb_strtolower($start) === mb_strtolower($end)) {
             $dayCount = $nights !== null
                 ? "DAY COUNT: this is a {$nights}-night round trip, so produce EXACTLY ".($nights + 1)
                     .' day entries, numbered 1 to '.($nights + 1).'. Day 1 and the FINAL day (day '
-                    .($nights + 1).') must both be the region containing "'.$start.'" — the final day '
+                    .($nights + 1).') must both be in or next to "'.$start.'" — the final day '
                     .'is the return/drop-off day, so it is fine (and often correct) for it to reuse the '
                     ."previous day's accommodation rather than needing a new one. Do not pad the ending "
                     .'with a redundant extra night in one place just to fill the count — use the nights '
@@ -1008,16 +1121,18 @@ class ItineraryService
                 : '';
 
             return "ROUTE: the trip starts and ends in the same place (\"{$start}\") — day 1's location "
-                ."and the last day's location must both be the region containing \"{$start}\". "
-                ."{$loopGuidance} Never jump back and forth between distant regions; visit each region "
-                ."once, in one continuous pass.\n\n{$dayCount}\n\n{$safety}";
+                ."and the last day's location must both be \"{$start}\" itself, or a city close enough "
+                ."to it to reach the departure point comfortably. {$loopGuidance} Never jump back and "
+                ."forth between distant regions; visit each region once, in one continuous pass."
+                ."\n\n{$dayCount}\n\n{$granularity}\n\n{$safety}";
         }
 
-        return "ROUTE: this is a ONE-WAY trip. Day 1's location must be the region containing "
-            ."\"{$start}\". The LAST day's location must be the region containing \"{$end}\" — do NOT "
-            ."loop back to \"{$start}\". Use this as a guide for the middle of the trip: {$loopGuidance} "
-            ."— but drop the \"back to Khomas\" leg and finish in whichever region contains \"{$end}\" "
-            ."instead. Never jump back and forth between distant regions.\n\n{$safety}";
+        return "ROUTE: this is a ONE-WAY trip. Day 1's location must be \"{$start}\" itself, or a city "
+            ."close to it. The LAST day's location must be \"{$end}\" itself, or a city close to it — do "
+            ."NOT loop back to \"{$start}\". Use this as a guide for the middle of the trip: "
+            ."{$loopGuidance} — but drop the \"back to Khomas\" leg and finish in whichever region "
+            ."contains \"{$end}\" instead. Never jump back and forth between distant regions."
+            ."\n\n{$granularity}\n\n{$safety}";
     }
 
     /**

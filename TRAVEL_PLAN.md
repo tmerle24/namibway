@@ -350,6 +350,45 @@ the share link *is* the creator's edit token.
   the Postgres test DB, not `phpunit.xml`'s sqlite:
   `DB_DATABASE=namibway_test DB_CONNECTION=pgsql ... php artisan test`.
 
+### Session 6 — 2026-08-09
+
+Region names had crept back into the plan as stage headings ("Khomas",
+"Otjozondjupa" where "Windhoek", "Otjiwarongo" belong). Session 1 fixed the
+display side of this; what came back is the *data* side, so this round closes
+it at the source and makes the UI resilient to it anyway.
+
+- ✅ **A day's `location` is now guaranteed to be a city.**
+  `ItineraryService::normalizeDayLocations()` resolves it deterministically
+  after generation instead of trusting the prompt: the accommodation's own
+  city first, then `location` when it already names a real city, then the
+  busiest city of the region it named. Unresolvable values (a park name, a
+  typo) are left alone rather than blanked. Runs after
+  `backfillAccommodation()` (which still matches on the raw model output) and
+  before `validateDrivingTimes()` — so days that used to be skipped by the
+  driving-time check because their location was a region are now actually
+  validated.
+- ✅ **The prompt no longer asks for regions.** `routingGuidance()` literally
+  told the model that day 1 and the last day "must be the region containing
+  Windhoek", contradicting the schema two paragraphs down — that was the
+  regression's origin. Both branches now name the start/end *city*, the
+  route-template paragraph says a stop's `region` is an area and not a day's
+  location, and each branch closes with an explicit granularity reminder.
+- ✅ **Every day carries its `region`.** Set by the normalizer, and
+  `/kaia/region-coords` now returns a `region` per entry so the UI can label
+  a city even on plans saved before this existed, or when the stay's listing
+  has no `city_id` (plenty of scraped ones don't). `dayRegion()` in
+  `ItinerarySection.vue` and the map popup share one precedence chain, so
+  card and popup can't disagree; a region that would just repeat the heading
+  is dropped.
+- ✅ **Listing detail hero leads with the city** (`ListingDetail.vue`), region
+  after it in parentheses and quieter. Both are links into Explore —
+  `?city=` and `?region=` respectively, filters that already existed. The
+  Explore selects now fold in an incoming filter value that the inspiration
+  rows never mention, so arriving from such a link no longer shows a blank
+  select over correctly filtered results.
+- 4 tests in `tests/Feature/Services/ItineraryServiceDayLocationTest.php`
+  pin the normalizer down by making Claude answer with region names.
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its

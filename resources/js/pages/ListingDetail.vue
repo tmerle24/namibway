@@ -71,6 +71,7 @@ interface Listing {
     pending_image: string | null;
     pending_gallery: string[];
     region: string | null;
+    city: string | null;
     address: string | null;
     phone: string | null;
     phone_href: string | null;
@@ -163,6 +164,7 @@ const heroImage = computed(() => {
 const FORWARDED_FILTER_KEYS = [
     'type',
     'region',
+    'city',
     'budget',
     'keyword',
     'min_rating',
@@ -466,13 +468,25 @@ const websiteUrl = computed(
                         >{{ t('listing.backToHome') }}</Link
                     >
                 </div>
-                <p v-if="props.listing.region">
+                <p v-if="props.listing.city || props.listing.region">
                     <Link
+                        v-if="props.listing.city"
+                        :href="home({ query: { city: props.listing.city } })"
+                        class="detail-region-link"
+                        >{{ props.listing.city }}</Link
+                    >
+                    <Link
+                        v-if="props.listing.region"
                         :href="
                             home({ query: { region: props.listing.region } })
                         "
                         class="detail-region-link"
-                        >{{ props.listing.region }}</Link
+                        :class="{ 'detail-region-sub': props.listing.city }"
+                        >{{
+                            props.listing.city
+                                ? `(${props.listing.region})`
+                                : props.listing.region
+                        }}</Link
                     >
                 </p>
                 <p v-if="props.listing.rating !== null" class="detail-rating">

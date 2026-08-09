@@ -2370,6 +2370,13 @@ body:has(.kaia-page) {
 .kaia-page .detail-hero-overlay .detail-region-link:hover {
     text-decoration: underline;
 }
+/* The city leads; its political region follows in parentheses, quieter — both
+   are links into the Explore search (?city= / ?region=). */
+.kaia-page .detail-hero-overlay .detail-region-sub {
+    font-size: 12px;
+    opacity: 0.75;
+    margin-left: 5px;
+}
 .kaia-page .detail-gallery {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

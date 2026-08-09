@@ -46,6 +46,11 @@ export interface ItineraryDay {
     date?: string | null;
     date_to?: string | null;
     location: string;
+    // The political region `location` sits in, resolved server-side (see
+    // ItineraryService::normalizeDayLocations). Absent on saved plans made
+    // before that existed — the UI falls back to the accommodation's own
+    // region, then to a lookup by city name.
+    region?: string | null;
     accommodation?: ItineraryListingRef | null;
     // Arrays — Kaia itself still only ever fills in one of each, but the
     // traveler can add a 2nd/3rd manually (see ItinerarySection.vue's

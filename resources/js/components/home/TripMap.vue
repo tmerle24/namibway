@@ -143,6 +143,22 @@ function resolveCoords(day: ItineraryDay): [number, number] | null {
     return coords ? [coords.lat, coords.lng] : null;
 }
 
+// Same precedence as ItinerarySection's dayRegion(), so a stage's popup and
+// its card never disagree on which region a city sits in.
+function resolveRegion(day: ItineraryDay, cityLabel: string): string | null {
+    const lookUp = (name?: string | null) =>
+        (name && props.regionCoords[name.toLowerCase().trim()]?.region) || null;
+
+    const region =
+        day.accommodation?.region ||
+        day.region ||
+        lookUp(day.accommodation?.city) ||
+        lookUp(day.location) ||
+        null;
+
+    return region && region !== cityLabel ? region : null;
+}
+
 function coordKey(latlng: [number, number]): string {
     return `${latlng[0].toFixed(4)},${latlng[1].toFixed(4)}`;
 }
@@ -167,6 +183,7 @@ function renderRoute() {
             latlng: [number, number];
             label: string;
             cityLabel: string;
+            region: string | null;
             day: number;
             date: string | null;
             accommodationName: string | null;
@@ -193,6 +210,8 @@ function renderRoute() {
                 continue;
             }
 
+            const cityLabel = day.accommodation?.city || day.location;
+
             seenCoords.add(ck);
             waypoints.push({
                 latlng,
@@ -202,7 +221,8 @@ function renderRoute() {
                 // popup below shows cityLabel instead in case an older saved
                 // plan still has a region here rather than a city.
                 label: day.location,
-                cityLabel: day.accommodation?.city || day.location,
+                cityLabel,
+                region: resolveRegion(day, cityLabel),
                 day: day.day,
                 date: day.date ?? null,
                 accommodationName: day.accommodation?.name ?? null,
@@ -253,7 +273,7 @@ function renderRoute() {
             const popupLines = [
                 `<div class="map-popup">`,
                 `<div class="map-popup-day">Day ${wp.day}${wp.date ? `<span class="map-popup-date"> · ${wp.date}</span>` : ''}</div>`,
-                `<div class="map-popup-location">${wp.cityLabel}</div>`,
+                `<div class="map-popup-location">${wp.cityLabel}${wp.region ? `<span class="map-popup-region"> ${wp.region}</span>` : ''}</div>`,
                 accHtml
                     ? `<div class="map-popup-accommodation">${accHtml}</div>`
                     : '',
@@ -448,6 +468,14 @@ watch(() => [props.variant, props.regionCoords] as const, renderRoute, {
 }
 
 .map-popup-date {
+    font-weight: 400;
+    color: #8a7d6e;
+}
+
+/* Region sits beside the city, deliberately quieter — same relationship as
+   .day-card-region next to the stage card's heading. */
+.map-popup-region {
+    font-size: 11px;
     font-weight: 400;
     color: #8a7d6e;
 }

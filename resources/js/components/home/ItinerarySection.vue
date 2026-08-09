@@ -550,10 +550,13 @@ function openStageLightbox(
     lightbox.value = { key: `${variantIndex}-${dayIndex}`, images, index: 0 };
 }
 
-// `day.location` is now always a city (see the AI contract in
-// ItineraryService); older saved plans predating that change may still carry
-// a political region here instead. Prefer the actual city of the day's
-// accommodation for display either way; falls back to `location` itself.
+// A stage is headed by its city, never by its political region — see
+// ItineraryService::normalizeDayLocations, which now resolves `day.location`
+// to a real city server-side. Still prefer the accommodation's own city:
+// it's the place the traveler actually sleeps, and it's what a mid-plan
+// listing swap updates. Saved plans predating the normalization can still
+// carry a region here, in which case there is genuinely no city to show and
+// the raw value is better than an empty heading.
 function dayCity(day: {
     location: string;
     accommodation?: { city?: string | null } | null;
@@ -561,13 +564,30 @@ function dayCity(day: {
     return day.accommodation?.city || day.location;
 }
 
-// The political region (e.g. "Khomas"), shown as a subtitle next to the city
-// name on the timeline card — only known once an accommodation is attached,
-// since `day.location` alone doesn't carry it.
+// The political region (e.g. "Khomas"), shown quieter beside the city name on
+// the timeline card. Three sources in decreasing precision: the stay's own
+// region, the region the backend resolved for the day, and finally a lookup
+// by city name in the coords index — that last one is what covers a stay
+// whose listing has no city_id (plenty of scraped ones don't) and older saved
+// plans that predate `day.region`.
 function dayRegion(day: {
-    accommodation?: { region?: string | null } | null;
+    location: string;
+    region?: string | null;
+    accommodation?: { city?: string | null; region?: string | null } | null;
 }): string | null {
-    return day.accommodation?.region || null;
+    const lookUp = (name?: string | null) =>
+        (name && regionCoords.value[name.toLowerCase().trim()]?.region) || null;
+
+    const region =
+        day.accommodation?.region ||
+        day.region ||
+        lookUp(day.accommodation?.city) ||
+        lookUp(day.location) ||
+        null;
+
+    // Repeating the heading in smaller type says nothing — happens when the
+    // heading itself fell back to a region name for want of a city.
+    return region && region !== dayCity(day) ? region : null;
 }
 
 // Sums the stage-start day's own accommodation/activity/restaurant prices
@@ -708,9 +728,14 @@ function setStageLocation(
 ) {
     const days = editableVariants.value[variantIndex].days;
     const endIndex = stageEndIndex(variantIndex, dayIndex);
+    // The subtitle beside the heading has to follow the new city, or the
+    // stage reads "Swakopmund · Khomas" until the plan is regenerated.
+    const region =
+        regionCoords.value[newLocation.toLowerCase().trim()]?.region ?? null;
 
     for (let i = dayIndex; i <= endIndex; i++) {
         days[i].location = newLocation;
+        days[i].region = region;
     }
 
     swap.value = null;
