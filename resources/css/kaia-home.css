@@ -968,8 +968,10 @@ body:has(.kaia-page) {
 .kaia-page .day-connector,
 .kaia-page .day-content {
     display: grid;
-    grid-template-columns: 40px 1fr;
-    column-gap: 14px;
+    /* Wide enough for the day rows' "18 Jan" under the marker — the rail
+       carries the date now that the day cards themselves don't. */
+    grid-template-columns: 52px 1fr;
+    column-gap: 12px;
 }
 .kaia-page .day-connector-content {
     display: flex;
@@ -1029,6 +1031,93 @@ body:has(.kaia-page) {
     transform: none;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
+/* Rail block for a single day inside a stage: a smaller, quieter marker than
+   the stage's own (which matches the numbered map pin), then the day's date,
+   whether it's the arrival or departure day, and the fold toggle. Everything
+   the day card used to carry in a header of its own now lives out here, so
+   the card is only ever "what happens that day". */
+.kaia-page .day-rail--day {
+    padding-top: 6px;
+    /* Keeps a folded-shut day (no card beside it to set the row's height)
+       from pushing its chevron into the next day's marker. */
+    padding-bottom: 10px;
+    gap: 2px;
+}
+.kaia-page .day-dot {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    border-radius: 50%;
+    background: var(--sage-light);
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    /* Against the paper, not the timeline line running behind it. */
+    border: 2px solid var(--paper);
+}
+.kaia-page .day-rail-date {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4a4438;
+    white-space: nowrap;
+    text-align: center;
+}
+.kaia-page .day-rail-label {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #8a7f68;
+    white-space: nowrap;
+    text-align: center;
+}
+.kaia-page .day-collapse-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 18px;
+    padding: 0;
+    margin-top: 1px;
+    border: none;
+    background: none;
+    color: #a89b82;
+    cursor: pointer;
+    transition:
+        transform 0.15s,
+        color 0.15s;
+}
+.kaia-page .day-collapse-btn:hover {
+    color: var(--rust);
+}
+.kaia-page .day-collapse-btn--collapsed {
+    transform: rotate(-90deg);
+}
+/* On a phone the rail is competing with the cards for a ~340px viewport, so
+   it gives back what it can: a narrower column and a tighter gutter. The
+   timeline line has to follow the column's new centre. */
+@media (max-width: 640px) {
+    .kaia-page .day-connector,
+    .kaia-page .day-content {
+        grid-template-columns: 48px 1fr;
+        column-gap: 8px;
+    }
+    .kaia-page .itinerary-timeline::before {
+        left: 23px;
+    }
+    .kaia-page .day-rail-date {
+        font-size: 10px;
+    }
+    /* "ABREISE" is the longest of these and has to stay inside the column. */
+    .kaia-page .day-rail-label {
+        font-size: 8px;
+        letter-spacing: 0;
+    }
+}
 /* Wraps just the <draggable> day list (not the "+ Tag hinzufügen" buttons
    outside it) so the ::before line's 0/100% top/bottom exactly spans the
    day markers and nothing else. */
@@ -1040,7 +1129,8 @@ body:has(.kaia-page) {
     position: absolute;
     top: 28px;
     bottom: 0;
-    left: 20px;
+    /* Centered on the rail column above (52px wide, minus half this line). */
+    left: 25px;
     width: 3px;
     /* Distinct from the sand-toned borders used everywhere else (day-card,
        day-card-box, etc.) — tinted to match .trip-map-marker's rust-red so
@@ -1049,13 +1139,12 @@ body:has(.kaia-page) {
     border-radius: 2px;
     z-index: 0;
 }
-/* A stage's first day renders two stacked .day-card elements — the
-   accommodation card, then a continuation-styled card for that same day's
-   own activity/restaurant plan — as a plain block column so .day-content's
-   grid (see the comment above) still only ever sees ONE second-column
-   child, whether that's this wrapper (stage-start) or a bare .day-card
-   (every later day in the stay). No layout rules of its own needed: each
-   child .day-card already carries its own spacing/negative-margin. */
+/* The stage row's whole second column — the accommodation card plus the
+   "Day plan" heading that introduces the day rows below it — wrapped in a
+   plain block column so .day-content's grid (see the comment above) still
+   only ever sees ONE second-column child, exactly as a day row's bare
+   .day-card does. No layout rules of its own needed: each child already
+   carries its own spacing. */
 .kaia-page .day-card-column {
     display: flex;
     flex-direction: column;
@@ -1075,12 +1164,12 @@ body:has(.kaia-page) {
 .kaia-page .day-card:not(.day-card--continuation) {
     padding-top: 22px;
 }
-/* Continuation day within a multi-night stage (no marker, no header — see
-   isStageStart in ItinerarySection.vue): sits close under the stage's own
-   card instead of getting a full gap, without the border-merging hack a
-   true "one card" look would need. */
+/* A day-plan card (see .day-content--day): reads as part of the stage above
+   it rather than as a peer of it, so it sits on a tighter rhythm than the
+   stage cards do — without the border-merging hack a true "one card" look
+   would need. */
 .kaia-page .day-card--continuation {
-    margin-top: -6px;
+    margin-bottom: 8px;
 }
 /* The clearance down to .day-card-grid belongs here, not on the date line
    inside .day-card-title — the date is no longer the header's last element in
@@ -1332,46 +1421,46 @@ body:has(.kaia-page) {
     margin-left: auto;
 }
 /* Section heading between a stage's accommodation card and its per-day cards
-   ("Day plans" + one line of explanation), so the day cards below read as a
-   labeled group instead of each having to repeat the label itself. */
+   ("Day plan" + one line of explanation), so the day cards below read as a
+   labeled group instead of each having to repeat the label itself. Same
+   small-caps treatment as .day-card-box-label ("UNTERKUNFT") directly above
+   it — the two are siblings in the stage's reading order. */
 .kaia-page .day-plans-head {
     margin: 2px 0 8px;
 }
 .kaia-page .day-plans-title {
-    font-family: 'Fraunces', serif;
-    font-size: 13.5px;
-    font-weight: 600;
-    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #a89b82;
 }
 .kaia-page .day-plans-hint {
     font-size: 11.5px;
     color: #8a7f68;
     margin: 1px 0 0;
 }
-/* One day inside a stage: its own date as the heading (the group label above
-   already says these are day plans), then the add buttons, then the entries.
+/* One day inside a stage: nothing but the add buttons and the day's entries —
+   its date and arrival/departure label sit out on the rail (.day-rail--day).
    No inner .day-card-box — the card's own border is the only one needed. */
 .kaia-page .day-card--day-plan {
     padding: 10px 12px;
 }
-.kaia-page .day-plan-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-}
-.kaia-page .day-plan-date {
-    font-size: 12px;
-    font-weight: 700;
-    color: #4a4438;
-}
-/* The always-visible "+ Activity" / "+ Restaurant" row — sits directly under
-   the day's date, above its entries, so adding to an empty day is the first
-   thing offered rather than something found below an empty list. */
+/* The always-visible "+ Activity" / "+ Restaurant" row — the card's first
+   line, so adding to an empty day is the first thing offered rather than
+   something found below an empty list. The day's own menu rides along at the
+   end of it, the only control the card needs beyond the two buttons. */
 .kaia-page .day-plan-add-row {
     display: flex;
+    align-items: center;
     gap: 8px;
-    margin: 8px 0 2px;
+    margin: 0 0 2px;
+}
+.kaia-page .day-plan-empty {
+    font-size: 11.5px;
+    color: #8a7f68;
+    margin: 0;
 }
 /* Both halves of the row, full width — an empty day's only call to action
    shouldn't be two small pills floating at the left edge, and a wide target
@@ -2759,10 +2848,10 @@ body:has(.kaia-page) {
     gap: 10px;
 }
 .kaia-page .stay-card-thumb {
-    width: 52px;
-    height: 52px;
-    min-width: 52px;
-    border-radius: 6px;
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+    border-radius: 8px;
     object-fit: cover;
     border: 1px solid var(--sand-dark);
 }
@@ -3994,6 +4083,8 @@ body:has(.kaia-page) {
     .trip-plan-page .remove-btn,
     .trip-plan-page .kebab-menu,
     .trip-plan-page .add-item-btn,
+    .trip-plan-page .day-plan-add-row,
+    .trip-plan-page .day-collapse-btn,
     .trip-plan-page .add-day-btn,
     .trip-plan-page .stay-card-actions,
     .trip-plan-page .drag-handle,

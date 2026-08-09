@@ -103,11 +103,11 @@ function onMenuSelect(key: string) {
             <div class="stay-card-main">
                 <img
                     v-if="stay.image"
-                    v-bind="thumbAttrs(stay.image, 52)"
+                    v-bind="thumbAttrs(stay.image, 64)"
                     alt=""
                     class="stay-card-thumb"
-                    width="52"
-                    height="52"
+                    width="64"
+                    height="64"
                     loading="lazy"
                     decoding="async"
                 />
