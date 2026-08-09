@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import { ChevronDown, GripHorizontal } from '@lucide/vue';
+import { GripHorizontal } from '@lucide/vue';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -505,8 +505,8 @@ function formatDateRange(day: {
 
 // A single day's own date, as stored ("15 Aug 2026"). The stay's full
 // check-in/check-out range is shown once, separately, on the accommodation
-// card via stageDateRangeLabel(); this is the per-day date the timeline rail
-// shortens for display — see dayRailDate().
+// card via stageDateRangeLabel(); this is the per-day date the day card's
+// header shortens for display — see dayRailDate().
 function dayDateLabel(day: {
     date?: string | null;
     date_to?: string | null;
@@ -813,8 +813,8 @@ function isStageEnd(variantIndex: number, dayIndex: number): boolean {
     );
 }
 
-// "Ankunft" under a day's date on the rail. Only the arrival day carries a
-// label here — departure is not one of the stage's nights but the morning
+// "Ankunft" beside a day's date in its card header. Only the arrival day
+// carries a label here — departure is not one of the stage's nights but the morning
 // after the last one, so it gets a row of its own (see the departure-day row
 // in the template) instead of mislabelling the last night as the departure.
 function dayRailLabel(variantIndex: number, dayIndex: number): string | null {
@@ -847,9 +847,9 @@ function departureRailDate(day: { date_to?: string | null }): string {
     return dayNumber ? [dayNumber, month].filter(Boolean).join(' ') : '';
 }
 
-// Short "15 Aug" for the narrow timeline rail — dates are stored as
+// Short "15 Aug" for the day card's header — dates are stored as
 // "D Mon YYYY", and the year is already spelled out on the stage heading's
-// date range right above, so repeating it on every day only widens the rail.
+// date range right above, so repeating it on every day says nothing new.
 function dayRailDate(day: {
     date?: string | null;
     date_to?: string | null;
@@ -857,6 +857,16 @@ function dayRailDate(day: {
     const [dayNumber, month] = dayDateLabel(day).split(' ');
 
     return dayNumber ? [dayNumber, month].filter(Boolean).join(' ') : '';
+}
+
+// What heads a day's card: its date, or — while the plan has no dates yet —
+// at least its day number, so the header line is never blank.
+function dayCardDateLabel(day: {
+    day: number;
+    date?: string | null;
+    date_to?: string | null;
+}): string {
+    return dayRailDate(day) || t('itinerary.dayNumber', { n: day.day });
 }
 
 // `departure` keys the stage-end's extra departure-day row, which folds
@@ -2571,9 +2581,11 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                         </div>
 
                                         <!-- Every day of the stage gets its own
-                                             row: date and arrival/departure on
-                                             the rail, that day's activities and
-                                             restaurants in the card beside it. -->
+                                             row: the rail keeps only the small
+                                             day marker for orientation — the
+                                             date itself heads the card, next
+                                             to that day's activities and
+                                             restaurants. -->
                                         <div
                                             class="day-content day-content--day"
                                         >
@@ -2581,77 +2593,33 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                 <span class="day-dot">{{
                                                     day.day
                                                 }}</span>
-                                                <span
-                                                    v-if="dayRailDate(day)"
-                                                    class="day-rail-date"
-                                                    >{{
-                                                        dayRailDate(day)
-                                                    }}</span
-                                                >
-                                                <span
-                                                    v-if="
-                                                        dayRailLabel(
-                                                            variantIndex,
-                                                            dayIndex,
-                                                        )
-                                                    "
-                                                    class="day-rail-label"
-                                                    >{{
-                                                        dayRailLabel(
-                                                            variantIndex,
-                                                            dayIndex,
-                                                        )
-                                                    }}</span
-                                                >
-                                                <button
-                                                    type="button"
-                                                    class="day-collapse-btn"
-                                                    :class="{
-                                                        'day-collapse-btn--collapsed':
-                                                            isDayCollapsed(
-                                                                variantIndex,
-                                                                dayIndex,
-                                                            ),
-                                                    }"
-                                                    :aria-expanded="
-                                                        !isDayCollapsed(
-                                                            variantIndex,
-                                                            dayIndex,
-                                                        )
-                                                    "
-                                                    :aria-label="
-                                                        isDayCollapsed(
-                                                            variantIndex,
-                                                            dayIndex,
-                                                        )
-                                                            ? t(
-                                                                  'itinerary.expandDay',
-                                                              )
-                                                            : t(
-                                                                  'itinerary.collapseDay',
-                                                              )
-                                                    "
-                                                    @click="
-                                                        toggleDayCollapsed(
-                                                            variantIndex,
-                                                            dayIndex,
-                                                        )
-                                                    "
-                                                >
-                                                    <ChevronDown :size="14" />
-                                                </button>
                                             </div>
 
                                             <ItineraryDayPlanCard
-                                                v-show="
-                                                    !isDayCollapsed(
+                                                :readonly="readonly"
+                                                :date-label="
+                                                    dayCardDateLabel(day)
+                                                "
+                                                :day-label="
+                                                    dayRailLabel(
                                                         variantIndex,
                                                         dayIndex,
                                                     )
                                                 "
-                                                :readonly="readonly"
+                                                :collapsed="
+                                                    isDayCollapsed(
+                                                        variantIndex,
+                                                        dayIndex,
+                                                    )
+                                                "
                                                 :entries="
                                                     dayEntries(
+                                                        variantIndex,
+                                                        dayIndex,
+                                                    )
+                                                "
+                                                @toggle-collapse="
+                                                    toggleDayCollapsed(
                                                         variantIndex,
                                                         dayIndex,
                                                     )
@@ -2738,70 +2706,23 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                 <span
                                                     class="day-dot day-dot--departure"
                                                 ></span>
-                                                <span
-                                                    v-if="
-                                                        departureRailDate(day)
-                                                    "
-                                                    class="day-rail-date"
-                                                    >{{
-                                                        departureRailDate(day)
-                                                    }}</span
-                                                >
-                                                <span class="day-rail-label">{{
-                                                    t('itinerary.dayDeparture')
-                                                }}</span>
-                                                <button
-                                                    type="button"
-                                                    class="day-collapse-btn"
-                                                    :class="{
-                                                        'day-collapse-btn--collapsed':
-                                                            isDayCollapsed(
-                                                                variantIndex,
-                                                                dayIndex,
-                                                                true,
-                                                            ),
-                                                    }"
-                                                    :aria-expanded="
-                                                        !isDayCollapsed(
-                                                            variantIndex,
-                                                            dayIndex,
-                                                            true,
-                                                        )
-                                                    "
-                                                    :aria-label="
-                                                        isDayCollapsed(
-                                                            variantIndex,
-                                                            dayIndex,
-                                                            true,
-                                                        )
-                                                            ? t(
-                                                                  'itinerary.expandDay',
-                                                              )
-                                                            : t(
-                                                                  'itinerary.collapseDay',
-                                                              )
-                                                    "
-                                                    @click="
-                                                        toggleDayCollapsed(
-                                                            variantIndex,
-                                                            dayIndex,
-                                                            true,
-                                                        )
-                                                    "
-                                                >
-                                                    <ChevronDown :size="14" />
-                                                </button>
                                             </div>
 
                                             <ItineraryDayPlanCard
-                                                v-show="
-                                                    !isDayCollapsed(
+                                                :readonly="readonly"
+                                                :date-label="
+                                                    departureRailDate(day)
+                                                "
+                                                :day-label="
+                                                    t('itinerary.dayDeparture')
+                                                "
+                                                :collapsed="
+                                                    isDayCollapsed(
                                                         variantIndex,
                                                         dayIndex,
                                                         true,
                                                     )
                                                 "
-                                                :readonly="readonly"
                                                 :entries="
                                                     dayEntries(
                                                         variantIndex,
@@ -2810,6 +2731,13 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                     )
                                                 "
                                                 hide-day-menu
+                                                @toggle-collapse="
+                                                    toggleDayCollapsed(
+                                                        variantIndex,
+                                                        dayIndex,
+                                                        true,
+                                                    )
+                                                "
                                                 @add="
                                                     (type) =>
                                                         openSwap(

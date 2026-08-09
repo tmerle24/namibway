@@ -212,6 +212,15 @@ async function onGuestSubmit(details: GuestDetails) {
     padding: 0 24px 40px;
 }
 
+/* This gutter stacks on top of the itinerary section's own — on a phone the
+   day cards need the width more than the page needs a double margin. */
+@media (max-width: 640px) {
+    .trip-plan-content {
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+}
+
 .trip-plan-header {
     padding: 28px 0 20px;
     border-bottom: 1px solid var(--sand-dark, #d6c9b5);

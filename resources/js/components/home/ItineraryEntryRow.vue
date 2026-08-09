@@ -161,7 +161,11 @@ function onMenuSelect(key: string) {
             :disabled="readonly"
             @click="startTimeEdit"
         >
-            {{ time || '--:--' }}
+            <!-- No placeholder dash when unset: the column stays (so rows
+                 align on the icon), but empty — "Zeit festlegen" on the
+                 details line is the labelled way in, this button is just
+                 the same target at the spot where the time will appear. -->
+            {{ time }}
         </button>
 
         <span class="entry-row-icon" :class="`entry-row-icon--${type}`">{{
@@ -179,13 +183,31 @@ function onMenuSelect(key: string) {
                     {{ item.name }}
                 </button>
                 <template v-else>{{ item.name }}</template>
-                <span class="item-price">{{ priceLabel }}</span>
             </div>
             <div class="entry-row-details">
                 <template v-for="(part, i) in details" :key="part">
                     <span v-if="i > 0" class="entry-row-details-sep">·</span
                     >{{ part }}
                 </template>
+                <!-- A timeless entry offers setting one right here, instead of
+                     leaving the bare "—" up front as the only (unlabelled) way
+                     in. Never invents a time — tapping opens the picker. -->
+                <template v-if="!time && !readonly">
+                    <span class="entry-row-details-sep">·</span>
+                    <button
+                        type="button"
+                        class="entry-row-set-time"
+                        @click="startTimeEdit"
+                    >
+                        {{ t('itinerary.setTime') }}
+                    </button>
+                </template>
+                <!-- The price rides at the end of the details line: it is
+                     secondary to the name (especially "Preis auf Anfrage",
+                     which is most of the catalog), and on the same line it
+                     can't visually compete with it. -->
+                <span class="entry-row-details-sep">·</span
+                ><span class="item-price">{{ priceLabel }}</span>
             </div>
         </div>
 

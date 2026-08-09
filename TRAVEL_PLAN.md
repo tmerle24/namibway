@@ -819,6 +819,76 @@ disproportionate — the same DNS carries the mailbox and the partner-mail polle
   no-upscale, ladder, traversal, recursion, missing and unreadable originals,
   cache header) and 5 more in `MediaUrlTest` for the URL building.
 
+### Session 13 — 2026-08-09 (the day is the container)
+
+From Till's layout review: the plan read as a stack of separate forms — the
+date detached on the rail, add buttons the size of form fields, empty days
+as tall as full ones, and borders around borders around borders. The
+information hierarchy was rebuilt so the day owns its content; frontend
+only, no data-model or server change.
+
+- ✅ **The date lives inside the day card now.** `ItineraryDayPlanCard` grew
+  a header line — "9 Jan · ANKUNFT" — that doubles as the fold toggle, so a
+  collapsed day still says which day it is (the old rail chevron collapsed
+  the whole card away, date included). The day's kebab moved up next to it.
+  While a plan has no dates yet the header falls back to "Tag {n}"
+  (`dayCardDateLabel`). The rail keeps only the small numbered dot (hollow
+  for the departure morning) — orientation, not information.
+- ✅ **One box per thing.** The stage block lost its border and became a
+  plain heading (city · region · dates · price); the UNTERKUNFT box is the
+  stay's one card, the day cards are the days'. Same DOM, restyled —
+  `.day-card:not(.day-card--continuation)` is transparent now.
+- ✅ **Add actions are lightweight inline text** ("+ Aktivität
+  + Restaurant"), not two full-width dashed pills — which is also what makes
+  an empty day two short lines tall instead of a large blank container.
+- ✅ **"—" + "Zeit festlegen" on timeless entries.** The details line of an
+  entry without a time offers a clickable "Zeit festlegen" (opens the same
+  native picker); the time column shows "—" instead of "--:--". No time is
+  ever invented. Hidden in print alongside the other edit affordances.
+- ✅ **Phones actually got the width.** Two real fixes found by rendering,
+  not by reading: grid items refused to shrink below min-content
+  (`min-width: 0` on the timeline's content column — before this every card
+  was a different width, overflowing its track), and three stacked side
+  gutters (trip-plan page 24px + section 24px + variant card 22px) left the
+  day cards ~200px on a 390px phone — all three slim down under 640px, and
+  the stage heading stacks its price/menu vertically there.
+- Verified in a real browser against a seeded `SavedPlan` (local Postgres,
+  Playwright): desktop 1440 with the sticky map, mobile 390, fold/unfold via
+  the new header toggle, and the read-only share view (no add row, no
+  set-time, "Noch nichts geplant" on the empty departure day). eslint,
+  prettier and vue-tsc clean; `npm run build` unreachable here only because
+  the sandbox blocks the bunny.net font fetch.
+
+Follow-up, same day, from Till's second review — the bordered card around
+each day still read as a stack of forms on a long stay:
+
+- ✅ **Days are sections of one continuous Tagesplan now, not cards.**
+  `ItineraryDayPlanCard`'s root became `.day-plan-section` — no border, no
+  background, no rounding. The date line is the section heading with a
+  hairline rule under it; whitespace separates the days. Everything else
+  (header-as-fold-toggle, add row, merged entry list) is unchanged, so a
+  7-night stay reads as one schedule instead of seven boxes.
+- ✅ **The price is details-line information.** It moved off the entry's
+  title row to the end of the second line ("Aktivität · ~3 h · $ 47") at
+  the details size, keeping the shared `.item-price` colour — the name is
+  the row's strongest text, and "Preis auf Anfrage" in particular no longer
+  competes with it.
+- Same verification pass as above (desktop/mobile/fold/read-only rendered,
+  eslint + prettier + vue-tsc green).
+
+Third pass, same day — polish only, structure untouched:
+
+- ✅ An unset time renders as an **empty column**, not a "—": the fixed
+  46px slot keeps the icons aligned, "Zeit festlegen" on the details line
+  is the labelled way in, and the empty button is still the same tap
+  target at the spot where the time will appear.
+- ✅ The **date grew to 14px** (the day's visual anchor); the rail dots
+  went the other way — smaller, sand-toned, lighter weight — so the
+  timeline reads as route orientation, not as a second date column.
+- ✅ **Tighter vertical rhythm**: section gap 18→10px, entry rows 7→5px
+  vertical padding — a 4-day stage fits one desktop viewport with the
+  hairline under each date doing the separating, not whitespace.
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its

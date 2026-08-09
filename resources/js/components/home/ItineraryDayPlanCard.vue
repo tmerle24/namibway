@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronDown } from '@lucide/vue';
 import { useI18n } from 'vue-i18n';
 import type { DayEntry } from '@/lib/kaia-types';
 import ItineraryEntryRow from './ItineraryEntryRow.vue';
@@ -7,6 +8,14 @@ import KebabMenu from './KebabMenu.vue';
 defineProps<{
     // Pre-merged and pre-sorted by the parent's dayEntries().
     entries: DayEntry[];
+    // "9 Jan" — the day's own date belongs to the day's content, not to the
+    // timeline rail beside it (the rail keeps only the small day marker).
+    dateLabel: string;
+    // "Ankunft"/"Abreise" beside the date, null for an ordinary day.
+    dayLabel?: string | null;
+    // Collapsing folds the day's entries away but keeps this header line, so
+    // a folded day still says which day it is.
+    collapsed?: boolean;
     // Opened through a read-only share link: the day is still shown in full,
     // it just offers nothing that would try to write.
     readonly?: boolean;
@@ -21,33 +30,48 @@ const emit = defineEmits<{
     (e: 'remove', entry: DayEntry): void;
     (e: 'update-time', entry: DayEntry, value: string | null): void;
     (e: 'remove-day'): void;
+    (e: 'toggle-collapse'): void;
 }>();
 
 const { t } = useI18n();
 </script>
 
 <template>
-    <!-- The day's own date and its arrival/departure label live on the
-         timeline rail beside this card (see ItinerarySection.vue), so the card
-         itself carries nothing but what happens that day. -->
-    <div class="day-card day-card--continuation day-card--day-plan">
-        <div v-if="!readonly" class="day-plan-add-row">
+    <!-- One SECTION of the stage's continuous Tagesplan, not a card of its
+         own: the date line is the heading, a hairline under it separates it
+         from the day's entries, and whitespace — not borders — separates the
+         days from each other. A 7-night stay reads as one schedule this way
+         instead of seven boxes. -->
+    <div class="day-plan-section">
+        <!-- The date heads the day so it reads as part of the day's content;
+             the whole line doubles as the fold toggle. The day menu sits
+             beside it rather than inside the toggle (no nested buttons). -->
+        <div class="day-plan-header">
             <button
                 type="button"
-                class="add-item-btn"
-                @click="emit('add', 'activity')"
+                class="day-plan-header-toggle"
+                :aria-expanded="!collapsed"
+                :aria-label="
+                    collapsed
+                        ? t('itinerary.expandDay')
+                        : t('itinerary.collapseDay')
+                "
+                @click="emit('toggle-collapse')"
             >
-                + {{ t('itinerary.addActivity') }}
-            </button>
-            <button
-                type="button"
-                class="add-item-btn"
-                @click="emit('add', 'restaurant')"
-            >
-                + {{ t('itinerary.addRestaurant') }}
+                <span v-if="dateLabel" class="day-plan-date">{{
+                    dateLabel
+                }}</span>
+                <span v-if="dayLabel" class="day-plan-day-label">{{
+                    dayLabel
+                }}</span>
+                <ChevronDown
+                    class="day-plan-chevron"
+                    :class="{ 'day-plan-chevron--collapsed': collapsed }"
+                    :size="14"
+                />
             </button>
             <KebabMenu
-                v-if="!hideDayMenu"
+                v-if="!readonly && !hideDayMenu"
                 :items="[
                     {
                         key: 'delete',
@@ -60,24 +84,43 @@ const { t } = useI18n();
             />
         </div>
 
-        <!-- Every day now has a row of its own, empty ones included. In edit
-             mode the add buttons above already say what an empty day is for;
-             a shared or printed plan has no buttons, so it says so in words
-             rather than showing a blank box. -->
-        <p v-if="readonly && !entries.length" class="day-plan-empty">
-            {{ t('itinerary.dayEmpty') }}
-        </p>
+        <div v-show="!collapsed" class="day-plan-body">
+            <div v-if="!readonly" class="day-plan-add-row">
+                <button
+                    type="button"
+                    class="add-item-btn"
+                    @click="emit('add', 'activity')"
+                >
+                    + {{ t('itinerary.addActivity') }}
+                </button>
+                <button
+                    type="button"
+                    class="add-item-btn"
+                    @click="emit('add', 'restaurant')"
+                >
+                    + {{ t('itinerary.addRestaurant') }}
+                </button>
+            </div>
 
-        <ItineraryEntryRow
-            v-for="entry in entries"
-            :key="`${entry.type}-${entry.itemIndex}-${entry.item.id ?? entry.item.name}`"
-            :type="entry.type"
-            :item="entry.item"
-            :readonly="readonly"
-            :time="entry.item.time"
-            @update:time="(value) => emit('update-time', entry, value)"
-            @remove="emit('remove', entry)"
-            @swap="emit('swap', entry)"
-        />
+            <!-- Every day has a row of its own, empty ones included. In edit
+                 mode the add buttons above already say what an empty day is
+                 for; a shared or printed plan has no buttons, so it says so in
+                 words rather than showing a blank box. -->
+            <p v-if="readonly && !entries.length" class="day-plan-empty">
+                {{ t('itinerary.dayEmpty') }}
+            </p>
+
+            <ItineraryEntryRow
+                v-for="entry in entries"
+                :key="`${entry.type}-${entry.itemIndex}-${entry.item.id ?? entry.item.name}`"
+                :type="entry.type"
+                :item="entry.item"
+                :readonly="readonly"
+                :time="entry.item.time"
+                @update:time="(value) => emit('update-time', entry, value)"
+                @remove="emit('remove', entry)"
+                @swap="emit('swap', entry)"
+            />
+        </div>
     </div>
 </template>
