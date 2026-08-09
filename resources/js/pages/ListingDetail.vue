@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
-import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Globe, Pencil, UserPlus } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AdminBar from '@/components/AdminBar.vue';
 import CurrencySwitcher from '@/components/CurrencySwitcher.vue';
 import ExploreMap from '@/components/home/ExploreMap.vue';
 import type { ExploreMapMarker } from '@/components/home/ExploreMap.vue';
 import MobileFooterNav from '@/components/home/MobileFooterNav.vue';
+import SaveLoginModal from '@/components/home/SaveLoginModal.vue';
 import ImageLightbox from '@/components/ImageLightbox.vue';
 import InputError from '@/components/InputError.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
@@ -17,6 +18,7 @@ import PublishConsentModal from '@/components/PublishConsentModal.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import { formatPrice } from '@/lib/currency';
+import { thumb, thumbAttrs } from '@/lib/media';
 import { home } from '@/routes';
 import inquiries from '@/routes/listings/inquiries';
 import reviewRoutes from '@/routes/listings/reviews';
@@ -105,6 +107,52 @@ const props = defineProps<{
     claim_url?: string | null;
 }>();
 
+// The logged-in account, if any — an inquiry is a booking request and needs
+// one. Reactive, because logging in through the modal below resolves it
+// without leaving the page.
+const account = computed(
+    () =>
+        (
+            usePage().props.auth as
+                { user: { name?: string; email?: string } | null } | undefined
+        )?.user ?? null,
+);
+
+// A deliberate one-shot snapshot for prefilling: a reactive :value would
+// overwrite whatever the traveler typed the moment they log in, and send the
+// account's name instead of the one they entered for this trip.
+const initialAccount = account.value;
+
+const inquiryForm = ref<{ submit: () => void } | null>(null);
+const showInquiryLogin = ref(false);
+
+function onInquirySend(event: MouseEvent) {
+    // Logged in: the button is a real submit and this does nothing.
+    if (account.value) {
+        return;
+    }
+
+    // type="button" skips the browser's own required-field check, so run it
+    // by hand — otherwise an empty form sends the traveler through a login
+    // only to come back with validation errors.
+    const form = (event.currentTarget as HTMLElement).closest('form');
+
+    if (form && !form.reportValidity()) {
+        return;
+    }
+
+    showInquiryLogin.value = true;
+}
+
+async function onInquiryAuthenticated() {
+    showInquiryLogin.value = false;
+
+    // Let the refreshed auth prop land before submitting, so the button is a
+    // submit again and the request carries the new session.
+    await nextTick();
+    inquiryForm.value?.submit();
+}
+
 const showPublishModal = ref(false);
 const lightboxIndex = ref<number | null>(null);
 const pendingPhotoCount = computed(
@@ -157,6 +205,11 @@ const heroImage = computed(() => {
 
     return fallbacks[props.listing.id % fallbacks.length];
 });
+
+// The hero is a CSS background, so it can't carry a srcset — ask for the top
+// of the width ladder and let format=auto do the rest. `heroImage` itself stays
+// unresized, because exploreMarkers reuses it at 48px.
+const heroImageCss = computed(() => thumb(heroImage.value, 1600));
 
 // Carries forward whatever explore filters were active when this listing
 // was opened (see ExploreSection.vue's listingUrl()), so "back" restores
@@ -318,14 +371,18 @@ const websiteUrl = computed(
             <div class="pending-photos-thumbs">
                 <img
                     v-if="props.listing.pending_image"
-                    :src="props.listing.pending_image"
+                    v-bind="thumbAttrs(props.listing.pending_image, 56)"
                     alt="Pending hero image"
+                    loading="lazy"
+                    decoding="async"
                 />
                 <img
                     v-for="(src, i) in props.listing.pending_gallery"
                     :key="i"
-                    :src="src"
+                    v-bind="thumbAttrs(src, 56)"
                     :alt="`Pending gallery image ${i + 1}`"
+                    loading="lazy"
+                    decoding="async"
                 />
             </div>
         </div>
@@ -363,8 +420,10 @@ const websiteUrl = computed(
             >
                 <img
                     v-if="props.listing.pending_image"
-                    :src="props.listing.pending_image"
+                    v-bind="thumbAttrs(props.listing.pending_image, 64)"
                     alt="Pending hero image"
+                    loading="lazy"
+                    decoding="async"
                     style="
                         height: 64px;
                         width: 64px;
@@ -376,8 +435,10 @@ const websiteUrl = computed(
                 <img
                     v-for="(src, i) in props.listing.pending_gallery"
                     :key="i"
-                    :src="src"
+                    v-bind="thumbAttrs(src, 64)"
                     :alt="`Pending gallery image ${i + 1}`"
+                    loading="lazy"
+                    decoding="async"
                     style="
                         height: 64px;
                         width: 64px;
@@ -451,7 +512,7 @@ const websiteUrl = computed(
 
         <div
             class="detail-hero"
-            :style="{ backgroundImage: `url(${heroImage})` }"
+            :style="{ backgroundImage: `url(${heroImageCss})` }"
         >
             <div class="detail-hero-overlay">
                 <Link
@@ -522,9 +583,12 @@ const websiteUrl = computed(
                     @click="lightboxIndex = i"
                 >
                     <img
-                        :src="src"
+                        v-bind="thumbAttrs(src, 280)"
                         :alt="`${props.listing.name} ${i + 1}`"
+                        width="280"
+                        height="160"
                         loading="lazy"
+                        decoding="async"
                     />
                 </button>
             </div>
@@ -675,7 +739,15 @@ const websiteUrl = computed(
                                     : t('listing.inquiry.subtitleGeneric')
                             }}
                         </p>
+                        <!--
+                            Sending an inquiry is a booking request, so it needs
+                            an account (listings.inquiries.store is behind
+                            `auth`). The form is shown either way; the login is
+                            asked for in a modal at the moment of sending, so
+                            nothing typed in here is lost to a page change.
+                        -->
                         <Form
+                            ref="inquiryForm"
                             v-bind="
                                 inquiries.store.form({
                                     listing: props.listing.slug,
@@ -687,12 +759,22 @@ const websiteUrl = computed(
                         >
                             <label>
                                 {{ t('listing.inquiry.name') }}
-                                <input name="name" type="text" required />
+                                <input
+                                    name="name"
+                                    type="text"
+                                    required
+                                    :value="initialAccount?.name"
+                                />
                                 <InputError :message="errors.name" />
                             </label>
                             <label>
                                 {{ t('listing.inquiry.email') }}
-                                <input name="email" type="email" required />
+                                <input
+                                    name="email"
+                                    type="email"
+                                    required
+                                    :value="initialAccount?.email"
+                                />
                                 <InputError :message="errors.email" />
                             </label>
                             <label>
@@ -757,10 +839,18 @@ const websiteUrl = computed(
                                 <textarea name="message" rows="3"></textarea>
                                 <InputError :message="errors.message" />
                             </label>
+                            <!--
+                                type="button" while logged out, so the click
+                                opens the login modal instead of firing a
+                                request the server would only bounce. The typed
+                                values stay in the form and are sent as soon as
+                                the modal reports back.
+                            -->
                             <button
-                                type="submit"
+                                :type="account ? 'submit' : 'button'"
                                 class="cta"
                                 :disabled="processing"
+                                @click="onInquirySend"
                             >
                                 {{
                                     processing
@@ -768,6 +858,9 @@ const websiteUrl = computed(
                                         : t('listing.inquiry.send')
                                 }}
                             </button>
+                            <p v-if="!account" class="inquiry-login-note">
+                                {{ t('listing.inquiry.loginRequired') }}
+                            </p>
                             <p v-if="recentlySuccessful" class="confirm-note">
                                 {{ t('listing.inquiry.success') }}
                             </p>
@@ -873,6 +966,14 @@ const websiteUrl = computed(
                 </Form>
             </div>
         </section>
+
+        <!-- Opened by the inquiry form's send button while logged out. -->
+        <SaveLoginModal
+            v-if="showInquiryLogin"
+            intent="book"
+            @close="showInquiryLogin = false"
+            @authenticated="onInquiryAuthenticated"
+        />
 
         <SiteFooter />
         <MobileFooterNav />

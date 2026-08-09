@@ -117,6 +117,13 @@ class KaiaController extends Controller
         return response()->json(['coords' => $coords]);
     }
 
+    // Creating a plan deliberately needs no account: everything straight out of
+    // the Kaia chat runs on the token alone, and this is the endpoint the
+    // frontend's autosave (ItinerarySection's runPersist) calls on every edit.
+    // What an anonymous request can never produce is an *owned* plan —
+    // `user_id` comes from the session, so it is null unless the traveler
+    // already happens to be logged in. Attaching a plan to an account is a
+    // separate, authenticated action: claimPlan() below.
     public function savePlan(Request $request): JsonResponse
     {
         $request->validate(['variant' => 'required|array']);
@@ -138,10 +145,57 @@ class KaiaController extends Controller
             'share_token' => $saved->share_token,
             'share_url' => route('trip.show', $saved->share_token),
             'version' => $saved->version,
+            'owned' => $saved->user_id !== null,
         ]);
     }
 
-    public function loadPlan(string $token): JsonResponse
+    /**
+     * "Save to my account" — the one place a plan gains an owner.
+     *
+     * Until now this was a frontend rule only (SaveButton checked isLoggedIn
+     * and otherwise popped the login modal), and the save it ran afterwards was
+     * a no-op for a plan the autosave had already persisted: the row kept
+     * `user_id = null` forever, so the plan the traveler had just "saved" never
+     * appeared on their dashboard. The account line now lives on the server —
+     * the route is behind `auth`, and this is the only path that writes
+     * `user_id`.
+     *
+     * Deliberately the edit token only. A read-only share link resolves to a
+     * real plan, and letting it claim ownership would hand someone else's plan
+     * to whoever it was shared with. 404 rather than 403 so a share link
+     * doesn't advertise that an editable twin exists — same reasoning as
+     * updatePlan().
+     */
+    public function claimPlan(Request $request, string $token): JsonResponse
+    {
+        $saved = SavedPlan::where('token', $token)->firstOrFail();
+        $user = $request->user();
+
+        // The route is behind `auth`; this is belt-and-braces so the ownership
+        // write below can never run without an identity to write.
+        if ($user === null) {
+            abort(401);
+        }
+
+        // Already someone else's. Claiming is first-come — a plan that has an
+        // owner keeps it, and the second person needs their own copy (which the
+        // collaboration work will replace with real participants).
+        if ($saved->user_id !== null && $saved->user_id !== $user->id) {
+            return response()->json([
+                'message' => __('This plan already belongs to another account.'),
+            ], 403);
+        }
+
+        // Idempotent: re-claiming your own plan is what the Save button does on
+        // a second click, and on a page reload after logging in.
+        if ($saved->user_id === null) {
+            $saved->update(['user_id' => $user->id]);
+        }
+
+        return response()->json(['token' => $saved->token, 'owned' => true]);
+    }
+
+    public function loadPlan(Request $request, string $token): JsonResponse
     {
         $resolved = SavedPlan::resolveByAnyToken($token);
 
@@ -160,6 +214,10 @@ class KaiaController extends Controller
             // Safe to hand to either audience: it's the reader's own token for
             // a read-only visitor, and the link an editor would want to share.
             'share_token' => $plan->share_token,
+            // Whether this plan sits in an account already — what the Save
+            // button reflects. Only ever true for the plan's own owner, so a
+            // read-only visitor is never told someone else has saved it.
+            'owned' => $plan->user_id !== null && $plan->user_id === $request->user()?->id,
         ]);
     }
 

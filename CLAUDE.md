@@ -23,7 +23,7 @@ What "good" means here, in the order it gets judged:
 - **Account required:** saving a plan to your account, collaborative editing (a co-planner is a person, so they need an identity), and booking.
 - **Booking is the creator's alone, for now.** A shared plan does not turn co-planners into bookers — this keeps the one-active-request-per-traveler governance below coherent, which assumes exactly one responsible person per pipeline.
 
-Enforcement today only partly matches: the save-to-account gate is client-side (`SaveButton` checks `isLoggedIn`; `SavedPlanController::store` still accepts anonymous saves, which the token auto-persist path relies on), and the booking endpoints (`ListingController::storeInquiry`, `TripController::store`) require neither login nor any notion of plan ownership — the active-request gate keys on the email address. Closing that gap is part of the collaborative work, not a separate cleanup.
+All three are enforced server-side since 2026-08-08. Creating and autosaving a plan still need no account, but an anonymous request can only produce an *unowned* plan; `KaiaController::claimPlan` (behind `auth`) is the only thing that writes `SavedPlan.user_id`. The booking endpoints (`ListingController::storeInquiry` / `storeBatchInquiry`, `TripController::store`) are behind `auth`, booking resolves "creator" from the plan's **edit** token — a read-only share token is refused — and the one-active-request gate matches on the account as well as the email (`App\Services\Booking\ActiveRequestGate`), so it can't be sidestepped by typing a second address.
 
 `TRAVEL_PLAN.md` is the working log for exactly this — read its "Known gaps / next up" before starting, and add a dated entry when you finish something.
 
@@ -47,7 +47,7 @@ This file is the condensed, load-bearing summary. The detail lives next to it:
 - **Auth:** Fortify (incl. 2FA), Socialite (Google/Facebook), passkeys
 - **AI:** Claude API via `App\Services\Kaia\AnthropicClient` — structured output / forced tool calls, same pattern as Wisherful
 - **Queue/rate-limiting:** Laravel Queues + Redis + Horizon (Supervisor-managed)
-- **Media storage:** Cloudflare R2 (`r2` disk). Legacy uploads on the local `public` disk predate 2026-08-02 — see `Controller::resolveMediaUrl`
+- **Media storage:** Cloudflare R2 (`r2` disk). Legacy uploads on the local `public` disk predate 2026-08-02 — see `Controller::resolveMediaUrl`. Only originals are stored; thumbnails are resized at the edge by Cloudflare Image Transformations via `App\Support\MediaUrl` / `resources/js/lib/media.ts` (the render width is a property of the component, not of the payload). Currently **off** in production until a custom domain is on the bucket — `config/media.php`, DEPLOYMENT.md → "Bild-Thumbnails"
 - **Backups:** spatie/laravel-backup → separate **non-public** R2 bucket (`r2-backups`), AES-256 encrypted, nightly 02:00, failure-only mail notifications. `restore.sh` is the counterpart to `deploy.sh` for a total server loss
 - **PDF output:** Laravel PDF service (trip plan PDF, partner API guide, listings partner handbook)
 - **Public API:** `/api/v1` (Sanctum + `EnsureApiClientActive`), documented with Scribe; `ApiClient` model gates access
@@ -93,12 +93,14 @@ The MVP foundation is live in production; work now is depth and polish, not scaf
 ### Data-loss lesson
 `namibway:backfill-listing-cities` once overwrote correct `city_id` values because a "Windhoek" hit in a free-text address field (many remote operators use a Windhoek postal address) beat the real location. The command is fixed, but re-running it does **not** repair already-corrupted rows — `restore-listing-city-ids.sh` surgically restores just that column from a backup. Treat any bulk backfill over existing non-null data as destructive: gate on "currently empty" or dry-run first.
 
+A near miss of the same class, found 2026-08-09 before it fired: `photos:audit-r2 --delete-orphaned` decided what was referenced by comparing the raw DB value against `Storage::disk('r2')->url($key)`. Scraper photos are stored as **absolute** URLs built from `CLOUDFLARE_R2_URL` at download time, so changing that variable — exactly what attaching a custom domain to the bucket requires — would have made every referenced photo look orphaned and deleted the entire live library on confirm. It now matches on filename, which no host or prefix change can affect, and which errs toward "referenced" (leaves an orphan) rather than toward deletion. General rule for anything that deletes: never key the keep/delete decision on a value derived from mutable config.
+
 ## The core product mechanic — read before touching the booking flow
 The central design problem: **turning an AI-generated plan into confirmed bookings without flooding partner owners with speculative requests.**
 
 Status of the governance rules:
-- ✅ **One active request pipeline per traveler** — enforced by email in `ListingController::storeInquiry` / `storeBatchInquiry` against `InquiryStatus::isActive()`; a batch shortlist request checks the gate once for the whole batch.
-- ✅ **Real commitment signal before requests go out** — name, email, travel dates required (no payment).
+- ✅ **One active request pipeline per traveler** — `App\Services\Booking\ActiveRequestGate` matches an active `InquiryStatus` against the booking account *or* the submitted email, checked by `ListingController::storeInquiry` / `storeBatchInquiry` and `TripController::store`; a batch shortlist request checks the gate once for the whole batch.
+- ✅ **Real commitment signal before requests go out** — an account plus name, email and travel dates (no payment).
 - ✅ **Soft hold with expiry** — Native connector reservations set `hold_expires_at` and dispatch `ExpireNativeHoldJob`, which releases the hold and mails the guest if the partner doesn't respond in time (idempotent, status-guarded).
 - ✅ **Low-effort partner response** — signed one-click confirm/cancel URLs (`routes/partner.php`) plus the same transition from the logged-in dashboard, both through `InquiryDecisionService`.
 - ⬜ **Staged confirmations** — lock accommodation first, then layer in activities/restaurants once the route is fixed. Still not implemented; today's flow treats each inquiry independently.

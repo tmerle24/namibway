@@ -15,7 +15,7 @@ import MobileFooterNav from '@/components/home/MobileFooterNav.vue';
 import TopDestinations from '@/components/home/TopDestinations.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import { hasSavedExploreScroll } from '@/lib/explore-scroll';
-import { createTrip, loadPlan } from '@/lib/kaia-client';
+import { createTrip, loadPlan, savePlan } from '@/lib/kaia-client';
 import type {
     GuestDetails,
     ItineraryPlan,
@@ -64,6 +64,8 @@ const tripVersion = ref<number | null>(null);
 const tripShareToken = ref<string | null>(null);
 // A ?trip= link can be the read-only one someone was sent.
 const tripCanEdit = ref(true);
+// Whether the plan behind ?trip= is already in this traveler's account.
+const tripOwned = ref(false);
 const searchIntent = ref<SearchIntent | null>(null);
 const bookingVariant = ref<ItineraryVariant | null>(null);
 const bookingActive = ref(false);
@@ -137,6 +139,7 @@ onMounted(async () => {
             tripVersion.value = loaded.version;
             tripShareToken.value = loaded.shareToken;
             tripCanEdit.value = loaded.canEdit;
+            tripOwned.value = loaded.owned;
             tripToken.value = tripParam;
         } catch {
             // Unknown/expired token — fall through to a normal fresh visit.
@@ -205,6 +208,7 @@ async function onPlanReady(newPlan: ItineraryPlan) {
     tripVersion.value = null;
     tripShareToken.value = null;
     tripCanEdit.value = true;
+    tripOwned.value = false;
     plan.value = newPlan;
     bookingVariant.value = null;
     bookingActive.value = false;
@@ -227,11 +231,27 @@ async function onGuestSubmit(details: GuestDetails) {
     bookingError.value = null;
 
     try {
+        // Booking is made against the plan's own token — that's how the server
+        // knows this is its creator (TripController::store). The autosave has
+        // normally minted one long before the guest form is filled in; persist
+        // it here if that save happened to fail, rather than dead-ending the
+        // traveler on a rule they can't see.
+        let token = tripToken.value;
+
+        if (!token) {
+            const saved = await savePlan(plan.value);
+            token = saved.token;
+            tripToken.value = saved.token;
+            tripShareToken.value = saved.shareToken;
+            tripOwned.value = saved.owned;
+        }
+
         const result = await createTrip(
             details,
             bookingVariant.value.name,
             plan.value,
             bookingVariant.value.days,
+            token,
         );
         bookingTripId.value = result.trip_id;
         guestName.value = details.name;
@@ -266,6 +286,7 @@ async function onGuestSubmit(details: GuestDetails) {
             :version="tripVersion"
             :share-token="tripShareToken"
             :can-edit="tripCanEdit"
+            :owned="tripOwned"
             @book="onBook"
             @update:token="tripToken = $event"
         />

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Services\Currency\ExchangeRateService;
+use App\Support\MediaUrl;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -48,6 +49,9 @@ class HandleInertiaRequests extends Middleware
             'currency' => app('currentCurrency'),
             'availableCurrencies' => config('currencies.labels'),
             'currencyRates' => app(ExchangeRateService::class)->rates(),
+            // Deployment config, not per-request state — the frontend needs it
+            // because only a component knows how wide its own image slot is.
+            'mediaTransforms' => MediaUrl::clientConfig(),
         ];
     }
 }

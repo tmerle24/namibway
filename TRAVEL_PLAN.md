@@ -83,20 +83,19 @@ Decided — where the account line sits:
   one-active-request-per-traveler rule in `CLAUDE.md` coherent: exactly one
   responsible person per booking pipeline.
 
-That resolves who needs an account, but it isn't implemented as stated:
+✅ *All three enforced as of session 6.* This used to be a statement of intent
+with no server behind it; it is now what the code actually does:
 
-- Saving is gated in the frontend only (`SaveButton` emits `need-auth` when
-  `isLoggedIn === false`); `SavedPlanController::store` happily accepts an
-  anonymous save with a null `user_id`, which is what the token auto-persist
-  path (`runPersist`) relies on. So "saving needs an account" is a UI rule,
-  not a server rule — fine while the two paths are one and the same, but it
-  needs a real distinction once plans have owners.
-- Booking requires neither login nor plan ownership today:
-  `ListingController::storeInquiry` / `storeBatchInquiry` and
-  `TripController::store` are unauthenticated, and the active-request gate
-  keys on the submitted email address. There is no "creator" concept being
-  checked anywhere, so "only the creator can book" has no enforcement point
-  yet — `SavedPlan.user_id` is the obvious anchor, but nothing reads it.
+- Creating and editing a plan still need no account (the autosave path is
+  untouched), but an anonymous request can only ever produce an *unowned* plan.
+  Attaching one to an account goes through `KaiaController::claimPlan`, which
+  is behind `auth` — that's the account line, and it's the only thing that
+  writes `SavedPlan.user_id`.
+- `ListingController::storeInquiry` / `storeBatchInquiry` and
+  `TripController::store` are all behind `auth`.
+- "Only the creator can book" resolves from the plan token the booking is made
+  against: it must be the plan's *edit* token, and a plan that already has an
+  owner may only be booked by that owner.
 
 Still open:
 
@@ -104,9 +103,11 @@ Still open:
   v1? Live collaboration is a much bigger build (broadcasting, presence).
 - Beyond booking, what else stays creator-only — revoking access, deleting
   the plan, changing trip params that invalidate others' work?
-- What happens to a plan created anonymously (token only) once someone
-  wants to collaborate on it: claim it into the creating account first, or
-  can a token-only plan gain participants?
+- Partly answered in session 6: an anonymous plan is claimed into an account
+  the first time its holder saves or books it, and claiming is first-come
+  (a plan that has an owner keeps it). What's still open is the other half —
+  whether a *token-only* plan can gain participants without being claimed
+  first, which only matters once participants exist at all.
 
 Not scoped or started — flagged here so plan-related work doesn't get built
 in a way that has to be torn up. Concretely: assume a plan has **several
@@ -350,7 +351,153 @@ the share link *is* the creator's edit token.
   the Postgres test DB, not `phpunit.xml`'s sqlite:
   `DB_DATABASE=namibway_test DB_CONNECTION=pgsql ... php artisan test`.
 
-### Session 6 — 2026-08-09
+### Session 6 — 2026-08-08
+
+Closing the gap between the account line CLAUDE.md *states* and what the server
+actually enforced. Picked for the same reason as session 5: these were live,
+and two of them were exploitable by anyone holding a link.
+
+- ✅ **Saving to an account is a server rule.** New `POST
+  /kaia/plans/{token}/claim` behind `auth` (`KaiaController::claimPlan`) — the
+  only path that ever writes `SavedPlan.user_id`. Creating and autosaving a
+  plan stay open, so the frictionless chat → plan path is untouched; what an
+  anonymous request can no longer do is produce an owned plan.
+  - This also fixes a plain bug: `SaveButton` treated *having a token* as
+    "saved", and `saveAllVariants()` short-circuited to a no-op when the plan
+    was already auto-persisted. So a logged-out traveler who pressed Save, then
+    logged in, got a saved-looking bookmark on a row that kept `user_id = null`
+    forever and never appeared on their dashboard. The button now tracks real
+    ownership (`owned`, reported by `savePlan`/`loadPlan`/the `/trip` page) and
+    claims the existing row instead of silently doing nothing. `SaveShareBar`'s
+    own "save to account" had the same shape of bug from the other side — it
+    called `savePlan()` again and minted a duplicate row whose token diverged
+    from the link the traveler may already have shared; it claims now too.
+- ✅ **Booking requires an account.** `trips.store`,
+  `listings.inquiries.store` and `inquiries.batch.store` are all behind `auth`.
+  **Every** entry point asks in the same modal (`SaveLoginModal`, now with an
+  `intent` prop for booking-specific copy and an `initialTab` so a "create
+  account" button lands on the right tab) — never a redirect to `/login`:
+  - the plan's Book button opens it before the guest form,
+  - the listing and shortlist inquiry forms stay on screen and open it when
+    Send is pressed, then submit themselves once the traveler is in, so
+    nothing typed is lost. While logged out the button is `type="button"`, so
+    it runs `reportValidity()` by hand first — otherwise an empty form would
+    send someone through a login only to come back with errors.
+  - the `/trip` page's "keep this plan" banner opens it too, and claims the
+    plan on success rather than navigating away.
+  - Prefill from the account is a one-shot read (`initialAccount`), never a
+    reactive binding: a live one would overwrite a name the traveler had
+    already typed the instant they logged in, and send the account's instead.
+- ✅ **Only the plan's creator can book it.** `TripController::store` now takes
+  a required `plan_token`, resolved against the *edit* token only — a
+  read-only share token gets the same 403 as an unknown token, so it can't be
+  used to probe for its editable twin. A plan owned by someone else is refused;
+  an unowned one is claimed by the booker, since possession of the edit token
+  is what "creator" means until an identity is attached.
+- ✅ **The one-active-request gate follows the account, not the typed email.**
+  Three copies of the same query became `ActiveRequestGate` (matches on
+  `user_id` OR `email`). Keying on email alone meant the rule was avoidable by
+  typing a second address — which is the one thing it exists to prevent.
+- ✅ **`trips.user_id` / `trips.saved_plan_id` / `inquiries.user_id`** (one
+  migration). Bookings had no owner at all before, which is why none of the
+  above had a column to check. `saved_plan_id` is also the anchor the "booking
+  facts on a plan entry" backlog item needs.
+- ✅ **Fixed while here:** `GET /trips/{trip}/inquiries` was unauthenticated
+  and the id is a plain auto-increment, so counting upwards listed any
+  traveler's booked lodges and their confirmation states. Now scoped to the
+  trip's owner.
+- 18 tests in `tests/Feature/BookingAccountGateTest.php`. Same Postgres caveat
+  as session 5 — `phpunit.xml`'s sqlite can't run the migrations.
+
+**Decided, don't undo it:** a single listing inquiry from the Explore path
+requires an account too, not just a plan booking. This *is* new friction on a
+path that had none, and it was raised and deliberately kept (Till, 2026-08-08).
+Two reasons, so nobody "fixes" it later: an inquiry is not a cheap question —
+it creates a real `Inquiry`, notifies the partner owner, and occupies the
+one-active-request slot, which is precisely what the governance mechanic exists
+to protect. And leaving that path anonymous would reopen the email-swap bypass
+on it, since an anonymous inquiry has no account to recognise it by.
+
+The middle path that was considered and *not* taken: splitting inquiries into
+non-binding questions (no account) and binding booking requests (account). It
+needs an inactive `InquiryStatus`, an `InquiryObserver` branch that skips
+`ProcessInquiry`, its own partner-side treatment in both Filament panels and
+its own mail templates — and it opens an unauthenticated channel to real
+business owners. With no partner live yet, that is the wrong first impression
+to make. If the friction turns out to cost conversions, shrink the *account
+step* instead (create the account from the name and email already typed into
+the form, password set later via the confirmation mail) rather than removing
+the identity behind the request.
+
+### Session 7 — 2026-08-08
+
+Image thumbnails. Reported symptom: photos in lists load in slowly. Confirmed
+— there was **no thumbnail layer at all**. `Controller::resolveMediaUrl()` maps
+a stored path to a disk URL and takes no size, so every consumer got the
+original; nothing generated derivatives (no Intervention Image, no
+`imageResizeTargetWidth` on any Filament `FileUpload`); Google Places photos
+are downloaded once at `maxwidth=1200` and that is the *only* size that exists.
+Worst case sat in this very feature: the trip plan's day thumbnail renders at
+**44 × 44 px** (`kaia-home.css`) and was pulling the full 1200px file.
+
+- ✅ **Resize at the edge, don't store derivatives** (`config/media.php`,
+  `App\Support\MediaUrl`, `resources/js/lib/media.ts`). Cloudflare Image
+  Transformations serve the same stored original at the requested width, so
+  there is no backfill over the existing library and no second copy to keep in
+  sync. `format=auto` also buys AVIF/WebP on images we can't shrink further.
+- ✅ **The width lives in the component, not the payload.** The same listing
+  `image` feeds a 44px day thumbnail, a 48px swap row and a full-bleed hero, so
+  the backend can't pick one size. Components call `thumbAttrs(url, width)`,
+  which emits `src` + a 1x/2x `srcset`. The PHP twin exists for server-side
+  callers and is what the tests pin.
+- ✅ **Requested widths snap to a ladder** (64/128/256/400/800/1600).
+  Cloudflare bills per *unique* transformation; without this the 44/48/52px
+  thumbnails would bill three variants for what reads as one image.
+- ✅ **Frontend hygiene alongside it.** `loading="lazy"` was on 4 of 28 `<img>`;
+  `decoding="async"` and intrinsic `width`/`height` (layout shift) were absent
+  everywhere. Both added across the list/thumbnail renders.
+- ✅ **New uploads are capped at 2000px** (`AppServiceProvider`, one
+  `FileUpload::configureUsing` for both panels — every upload in the codebase is
+  an image). Previously a partner's straight-from-the-phone photo became the one
+  and only copy we serve.
+- ⚠️ **Ships switched OFF.** `MEDIA_TRANSFORMS_ENABLED` defaults to false,
+  because `CLOUDFLARE_R2_URL` still points at `pub-<hash>.r2.dev`, which cannot
+  serve `/cdn-cgi/image/`. Until a custom domain is attached to the bucket and
+  Transformations are enabled for the zone, every URL passes through untouched.
+  Checklist: **DEPLOYMENT.md → "Bild-Thumbnails"**. The one win that lands
+  immediately is the Unsplash placeholder heroes, which resize off their own
+  query string for free.
+- ✅ **Pre-flight command** `namibway:check-media-transforms`. Fetches real
+  catalog photos twice — as stored and through `/cdn-cgi/image/` — and compares
+  status, type and bytes. Probes the transformed URL *even while the flag is
+  off*, so the Cloudflare side can be confirmed before production depends on it.
+  Separates the two failure modes a status check would miss: 404 on the variant
+  (domain/Transformations missing) vs. 200 at original size (pass-through, not a
+  resize).
+- ⚠️ **Found while building it: images stranded on a stale origin.**
+  `GooglePlacesPhotoFinder` stores `Storage::disk('r2')->url(...)` — an
+  *absolute* bucket URL — into `listings.image`. Point `CLOUDFLARE_R2_URL` at a
+  custom domain and every existing row still carries the old
+  `pub-<hash>.r2.dev` host, so neither `resolveMediaUrl` nor `MediaUrl::thumb`
+  touches it and it keeps being served full-size. Since the enrichment pipeline
+  is the main photo source, this is probably *most* listing photos, not an edge
+  case. The command counts them (the object being in our bucket is what tells
+  them apart from a genuinely foreign URL); the fix is still open — see
+  "Known gaps".
+- Tests: `tests/Feature/Support/MediaUrlTest.php` — pins that a foreign URL is
+  never rewritten, that the helper is inert while disabled, and that an
+  already-transformed URL isn't nested inside itself.
+  `tests/Feature/Commands/CheckMediaTransformsCommandTest.php` — 7 tests
+  including both directions of the stale-origin detection.
+- ⚠️ **phpstan is CI-blocking and nothing else catches it** — cost one red CI
+  here (a `list<string>` return that `Collection::values()->all()` can't prove;
+  `array_values()` can). If `composer install` can't fetch phpstan in your
+  environment, its release phar downloads fine and runs against the project's
+  own `phpstan.neon`:
+  `curl -sSL -o /tmp/phpstan.phar https://github.com/phpstan/phpstan/releases/download/2.2.5/phpstan.phar && php /tmp/phpstan.phar analyse -c phpstan.neon`
+  (larastan still has to be in `vendor/` for the include to resolve).
+
+### Session 8 — 2026-08-09
 
 Region names had crept back into the plan as stage headings ("Khomas",
 "Otjozondjupa" where "Windhoek", "Otjiwarongo" belong). Session 1 fixed the
@@ -451,11 +598,25 @@ when seeded, but not when imported:
   doesn't actually change results.
 - 🟡 **Collaborative trip plan** (read-only vs. write sharing, co-planning,
   comments with follow-ups, change log) — see the dedicated section above.
-  The two live-relevant halves are now done (session 5): the share link is
-  read-only, and a stale write is rejected instead of silently clobbering.
-  Still open: participants/identities, per-person write grants, comments,
-  and change attribution — i.e. everything that needs a person attached to
-  a change rather than just a token.
+  The live-relevant halves are done: the share link is read-only and a stale
+  write is rejected instead of silently clobbering (session 5), and a plan now
+  has a real owner that saving and booking are checked against (session 6).
+  Still open: participants as first-class rows, per-person write grants,
+  comments, and change attribution — i.e. everything that needs a person
+  attached to *each change* rather than a single owner per plan.
+- ⬜ **Rehome images stranded on an old media origin.** Blocks the switch-on
+  below from being effective — see session 7's ⚠️ entry. Two options:
+  (a) a `legacy_origins` config so `MediaUrl` rehomes a known old bucket host
+  onto the current origin before transforming (same bucket, same path — no data
+  touched), or (b) a one-off rewrite of the stored URLs, which is a bulk update
+  over existing non-null data and therefore exactly the class of operation
+  CLAUDE.md's "Data-loss lesson" warns about. (a) is the safer one.
+- ⬜ **Switch the thumbnails on.** All the code shipped in session 7, but
+  `MEDIA_TRANSFORMS_ENABLED` is still false in production: it needs a custom
+  domain on the R2 media bucket plus Transformations enabled for the
+  namibway.com zone (a dashboard + `.env` task, not a code one). Until then
+  images are still served at their original size. Steps:
+  **DEPLOYMENT.md → "Bild-Thumbnails"**.
 - ⬜ **On-trip progress tracker** — see the dedicated section above.
 - ⬜ Removing a single day from inside a collapsed multi-night stay isn't
   possible from the UI anymore (only the stay's first day and any day with

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight, X } from '@lucide/vue';
 import { onMounted, onUnmounted } from 'vue';
+import { thumb } from '@/lib/media';
 
 const props = defineProps<{
     images: string[];
@@ -71,10 +72,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <ChevronLeft :size="28" />
         </button>
 
+        <!-- Fullscreen, so this asks for the top of the width ladder rather than
+             a thumbnail — the win here is format=auto (AVIF/WebP), not pixels. -->
         <img
-            :src="images[index]"
+            :src="thumb(images[index], 1600)"
             :alt="alt ? `${alt} ${index + 1}` : `Image ${index + 1}`"
             class="lightbox-image"
+            decoding="async"
         />
 
         <button

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Listing;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\FileAttributes;
 
 /**
  * Reports how much of what the scrapers (website crawl, Google Places, namibiayp)
@@ -42,19 +43,11 @@ class AuditR2Photos extends Command
     }
 
     /**
-     * @param  array<string, bool>  $referenced  url => is_published
-     * @param  array<string, bool>  $pending  url => true
+     * @param  array<string, bool>  $referenced  filename => is_published
+     * @param  array<string, bool>  $pending  filename => true
      */
     private function auditPrefix(mixed $disk, string $prefix, array $referenced, array $pending): void
     {
-        $files = $disk->files($prefix);
-
-        if ($files === []) {
-            $this->info("=== {$prefix} === (no files)");
-
-            return;
-        }
-
         $stats = [
             'published' => [0, 0],
             'unpublished' => [0, 0],
@@ -62,18 +55,23 @@ class AuditR2Photos extends Command
             'orphaned' => [0, 0],
         ];
         $orphanedKeys = [];
+        $seen = 0;
 
         $this->info("=== {$prefix} ===");
-        $bar = $this->output->createProgressBar(count($files));
-        $bar->start();
 
-        foreach ($files as $key) {
-            $url = $disk->url($key);
-            $size = $disk->size($key) ?: 0;
+        // Sizes come from the listing rather than a size() call per object —
+        // see the same change in r2:usage-report.
+        foreach ($disk->getDriver()->listContents($prefix, true) as $attributes) {
+            if (! $attributes instanceof FileAttributes) {
+                continue;
+            }
+
+            $key = $attributes->path();
+            $name = basename($key);
 
             $bucket = match (true) {
-                isset($referenced[$url]) => $referenced[$url] ? 'published' : 'unpublished',
-                isset($pending[$url]) => 'pending review',
+                isset($referenced[$name]) => $referenced[$name] ? 'published' : 'unpublished',
+                isset($pending[$name]) => 'pending review',
                 default => 'orphaned',
             };
 
@@ -82,13 +80,15 @@ class AuditR2Photos extends Command
             }
 
             $stats[$bucket][0]++;
-            $stats[$bucket][1] += $size;
-
-            $bar->advance();
+            $stats[$bucket][1] += $attributes->fileSize() ?: 0;
+            $seen++;
         }
 
-        $bar->finish();
-        $this->newLine();
+        if ($seen === 0) {
+            $this->line('(no files)');
+
+            return;
+        }
 
         $this->table(
             ['Status', 'Files', 'Size'],
@@ -119,21 +119,47 @@ class AuditR2Photos extends Command
             ->chunkById(500, function ($listings) use (&$referenced, &$pending): void {
                 foreach ($listings as $listing) {
                     if ($listing->image) {
-                        $referenced[$listing->image] = (bool) $listing->is_published;
+                        $referenced[$this->referenceKey($listing->image)] = (bool) $listing->is_published;
                     }
                     foreach ((array) $listing->gallery as $url) {
-                        $referenced[$url] = (bool) $listing->is_published;
+                        $referenced[$this->referenceKey($url)] = (bool) $listing->is_published;
                     }
                     if ($listing->pending_image) {
-                        $pending[$listing->pending_image] = true;
+                        $pending[$this->referenceKey($listing->pending_image)] = true;
                     }
                     foreach ((array) $listing->pending_gallery as $url) {
-                        $pending[$url] = true;
+                        $pending[$this->referenceKey($url)] = true;
                     }
                 }
             });
 
         return [$referenced, $pending];
+    }
+
+    /**
+     * Reduce a stored image value — absolute URL or disk-relative path — to just
+     * its filename, which is what both sides of the comparison are matched on.
+     *
+     * This used to compare the raw DB value against Storage::url($key), which
+     * only lined up as long as CLOUDFLARE_R2_URL never changed: scraper photos
+     * are saved as absolute URLs built from that setting at download time. Point
+     * it at a different host — a custom domain, say — and every referenced photo
+     * would look orphaned, and --delete-orphaned would empty the live library.
+     *
+     * Matching the filename rather than the full path is deliberate: it is
+     * immune to host, bucket-in-path and prefix differences, and every writer
+     * here appends a random suffix (Str::random(8|10)) or a UUID, so distinct
+     * photos don't share a name. Where it is imprecise it errs toward marking an
+     * object as REFERENCED, which at worst leaves an orphan on disk — the
+     * direction that cannot destroy anything.
+     */
+    private function referenceKey(string $value): string
+    {
+        $path = str_starts_with($value, 'http://') || str_starts_with($value, 'https://')
+            ? (string) parse_url($value, PHP_URL_PATH)
+            : $value;
+
+        return basename($path);
     }
 
     private function formatBytes(int $bytes): string

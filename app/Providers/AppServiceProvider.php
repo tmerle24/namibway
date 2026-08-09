@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Observers\InquiryObserver;
 use App\Observers\ReviewObserver;
 use Carbon\CarbonImmutable;
+use Filament\Forms\Components\FileUpload;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandStarting;
@@ -77,6 +78,20 @@ class AppServiceProvider extends ServiceProvider
         DB::prohibitDestructiveCommands(
             app()->isProduction(),
         );
+
+        // Cap what lands in R2. Every FileUpload in both panels is an image
+        // upload, and none of them had a size limit — a partner uploading a
+        // straight-from-the-phone photo stored several MB as the one and only
+        // copy we serve. Nothing renders wider than the top of the thumbnail
+        // ladder (config/media.php), so 2000px is already generous headroom.
+        // 'contain' preserves the aspect ratio; upscaling stays off so small
+        // images are left exactly as they are.
+        FileUpload::configureUsing(function (FileUpload $upload): void {
+            $upload->imageResizeMode('contain')
+                ->imageResizeTargetWidth('2000')
+                ->imageResizeTargetHeight('2000')
+                ->imageResizeUpscale(false);
+        });
 
         Password::defaults(fn (): ?Password => app()->isProduction()
             ? Password::min(12)

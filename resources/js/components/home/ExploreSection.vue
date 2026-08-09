@@ -8,6 +8,7 @@ import { useI18n } from 'vue-i18n';
 import { formatPrice } from '@/lib/currency';
 import { consumeExploreScroll, saveExploreScroll } from '@/lib/explore-scroll';
 import type { SearchIntent } from '@/lib/kaia-types';
+import { thumbAttrs } from '@/lib/media';
 import { show } from '@/routes/listings';
 import ExploreMap from './ExploreMap.vue';
 import type { ExploreMapMarker } from './ExploreMap.vue';
@@ -951,12 +952,18 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                             {{ shortlist.has(item.id) ? '✓' : '+' }}
                         </button>
                         <img
-                            :src="
-                                item.image ??
-                                `/images/explore/${item.type}-1.jpg`
+                            v-bind="
+                                thumbAttrs(
+                                    item.image ??
+                                        `/images/explore/${item.type}-1.jpg`,
+                                    400,
+                                )
                             "
                             :alt="item.name"
                             loading="lazy"
+                            decoding="async"
+                            width="400"
+                            height="300"
                             class="result-card-img"
                         />
                     </div>
@@ -1030,9 +1037,10 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
             >
                 <div class="featured-pick-media">
                     <img
-                        :src="featuredPickImage!"
+                        v-bind="thumbAttrs(featuredPickImage!, 800)"
                         :alt="featuredPick.name"
                         class="featured-pick-img"
+                        decoding="async"
                     />
                 </div>
                 <div class="featured-pick-body">
@@ -1124,10 +1132,13 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                                     {{ shortlist.has(item.id) ? '✓' : '+' }}
                                 </button>
                                 <img
-                                    :src="item.image"
+                                    v-bind="thumbAttrs(item.image, 400)"
                                     :alt="item.title"
                                     class="idea-thumb-img"
+                                    width="400"
+                                    height="300"
                                     loading="lazy"
+                                    decoding="async"
                                 />
                             </div>
                             <div class="idea-body">
