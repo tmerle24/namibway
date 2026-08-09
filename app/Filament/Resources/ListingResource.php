@@ -12,6 +12,7 @@ use App\Filament\Resources\ListingResource\RelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
+use App\Models\City;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\PartnerMessage;
@@ -25,6 +26,7 @@ use Filament\Tables;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
@@ -418,6 +420,18 @@ class ListingResource extends Resource
                         true: fn (Builder $query) => $query->whereNotNull('image')->where('image', '!=', ''),
                         false: fn (Builder $query) => $query->where(fn ($q) => $q->whereNull('image')->orWhere('image', '')),
                     ),
+                // Imported listings arrive with no city_id on purpose — the
+                // scrape's free-text region is no reliable match for a City
+                // (see ImportProviders). BackfillListingCities can only fill
+                // that in from an address, and the NTB source carries none, so
+                // for those rows a human assigning the city is the only route.
+                // Combine with the type filter for "vehicles without a city".
+                Tables\Filters\TernaryFilter::make('has_city')
+                    ->label('Has city')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereNotNull('city_id'),
+                        false: fn (Builder $query) => $query->whereNull('city_id'),
+                    ),
                 Tables\Filters\TernaryFilter::make('has_unread_messages')
                     ->label('Unread messages')
                     ->queries(
@@ -585,9 +599,56 @@ class ListingResource extends Resource
                         ->color('gray')
                         ->action(fn ($records) => $records->each->update(['is_published' => false]))
                         ->deselectRecordsAfterCompletion(),
+                    // The other half of the "Has city: no" filter — finding
+                    // 250-odd city-less imports is only useful if fixing them
+                    // doesn't mean opening 250 edit forms.
+                    //
+                    // Fill-only, deliberately: a listing that already has a
+                    // city keeps it and is reported as skipped. Bulk-writing
+                    // over existing city_id values is exactly what
+                    // namibway:backfill-listing-cities once did, and the
+                    // damage needed a restore from backup (see CLAUDE.md's
+                    // data-loss lesson). Correcting a wrong city stays a
+                    // per-record edit, where the current value is visible.
+                    Tables\Actions\BulkAction::make('assign_city')
+                        ->label('Assign city')
+                        ->icon('heroicon-o-map-pin')
+                        ->color('gray')
+                        ->form([
+                            Forms\Components\Select::make('city_id')
+                                ->label('City')
+                                ->options(fn () => City::query()->orderBy('name')->pluck('name', 'id'))
+                                ->searchable()
+                                ->required()
+                                ->helperText('Only applied to selected listings that have no city yet.'),
+                        ])
+                        ->action(fn (Collection $records, array $data) => self::assignCity($records, (int) $data['city_id']))
+                        ->deselectRecordsAfterCompletion(),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * Named method rather than an inline closure so $records carries an
+     * explicit generic type — PHPStan can't infer Collection<int, Listing>
+     * from an untyped closure parameter (same reason as
+     * EnrichmentResource::queueWebsiteScrape).
+     *
+     * @param  Collection<int, Listing>  $records
+     */
+    private static function assignCity(Collection $records, int $cityId): void
+    {
+        $fillable = $records->filter(fn (Listing $listing) => $listing->city_id === null);
+        $skipped = $records->count() - $fillable->count();
+
+        $fillable->each(fn (Listing $listing) => $listing->update(['city_id' => $cityId]));
+
+        Notification::make()
+            ->title("Assigned a city to {$fillable->count()} listing(s)")
+            ->body($skipped > 0 ? "{$skipped} already had one and were left untouched." : null)
+            ->success()
+            ->send();
     }
 
     public static function getRelations(): array

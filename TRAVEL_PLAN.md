@@ -500,7 +500,7 @@ Worst case sat in this very feature: the trip plan's day thumbnail renders at
   `curl -sSL -o /tmp/phpstan.phar https://github.com/phpstan/phpstan/releases/download/2.2.5/phpstan.phar && php /tmp/phpstan.phar analyse -c phpstan.neon`
   (larastan still has to be in `vendor/` for the include to resolve).
 
-### Session 8 — 2026-08-09
+### Session 8 — 2026-08-09 (trip plan timeline rows)
 
 Reiseplan layout, from a mockup Till supplied. The old shape showed a stage
 card and then, under a "Tagespläne" heading, only the stage's *first* day —
@@ -552,7 +552,8 @@ nowhere to add anything.
   plus the real stylesheet at 900px and 390px; eslint, prettier and `vue-tsc`
   are clean.
 
-### Session 9 — 2026-08-09
+
+### Session 9 — 2026-08-09 (real room data in the picker)
 
 Real room data in the plan's room picker. Picked because the picker was the
 most visible untruth left in the flagship feature: it invented three tiers
@@ -598,6 +599,98 @@ inventory someone entered. Until a partner is live, every listing returns the
 empty answer — which is the correct thing to show, but it means the rich path
 is untested against real data. The first partner to enter room types is also
 the first real test of this.
+
+### Session 10 — 2026-08-09 (city vs. region)
+
+Region names had crept back into the plan as stage headings ("Khomas",
+"Otjozondjupa" where "Windhoek", "Otjiwarongo" belong). Session 1 fixed the
+display side of this; what came back is the *data* side, so this round closes
+it at the source and makes the UI resilient to it anyway.
+
+- ✅ **A day's `location` is now guaranteed to be a city.**
+  `ItineraryService::normalizeDayLocations()` resolves it deterministically
+  after generation instead of trusting the prompt: the accommodation's own
+  city first, then `location` when it already names a real city, then the
+  busiest city of the region it named. Unresolvable values (a park name, a
+  typo) are left alone rather than blanked. Runs after
+  `backfillAccommodation()` (which still matches on the raw model output) and
+  before `validateDrivingTimes()` — so days that used to be skipped by the
+  driving-time check because their location was a region are now actually
+  validated.
+- ✅ **The prompt no longer asks for regions.** `routingGuidance()` literally
+  told the model that day 1 and the last day "must be the region containing
+  Windhoek", contradicting the schema two paragraphs down — that was the
+  regression's origin. Both branches now name the start/end *city*, the
+  route-template paragraph says a stop's `region` is an area and not a day's
+  location, and each branch closes with an explicit granularity reminder.
+- ✅ **Every day carries its `region`.** Set by the normalizer, and
+  `/kaia/region-coords` now returns a `region` per entry so the UI can label
+  a city even on plans saved before this existed, or when the stay's listing
+  has no `city_id` (plenty of scraped ones don't). `dayRegion()` in
+  `ItinerarySection.vue` and the map popup share one precedence chain, so
+  card and popup can't disagree; a region that would just repeat the heading
+  is dropped.
+- ✅ **Listing detail hero leads with the city** (`ListingDetail.vue`), region
+  after it in parentheses and quieter. Both are links into Explore —
+  `?city=` and `?region=` respectively, filters that already existed. The
+  Explore selects now fold in an incoming filter value that the inspiration
+  rows never mention, so arriving from such a link no longer shows a blank
+  select over correctly filtered results.
+- 4 tests in `tests/Feature/Services/ItineraryServiceDayLocationTest.php`
+  pin the normalizer down by making Claude answer with region names.
+
+Follow-up from checking whether vehicles actually have a `city_id` — they do
+when seeded, but not when imported:
+
+- ✅ **`ImportProviders` now honours the source's `car_rental` type.** Its type
+  map only knew `'vehicle'`, which the NTB directory never emits, so all 253
+  rental entries fell through to the name-based guess — misfiling 12 of them
+  (e.g. "Discovery Guest House And Car Hire" → accommodation, "Self Drive
+  Safaris" → activity), verified by replaying `resolveType()`'s rules over
+  `data/scraped/scraped_providers.json`.
+- ✅ **Admin can find and fix city-less listings.** A "Has city" ternary filter
+  on `/admin/listings` (combine with the type filter for "vehicles without a
+  city"), plus an "Assign city" bulk action. The action is **fill-only** — a
+  listing that already has a city is skipped and counted in the notification,
+  because bulk-writing over existing `city_id` values is precisely the
+  `backfill-listing-cities` incident. Correcting a wrong city stays a
+  per-record edit.
+- ⬜ **Still open: imported listings have no route to a city at all.** NTB rows
+  carry neither an address nor coordinates — only a free-text region — so
+  `BackfillListingCities` (address-based) can never reach them and every
+  import lands on `city_id = null`. Until an admin assigns them, they show
+  no city *and* no region anywhere in the product. Deriving a city from the
+  free-text region would be guessing, which is what caused the data loss the
+  first time; a coordinate-based pass would need the coordinates to exist.
+
+- 2 tests in `tests/Feature/Filament/ListingCityAssignmentTest.php` (filter +
+  the fill-only guard) and 1 in `ImportProvidersCommandTest.php`.
+- ⚠️ **pint is CI-blocking too, and it also has a phar** — cost one red CI here
+  (a double-quoted string with nothing to interpolate, `single_quote`). Same
+  trick as the phpstan note above, and this one needs nothing from `vendor/`
+  at all, so it works even when `composer install` can't complete:
+  `curl -sSL -o /tmp/pint.phar https://github.com/laravel/pint/releases/latest/download/pint.phar && php /tmp/pint.phar --test`
+  Run it before pushing when `composer test` isn't available — it catches the
+  cheapest class of red CI there is.
+  - Worth knowing why `composer install` fails in that environment, so the
+    next session doesn't re-litigate it: every one of the 215 packages syncs
+    into the cache fine, then a final request trips `Could not authenticate
+    against github.com` and nothing is written — no `vendor/autoload.php`, no
+    `vendor/bin`. `--prefer-source`, a warm cache, and feeding `COMPOSER_AUTH`
+    the ambient `GITHUB_TOKEN` (which is the literal string `proxy-injected`)
+    all fail the same way. Plain `curl` to github.com works, which is why the
+    pint phar is the way through.
+  - **The phpstan phar does *not* rescue that environment**, unlike what the
+    session 7 note above implies — it assumes a populated `vendor/` that is
+    merely missing phpstan. Here `composer install` leaves `vendor/larastan/`
+    an *empty directory*, so `phpstan.neon`'s include of
+    `vendor/larastan/larastan/extension.neon` fails before analysis starts,
+    and larastan couldn't resolve Illuminate classes without an autoloader
+    anyway. phpstan cost a second red CI on this branch for that reason
+    (`$city->region?->name` widening a fixed array shape). If you can't run
+    `composer test`, pint is coverable locally and phpstan is not — so read
+    new phpstan-sensitive code twice: nullable relation access, and return
+    types narrower than what `Collection` methods can prove.
 
 ### Known gaps / next up
 

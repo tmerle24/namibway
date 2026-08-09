@@ -62,6 +62,11 @@ export interface RegionCoords {
     lat: number;
     lng: number;
     image?: string | null;
+    // The political region this key sits in ("Khomas" for "Windhoek") — what
+    // the trip plan prints as the subtle subtitle beside a stage's city name.
+    // Only the DB-backed entries carry it; the static fallback below is about
+    // keeping the map drawable, not about labelling.
+    region?: string | null;
 }
 
 // Static fallback so the map renders even when DB has no lat/lng rows yet.

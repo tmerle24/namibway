@@ -52,11 +52,17 @@ class KaiaController extends Controller
             ->with('region:id,name')
             ->get(['id', 'name', 'lat', 'lng', 'image', 'region_id']);
 
+        // 'region' rides along on every entry so the trip plan can print the
+        // political region as a subtitle beside a stage's city name without a
+        // second round-trip — and without depending on the day's accommodation
+        // carrying a city_id of its own, which plenty of scraped listings
+        // still don't.
         $coords = $destinations->mapWithKeys(fn (Destination $d) => [
             mb_strtolower($d->getTranslation('name', 'en')) => [
                 'lat' => $d->lat,
                 'lng' => $d->lng,
                 'image' => $d->image ? self::resolveMediaUrl($d->image) : null,
+                'region' => $d->region->name,
             ],
         ]);
 
@@ -79,6 +85,7 @@ class KaiaController extends Controller
                 'lat' => $first->lat,
                 'lng' => $first->lng,
                 'image' => $first->image ? self::resolveMediaUrl($first->image) : null,
+                'region' => (string) $politicalRegion,
             ];
         }
 
@@ -92,12 +99,23 @@ class KaiaController extends Controller
             ->whereNotNull('lat')
             ->whereNotNull('lng')
             ->whereHas('listings', fn ($q) => $q->where('is_published', true))
-            ->get(['id', 'name', 'lat', 'lng'])
+            ->with('region:id,name')
+            ->get(['id', 'name', 'lat', 'lng', 'region_id'])
             ->each(function (City $city) use ($coords) {
                 $key = mb_strtolower($city->name);
 
                 if (! $coords->has($key)) {
-                    $coords[$key] = ['lat' => $city->lat, 'lng' => $city->lng, 'image' => null];
+                    $coords[$key] = [
+                        'lat' => $city->lat,
+                        'lng' => $city->lng,
+                        'image' => null,
+                        // Not `?->`: cities.region_id is NOT NULL (see
+                        // create_cities_table) and the model types it as
+                        // `int`, so a null here isn't reachable — and letting
+                        // it be nullable would widen every entry's shape,
+                        // including the two above that genuinely can't be.
+                        'region' => $city->region->name,
+                    ];
                 }
             });
 

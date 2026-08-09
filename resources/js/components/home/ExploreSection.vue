@@ -274,6 +274,24 @@ const availableCities = computed(() => {
     return [...cities].sort();
 });
 
+// What the two selects actually offer. The lists above are derived from the
+// inspiration rows, which are a slice of the catalog — so a filter arriving
+// from outside (a listing detail page's city/region link, ?city= in the URL)
+// can name a place that slice never mentions. Without folding the active
+// value in, the select would render blank while the results below are very
+// much filtered by it. Kept separate from availableCities so the
+// strand-clearing watcher below still sees the region-derived list.
+const withActive = (options: string[], active: string) =>
+    active && !options.includes(active) ? [...options, active].sort() : options;
+
+const regionOptions = computed(() =>
+    withActive(availableRegions.value, filterRegion.value),
+);
+
+const cityOptions = computed(() =>
+    withActive(availableCities.value, filterCity.value),
+);
+
 const filterCategory = ref('');
 const filterRegion = ref('');
 const filterCity = ref('');
@@ -394,8 +412,23 @@ async function viewAllInRow(row: IdeaRow) {
 
 // Picking a region can strand a previously-chosen city that belongs to a
 // different one — drop it rather than silently filtering to zero results.
+// Only when the inspiration rows actually place that city somewhere else,
+// though: they cover a slice of the catalog, so a city missing from
+// availableCities is just as likely to be one they never mention (e.g. an
+// incoming ?region=&city= pair from a listing detail page), and dropping
+// that one would quietly widen a filter the traveler asked for.
 watch(filterRegion, () => {
-    if (filterCity.value && !availableCities.value.includes(filterCity.value)) {
+    if (!filterCity.value || availableCities.value.includes(filterCity.value)) {
+        return;
+    }
+
+    const placedElsewhere = ideaRows.value.some(
+        (row) =>
+            row.key !== 'region' &&
+            row.items.some((item) => item.city === filterCity.value),
+    );
+
+    if (placedElsewhere) {
         filterCity.value = '';
     }
 });
@@ -731,7 +764,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                             {{ t('explore.filters.allRegions') }}
                         </option>
                         <option
-                            v-for="region in availableRegions"
+                            v-for="region in regionOptions"
                             :key="region"
                             :value="region"
                         >
@@ -743,7 +776,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                             {{ t('explore.filters.allCities') }}
                         </option>
                         <option
-                            v-for="city in availableCities"
+                            v-for="city in cityOptions"
                             :key="city"
                             :value="city"
                         >

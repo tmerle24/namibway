@@ -271,6 +271,14 @@ class ImportProviders extends Command
             'activity' => ListingType::Activity->value,
             'restaurant' => ListingType::Restaurant->value,
             'vehicle' => ListingType::Vehicle->value,
+            // What the NTB directory actually calls its 253 rental entries —
+            // it never says "vehicle". Without this they fell through to the
+            // keyword guess below, which reads the business NAME and so
+            // misfiled every rental whose name also mentions where it sleeps
+            // its guests ("Discovery Guest House And Car Hire" → accommodation,
+            // "Self Drive Safaris" → activity). The source stating its own
+            // type outranks anything guessed from a name.
+            'car_rental' => ListingType::Vehicle->value,
         ];
 
         $key = strtolower(trim($raw));
