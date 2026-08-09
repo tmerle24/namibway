@@ -889,6 +889,35 @@ Third pass, same day — polish only, structure untouched:
   vertical padding — a 4-day stage fits one desktop viewport with the
   hairline under each date doing the separating, not whitespace.
 
+### Session 14 — 2026-08-10 (a stage has one city again)
+
+Till clicked a stage headed "Otjiwarongo" and the picker opened on
+"Windhoek". Two different sources: the heading read the accommodation's
+`city`, while the picker — and the map pin, the driving legs, the stage
+thumbnail, the swap modal's "same city" default — all read `day.location`.
+They agree at generation time (`ItineraryService::normalizeDayLocations`
+resolves `location` from the stay's own city) and drift apart the moment
+anyone edits, because a lodge swap only writes the accommodation and a city
+edit only writes `location`.
+
+- ✅ **`day.location` is the stage's city, full stop.** `dayCity()` prefers
+  it and falls back to the stay's city only for a day that has none, so the
+  heading is the thing the picker edits. Consequence worth knowing: editing
+  the city is now visible — before, picking a new town silently changed
+  nothing on screen whenever the stage had a stay.
+- ✅ **A stay that moves town takes the stage with it.** `applySwap` writes
+  the new lodge's city/region onto every day of the stage. The swap modal
+  deliberately lets you leave the current city ("Alle Städte"), so this is
+  a normal path, not an edge case.
+- ✅ **The region subtitle follows the heading**, instead of preferring the
+  stay's region — that is what printed "Otjiwarongo · Otjozondjupa" under a
+  Windhoek stage.
+- Verified in the browser against a local fixture plan (`CITYMISMATCH`,
+  built to hold exactly the reported mismatch): heading and picker both read
+  Windhoek; swapping to a lodge in Otjiwarongo moved heading, subtitle and
+  picker together; picking Windhoek back in the picker moved the heading
+  live. eslint, prettier and vue-tsc clean.
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its
