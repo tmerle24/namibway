@@ -4,7 +4,7 @@ import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatPrice } from '@/lib/currency';
 import type { ItineraryListingRef, RoomOption } from '@/lib/kaia-types';
-import { thumbAttrs } from '@/lib/media';
+import { onImageError, thumbAttrs } from '@/lib/media';
 import KebabMenu from './KebabMenu.vue';
 import ListingPreviewModal from './ListingPreviewModal.vue';
 
@@ -111,6 +111,7 @@ function onMenuSelect(key: string) {
                     height="64"
                     loading="lazy"
                     decoding="async"
+                    @error="onImageError($event, 'accommodation')"
                 />
                 <div class="stay-card-body">
                     <div class="stay-card-title-row">

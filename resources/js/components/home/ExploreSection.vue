@@ -8,7 +8,7 @@ import { useI18n } from 'vue-i18n';
 import { formatPrice } from '@/lib/currency';
 import { consumeExploreScroll, saveExploreScroll } from '@/lib/explore-scroll';
 import type { SearchIntent } from '@/lib/kaia-types';
-import { thumbAttrs } from '@/lib/media';
+import { onImageError, thumbAttrs } from '@/lib/media';
 import { show } from '@/routes/listings';
 import ExploreMap from './ExploreMap.vue';
 import type { ExploreMapMarker } from './ExploreMap.vue';
@@ -965,6 +965,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                             width="400"
                             height="300"
                             class="result-card-img"
+                            @error="onImageError($event, item.type)"
                         />
                     </div>
                     <div class="result-card-body">
@@ -1041,6 +1042,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                         :alt="featuredPick.name"
                         class="featured-pick-img"
                         decoding="async"
+                        @error="onImageError($event, featuredPick.type)"
                     />
                 </div>
                 <div class="featured-pick-body">
@@ -1139,6 +1141,7 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                                     height="300"
                                     loading="lazy"
                                     decoding="async"
+                                    @error="onImageError($event, row.key)"
                                 />
                             </div>
                             <div class="idea-body">

@@ -6,7 +6,7 @@ import { formatPrice } from '@/lib/currency';
 import { formatDuration } from '@/lib/duration';
 import { fetchListingPreview } from '@/lib/kaia-client';
 import type { ListingPreview } from '@/lib/kaia-client';
-import { thumbAttrs } from '@/lib/media';
+import { onImageError, thumbAttrs } from '@/lib/media';
 import { show } from '@/routes/listings';
 
 const props = defineProps<{
@@ -148,6 +148,7 @@ const fullPageUrl = show({ listing: props.slug }).url;
                                 height="64"
                                 loading="lazy"
                                 decoding="async"
+                                @error="onImageError($event, listing.type)"
                             />
                         </button>
                     </div>

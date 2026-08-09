@@ -9,7 +9,7 @@ import type {
 } from '@/lib/kaia-client';
 import { searchListings } from '@/lib/kaia-client';
 import type { ItineraryListingRef } from '@/lib/kaia-types';
-import { thumbAttrs } from '@/lib/media';
+import { onImageError, thumbAttrs } from '@/lib/media';
 import { show } from '@/routes/listings';
 
 const props = defineProps<{
@@ -329,6 +329,7 @@ onUnmounted(() => {
                             height="48"
                             loading="lazy"
                             decoding="async"
+                            @error="onImageError($event, props.type)"
                         />
                         <span class="swap-modal-item-body">
                             <span class="swap-modal-item-name">{{

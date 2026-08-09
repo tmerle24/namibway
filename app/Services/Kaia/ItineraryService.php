@@ -1517,10 +1517,20 @@ class ItineraryService
         $requestedTier = is_string($tripParams['budget_tier'] ?? null) ? $tripParams['budget_tier'] : null;
         $vehicleType = is_string($tripParams['vehicle_type'] ?? null) ? $tripParams['vehicle_type'] : null;
 
-        return Listing::query()
+        // Deliberately two queries. The shortlist is decided in PHP (the budget
+        // tier and camper rules don't express well in SQL), which used to mean
+        // hydrating EVERY published listing in full just to keep at most 80 of
+        // them — including `scrape_data`, the complete scraped payload per row.
+        // At the catalog's current size that exhausted PHP's 128 MB limit and
+        // took down /kaia/message entirely with a fatal, empty 500 (2026-08-09).
+        //
+        // So: pick the winners off a four-column projection first, then fetch
+        // only those rows in full. The filtering logic and its ordering are
+        // untouched, so the same listings are shortlisted as before — this is
+        // purely about what gets loaded into memory to decide it.
+        $shortlisted = Listing::query()
             ->where('is_published', true)
-            ->with('city.region')
-            ->get()
+            ->get(['id', 'type', 'price_from', 'highlights'])
             ->groupBy(fn (Listing $listing) => $listing->type->value)
             ->flatMap(function ($listings, string $type) use ($requestedTier, $vehicleType) {
                 if ($type === 'vehicle' && $vehicleType !== null) {
@@ -1535,6 +1545,25 @@ class ItineraryService
 
                 return $listings->take(self::MAX_CANDIDATES_PER_TYPE);
             })
+            ->pluck('id')
+            ->all();
+
+        if ($shortlisted === []) {
+            return new Collection;
+        }
+
+        /** @var array<int, int> $order */
+        $order = array_flip($shortlisted);
+
+        return Listing::query()
+            ->with('city.region')
+            ->whereIn('id', $shortlisted)
+            ->get()
+            // whereIn returns rows in whatever order the index hands back, but
+            // downstream order is load-bearing: resolveReferences() keys by name
+            // (last one wins on a duplicate) and backfillAccommodation() takes
+            // the ->first() listing in a city as its fallback stay.
+            ->sortBy(fn (Listing $listing) => $order[$listing->id])
             ->values();
     }
 

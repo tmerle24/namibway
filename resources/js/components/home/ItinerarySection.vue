@@ -27,7 +27,7 @@ import type {
     RoomOption,
     TripParams,
 } from '@/lib/kaia-types';
-import { thumbAttrs } from '@/lib/media';
+import { onImageError, thumbAttrs } from '@/lib/media';
 import ConfirmModal from './ConfirmModal.vue';
 import ItineraryDayPlanCard from './ItineraryDayPlanCard.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
@@ -1818,6 +1818,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                             height="48"
                             loading="lazy"
                             decoding="async"
+                            @error="onImageError($event, 'vehicle')"
                         />
                         <div class="vehicle-card-body">
                             <ItineraryLineItem
@@ -2180,6 +2181,11 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                 height="44"
                                                                 loading="lazy"
                                                                 decoding="async"
+                                                                @error="
+                                                                    onImageError(
+                                                                        $event,
+                                                                    )
+                                                                "
                                                             />
                                                         </button>
                                                         <div

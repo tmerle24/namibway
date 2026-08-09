@@ -704,10 +704,34 @@ when seeded, but not when imported:
   Korrektur-Retry wie die Fahrzeit-Validierung; unbekannte Städte werden wie dort
   übersprungen statt geraten (null-skip). Tests in `ItineraryServiceDrivingTimeTest`
   (Fixtures dort mussten als One-Way deklariert werden, sonst reißt die neue Prüfung).
+- **`/kaia/message` 500te komplett — PHP-memory_limit, nicht die AI.** Der Endpoint
+  starb nach ~3s mit leerem Body (Fatal, deshalb kein Laravel-Log-Eintrag; nur im
+  nginx-error.log sichtbar: *"Allowed memory size of 134217728 bytes exhausted in
+  HasAttributes.php"*). Ursache: `candidateListings()` lud **jedes** veröffentlichte
+  Listing als volles Eloquent-Modell — inklusive `scrape_data`, dem kompletten
+  Scraper-Payload pro Zeile — nur um danach höchstens 20 pro Typ zu behalten. Das
+  war latent seit dem ersten Scraper-Import und ist mit der Katalog-Größe schlicht
+  über die 128-MB-Grenze gewachsen. Jetzt zwei Abfragen: die Shortlist wird auf einer
+  4-Spalten-Projektion (`id, type, price_from, highlights`) entschieden, erst die
+  Gewinner werden vollständig geladen. Filterlogik und Reihenfolge unverändert —
+  Reihenfolge ist load-bearing, weil `resolveReferences()` nach Namen indiziert
+  (letzter gewinnt) und `backfillAccommodation()` das `->first()` Listing je Stadt
+  als Ersatzunterkunft nimmt.
+- **Bild-Fallback greift jetzt auch bei toten URLs** (`onImageError` in `lib/media.ts`).
+  Vorher deckte `item.image ?? '/images/explore/…'` nur ein *fehlendes* Bild ab; ein
+  gesetzter, aber nicht mehr erreichbarer Link (umgezogene Betreiber-Website, entferntes
+  Foto, geänderter Host) rendert als Alt-Text im leeren Rahmen. Der `@error`-Handler
+  tauscht auf das Kategorie-Standbild, löscht dabei `srcset` (sonst gewinnt es über
+  `src`) und markiert das Element, damit ein selbst fehlschlagender Fallback nicht
+  endlos weiterfeuert. Verdrahtet an allen Katalog-Bildflächen: Explore-Karten +
+  Ideen-Reihen + Featured Pick, Reiseplan (Tages-Thumb, Stay-Card, Fahrzeug),
+  Swap-/Preview-Modal, Room-Picker, Hero-Chat-Empfehlung, Destinations, Detailseite.
 - Kontext desselben Tages, außerhalb dieses Files: `/cdn-cgi/image/`-Wrapping auf
   App-Origin-URLs entfernt (404te alle Destination-/Region-/Fallback-/Städtebilder,
   siehe CLAUDE.md-Incident 2026-08-09) und deploy.sh-Fix für die `touch()`-EPERM-500er
-  auf kompilierten Views.
+  auf kompilierten Views — inkl. der Regression, die dieser Fix selbst erst auslöste
+  (Deploy-User verlor Schreibrecht auf `storage/framework/views`, Build brach ab,
+  Produktion hing ~2h im Wartungsmodus).
 
 ### Known gaps / next up
 

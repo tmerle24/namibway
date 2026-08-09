@@ -6,7 +6,7 @@ import { formatPrice } from '@/lib/currency';
 import { fetchRoomTypes } from '@/lib/kaia-client';
 import type { RoomTypeOffer } from '@/lib/kaia-client';
 import type { RoomOption } from '@/lib/kaia-types';
-import { thumbAttrs } from '@/lib/media';
+import { onImageError, thumbAttrs } from '@/lib/media';
 
 const props = defineProps<{
     // The accommodation this stay is at. Without it there is nothing to ask
@@ -174,6 +174,7 @@ function choose(room: RoomTypeOffer) {
                         height="36"
                         loading="lazy"
                         decoding="async"
+                        @error="onImageError($event, 'accommodation')"
                     />
                 </span>
                 <span class="alt-name">{{ room.name }}</span>

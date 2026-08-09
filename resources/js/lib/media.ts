@@ -100,6 +100,59 @@ export function thumbAttrs(
     return { src: single, srcset: `${single} 1x, ${double} 2x` };
 }
 
+/**
+ * The bundled stand-in shown when a listing has no usable photo. Every category
+ * has one, because a card with a broken image reads as a broken site — an
+ * imperfect stock photo does not.
+ */
+const CATEGORY_FALLBACKS: Record<string, string> = {
+    accommodation: '/images/explore/accommodation-1.jpg',
+    activity: '/images/explore/activity-1.jpg',
+    restaurant: '/images/explore/restaurant-1.jpg',
+    vehicle: '/images/explore/vehicle-1.jpg',
+};
+
+/** Used for anything that isn't one of the four listing types (cities, destinations). */
+const GENERIC_FALLBACK = '/images/explore/region-khomas.jpg';
+
+export function categoryFallback(type?: string | null): string {
+    return (
+        (type !== null && type !== undefined && CATEGORY_FALLBACKS[type]) ||
+        GENERIC_FALLBACK
+    );
+}
+
+/**
+ * `@error` handler for any <img> showing catalog media — swaps in the category
+ * stand-in when the real photo fails to load.
+ *
+ * A `?? fallback` on the src only covers a *missing* URL. Plenty of rows have a
+ * URL that is simply dead: a scraped operator's site that moved, a photo removed
+ * from its origin, or a stored absolute URL whose host changed (2026-08-09).
+ * Those render as alt text with an empty frame, which is exactly what this
+ * catches — the browser telling us the URL didn't work is the only reliable
+ * signal, since nothing about the string itself says so.
+ *
+ * `srcset` has to go before `src`: with both present the browser picks from
+ * `srcset`, so reassigning `src` alone would change nothing.
+ */
+export function onImageError(event: Event, type?: string | null): void {
+    const img = event.target as HTMLImageElement | null;
+
+    if (img === null) {
+        return;
+    }
+
+    // Should the fallback itself 404, this would otherwise fire forever.
+    if (img.dataset.fallbackApplied === 'true') {
+        return;
+    }
+
+    img.dataset.fallbackApplied = 'true';
+    img.removeAttribute('srcset');
+    img.src = categoryFallback(type);
+}
+
 function rewriteThroughCloudflare(url: string, width: number): string | null {
     const options = `format=auto,fit=scale-down,width=${width},quality=${config.quality}`;
 

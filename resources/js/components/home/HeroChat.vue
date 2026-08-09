@@ -12,7 +12,7 @@ import type {
     ListingRecommendation,
     SearchIntent,
 } from '@/lib/kaia-types';
-import { thumbAttrs } from '@/lib/media';
+import { onImageError, thumbAttrs } from '@/lib/media';
 
 // Same per-category placeholder set used by ExploreSection/ListingDetail, so
 // a listing without a photo still shows something on-brand here instead of
@@ -635,6 +635,12 @@ async function retryLastMessage() {
                                 height="90"
                                 loading="lazy"
                                 decoding="async"
+                                @error="
+                                    onImageError(
+                                        $event,
+                                        msg.recommendation.type,
+                                    )
+                                "
                             />
                             <div class="chat-rec-body">
                                 <span class="chat-rec-type">{{

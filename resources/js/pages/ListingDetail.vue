@@ -18,7 +18,7 @@ import PublishConsentModal from '@/components/PublishConsentModal.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import { formatPrice } from '@/lib/currency';
-import { thumb, thumbAttrs } from '@/lib/media';
+import { onImageError, thumb, thumbAttrs } from '@/lib/media';
 import { home } from '@/routes';
 import inquiries from '@/routes/listings/inquiries';
 import reviewRoutes from '@/routes/listings/reviews';
@@ -589,6 +589,7 @@ const websiteUrl = computed(
                         height="160"
                         loading="lazy"
                         decoding="async"
+                        @error="onImageError($event, props.listing.type)"
                     />
                 </button>
             </div>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { thumbAttrs } from '@/lib/media';
+import { onImageError, thumbAttrs } from '@/lib/media';
 
 interface Destination {
     name: string;
@@ -68,6 +68,7 @@ function scrollByPage(direction: 1 | -1) {
                             height="165"
                             loading="lazy"
                             decoding="async"
+                            @error="onImageError($event)"
                         />
                     </div>
                     <div class="destination-body">
