@@ -70,6 +70,27 @@ class ImportProvidersCommandTest extends TestCase
         $this->assertSame(ListingType::Restaurant, Listing::where('slug', 'joes-beerhouse')->value('type'));
     }
 
+    /**
+     * "car_rental" is what the NTB directory calls all 253 of its rental
+     * entries — it never emits "vehicle". Before the type map knew that, these
+     * fell through to the name-based guess, which misfiled every rental whose
+     * name also mentions accommodation or tours.
+     */
+    public function test_the_sources_own_car_rental_type_wins_over_the_name_guess(): void
+    {
+        $path = $this->writeFixture([
+            ['name' => 'Discovery Guest House And Car Hire', 'type' => 'car_rental'],
+            ['name' => 'Self Drive Safaris', 'type' => 'car_rental'],
+            ['name' => 'Nara Rentals And Self Drive Tours', 'type' => 'car_rental'],
+        ]);
+
+        $this->artisan('providers:import', ['--ntb' => $path, '--yp' => $this->emptyYp])->assertSuccessful();
+
+        $this->assertSame(ListingType::Vehicle, Listing::where('slug', 'discovery-guest-house-and-car-hire')->value('type'));
+        $this->assertSame(ListingType::Vehicle, Listing::where('slug', 'self-drive-safaris')->value('type'));
+        $this->assertSame(ListingType::Vehicle, Listing::where('slug', 'nara-rentals-and-self-drive-tours')->value('type'));
+    }
+
     public function test_non_travel_businesses_fall_back_to_accommodation_but_stay_unpublished(): void
     {
         $path = $this->writeFixture([

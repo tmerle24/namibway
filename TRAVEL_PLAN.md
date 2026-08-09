@@ -389,6 +389,33 @@ it at the source and makes the UI resilient to it anyway.
 - 4 tests in `tests/Feature/Services/ItineraryServiceDayLocationTest.php`
   pin the normalizer down by making Claude answer with region names.
 
+Follow-up from checking whether vehicles actually have a `city_id` — they do
+when seeded, but not when imported:
+
+- ✅ **`ImportProviders` now honours the source's `car_rental` type.** Its type
+  map only knew `'vehicle'`, which the NTB directory never emits, so all 253
+  rental entries fell through to the name-based guess — misfiling 12 of them
+  (e.g. "Discovery Guest House And Car Hire" → accommodation, "Self Drive
+  Safaris" → activity), verified by replaying `resolveType()`'s rules over
+  `data/scraped/scraped_providers.json`.
+- ✅ **Admin can find and fix city-less listings.** A "Has city" ternary filter
+  on `/admin/listings` (combine with the type filter for "vehicles without a
+  city"), plus an "Assign city" bulk action. The action is **fill-only** — a
+  listing that already has a city is skipped and counted in the notification,
+  because bulk-writing over existing `city_id` values is precisely the
+  `backfill-listing-cities` incident. Correcting a wrong city stays a
+  per-record edit.
+- ⬜ **Still open: imported listings have no route to a city at all.** NTB rows
+  carry neither an address nor coordinates — only a free-text region — so
+  `BackfillListingCities` (address-based) can never reach them and every
+  import lands on `city_id = null`. Until an admin assigns them, they show
+  no city *and* no region anywhere in the product. Deriving a city from the
+  free-text region would be guessing, which is what caused the data loss the
+  first time; a coordinate-based pass would need the coordinates to exist.
+
+- 2 tests in `tests/Feature/Filament/ListingCityAssignmentTest.php` (filter +
+  the fill-only guard) and 1 in `ImportProvidersCommandTest.php`.
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its
