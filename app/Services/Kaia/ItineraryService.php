@@ -1123,7 +1123,7 @@ class ItineraryService
             return "ROUTE: the trip starts and ends in the same place (\"{$start}\") — day 1's location "
                 ."and the last day's location must both be \"{$start}\" itself, or a city close enough "
                 ."to it to reach the departure point comfortably. {$loopGuidance} Never jump back and "
-                ."forth between distant regions; visit each region once, in one continuous pass."
+                .'forth between distant regions; visit each region once, in one continuous pass.'
                 ."\n\n{$dayCount}\n\n{$granularity}\n\n{$safety}";
         }
 

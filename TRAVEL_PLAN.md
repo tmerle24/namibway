@@ -562,6 +562,21 @@ when seeded, but not when imported:
 
 - 2 tests in `tests/Feature/Filament/ListingCityAssignmentTest.php` (filter +
   the fill-only guard) and 1 in `ImportProvidersCommandTest.php`.
+- ⚠️ **pint is CI-blocking too, and it also has a phar** — cost one red CI here
+  (a double-quoted string with nothing to interpolate, `single_quote`). Same
+  trick as the phpstan note above, and this one needs nothing from `vendor/`
+  at all, so it works even when `composer install` can't complete:
+  `curl -sSL -o /tmp/pint.phar https://github.com/laravel/pint/releases/latest/download/pint.phar && php /tmp/pint.phar --test`
+  Run it before pushing when `composer test` isn't available — it catches the
+  cheapest class of red CI there is.
+  - Worth knowing why `composer install` fails in that environment, so the
+    next session doesn't re-litigate it: every one of the 215 packages syncs
+    into the cache fine, then a final request trips `Could not authenticate
+    against github.com` and nothing is written — no `vendor/autoload.php`, no
+    `vendor/bin`. `--prefer-source`, a warm cache, and feeding `COMPOSER_AUTH`
+    the ambient `GITHUB_TOKEN` (which is the literal string `proxy-injected`)
+    all fail the same way. Plain `curl` to github.com works, which is why the
+    phars are the way through.
 
 ### Known gaps / next up
 
