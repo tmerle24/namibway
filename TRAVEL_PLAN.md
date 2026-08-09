@@ -859,6 +859,23 @@ only, no data-model or server change.
   prettier and vue-tsc clean; `npm run build` unreachable here only because
   the sandbox blocks the bunny.net font fetch.
 
+Follow-up, same day, from Till's second review — the bordered card around
+each day still read as a stack of forms on a long stay:
+
+- ✅ **Days are sections of one continuous Tagesplan now, not cards.**
+  `ItineraryDayPlanCard`'s root became `.day-plan-section` — no border, no
+  background, no rounding. The date line is the section heading with a
+  hairline rule under it; whitespace separates the days. Everything else
+  (header-as-fold-toggle, add row, merged entry list) is unchanged, so a
+  7-night stay reads as one schedule instead of seven boxes.
+- ✅ **The price is details-line information.** It moved off the entry's
+  title row to the end of the second line ("Aktivität · ~3 h · $ 47") at
+  the details size, keeping the shared `.item-price` colour — the name is
+  the row's strongest text, and "Preis auf Anfrage" in particular no longer
+  competes with it.
+- Same verification pass as above (desktop/mobile/fold/read-only rendered,
+  eslint + prettier + vue-tsc green).
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its

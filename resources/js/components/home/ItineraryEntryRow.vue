@@ -179,7 +179,6 @@ function onMenuSelect(key: string) {
                     {{ item.name }}
                 </button>
                 <template v-else>{{ item.name }}</template>
-                <span class="item-price">{{ priceLabel }}</span>
             </div>
             <div class="entry-row-details">
                 <template v-for="(part, i) in details" :key="part">
@@ -199,6 +198,12 @@ function onMenuSelect(key: string) {
                         {{ t('itinerary.setTime') }}
                     </button>
                 </template>
+                <!-- The price rides at the end of the details line: it is
+                     secondary to the name (especially "Preis auf Anfrage",
+                     which is most of the catalog), and on the same line it
+                     can't visually compete with it. -->
+                <span class="entry-row-details-sep">·</span
+                ><span class="item-price">{{ priceLabel }}</span>
             </div>
         </div>
 

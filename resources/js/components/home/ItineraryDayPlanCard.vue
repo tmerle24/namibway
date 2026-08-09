@@ -37,8 +37,13 @@ const { t } = useI18n();
 </script>
 
 <template>
-    <div class="day-card day-card--continuation day-card--day-plan">
-        <!-- The date heads the card so it reads as part of the day's content;
+    <!-- One SECTION of the stage's continuous Tagesplan, not a card of its
+         own: the date line is the heading, a hairline under it separates it
+         from the day's entries, and whitespace — not borders — separates the
+         days from each other. A 7-night stay reads as one schedule this way
+         instead of seven boxes. -->
+    <div class="day-plan-section">
+        <!-- The date heads the day so it reads as part of the day's content;
              the whole line doubles as the fold toggle. The day menu sits
              beside it rather than inside the toggle (no nested buttons). -->
         <div class="day-plan-header">
