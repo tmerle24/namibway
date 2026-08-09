@@ -573,22 +573,28 @@ function openStageLightbox(
 }
 
 // A stage is headed by its city, never by its political region — see
-// ItineraryService::normalizeDayLocations, which now resolves `day.location`
-// to a real city server-side. Still prefer the accommodation's own city:
-// it's the place the traveler actually sleeps, and it's what a mid-plan
-// listing swap updates. Saved plans predating the normalization can still
-// carry a region here, in which case there is genuinely no city to show and
-// the raw value is better than an empty heading.
+// ItineraryService::normalizeDayLocations, which resolves `day.location` to
+// a real city server-side (preferring the accommodation's own city already).
+// `location` is what every *other* part of the stage reads — the map pin,
+// the driving legs, the thumbnail, the swap modal's "same city" default, and
+// the LocationPicker this heading doubles as — so heading it with anything
+// else makes clicking the city open a picker on a different town. The
+// accommodation's city is only a fallback for a day that carries no location
+// of its own.
 function dayCity(day: {
     location: string;
     accommodation?: { city?: string | null } | null;
 }): string {
-    return day.accommodation?.city || day.location;
+    return day.location || day.accommodation?.city || '';
+}
+
+function sameCity(a?: string | null, b?: string | null): boolean {
+    return !!a && !!b && a.toLowerCase().trim() === b.toLowerCase().trim();
 }
 
 // The political region (e.g. "Khomas"), shown quieter beside the city name on
-// the timeline card. Three sources in decreasing precision: the stay's own
-// region, the region the backend resolved for the day, and finally a lookup
+// the timeline card. Three sources in decreasing precision: the region the
+// backend resolved for the day, the stay's own region, and finally a lookup
 // by city name in the coords index — that last one is what covers a stay
 // whose listing has no city_id (plenty of scraped ones don't) and older saved
 // plans that predate `day.region`.
@@ -600,16 +606,21 @@ function dayRegion(day: {
     const lookUp = (name?: string | null) =>
         (name && regionCoords.value[name.toLowerCase().trim()]?.region) || null;
 
+    const city = dayCity(day);
+
+    // Whatever region we print has to belong to the city in the heading — the
+    // stay's own region only counts while the stay is still in that city.
     const region =
-        day.accommodation?.region ||
-        day.region ||
-        lookUp(day.accommodation?.city) ||
-        lookUp(day.location) ||
+        (sameCity(city, day.location) ? day.region : null) ||
+        (sameCity(city, day.accommodation?.city)
+            ? day.accommodation?.region
+            : null) ||
+        lookUp(city) ||
         null;
 
     // Repeating the heading in smaller type says nothing — happens when the
     // heading itself fell back to a region name for want of a city.
-    return region && region !== dayCity(day) ? region : null;
+    return region && region !== city ? region : null;
 }
 
 // Sums a whole stage — its stay for every night it covers, plus every
@@ -1597,10 +1608,27 @@ function applySwap(alternative: ItineraryListingRef) {
     if (field === 'vehicle') {
         variant.vehicle = alternative;
     } else if (field === 'accommodation' && dayIndex !== null) {
+        // The swap modal deliberately lets the traveler pick a lodge in
+        // another town ("same city" is preselected, not locked), so the
+        // stage's own location has to follow the stay there — it's what the
+        // heading, the map pin and the driving legs all read, and leaving it
+        // behind is how a stage ends up claiming a city nobody sleeps in.
+        const newCity = alternative.city?.trim() || null;
+        const newRegion = newCity
+            ? (alternative.region ??
+              regionCoords.value[newCity.toLowerCase()]?.region ??
+              null)
+            : null;
+
         // The whole stage moves to the new lodge — see stageDayIndices().
         for (const i of stageDayIndices(variantIndex, dayIndex)) {
             variant.days[i].accommodation = cloneRef(alternative);
             variant.days[i].room_selection = null;
+
+            if (newCity) {
+                variant.days[i].location = newCity;
+                variant.days[i].region = newRegion;
+            }
         }
 
         // The new lodge may match a neighbouring stage's, merging the two
