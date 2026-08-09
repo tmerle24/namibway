@@ -109,7 +109,12 @@ class KaiaController extends Controller
                         'lat' => $city->lat,
                         'lng' => $city->lng,
                         'image' => null,
-                        'region' => $city->region?->name,
+                        // Not `?->`: cities.region_id is NOT NULL (see
+                        // create_cities_table) and the model types it as
+                        // `int`, so a null here isn't reachable — and letting
+                        // it be nullable would widen every entry's shape,
+                        // including the two above that genuinely can't be.
+                        'region' => $city->region->name,
                     ];
                 }
             });
