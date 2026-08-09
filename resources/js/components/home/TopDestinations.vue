@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { thumbAttrs } from '@/lib/media';
 
 interface Destination {
     name: string;
@@ -60,10 +61,13 @@ function scrollByPage(direction: 1 | -1) {
                     <div class="destination-thumb">
                         <img
                             v-if="destination.image"
-                            :src="destination.image"
+                            v-bind="thumbAttrs(destination.image, 220)"
                             :alt="destination.name"
                             class="destination-thumb-img"
+                            width="220"
+                            height="165"
                             loading="lazy"
+                            decoding="async"
                         />
                     </div>
                     <div class="destination-body">

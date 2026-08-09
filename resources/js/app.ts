@@ -7,6 +7,8 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeCurrency } from '@/lib/currency';
 import { initializeFlashToast } from '@/lib/flashToast';
 import { initializeLocale } from '@/lib/locale';
+import { initializeMedia } from '@/lib/media';
+import type { MediaTransformConfig } from '@/lib/media';
 
 const appName = import.meta.env.VITE_APP_NAME || 'NamibWay';
 const slogan = 'The smartest way to experience Namibia.';
@@ -43,6 +45,9 @@ createInertiaApp({
         initializeCurrency(
             page.props.currency as string | undefined,
             page.props.currencyRates as Record<string, number> | undefined,
+        );
+        initializeMedia(
+            page.props.mediaTransforms as MediaTransformConfig | undefined,
         );
     },
 });

@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatPrice } from '@/lib/currency';
 import type { ItineraryListingRef, RoomOption } from '@/lib/kaia-types';
+import { thumbAttrs } from '@/lib/media';
 import KebabMenu from './KebabMenu.vue';
 import ListingPreviewModal from './ListingPreviewModal.vue';
 
@@ -102,9 +103,13 @@ function onMenuSelect(key: string) {
             <div class="stay-card-main">
                 <img
                     v-if="stay.image"
-                    :src="stay.image"
+                    v-bind="thumbAttrs(stay.image, 52)"
                     alt=""
                     class="stay-card-thumb"
+                    width="52"
+                    height="52"
+                    loading="lazy"
+                    decoding="async"
                 />
                 <div class="stay-card-body">
                     <div class="stay-card-title-row">
