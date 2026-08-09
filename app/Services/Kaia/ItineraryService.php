@@ -1517,35 +1517,46 @@ class ItineraryService
         $requestedTier = is_string($tripParams['budget_tier'] ?? null) ? $tripParams['budget_tier'] : null;
         $vehicleType = is_string($tripParams['vehicle_type'] ?? null) ? $tripParams['vehicle_type'] : null;
 
-        // Deliberately two queries. The shortlist is decided in PHP (the budget
-        // tier and camper rules don't express well in SQL), which used to mean
-        // hydrating EVERY published listing in full just to keep at most 80 of
-        // them — including `scrape_data`, the complete scraped payload per row.
-        // At the catalog's current size that exhausted PHP's 128 MB limit and
-        // took down /kaia/message entirely with a fatal, empty 500 (2026-08-09).
+        // Deliberately two queries, and the first one deliberately does NOT
+        // hydrate models. The shortlist is decided in PHP (the budget tier and
+        // camper rules don't express well in SQL), which used to mean loading
+        // EVERY published listing as a full Eloquent model just to keep at most
+        // 80 of them — `scrape_data`, the entire scraper payload per row,
+        // included. Against ~7,000 published listings that exhausted PHP's
+        // 128 MB and took /kaia/message down with a fatal, empty 500
+        // (2026-08-09). Narrowing the columns alone was not enough: an Eloquent
+        // model costs several KB of object overhead no matter how few
+        // attributes it carries, so 7,000 of them is still the same wall.
         //
-        // So: pick the winners off a four-column projection first, then fetch
-        // only those rows in full. The filtering logic and its ordering are
-        // untouched, so the same listings are shortlisted as before — this is
-        // purely about what gets loaded into memory to decide it.
+        // `toBase()` returns plain stdClass rows straight off the query builder
+        // — no models, no casts, no accessors. That is why the two filters read
+        // raw values here (a JSON string for `highlights`, a numeric string for
+        // `price_from`) instead of going through the model. Only the winners
+        // are then loaded as real models, which is at most
+        // MAX_CANDIDATES_PER_TYPE per type.
         $shortlisted = Listing::query()
             ->where('is_published', true)
+            ->toBase()
             ->get(['id', 'type', 'price_from', 'highlights'])
-            ->groupBy(fn (Listing $listing) => $listing->type->value)
-            ->flatMap(function ($listings, string $type) use ($requestedTier, $vehicleType) {
+            ->groupBy(fn (object $row) => (string) $row->type)
+            ->flatMap(function (Collection $rows, string $type) use ($requestedTier, $vehicleType) {
                 if ($type === 'vehicle' && $vehicleType !== null) {
-                    $listings = $listings->filter(
-                        fn (Listing $listing) => $this->isCamper($listing) === ($vehicleType === 'camper')
+                    $rows = $rows->filter(
+                        fn (object $row) => $this->rawHighlightsContainCamper($row->highlights) === ($vehicleType === 'camper')
                     );
                 } elseif ($type !== 'vehicle' && $requestedTier !== null) {
-                    $listings = $listings->filter(
-                        fn (Listing $listing) => $this->budgetTierDistance($listing->price_from, $requestedTier) <= 1
+                    $rows = $rows->filter(
+                        fn (object $row) => $this->budgetTierDistance(
+                            $row->price_from === null ? null : (string) $row->price_from,
+                            $requestedTier,
+                        ) <= 1
                     );
                 }
 
-                return $listings->take(self::MAX_CANDIDATES_PER_TYPE);
+                return $rows->take(self::MAX_CANDIDATES_PER_TYPE);
             })
             ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
             ->all();
 
         if ($shortlisted === []) {
@@ -1590,9 +1601,34 @@ class ItineraryService
             ->all();
     }
 
-    private function isCamper(Listing $listing): bool
+    /**
+     * Whether a `highlights` column marks the vehicle as a camper, read
+     * straight off the raw JSON.
+     *
+     * Takes the column rather than a Listing because candidateListings()'s
+     * shortlist pass skips model hydration entirely (see the comment there),
+     * so Spatie's translation accessor isn't available to it.
+     *
+     * The column holds a locale map (`{"en": ["Camper", …]}`) since the
+     * 2026-07-21 translatable migration. A plain list is still accepted, so a
+     * row that somehow predates or sidesteps that migration degrades to "not a
+     * camper" rather than throwing inside a filter.
+     */
+    private function rawHighlightsContainCamper(mixed $highlights): bool
     {
-        return in_array('Camper', $listing->getTranslation('highlights', 'en', useFallbackLocale: true) ?? [], true);
+        if (! is_string($highlights) || $highlights === '') {
+            return false;
+        }
+
+        $decoded = json_decode($highlights, true);
+
+        if (! is_array($decoded)) {
+            return false;
+        }
+
+        $values = array_is_list($decoded) ? $decoded : ($decoded['en'] ?? []);
+
+        return is_array($values) && in_array('Camper', $values, true);
     }
 
     /**
