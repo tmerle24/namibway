@@ -704,6 +704,12 @@ when seeded, but not when imported:
   Korrektur-Retry wie die Fahrzeit-Validierung; unbekannte Städte werden wie dort
   übersprungen statt geraten (null-skip). Tests in `ItineraryServiceDrivingTimeTest`
   (Fixtures dort mussten als One-Way deklariert werden, sonst reißt die neue Prüfung).
+  **Nach dem Retry sind die beiden Prüfungen bewusst unterschiedlich streng** — auf
+  Prod gemessen: 4 von 5 Generierungen 502ten allein an der Form, obwohl das Modell
+  auf einem anderen Versuch problemlos einen sauberen Plan lieferte. Fahrzeit bleibt
+  hart (Sicherheitsfrage), die Form wird laut geloggt und der Plan trotzdem
+  ausgeliefert: eine falsche Startstadt ist im Plan sichtbar und editierbar, ein 502
+  ist eine Sackgasse — und genau die darf der Reiseplan am wenigsten produzieren.
 - **`/kaia/message` 500te komplett — PHP-memory_limit, nicht die AI.** Der Endpoint
   starb nach ~3s mit leerem Body (Fatal, deshalb kein Laravel-Log-Eintrag; nur im
   nginx-error.log sichtbar: *"Allowed memory size of 134217728 bytes exhausted in

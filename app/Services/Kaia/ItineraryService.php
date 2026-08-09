@@ -211,30 +211,49 @@ class ItineraryService
     public function generate(array $tripParams): array
     {
         $plan = $this->generateWithFreshRetry($tripParams);
-        $violations = [
-            ...$this->validateDrivingTimes($plan),
-            ...$this->validateRouteShape($plan, $tripParams),
-        ];
+        $unsafe = $this->validateDrivingTimes($plan);
+        $misshapen = $this->validateRouteShape($plan, $tripParams);
 
-        if ($violations !== []) {
-            Log::warning('Kaia itinerary violated a hard route constraint, retrying with corrective feedback', [
-                'violations' => $violations,
+        if ($unsafe !== [] || $misshapen !== []) {
+            Log::warning('Kaia itinerary violated a route constraint, retrying with corrective feedback', [
+                'driving_time' => $unsafe,
+                'route_shape' => $misshapen,
             ]);
 
-            $plan = $this->generateWithFreshRetry($tripParams, $this->correctionMessage($violations));
-            $violations = [
-                ...$this->validateDrivingTimes($plan),
-                ...$this->validateRouteShape($plan, $tripParams),
-            ];
+            $plan = $this->generateWithFreshRetry(
+                $tripParams,
+                $this->correctionMessage([...$unsafe, ...$misshapen]),
+            );
+            $unsafe = $this->validateDrivingTimes($plan);
+            $misshapen = $this->validateRouteShape($plan, $tripParams);
 
-            if ($violations !== []) {
-                Log::error('Kaia itinerary still violates a hard route constraint after retrying', [
-                    'violations' => $violations,
+            // The two checks are deliberately not equally strict after the
+            // retry. A driving-time violation is a safety fact — asking someone
+            // to cover 9 hours of Namibian gravel in a day, at dusk, is not a
+            // plan worth handing over, so that still fails the request.
+            //
+            // Route shape is a quality problem: a trip that starts one town too
+            // far north, or carries a day too many, is wrong but visible and
+            // editable in the plan UI. Failing the whole request over it turns
+            // a fixable plan into a dead end, and dead ends are the thing the
+            // trip plan is least allowed to produce. So it is logged loudly and
+            // returned. Seen on production 2026-08-09: four of five generations
+            // 502'd on shape alone while the model was perfectly capable of
+            // producing a compliant plan on another attempt.
+            if ($unsafe !== []) {
+                Log::error('Kaia itinerary still violates the driving-time safety limit after retrying', [
+                    'violations' => $unsafe,
                 ]);
 
                 throw new RuntimeException(
-                    'Could not generate an itinerary within the hard route constraints: '.implode('; ', $violations)
+                    'Could not generate a safe itinerary within the driving-time limits: '.implode('; ', $unsafe)
                 );
+            }
+
+            if ($misshapen !== []) {
+                Log::error('Kaia itinerary still has the wrong route shape after retrying — returning it anyway', [
+                    'violations' => $misshapen,
+                ]);
             }
         }
 

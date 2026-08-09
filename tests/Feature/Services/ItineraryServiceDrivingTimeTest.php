@@ -158,13 +158,15 @@ class ItineraryServiceDrivingTimeTest extends TestCase
         $this->seedLodge($otjiwarongo);
         $this->fakeAnthropicPlan('Otjiwarongo', 'Windhoek');
 
-        $this->expectException(RuntimeException::class);
+        $plan = app(ItineraryService::class)->generate($this->tripParams());
 
-        try {
-            app(ItineraryService::class)->generate($this->tripParams());
-        } finally {
-            Http::assertSentCount(2);
-        }
+        // Initial attempt + one corrective retry. The fake answers both calls
+        // identically, so the shape is never actually corrected — and unlike a
+        // driving-time violation the plan is still handed over rather than
+        // failing the request, because a wrong-but-editable plan beats a dead
+        // end (see generate()).
+        Http::assertSentCount(2);
+        $this->assertSame('Otjiwarongo', $plan['variants'][0]['days'][0]['location']);
     }
 
     public function test_plan_with_too_many_days_triggers_a_corrective_retry(): void
@@ -197,12 +199,9 @@ class ItineraryServiceDrivingTimeTest extends TestCase
             ], 200),
         ]);
 
-        $this->expectException(RuntimeException::class);
+        $plan = app(ItineraryService::class)->generate($this->tripParams());
 
-        try {
-            app(ItineraryService::class)->generate($this->tripParams());
-        } finally {
-            Http::assertSentCount(2);
-        }
+        Http::assertSentCount(2);
+        $this->assertCount(3, $plan['variants'][0]['days']);
     }
 }
