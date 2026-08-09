@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $code
  * @property string $name
  * @property string|null $description
+ * @property array<int, string>|null $gallery
  * @property int $max_adults
  * @property int $max_children
  * @property int $total_units
@@ -30,6 +31,7 @@ class RoomType extends Model
         'code',
         'name',
         'description',
+        'gallery',
         'max_adults',
         'max_children',
         'total_units',
@@ -39,6 +41,7 @@ class RoomType extends Model
     ];
 
     protected $casts = [
+        'gallery' => 'array',
         'max_adults' => 'integer',
         'max_children' => 'integer',
         'total_units' => 'integer',

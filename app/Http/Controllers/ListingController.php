@@ -7,10 +7,13 @@ use App\Jobs\EnrichListingJob;
 use App\Models\City;
 use App\Models\Listing;
 use App\Models\Review;
+use App\Models\RoomType;
 use App\Services\Booking\ActiveRequestGate;
+use App\Services\Booking\RoomAvailability;
 use App\Services\Enrichment\CoordinateTextParser;
 use App\Services\Enrichment\OsmLocationFinder;
 use App\Services\Region\PhoneNumberFormatter;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -173,6 +176,80 @@ class ListingController extends Controller
                 'rating_count' => $listing->rating_count,
                 'accepts_inquiries' => $listing->accepts_inquiries,
             ],
+        ]);
+    }
+
+    /**
+     * Real room types for a stay, for the trip plan's room picker.
+     *
+     * The picker used to invent its three options client-side by scaling the
+     * property's `price_from` — plausible-looking numbers sitting right next to
+     * a Book button, which is the worst place in the product to be making
+     * things up. This returns what actually exists: the listing's active
+     * `RoomType` rows, their real rate, their own photos, and how many units
+     * are still free for these dates.
+     *
+     * A listing with no room types is the normal case today (scraped listings,
+     * partners on a PMS we don't hold inventory for), and it returns an empty
+     * list rather than a substitute — the caller says "on request", it does not
+     * invent a room.
+     *
+     * Deliberately open (no `auth`): browsing and planning stay frictionless,
+     * and this only exposes published listings' published rates. Booking one is
+     * what needs an account.
+     */
+    public function roomTypes(Request $request, Listing $listing): JsonResponse
+    {
+        abort_unless($listing->is_published, 404);
+
+        // No `after_or_equal:today` on check_in, unlike the public API's
+        // availability endpoint: a saved plan can have dates that have since
+        // passed, and the traveler opening its room picker should see an empty
+        // or stale answer, not a 422 they can do nothing about.
+        $validated = $request->validate([
+            'check_in' => ['required', 'date'],
+            'check_out' => ['required', 'date', 'after:check_in'],
+            'adults' => ['sometimes', 'integer', 'min:1', 'max:20'],
+            'children' => ['sometimes', 'integer', 'min:0', 'max:20'],
+        ]);
+
+        $checkIn = CarbonImmutable::parse($validated['check_in']);
+        $checkOut = CarbonImmutable::parse($validated['check_out']);
+        $nights = max(1, $checkIn->diffInDays($checkOut));
+
+        $bookable = RoomAvailability::bookableFor(
+            $listing->id,
+            $checkIn,
+            $checkOut,
+            (int) ($validated['adults'] ?? 1),
+            (int) ($validated['children'] ?? 0),
+        );
+
+        return response()->json([
+            'nights' => $nights,
+            'rooms' => $bookable->map(function (array $row) use ($nights) {
+                /** @var RoomType $roomType */
+                $roomType = $row['room_type'];
+
+                return [
+                    'code' => $roomType->code,
+                    'name' => $roomType->name,
+                    'description' => $roomType->description,
+                    'max_adults' => $roomType->max_adults,
+                    'max_children' => $roomType->max_children,
+                    'price_per_night' => (float) $roomType->rate_per_night,
+                    'total_price' => (float) $roomType->rate_per_night * $nights,
+                    'currency' => $roomType->currency,
+                    'units_left' => $row['units_left'],
+                    // The room's own pictures. Empty is normal and the caller
+                    // falls back to the property gallery — that fallback is a
+                    // stand-in and should read as one, so it isn't merged in
+                    // here.
+                    'gallery' => collect($roomType->gallery ?? [])
+                        ->map(fn (string $path) => self::resolveMediaUrl($path))
+                        ->values(),
+                ];
+            })->values(),
         ]);
     }
 

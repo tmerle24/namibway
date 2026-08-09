@@ -143,6 +143,12 @@
         "showLess": "show less",
         "viewPhotos": "View photos",
         "chooseRoom": "Choose room",
+        "roomsLoading": "Checking rooms…",
+        "roomsFailed": "Couldn't load rooms just now. The partner confirms the room either way.",
+        "roomsUnavailable": "No rooms held online for this stay — the partner confirms the room with you after the request.",
+        "roomsLeft": "Last one at these dates | Only {count} left at these dates",
+        "roomTotalForNights": "Total {total} for {count} night | Total {total} for {count} nights",
+        "roomPhotoStandIn": "Photo of the property — no photo of this room yet",
         "changeRoom": "Change room",
         "changeStay": "Change accommodation",
         "addNight": "Add night",
@@ -176,12 +182,6 @@
             "dinner": "Dinner"
         },
         "forTravelers": "for {count}",
-        "roomPlaceholderNote": "Illustrative rooms — final selection and live rates come at booking.",
-        "roomTypes": {
-            "standard": "Standard Room",
-            "comfort": "Comfort Room",
-            "family": "Family Room"
-        },
         "meta": {
             "travelPeriod": "Travel dates",
             "duration": "Duration",
