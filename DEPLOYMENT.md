@@ -321,10 +321,31 @@ Die App speichert von jedem Foto **nur das Original** — Google-Places-Fotos ko
 gedeckelt (`AppServiceProvider`), gescrapte Heros sind fremde URLs. Ein 44px großes
 Tages-Thumbnail im Reiseplan würde ohne Weiteres das volle Original laden.
 
-Statt Derivate zu erzeugen und zu speichern, wird dasselbe Original von **Cloudflare Image
-Transformations** in der gewünschten Breite ausgeliefert (`/cdn-cgi/image/<optionen>/<pfad>`).
-Vorteil: kein Backfill über die Bestandsbibliothek, keine zweite Kopie, und `format=auto`
-liefert automatisch AVIF/WebP.
+### Was läuft (ohne Konfiguration)
+
+Die App verkleinert selbst. `/thumbs/{breite}/{key}` holt das Original aus R2, skaliert es
+einmal mit GD, legt die WebP-Fassung im selben Bucket unter `thumbs/` ab und verweist
+dorthin (`ThumbnailController`). Ab dem zweiten Aufruf wird nur noch verwiesen.
+
+- **Nichts einzustellen.** Kein DNS, kein Cloudflare-Konto, keine `.env`-Variable.
+- **Kein Backfill.** Es entsteht, was tatsächlich angeschaut wird.
+- **Die Bilddaten laufen nicht über den Server.** Die Antwort ist eine Weiterleitung nach
+  R2; PHP schickt einen Satz, nicht die Megabytes.
+- **Derivate sind ein Cache, keine Daten.** Der Ordner `thumbs/` im Bucket darf jederzeit
+  gelöscht werden — er entsteht neu. Genau so wendet man auch eine geänderte Breitenleiter
+  oder Qualität an; eine Migration gibt es nicht. Aus demselben Grund ist es unkritisch,
+  wenn `photos:audit-r2` diese Dateien als „verwaist" zählen würde (die Standard-Präfixe
+  umfassen `thumbs/` nicht).
+- Abschaltbar mit `MEDIA_THUMBNAILS_ENABLED=false` — dann werden wieder Originale
+  ausgeliefert, nur eben langsam.
+
+### Optional: Cloudflare statt selbst rechnen
+
+Dasselbe Original kann auch von **Cloudflare Image Transformations** in der gewünschten
+Breite ausgeliefert werden (`/cdn-cgi/image/<optionen>/<pfad>`). Vorteil gegenüber dem
+Eigenbau: die Rechenarbeit passiert nicht auf eurem Server, und `format=auto` liefert
+zusätzlich AVIF statt nur WebP. Das ist eine Optimierung, keine Voraussetzung — ist es
+aktiv, hat es Vorrang, sonst greift der Eigenbau oben.
 
 **Das funktioniert nicht auf der Standard-Bucket-URL.** `https://pub-<hash>.r2.dev` liegt
 nicht auf der namibway.com-Zone und kennt kein `/cdn-cgi/image/`. Zum Einschalten:

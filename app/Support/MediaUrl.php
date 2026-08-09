@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Services\Media\ThumbnailGenerator;
+
 /**
  * Turns a stored media URL into a right-sized one.
  *
@@ -12,8 +14,12 @@ namespace App\Support;
  * lists load slowly, so every <img> that renders smaller than the original
  * should ask for a width here instead of using the raw URL.
  *
- * Nothing is generated or stored — Cloudflare resizes the same original on the
- * fly. See config/media.php for how that's wired and when it's inert.
+ * Two ways to get a smaller image, in order of preference. Cloudflare
+ * transformations resize the stored original at the edge and store nothing, but
+ * need a custom domain on the media bucket, which doesn't exist yet. Otherwise
+ * — which is to say, today — `/thumbs/{width}/{key}` has us resize it once and
+ * keep the copy in the bucket. Both are driven by the same width ladder, so a
+ * slot asks for the same size either way. See config/media.php.
  *
  * The frontend mirror of this lives in resources/js/lib/media.ts; the two are
  * kept deliberately parallel, because components know their own render size
@@ -45,13 +51,50 @@ class MediaUrl
             return self::resizeUnsplash($url, $snapped);
         }
 
-        if (! config('media.transforms.enabled')) {
+        // Already one of our own thumbnail URLs — same nesting problem.
+        if (str_contains($url, '/'.ThumbnailGenerator::PREFIX.'/')) {
             return $url;
         }
 
-        $rewritten = self::rewriteThroughCloudflare($url, $snapped);
+        if (config('media.transforms.enabled')) {
+            $rewritten = self::rewriteThroughCloudflare($url, $snapped);
 
-        return $rewritten ?? $url;
+            if ($rewritten !== null) {
+                return $rewritten;
+            }
+        }
+
+        // Cloudflare either isn't available or doesn't cover this URL, so fall
+        // back to resizing it ourselves. This is the path production actually
+        // takes today.
+        return self::ownThumbnail($url, $snapped) ?? $url;
+    }
+
+    /**
+     * `/thumbs/{width}/{key}` for an image in our own media bucket, or null for
+     * anything else — a scraped operator's website, a bundled fallback served
+     * by nginx, a `blob:` preview in the listing editor. Those are all either
+     * not ours to fetch or already small enough to leave alone.
+     */
+    private static function ownThumbnail(string $url, int $width): ?string
+    {
+        if (! config('media.thumbnails.enabled', true)) {
+            return null;
+        }
+
+        $base = rtrim((string) config('filesystems.disks.r2.url'), '/');
+
+        if ($base === '' || ! str_starts_with($url, $base.'/')) {
+            return null;
+        }
+
+        $key = ltrim(substr($url, strlen($base)), '/');
+
+        if ($key === '' || str_starts_with($key, ThumbnailGenerator::PREFIX.'/')) {
+            return null;
+        }
+
+        return '/thumbs/'.$width.'/'.$key;
     }
 
     /**
@@ -99,7 +142,7 @@ class MediaUrl
     /**
      * The subset of config the frontend mirror needs, shared as an Inertia prop.
      *
-     * @return array{enabled: bool, origins: list<string>, widths: list<int>, quality: int}
+     * @return array{enabled: bool, origins: list<string>, widths: list<int>, quality: int, mediaBase: string, ownThumbnails: bool}
      */
     public static function clientConfig(): array
     {
@@ -114,6 +157,11 @@ class MediaUrl
             )),
             'widths' => array_values((array) config('media.transforms.widths', [])),
             'quality' => (int) config('media.transforms.quality', 80),
+            // The bucket's public base, unfiltered — distinct from `origins`,
+            // which lists only hosts that can serve /cdn-cgi/image/. This one
+            // is how the client recognises an image as ours at all.
+            'mediaBase' => rtrim((string) config('filesystems.disks.r2.url'), '/'),
+            'ownThumbnails' => (bool) config('media.thumbnails.enabled', true),
         ];
     }
 

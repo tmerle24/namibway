@@ -14,6 +14,14 @@ export interface MediaTransformConfig {
     origins: string[];
     widths: number[];
     quality: number;
+    /**
+     * Public base of the media bucket, unfiltered — distinct from `origins`,
+     * which lists only hosts that can serve /cdn-cgi/image/. This is how an
+     * image is recognised as ours at all, and it is what `/thumbs/` keys are
+     * measured against.
+     */
+    mediaBase: string;
+    ownThumbnails: boolean;
 }
 
 /**
@@ -26,6 +34,8 @@ let config: MediaTransformConfig = {
     origins: [],
     widths: [64, 128, 256, 400, 800, 1600],
     quality: 80,
+    mediaBase: '',
+    ownThumbnails: true,
 };
 
 /**
@@ -73,11 +83,45 @@ export function thumb(url: string, width: number): string {
         return resizeUnsplash(url, snapped);
     }
 
-    if (!config.enabled) {
+    // Already one of our own thumbnail URLs — same nesting problem.
+    if (url.includes('/thumbs/')) {
         return url;
     }
 
-    return rewriteThroughCloudflare(url, snapped) ?? url;
+    if (config.enabled) {
+        const rewritten = rewriteThroughCloudflare(url, snapped);
+
+        if (rewritten !== null) {
+            return rewritten;
+        }
+    }
+
+    // Cloudflare either isn't available or doesn't cover this URL, so fall back
+    // to having the server resize it. This is the path production takes today.
+    return ownThumbnail(url, snapped) ?? url;
+}
+
+/**
+ * `/thumbs/{width}/{key}` for an image in our own media bucket, or null for
+ * anything else — a scraped operator's website, a bundled fallback served by
+ * nginx, a `blob:` preview in the listing editor. See the PHP twin.
+ */
+function ownThumbnail(url: string, width: number): string | null {
+    if (!config.ownThumbnails || config.mediaBase === '') {
+        return null;
+    }
+
+    if (!url.startsWith(`${config.mediaBase}/`)) {
+        return null;
+    }
+
+    const key = url.slice(config.mediaBase.length).replace(/^\/+/, '');
+
+    if (key === '' || key.startsWith('thumbs/')) {
+        return null;
+    }
+
+    return `/thumbs/${width}/${key}`;
 }
 
 /**

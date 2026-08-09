@@ -64,4 +64,31 @@ return [
         'quality' => (int) env('MEDIA_TRANSFORMS_QUALITY', 80),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Own-made thumbnails
+    |--------------------------------------------------------------------------
+    |
+    | What actually runs today, and the fallback whenever Cloudflare
+    | transformations are unavailable — which, without a custom domain on the
+    | media bucket, is always. `/thumbs/{width}/{key}` resizes the stored
+    | original once with GD, keeps the WebP copy in the same bucket under
+    | `thumbs/`, and redirects there (App\Http\Controllers\ThumbnailController).
+    |
+    | The width ladder is shared with the transforms block above, so a slot asks
+    | for the same size either way and switching between the two changes only
+    | who does the resizing.
+    |
+    | Derivatives are a cache: deleting `thumbs/` in the bucket is safe and
+    | costs nothing but the next request per image. That is also how you apply a
+    | changed ladder or quality — there is no migration.
+    |
+    */
+
+    'thumbnails' => [
+        'enabled' => (bool) env('MEDIA_THUMBNAILS_ENABLED', true),
+
+        'quality' => (int) env('MEDIA_THUMBNAILS_QUALITY', 80),
+    ],
+
 ];

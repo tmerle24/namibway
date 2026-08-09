@@ -172,4 +172,83 @@ class MediaUrlTest extends TestCase
         );
         $this->assertTrue(MediaUrl::canTransform('https://cdn.namibway.com'));
     }
+
+    /**
+     * What production actually does today: no custom domain, so Cloudflare is
+     * out and the app resizes the image itself.
+     */
+    public function test_a_bucket_image_falls_back_to_our_own_thumbnail_route(): void
+    {
+        config([
+            'media.transforms.enabled' => false,
+            'media.thumbnails.enabled' => true,
+            'media.transforms.widths' => [64, 128, 256, 400, 800, 1600],
+            'filesystems.disks.r2.url' => 'https://pub-abc123.r2.dev',
+        ]);
+
+        $this->assertSame(
+            '/thumbs/64/listings/lodge.jpg',
+            MediaUrl::thumb('https://pub-abc123.r2.dev/listings/lodge.jpg', 44),
+        );
+    }
+
+    public function test_cloudflare_wins_when_it_is_actually_available(): void
+    {
+        config([
+            'media.transforms.enabled' => true,
+            'media.transforms.origins' => ['https://cdn.namibway.test'],
+            'media.transforms.widths' => [64, 128, 256, 400, 800, 1600],
+            'media.transforms.quality' => 80,
+            'media.thumbnails.enabled' => true,
+            'filesystems.disks.r2.url' => 'https://cdn.namibway.test',
+        ]);
+
+        $this->assertStringContainsString(
+            '/cdn-cgi/image/',
+            (string) MediaUrl::thumb('https://cdn.namibway.test/listings/lodge.jpg', 44),
+        );
+    }
+
+    public function test_it_does_not_thumbnail_a_thumbnail(): void
+    {
+        config([
+            'media.transforms.enabled' => false,
+            'media.thumbnails.enabled' => true,
+            'media.transforms.widths' => [64, 128, 256, 400, 800, 1600],
+            'filesystems.disks.r2.url' => 'https://pub-abc123.r2.dev',
+        ]);
+
+        $once = (string) MediaUrl::thumb('https://pub-abc123.r2.dev/listings/lodge.jpg', 44);
+
+        $this->assertSame($once, MediaUrl::thumb($once, 44));
+    }
+
+    public function test_a_foreign_url_gets_no_thumbnail_route(): void
+    {
+        config([
+            'media.transforms.enabled' => false,
+            'media.thumbnails.enabled' => true,
+            'filesystems.disks.r2.url' => 'https://pub-abc123.r2.dev',
+        ]);
+
+        // Not in our bucket, so there is nothing for the route to fetch.
+        $url = 'https://some-lodge.com.na/hero.jpg';
+
+        $this->assertSame($url, MediaUrl::thumb($url, 44));
+    }
+
+    public function test_srcset_offers_two_real_densities_through_the_route(): void
+    {
+        config([
+            'media.transforms.enabled' => false,
+            'media.thumbnails.enabled' => true,
+            'media.transforms.widths' => [64, 128, 256, 400, 800, 1600],
+            'filesystems.disks.r2.url' => 'https://pub-abc123.r2.dev',
+        ]);
+
+        $this->assertSame(
+            '/thumbs/400/listings/lodge.jpg 1x, /thumbs/800/listings/lodge.jpg 2x',
+            MediaUrl::srcset('https://pub-abc123.r2.dev/listings/lodge.jpg', 400),
+        );
+    }
 }
