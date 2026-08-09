@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ConnectorType;
-use App\Enums\InquiryStatus;
 use App\Jobs\EnrichListingJob;
 use App\Models\City;
-use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Review;
+use App\Services\Booking\ActiveRequestGate;
 use App\Services\Enrichment\CoordinateTextParser;
 use App\Services\Enrichment\OsmLocationFinder;
 use App\Services\Region\PhoneNumberFormatter;
@@ -659,6 +658,12 @@ class ListingController extends Controller
         return is_string($claimToken) && $claimToken !== '' && hash_equals($claimToken, $token);
     }
 
+    /**
+     * Sending an inquiry is a booking request, so it needs an account — see
+     * CLAUDE.md's account line. The route is behind `auth`; the traveler is
+     * bounced to login with this listing as the intended URL rather than
+     * filling in a form that would be rejected on submit.
+     */
     public function storeInquiry(Request $request, Listing $listing): RedirectResponse
     {
         abort_unless($listing->is_published && $listing->accepts_inquiries, 404);
@@ -675,22 +680,13 @@ class ListingController extends Controller
             'message' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $activeStatuses = array_map(
-            fn (InquiryStatus $s) => $s->value,
-            array_filter(InquiryStatus::cases(), fn (InquiryStatus $s) => $s->isActive())
-        );
+        $userId = $request->user()?->id;
 
-        $alreadyActive = Inquiry::where('email', $validated['email'])
-            ->whereIn('status', $activeStatuses)
-            ->exists();
-
-        if ($alreadyActive) {
-            return back()->withErrors([
-                'email' => __('You already have an active booking request in progress. Please wait for it to be resolved before submitting a new one.'),
-            ]);
+        if (ActiveRequestGate::blocks($userId, $validated['email'])) {
+            return back()->withErrors(['email' => ActiveRequestGate::message()]);
         }
 
-        $listing->inquiries()->create($validated);
+        $listing->inquiries()->create([...$validated, 'user_id' => $userId]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Inquiry sent.')]);
 
@@ -723,6 +719,9 @@ class ListingController extends Controller
      * listing's page. Each listing still gets its own Inquiry row (and its
      * own partner notification via InquiryObserver); only the "one active
      * request at a time" gate is checked once, up front, for the whole batch.
+     *
+     * Behind `auth` for the same reason as storeInquiry() above: a shortlist
+     * request is still a booking request.
      */
     public function storeBatchInquiry(Request $request): RedirectResponse
     {
@@ -735,19 +734,10 @@ class ListingController extends Controller
             'message' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $activeStatuses = array_map(
-            fn (InquiryStatus $s) => $s->value,
-            array_filter(InquiryStatus::cases(), fn (InquiryStatus $s) => $s->isActive())
-        );
+        $userId = $request->user()?->id;
 
-        $alreadyActive = Inquiry::where('email', $validated['email'])
-            ->whereIn('status', $activeStatuses)
-            ->exists();
-
-        if ($alreadyActive) {
-            return back()->withErrors([
-                'email' => __('You already have an active booking request in progress. Please wait for it to be resolved before submitting a new one.'),
-            ]);
+        if (ActiveRequestGate::blocks($userId, $validated['email'])) {
+            return back()->withErrors(['email' => ActiveRequestGate::message()]);
         }
 
         $listings = Listing::query()
@@ -763,6 +753,7 @@ class ListingController extends Controller
         }
 
         $contact = array_intersect_key($validated, array_flip(['name', 'email', 'phone', 'message']));
+        $contact['user_id'] = $userId;
 
         DB::transaction(function () use ($listings, $contact) {
             foreach ($listings as $listing) {

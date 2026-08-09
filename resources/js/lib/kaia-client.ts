@@ -307,6 +307,24 @@ export interface SavedPlanResult {
     shareToken: string | null;
     shareUrl: string | null;
     version: number;
+    /**
+     * Whether the plan landed in an account. Creating one never requires
+     * login — it's only true when the traveler happened to be logged in
+     * already. Attaching an anonymous plan to an account is claimPlan().
+     */
+    owned: boolean;
+}
+
+/**
+ * Thrown when the server refused because the traveler isn't logged in (401) or
+ * isn't the plan's creator (403). Distinct from a transport failure: the caller
+ * should offer a login, not a retry.
+ */
+export class AuthRequiredError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'AuthRequiredError';
+    }
 }
 
 // Thrown by updatePlan() when the server rejected the write because the plan
@@ -352,7 +370,38 @@ export async function savePlan(plan: ItineraryPlan): Promise<SavedPlanResult> {
             ? `${window.location.origin}/trip/${shareToken}`
             : null,
         version: (data.version as number) ?? 1,
+        owned: (data.owned as boolean) ?? false,
     };
+}
+
+/**
+ * Attach an already-persisted plan to the logged-in account — what the Save
+ * button means. The server rejects this without a session (401) and refuses a
+ * plan that belongs to someone else (403), so this is the account line rather
+ * than a UI convention. Requires the plan's *edit* token; a read-only share
+ * token 404s.
+ */
+export async function claimPlan(token: string): Promise<void> {
+    const response = await fetch(`/kaia/plans/${token}/claim`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+    });
+
+    if (response.status === 401 || response.status === 403) {
+        const data = await response.json().catch(() => ({}));
+
+        throw new AuthRequiredError(
+            (data as { message?: string }).message ?? 'Login required',
+        );
+    }
+
+    if (!response.ok) {
+        throw new Error('Failed to save plan to account');
+    }
 }
 
 export interface LoadedPlan {
@@ -364,6 +413,8 @@ export interface LoadedPlan {
     // writes either way; this is what lets the UI stop offering them.
     canEdit: boolean;
     shareToken: string | null;
+    /** True only for the plan's own owner — see SavedPlanResult.owned. */
+    owned: boolean;
 }
 
 export async function loadPlan(token: string): Promise<LoadedPlan> {
@@ -383,6 +434,7 @@ export async function loadPlan(token: string): Promise<LoadedPlan> {
         version: (data.version as number) ?? 1,
         canEdit: (data.can_edit as boolean) ?? true,
         shareToken: (data.share_token as string) ?? null,
+        owned: (data.owned as boolean) ?? false,
     };
 }
 
@@ -423,11 +475,19 @@ export async function updatePlan(
     return (data.version as number) ?? (version ?? 0) + 1;
 }
 
+/**
+ * `planToken` is the plan's edit token, and it's required: the server uses it
+ * to establish that the person booking is the plan's creator and not someone
+ * who was shown it (see TripController::store). Booking also needs an account —
+ * a 401/403 comes back as AuthRequiredError so the caller can offer a login
+ * instead of a pointless retry.
+ */
 export async function createTrip(
     details: GuestDetails,
     variantName: string,
     plan: ItineraryPlan,
     variantDays: ItineraryDay[],
+    planToken: string,
 ): Promise<{ trip_id: number; inquiry_count: number }> {
     const response = await fetch('/trips', {
         method: 'POST',
@@ -442,16 +502,19 @@ export async function createTrip(
             variant_name: variantName,
             plan,
             variant_days: variantDays,
+            plan_token: planToken,
         }),
     });
 
     if (!response.ok) {
         const data = await response.json().catch(() => ({}));
+        const message = (data as { error?: string }).error;
 
-        throw new Error(
-            (data as { error?: string }).error ??
-                'Booking failed. Please try again.',
-        );
+        if (response.status === 401 || response.status === 403) {
+            throw new AuthRequiredError(message ?? 'Login required');
+        }
+
+        throw new Error(message ?? 'Booking failed. Please try again.');
     }
 
     return response.json();

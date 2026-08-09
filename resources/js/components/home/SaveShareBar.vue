@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { savePlan } from '@/lib/kaia-client';
+import { AuthRequiredError, claimPlan, savePlan } from '@/lib/kaia-client';
 import type { ItineraryPlan } from '@/lib/kaia-types';
 import SaveLoginModal from './SaveLoginModal.vue';
 
@@ -19,6 +19,9 @@ const props = defineProps<{
     // Never build a share link from the address bar: on the creator's own
     // /trip/{token} page that URL *is* the edit link.
     shareToken?: string | null;
+    // Whether the plan is already in this traveler's account. Distinct from
+    // having a token — the autosave persists anonymously.
+    owned?: boolean;
     isLoggedIn?: boolean;
 }>();
 
@@ -125,8 +128,19 @@ function printPage() {
 // --- Save to account (bookmark an already-shared plan) ---
 
 const savingToAccount = ref(false);
-const savedToAccount = ref(false);
+const savedToAccount = ref(!!props.owned);
 const showAccountAuthModal = ref(false);
+
+// Ownership can arrive after mount (the first autosave, or a claim made from
+// the Save button in the variant header).
+watch(
+    () => props.owned,
+    (owned) => {
+        if (owned) {
+            savedToAccount.value = true;
+        }
+    },
+);
 
 async function saveToAccount() {
     if (savingToAccount.value || savedToAccount.value) {
@@ -141,9 +155,27 @@ async function saveToAccount() {
 
     savingToAccount.value = true;
 
+    // The plan is almost always persisted already (autosave, or this bar's own
+    // share-link save), so putting it in the account means claiming that row —
+    // calling savePlan() again would mint a duplicate the traveler never asked
+    // for, with a token diverging from the link they may already have shared.
+    const existing = props.existingToken ?? props.token;
+
     try {
-        await savePlan(props.plan);
+        if (existing) {
+            await claimPlan(existing);
+        } else {
+            await savePlan(props.plan);
+        }
+
         savedToAccount.value = true;
+    } catch (e) {
+        // Session expired between page load and click.
+        if (e instanceof AuthRequiredError) {
+            showAccountAuthModal.value = true;
+        } else {
+            console.warn('Failed to save plan to account:', e);
+        }
     } finally {
         savingToAccount.value = false;
     }

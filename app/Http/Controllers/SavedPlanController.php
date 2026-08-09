@@ -16,6 +16,11 @@ use Inertia\Response;
 
 class SavedPlanController extends Controller
 {
+    // Same contract as KaiaController::savePlan: persisting a plan needs no
+    // account (the token is what makes it retrievable), and `user_id` is taken
+    // from the session, so an anonymous request can only ever create an
+    // unowned plan. Putting a plan *into an account* goes through
+    // KaiaController::claimPlan, which is behind `auth`.
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -43,7 +48,7 @@ class SavedPlanController extends Controller
         ]);
     }
 
-    public function show(string $token): Response
+    public function show(Request $request, string $token): Response
     {
         $resolved = SavedPlan::resolveByAnyToken($token);
 
@@ -66,6 +71,10 @@ class SavedPlanController extends Controller
             // Always the read-only link, whichever way the viewer got here —
             // "share" should never pass on write access.
             'shareUrl' => route('trip.show', $saved->share_token),
+            // Whether this plan is already in the viewer's own account — see
+            // KaiaController::claimPlan. Only true for the owner, so a visitor
+            // is never shown someone else's saved state.
+            'owned' => $saved->user_id !== null && $saved->user_id === $request->user()?->id,
         ]);
     }
 

@@ -4,12 +4,33 @@ namespace App\Http\Controllers;
 
 use App\Enums\InquiryStatus;
 use App\Models\Inquiry;
+use App\Models\SavedPlan;
 use App\Models\Trip;
+use App\Services\Booking\ActiveRequestGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TripController extends Controller
 {
+    /**
+     * Turn a trip plan into booking requests.
+     *
+     * Two rules from CLAUDE.md's account line are enforced here, and neither
+     * had an enforcement point before: booking needs an account (the route is
+     * behind `auth`), and **only the plan's creator may book it**. Sharing a
+     * plan for co-planning does not hand over the ability to send requests —
+     * that's what keeps "one active request pipeline per traveler" coherent,
+     * since it assumes exactly one responsible person per pipeline.
+     *
+     * "Creator" is resolved from the plan token the booking is made against:
+     * - the token must be the plan's *edit* token; a read-only share token
+     *   resolves to a real plan but its holder is a co-planner, not the owner,
+     * - a plan that already belongs to an account may only be booked by that
+     *   account,
+     * - a plan with no owner yet (the anonymous token-only path, which is most
+     *   of them) is claimed by the booker: possession of the edit token is
+     *   what "creator" means until someone attaches an identity to it.
+     */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -23,20 +44,51 @@ class TripController extends Controller
             'variant_name' => 'required|string|max:255',
             'plan' => 'required|array',
             'variant_days' => 'required|array',
+            // Required: without it there is no way to tell the creator from
+            // someone who was shown the plan. The frontend always has one by
+            // this point — the plan autosaves as soon as it is generated — and
+            // mints one first if a save happened to have failed.
+            'plan_token' => 'required|string|max:64',
         ]);
 
-        $activeStatuses = collect(InquiryStatus::cases())
-            ->filter(fn (InquiryStatus $s) => $s->isActive())
-            ->map(fn (InquiryStatus $s) => $s->value)
-            ->all();
+        $user = $request->user();
 
-        if (Inquiry::where('email', $validated['email'])->whereIn('status', $activeStatuses)->exists()) {
+        if ($user === null) {
+            abort(401);
+        }
+
+        $plan = SavedPlan::where('token', $validated['plan_token'])->first();
+
+        // Covers both "no such plan" and "that's the read-only share token".
+        // Deliberately the same answer for both, so a share link can't be used
+        // to probe for the existence of its editable twin.
+        if ($plan === null) {
             return response()->json([
-                'error' => 'You already have a pending booking request. Please wait for it to be resolved before submitting a new one.',
-            ], 422);
+                'error' => __('Only the traveler who created this plan can send booking requests for it.'),
+            ], 403);
+        }
+
+        if ($plan->user_id !== null && $plan->user_id !== $user->id) {
+            return response()->json([
+                'error' => __('Only the traveler who created this plan can send booking requests for it.'),
+            ], 403);
+        }
+
+        if (ActiveRequestGate::blocks($user->id, $validated['email'])) {
+            return response()->json(['error' => ActiveRequestGate::message()], 422);
+        }
+
+        // Booking is the strongest possible commitment signal, so an anonymous
+        // plan becomes this account's plan at the same moment — otherwise the
+        // trip they just booked wouldn't show up on their own dashboard. After
+        // the gate, so a rejected request leaves no trace on the plan.
+        if ($plan->user_id === null) {
+            $plan->update(['user_id' => $user->id]);
         }
 
         $trip = Trip::create([
+            'user_id' => $user->id,
+            'saved_plan_id' => $plan->id,
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
@@ -63,6 +115,7 @@ class TripController extends Controller
             Inquiry::create([
                 'listing_id' => $listingId,
                 'trip_id' => $trip->id,
+                'user_id' => $user->id,
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'] ?? null,
@@ -80,8 +133,18 @@ class TripController extends Controller
         ]);
     }
 
-    public function inquiries(Trip $trip): JsonResponse
+    /**
+     * Live status of a trip's requests, polled by BookingSection right after
+     * booking. Scoped to the trip's owner: the id is a plain auto-increment, so
+     * without the check this listed any traveler's booked lodges and their
+     * confirmation states to anyone who counted upwards. Trips created before
+     * bookings had an owner have no `user_id` and are no longer reachable here
+     * — they predate the account requirement and nothing is polling them.
+     */
+    public function inquiries(Request $request, Trip $trip): JsonResponse
     {
+        abort_unless($trip->user_id !== null && $trip->user_id === $request->user()?->id, 403);
+
         $inquiries = $trip->inquiries()
             ->with('listing:id,name')
             ->get(['id', 'trip_id', 'listing_id', 'status']);

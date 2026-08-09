@@ -23,7 +23,7 @@ What "good" means here, in the order it gets judged:
 - **Account required:** saving a plan to your account, collaborative editing (a co-planner is a person, so they need an identity), and booking.
 - **Booking is the creator's alone, for now.** A shared plan does not turn co-planners into bookers — this keeps the one-active-request-per-traveler governance below coherent, which assumes exactly one responsible person per pipeline.
 
-Enforcement today only partly matches: the save-to-account gate is client-side (`SaveButton` checks `isLoggedIn`; `SavedPlanController::store` still accepts anonymous saves, which the token auto-persist path relies on), and the booking endpoints (`ListingController::storeInquiry`, `TripController::store`) require neither login nor any notion of plan ownership — the active-request gate keys on the email address. Closing that gap is part of the collaborative work, not a separate cleanup.
+All three are enforced server-side since 2026-08-08. Creating and autosaving a plan still need no account, but an anonymous request can only produce an *unowned* plan; `KaiaController::claimPlan` (behind `auth`) is the only thing that writes `SavedPlan.user_id`. The booking endpoints (`ListingController::storeInquiry` / `storeBatchInquiry`, `TripController::store`) are behind `auth`, booking resolves "creator" from the plan's **edit** token — a read-only share token is refused — and the one-active-request gate matches on the account as well as the email (`App\Services\Booking\ActiveRequestGate`), so it can't be sidestepped by typing a second address.
 
 `TRAVEL_PLAN.md` is the working log for exactly this — read its "Known gaps / next up" before starting, and add a dated entry when you finish something.
 
@@ -99,8 +99,8 @@ A near miss of the same class, found 2026-08-09 before it fired: `photos:audit-r
 The central design problem: **turning an AI-generated plan into confirmed bookings without flooding partner owners with speculative requests.**
 
 Status of the governance rules:
-- ✅ **One active request pipeline per traveler** — enforced by email in `ListingController::storeInquiry` / `storeBatchInquiry` against `InquiryStatus::isActive()`; a batch shortlist request checks the gate once for the whole batch.
-- ✅ **Real commitment signal before requests go out** — name, email, travel dates required (no payment).
+- ✅ **One active request pipeline per traveler** — `App\Services\Booking\ActiveRequestGate` matches an active `InquiryStatus` against the booking account *or* the submitted email, checked by `ListingController::storeInquiry` / `storeBatchInquiry` and `TripController::store`; a batch shortlist request checks the gate once for the whole batch.
+- ✅ **Real commitment signal before requests go out** — an account plus name, email and travel dates (no payment).
 - ✅ **Soft hold with expiry** — Native connector reservations set `hold_expires_at` and dispatch `ExpireNativeHoldJob`, which releases the hold and mails the guest if the partner doesn't respond in time (idempotent, status-guarded).
 - ✅ **Low-effort partner response** — signed one-click confirm/cancel URLs (`routes/partner.php`) plus the same transition from the logged-in dashboard, both through `InquiryDecisionService`.
 - ⬜ **Staged confirmations** — lock accommodation first, then layer in activities/restaurants once the route is fixed. Still not implemented; today's flow treats each inquiry independently.

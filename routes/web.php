@@ -51,20 +51,23 @@ Route::get('trip/{token}', [SavedPlanController::class, 'show'])
 Route::get('trip/{token}/pdf', [SavedPlanController::class, 'pdf'])
     ->middleware('throttle:10,1')
     ->name('trip.pdf');
+// Sending an inquiry is a booking request, and booking needs an account (see
+// CLAUDE.md's account line) — so both of these sit behind `auth`. Browsing,
+// planning and sharing a plan stay open; only the commitment step doesn't.
 Route::post('listings/{listing:slug}/inquiries', [ListingController::class, 'storeInquiry'])
-    ->middleware('throttle:10,1')
+    ->middleware(['auth', 'throttle:10,1'])
     ->name('listings.inquiries.store');
 
 Route::post('inquiries/batch', [ListingController::class, 'storeBatchInquiry'])
-    ->middleware('throttle:10,1')
+    ->middleware(['auth', 'throttle:10,1'])
     ->name('inquiries.batch.store');
 
 Route::post('listings/{listing:slug}/reviews', [ListingController::class, 'storeReview'])
     ->middleware('throttle:10,1')
     ->name('listings.reviews.store');
 
-Route::post('trips', [TripController::class, 'store'])->middleware('throttle:5,1')->name('trips.store');
-Route::get('trips/{trip}/inquiries', [TripController::class, 'inquiries'])->middleware('throttle:30,1')->name('trips.inquiries');
+Route::post('trips', [TripController::class, 'store'])->middleware(['auth', 'throttle:5,1'])->name('trips.store');
+Route::get('trips/{trip}/inquiries', [TripController::class, 'inquiries'])->middleware(['auth', 'throttle:30,1'])->name('trips.inquiries');
 
 Route::post('support', [AfterSalesController::class, 'support'])->middleware('throttle:5,1')->name('support.store');
 Route::post('feedback', [AfterSalesController::class, 'feedback'])->middleware('throttle:5,1')->name('feedback.store');

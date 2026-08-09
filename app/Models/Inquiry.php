@@ -11,6 +11,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $listing_id
  * @property int|null $trip_id
+ * @property int|null $user_id
  * @property string $name
  * @property string $email
  * @property string|null $phone
@@ -30,9 +31,12 @@ use Illuminate\Support\Carbon;
  */
 class Inquiry extends Model
 {
+    // `user_id` is the account that sent the request — server-resolved from the
+    // session, never from request input (see Trip's note on the same field).
     protected $fillable = [
         'listing_id',
         'trip_id',
+        'user_id',
         'name',
         'email',
         'phone',
@@ -76,5 +80,13 @@ class Inquiry extends Model
     public function trip(): BelongsTo
     {
         return $this->belongsTo(Trip::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

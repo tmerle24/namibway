@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Form } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Form, usePage } from '@inertiajs/vue3';
+import { computed, nextTick, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import InputError from '@/components/InputError.vue';
 import batch from '@/routes/inquiries/batch';
+import SaveLoginModal from './SaveLoginModal.vue';
 
 const props = defineProps<{
     items: Map<number, string>;
@@ -17,6 +18,49 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const formOpen = ref(false);
+
+// A shortlist request is a booking request, and those need an account
+// (inquiries.batch.store is behind `auth`). Asked for in a modal at the moment
+// of sending — a redirect to the login page would take the shortlist, which
+// lives in the Explore page's local state, down with it.
+const account = computed(
+    () =>
+        (
+            usePage().props.auth as
+                { user: { name?: string; email?: string } | null } | undefined
+        )?.user ?? null,
+);
+
+// One-shot, so logging in doesn't overwrite what was already typed here.
+const initialAccount = account.value;
+
+const shortlistForm = ref<{ submit: () => void } | null>(null);
+const showLogin = ref(false);
+
+function onSend(event: MouseEvent) {
+    // Logged in: the button is a real submit and this does nothing.
+    if (account.value) {
+        return;
+    }
+
+    // type="button" skips the browser's own required-field check, so run it by
+    // hand — otherwise an empty form sends the traveler through a login only to
+    // come back with validation errors.
+    const form = (event.currentTarget as HTMLElement).closest('form');
+
+    if (form && !form.reportValidity()) {
+        return;
+    }
+
+    showLogin.value = true;
+}
+
+async function onAuthenticated() {
+    showLogin.value = false;
+
+    await nextTick();
+    shortlistForm.value?.submit();
+}
 </script>
 
 <template>
@@ -38,6 +82,7 @@ const formOpen = ref(false);
         </div>
         <div v-if="formOpen" class="shortlist-panel">
             <Form
+                ref="shortlistForm"
                 v-bind="batch.store.form()"
                 reset-on-success
                 :transform="
@@ -52,12 +97,22 @@ const formOpen = ref(false);
             >
                 <label>
                     {{ t('explore.shortlist.name') }}
-                    <input name="name" type="text" required />
+                    <input
+                        name="name"
+                        type="text"
+                        required
+                        :value="initialAccount?.name"
+                    />
                     <InputError :message="errors.name" />
                 </label>
                 <label>
                     {{ t('explore.shortlist.email') }}
-                    <input name="email" type="email" required />
+                    <input
+                        name="email"
+                        type="email"
+                        required
+                        :value="initialAccount?.email"
+                    />
                     <InputError :message="errors.email" />
                 </label>
                 <label>
@@ -71,18 +126,39 @@ const formOpen = ref(false);
                     <InputError :message="errors.message" />
                 </label>
                 <InputError :message="errors.listing_ids" />
-                <button type="submit" class="cta" :disabled="processing">
+                <!--
+                    type="button" while logged out, so the click opens the login
+                    modal instead of firing a request the server would only
+                    bounce. Everything typed here stays put and is sent as soon
+                    as the modal reports back.
+                -->
+                <button
+                    :type="account ? 'submit' : 'button'"
+                    class="cta"
+                    :disabled="processing"
+                    @click="onSend"
+                >
                     {{
                         processing
                             ? t('explore.shortlist.sending')
                             : t('explore.shortlist.send')
                     }}
                 </button>
+                <p v-if="!account" class="shortlist-login-note">
+                    {{ t('explore.shortlist.loginRequired') }}
+                </p>
                 <p v-if="recentlySuccessful" class="confirm-note">
                     {{ t('explore.shortlist.success') }}
                 </p>
             </Form>
         </div>
+
+        <SaveLoginModal
+            v-if="showLogin"
+            intent="book"
+            @close="showLogin = false"
+            @authenticated="onAuthenticated"
+        />
     </div>
 </template>
 
@@ -177,6 +253,13 @@ const formOpen = ref(false);
 .shortlist-form .cta:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+/* Heads-up under the send button while logged out — the login itself happens
+   in a modal on send, so this isn't the call to action. */
+.shortlist-login-note {
+    font-size: 12px;
+    color: #5b5346;
 }
 
 .confirm-note {
