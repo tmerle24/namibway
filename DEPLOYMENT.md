@@ -329,6 +329,12 @@ liefert automatisch AVIF/WebP.
 **Das funktioniert nicht auf der Standard-Bucket-URL.** `https://pub-<hash>.r2.dev` liegt
 nicht auf der namibway.com-Zone und kennt kein `/cdn-cgi/image/`. Zum Einschalten:
 
+0. **Voraussetzung, die aktuell NICHT erfüllt ist:** Die DNS-Zone `namibway.com` muss bei
+   Cloudflare liegen — eine R2 Custom Domain kann nur an eine Zone im eigenen
+   Cloudflare-Account gehängt werden. Stand 2026-08-09 zeigt `namibway.com` direkt auf die
+   OVH-IP (kein Cloudflare-Proxy, kein `cf-ray`-Header), d.h. erst Nameserver zu Cloudflare
+   umziehen, dann weiter. Prüfen: `dig +short cdn.namibway.com` muss etwas zurückgeben,
+   bevor Schritt 3 auch nur angefasst wird.
 1. Im Cloudflare-Dashboard eine **Custom Domain** an den Media-Bucket hängen
    (R2 → Bucket `namibway` → Settings → Public access → Custom Domain), z.B. `cdn.namibway.com`.
    Der Bucket für Backups (`namibway-backups`) bekommt **keine** Custom Domain.

@@ -82,20 +82,24 @@ echo "═══ 5/15 Storage-Rechte + View-Cache früh aufbauen ═══"
 # Während der Wartung (php artisan down läuft seit Schritt 1 bis fast zum Schluss)
 # kompiliert PHP-FPM (als www-data) neue Blade-Views live bei jedem Request, die noch
 # nicht im Cache liegen — z.B. die neue errors/503.blade.php. touch() verlangt aber
-# Eigentümerschaft der Datei (Schreibrecht über die Gruppe reicht nicht), und
-# `php artisan view:cache` läuft als Deploy-User (z.B. ubuntu). Kompiliert also www-data
-# zuerst und danach ubuntu (oder umgekehrt), schlägt touch() mit EPERM fehl — das war der
-# kurze "touch(): Utime failed" 500er direkt nach Deploy-Start. Fix: Storage-Rechte +
-# View-Cache so früh wie möglich (direkt nach composer install) statt erst am Schluss,
-# damit das Zeitfenster für einen Live-Request von www-data auf eine noch nicht
-# gecachte View minimal ist.
+# Eigentümerschaft der Datei (Schreibrecht über die Gruppe reicht nicht). Deshalb
+# MÜSSEN die kompilierten Views www-data gehören: BladeCompiler::compile() ruft
+# touch($compiled, mtime) auf, sobald eine Quell-View neuer ist als ihr Kompilat bei
+# identischem Inhalt — z.B. weil scribe:generate (Schritt 10) die Doku-View bei jedem
+# Deploy neu schreibt. Lief view:cache als Deploy-User (bzw. hat der chown -R in
+# Schritt 13 die Kompilate wieder dem Deploy-User zugeschlagen), schlug dieses touch()
+# als www-data dauerhaft mit EPERM fehl — jeder Render der betroffenen View war ein
+# 500er, bis jemand manuell eingriff (Incident 2026-08-09, siehe CLAUDE.md).
+# Fix: view:clear/view:cache als www-data ausführen, und storage/framework/views
+# bleibt www-data-owned (Schritt 13 nimmt das Verzeichnis vom globalen chown aus).
 sudo chown -R "$(whoami):www-data" "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
 sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
 sudo find "$APP_DIR/bootstrap/cache" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/bootstrap/cache" -type f -exec chmod 664 {} \;
-php artisan view:clear
-php artisan view:cache
+sudo chown -R www-data:www-data "$APP_DIR/storage/framework/views"
+sudo -u www-data php artisan view:clear
+sudo -u www-data php artisan view:cache
 
 if [ "$SKIP_NPM" = false ]; then
     echo "═══ 6/15 Caches leeren vor dem Build (Wayfinder braucht die aktuellen Routen, nicht den alten Cache) ═══"
@@ -140,6 +144,10 @@ sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
 sudo find "$APP_DIR/bootstrap/cache" -type d -exec chmod 775 {} \;
 sudo find "$APP_DIR/bootstrap/cache" -type f -exec chmod 664 {} \;
+# Kompilierte Views zurück an www-data — der globale chown oben hat sie gerade dem
+# Deploy-User zugeschlagen, womit das touch() des BladeCompilers als www-data mit
+# EPERM fehlschlagen würde (500er auf jeder betroffenen View, siehe Schritt 5).
+sudo chown -R www-data:www-data "$APP_DIR/storage/framework/views"
 
 sudo supervisorctl restart "${QUEUE_WORKER_NAME}:*" 2>/dev/null || echo "  → Supervisor-Worker '$QUEUE_WORKER_NAME' noch nicht eingerichtet, übersprungen"
 

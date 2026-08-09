@@ -34,7 +34,13 @@ class ItineraryServiceDrivingTimeTest extends TestCase
         config(['services.anthropic.api_key' => 'test-key']);
     }
 
-    private function tripParams(): array
+    /**
+     * end_location is a parameter because generate() now also enforces the
+     * route's shape (validateRouteShape): a fixture whose last day is in
+     * Okahandja must declare a one-way trip ending there, or the shape check
+     * would trip before the driving-time behaviour under test is reached.
+     */
+    private function tripParams(string $end = 'Windhoek'): array
     {
         return [
             'nights' => 1,
@@ -45,7 +51,7 @@ class ItineraryServiceDrivingTimeTest extends TestCase
             'vehicle_type' => 'car',
             'budget_tier' => 'mid-range',
             'start_location' => 'Windhoek',
-            'end_location' => 'Windhoek',
+            'end_location' => $end,
         ];
     }
 
@@ -103,7 +109,7 @@ class ItineraryServiceDrivingTimeTest extends TestCase
         $this->seedLodge($okahandja);
         $this->fakeAnthropicPlan('Windhoek', 'Okahandja');
 
-        $plan = app(ItineraryService::class)->generate($this->tripParams());
+        $plan = app(ItineraryService::class)->generate($this->tripParams(end: 'Okahandja'));
 
         $this->assertSame('Windhoek', $plan['variants'][0]['days'][0]['location']);
         $this->assertSame('Okahandja', $plan['variants'][0]['days'][1]['location']);
@@ -132,10 +138,70 @@ class ItineraryServiceDrivingTimeTest extends TestCase
         $this->expectException(RuntimeException::class);
 
         try {
-            app(ItineraryService::class)->generate($this->tripParams());
+            app(ItineraryService::class)->generate($this->tripParams(end: 'Swakopmund'));
         } finally {
             // Initial attempt + one corrective retry — every call gets the same
             // fake response, so the violation is never actually resolved.
+            Http::assertSentCount(2);
+        }
+    }
+
+    public function test_plan_ignoring_the_start_city_triggers_a_corrective_retry(): void
+    {
+        // Production incident 2026-08-09: a Windhoek round trip whose plan
+        // began in Otjiwarongo (Otjozondjupa) sailed through because only
+        // driving times were validated, never the route's shape.
+        $windhoek = City::where('slug', 'windhoek')->firstOrFail();
+        $otjiwarongo = City::where('slug', 'otjiwarongo')->firstOrFail();
+
+        $this->seedLodge($windhoek);
+        $this->seedLodge($otjiwarongo);
+        $this->fakeAnthropicPlan('Otjiwarongo', 'Windhoek');
+
+        $this->expectException(RuntimeException::class);
+
+        try {
+            app(ItineraryService::class)->generate($this->tripParams());
+        } finally {
+            Http::assertSentCount(2);
+        }
+    }
+
+    public function test_plan_with_too_many_days_triggers_a_corrective_retry(): void
+    {
+        // The visible symptom of an over-long plan is a stage dated past the
+        // traveler's departure day (2026-08-09: "19–20 Jan" on a trip ending
+        // 18 Jan) — a 1-night trip must have exactly 2 day entries.
+        $windhoek = City::where('slug', 'windhoek')->firstOrFail();
+
+        $this->seedLodge($windhoek);
+
+        $planInput = [
+            'trip_summary' => 'A short test trip.',
+            'variants' => [[
+                'name' => 'Test Variant',
+                'vehicle' => 'Test Vehicle',
+                'days' => [
+                    ['day' => 1, 'date' => '14 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge'],
+                    ['day' => 2, 'date' => '15 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge'],
+                    ['day' => 3, 'date' => '16 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge'],
+                ],
+            ]],
+        ];
+
+        Http::fake([
+            'api.anthropic.com/*' => Http::response([
+                'content' => [
+                    ['type' => 'tool_use', 'name' => 'propose_itinerary', 'input' => $planInput],
+                ],
+            ], 200),
+        ]);
+
+        $this->expectException(RuntimeException::class);
+
+        try {
+            app(ItineraryService::class)->generate($this->tripParams());
+        } finally {
             Http::assertSentCount(2);
         }
     }

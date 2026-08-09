@@ -103,12 +103,9 @@ export function thumbAttrs(
 function rewriteThroughCloudflare(url: string, width: number): string | null {
     const options = `format=auto,fit=scale-down,width=${width},quality=${config.quality}`;
 
-    // Root-relative: our own origin, and the common case for the bundled
-    // fallback images behind every imageless Explore card.
-    if (url.startsWith('/') && !url.startsWith('//')) {
-        return `/cdn-cgi/image/${options}${url}`;
-    }
-
+    // Root-relative URLs (bundled fallbacks, legacy /storage uploads) are the
+    // app origin, which is NOT Cloudflare-proxied — see config/media.php for
+    // why only the media CDN origin qualifies.
     for (const origin of config.origins) {
         if (origin !== '' && url.startsWith(`${origin}/`)) {
             return `${origin}/cdn-cgi/image/${options}${url.slice(origin.length)}`;

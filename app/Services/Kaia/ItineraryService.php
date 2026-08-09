@@ -211,23 +211,29 @@ class ItineraryService
     public function generate(array $tripParams): array
     {
         $plan = $this->generateWithFreshRetry($tripParams);
-        $violations = $this->validateDrivingTimes($plan);
+        $violations = [
+            ...$this->validateDrivingTimes($plan),
+            ...$this->validateRouteShape($plan, $tripParams),
+        ];
 
         if ($violations !== []) {
-            Log::warning('Kaia itinerary violated the driving-time safety limit, retrying with corrective feedback', [
+            Log::warning('Kaia itinerary violated a hard route constraint, retrying with corrective feedback', [
                 'violations' => $violations,
             ]);
 
             $plan = $this->generateWithFreshRetry($tripParams, $this->correctionMessage($violations));
-            $violations = $this->validateDrivingTimes($plan);
+            $violations = [
+                ...$this->validateDrivingTimes($plan),
+                ...$this->validateRouteShape($plan, $tripParams),
+            ];
 
             if ($violations !== []) {
-                Log::error('Kaia itinerary still violates the driving-time safety limit after retrying', [
+                Log::error('Kaia itinerary still violates a hard route constraint after retrying', [
                     'violations' => $violations,
                 ]);
 
                 throw new RuntimeException(
-                    'Could not generate a safe itinerary within the driving-time limits: '.implode('; ', $violations)
+                    'Could not generate an itinerary within the hard route constraints: '.implode('; ', $violations)
                 );
             }
         }
@@ -1250,15 +1256,76 @@ class ItineraryService
     }
 
     /**
+     * The traveler's start/end city and trip length are ground truth from the
+     * interview, but nothing enforced them after generation — the model
+     * occasionally ignores the ROUTE guidance (seen 2026-08-09: a Windhoek
+     * round trip that began in Otjiwarongo and appended a Windhoek stage past
+     * the departure date, because the plan carried one day too many). Same
+     * null-skip semantics as validateDrivingTimes: a location that doesn't
+     * resolve to a known city can't be validated and is skipped, not guessed.
+     *
+     * Start/end are compared at region level, matching what routingGuidance
+     * actually asks for ("the region containing …") — day 1 in another Khomas
+     * town is fine, day 1 in Otjozondjupa is not.
+     *
+     * @param  array{trip_summary: string, variants: array<int, array<string, mixed>>}  $plan
+     * @param  array<string, mixed>  $tripParams
+     * @return array<int, string>
+     */
+    private function validateRouteShape(array $plan, array $tripParams): array
+    {
+        $violations = [];
+
+        $startName = $this->stringParam($tripParams, 'start_location', 'Windhoek');
+        $endName = $this->stringParam($tripParams, 'end_location', $startName);
+        $start = $this->canonicalCity($startName);
+        $end = $this->canonicalCity($endName);
+        $nights = is_numeric($tripParams['nights'] ?? null) ? (int) $tripParams['nights'] : null;
+
+        foreach ($plan['variants'] as $index => $variant) {
+            /** @var array<int, array<string, mixed>> $days */
+            $days = array_values($variant['days'] ?? []);
+
+            if ($days === []) {
+                continue;
+            }
+
+            $label = 'Variant '.($index + 1);
+
+            if ($nights !== null && count($days) !== $nights + 1) {
+                $violations[] = "{$label}: has ".count($days)." day entries for a {$nights}-night trip"
+                    .' — produce EXACTLY '.($nights + 1).' day entries, numbered 1 to '.($nights + 1);
+            }
+
+            $first = $this->canonicalCity((string) ($days[0]['location'] ?? ''));
+            $last = $this->canonicalCity((string) ($days[count($days) - 1]['location'] ?? ''));
+
+            if ($start !== null && $first !== null && $first->region_id !== $start->region_id) {
+                $violations[] = "{$label}: day 1 is in {$first->name} but the trip starts in "
+                    ."{$startName} — day 1's location must be in the region containing {$startName}";
+            }
+
+            if ($end !== null && $last !== null && $last->region_id !== $end->region_id) {
+                $violations[] = "{$label}: the final day is in {$last->name} but the trip ends in "
+                    ."{$endName} — the last day's location must be in the region containing {$endName}";
+            }
+        }
+
+        return array_values(array_unique($violations));
+    }
+
+    /**
      * @param  array<int, string>  $violations
      */
     private function correctionMessage(array $violations): string
     {
-        return 'Your previous itinerary broke the daily driving-time safety limit on these legs: '
-            .implode('; ', $violations).'. Fix this by keeping the traveler an extra night in the '
-            .'city they are departing from before continuing (splitting the drive across two days), '
-            .'not by attempting the whole distance in a single day. Re-plan the full itinerary with this '
-            .'correction — keep the total day count and start/end locations the same.';
+        return 'Your previous itinerary violated these hard constraints: '
+            .implode('; ', $violations).'. For driving-time violations, keep the traveler an extra '
+            .'night in the city they are departing from before continuing (splitting the drive across '
+            .'two days) — do not attempt the whole distance in a single day. For start/end or day-count '
+            .'violations, re-anchor the route: day 1 in the start location, the final day in the end '
+            .'location, and exactly the required number of day entries. Re-plan the full itinerary with '
+            .'these corrections.';
     }
 
     /**

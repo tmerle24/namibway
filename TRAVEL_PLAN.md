@@ -692,6 +692,23 @@ when seeded, but not when imported:
     new phpstan-sensitive code twice: nullable relation access, and return
     types narrower than what `Collection` methods can prove.
 
+### Session 10 — 2026-08-09 (Prod-Incident-Nachwehen)
+
+- **Route-Shape-Validierung in `ItineraryService::generate()`** (`validateRouteShape`):
+  Start-/End-Stadt und Tagesanzahl waren reine Prompt-Guidance ohne serverseitige
+  Prüfung. Auf Prod kam so ein Windhoek-Rundtrip heraus, der in Otjiwarongo startete
+  und eine Windhoek-Etappe *nach* dem Abreisetag anhängte (19.–20. Jan bei Abreise
+  18. Jan — ein Tag zu viel im Plan). Jetzt: Tag 1 / letzter Tag müssen in der Region
+  der Start-/End-Stadt liegen (Region-Level, wie die ROUTE-Guidance es formuliert),
+  und die Tagesanzahl muss exakt `nights + 1` sein. Verstöße laufen über denselben
+  Korrektur-Retry wie die Fahrzeit-Validierung; unbekannte Städte werden wie dort
+  übersprungen statt geraten (null-skip). Tests in `ItineraryServiceDrivingTimeTest`
+  (Fixtures dort mussten als One-Way deklariert werden, sonst reißt die neue Prüfung).
+- Kontext desselben Tages, außerhalb dieses Files: `/cdn-cgi/image/`-Wrapping auf
+  App-Origin-URLs entfernt (404te alle Destination-/Region-/Fallback-/Städtebilder,
+  siehe CLAUDE.md-Incident 2026-08-09) und deploy.sh-Fix für die `touch()`-EPERM-500er
+  auf kompilierten Views.
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its

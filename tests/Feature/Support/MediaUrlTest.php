@@ -17,7 +17,7 @@ class MediaUrlTest extends TestCase
     {
         config([
             'media.transforms.enabled' => true,
-            'media.transforms.origins' => ['https://cdn.namibway.test', 'https://namibway.test'],
+            'media.transforms.origins' => ['https://cdn.namibway.test'],
             'media.transforms.widths' => [64, 128, 256, 400, 800, 1600],
             'media.transforms.quality' => 80,
         ]);
@@ -33,13 +33,22 @@ class MediaUrlTest extends TestCase
         );
     }
 
-    public function test_it_rewrites_root_relative_urls(): void
+    public function test_it_leaves_root_relative_urls_alone(): void
     {
         $this->enableTransforms();
 
+        // Root-relative means app origin, and the app origin is served
+        // directly by nginx, not through Cloudflare — /cdn-cgi/image/ does not
+        // exist there. Wrapping these 404'd every bundled fallback image and
+        // every legacy /storage upload in production on 2026-08-09.
         $this->assertSame(
-            '/cdn-cgi/image/format=auto,fit=scale-down,width=400,quality=80/images/explore/activity-1.jpg',
+            '/images/explore/activity-1.jpg',
             MediaUrl::thumb('/images/explore/activity-1.jpg', 400),
+        );
+
+        $this->assertSame(
+            '/storage/regions/fish-river-canyon.jpg',
+            MediaUrl::thumb('/storage/regions/fish-river-canyon.jpg', 400),
         );
     }
 

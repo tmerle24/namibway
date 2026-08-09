@@ -30,16 +30,21 @@ return [
         'enabled' => (bool) env('MEDIA_TRANSFORMS_ENABLED', false),
 
         /*
-         | Origins whose URLs may be rewritten through `/cdn-cgi/image/`. A URL
-         | qualifies when it is root-relative (so: our own origin) or sits
-         | under one of these. Anything else is returned untouched — a scraped
-         | operator's website is not ours to proxy, and rewriting it would just
-         | produce a 404.
+         | Origins whose URLs may be rewritten through `/cdn-cgi/image/`.
+         | Anything else is returned untouched — a scraped operator's website
+         | is not ours to proxy, and rewriting it would just produce a 404.
+         |
+         | Deliberately ONLY the media-bucket domain: `/cdn-cgi/image/` exists
+         | solely on Cloudflare-proxied hosts, and the app origin
+         | (www.namibway.com) is served directly by nginx — its DNS isn't even
+         | on Cloudflare. Wrapping APP_URL or root-relative URLs 404'd every
+         | bundled fallback image and every legacy /storage upload on
+         | 2026-08-09. If the main zone ever moves behind the Cloudflare proxy,
+         | adding APP_URL back is a conscious decision, not a default.
          */
-        'origins' => array_values(array_filter([
+        'origins' => array_filter([
             env('CLOUDFLARE_R2_URL'),
-            env('APP_URL'),
-        ])),
+        ]),
 
         /*
          | Cloudflare bills per *unique* transformation, so requested widths are

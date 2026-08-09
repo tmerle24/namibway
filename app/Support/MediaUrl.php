@@ -123,13 +123,9 @@ class MediaUrl
     {
         $options = self::options($width);
 
-        // Root-relative ("/images/explore/activity-1.jpg", "/storage/…"): our
-        // own origin by definition, and the common case for the bundled
-        // fallback images that every imageless Explore card falls back to.
-        if (str_starts_with($url, '/') && ! str_starts_with($url, '//')) {
-            return '/cdn-cgi/image/'.$options.$url;
-        }
-
+        // Root-relative URLs (bundled fallbacks, legacy /storage uploads) are
+        // the app origin, which is NOT Cloudflare-proxied — see config/media.php
+        // for why only the media CDN origin qualifies.
         foreach (self::clientConfig()['origins'] as $origin) {
             if ($origin !== '' && str_starts_with($url, $origin.'/')) {
                 return $origin.'/cdn-cgi/image/'.$options.substr($url, strlen($origin));
