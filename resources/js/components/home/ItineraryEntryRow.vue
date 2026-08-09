@@ -161,7 +161,11 @@ function onMenuSelect(key: string) {
             :disabled="readonly"
             @click="startTimeEdit"
         >
-            {{ time || '—' }}
+            <!-- No placeholder dash when unset: the column stays (so rows
+                 align on the icon), but empty — "Zeit festlegen" on the
+                 details line is the labelled way in, this button is just
+                 the same target at the spot where the time will appear. -->
+            {{ time }}
         </button>
 
         <span class="entry-row-icon" :class="`entry-row-icon--${type}`">{{

@@ -1050,19 +1050,22 @@ body:has(.kaia-page) {
     padding-top: 2px;
     gap: 2px;
 }
+/* Deliberately quiet: the rail is route orientation only — the date that
+   anchors a day lives in the Tagesplan heading beside it, so the marker
+   must not compete with it. */
 .kaia-page .day-dot {
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
     border-radius: 50%;
-    background: var(--sage-light);
-    color: var(--ink);
+    background: var(--sand);
+    color: #7a6f63;
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: 'Inter', sans-serif;
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 10.5px;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
     /* Against the paper, not the timeline line running behind it. */
     border: 2px solid var(--paper);
@@ -1072,7 +1075,7 @@ body:has(.kaia-page) {
    the last one. Same footprint as .day-dot so the rail's centreline holds. */
 .kaia-page .day-dot--departure {
     background: var(--paper);
-    border-color: var(--sage-light);
+    border-color: var(--sand-dark);
 }
 /* On a phone the rail is competing with the cards for a ~340px viewport, so
    it gives back what it can: a narrower column and a tighter gutter. The
@@ -1311,7 +1314,7 @@ body:has(.kaia-page) {
     display: flex;
     align-items: flex-start;
     gap: 7px;
-    padding: 7px 0;
+    padding: 5px 0;
 }
 .kaia-page .entry-row + .entry-row {
     border-top: 1px solid var(--sand-dark);
@@ -1425,7 +1428,7 @@ body:has(.kaia-page) {
    small-caps treatment as .day-card-box-label ("UNTERKUNFT") directly above
    it — the two are siblings in the stage's reading order. */
 .kaia-page .day-plans-head {
-    margin: 2px 0 8px;
+    margin: 2px 0 6px;
 }
 .kaia-page .day-plans-title {
     font-family: 'Inter', sans-serif;
@@ -1445,7 +1448,9 @@ body:has(.kaia-page) {
    hairline under it is the day separator, and whitespace does the rest.
    A week-long stay reads as one schedule this way, not seven boxes. */
 .kaia-page .day-plan-section {
-    margin-bottom: 18px;
+    /* The hairline under each date is the day separator — the gap between
+       sections stays small so a 4–6 day stay fits one viewport. */
+    margin-bottom: 10px;
 }
 /* The header line doubles as the fold toggle — the date stays visible when
    the day is folded shut, so a collapsed day still says which day it is. */
@@ -1468,11 +1473,11 @@ body:has(.kaia-page) {
     text-align: left;
     cursor: pointer;
 }
-/* The date is each day's primary heading — the strongest line in the
-   Tagesplan after the stage heading itself. */
+/* The date is each day's primary heading — the visual anchor of the day,
+   the strongest line in the Tagesplan after the stage heading itself. */
 .kaia-page .day-plan-date {
     font-family: 'Inter', sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--ink);
     white-space: nowrap;
@@ -1512,7 +1517,7 @@ body:has(.kaia-page) {
     align-items: center;
     flex-wrap: wrap;
     gap: 2px 18px;
-    margin: 5px 0 0;
+    margin: 3px 0 0;
 }
 .kaia-page .day-plan-empty {
     font-size: 11.5px;

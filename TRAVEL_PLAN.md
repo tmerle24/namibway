@@ -876,6 +876,19 @@ each day still read as a stack of forms on a long stay:
 - Same verification pass as above (desktop/mobile/fold/read-only rendered,
   eslint + prettier + vue-tsc green).
 
+Third pass, same day — polish only, structure untouched:
+
+- ✅ An unset time renders as an **empty column**, not a "—": the fixed
+  46px slot keeps the icons aligned, "Zeit festlegen" on the details line
+  is the labelled way in, and the empty button is still the same tap
+  target at the spot where the time will appear.
+- ✅ The **date grew to 14px** (the day's visual anchor); the rail dots
+  went the other way — smaller, sand-toned, lighter weight — so the
+  timeline reads as route orientation, not as a second date column.
+- ✅ **Tighter vertical rhythm**: section gap 18→10px, entry rows 7→5px
+  vertical padding — a 4-day stage fits one desktop viewport with the
+  hairline under each date doing the separating, not whitespace.
+
 ### Known gaps / next up
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its
