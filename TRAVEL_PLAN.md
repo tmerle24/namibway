@@ -450,6 +450,18 @@ nowhere to add anything.
   one stage in `isStageStart` while `stageEndIndex` treated each as its own —
   so the second one rendered as a continuation and never offered a way to pick
   a stay. A null identity now always starts its own stage.
+- ✅ **"Nacht hinzufügen" on the stay block** (`addNight`) — copies the stage's
+  last day, stay and room included, and inserts it into the run so the stage
+  grows rather than splitting into two. Removing a night is the day row's own
+  menu, so the pair sits on the two objects it belongs to.
+- ⚠️ **Every stay control had to be widened to the stage first.** `applySwap`,
+  `selectRoom`, `clearRoom` and `removeItem` all wrote a single day while the
+  card they hang off spans the whole run — so swapping the lodge on a
+  three-night stage produced "one night at the new place, two at the old one",
+  and a picked room only applied to the first night despite the card saying
+  otherwise. They now write across `stageDayIndices()`. Pre-existing, but
+  latent while multi-night stages were mostly invisible; adding nights makes
+  them the normal case.
 - Deliberately **not** taken from the mockup, per Till: the "Etappeninfos"
   button and the pencil next to the city name.
 - Not verifiable in this environment: `composer install` couldn't complete
@@ -516,10 +528,10 @@ nowhere to add anything.
   possible from the UI anymore~~ — fixed in session 7: every day of a stage
   has its own row and its own menu, so a stay can be shortened a night at a
   time again without going through the params editor.
-- ⬜ **Adding a night to an existing stage** still has no direct control. The
-  add buttons all insert a *new* stage; growing a stay means adding a day and
-  then picking the same accommodation on it. A "+1 Nacht" control on the stage
-  card is the obvious counterpart to the per-day removal above.
+- ✅ ~~Adding a night to an existing stage has no direct control~~ — fixed in
+  session 7: "Nacht hinzufügen" on the stay block copies the stage's last day
+  (same place, same stay, same room, empty day plan) and inserts it into the
+  run, so the stage grows instead of splitting.
 - ⬜ Everything else from the original prototype
   (`namibia_travel_prototype.html`) not yet ported: the booking-request
   queue animation (one-active-request-at-a-time), after-sales cards,

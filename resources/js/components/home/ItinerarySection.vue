@@ -1062,10 +1062,65 @@ function reverseVariant(variantIndex: number) {
     roomPickerKey.value = null;
 }
 
+// Every control that acts on a stay sits on the stage card, which stands for
+// the whole run of nights — so they all write across the run, not just the day
+// the card happens to start on. Setting one day would silently split a
+// three-night stage into "one night at the new lodge, two at the old one".
+function stageDayIndices(variantIndex: number, dayIndex: number): number[] {
+    const endIndex = stageEndIndex(variantIndex, dayIndex);
+    const indices: number[] = [];
+
+    for (let i = dayIndex; i <= endIndex; i++) {
+        indices.push(i);
+    }
+
+    return indices;
+}
+
+// Days are serialized into the saved plan independently, so each one owns its
+// own copy of a listing rather than sharing a reference with its neighbours.
+function cloneRef<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value ?? null)) as T;
+}
+
 function removeItem(variantIndex: number, dayIndex: number) {
-    editableVariants.value[variantIndex].days[dayIndex].accommodation = null;
+    const days = editableVariants.value[variantIndex].days;
+
+    for (const i of stageDayIndices(variantIndex, dayIndex)) {
+        days[i].accommodation = null;
+        days[i].room_selection = null;
+    }
+
     swap.value = null;
     roomPickerKey.value = null;
+}
+
+// Extends a stay by one night: copies the stage's last day — same place, same
+// accommodation, same room — and inserts it right after, so the run grows into
+// one longer stage instead of splitting into two. The new night's own
+// activities and restaurants start empty; a night added is a day not yet
+// planned.
+function addNight(variantIndex: number, dayIndex: number) {
+    const days = editableVariants.value[variantIndex].days;
+    const endIndex = stageEndIndex(variantIndex, dayIndex);
+    const last = days[endIndex];
+
+    days.splice(endIndex + 1, 0, {
+        day: 0,
+        location: last.location,
+        accommodation: cloneRef(last.accommodation),
+        room_selection: cloneRef(last.room_selection),
+        activities: [],
+        restaurants: [],
+    });
+
+    days.forEach((day, index) => {
+        day.day = index + 1;
+    });
+    applyDates(variantIndex);
+    swap.value = null;
+    roomPickerKey.value = null;
+    collapsedDays.value = {};
 }
 
 // Merges a day's activities and restaurants into one chronological list —
@@ -1200,17 +1255,29 @@ function toggleRoomPicker(variantIndex: number, dayIndex: number) {
     roomPickerKey.value = roomPickerKey.value === key ? null : key;
 }
 
+// You book one room for the stay, not a different one per night — so the
+// picked room applies to every night of the stage, as the stay card's label
+// already claims it does.
 function selectRoom(
     variantIndex: number,
     dayIndex: number,
     option: RoomOption,
 ) {
-    editableVariants.value[variantIndex].days[dayIndex].room_selection = option;
+    const days = editableVariants.value[variantIndex].days;
+
+    for (const i of stageDayIndices(variantIndex, dayIndex)) {
+        days[i].room_selection = cloneRef(option);
+    }
+
     roomPickerKey.value = null;
 }
 
 function clearRoom(variantIndex: number, dayIndex: number) {
-    editableVariants.value[variantIndex].days[dayIndex].room_selection = null;
+    const days = editableVariants.value[variantIndex].days;
+
+    for (const i of stageDayIndices(variantIndex, dayIndex)) {
+        days[i].room_selection = null;
+    }
 }
 
 // --- Swap / Add panel ---
@@ -1327,7 +1394,11 @@ function applySwap(alternative: ItineraryListingRef) {
     if (field === 'vehicle') {
         variant.vehicle = alternative;
     } else if (field === 'accommodation' && dayIndex !== null) {
-        variant.days[dayIndex].accommodation = alternative;
+        // The whole stage moves to the new lodge — see stageDayIndices().
+        for (const i of stageDayIndices(variantIndex, dayIndex)) {
+            variant.days[i].accommodation = cloneRef(alternative);
+            variant.days[i].room_selection = null;
+        }
     } else if (dayIndex !== null) {
         const listField = field === 'activity' ? 'activities' : 'restaurants';
         const list = (variant.days[dayIndex][listField] ??= []);
@@ -2153,6 +2224,12 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                             variantIndex,
                                                                             dayIndex,
                                                                         ),
+                                                                )
+                                                            "
+                                                            @add-night="
+                                                                addNight(
+                                                                    variantIndex,
+                                                                    dayIndex,
                                                                 )
                                                             "
                                                         />
