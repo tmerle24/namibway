@@ -33,6 +33,7 @@ All three are enforced server-side since 2026-08-08. Creating and autosaving a p
 
 ## Companion docs in this repo
 This file is the condensed, load-bearing summary. The detail lives next to it:
+- `PROJECT_STATUS.md` — dated snapshot of where things stand, plus the two workstreams being started next (a booking system lodges operate, with NWR as the first target; and the website builder behind the N$ 399/month offer). **Read this before starting either of those** — it records what the booking substrate can and cannot express today, and the decisions that have to be made first.
 - `DEPLOYMENT.md` (DE) — local setup, production install, Supervisor/Horizon, scheduler cron, disaster recovery, troubleshooting.
 - `TRAVEL_PLAN.md` — working notes + backlog for the Reiseplan (trip plan) flow, the flagship feature. **Read its "Known gaps / next up" before touching the itinerary UI.**
 - `MOBILE_APPS.md` — the Capacitor iOS/Android shells, icons, splash screens.
