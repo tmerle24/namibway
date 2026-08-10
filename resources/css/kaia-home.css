@@ -2570,6 +2570,7 @@ body:has(.kaia-page) {
 }
 .kaia-page .steckbrief,
 .kaia-page .contact-card,
+.kaia-page .links-card,
 .kaia-page .location-card {
     margin-top: 28px;
     padding-top: 24px;
@@ -2577,6 +2578,7 @@ body:has(.kaia-page) {
 }
 .kaia-page .steckbrief h3,
 .kaia-page .contact-card h3,
+.kaia-page .links-card h3,
 .kaia-page .location-card h3 {
     font-size: 16px;
     margin-bottom: 12px;
@@ -2607,12 +2609,14 @@ body:has(.kaia-page) {
     font-size: 16px;
     margin-bottom: 8px;
 }
-.kaia-page .contact-links {
+.kaia-page .contact-links,
+.kaia-page .further-links {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
 }
-.kaia-page .contact-links a {
+.kaia-page .contact-links a,
+.kaia-page .further-links a {
     color: var(--rust-dark);
     font-size: 13px;
     font-weight: 600;
@@ -2621,7 +2625,8 @@ body:has(.kaia-page) {
     border-radius: 8px;
     padding: 7px 14px;
 }
-.kaia-page .contact-links a:hover {
+.kaia-page .contact-links a:hover,
+.kaia-page .further-links a:hover {
     border-color: var(--rust);
 }
 .kaia-page .inquiry-panel {

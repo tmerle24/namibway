@@ -1,0 +1,157 @@
+name: Scrape namibweb.com
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max listing pages (0 = all, use 20 for a test run)"
+        required: false
+        default: "20"
+      workers:
+        description: "Parallel fetches (keep low, it's a small old server)"
+        required: false
+        default: "4"
+      delay:
+        description: "Seconds between requests per worker"
+        required: false
+        default: "0.7"
+      full:
+        description: "Ignore ETag/Last-Modified and re-fetch every page"
+        required: false
+        default: false
+        type: boolean
+      probe:
+        description: "Dump the structure of N pages instead of writing data (0 = off)"
+        required: false
+        default: "0"
+      photos:
+        description: "Download the photo files, not just their URLs"
+        required: false
+        default: true
+        type: boolean
+      reverse_geocode:
+        description: "Resolve GPS-only pages into an address via Nominatim"
+        required: false
+        default: true
+        type: boolean
+      seed:
+        description: "Extra entry-point URL (optional)"
+        required: false
+        default: ""
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml
+
+      # The committed JSON from the last run is the baseline: it carries the
+      # ETags and content hashes that make this run incremental. Without it,
+      # every record reads as new.
+      - name: Show baseline
+        run: |
+          if [ -f data/scraped/namibweb_listings.json ]; then
+            python3 -c "
+          import json
+          d = json.load(open('data/scraped/namibweb_listings.json'))
+          print('Baseline records:', len(d.get('records', d)))
+          print('Last scraped at :', d.get('scraped_at'))
+          "
+          else
+            echo 'No baseline yet — this is a first run, everything will be new.'
+          fi
+
+      - name: Run scraper
+        run: |
+          ARGS="--limit ${{ github.event.inputs.limit || '20' }}"
+          ARGS="$ARGS --workers ${{ github.event.inputs.workers || '4' }}"
+          ARGS="$ARGS --delay ${{ github.event.inputs.delay || '0.7' }}"
+          if [ "${{ github.event.inputs.full }}" = "true" ]; then
+            ARGS="$ARGS --full"
+          fi
+          if [ "${{ github.event.inputs.probe }}" != "0" ] && [ -n "${{ github.event.inputs.probe }}" ]; then
+            ARGS="$ARGS --probe ${{ github.event.inputs.probe }}"
+          fi
+          if [ "${{ github.event.inputs.photos }}" = "false" ]; then
+            ARGS="$ARGS --no-photos"
+          fi
+          if [ "${{ github.event.inputs.reverse_geocode }}" = "false" ]; then
+            ARGS="$ARGS --no-reverse-geocode"
+          fi
+          if [ -n "${{ github.event.inputs.seed }}" ]; then
+            ARGS="$ARGS --seed ${{ github.event.inputs.seed }}"
+          fi
+          echo "python scripts/scrape_namibweb.py $ARGS"
+          python scripts/scrape_namibweb.py $ARGS
+
+      - name: Summarise the change report
+        if: ${{ github.event.inputs.probe == '0' || github.event.inputs.probe == '' }}
+        run: |
+          python3 -c "
+          import json
+          report = json.load(open('data/scraped/namibweb_changes.json'))
+          print('=== counts ===')
+          for key, value in report['counts'].items():
+              print(f'  {key:10}: {value}')
+          print()
+          print('=== new (first 20) ===')
+          for entry in report['new'][:20]:
+              print(f\"  + {entry['name']} [{entry.get('type')}] {entry['url']}\")
+          print()
+          print('=== changed (first 20) ===')
+          for entry in report['changed'][:20]:
+              print(f\"  ~ {entry['name']} — {', '.join(entry['fields'])}\")
+              for field, change in list(entry['diff'].items())[:4]:
+                  print(f\"      {field}: {change['before']!r} -> {change['after']!r}\")
+          print()
+          print('=== missing ===')
+          for entry in report['missing'][:20]:
+              print(f\"  - {entry['name']} (missing {entry['missing_runs']} run(s), gone={entry['gone']})\")
+          "
+
+      # Data and change report are small enough to commit via commit-artifact.yml.
+      - name: Upload data
+        if: ${{ github.event.inputs.probe == '0' || github.event.inputs.probe == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: namibweb-listings-${{ github.run_number }}
+          path: data/scraped/namibweb_listings.json
+          retention-days: 30
+
+      - name: Upload change report
+        if: ${{ github.event.inputs.probe == '0' || github.event.inputs.probe == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: namibweb-changes-${{ github.run_number }}
+          path: data/scraped/namibweb_changes.json
+          retention-days: 30
+
+      # The raw HTML and the photo files are the "never scrape this twice"
+      # insurance — too big for the repo, kept as artifacts instead.
+      - name: Upload raw HTML archive
+        if: ${{ always() && (github.event.inputs.probe == '0' || github.event.inputs.probe == '') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: namibweb-pages-${{ github.run_number }}
+          path: data/scraped/namibweb_pages.jsonl.gz
+          retention-days: 90
+          if-no-files-found: ignore
+
+      - name: Upload photos
+        if: ${{ always() && github.event.inputs.photos != 'false' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: namibweb-photos-${{ github.run_number }}
+          path: data/scraped/namibweb_photos
+          retention-days: 90
+          if-no-files-found: ignore

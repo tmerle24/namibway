@@ -134,6 +134,13 @@ class ListingResource extends Resource
                                         Forms\Components\TextInput::make('address')
                                             ->maxLength(500)
                                             ->columnSpanFull(),
+                                        Forms\Components\KeyValue::make('social_links')
+                                            ->label('Social & further links')
+                                            ->helperText('Shown in the listing sidebar. Key = platform (facebook, instagram, youtube, tiktok, twitter, linkedin, pinterest, vimeo, tripadvisor), value = full URL.')
+                                            ->keyLabel('Platform')
+                                            ->valueLabel('URL')
+                                            ->reorderable(false)
+                                            ->columnSpanFull(),
                                     ])
                                     ->columns(2)
                                     ->columnSpanFull(),

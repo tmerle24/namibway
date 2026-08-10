@@ -52,6 +52,17 @@ const FALLBACK_HERO_IMAGES: Record<Listing['type'], string[]> = {
     ],
 };
 
+type SocialPlatform =
+    | 'facebook'
+    | 'instagram'
+    | 'youtube'
+    | 'twitter'
+    | 'linkedin'
+    | 'tiktok'
+    | 'pinterest'
+    | 'tripadvisor'
+    | 'vimeo';
+
 interface Partner {
     name: string;
     logo: string | null;
@@ -69,7 +80,8 @@ interface Listing {
     highlights: string[];
     image: string | null;
     gallery: string[];
-    photos_source: 'manual' | 'website_scrape' | 'google_places' | null;
+    photos_source:
+        'manual' | 'website_scrape' | 'google_places' | 'namibweb' | null;
     photos_attribution: string | null;
     pending_image: string | null;
     pending_gallery: string[];
@@ -79,6 +91,7 @@ interface Listing {
     phone: string | null;
     phone_href: string | null;
     website: string | null;
+    social_links: Partial<Record<SocialPlatform, string>>;
     latitude: number | null;
     longitude: number | null;
     price_from: string | null;
@@ -280,6 +293,30 @@ const directionsUrl = computed(() => {
 
 const websiteUrl = computed(
     () => props.listing.partner?.website || props.listing.website,
+);
+
+// Fixed order so the sidebar reads the same on every listing, regardless of
+// which platforms a given source happened to publish.
+const SOCIAL_ORDER: SocialPlatform[] = [
+    'facebook',
+    'instagram',
+    'youtube',
+    'tiktok',
+    'twitter',
+    'linkedin',
+    'pinterest',
+    'vimeo',
+    'tripadvisor',
+];
+
+const socialLinks = computed(() =>
+    SOCIAL_ORDER.filter(
+        (platform) => !!props.listing.social_links?.[platform],
+    ).map((platform) => ({
+        platform,
+        url: props.listing.social_links[platform] as string,
+        label: t(`listing.links.${platform}`),
+    })),
 );
 </script>
 
@@ -690,19 +727,19 @@ const websiteUrl = computed(
                                 rel="noopener noreferrer"
                                 >{{ t('listing.contact.website') }}</a
                             >
+                        </div>
+                    </div>
+
+                    <div v-if="socialLinks.length" class="links-card">
+                        <h3>{{ t('listing.links.title') }}</h3>
+                        <div class="further-links">
                             <a
-                                v-if="props.listing.partner?.instagram"
-                                :href="props.listing.partner.instagram"
+                                v-for="link in socialLinks"
+                                :key="link.platform"
+                                :href="link.url"
                                 target="_blank"
-                                rel="noopener noreferrer"
-                                >{{ t('listing.contact.instagram') }}</a
-                            >
-                            <a
-                                v-if="props.listing.partner?.facebook"
-                                :href="props.listing.partner.facebook"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                >{{ t('listing.contact.facebook') }}</a
+                                rel="noopener noreferrer nofollow"
+                                >{{ link.label }}</a
                             >
                         </div>
                     </div>

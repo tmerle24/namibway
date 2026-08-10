@@ -27,3 +27,11 @@ Schedule::command('namibway:backfill-listing-coordinates')->dailyAt('01:30')->on
 // withoutOverlapping isn't used elsewhere in this file, but two concurrent
 // POP3 sessions against the same mailbox risk double-processing a message.
 Schedule::command('namibway:fetch-partner-emails')->everyTwoMinutes()->onOneServer()->withoutOverlapping();
+
+// Drains the website-crawl backlog in small, steady sips: listings that have a
+// website but no recent crawl, oldest (and never-crawled) first. Small batch on
+// a short interval rather than a big nightly run — a listing whose website was
+// just filled in (by an import or a partner edit, see ListingObserver) becomes
+// useful within minutes instead of the next day. This path costs no AI budget:
+// it reads og:/meta tags and photos from the owner's own site, nothing else.
+Schedule::command('namibway:scrape-websites --limit=10')->everyFiveMinutes()->onOneServer()->withoutOverlapping();

@@ -475,6 +475,18 @@
             "instagram": "Instagram",
             "facebook": "Facebook"
         },
+        "links": {
+            "title": "Further links",
+            "facebook": "Facebook",
+            "instagram": "Instagram",
+            "youtube": "YouTube",
+            "twitter": "X (Twitter)",
+            "linkedin": "LinkedIn",
+            "tiktok": "TikTok",
+            "pinterest": "Pinterest",
+            "tripadvisor": "Tripadvisor",
+            "vimeo": "Vimeo"
+        },
         "inquiry": {
             "title": "Request availability",
             "contactPerson": "Your contact: {name}",

@@ -367,6 +367,7 @@ class ListingController extends Controller
                 'phone' => $phone['display'] ?? null,
                 'phone_href' => $phone['href'] ?? null,
                 'website' => $listing->website,
+                'social_links' => self::publicSocialLinks($listing),
                 'latitude' => $listing->latitude !== null
                     ? (float) $listing->latitude
                     : $resolvedCoordinates[0] ?? null,
@@ -741,6 +742,34 @@ class ListingController extends Controller
      * only while there's still an account worth creating: once claimed, the owner already
      * has one and should use the Filament partner portal instead.
      */
+    /**
+     * The listing's own social profiles, for the sidebar's further-links block.
+     *
+     * Most of these arrive from scrapers, so the platform key is whitelisted and
+     * the URL is required to be http(s) — an unvalidated value out of a scraped
+     * page must never become an href.
+     *
+     * @return array<string, string>
+     */
+    private static function publicSocialLinks(Listing $listing): array
+    {
+        $allowed = ['facebook', 'instagram', 'youtube', 'twitter', 'linkedin', 'tiktok', 'pinterest', 'tripadvisor', 'vimeo'];
+
+        $links = collect($listing->social_links ?? [])
+            ->only($allowed)
+            ->filter(fn ($url) => is_string($url) && filter_var($url, FILTER_VALIDATE_URL) !== false)
+            ->filter(fn (string $url) => in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true));
+
+        // The partner's own accounts are the fallback when the listing has none.
+        foreach (['facebook', 'instagram'] as $platform) {
+            if (! $links->has($platform) && filled($listing->partner?->{$platform})) {
+                $links->put($platform, $listing->partner->{$platform});
+            }
+        }
+
+        return $links->all();
+    }
+
     private static function claimUrl(Listing $listing, bool $isOwnerPreview): ?string
     {
         if (! $isOwnerPreview || ! $listing->partner || $listing->partner->claimed_at !== null) {

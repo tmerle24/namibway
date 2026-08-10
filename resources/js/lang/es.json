@@ -251,6 +251,18 @@
             "instagram": "Instagram",
             "facebook": "Facebook"
         },
+        "links": {
+            "title": "Enlaces adicionales",
+            "facebook": "Facebook",
+            "instagram": "Instagram",
+            "youtube": "YouTube",
+            "twitter": "X (Twitter)",
+            "linkedin": "LinkedIn",
+            "tiktok": "TikTok",
+            "pinterest": "Pinterest",
+            "tripadvisor": "Tripadvisor",
+            "vimeo": "Vimeo"
+        },
         "inquiry": {
             "title": "Consultar disponibilidad",
             "contactPerson": "Tu persona de contacto: {name}",
