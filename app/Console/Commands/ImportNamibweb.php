@@ -7,8 +7,8 @@ use App\Enums\ListingType;
 use App\Models\City;
 use App\Models\Listing;
 use App\Models\Partner;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -279,6 +279,8 @@ class ImportNamibweb extends Command
      * remote lodge ends up filed in the capital, whereas GPS cannot lie about
      * where a property is. The name path only runs when there are no usable
      * coordinates, and only on an exact match.
+     *
+     * @param  array<string, mixed>  $record
      */
     private function resolveCityId(array $record): ?int
     {
@@ -337,7 +339,10 @@ class ImportNamibweb extends Command
         return sqrt($x * $x + $y * $y);
     }
 
-    /** @param array<string, mixed> $record */
+    /**
+     * @param  array<string, mixed>  $record
+     * @param  array<string, mixed>  $incoming
+     */
     private function createListing(array $record, array $incoming): void
     {
         if ($this->dry) {
@@ -363,7 +368,7 @@ class ImportNamibweb extends Command
             'source_url' => $record['source_url'] ?? null,
             'scrape_source' => self::SOURCE,
             'scrape_id' => $record['scrape_id'],
-            'scraped_at' => Carbon::now(),
+            'scraped_at' => CarbonImmutable::now(),
             'claim_status' => 'unclaimed',
             // Nothing from this source goes live unreviewed: the text is
             // namibweb's, the photography is namibweb's, and neither is ours to
@@ -391,7 +396,10 @@ class ImportNamibweb extends Command
         $this->created++;
     }
 
-    /** @param array<string, mixed> $record */
+    /**
+     * @param  array<string, mixed>  $record
+     * @param  array<string, mixed>  $incoming
+     */
     private function updateListing(Listing $listing, array $record, array $incoming): void
     {
         $stored = $listing->scrape_data['namibweb'] ?? [];
@@ -493,7 +501,7 @@ class ImportNamibweb extends Command
             $listing->fill($fill);
         }
 
-        $listing->scraped_at = Carbon::now();
+        $listing->scraped_at = CarbonImmutable::now();
         $listing->save();
 
         if ($photosChanged) {
@@ -521,6 +529,8 @@ class ImportNamibweb extends Command
      * media disk and points pending_image/pending_gallery at them. Nothing
      * reaches image/gallery until Listing::approvePendingPhotos() is called from
      * the admin or by the owner.
+     *
+     * @param  array<string, mixed>  $record
      */
     private function stagePhotos(Listing $listing, array $record): void
     {
@@ -599,7 +609,7 @@ class ImportNamibweb extends Command
             'last_seen_at' => $record['last_seen_at'] ?? null,
             'changed_at' => $record['changed_at'] ?? null,
             'imported' => $imported,
-            'imported_at' => Carbon::now()->toIso8601String(),
+            'imported_at' => CarbonImmutable::now()->toIso8601String(),
             // Source material kept whole: the upstream prose we may rewrite, the
             // facts we did not map to a column, and the page as parsed.
             'upstream' => [
@@ -626,6 +636,7 @@ class ImportNamibweb extends Command
         $listing->timestamps = $timestamps;
     }
 
+    /** @param array<string, mixed> $record */
     private function findOrCreatePartner(array $record): Partner
     {
         $name = trim((string) $record['name']);
@@ -647,6 +658,7 @@ class ImportNamibweb extends Command
         ]);
     }
 
+    /** @param array<string, mixed> $record */
     private function resolveType(array $record): ListingType
     {
         return ListingType::tryFrom((string) ($record['listing_type'] ?? '')) ?? ListingType::Accommodation;
@@ -698,7 +710,10 @@ class ImportNamibweb extends Command
         return is_array($value) ? (string) json_encode($value) : (string) $value;
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @param  array<string, mixed>  $incoming
+     * @return array<string, mixed>
+     */
     private function snapshot(array $incoming): array
     {
         return array_filter(
