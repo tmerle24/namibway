@@ -111,7 +111,7 @@ class ListingImporter
             $rows[] = $this->planRow($raw['line'], $values, $idsInFile, $slugsInFile, $archive);
         }
 
-        $roomRows = $this->planRoomRows($path, $rows);
+        $roomRows = $this->planRoomRows($path, $rows, $archive);
 
         $archive?->close();
 
@@ -192,6 +192,14 @@ class ListingImporter
 
                     foreach ($room->attributes as $attribute => $value) {
                         $roomType->setAttribute($attribute, $value);
+                    }
+
+                    if ($room->photoFolder !== null && $archive !== null) {
+                        $roomType->gallery = $this->uploadPhotos(
+                            $archive,
+                            $room->photoFolder,
+                            'room-types/'.((string) ($roomType->listing()->value('slug') ?? $listingId))."/{$roomType->code}",
+                        );
                     }
 
                     $roomType->save();
@@ -281,41 +289,10 @@ class ListingImporter
             return;
         }
 
-        if ($archive === null) {
-            $row->errors[] = 'Column "photo_folder" is filled in, but no photo ZIP was uploaded.';
+        $photos = $this->photosIn($row->errors, $archive, $raw);
 
+        if ($photos === null) {
             return;
-        }
-
-        if (! $archive->hasFolder($raw)) {
-            $found = $archive->folderNames();
-            $row->errors[] = "Column \"photo_folder\": the ZIP has no folder called \"{$raw}\"."
-                .($found === [] ? ' The ZIP contains no folders with images in them.' : ' It contains: '.implode(', ', array_slice($found, 0, 12)).(count($found) > 12 ? ', …' : ''));
-
-            return;
-        }
-
-        $photos = $archive->photos($raw);
-
-        if ($photos === []) {
-            $row->errors[] = "Column \"photo_folder\": the folder \"{$raw}\" has no ".implode('/', PhotoArchive::EXTENSIONS).' images in it.';
-
-            return;
-        }
-
-        if (count($photos) > PhotoArchive::MAX_FILES_PER_FOLDER) {
-            $row->errors[] = "Column \"photo_folder\": \"{$raw}\" holds ".count($photos).' images — at most '.PhotoArchive::MAX_FILES_PER_FOLDER.' per listing.';
-
-            return;
-        }
-
-        foreach ($photos as $photo) {
-            if ($photo['size'] > PhotoArchive::MAX_FILE_BYTES) {
-                $megabytes = round(PhotoArchive::MAX_FILE_BYTES / 1024 / 1024);
-                $row->errors[] = "Column \"photo_folder\": \"{$photo['name']}\" is larger than {$megabytes} MB. Please shrink it.";
-
-                return;
-            }
         }
 
         $row->photoFolder = $raw;
@@ -324,6 +301,91 @@ class ListingImporter
             $had,
             count($photos).' photo(s), main image: '.$photos[0]['name'],
         );
+    }
+
+    /** Same all-or-nothing swap as a listing's photos, into the room's gallery. */
+    private function planRoomPhotos(PlannedRoomRow $row, ?RoomType $roomType, string $raw, ?PhotoArchive $archive): void
+    {
+        $had = $roomType !== null && $roomType->gallery ? count($roomType->gallery).' photo(s)' : null;
+
+        if (ListingSheet::isClearMarker($raw)) {
+            if ($had === null) {
+                return;
+            }
+
+            $row->attributes['gallery'] = [];
+            $row->changes[] = new FieldChange('photo_folder', $had, 'no photos');
+
+            return;
+        }
+
+        $photos = $this->photosIn($row->errors, $archive, $raw);
+
+        if ($photos === null) {
+            return;
+        }
+
+        $row->photoFolder = $raw;
+        $row->changes[] = new FieldChange('photo_folder', $had, count($photos).' photo(s), first: '.$photos[0]['name']);
+    }
+
+    /**
+     * The images a photo_folder cell points at, or null with the reason written into
+     * $errors. Shared by listings and room types — both name a folder in the same ZIP.
+     *
+     * @param  list<string>  $errors
+     * @return list<array{index: int, name: string, size: int}>|null
+     */
+    private function photosIn(array &$errors, ?PhotoArchive $archive, string $raw): ?array
+    {
+        if ($archive === null) {
+            $errors[] = 'Column "photo_folder" is filled in, but no photo ZIP was uploaded.';
+
+            return null;
+        }
+
+        $resolved = $archive->resolve($raw);
+
+        if ($resolved === null) {
+            $found = $archive->folderNames();
+            $errors[] = "Column \"photo_folder\": the ZIP has no folder called \"{$raw}\"."
+                .($found === [] ? ' The ZIP contains no folders with images in them.' : ' It contains: '.implode(', ', array_slice($found, 0, 12)).(count($found) > 12 ? ', …' : ''));
+
+            return null;
+        }
+
+        if (is_array($resolved)) {
+            // Every lodge has an "STD" room, so a bare folder name is not always enough.
+            $errors[] = "Column \"photo_folder\": \"{$raw}\" matches several folders in the ZIP ("
+                .implode(', ', $resolved).'). Write more of the path, e.g. "'.$resolved[0].'".';
+
+            return null;
+        }
+
+        $photos = $archive->photos($raw);
+
+        if ($photos === []) {
+            $errors[] = "Column \"photo_folder\": the folder \"{$raw}\" has no ".implode('/', PhotoArchive::EXTENSIONS).' images in it.';
+
+            return null;
+        }
+
+        if (count($photos) > PhotoArchive::MAX_FILES_PER_FOLDER) {
+            $errors[] = "Column \"photo_folder\": \"{$raw}\" holds ".count($photos).' images — at most '.PhotoArchive::MAX_FILES_PER_FOLDER.' per folder.';
+
+            return null;
+        }
+
+        foreach ($photos as $photo) {
+            if ($photo['size'] > PhotoArchive::MAX_FILE_BYTES) {
+                $megabytes = round(PhotoArchive::MAX_FILE_BYTES / 1024 / 1024);
+                $errors[] = "Column \"photo_folder\": \"{$photo['name']}\" is larger than {$megabytes} MB. Please shrink it.";
+
+                return null;
+            }
+        }
+
+        return $photos;
     }
 
     /**
@@ -474,7 +536,7 @@ class ListingImporter
      * @param  list<PlannedRow>  $listingRows
      * @return list<PlannedRoomRow>
      */
-    private function planRoomRows(string $path, array $listingRows): array
+    private function planRoomRows(string $path, array $listingRows, ?PhotoArchive $archive): array
     {
         $file = $this->reader->read($path, RoomTypeSheet::SHEET_NAME);
 
@@ -503,7 +565,7 @@ class ListingImporter
                 $values[$column->header] = $raw['cells'][$index] ?? '';
             }
 
-            $rows[] = $this->planRoomRow($raw['line'], $values, $listingRows, $seen);
+            $rows[] = $this->planRoomRow($raw['line'], $values, $listingRows, $seen, $archive);
         }
 
         return $rows;
@@ -514,7 +576,7 @@ class ListingImporter
      * @param  list<PlannedRow>  $listingRows
      * @param  array<string, int>  $seen
      */
-    private function planRoomRow(int $line, array $values, array $listingRows, array &$seen): PlannedRoomRow
+    private function planRoomRow(int $line, array $values, array $listingRows, array &$seen, ?PhotoArchive $archive): PlannedRoomRow
     {
         $row = new PlannedRoomRow($line);
         $row->code = trim($values['code'] ?? '');
@@ -557,6 +619,12 @@ class ListingImporter
                 if ($row->isNew && $column->requiredForNew) {
                     $row->errors[] = "Column \"{$column->header}\" is required on new room types.";
                 }
+
+                continue;
+            }
+
+            if ($column->type === SheetColumnType::PhotoFolder) {
+                $this->planRoomPhotos($row, $roomType, $raw, $archive);
 
                 continue;
             }
@@ -662,25 +730,7 @@ class ListingImporter
 
     private function storePhotos(Listing $listing, PhotoArchive $archive, string $folder): void
     {
-        $disk = Storage::disk('r2');
-        $keys = [];
-
-        foreach ($archive->photos($folder) as $photo) {
-            $contents = $archive->contents($photo['index']);
-
-            if ($contents === null) {
-                continue;
-            }
-
-            // The key is built from the listing's slug and the file's own name, never
-            // from the path inside the archive — see PhotoArchive.
-            $name = Str::slug(pathinfo($photo['name'], PATHINFO_FILENAME));
-            $extension = mb_strtolower(pathinfo($photo['name'], PATHINFO_EXTENSION));
-            $key = "listings/{$listing->slug}/{$name}-".substr(md5($contents), 0, 8).".{$extension}";
-
-            $disk->put($key, $contents);
-            $keys[] = $key;
-        }
+        $keys = $this->uploadPhotos($archive, $folder, "listings/{$listing->slug}");
 
         if ($keys === []) {
             return;
@@ -692,6 +742,37 @@ class ListingImporter
             'photos_source' => ContentSource::Partner,
             'photos_approved_at' => now(),
         ])->save();
+    }
+
+    /**
+     * Copies a folder's images to R2 under the given prefix, cover first.
+     *
+     * The storage key is built from the prefix and the file's own name, never from
+     * the path inside the archive — see PhotoArchive.
+     *
+     * @return list<string> the stored keys
+     */
+    private function uploadPhotos(PhotoArchive $archive, string $folder, string $prefix): array
+    {
+        $disk = Storage::disk('r2');
+        $keys = [];
+
+        foreach ($archive->photos($folder) as $photo) {
+            $contents = $archive->contents($photo['index']);
+
+            if ($contents === null) {
+                continue;
+            }
+
+            $name = Str::slug(pathinfo($photo['name'], PATHINFO_FILENAME));
+            $extension = mb_strtolower(pathinfo($photo['name'], PATHINFO_EXTENSION));
+            $key = "{$prefix}/{$name}-".substr(md5($contents), 0, 8).".{$extension}";
+
+            $disk->put($key, $contents);
+            $keys[] = $key;
+        }
+
+        return $keys;
     }
 
     /**

@@ -9,6 +9,7 @@ use App\Enums\ListingType;
 use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
 use App\Enums\VehicleClass;
+use App\Filament\Pages\ListingImport;
 use App\Filament\Resources\ListingResource\Pages;
 use App\Filament\Resources\ListingResource\RelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
@@ -500,9 +501,14 @@ class ListingResource extends Resource
                     ),
             ])
             ->headerActions([
+                Tables\Actions\Action::make('import_listings')
+                    ->label('Import listings')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('gray')
+                    ->url(ListingImport::getUrl()),
                 // Exports whatever the table currently shows, filters included — the
                 // workbook carries the id column, so editing it and importing it back
-                // (Content → Import listings) updates exactly these rows.
+                // through that button updates exactly these rows.
                 Tables\Actions\Action::make('export_excel')
                     ->label('Export to Excel')
                     ->icon('heroicon-o-arrow-down-tray')

@@ -35,7 +35,14 @@ class ListingImport extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'Import listings';
 
-    protected static ?int $navigationSort = 20;
+    /**
+     * Reached from the "Import listings" button on the listings table, not from the
+     * sidebar — it belongs next to the export it is the counterpart of.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     protected static ?string $title = 'Import listings from Excel';
 

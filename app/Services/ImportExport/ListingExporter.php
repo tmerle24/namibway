@@ -177,8 +177,9 @@ class ListingExporter
             'Put one folder per listing in a ZIP file and upload it together with this workbook.',
             'Write the folder name in the "photo_folder" column — nothing else is needed.',
             'A file whose name starts with "cover" becomes the main image; the rest become the gallery, in name order.',
-            implode('/', PhotoArchive::EXTENSIONS).' only, at most '.PhotoArchive::MAX_FILES_PER_FOLDER.' images per listing and '.round(PhotoArchive::MAX_FILE_BYTES / 1024 / 1024).' MB per image.',
-            'Filling in photo_folder REPLACES the photos that listing already has. Only upload photos we are allowed to publish.',
+            'Room photos work the same way: a folder inside the listing\'s folder, named in "photo_folder" on the '.RoomTypeSheet::SHEET_NAME.' sheet. Write the path ("Okonjima Bush Camp/STD") when the folder name alone is not unique.',
+            implode('/', PhotoArchive::EXTENSIONS).' only, at most '.PhotoArchive::MAX_FILES_PER_FOLDER.' images per folder and '.round(PhotoArchive::MAX_FILE_BYTES / 1024 / 1024).' MB per image.',
+            'Filling in photo_folder REPLACES the photos that listing or room already has. Only upload photos we are allowed to publish.',
         ] as $line) {
             $writer->addRow(Row::fromValues(['', $line]));
         }

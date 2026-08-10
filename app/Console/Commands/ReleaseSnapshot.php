@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use RuntimeException;
@@ -29,8 +30,16 @@ class ReleaseSnapshot extends Command
 
     protected $description = 'Snapshot the current git commit + recent log to storage/app/release/version.json';
 
-    // Keep this many past releases around before trimming the oldest.
-    private const MAX_RELEASES = 30;
+    /**
+     * History is kept by age, not by count: the page promises the last 30 days, and
+     * a busy day can hold a dozen deploys. The minimum keeps the page useful after a
+     * quiet month, and the ceiling keeps version.json from growing without bound.
+     */
+    private const HISTORY_DAYS = 30;
+
+    private const MIN_RELEASES = 30;
+
+    private const MAX_RELEASES = 400;
 
     public function handle(): int
     {
@@ -87,7 +96,23 @@ class ReleaseSnapshot extends Command
             ]);
         }
 
-        $releases = $releases->take(self::MAX_RELEASES)->values();
+        $cutoff = now()->subDays(self::HISTORY_DAYS);
+
+        $releases = $releases
+            ->values()
+            ->filter(function (array $release, int $index) use ($cutoff): bool {
+                if ($index < self::MIN_RELEASES) {
+                    return true;
+                }
+
+                $deployedAt = $release['deployed_at'] ?? null;
+
+                // No timestamp (a pre-history snapshot) is kept: dropping a release we
+                // can't date would silently shorten the window we promise.
+                return ! is_string($deployedAt) || Carbon::parse($deployedAt)->greaterThanOrEqualTo($cutoff);
+            })
+            ->take(self::MAX_RELEASES)
+            ->values();
 
         $json = json_encode([
             'version' => $version,

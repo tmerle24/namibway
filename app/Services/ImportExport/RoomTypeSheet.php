@@ -114,6 +114,14 @@ final class RoomTypeSheet
                 width: 12,
             ),
             new SheetColumn(
+                header: 'photo_folder',
+                type: SheetColumnType::PhotoFolder,
+                attribute: 'gallery',
+                help: 'This room\'s folder in the photo ZIP. Room folders usually sit inside the listing\'s folder, so write the path when the name alone is not unique — "Okonjima Bush Camp/STD" rather than "STD". Filling this in REPLACES the room\'s photos.',
+                aliases: ['photos'],
+                width: 30,
+            ),
+            new SheetColumn(
                 header: 'active',
                 type: SheetColumnType::Boolean,
                 attribute: 'is_active',
@@ -147,6 +155,10 @@ final class RoomTypeSheet
     {
         return match ($column->type) {
             SheetColumnType::Id => $roomType->listing_id,
+            // Input only, exactly like the Listings sheet: the folder a room's photos
+            // came from isn't stored, and writing anything here would make an
+            // untouched export re-upload them.
+            SheetColumnType::PhotoFolder => null,
             SheetColumnType::Integer => (int) $roomType->getAttribute($column->attribute),
             SheetColumnType::Decimal => round((float) $roomType->getAttribute($column->attribute), 2),
             SheetColumnType::Boolean => $roomType->getAttribute($column->attribute) ? 'yes' : 'no',

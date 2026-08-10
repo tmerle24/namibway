@@ -23,7 +23,7 @@ class MarketingMaterial extends Page
 
     protected static ?string $navigationGroup = 'Documentation';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 6;
 
     protected static string $view = 'filament.pages.marketing-material';
 

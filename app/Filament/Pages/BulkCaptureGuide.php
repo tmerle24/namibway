@@ -23,7 +23,7 @@ class BulkCaptureGuide extends Page
 
     protected static ?string $navigationGroup = 'Documentation';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 4;
 
     protected static ?string $title = 'Capturing listings in Excel';
 

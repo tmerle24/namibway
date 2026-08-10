@@ -29,6 +29,9 @@ final class PlannedRoomRow
 
     public ?int $roomTypeId = null;
 
+    /** Folder in the photo ZIP whose images replace this room's gallery. */
+    public ?string $photoFolder = null;
+
     public bool $isNew = false;
 
     public function __construct(public readonly int $line) {}

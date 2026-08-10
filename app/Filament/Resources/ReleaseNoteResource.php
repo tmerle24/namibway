@@ -22,6 +22,16 @@ class ReleaseNoteResource extends Resource
 
     protected static ?string $navigationGroup = 'Documentation';
 
+    /**
+     * Out of the menu: the Documentation group already has a "Release Notes"
+     * entry (the deploy log), and two items with the same name is one too many.
+     * The resource itself stays reachable at /admin/release-notes for editing.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     protected static ?string $recordTitleAttribute = 'title';
 
     public static function form(Form $form): Form
