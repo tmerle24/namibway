@@ -95,6 +95,7 @@ SEEDS: list[tuple[str, str | None]] = [
     # is a trip type of its own for us, so reaching them must not depend on
     # which page happens to link them or on how deep the crawl got.
     (f"{BASE}/camping.htm", "accommodation"),
+    (f"{BASE}/camping-coordinates-namibia.htm", "accommodation"),
     (f"{BASE}/mainlodge.html", "accommodation"),
     (f"{BASE}/mainhotels.html", "accommodation"),
     (f"{BASE}/mainpensions.html", "accommodation"),
@@ -1058,6 +1059,91 @@ def extract_videos(html: str, page_url: str) -> list[str]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# Coordinate index — a page that is a lookup table, not a listing
+# ---------------------------------------------------------------------------
+
+# namibweb publishes one page listing every camping site with its GPS position.
+# Read as a listing it produces a single nonsense record carrying the first
+# entry's coordinates, which is exactly what a probe run produced. Read as what
+# it is, it is the best locator source on the site for a category where the
+# detail pages frequently carry no coordinates at all.
+COORDINATE_INDEX_URLS = {f"{BASE}/camping-coordinates-namibia.htm"}
+
+# "Aabadi Bush Camp S21 54.129 E16 20.191 (Wilhelmstal)" — degrees and decimal
+# minutes, hemisphere glued to the degrees, an optional nearby place in
+# brackets. Entries run together in one text block, so the name of an entry is
+# whatever text precedes its coordinates.
+_CAMP_COORD_RE = re.compile(
+    r"S\s*(\d{1,2})\s+(\d{1,2}\.\d+)\s+E\s*(\d{1,3})\s+(\d{1,2}\.\d+)\s*(?:\(\s*([^)]*?)\s*\))?"
+)
+
+
+def is_coordinate_index(html: str) -> bool:
+    """True when a page is a table of positions rather than a listing.
+
+    Decided by content, like everything else here decides: a block holding
+    several entries is the table. Keying on the URL would mean a second such
+    page needs a code change, and it made the parser silently do nothing
+    wherever the page was served from a different host.
+    """
+    return any(len(_CAMP_COORD_RE.findall(block)) >= 5 for block in text_blocks(html))
+
+
+def parse_coordinate_index(html: str, page_url: str) -> list[dict]:
+    """Name → position for every entry on a coordinate index page."""
+    entries: list[dict] = []
+    for block in text_blocks(html):
+        if len(_CAMP_COORD_RE.findall(block)) < 5:
+            continue  # a stray coordinate in prose is not the table
+
+        previous_end = 0
+        for match in _CAMP_COORD_RE.finditer(block):
+            name = block[previous_end:match.start()].strip(" -\u2013\u2014,;")
+            previous_end = match.end()
+
+            # Some entries carry no coordinates ("Torra Bay Resort ( Skeleton
+            # Coast )") and would otherwise be glued to the front of the next
+            # name. Text after the final bracket belongs to this entry; a name
+            # that simply ends in a bracket keeps it.
+            if ")" in name and name[name.rindex(")") + 1:].strip():
+                name = name[name.rindex(")") + 1:].strip()
+            if not name or len(name) > 90:
+                continue
+
+            latitude = -(int(match.group(1)) + float(match.group(2)) / 60)
+            longitude = int(match.group(3)) + float(match.group(4)) / 60
+            if not (-29.5 <= latitude <= -16.5 and 11.0 <= longitude <= 26.0):
+                continue
+
+            entries.append({
+                "name": clean_text(name),
+                "latitude": round(latitude, 6),
+                "longitude": round(longitude, 6),
+                "place": clean_text(match.group(5)) or None,
+                "source_url": page_url,
+            })
+    return entries
+
+
+def harvest_coordinate_indexes(pages: dict[str, "Page"], out_path: Path, run_at: str) -> int:
+    """Writes the lookup table from whichever coordinate pages were fetched."""
+    entries: list[dict] = []
+    for page in pages.values():
+        if page.html and is_coordinate_index(page.html):
+            entries.extend(parse_coordinate_index(page.html, page.url))
+    if not entries:
+        return 0
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        json.dumps({"scraped_at": run_at, "source": BASE, "entries": entries},
+                   ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return len(entries)
+
+
 def extract_raw(html: str, page_url: str) -> dict:
     """Everything on the page, unfiltered and uninterpreted.
 
@@ -1807,8 +1893,14 @@ def run_sample(urls: list[str], args, fetcher: Fetcher, run_at: str) -> int:
               "         Descriptions will still carry the site header/footer, and social\n"
               "         links may be namibweb's own rather than the listing's.")
 
+    found = harvest_coordinate_indexes(pages, Path(args.coordinates_out), run_at)
+    if found:
+        print(f"Coordinate index: {found} camping positions → {args.coordinates_out}")
+
     fresh: dict[str, dict] = {}
     for scrape_id, page in pages.items():
+        if is_coordinate_index(page.html or ""):
+            continue  # a lookup table, already harvested; not a listing
         try:
             record = parse_detail(page, chrome, chrome_social)
         except Exception as e:
@@ -1879,6 +1971,8 @@ def main() -> int:
                         help="Scrape these detail pages only, full pipeline, no crawl (repeatable)")
     parser.add_argument("--sample-out", default=str(OUTPUT_DIR / "namibweb_sample.json"),
                         help="Where --url writes its records (never the baseline)")
+    parser.add_argument("--coordinates-out", default=str(OUTPUT_DIR / "namibweb_camping_coordinates.json"),
+                        help="Where the camping GPS lookup table is written")
     parser.add_argument("--ignore-robots", action="store_true", help="Skip the robots.txt check")
     parser.add_argument("--photos-dir", default=str(OUTPUT_DIR / "namibweb_photos"),
                         help="Where downloaded photos go")
@@ -1924,6 +2018,10 @@ def main() -> int:
         total = write_archive(archive_path, fetched_pages, load_archive(archive_path), run_at)
         print(f"Archived {total} pages of raw HTML ({len(fetched_pages)} from this run) "
               f"→ {archive_path}")
+
+    found = harvest_coordinate_indexes(fetched_pages, Path(args.coordinates_out), run_at)
+    if found:
+        print(f"Coordinate index: {found} camping positions → {args.coordinates_out}")
 
     if args.probe:
         if not pages:
