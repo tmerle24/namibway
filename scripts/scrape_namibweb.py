@@ -34,17 +34,29 @@ Records carry first_seen_at / last_seen_at / changed_at / revision, and the
 downstream importer (`php artisan listings:import-namibweb`) keys its
 "is this new information?" decision on the same hashes.
 
-Usage:
-  pip install requests beautifulsoup4 lxml
-  python scripts/scrape_namibweb.py                       # incremental, uses existing JSON as baseline
-  python scripts/scrape_namibweb.py --limit 20            # test run
-  python scripts/scrape_namibweb.py --full                # ignore ETags, re-fetch everything
-  python scripts/scrape_namibweb.py --probe 5             # dump page structure, write nothing
-  python scripts/scrape_namibweb.py --seed https://www.namibweb.com/tours.htm
+Setup (Debian/Ubuntu refuse a system-wide pip install — PEP 668):
+  python3 -m venv .venv && .venv/bin/pip install requests beautifulsoup4 lxml
+
+Usage — start at the top and only move down once the output is right:
+  .venv/bin/python scripts/scrape_namibweb.py --url URL --url URL
+                                                          # 2-3 known pages, full pipeline, one request each
+  .venv/bin/python scripts/scrape_namibweb.py --max-pages 40 --limit 3
+                                                          # small bounded crawl, to check classification
+  .venv/bin/python scripts/scrape_namibweb.py             # full incremental run, existing JSON as baseline
+  .venv/bin/python scripts/scrape_namibweb.py --full      # ignore ETags, re-fetch everything
+  .venv/bin/python scripts/scrape_namibweb.py --probe 5   # dump page structure of a crawl
+  .venv/bin/python scripts/scrape_namibweb.py --seed https://www.namibweb.com/tours.htm
+
+Every request costs the site something and a block is permanent, so validate
+with --url first: it is the only mode whose request count you know in advance.
+--probe and --limit still crawl, and a misfiring classifier makes them crawl
+far more than the number suggests. See CLAUDE.md → "Scraper discipline".
 
 Output:
   data/scraped/namibweb_listings.json   — one record per listing
   data/scraped/namibweb_changes.json    — what changed vs. the baseline
+  data/scraped/namibweb_sample.json     — --url only; never the baseline
+  data/scraped/namibweb_pages.jsonl.gz  — raw HTML of every page fetched
 """
 
 from __future__ import annotations
@@ -181,11 +193,21 @@ _SOCIAL_HOSTS: list[tuple[str, str]] = [
 _SOCIAL_JUNK_PATHS = (
     "/sharer", "/share", "/intent", "/plugins", "/dialog", "/login",
     "/signup", "/home", "/pages/create",
+    # A regional Facebook group and a photo-album media set are never the
+    # listing's own account. namibweb links several of each per page, and they
+    # were being reported as the lodge's Facebook.
+    "/groups", "/media",
 )
 
 _SKIP_WEBSITE_DOMAINS = {
     "namibweb.com", "www.namibweb.com", "google.com", "maps.google.com",
     "booking.com", "airbnb.com", "whatsapp.com", "wa.me", "paypal.com",
+    # Share widgets and the site's own sponsor/stock-portfolio links. Every
+    # namibweb page carries these, and taking the first external link made
+    # addthis.com the "website" of all three sample listings.
+    "addthis.com", "s7.addthis.com", "shutterstock.com", "pond5.com",
+    "adobe.com", "stock.adobe.com", "bit.ly", "blogspot.com", "t.me",
+    "telegram.org", "sa-nam-news.blogspot.com",
 } | {host for host, _ in _SOCIAL_HOSTS}
 
 # ---------------------------------------------------------------------------
@@ -220,9 +242,15 @@ _VOLATILE_PATTERNS = [
 ]
 
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
+# Only the fully spelled-out form, and both halves must be spelled out. The
+# previous pattern allowed a bare "." for "dot" and matched "at" without word
+# boundaries, so ordinary prose became an address: "Arrive at camp. Remainder
+# of day" → arrive@camp.remainder, "a personal attention. Apart from" →
+# personal@tention.apart. A real "@" is already covered by _EMAIL_RE.
 _EMAIL_OBFUSCATED_RE = re.compile(
-    r"([A-Za-z0-9._%+\-]+)\s*(?:\(|\[)?\s*(?:at|AT|@)\s*(?:\)|\])?\s*"
-    r"([A-Za-z0-9.\-]+)\s*(?:\(|\[)?\s*(?:dot|DOT|\.)\s*(?:\)|\])?\s*([A-Za-z]{2,})"
+    r"([A-Za-z0-9._%+\-]+)\s*(?:\(|\[)?\s*\bat\b\s*(?:\)|\])?\s*"
+    r"([A-Za-z0-9.\-]+)\s*(?:\(|\[)?\s*\bdot\b\s*(?:\)|\])?\s*([A-Za-z]{2,})",
+    re.IGNORECASE,
 )
 _PHONE_RE = re.compile(
     r"(?:\+\s?264|\(?0(?:0264)?\)?)[\s\-/().]?\d{2,3}[\s\-/().]?\d{3}[\s\-/().]?\d{3,4}"
@@ -230,10 +258,14 @@ _PHONE_RE = re.compile(
 _PRICE_RE = re.compile(r"(?:N\$|NAD|ZAR|R)\s?([\d][\d\s.,]{1,12})", re.IGNORECASE)
 
 # "S 22° 34' 12.5"" / "E 17 05 30" — namibweb prints GPS in several shapes.
+# Minutes may carry decimals: "S 24 29.100 E 15 49.400" is degrees + decimal
+# minutes, the format these tourism pages actually print their GPS in. Matching
+# only \d{1,2} there silently truncated 29.100' to 29' — a ~740 m error, on the
+# field the importer trusts as the locator for nearest-city matching.
 _DMS_RE = re.compile(
-    r"(?P<hemi>[NSEW])\s*(?P<deg>\d{1,3})\s*(?:°|º|deg|\s)\s*"
-    r"(?P<min>\d{1,2})\s*(?:'|′|min|\s)?\s*"
-    r"(?P<sec>\d{1,2}(?:[.,]\d+)?)?\s*(?:\"|″|sec)?",
+    r"(?P<hemi>[NSEW])\s*(?P<deg>\d{1,3})\s*(?:°|º|deg)?\s*[;:,]?\s*"
+    r"(?P<min>\d{1,2}(?:[.,]\d+)?)\s*(?:['′´`]|min)?\s*"
+    r"(?P<sec>\d{1,3}(?:[.,]\d+)?)?\s*(?:[\"”″]|sec)?",
     re.IGNORECASE,
 )
 _DECIMAL_COORD_RE = re.compile(
@@ -282,7 +314,7 @@ _CATEGORY_KEYWORDS = [
 ]
 
 _FACILITY_KEYWORDS = {
-    "pool": ("swimming pool", "splash pool", "plunge pool"),
+    "pool": ("swimming pool", "splash pool", "plunge pool", "farm pool", " pool"),
     "restaurant": ("restaurant", "à la carte", "a la carte", "dining room"),
     "bar": ("bar ", "sundowner bar", "cocktail bar"),
     "wifi": ("wi-fi", "wifi", "wireless internet", "internet access"),
@@ -385,15 +417,26 @@ class Fetcher:
 
 
 def robots_allows(url: str, fetcher: Fetcher) -> bool:
+    """Checks robots.txt, and says out loud what it found.
+
+    The status matters even when it does not block us: a 403 here is the same
+    refusal we may be about to hit on every page, and swallowing it silently
+    turns a "you are not welcome" into a mystery further down the log.
+    """
     parser = RobotFileParser()
     try:
         r = fetcher.session.get(urljoin(BASE, "/robots.txt"), timeout=10)
+        print(f"robots.txt → HTTP {r.status_code}")
         if r.status_code >= 400:
-            return True  # no robots.txt = no restriction
+            return True  # nothing served = nothing disallowed
         parser.parse(r.text.splitlines())
-    except requests.RequestException:
+    except requests.RequestException as e:
+        print(f"robots.txt → unreachable ({e})")
         return True
-    return parser.can_fetch(HEADERS["User-Agent"], url)
+
+    allowed = parser.can_fetch(HEADERS["User-Agent"], url)
+    print(f"robots.txt allows {url}: {allowed}")
+    return allowed
 
 
 # ---------------------------------------------------------------------------
@@ -549,7 +592,11 @@ def build_chrome_index(all_blocks: list[list[str]]) -> set[str]:
     footer, nav strip and booking blurb are, by definition, the text that is
     identical on hundreds of otherwise unrelated pages.
     """
-    if len(all_blocks) < 4:
+    # Three pages is the smallest corpus that can say "this repeats": with the
+    # threshold below, a block then has to appear on all three. Requiring four
+    # meant a --url validation run stripped nothing and reported the site
+    # footer as part of the listing's description.
+    if len(all_blocks) < 3:
         return set()
 
     counts: Counter[str] = Counter()
@@ -570,6 +617,30 @@ def strip_boilerplate(blocks: list[str], chrome: set[str]) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
+def is_section_label(text: str) -> bool:
+    """A heading that names a part of the page, not the establishment.
+
+    namibweb marks its in-page sections with headings like "ACTIVITIES:" and
+    "RATES", and those sit above the property name in the document — so taking
+    the first heading made Kalahari Anib Lodge come out as "ACTIVITIES:".
+    """
+    stripped = text.strip().rstrip(":").strip()
+    if not stripped:
+        return True
+    if text.strip().endswith(":"):
+        return True
+    return stripped.lower() in _SECTION_LABELS
+
+
+_SECTION_LABELS = {
+    "activities", "activity", "rates", "prices", "pricing", "tariffs",
+    "location", "directions", "getting there", "accommodation", "facilities",
+    "contact", "contact us", "reservations", "booking", "bookings", "gps",
+    "gps coordinates", "description", "overview", "general information",
+    "related", "related links", "maps", "map", "photos", "gallery", "notes",
+}
+
+
 def extract_name(html: str, fallback: str, section: str | None = None) -> str:
     soup = BeautifulSoup(html, "lxml")
 
@@ -577,7 +648,7 @@ def extract_name(html: str, fallback: str, section: str | None = None) -> str:
         node = soup.find(tag)
         if node:
             text = clean_text(node.get_text(" ", strip=True))
-            if 3 <= len(text) <= 90:
+            if 3 <= len(text) <= 90 and not is_section_label(text):
                 return text
 
     if soup.title:
@@ -671,7 +742,7 @@ def build_chrome_social(all_social: list[dict[str, str]]) -> set[str]:
     Same frequency trick as the text chrome: a social URL that shows up on a
     large share of unrelated listing pages belongs to the site, not the lodge.
     """
-    if len(all_social) < 4:
+    if len(all_social) < 3:
         return set()
 
     counts: Counter[str] = Counter()
@@ -733,9 +804,18 @@ def extract_website(html: str, page_url: str) -> str | None:
 
 
 def dms_to_decimal(hemi: str, deg: str, minutes: str, seconds: str | None) -> float:
+    minutes = minutes.replace(",", ".")
     value = float(deg) + float(minutes) / 60
-    if seconds:
-        value += float(seconds.replace(",", ".")) / 3600
+
+    if seconds and "." not in minutes:
+        seconds = seconds.replace(",", ".")
+        # Seconds cannot reach three digits — 60 is already a minute. A run that
+        # long is the fractional part of the minutes, printed after a mangled
+        # minute sign: namibweb writes "S 22°; 38´644”" for 22° 38.644'.
+        if len(seconds.split(".")[0]) >= 3:
+            value += float(f"0.{seconds.replace('.', '')}") / 60
+        else:
+            value += float(seconds) / 3600
     if hemi.upper() in ("S", "W"):
         value = -value
     return round(value, 6)
@@ -783,7 +863,28 @@ def extract_price(text: str) -> tuple[float | None, str | None]:
     return min(prices), "NAD"
 
 
+# Activity words that only decide the type when they appear in the *name*.
+# "Safari" in the body describes what half of Namibia's lodges offer; in the
+# name it is what the listing is. Accommodation is still checked first, so
+# "Etosha Safari Lodge" stays a lodge.
+_ACTIVITY_NAME_KEYWORDS = (
+    "safari", "safaris", "tour", "tours", "trip", "trips", "cruise",
+    "excursion", "expedition", "adventure", "trail", "trails", "flight",
+    "flights", "charter", "transfer", "transfers",
+)
+
+
 def classify_listing_type(name: str, text: str, hint: str | None) -> str:
+    # The name is the strongest signal and the body the weakest: a tour page
+    # describes its camp in detail, which is why "Coastways Safaris to Saddle
+    # Hill" came out as accommodation off the word "campsite" in the itinerary.
+    name_l = name.lower()
+    for listing_type, keywords in _TYPE_KEYWORDS:
+        if any(k in name_l for k in keywords):
+            return listing_type
+    if any(k in name_l for k in _ACTIVITY_NAME_KEYWORDS):
+        return "activity"
+
     haystack = f"{name} {text[:2000]}".lower()
     for listing_type, keywords in _TYPE_KEYWORDS:
         if any(k in haystack for k in keywords):
@@ -792,10 +893,34 @@ def classify_listing_type(name: str, text: str, hint: str | None) -> str:
 
 
 def classify_category(name: str, text: str) -> str | None:
+    name_l = name.lower()
+    for category, keywords in _CATEGORY_KEYWORDS:
+        if any(k in name_l for k in keywords):
+            return category
+
     haystack = f"{name} {text[:1500]}".lower()
     for category, keywords in _CATEGORY_KEYWORDS:
         if any(k in haystack for k in keywords):
             return category
+    return None
+
+
+_REGION_RE = re.compile(
+    r"\b(Northern|Southern|Central|Eastern|Western|Coastal|North-?Western|North-?Eastern)\s+Region\b",
+    re.IGNORECASE,
+)
+
+
+def extract_region(blocks: list[str]) -> str | None:
+    """namibweb prints "Accommodation Namibia - Southern Region" on the page.
+
+    A crawl learns the region from the index it followed, but --url has no
+    index, and the page states it anyway — so read it rather than store null.
+    """
+    for block in blocks[:12]:
+        m = _REGION_RE.search(block)
+        if m:
+            return f"{m.group(1).title()} Region"
     return None
 
 
@@ -964,14 +1089,18 @@ def parse_detail(page: "Page", chrome: set[str], chrome_social: set[str]) -> dic
             address = block
             break
 
+    listing_type = classify_listing_type(name, body, page.type_hint)
+
     return {
         "scrape_id": page.scrape_id,
         "source_url": page.url,
         "index_url": page.parent_url,
         "name": name,
-        "region": page.section,
-        "listing_type": classify_listing_type(name, body, page.type_hint),
-        "category": classify_category(name, body),
+        "region": page.section or extract_region(blocks),
+        "listing_type": listing_type,
+        # Category describes the shape of a place to stay; on a tour page it
+        # would just report whichever accommodation word the itinerary used.
+        "category": classify_category(name, body) if listing_type == "accommodation" else None,
         "description": description,
         "photos": extract_photos(html, page.url)[:30],
         "social_links": social,
@@ -1226,10 +1355,17 @@ def is_index_page(html: str, url: str) -> bool:
 
 def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[str, dict],
           *, max_depth: int, max_pages: int, limit: int, use_conditional: bool,
-          workers: int) -> tuple[dict[str, Page], list[str], set[str]]:
+          workers: int) -> tuple[dict[str, Page], list[str], set[str], dict[str, Page]]:
     """Breadth-first crawl that sorts pages into indexes and listings as it goes.
 
-    Returns (listing pages by scrape_id, scrape_ids that answered 304, index URLs).
+    Returns (listing pages by scrape_id, scrape_ids that answered 304, index URLs,
+    every fetched page by scrape_id).
+
+    The fourth value is what gets archived, and it is deliberately not the first:
+    archiving only the pages this crawl happened to call listings would make the
+    archive hostage to the classifier. A page misread as an index would be lost,
+    and fixing that misreading later would mean crawling the site again — which
+    is exactly what the archive exists to prevent.
     """
     queue: deque[Page] = deque(
         Page(url, type_hint=hint, depth=0) for url, hint in seeds
@@ -1239,6 +1375,8 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
     listings: dict[str, Page] = {}
     unchanged: list[str] = []
     indexes: set[str] = set()
+    fetched_pages: dict[str, Page] = {}
+    statuses: Counter[int] = Counter()
     fetched = 0
 
     def fetch(page: Page) -> Page:
@@ -1261,6 +1399,7 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
 
         for page in results:
             fetched += 1
+            statuses[page.status] += 1
 
             if page.status == 304:
                 unchanged.append(page.scrape_id)
@@ -1269,6 +1408,9 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
                 if page.depth == 0:
                     print(f"  [warn] seed {page.url} failed (status {page.status})")
                 continue
+
+            # Banked before anything decides what this page *is*.
+            fetched_pages[page.scrape_id] = page
 
             if page.depth < max_depth and is_index_page(page.html, page.url):
                 indexes.add(page.url)
@@ -1297,7 +1439,36 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
 
         print(f"  crawled {fetched} pages — {len(listings)} listings, {len(queue)} queued")
 
-    return listings, unchanged, indexes
+    if not listings and not unchanged:
+        explain_total_failure(statuses)
+
+    return listings, unchanged, indexes, fetched_pages
+
+
+def explain_total_failure(statuses: "Counter[int]") -> None:
+    """Names the failure instead of leaving a wall of retry warnings.
+
+    A crawl that returns nothing is not a parsing problem, and reading it as
+    one wastes the next hour on the wrong layer.
+    """
+    summary = ", ".join(f"HTTP {code}: {n}" for code, n in sorted(statuses.items()))
+    print(f"\nNo page was fetched. Response codes seen — {summary}")
+
+    if statuses.get(403):
+        print(
+            "\n403 on every request, including the site root, is the server "
+            "refusing us rather than anything about our parsing. The usual "
+            "causes, in order of likelihood:\n"
+            "  1. The host blocks datacenter IP ranges. CI runners are the "
+            "textbook case; the same request often succeeds from a normal "
+            "connection. Run this script locally to tell the two apart.\n"
+            "  2. The site blocks non-browser User-Agents.\n"
+            "  3. The operator has deliberately blocked automated access.\n"
+            "\nWhich one it is decides what may legitimately be done next, so "
+            "establish that before changing anything about how we identify "
+            "ourselves. If it is (3), the answer is to ask them, not to look "
+            "like someone else."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1459,6 +1630,104 @@ def probe(pages: dict[str, Page], count: int) -> None:
             print(f"  · {block[:160]}")
 
 
+def run_sample(urls: list[str], args, fetcher: Fetcher, run_at: str) -> int:
+    """Scrapes a handful of known detail pages end to end and prints what it got.
+
+    This is the mode to reach for before any crawl. It costs exactly one request
+    per URL, skips the index-vs-detail classifier entirely — you already know
+    these are detail pages — and still runs the whole pipeline: text, photos,
+    coordinates, social links, contact. What it prints is what a real run would
+    store, so it can be checked field by field against the page in a browser.
+
+    It never writes the baseline. A three-record file landing in
+    namibweb_listings.json would make the next full run read every other listing
+    as missing, so the sample goes to its own file.
+    """
+    pages: dict[str, Page] = {}
+    for url in urls:
+        page = Page(url, depth=1)
+        page.html, page.validators, page.status = fetcher.get(url, None)
+        if not page.html:
+            print(f"  [warn] {url} returned {page.status} — skipped")
+            continue
+        pages[page.scrape_id] = page
+
+    if not pages:
+        print("\nNone of the given URLs returned a page.")
+        return 1
+
+    # Template chrome is found by frequency, which needs a corpus — and three
+    # pages are not one. The archive of everything fetched so far is, so the
+    # sample borrows it instead of reporting the site's own footer as the
+    # lodge's description and namibweb's Facebook as the lodge's social link.
+    archived = load_archive(Path(args.archive))
+    corpus = [e.get("html") or "" for sid, e in archived.items() if sid not in pages]
+    corpus += [p.html or "" for p in pages.values()]
+
+    chrome = build_chrome_index([text_blocks(h) for h in corpus])
+    chrome_social = build_chrome_social([extract_social_links(h) for h in corpus])
+    if chrome or chrome_social:
+        print(f"Chrome learned from {len(corpus)} known pages: "
+              f"{len(chrome)} repeated blocks, {len(chrome_social)} site-owned social links")
+    else:
+        print(f"  [warn] no chrome index — only {len(corpus)} page(s) known and stripping needs 4.\n"
+              "         Descriptions will still carry the site header/footer, and social\n"
+              "         links may be namibweb's own rather than the listing's.")
+
+    fresh: dict[str, dict] = {}
+    for scrape_id, page in pages.items():
+        try:
+            record = parse_detail(page, chrome, chrome_social)
+        except Exception as e:
+            print(f"  [warn] parse failed for {page.url}: {e}")
+            continue
+        record["http"] = page.validators
+        fresh[scrape_id] = record
+
+    if not args.no_archive:
+        archive_path = Path(args.archive)
+        total = write_archive(archive_path, pages, archived, run_at)
+        print(f"Archived {total} pages of raw HTML ({len(pages)} from this run) → {archive_path}")
+
+    if not args.no_photos:
+        downloaded, reused = download_photos(fresh, {}, Path(args.photos_dir), fetcher, args.workers)
+        print(f"Photos: {downloaded} downloaded, {reused} already held → {args.photos_dir}")
+
+    if not args.no_reverse_geocode:
+        resolved = reverse_geocode(fresh, {}, fetcher.session)
+        print(f"Reverse-geocoded {resolved} coordinate pairs via Nominatim")
+
+    sample_path = Path(args.sample_out)
+    sample_path.parent.mkdir(parents=True, exist_ok=True)
+    sample_path.write_text(
+        json.dumps({"scraped_at": run_at, "source": BASE, "sample": True,
+                    "records": list(fresh.values())}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    for record in fresh.values():
+        print("\n" + "=" * 78)
+        print(f"URL         : {record['source_url']}")
+        print(f"Name        : {record['name']}")
+        print(f"Type        : {record['listing_type']}   Category: {record['category']}")
+        print(f"Coordinates : {record['latitude']}, {record['longitude']}   Geo: {record.get('geo')}")
+        print(f"Address     : {record['address']}")
+        print(f"Website     : {record['website']}")
+        print(f"Social      : {record['social_links'] or '—'}")
+        print(f"Email/Phone : {record['email'] or '—'} / {record['phone'] or '—'}")
+        print(f"Price       : {record['price_from']} {record['price_currency'] or ''}".rstrip())
+        print(f"Facilities  : {', '.join(record['facilities']) if record['facilities'] else '—'}")
+        print(f"Photos      : {len(record['photos'])} urls, {len(record.get('photo_files') or [])} files")
+        for photo in (record.get("photo_files") or record["photos"])[:5]:
+            print(f"  · {photo}")
+        description = record["description"] or ""
+        print(f"Description : {len(description)} chars")
+        print(f"  {description[:600]}{'…' if len(description) > 600 else ''}")
+
+    print(f"\n{len(fresh)} record(s) → {sample_path}  (baseline untouched)")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Scrape namibweb.com listings")
     parser.add_argument("--seed", action="append", default=[], help="Extra entry-point URL (repeatable)")
@@ -1472,6 +1741,10 @@ def main() -> int:
     parser.add_argument("--baseline", default=None, help="Baseline JSON (defaults to --out)")
     parser.add_argument("--full", action="store_true", help="Ignore ETag/Last-Modified, re-fetch everything")
     parser.add_argument("--probe", type=int, default=0, help="Dump structure for N pages and exit")
+    parser.add_argument("--url", action="append", default=[],
+                        help="Scrape these detail pages only, full pipeline, no crawl (repeatable)")
+    parser.add_argument("--sample-out", default=str(OUTPUT_DIR / "namibweb_sample.json"),
+                        help="Where --url writes its records (never the baseline)")
     parser.add_argument("--ignore-robots", action="store_true", help="Skip the robots.txt check")
     parser.add_argument("--photos-dir", default=str(OUTPUT_DIR / "namibweb_photos"),
                         help="Where downloaded photos go")
@@ -1486,16 +1759,19 @@ def main() -> int:
     fetcher = Fetcher(delay=args.delay)
     seeds = SEEDS + [(url, None) for url in args.seed]
 
-    if not args.ignore_robots and not robots_allows(seeds[0][0], fetcher):
+    if not args.ignore_robots and not robots_allows(args.url[0] if args.url else seeds[0][0], fetcher):
         print("robots.txt disallows this path. Re-run with --ignore-robots only if you have permission.")
         return 1
+
+    if args.url:
+        return run_sample(args.url, args, fetcher, run_at)
 
     baseline_path = Path(args.baseline) if args.baseline else Path(args.out)
     baseline = load_baseline(baseline_path)
     print(f"Baseline holds {len(baseline)} records from a previous run")
 
     print("Crawling from: " + ", ".join(url for url, _ in seeds))
-    pages, unchanged_ids, indexes = crawl(
+    pages, unchanged_ids, indexes, fetched_pages = crawl(
         seeds, fetcher, baseline,
         max_depth=args.max_depth,
         max_pages=args.max_pages,
@@ -1506,7 +1782,22 @@ def main() -> int:
     print(f"Crawl done: {len(pages)} listing pages, {len(unchanged_ids)} unchanged (304), "
           f"{len(indexes)} index pages ({', '.join(sorted(indexes)) or 'none'})")
 
+    # Archive first, before anything can return early. Every request already cost
+    # the site something; a run that fetches pages and keeps none of them spends
+    # that for nothing and forces a repeat visit. --probe used to do exactly that.
+    if not args.no_archive:
+        archive_path = Path(args.archive)
+        total = write_archive(archive_path, fetched_pages, load_archive(archive_path), run_at)
+        print(f"Archived {total} pages of raw HTML ({len(fetched_pages)} from this run) "
+              f"→ {archive_path}")
+
     if args.probe:
+        if not pages:
+            print(
+                "\nProbe fetched nothing — there is no structure to show.\n"
+                "See the diagnosis above; the crawl never got a page back."
+            )
+            return 1
         probe(pages, args.probe)
         return 0
 
@@ -1538,11 +1829,6 @@ def main() -> int:
         previous = baseline.get(scrape_id)
         if previous and scrape_id not in fresh:
             fresh[scrape_id] = {k: v for k, v in previous.items() if k not in ("status", "changed_fields")}
-
-    if not args.no_archive:
-        archive_path = Path(args.archive)
-        total = write_archive(archive_path, pages, load_archive(archive_path), run_at)
-        print(f"Archived {total} pages of raw HTML → {archive_path}")
 
     if not args.no_photos:
         downloaded, reused = download_photos(fresh, baseline, Path(args.photos_dir), fetcher, args.workers)
