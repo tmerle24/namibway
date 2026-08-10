@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ContentSource;
 use App\Enums\ListingType;
 use App\Models\City;
 use App\Models\Listing;
@@ -62,10 +63,42 @@ class ImportNamibwebCommandTest extends TestCase
         $this->artisan('listings:import-namibweb', ['--file' => $path, '--with-descriptions' => true])
             ->assertSuccessful();
 
-        $this->assertSame(
-            'Eight en-suite rooms overlooking Windhoek.',
-            Listing::where('scrape_id', 'hohewarte')->value('description')
-        );
+        $listing = Listing::where('scrape_id', 'hohewarte')->firstOrFail();
+
+        $this->assertSame('Eight en-suite rooms overlooking Windhoek.', $listing->description);
+        // Marked as directory text, which is what later lets the website crawler
+        // or our own generated copy replace it — see ContentSourceLadderTest.
+        $this->assertSame(ContentSource::Directory, $listing->description_source);
+    }
+
+    public function test_photos_are_staged_as_reference_only_and_never_claim_the_live_slot(): void
+    {
+        $photosDir = sys_get_temp_dir().'/namibweb-photos-'.uniqid();
+        mkdir($photosDir.'/hohewarte', 0777, true);
+        file_put_contents($photosDir.'/hohewarte/00-hero.jpg', 'jpeg-bytes');
+
+        $record = $this->record([
+            'photos' => ['https://www.namibweb.com/photos/hero.jpg'],
+            'photo_files' => [[
+                'url' => 'https://www.namibweb.com/photos/hero.jpg',
+                'file' => 'hohewarte/00-hero.jpg',
+                'sha256' => str_repeat('a', 64),
+                'bytes' => 10,
+            ]],
+        ]);
+
+        $this->artisan('listings:import-namibweb', [
+            '--file' => $this->writeFixture([$record]),
+            '--photos-dir' => $photosDir,
+        ])->assertSuccessful();
+
+        $listing = Listing::where('scrape_id', 'hohewarte')->firstOrFail();
+
+        $this->assertNull($listing->image, 'a directory photo must never be the live image');
+        $this->assertNotNull($listing->pending_image);
+        $this->assertSame(ContentSource::Directory, $listing->pending_photos_source);
+        $this->assertNull($listing->photos_source);
+        $this->assertFalse($listing->hasApprovablePhotos());
     }
 
     public function test_a_second_import_of_the_same_data_changes_nothing(): void

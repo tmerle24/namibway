@@ -2,6 +2,7 @@
 
 namespace App\Services\Enrichment;
 
+use App\Enums\ContentSource;
 use App\Models\Listing;
 
 /**
@@ -333,9 +334,16 @@ class EnrichmentPipeline
     {
         $og = $this->extractor->extractSignals($html, $baseUrl);
 
-        if (! empty($og['description']) && blank($listing->getTranslation('description', 'en', useFallbackLocale: false)) && ! array_key_exists('description', $updates)) {
+        $descriptionUpgradable = ContentSource::WebsiteScrape->outranks($listing->description_source);
+
+        if (! empty($og['description'])
+            && (blank($listing->getTranslation('description', 'en', useFallbackLocale: false)) || $descriptionUpgradable)
+            && ! array_key_exists('description', $updates)) {
             $updates['description'] = ['en' => $og['description']];
-            $log[] = 'Description imported from website (og:description).';
+            $updates['description_source'] = ContentSource::WebsiteScrape;
+            $log[] = $descriptionUpgradable
+                ? 'Description replaced with the website\'s own (og:description) — the listing was showing directory text.'
+                : 'Description imported from website (og:description).';
         }
 
         if (! empty($og['email']) && blank($listing->contact_email) && ! array_key_exists('contact_email', $updates)) {
@@ -377,7 +385,7 @@ class EnrichmentPipeline
             $updates['gallery'] = array_slice($urls, 1);
         }
 
-        $updates['photos_source'] = 'google_places';
+        $updates['photos_source'] = ContentSource::GooglePlaces;
         $updates['photos_attribution'] = $result['attribution'];
         $updates['google_photos_expire_at'] = now()->addDays(30);
 
@@ -484,6 +492,7 @@ class EnrichmentPipeline
         }
 
         $updates['pending_image'] = $hero;
+        $updates['pending_photos_source'] = ContentSource::WebsiteScrape;
         $log[] = 'Hero image imported from website — pending owner/admin approval before publishing.';
 
         if (empty($images)) {
@@ -506,10 +515,20 @@ class EnrichmentPipeline
         }
     }
 
+    /**
+     * Text that is missing — or that we hold but may not publish.
+     *
+     * The second case is why this is not just a blank check: a listing imported
+     * from a directory looks "described" while carrying prose that can never go
+     * live. Generating over it is the only way it becomes a real listing. Volume
+     * is bounded by EnrichmentBudgetGuard's daily AI cap, same as every other
+     * step here.
+     */
     private function needsDescription(Listing $listing): bool
     {
         return blank($listing->getTranslation('description', 'en', useFallbackLocale: false))
-            || blank($listing->getTranslation('short_description', 'en', useFallbackLocale: false));
+            || blank($listing->getTranslation('short_description', 'en', useFallbackLocale: false))
+            || ContentSource::AiGenerated->outranks($listing->description_source);
     }
 
     /**
@@ -537,8 +556,15 @@ class EnrichmentPipeline
         $result = $this->descriptionGenerator->generate($listing, $pageText);
         $data = $result['data'];
 
-        if (blank($listing->getTranslation('description', 'en', useFallbackLocale: false)) && filled($data['long_description'])) {
+        // Copy we wrote from the listing's own facts outranks a directory's
+        // prose, so this replaces it rather than only filling a blank — that is
+        // how a scraped listing stops showing someone else's text.
+        $replacesDirectoryText = ContentSource::AiGenerated->outranks($listing->description_source);
+
+        if ((blank($listing->getTranslation('description', 'en', useFallbackLocale: false)) || $replacesDirectoryText)
+            && filled($data['long_description'])) {
             $updates['description'] = ['en' => $data['long_description']];
+            $updates['description_source'] = ContentSource::AiGenerated;
             $aiGeneratedFields[] = 'description';
         }
 

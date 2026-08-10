@@ -297,7 +297,13 @@ class ListingController extends Controller
         // Website-scraped photos the owner hasn't approved yet — only shown to the
         // owner themselves or an admin, never to the public, since we don't have the
         // right to publish them without consent (see Listing::approvePendingPhotos()).
-        $canApprovePhotos = $isAdmin || $isOwnerPreview;
+        $canSeePendingPhotos = $isAdmin || $isOwnerPreview;
+
+        // Seeing them and being able to publish them are different rights.
+        // Directory-sourced staged photos stay visible to an admin as reference
+        // while matching a property, but consent from this owner cannot license
+        // a third party's photography — so no approve button is offered for them.
+        $canApprovePhotos = $canSeePendingPhotos && $listing->hasApprovablePhotos();
 
         // Detect coordinate text saved into `address` so the public page shows a
         // working map instead of a raw "S20°47.482 E016°42.704" string next to the
@@ -355,12 +361,15 @@ class ListingController extends Controller
                     ->values(),
                 'photos_source' => $listing->photos_source,
                 'photos_attribution' => $listing->photos_attribution,
-                'pending_image' => $canApprovePhotos && $listing->pending_image
+                'pending_image' => $canSeePendingPhotos && $listing->pending_image
                     ? self::resolveMediaUrl($listing->pending_image)
                     : null,
-                'pending_gallery' => $canApprovePhotos
+                'pending_gallery' => $canSeePendingPhotos
                     ? collect($listing->pending_gallery ?? [])->map(fn (string $path) => self::resolveMediaUrl($path))->values()
                     : [],
+                'pending_photos_source' => $canSeePendingPhotos
+                    ? $listing->pending_photos_source?->value
+                    : null,
                 'region' => $listing->region,
                 'city' => $listing->city?->name,
                 'address' => $parsedCoordinates ? null : $listing->address,

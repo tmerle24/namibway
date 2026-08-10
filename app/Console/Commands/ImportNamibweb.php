@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\ContentSource;
 use App\Enums\ListingType;
 use App\Models\City;
 use App\Models\Listing;
@@ -374,6 +375,7 @@ class ImportNamibweb extends Command
 
         if ($this->option('with-descriptions') && $incoming['description']) {
             $listing->setTranslation('description', 'en', $incoming['description']);
+            $listing->description_source = ContentSource::Directory;
         }
 
         $listing->save();
@@ -482,6 +484,10 @@ class ImportNamibweb extends Command
             }
         }
 
+        if (in_array('description', $appliedFields, true)) {
+            $listing->description_source = ContentSource::Directory;
+        }
+
         if ($fill) {
             $listing->fill($fill);
         }
@@ -557,11 +563,16 @@ class ImportNamibweb extends Command
             return;
         }
 
+        // pending_photos_source, never photos_source: these are namibweb's
+        // photographs, so they are staged as internal reference and
+        // Listing::approvePendingPhotos() refuses to promote them. They exist so
+        // an admin can see the property while matching it, and so the website
+        // crawler has something to visibly improve on.
         $listing->forceFill([
             'pending_image' => $listing->pending_image ?: $stored[0],
             'pending_gallery' => $stored,
-            'photos_source' => 'namibweb',
-            'photos_attribution' => 'namibweb.com — rights not cleared, review before publishing',
+            'pending_photos_source' => ContentSource::Directory,
+            'photos_attribution' => 'namibweb.com — rights not cleared, reference only',
         ])->save();
     }
 

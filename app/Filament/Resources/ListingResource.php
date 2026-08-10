@@ -431,6 +431,16 @@ class ListingResource extends Resource
                 Tables\Columns\TextColumn::make('scrape_source')
                     ->label('Source')
                     ->toggleable(isToggledHiddenByDefault: true),
+                // Provenance of what the listing actually shows — a red badge here
+                // means content we are not free to publish (see ContentSource).
+                Tables\Columns\TextColumn::make('description_source')
+                    ->label('Text from')
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('photos_source')
+                    ->label('Photos from')
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

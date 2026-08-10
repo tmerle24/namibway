@@ -81,10 +81,17 @@ interface Listing {
     image: string | null;
     gallery: string[];
     photos_source:
-        'manual' | 'website_scrape' | 'google_places' | 'namibweb' | null;
+        | 'partner'
+        | 'manual'
+        | 'website_scrape'
+        | 'ai_generated'
+        | 'google_places'
+        | 'directory'
+        | null;
     photos_attribution: string | null;
     pending_image: string | null;
     pending_gallery: string[];
+    pending_photos_source: string | null;
     region: string | null;
     city: string | null;
     address: string | null;
@@ -174,6 +181,15 @@ const pendingPhotoCount = computed(
     () =>
         props.listing.pending_gallery.length +
         (props.listing.pending_image ? 1 : 0),
+);
+
+// Staged photos that no approval can publish (see App\Enums\ContentSource).
+// The server only sends pending photos to someone allowed to see them, so their
+// presence is the visibility check.
+const referenceOnlyPhotoCount = computed(() =>
+    props.listing.pending_photos_source === 'directory'
+        ? pendingPhotoCount.value
+        : 0,
 );
 
 function publishListing() {
@@ -427,6 +443,35 @@ const socialLinks = computed(() =>
                     :key="i"
                     v-bind="thumbAttrs(src, 56)"
                     :alt="`Pending gallery image ${i + 1}`"
+                    loading="lazy"
+                    decoding="async"
+                />
+            </div>
+        </div>
+
+        <!-- Staged photos from a third-party directory. Visible to an admin or the
+             owner as reference while a listing is being matched up, but there is no
+             approve action: nobody here can license someone else's photography. -->
+        <div v-if="referenceOnlyPhotoCount" class="pending-photos-preview">
+            <p>
+                {{ referenceOnlyPhotoCount }} photo(s) from
+                {{ props.listing.pending_photos_source }} — reference only, not
+                publishable. They disappear once the listing's own website is
+                crawled or the owner uploads their own.
+            </p>
+            <div class="pending-photos-thumbs">
+                <img
+                    v-if="props.listing.pending_image"
+                    v-bind="thumbAttrs(props.listing.pending_image, 56)"
+                    alt="Reference image"
+                    loading="lazy"
+                    decoding="async"
+                />
+                <img
+                    v-for="(src, i) in props.listing.pending_gallery"
+                    :key="i"
+                    v-bind="thumbAttrs(src, 56)"
+                    :alt="`Reference image ${i + 1}`"
                     loading="lazy"
                     decoding="async"
                 />

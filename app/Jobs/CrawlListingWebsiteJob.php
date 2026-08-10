@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Enums\ContentSource;
 use App\Models\Listing;
 use App\Services\Enrichment\WebsiteContentExtractor;
 use Illuminate\Bus\Queueable;
@@ -108,14 +109,23 @@ class CrawlListingWebsiteJob implements ShouldBeUnique, ShouldQueue
     {
         $fill = [];
 
-        if (! empty($images) && ! $listing->image) {
+        // A listing showing directory photos is showing photos we may not
+        // publish at all. The owner's own site outranks that — but it is still
+        // their copyright, so the upgrade is staged for approval rather than
+        // swapped in live. Only a listing with no photo at all gets one
+        // published outright, which is this job's long-standing behaviour.
+        $liveIsUpgradable = $listing->image
+            && ContentSource::WebsiteScrape->outranks($listing->photos_source);
+
+        if (! empty($images) && (! $listing->image || $liveIsUpgradable)) {
             $hero = $extractor->downloadPhoto(array_shift($images), $listing->slug);
             if ($hero) {
-                $fill['image'] = $hero;
+                $fill[$liveIsUpgradable ? 'pending_image' : 'image'] = $hero;
+                $fill[$liveIsUpgradable ? 'pending_photos_source' : 'photos_source'] = ContentSource::WebsiteScrape;
             }
         }
 
-        if (! empty($images) && empty($listing->gallery)) {
+        if (! empty($images) && (empty($listing->gallery) || $liveIsUpgradable)) {
             $gallery = [];
             foreach (array_slice($images, 0, self::MAX_IMAGES - 1) as $url) {
                 $stored = $extractor->downloadPhoto($url, $listing->slug);
@@ -124,12 +134,19 @@ class CrawlListingWebsiteJob implements ShouldBeUnique, ShouldQueue
                 }
             }
             if ($gallery) {
-                $fill['gallery'] = $gallery;
+                $fill[$liveIsUpgradable ? 'pending_gallery' : 'gallery'] = $gallery;
             }
         }
 
-        if (! empty($og['description']) && blank($listing->getTranslation('description', 'en'))) {
+        // Text from the owner's own site replaces directory prose outright:
+        // unlike photography, showing it is what the site exists to do, and it
+        // beats a third party's description of the same property.
+        $descriptionUpgradable = ContentSource::WebsiteScrape->outranks($listing->description_source);
+
+        if (! empty($og['description'])
+            && (blank($listing->getTranslation('description', 'en')) || $descriptionUpgradable)) {
             $fill['description'] = ['en' => $og['description']];
+            $fill['description_source'] = ContentSource::WebsiteScrape;
         }
 
         if (! empty($og['email']) && ! $listing->contact_email) {
