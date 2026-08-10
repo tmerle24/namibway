@@ -27,8 +27,12 @@ use Illuminate\Database\Eloquent\Model;
 class MessagesColumn
 {
     /**
-     * @param  Closure(Model): string  $url  Messages page for the row's record.
-     * @param  Closure(Model): ?string  $contactEmail  Address the row can be written to, if any.
+     * Both closures are called with the row's record, the way Filament calls
+     * its own: $url returns that record's Messages page, $contactEmail the
+     * address it can be written to (null when there is none). They are left
+     * as bare Closures rather than typed Closure(Model): … signatures, since
+     * a closure narrowed to Listing or Partner is not a valid substitute for
+     * one accepting any Model.
      */
     public static function make(Closure $url, Closure $contactEmail): Tables\Columns\TextColumn
     {
