@@ -1,34 +1,56 @@
-# Marketing material — partner acquisition
+# Marketing material
 
-English-language print material used to sign Namibian lodges, camps, activity
-operators and restaurants as NamibWay partners.
+English-language print material for the three things we sell: listings on the travel
+platform, cheap websites for Namibian businesses, and custom software — the last of
+which currently means a booking system.
 
-| File | What it is |
-|---|---|
-| `partner-outreach-copy.md` | The approved copy: A4 flyer (front/back), A5 hand-out, A6 leave-behind card, phone talk track, objection FAQ |
-| `flyer-a4.html` | The designed A4 flyer, front and back. Source of the PDFs |
-| `build-flyer.mjs` | `node marketing/build-flyer.mjs` — renders the PDFs with headless Chromium, no npm dependencies |
-| `assets/` | QR code for namibway.com and the compass mark recoloured for the brown and sand grounds |
-| `out/` | The built PDFs |
-| `claude-designer-prompt.md` | Ready-to-paste prompt if you would rather design a piece elsewhere, plus which brand files to attach and why the domain alone is not enough |
+## The flyers
 
-## The A4 flyer
+| Flyer | Audience | Source |
+|---|---|---|
+| Partners | Lodges, camps, guides and restaurants we want listed on NamibWay | `flyer-partners-a4.html` |
+| Websites | Namibian business owners with no website, for the co-founder to prospect with | `flyer-websites-a4.html` |
+| Booking system | Namibia Wildlife Resorts — a leave-behind for a meeting, not a counter hand-out | `flyer-booking-system-a4.html` |
 
-`out/namibway-partner-flyer-a4-print.pdf` — 216 × 303 mm, that is A4 plus 3 mm bleed
-on all four sides, no crop marks. This is the file for a print shop. The brown bands
-and the amber call to action run into the bleed, so a small trim variance never leaves
-a white sliver at the edge.
+Each builds two PDFs into `out/`:
 
-`out/namibway-partner-flyer-a4-screen.pdf` — plain A4, for email and the office
-printer.
-
-Both come from `flyer-a4.html`; edit that and re-run the build. Three things in it are
-marked `EDIT:` — a phone line in the contact strip (off, because there is no number
-that is answered yet), the commission wording, and an optional hero photograph.
+- `*-print.pdf` — 216 × 303 mm, that is A4 plus 3 mm bleed on all four sides, no crop
+  marks. This is the file for a print shop. The brown bands and the amber call to
+  action run into the bleed, so a small trim variance never leaves a white sliver.
+- `*-screen.pdf` — plain A4, for email and the office printer.
 
 Colours are RGB. Most print shops convert to CMYK themselves; if yours insists on a
 CMYK file, send them the print PDF and ask them to convert — the palette is muted
 enough that the shift is small, but check a proof before a large run.
+
+## Building
+
+```
+node marketing/build-flyer.mjs            # all three
+node marketing/build-flyer.mjs websites   # just the one whose filename matches
+```
+
+No npm dependencies — it drives Chromium's `--print-to-pdf`, which honours the CSS
+`@page` size, and rewrites that one rule per variant.
+
+**A page that overflows is clipped silently**, because `.page` is `overflow: hidden`.
+After changing copy, check that each page's `scrollHeight` still equals its box height
+rather than trusting how the PDF looks in a viewer. The websites flyer already carries
+tighter spacing in its own `<style>` for exactly this reason.
+
+Spots marked `EDIT:` in each file: the phone line in the contact strip (off everywhere,
+because there is no number that is answered yet), an optional hero photograph, the
+commission wording on the partner flyer, the monthly price on the websites flyer, and
+the organisation name on the booking-system flyer.
+
+## Other files
+
+| File | What it is |
+|---|---|
+| `partner-outreach-copy.md` | Copy for the partner line: the flyer text plus an A5 hand-out, an A6 leave-behind card, a phone talk track and an objection FAQ |
+| `flyer-base.css` | Shared print styles. All three flyers link it, so they stay one design |
+| `assets/` | QR code for namibway.com and the compass mark recoloured for the brown and sand grounds |
+| `claude-designer-prompt.md` | Ready-to-paste prompt if you would rather design a piece elsewhere, plus which brand files to attach and why the domain alone is not enough |
 
 ## Claims we may make
 
@@ -69,6 +91,21 @@ All of these are things the platform actually does today:
 - **Anything about a named competitor's reliability.** The availability problems that
   motivated this platform are real, but naming a state operator or a portal in print
   is a fight we do not need.
+
+## Claims specific to the other two flyers
+
+**Websites.** We can set a business up on Google Maps and a Google Business Profile.
+We cannot promise where it ranks in search, and no flyer may imply it. The monthly
+price is a proposal until someone signs it off; it appears twice in
+`flyer-websites-a4.html` and both have to move together.
+
+**Booking system.** The list on the back is deliberately limited to what is running in
+production today. Two lines must not drift: no connector has ever been validated
+against a live partner account, so "adapters designed for" must never become
+"integrated with"; and no partner is connected, so there are no uptime, volume or
+customer figures to quote. Nothing in that flyer criticises the system the recipient
+runs today — the argument is the outcome, not their current supplier. Check the exact
+registered name and preferred short form of the organisation before printing.
 
 ## Photography
 
