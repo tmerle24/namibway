@@ -52,6 +52,8 @@
         "back": "Zurück",
         "estimated": "~{price} geschätzt",
         "estimatedPerDay": "≈{price}/Tag",
+        "estimatedPerNight": "≈{price}/Nacht",
+        "estimateExcludesStay": "ohne Unterkunft",
         "stay": "Unterkunft: {value}",
         "activity": "Aktivität: {value}",
         "dinner": "Abendessen: {value}",
@@ -141,7 +143,6 @@
             "lunch": "Mittagessen",
             "dinner": "Abendessen"
         },
-        "forTravelers": "für {count}",
         "meta": {
             "travelPeriod": "Reisezeit",
             "duration": "Dauer",

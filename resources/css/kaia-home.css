@@ -1221,9 +1221,21 @@ body:has(.kaia-page) {
     display: flex;
     align-items: center;
 }
+/* Stage total on top, its per-night breakdown (or the "excl. accommodation"
+   caveat) beneath — stacked rather than inline so a two-part label stays as
+   narrow as the one-part one used to be and never crowds the city name. */
 .kaia-page .day-card-price {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.3;
     font-size: 13px;
     white-space: nowrap;
+}
+.kaia-page .day-card-price-sub {
+    color: #8a7f68;
+    font-weight: 500;
+    font-size: 11.5px;
 }
 .kaia-page .day-card-sub {
     display: block;

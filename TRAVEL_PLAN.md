@@ -918,7 +918,45 @@ edit only writes `location`.
   picker together; picking Windhoek back in the picker moved the heading
   live. eslint, prettier and vue-tsc clean.
 
+### Session 15 — 2026-08-10 (the stage price says what it means)
+
+Till read the stage badge "€ 17 für 2" next to "1 – 4 Jan 2027 (3 Nächte)"
+and could not tell what it was: 17 € for two people for three nights? That
+would be absurdly cheap. Two separate faults in one four-word label:
+
+- ✅ **"für 2" is gone.** It appended the party size to a sum that was never
+  multiplied by it — `listings.price_from` carries no per-person dimension,
+  and nothing in `stageTotal()` touches `adults`/`children_under_13`. The
+  count was decoration that read as a guarantee. Party size stays where it
+  is true, in `TripMeta`.
+- ✅ **The badge now names its period.** Top line is the stage total in the
+  same wording as the trip and vehicle totals ("~€ 348 geschätzt"); the
+  second line divides it by the stage's nights ("≈€ 116/Nacht"). A
+  one-night stage prints only the total — the per-night figure would just
+  repeat it.
+- ✅ **A stay on request is declared, not averaged.** In the reported case
+  the lodge was "Preis auf Anfrage", so the € 17 was activities and meals
+  alone — and a per-night figure derived from that reads as a room rate,
+  which is exactly the misreading. When the stage's stay has no
+  `price_from`, the second line says "ohne Unterkunft" instead.
+- The two lines stack right-aligned inside `.day-card-price` (mirroring
+  `.variant-price` / `.variant-price-per-day`), so the badge stays as narrow
+  as the old one-line version.
+- Verified in the browser against a local fixture (`STAGEPRICE1`, three
+  stages covering all branches): 3 nights priced → "~€ 160 geschätzt /
+  ≈€ 53/Nacht"; 3 nights on request → "~€ 16 geschätzt / ohne Unterkunft";
+  1 night priced → total only. At 375px the price block starts at x=235
+  with the city title ending at x=225 — no overlap, no page overflow.
+  eslint, prettier and vue-tsc clean.
+
 ### Known gaps / next up
+
+- ⬜ **Per-item price periods are still unstated.** This fixes the stage
+  badge, but an activity or restaurant row prints a bare `price_from` with
+  no clue whether it is per person or per booking — the column simply does
+  not record which. The stage total inherits that ambiguity: it adds
+  per-night stays to per-item entries. Wants a `price_unit` on `listings`
+  before the plan can promise a number a traveler could budget against.
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its
   modal are both structured to take them, but nothing links an `Inquiry`

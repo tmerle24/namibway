@@ -50,6 +50,8 @@
         "reverseRoute": "Inverser l'itinéraire",
         "estimated": "~{price} estimé",
         "estimatedPerDay": "≈{price}/jour",
+        "estimatedPerNight": "≈{price}/nuit",
+        "estimateExcludesStay": "hors hébergement",
         "stay": "Hébergement : {value}",
         "activity": "Activité : {value}",
         "dinner": "Dîner : {value}",

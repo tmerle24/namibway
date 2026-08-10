@@ -630,10 +630,10 @@ function dayRegion(day: {
 // whole trip. Deliberately not just the first day's items: the heading now
 // spans the entire stage, so a badge counting one night would contradict the
 // date range sitting right next to it.
-function stagePriceLabel(
+function stageTotal(
     variantIndex: number,
     dayIndex: number,
-): string | null {
+): { amount: number; hasStay: boolean; stayPriced: boolean } | null {
     const days = editableVariants.value[variantIndex].days;
     const endIndex = stageEndIndex(variantIndex, dayIndex);
     let amount = 0;
@@ -660,18 +660,60 @@ function stagePriceLabel(
         }
     }
 
-    if (!hasAnyPrice) {
+    return hasAnyPrice
+        ? {
+              amount,
+              hasStay: Boolean(days[dayIndex].accommodation),
+              stayPriced: Boolean(days[dayIndex].accommodation?.price_from),
+          }
+        : null;
+}
+
+// Top line of the stage price badge: what the whole stage costs, worded the
+// same as the trip and vehicle totals ("~€ 348 geschätzt") so the three read
+// as one family. It used to print a bare sum suffixed with the traveler count
+// ("€ 17 für 2"), which claimed something the data can't back — `price_from`
+// carries no per-person dimension, nothing here is multiplied by party size —
+// and left the sum's period unstated next to a three-night date range.
+function stagePriceLabel(
+    variantIndex: number,
+    dayIndex: number,
+): string | null {
+    const total = stageTotal(variantIndex, dayIndex);
+
+    return total === null
+        ? null
+        : t('itinerary.estimated', { price: formatPrice(total.amount) });
+}
+
+// Second line of the badge, answering "and what is that per night?".
+//
+// Only when the stay itself is priced: with the stay on request, the sum is
+// activities and meals alone, and a per-night figure derived from it reads as
+// a room rate — the exact misreading this badge is meant to end. Then it says
+// what's missing instead. A single-night stage needs neither: the per-night
+// figure would just restate the total.
+function stagePriceSubLabel(
+    variantIndex: number,
+    dayIndex: number,
+): string | null {
+    const total = stageTotal(variantIndex, dayIndex);
+
+    if (total === null) {
         return null;
     }
 
-    const travelers =
-        (currentTripParams.value?.adults ?? 0) +
-        (currentTripParams.value?.children_under_13 ?? 0);
-    const price = formatPrice(String(amount));
+    if (!total.stayPriced) {
+        return total.hasStay ? t('itinerary.estimateExcludesStay') : null;
+    }
 
-    return travelers > 0
-        ? `${price} ${t('itinerary.forTravelers', { count: travelers })}`
-        : price;
+    const nights = stageNights(variantIndex, dayIndex);
+
+    return nights > 1
+        ? t('itinerary.estimatedPerNight', {
+              price: formatPrice(total.amount / nights),
+          })
+        : null;
 }
 
 // Identifies a day's accommodation for stay-grouping purposes — null (no
@@ -2409,7 +2451,21 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                         variantIndex,
                                                                         dayIndex,
                                                                     )
-                                                                }}</span
+                                                                }}<span
+                                                                    v-if="
+                                                                        stagePriceSubLabel(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                        )
+                                                                    "
+                                                                    class="day-card-price-sub"
+                                                                    >{{
+                                                                        stagePriceSubLabel(
+                                                                            variantIndex,
+                                                                            dayIndex,
+                                                                        )
+                                                                    }}</span
+                                                                ></span
                                                             >
                                                             <div
                                                                 class="day-card-header-actions"

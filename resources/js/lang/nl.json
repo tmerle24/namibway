@@ -50,6 +50,8 @@
         "reverseRoute": "Route omkeren",
         "estimated": "~{price} geschat",
         "estimatedPerDay": "≈{price}/dag",
+        "estimatedPerNight": "≈{price}/nacht",
+        "estimateExcludesStay": "excl. accommodatie",
         "stay": "Verblijf: {value}",
         "activity": "Activiteit: {value}",
         "dinner": "Diner: {value}",
