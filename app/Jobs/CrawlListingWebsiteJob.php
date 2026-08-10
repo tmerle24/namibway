@@ -138,13 +138,19 @@ class CrawlListingWebsiteJob implements ShouldBeUnique, ShouldQueue
             }
         }
 
-        // Text from the owner's own site replaces directory prose outright:
-        // unlike photography, showing it is what the site exists to do, and it
-        // beats a third party's description of the same property.
-        $descriptionUpgradable = ContentSource::WebsiteScrape->outranks($listing->description_source);
+        // Directory prose specifically — not "anything this outranks".
+        //
+        // og:description is a meta tag: often truncated at 160 characters,
+        // SEO-stuffed, or a bare "Welcome to our website". It beats a third
+        // party's description of the property, so it replaces directory text.
+        // It does not beat copy we wrote, which was generated from the
+        // listing's facts with this same site as context — letting a later
+        // re-crawl swap that for the meta blurb would be a downgrade dressed
+        // up as an upgrade.
+        $replacesDirectoryText = $listing->description_source === ContentSource::Directory;
 
         if (! empty($og['description'])
-            && (blank($listing->getTranslation('description', 'en')) || $descriptionUpgradable)) {
+            && (blank($listing->getTranslation('description', 'en')) || $replacesDirectoryText)) {
             $fill['description'] = ['en' => $og['description']];
             $fill['description_source'] = ContentSource::WebsiteScrape;
         }

@@ -48,6 +48,11 @@ class CrawlListingWebsiteUpgradeTest extends TestCase
         $this->assertSame(ContentSource::WebsiteScrape, $listing->description_source);
     }
 
+    /**
+     * A re-crawl must not trade our own copy for the site's meta tag. The
+     * og:description is frequently a 160-character SEO blurb, and our copy was
+     * generated from the listing's facts with this same site as context.
+     */
     public function test_text_we_wrote_ourselves_is_left_alone(): void
     {
         $listing = Listing::factory()->create([
@@ -59,6 +64,19 @@ class CrawlListingWebsiteUpgradeTest extends TestCase
         CrawlListingWebsiteJob::dispatchSync($listing->id);
 
         $this->assertSame('Our own copy, written from the facts.', $listing->refresh()->description);
+    }
+
+    public function test_a_hand_written_description_is_left_alone_too(): void
+    {
+        $listing = Listing::factory()->create([
+            'website' => 'https://lodge.example',
+            'description' => 'What an actual person wrote about this lodge.',
+            'description_source' => ContentSource::Manual,
+        ]);
+
+        CrawlListingWebsiteJob::dispatchSync($listing->id);
+
+        $this->assertSame('What an actual person wrote about this lodge.', $listing->refresh()->description);
     }
 
     public function test_a_directory_photo_on_the_live_slot_is_upgraded_but_only_into_the_approval_queue(): void
