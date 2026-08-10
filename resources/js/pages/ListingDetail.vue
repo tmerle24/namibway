@@ -17,8 +17,9 @@ import NavMoreMenu from '@/components/NavMoreMenu.vue';
 import PublishConsentModal from '@/components/PublishConsentModal.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
-import { formatPrice } from '@/lib/currency';
 import { onImageError, thumb, thumbAttrs } from '@/lib/media';
+import type { PriceUnit } from '@/lib/price-unit';
+import { formatPriceWithUnit } from '@/lib/price-unit';
 import { home } from '@/routes';
 import inquiries from '@/routes/listings/inquiries';
 import reviewRoutes from '@/routes/listings/reviews';
@@ -82,6 +83,7 @@ interface Listing {
     longitude: number | null;
     price_from: string | null;
     price_currency: string;
+    price_unit: PriceUnit | null;
     rating: number | null;
     rating_count: number | null;
     accepts_inquiries: boolean;
@@ -192,6 +194,13 @@ function approvePendingPhotos() {
 }
 
 const { t } = useI18n();
+
+// Stated with its unit where the listing records one — this page is where a
+// traveler decides, so "from €45" and "from €45 per person" must not look the
+// same. See @/lib/price-unit.
+const priceLabel = computed(() =>
+    formatPriceWithUnit(props.listing.price_from, props.listing.price_unit, t),
+);
 
 const reviewRatingInput = ref(0);
 const reviewRatingHover = ref(0);
@@ -560,12 +569,9 @@ const websiteUrl = computed(
                         }})
                     </span>
                 </p>
-                <p
-                    v-if="formatPrice(props.listing.price_from)"
-                    class="detail-price"
-                >
+                <p v-if="priceLabel" class="detail-price">
                     {{ t('listing.from') }}
-                    {{ formatPrice(props.listing.price_from) }}
+                    {{ priceLabel }}
                 </p>
             </div>
         </div>

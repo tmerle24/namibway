@@ -2,9 +2,9 @@
 import { ArrowLeftRight, BedDouble, MoonStar } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { formatPrice } from '@/lib/currency';
 import type { ItineraryListingRef, RoomOption } from '@/lib/kaia-types';
 import { onImageError, thumbAttrs } from '@/lib/media';
+import { formatPriceWithUnit } from '@/lib/price-unit';
 import KebabMenu from './KebabMenu.vue';
 import ListingPreviewModal from './ListingPreviewModal.vue';
 
@@ -36,8 +36,21 @@ const previewSlug = ref<string | null>(null);
 // The stay is the single most expensive line in the plan, so it always states
 // a price — a listing without one says so rather than showing nothing, which
 // reads as "free" or as a rendering bug.
+//
+// Per-night is the one defensible fallback in the plan: the stage total has
+// always counted a stay once per night it covers, so printing "/Nacht" on an
+// unrecorded unit describes what the plan is actually doing rather than adding
+// a claim. Where the listing does record a unit it wins — including
+// "per person, per night", which is what a good half of this market quotes and
+// what the card silently mislabelled before.
 const priceLabel = computed(
-    () => formatPrice(props.stay?.price_from) ?? t('itinerary.priceOnRequest'),
+    () =>
+        formatPriceWithUnit(
+            props.stay?.price_from,
+            props.stay?.price_unit,
+            t,
+            'per_night',
+        ) ?? t('itinerary.priceOnRequest'),
 );
 
 // "Doppelzimmer · 1 – 4 Jan 2027 (3 Nächte)" — the room drops out until one is
@@ -126,12 +139,12 @@ function onMenuSelect(key: string) {
                         <span v-else class="stay-card-name">{{
                             stay.name
                         }}</span>
-                        <span class="item-price stay-card-price"
-                            >{{ priceLabel
-                            }}<template v-if="stay.price_from"
-                                >/{{ t('itinerary.perNight') }}</template
-                            ></span
-                        >
+                        <!-- The period used to be appended here as a hardcoded
+                             "/Nacht"; it now comes from priceLabel, which says
+                             what the listing actually records. -->
+                        <span class="item-price stay-card-price">{{
+                            priceLabel
+                        }}</span>
                     </div>
 
                     <div v-if="stayMetaLabel" class="stay-card-meta">

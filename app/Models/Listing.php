@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ConnectorType;
 use App\Enums\ListingType;
+use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
 use Database\Factories\ListingFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -56,6 +57,7 @@ class Listing extends Model
         'longitude',
         'price_from',
         'price_currency',
+        'price_unit',
         'duration_minutes',
         'rating',
         'rating_count',
@@ -103,6 +105,7 @@ class Listing extends Model
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
         'price_from' => 'decimal:2',
+        'price_unit' => PriceUnit::class,
         'duration_minutes' => 'integer',
         'rating' => 'decimal:1',
         'rating_count' => 'integer',

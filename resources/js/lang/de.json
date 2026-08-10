@@ -181,6 +181,16 @@
             "locationsRequired": "Bitte Start- und Zielort angeben."
         }
     },
+    "priceUnit": {
+        "withPrice": {
+            "per_night": "{price}/Nacht",
+            "per_person_per_night": "{price}/Nacht p.P.",
+            "per_day": "{price}/Tag",
+            "per_person_per_day": "{price}/Tag p.P.",
+            "per_person": "{price} p.P.",
+            "per_booking": "{price} pauschal"
+        }
+    },
     "booking": {
         "eyebrow": "Buchungsassistent",
         "title": "Vom Plan zur bestätigten Buchung",

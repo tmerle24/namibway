@@ -1,3 +1,5 @@
+import type { PriceUnit } from '@/lib/price-unit';
+
 export interface ItineraryListingRef {
     id: number | null;
     slug: string | null;
@@ -7,6 +9,11 @@ export interface ItineraryListingRef {
     vehicle_category?: 'self_drive' | 'guided_tour' | null;
     price_from: string | null;
     price_currency: string;
+    // What price_from is quoted per. Null on most of the catalog (nobody has
+    // recorded it) and absent entirely on plans saved before the column
+    // existed — both mean "unstated", and the plan then shows and counts the
+    // price exactly as it did before. See @/lib/price-unit.
+    price_unit?: PriceUnit | null;
     // Typical length of the experience in minutes (activities and guided
     // tours). Part of what the traveler books — a 2h quad ride is a different
     // product from a full-day one — so it rides along in the plan's own copy
@@ -146,6 +153,7 @@ export interface ListingRecommendation {
     image: string | null;
     price_from: string | null;
     price_currency: string;
+    price_unit?: PriceUnit | null;
     rating: number | null;
     rating_count: number | null;
 }

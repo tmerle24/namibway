@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ConnectorType;
+use App\Enums\PriceUnit;
 use App\Jobs\EnrichListingJob;
 use App\Models\City;
 use App\Models\Listing;
@@ -118,6 +119,10 @@ class ListingController extends Controller
                 'longitude' => $l->longitude !== null ? (float) $l->longitude : null,
                 'price_from' => $l->price_from,
                 'price_currency' => $l->price_currency,
+                // Carried through for the same reason as the coordinates above:
+                // a listing swapped into a trip plan from here must not lose
+                // what its price is quoted per (see ListingSwapModal.vue).
+                'price_unit' => $l->price_unit?->value,
                 'duration_minutes' => $l->duration_minutes,
                 'rating' => $l->rating !== null ? (float) $l->rating : null,
                 'rating_count' => $l->rating_count,
@@ -171,6 +176,7 @@ class ListingController extends Controller
                 'website' => $listing->website,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                'price_unit' => $listing->price_unit?->value,
                 'duration_minutes' => $listing->duration_minutes,
                 'rating' => $listing->rating !== null ? (float) $listing->rating : null,
                 'rating_count' => $listing->rating_count,
@@ -366,6 +372,7 @@ class ListingController extends Controller
                     : $resolvedCoordinates[1] ?? null,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                'price_unit' => $listing->price_unit?->value,
                 'rating' => $listing->rating !== null ? (float) $listing->rating : null,
                 'rating_count' => $listing->rating_count,
                 'accepts_inquiries' => $listing->accepts_inquiries,
@@ -496,6 +503,7 @@ class ListingController extends Controller
                 'longitude' => $listing->longitude !== null ? (float) $listing->longitude : null,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                'price_unit' => $listing->price_unit?->value,
                 'is_published' => $listing->is_published,
                 'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
                 'gallery' => collect($listing->gallery ?? [])
@@ -509,6 +517,13 @@ class ListingController extends Controller
             ],
             'connector_options' => collect(ConnectorType::cases())
                 ->map(fn (ConnectorType $c) => ['value' => $c->value, 'label' => $c->label()])
+                ->values(),
+            // Sent rather than mirrored in the Vue file so which units a lodge
+            // (vs. an activity operator) may pick has exactly one definition —
+            // App\Enums\PriceUnit::forType(), the same one both Filament panels
+            // build their select from.
+            'price_unit_options' => collect(PriceUnit::optionsForType($listing->type))
+                ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
                 ->values(),
             'preview_token' => self::hasValidPreviewToken($listing, $request) ? $request->input('preview') : null,
             'claim_url' => self::claimUrl($listing, self::hasValidPreviewToken($listing, $request)),
@@ -537,6 +552,7 @@ class ListingController extends Controller
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'price_from' => ['nullable', 'numeric', 'min:0'],
             'price_currency' => ['nullable', 'string', 'max:3'],
+            'price_unit' => ['nullable', Rule::in(array_map(fn (PriceUnit $u) => $u->value, PriceUnit::cases()))],
             'image' => ['nullable', 'image', 'max:8192'],
             'remove_image' => ['nullable', 'boolean'],
             'gallery_touched' => ['nullable', 'boolean'],
@@ -584,6 +600,16 @@ class ListingController extends Controller
             'connector_property_code' => $validated['connector_property_code'] ?? null,
             'wetu_id' => $validated['wetu_id'] ?? null,
         ], fn ($value) => $value !== null));
+
+        // Set outside the array_filter above, which drops nulls so that a field
+        // the form didn't send keeps its stored value. "I don't know what my
+        // price is per" is a real answer here, though, so an empty select has
+        // to be able to clear the column back to unrecorded — the whole point
+        // of the field is that it never states something nobody confirmed.
+        $priceUnit = $validated['price_unit'] ?? null;
+        $listing->price_unit = is_string($priceUnit) && $priceUnit !== ''
+            ? PriceUnit::from($priceUnit)
+            : null;
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('listings', 'public');

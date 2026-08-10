@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ImageLightbox from '@/components/ImageLightbox.vue';
-import { formatPrice } from '@/lib/currency';
 import { formatDuration } from '@/lib/duration';
 import { fetchListingPreview } from '@/lib/kaia-client';
 import type { ListingPreview } from '@/lib/kaia-client';
 import { onImageError, thumbAttrs } from '@/lib/media';
+import { formatPriceWithUnit } from '@/lib/price-unit';
 import { show } from '@/routes/listings';
 
 const props = defineProps<{
@@ -23,6 +23,17 @@ const listing = ref<ListingPreview | null>(null);
 const loading = ref(true);
 const error = ref(false);
 const lightboxIndex = ref<number | null>(null);
+
+// "ab €45 p.P." — this modal is opened straight from a plan row to judge an
+// entry, so it has to qualify the price the same way the row does rather than
+// showing a number that means something different one line up.
+const priceLabel = computed(() =>
+    formatPriceWithUnit(
+        listing.value?.price_from,
+        listing.value?.price_unit,
+        t,
+    ),
+);
 
 async function load() {
     loading.value = true;
@@ -122,12 +133,9 @@ const fullPageUrl = show({ listing: props.slug }).url;
                         {{ t('itinerary.meta.duration') }}:
                         {{ formatDuration(listing.duration_minutes, t) }}
                     </p>
-                    <p
-                        v-if="formatPrice(listing.price_from)"
-                        class="preview-modal-price"
-                    >
+                    <p v-if="priceLabel" class="preview-modal-price">
                         {{ t('listing.from') }}
-                        {{ formatPrice(listing.price_from) }}
+                        {{ priceLabel }}
                     </p>
 
                     <div

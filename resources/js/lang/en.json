@@ -234,6 +234,16 @@
             "locationsRequired": "Please enter a start and end city."
         }
     },
+    "priceUnit": {
+        "withPrice": {
+            "per_night": "{price}/night",
+            "per_person_per_night": "{price}/night pp",
+            "per_day": "{price}/day",
+            "per_person_per_day": "{price}/day pp",
+            "per_person": "{price} pp",
+            "per_booking": "{price} total"
+        }
+    },
     "booking": {
         "eyebrow": "Booking assistant",
         "title": "Turning the plan into confirmed reality",

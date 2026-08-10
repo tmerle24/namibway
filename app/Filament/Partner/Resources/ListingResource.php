@@ -3,6 +3,7 @@
 namespace App\Filament\Partner\Resources;
 
 use App\Enums\ListingType;
+use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
 use App\Filament\Partner\Resources\ListingResource\Pages;
 use App\Filament\Resources\ListingResource\RelationManagers as AdminRelationManagers;
@@ -71,7 +72,15 @@ class ListingResource extends Resource
                         Forms\Components\TextInput::make('price_from')
                             ->numeric()
                             ->prefix('NAD')
-                            ->label('Price from (per night)'),
+                            // The label used to read "(per night)", which was the
+                            // assumption this field is meant to stop making — an
+                            // activity operator entering a per-person rate here
+                            // was told it meant something else entirely.
+                            ->label('Price from'),
+                        Forms\Components\Select::make('price_unit')
+                            ->label('Price is per')
+                            ->options(fn (?Listing $record): array => PriceUnit::optionsForType($record?->type))
+                            ->helperText('What the price above is quoted per. Travelers see this next to the price, and their trip plan multiplies a per-person rate by the size of their party. Leave it empty if it varies — the plan then shows the price without stating a period.'),
                         Forms\Components\TextInput::make('duration_minutes')
                             ->label('Typical duration (minutes)')
                             ->numeric()

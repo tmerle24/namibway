@@ -6,6 +6,7 @@ import type {
     ListingRecommendation,
     SearchIntent,
 } from '@/lib/kaia-types';
+import type { PriceUnit } from '@/lib/price-unit';
 
 export type KaiaResponse =
     | { type: 'question'; text: string }
@@ -167,6 +168,7 @@ export interface ListingPreview {
     website: string | null;
     price_from: string | null;
     price_currency: string;
+    price_unit?: PriceUnit | null;
     duration_minutes: number | null;
     rating: number | null;
     rating_count: number | null;
@@ -209,6 +211,7 @@ export interface ListingSearchResult {
     longitude: number | null;
     price_from: string | null;
     price_currency: string;
+    price_unit?: PriceUnit | null;
     duration_minutes: number | null;
     rating: number | null;
     rating_count: number | null;

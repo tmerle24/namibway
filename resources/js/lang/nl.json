@@ -98,6 +98,16 @@
         "roomTotalForNights": "Totaal {total} voor {count} nacht | Totaal {total} voor {count} nachten",
         "roomPhotoStandIn": "Foto van de accommodatie — van deze kamer nog geen foto"
     },
+    "priceUnit": {
+        "withPrice": {
+            "per_night": "{price}/nacht",
+            "per_person_per_night": "{price}/nacht p.p.",
+            "per_day": "{price}/dag",
+            "per_person_per_day": "{price}/dag p.p.",
+            "per_person": "{price} p.p.",
+            "per_booking": "{price} totaal"
+        }
+    },
     "booking": {
         "eyebrow": "Boekingsassistent",
         "title": "Van plan naar bevestigde boeking",

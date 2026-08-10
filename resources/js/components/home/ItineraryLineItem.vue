@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { formatPrice } from '@/lib/currency';
 import type { ItineraryListingRef } from '@/lib/kaia-types';
+import { formatPriceWithUnit } from '@/lib/price-unit';
 import KebabMenu from './KebabMenu.vue';
 import ListingPreviewModal from './ListingPreviewModal.vue';
 
@@ -30,8 +30,11 @@ const previewSlug = ref<string | null>(null);
 // looking ragged.
 const priceLabel = computed(() =>
     props.itemRef
-        ? (formatPrice(props.itemRef.price_from) ??
-          t('itinerary.priceOnRequest'))
+        ? (formatPriceWithUnit(
+              props.itemRef.price_from,
+              props.itemRef.price_unit,
+              t,
+          ) ?? t('itinerary.priceOnRequest'))
         : null,
 );
 

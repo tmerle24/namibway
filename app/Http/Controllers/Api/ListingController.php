@@ -42,7 +42,7 @@ class ListingController extends Controller
      *       "description": "A quiet lodge on the edge of the dunes.", "short_description": null,
      *       "image": "https://namibway.com/storage/listings/desert-lodge.jpg", "gallery": [],
      *       "region": "Hardap", "latitude": -24.7592, "longitude": 15.7092,
-     *       "price_from": 1500.0, "price_currency": "NAD",
+     *       "price_from": 1500.0, "price_currency": "NAD", "price_unit": "per_night",
      *       "rating": 4.5, "rating_count": 12, "accepts_inquiries": true,
      *       "booking_mode": "connector"
      *     }
@@ -78,7 +78,7 @@ class ListingController extends Controller
      *     "description": "A quiet lodge on the edge of the dunes.", "short_description": null,
      *     "image": "https://namibway.com/storage/listings/desert-lodge.jpg", "gallery": [],
      *     "region": "Hardap", "latitude": -24.7592, "longitude": 15.7092,
-     *     "price_from": 1500.0, "price_currency": "NAD",
+     *     "price_from": 1500.0, "price_currency": "NAD", "price_unit": "per_night",
      *     "rating": 4.5, "rating_count": 12, "accepts_inquiries": true,
      *     "booking_mode": "connector"
      *   }

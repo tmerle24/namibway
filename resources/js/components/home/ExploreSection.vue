@@ -5,10 +5,11 @@ import flatpickr from 'flatpickr';
 import type { Instance as FlatpickrInstance } from 'flatpickr/dist/types/instance';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { formatPrice } from '@/lib/currency';
 import { consumeExploreScroll, saveExploreScroll } from '@/lib/explore-scroll';
 import type { SearchIntent } from '@/lib/kaia-types';
 import { onImageError, thumbAttrs } from '@/lib/media';
+import type { PriceUnit } from '@/lib/price-unit';
+import { formatPriceWithUnit } from '@/lib/price-unit';
 import { show } from '@/routes/listings';
 import ExploreMap from './ExploreMap.vue';
 import type { ExploreMapMarker } from './ExploreMap.vue';
@@ -83,6 +84,7 @@ interface SearchListing {
     city: string | null;
     price_from: string | null;
     price_currency: string;
+    price_unit: PriceUnit | null;
     rating: number | null;
     rating_count: number | null;
     accepts_inquiries: boolean;
@@ -153,6 +155,10 @@ function decodeEntities(text: string): string {
     el.innerHTML = text;
 
     return el.value;
+}
+
+function priceLabel(item: SearchListing): string | null {
+    return formatPriceWithUnit(item.price_from, item.price_unit, t);
 }
 
 function truncate(text: string | null, length = 120): string {
@@ -991,12 +997,15 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                             {{ truncate(item.description, 110) }}
                         </p>
                         <div class="result-card-footer">
+                            <!-- Qualified where the listing records it: this
+                                 grid is read as a price comparison, which two
+                                 rates quoted per different things break. -->
                             <span
-                                v-if="formatPrice(item.price_from)"
+                                v-if="priceLabel(item)"
                                 class="result-card-price"
                             >
                                 {{ t('listing.from') }}
-                                {{ formatPrice(item.price_from) }}
+                                {{ priceLabel(item) }}
                             </span>
                             <span class="result-card-cta">{{
                                 t('explore.results.viewDetails')

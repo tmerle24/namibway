@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { formatPrice } from '@/lib/currency';
 import { formatDuration } from '@/lib/duration';
 import type { ItineraryListingRef } from '@/lib/kaia-types';
+import { formatPriceWithUnit } from '@/lib/price-unit';
 import KebabMenu from './KebabMenu.vue';
 import ListingPreviewModal from './ListingPreviewModal.vue';
 
@@ -66,8 +66,16 @@ const icon = computed(() => (props.type === 'activity' ? '📷' : '🍴'));
 // rate yet, and silently omitting it there reads either as "included" or as a
 // bug — "on request" is the honest version and keeps the column from looking
 // ragged down the day.
+//
+// The unit rides with the number where the listing records one ("€ 45 p.P."):
+// an unqualified rate on an activity row is the difference between a figure a
+// traveler can budget against and one they can't. No fallback unit — an
+// activity is as plausibly priced per group as per head, and the whole point of
+// the column is to stop the UI picking one on the listing's behalf.
 const priceLabel = computed(
-    () => formatPrice(props.item.price_from) ?? t('itinerary.priceOnRequest'),
+    () =>
+        formatPriceWithUnit(props.item.price_from, props.item.price_unit, t) ??
+        t('itinerary.priceOnRequest'),
 );
 
 // The second line: what the traveler is actually booking, in the order it

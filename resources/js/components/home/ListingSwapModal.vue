@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { formatPrice } from '@/lib/currency';
 import type {
     ListingSearchMeta,
     ListingSearchResult,
@@ -10,6 +9,7 @@ import type {
 import { searchListings } from '@/lib/kaia-client';
 import type { ItineraryListingRef } from '@/lib/kaia-types';
 import { onImageError, thumbAttrs } from '@/lib/media';
+import { formatPriceWithUnit } from '@/lib/price-unit';
 import { show } from '@/routes/listings';
 
 const props = defineProps<{
@@ -122,6 +122,10 @@ function detailUrl(slug: string): string {
     return show({ listing: slug }).url;
 }
 
+function priceLabel(result: ListingSearchResult): string | null {
+    return formatPriceWithUnit(result.price_from, result.price_unit, t);
+}
+
 function select(result: ListingSearchResult) {
     emit('select', {
         id: result.id,
@@ -131,6 +135,10 @@ function select(result: ListingSearchResult) {
         vehicle_category: result.vehicle_category,
         price_from: result.price_from,
         price_currency: result.price_currency,
+        // Same reasoning as the coordinates below: dropping this on the way
+        // into the plan would leave the swapped-in listing's price unqualified
+        // and mis-counted in the stage total, even though the catalog knows.
+        price_unit: result.price_unit,
         duration_minutes: result.duration_minutes,
         // Without coordinates the swapped-in listing drops off the trip map.
         lat: result.latitude,
@@ -385,10 +393,14 @@ onUnmounted(() => {
                                 >
                             </span>
                         </span>
+                        <!-- With the unit where it's recorded: this list is
+                             where a traveler compares prices against each
+                             other, which two rates quoted per different things
+                             make meaningless. -->
                         <span
-                            v-if="formatPrice(result.price_from)"
+                            v-if="priceLabel(result)"
                             class="swap-modal-item-price"
-                            >{{ formatPrice(result.price_from) }}</span
+                            >{{ priceLabel(result) }}</span
                         >
                         <a
                             :href="detailUrl(result.slug)"

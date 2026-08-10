@@ -6,6 +6,7 @@ use App\Connectors\ConnectorFactory;
 use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
 use App\Enums\ConnectorType;
 use App\Enums\ListingType;
+use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
 use App\Filament\Resources\ListingResource\Pages;
 use App\Filament\Resources\ListingResource\RelationManagers;
@@ -165,6 +166,21 @@ class ListingResource extends Resource
                                             ->required()
                                             ->maxLength(3)
                                             ->default('NAD'),
+                                        Forms\Components\Select::make('price_unit')
+                                            ->label('Price is per')
+                                            // Narrowed to the type's plausible units — the form state holds
+                                            // either the enum (from the record) or its raw value (after the
+                                            // type select is changed), so both are accepted here.
+                                            ->options(function (Forms\Get $get): array {
+                                                $type = $get('type');
+
+                                                return PriceUnit::optionsForType(match (true) {
+                                                    $type instanceof ListingType => $type,
+                                                    is_string($type) => ListingType::tryFrom($type),
+                                                    default => null,
+                                                });
+                                            })
+                                            ->helperText('What the "price from" is quoted per. Leave empty if you do not know — the trip plan then shows the price without claiming a period, which is better than a wrong one. Set it and the plan multiplies a per-person rate by the party size.'),
                                         Forms\Components\TextInput::make('duration_minutes')
                                             ->label('Typical duration (minutes)')
                                             ->numeric()
@@ -366,6 +382,14 @@ class ListingResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('price_currency')
                     ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                // Hidden by default like the currency, but sortable so the
+                // content work of filling this in has a "which rows are still
+                // blank" view to work from.
+                Tables\Columns\TextColumn::make('price_unit')
+                    ->label('Price is per')
+                    ->placeholder('not recorded')
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('rating')
                     ->numeric(1)

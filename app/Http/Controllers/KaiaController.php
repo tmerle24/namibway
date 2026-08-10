@@ -370,6 +370,7 @@ class KaiaController extends Controller
                     'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
                     'price_from' => $listing->price_from,
                     'price_currency' => $listing->price_currency,
+                    'price_unit' => $listing->price_unit?->value,
                     'rating' => $listing->rating !== null ? (float) $listing->rating : null,
                     'rating_count' => $listing->rating_count,
                 ] : null;

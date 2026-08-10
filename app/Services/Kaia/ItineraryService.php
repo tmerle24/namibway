@@ -391,7 +391,7 @@ class ItineraryService
      */
     private function resolveReferences(array $plan, Collection $listings): array
     {
-        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string, duration_minutes: int|null, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, short_description: string|null, rating: float|null, rating_count: int|null}> $index */
+        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string, price_unit: string|null, duration_minutes: int|null, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, short_description: string|null, rating: float|null, rating_count: int|null}> $index */
         $index = [];
 
         foreach ($listings as $listing) {
@@ -403,6 +403,10 @@ class ItineraryService
                 'type' => $listing->type->value,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                // Without this the plan can only print the bare number: whether
+                // it repeats per night and whether it is per traveler is the
+                // difference between an estimate and a guess (see PriceUnit).
+                'price_unit' => $listing->price_unit?->value,
                 'duration_minutes' => $listing->duration_minutes,
                 'lat' => $listing->latitude ? (float) $listing->latitude : null,
                 'lng' => $listing->longitude ? (float) $listing->longitude : null,
@@ -424,7 +428,7 @@ class ItineraryService
                 return null;
             }
 
-            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'duration_minutes' => null, 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'region' => null, 'short_description' => null, 'rating' => null, 'rating_count' => null];
+            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'price_unit' => null, 'duration_minutes' => null, 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'region' => null, 'short_description' => null, 'rating' => null, 'rating_count' => null];
         };
 
         $plan['variants'] = array_map(function (array $variant) use ($resolve, $listings) {
@@ -546,6 +550,7 @@ class ItineraryService
                 'type' => 'accommodation',
                 'price_from' => $fallback->price_from,
                 'price_currency' => $fallback->price_currency,
+                'price_unit' => $fallback->price_unit?->value,
                 'duration_minutes' => $fallback->duration_minutes,
                 'lat' => $fallback->latitude ? (float) $fallback->latitude : null,
                 'lng' => $fallback->longitude ? (float) $fallback->longitude : null,
@@ -666,7 +671,7 @@ class ItineraryService
      * preferring same city, then same region, then adjacent budget tier
      * alone. No AI involved.
      *
-     * @return array<int, array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, duration_minutes: int|null, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, short_description: string|null, rating: float|null, rating_count: int|null}>
+     * @return array<int, array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, price_unit: string|null, duration_minutes: int|null, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, short_description: string|null, rating: float|null, rating_count: int|null}>
      */
     public function alternatives(string $type, ?int $excludeId = null): array
     {
@@ -718,6 +723,7 @@ class ItineraryService
                 'type' => $listing->type->value,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                'price_unit' => $listing->price_unit?->value,
                 'duration_minutes' => $listing->duration_minutes,
                 // Without coordinates a swapped-in alternative drops off the
                 // trip map — every other builder of this shape carries them.
@@ -920,7 +926,7 @@ class ItineraryService
      * a same-region/budget match — better than leaving a confirmed-gone
      * listing in the plan) or null if there's no alternative in the catalog.
      *
-     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, lat: float|null, lng: float|null}|null
+     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, price_unit: string|null, lat: float|null, lng: float|null}|null
      */
     private function findAvailableAlternative(int $excludeId, Carbon $checkIn, Carbon $checkOut, int $adults, int $children): ?array
     {
@@ -950,7 +956,7 @@ class ItineraryService
     }
 
     /**
-     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, region: string|null, short_description: string|null, rating: float|null, rating_count: int|null}|null
+     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, price_unit: string|null, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, region: string|null, short_description: string|null, rating: float|null, rating_count: int|null}|null
      */
     private function toAccommodationReference(?Listing $listing): ?array
     {
@@ -965,6 +971,7 @@ class ItineraryService
             'type' => $listing->type->value,
             'price_from' => $listing->price_from,
             'price_currency' => $listing->price_currency,
+            'price_unit' => $listing->price_unit?->value,
             'lat' => $listing->latitude ? (float) $listing->latitude : null,
             'lng' => $listing->longitude ? (float) $listing->longitude : null,
             'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,

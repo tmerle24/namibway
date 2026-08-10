@@ -33,6 +33,7 @@ class ListingResource extends JsonResource
             'longitude' => $this->longitude !== null ? (float) $this->longitude : null,
             'price_from' => $this->price_from !== null ? (float) $this->price_from : null,
             'price_currency' => $this->price_currency,
+            'price_unit' => $this->price_unit?->value,
             'rating' => $this->rating !== null ? (float) $this->rating : null,
             'rating_count' => $this->rating_count,
             'accepts_inquiries' => $this->accepts_inquiries,
