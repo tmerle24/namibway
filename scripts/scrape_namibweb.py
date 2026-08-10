@@ -90,6 +90,16 @@ HOST = "namibweb.com"
 SEEDS: list[tuple[str, str | None]] = [
     (f"{BASE}/accsummary.htm", "accommodation"),
     (f"{BASE}/accnorth.htm", "accommodation"),
+    # The accommodation-by-type indexes. Seeded rather than left to discovery:
+    # they are the entry points for whole categories, and camping in particular
+    # is a trip type of its own for us, so reaching them must not depend on
+    # which page happens to link them or on how deep the crawl got.
+    (f"{BASE}/camping.htm", "accommodation"),
+    (f"{BASE}/mainlodge.html", "accommodation"),
+    (f"{BASE}/mainhotels.html", "accommodation"),
+    (f"{BASE}/mainpensions.html", "accommodation"),
+    (f"{BASE}/mainbed.html", "accommodation"),
+    (f"{BASE}/mainotheraccomm.htm", "accommodation"),
     (f"{BASE}/", None),
 ]
 
@@ -120,10 +130,16 @@ MISSING_RUNS_BEFORE_GONE = 3
 # ---------------------------------------------------------------------------
 
 # Site-wide navigation targets: never listing pages, whatever they link to.
+# Anchored to the full stem where the word is also a plausible start of a real
+# filename. Unanchored, r"^main" blocked mainlodge.html, mainhotels.html,
+# mainpensions.html, mainbed.html and mainotheraccomm.htm — the site's entire
+# accommodation-by-type index — and r"^home" would drop a guest farm called
+# Homestead. A stray contactus.htm slipping through costs one junk record;
+# these cost hundreds of real listings.
 _NAV_HREF_PATTERNS = [
-    r"^index",
-    r"^home",
-    r"^main",
+    r"^index\.",
+    r"^home\.",
+    r"^main\.",
     r"^contact",
     r"^about",
     r"^search",
