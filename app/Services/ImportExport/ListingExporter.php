@@ -97,33 +97,33 @@ class ListingExporter
 
         $bold = (new Style)->setFontBold();
 
-        $writer->addRow(Row::fromValues(['Spalte', 'Bedeutung'], $bold));
+        $writer->addRow(Row::fromValues(['Column', 'What it means'], $bold));
 
         foreach (ListingSheet::columns() as $column) {
             $writer->addRow(Row::fromValues([$column->header, $column->help]));
         }
 
         $writer->addRow(Row::fromValues([]));
-        $writer->addRow(Row::fromValues(['So wird importiert', ''], $bold));
+        $writer->addRow(Row::fromValues(['How the import reads this', ''], $bold));
 
         foreach ([
-            'Leere Zelle = Feld bleibt unverändert. Ein Feld absichtlich leeren: '.implode(' oder ', ListingSheet::CLEAR_MARKERS).' eintragen.',
-            'Zeile mit id = dieses Listing wird aktualisiert. Zeile ohne id = neues Listing.',
-            'Die id niemals überschreiben oder von Hand vergeben.',
-            'Ja/Nein-Spalten: ja, nein (auch yes/no, x, 1, 0).',
-            'Vor jedem Import läuft die Prüfung. Sie zeigt jede Änderung an, bevor etwas gespeichert wird.',
+            'An empty cell leaves the field as it is. To empty a field on purpose, write '.implode(' or ', ListingSheet::CLEAR_MARKERS).'.',
+            'A row with an id updates that listing. A row without an id creates a new one.',
+            'Never overwrite an id or make one up.',
+            'Yes/no columns: yes, no (y/n, x, 1, 0 work too).',
+            'Every import is checked first: it lists every change before anything is saved.',
         ] as $line) {
             $writer->addRow(Row::fromValues(['', $line]));
         }
 
         $writer->addRow(Row::fromValues([]));
-        $writer->addRow(Row::fromValues(['Erlaubte Werte', ''], $bold));
-        $writer->addRow(Row::fromValues(['typ', 'accommodation, activity, restaurant, vehicle']));
-        $writer->addRow(Row::fromValues(['fahrzeug_kategorie', 'self_drive, guided_tour']));
-        $writer->addRow(Row::fromValues(['waehrung', implode(', ', ListingSheet::supportedCurrencies())]));
+        $writer->addRow(Row::fromValues(['Allowed values', ''], $bold));
+        $writer->addRow(Row::fromValues(['type', 'accommodation, activity, restaurant, vehicle']));
+        $writer->addRow(Row::fromValues(['vehicle_category', 'self_drive, guided_tour']));
+        $writer->addRow(Row::fromValues(['currency', implode(', ', ListingSheet::supportedCurrencies())]));
 
         $writer->addRow(Row::fromValues([]));
-        $writer->addRow(Row::fromValues(['Orte (Spalte "stadt")', 'Region'], $bold));
+        $writer->addRow(Row::fromValues(['Places (the "city" column)', 'Region'], $bold));
 
         City::query()
             ->with('region')
@@ -137,17 +137,17 @@ class ListingExporter
     private static function exampleValue(SheetColumn $column): string|int|null
     {
         return match ($column->header) {
-            'name' => 'Beispiel Lodge (Zeile vor dem Import löschen)',
-            'typ' => 'accommodation',
-            'stadt' => 'Outjo',
-            'adresse' => 'C38, 10 km südlich Andersson Gate',
-            'koordinaten' => '-19.183000, 15.917000',
-            'beschreibung_kurz' => 'Kurz gesagt, wofür man herkommt.',
-            'preis_ab' => 1250,
-            'waehrung' => 'NAD',
-            'email' => 'info@beispiel-lodge.na',
-            'telefon' => '+264 61 123456',
-            'veroeffentlichen' => 'nein',
+            'name' => 'Example Lodge (delete this row before importing)',
+            'type' => 'accommodation',
+            'city' => 'Outjo',
+            'address' => 'C38, 10 km south of Andersson Gate',
+            'coordinates' => '-19.183000, 15.917000',
+            'short_description' => 'In one line: what people come here for.',
+            'price_from' => 1250,
+            'currency' => 'NAD',
+            'email' => 'info@example-lodge.na',
+            'phone' => '+264 61 123456',
+            'published' => 'no',
             default => null,
         };
     }

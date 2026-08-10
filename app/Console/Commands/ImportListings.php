@@ -29,7 +29,7 @@ class ImportListings extends Command
         $file = (string) $this->argument('file');
 
         if (! is_file($file)) {
-            $this->error("Datei nicht gefunden: {$file}");
+            $this->error("File not found: {$file}");
 
             return self::FAILURE;
         }
@@ -40,7 +40,7 @@ class ImportListings extends Command
 
         if (is_string($report = $this->option('report')) && $report !== '') {
             $reportWriter->write($plan, $report);
-            $this->line("Bericht: {$report}");
+            $this->line("Report: {$report}");
         }
 
         if ($plan->isBlocked()) {
@@ -48,30 +48,30 @@ class ImportListings extends Command
         }
 
         if ($plan->hasErrors() && ! $this->option('skip-invalid')) {
-            $this->error('Import abgebrochen — Fehler beheben und erneut versuchen (oder --skip-invalid).');
+            $this->error('Import aborted — fix the errors and try again (or pass --skip-invalid).');
 
             return self::FAILURE;
         }
 
         if ($this->option('dry-run')) {
-            $this->comment('Testlauf — es wurde nichts gespeichert.');
+            $this->comment('Dry run — nothing was saved.');
 
             return self::SUCCESS;
         }
 
         if ($plan->applicableRows() === []) {
-            $this->info('Keine Änderungen.');
+            $this->info('No changes.');
 
             return self::SUCCESS;
         }
 
-        if (! $this->option('force') && ! $this->confirm('Diese Änderungen speichern?', true)) {
+        if (! $this->option('force') && ! $this->confirm('Save these changes?', true)) {
             return self::SUCCESS;
         }
 
         $written = $importer->apply($plan);
 
-        $this->info("{$written} Listings gespeichert.");
+        $this->info("{$written} listing(s) saved.");
 
         return self::SUCCESS;
     }
@@ -83,7 +83,7 @@ class ImportListings extends Command
         }
 
         foreach ($plan->ignoredHeaders as $header) {
-            $this->warn("Unbekannte Spalte ignoriert: \"{$header}\"");
+            $this->warn("Ignored unknown column: \"{$header}\"");
         }
 
         if ($plan->rows === []) {
@@ -92,7 +92,7 @@ class ImportListings extends Command
 
         $this->newLine();
         $this->line(sprintf(
-            '%d neu · %d aktualisiert (%d Feldänderungen) · %d unverändert · %d fehlerhaft',
+            '%d new · %d updated (%d field changes) · %d unchanged · %d with errors',
             $plan->newCount(),
             $plan->updateCount(),
             $plan->changeCount(),
@@ -103,13 +103,13 @@ class ImportListings extends Command
 
         foreach ($plan->invalidRows() as $row) {
             foreach ($row->errors as $error) {
-                $this->error("Zeile {$row->line}: {$error}");
+                $this->error("Row {$row->line}: {$error}");
             }
         }
 
         foreach ($plan->rowsWithWarnings() as $row) {
             foreach ($row->warnings as $warning) {
-                $this->warn("Zeile {$row->line}: {$warning}");
+                $this->warn("Row {$row->line}: {$warning}");
             }
         }
 
@@ -117,7 +117,7 @@ class ImportListings extends Command
 
         foreach ($plan->applicableRows() as $row) {
             if ($row->isNew) {
-                $changes[] = [$row->line, 'neu', $row->name, '', ''];
+                $changes[] = [$row->line, 'new', $row->name, '', ''];
 
                 continue;
             }
@@ -134,10 +134,10 @@ class ImportListings extends Command
         }
 
         if ($changes !== []) {
-            $this->table(['Zeile', 'id', 'Listing', 'Feld', 'Änderung'], array_slice($changes, 0, 100));
+            $this->table(['Row', 'id', 'Listing', 'Field', 'Change'], array_slice($changes, 0, 100));
 
             if (count($changes) > 100) {
-                $this->line('… '.(count($changes) - 100).' weitere. Vollständig mit --report=<datei.xlsx>.');
+                $this->line('… '.(count($changes) - 100).' more. Pass --report=<file.xlsx> for the full list.');
             }
         }
     }

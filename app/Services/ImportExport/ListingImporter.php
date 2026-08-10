@@ -62,7 +62,7 @@ class ListingImporter
             }
 
             if (isset($seen[$column->header])) {
-                $fileErrors[] = "Die Spalte \"{$column->header}\" kommt mehrfach vor.";
+                $fileErrors[] = "The column \"{$column->header}\" appears more than once.";
 
                 continue;
             }
@@ -72,13 +72,13 @@ class ListingImporter
         }
 
         if ($map === []) {
-            $fileErrors[] = 'Keine bekannte Spalte gefunden. Die erste Zeile muss die Spaltenüberschriften enthalten — am einfachsten mit der Vorlage oder einem Export anfangen.';
+            $fileErrors[] = 'No known column found. The first row has to hold the column headers — the easiest start is the template or an export.';
         } elseif (! isset($seen['id']) && ! isset($seen['name'])) {
-            $fileErrors[] = 'Die Datei braucht mindestens die Spalte "id" (aktualisieren) oder "name" (neu anlegen).';
+            $fileErrors[] = 'The file needs at least an "id" column (to update) or a "name" column (to create).';
         }
 
         if ($file['rows'] === [] && $fileErrors === []) {
-            $fileErrors[] = 'Die Datei enthält keine Datenzeilen.';
+            $fileErrors[] = 'The file has no data rows.';
         }
 
         if ($fileErrors !== []) {
@@ -187,7 +187,7 @@ class ListingImporter
 
             if ($raw === '') {
                 if ($row->isNew && $column->requiredForNew) {
-                    $row->errors[] = "Spalte \"{$column->header}\" ist bei neuen Listings Pflicht.";
+                    $row->errors[] = "Column \"{$column->header}\" is required on new listings.";
                 }
 
                 continue;
@@ -197,11 +197,11 @@ class ListingImporter
         }
 
         if ($row->isNew && ! isset($row->attributes['city_id'])) {
-            $row->warnings[] = 'Ohne Ort ("stadt") erscheint das Listing nicht in Kaias Reiseplänen.';
+            $row->warnings[] = 'Without a city this listing never appears in a Kaia trip plan.';
         }
 
         if ($row->isNew && ! isset($row->attributes['latitude'])) {
-            $row->warnings[] = 'Ohne Koordinaten: werden später aus der Adresse gesucht (namibway:backfill-listing-coordinates).';
+            $row->warnings[] = 'No coordinates: they will be looked up from the address later (namibway:backfill-listing-coordinates).';
         }
 
         return $row;
@@ -218,7 +218,7 @@ class ListingImporter
 
         if ($id !== '') {
             if (! ctype_digit($id)) {
-                $row->errors[] = "Die id \"{$id}\" ist keine Zahl. Die Spalte id nie von Hand ausfüllen.";
+                $row->errors[] = "The id \"{$id}\" is not a number. Never fill the id column in by hand.";
 
                 return null;
             }
@@ -226,7 +226,7 @@ class ListingImporter
             $id = (int) $id;
 
             if (isset($idsInFile[$id])) {
-                $row->errors[] = "Die id {$id} kommt schon in Zeile {$idsInFile[$id]} vor.";
+                $row->errors[] = "Id {$id} is already used in row {$idsInFile[$id]}.";
 
                 return null;
             }
@@ -234,7 +234,7 @@ class ListingImporter
             $listing = Listing::find($id);
 
             if ($listing === null) {
-                $row->errors[] = "Es gibt kein Listing mit der id {$id}.";
+                $row->errors[] = "There is no listing with id {$id}.";
 
                 return null;
             }
@@ -249,7 +249,7 @@ class ListingImporter
         $slug = trim($values['slug'] ?? '');
 
         if ($name === '' && $slug === '') {
-            $row->errors[] = 'Zeile ohne id braucht einen Namen.';
+            $row->errors[] = 'A row without an id needs a name.';
 
             return null;
         }
@@ -257,7 +257,7 @@ class ListingImporter
         $slug = $slug !== '' ? Str::slug($slug) : Str::slug($name);
 
         if (isset($slugsInFile[$slug])) {
-            $row->errors[] = "Der Name ergibt dieselbe Adresse (slug \"{$slug}\") wie Zeile {$slugsInFile[$slug]}.";
+            $row->errors[] = "This name produces the same URL (slug \"{$slug}\") as row {$slugsInFile[$slug]}.";
 
             return null;
         }
@@ -271,10 +271,10 @@ class ListingImporter
         ));
 
         if ($existingIds !== []) {
-            $ids = implode(' oder ', $existingIds);
+            $ids = implode(' or ', $existingIds);
             $row->errors[] = count($existingIds) > 1
-                ? "\"{$name}\" gibt es mehrfach (id {$ids}). Bitte die richtige id in die Spalte id eintragen."
-                : "\"{$name}\" gibt es schon (id {$ids}). Zum Aktualisieren die {$ids} in die Spalte id eintragen — oder den Namen ändern, wenn es ein anderer Betrieb ist.";
+                ? "\"{$name}\" already exists more than once (id {$ids}). Put the right id in the id column."
+                : "\"{$name}\" already exists (id {$ids}). To update it, put {$ids} in the id column — or change the name if this is a different business.";
 
             return null;
         }
@@ -283,7 +283,7 @@ class ListingImporter
         $row->isNew = true;
 
         if ($similar = $this->findSimilarListing($slug)) {
-            $row->warnings[] = "Ähnlicher Name existiert bereits: \"{$similar['slug']}\" (id {$similar['id']}). Wenn es derselbe Betrieb ist, stattdessen die id eintragen.";
+            $row->warnings[] = "A similar name already exists: \"{$similar['slug']}\" (id {$similar['id']}). If this is the same business, put that id in the id column instead.";
         }
 
         return null;
@@ -294,7 +294,7 @@ class ListingImporter
         $clear = ListingSheet::isClearMarker($raw);
 
         if ($clear && $column->requiredForNew) {
-            $row->errors[] = "Spalte \"{$column->header}\" kann nicht geleert werden.";
+            $row->errors[] = "Column \"{$column->header}\" cannot be emptied.";
 
             return;
         }
@@ -360,7 +360,7 @@ class ListingImporter
                 $number = $this->parseNumber($raw);
 
                 if ($number === null) {
-                    $row->errors[] = "Spalte \"{$column->header}\": \"{$raw}\" ist keine Zahl.";
+                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is not a number.";
 
                     return null;
                 }
@@ -371,7 +371,7 @@ class ListingImporter
                 $number = $this->parseNumber($raw);
 
                 if ($number === null) {
-                    $row->errors[] = "Spalte \"{$column->header}\": \"{$raw}\" ist keine ganze Zahl.";
+                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is not a whole number.";
 
                     return null;
                 }
@@ -382,7 +382,7 @@ class ListingImporter
                 $bool = $this->parseBoolean($raw);
 
                 if ($bool === null) {
-                    $row->errors[] = "Spalte \"{$column->header}\": \"{$raw}\" verstehe ich nicht — bitte ja oder nein.";
+                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is not clear — please write yes or no.";
 
                     return null;
                 }
@@ -394,7 +394,7 @@ class ListingImporter
 
                 if ($type === null) {
                     $allowed = implode(', ', array_column(ListingType::cases(), 'value'));
-                    $row->errors[] = "Spalte \"{$column->header}\": \"{$raw}\" ist kein gültiger Typ ({$allowed}).";
+                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is not a valid type ({$allowed}).";
 
                     return null;
                 }
@@ -406,7 +406,7 @@ class ListingImporter
 
                 if ($category === null) {
                     $allowed = implode(', ', array_column(VehicleCategory::cases(), 'value'));
-                    $row->errors[] = "Spalte \"{$column->header}\": \"{$raw}\" ist keine gültige Kategorie ({$allowed}).";
+                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is not a valid category ({$allowed}).";
 
                     return null;
                 }
@@ -417,13 +417,13 @@ class ListingImporter
                 $city = $this->resolveCity($raw);
 
                 if ($city === null) {
-                    $row->errors[] = "Spalte \"{$column->header}\": den Ort \"{$raw}\" gibt es nicht. Gültige Orte stehen im Blatt \"".ListingSheet::HELP_SHEET_NAME.'".';
+                    $row->errors[] = "Column \"{$column->header}\": there is no place called \"{$raw}\". The valid ones are on the \"".ListingSheet::HELP_SHEET_NAME.'" sheet.';
 
                     return null;
                 }
 
                 if (is_string($city)) {
-                    $row->errors[] = "Spalte \"{$column->header}\": \"{$raw}\" ist mehrdeutig — bitte {$city} schreiben.";
+                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is ambiguous — please write {$city}.";
 
                     return null;
                 }
@@ -434,7 +434,7 @@ class ListingImporter
                 $coordinates = $this->parseCoordinates($raw);
 
                 if ($coordinates === null) {
-                    $row->errors[] = "Spalte \"{$column->header}\": aus \"{$raw}\" kann ich keine Koordinaten lesen. Erwartet: \"-22.482100, 17.095400\" oder ein Google-Maps-Link.";
+                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is not readable as coordinates. Expected \"-22.482100, 17.095400\" or a Google Maps link.";
 
                     return null;
                 }
@@ -480,7 +480,7 @@ class ListingImporter
 
         return match (true) {
             $value === null => null,
-            $column->type === SheetColumnType::Boolean => $value ? 'ja' : 'nein',
+            $column->type === SheetColumnType::Boolean => $value ? 'yes' : 'no',
             $column->type === SheetColumnType::City => $this->cityName($value),
             $value instanceof ListingType, $value instanceof VehicleCategory => $value->value,
             default => $this->asString($value),
@@ -612,7 +612,7 @@ class ListingImporter
         }
 
         if (count($matches) > 1) {
-            return implode(' oder ', array_map(
+            return implode(' or ', array_map(
                 static fn (City $city) => "\"{$city->name} ({$city->region?->name})\"",
                 $matches,
             ));

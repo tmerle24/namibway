@@ -62,7 +62,7 @@ class ListingExportActionTest extends TestCase
         $url = data_get($component->effects, 'redirect');
         $this->assertIsString($url);
 
-        $this->actingAs($admin)->get($url)->assertOk()->assertDownload('listings-vorlage.xlsx');
+        $this->actingAs($admin)->get($url)->assertOk()->assertDownload('listings-template.xlsx');
     }
 
     public function test_the_download_link_is_single_use_and_admins_only(): void

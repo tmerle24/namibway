@@ -102,10 +102,10 @@ class ListingImportExportTest extends TestCase
         $cells = array_combine($file['headers'], $file['rows'][0]['cells']);
         $this->assertSame((string) $listing->id, $cells['id']);
         $this->assertSame('Okonjima Bush Camp', $cells['name']);
-        $this->assertSame('accommodation', $cells['typ']);
-        $this->assertSame($city->name, $cells['stadt']);
-        $this->assertSame('-20.800000, 16.700000', $cells['koordinaten']);
-        $this->assertSame('ja', $cells['veroeffentlichen']);
+        $this->assertSame('accommodation', $cells['type']);
+        $this->assertSame($city->name, $cells['city']);
+        $this->assertSame('-20.800000, 16.700000', $cells['coordinates']);
+        $this->assertSame('yes', $cells['published']);
     }
 
     public function test_reimporting_an_untouched_export_changes_nothing(): void
@@ -132,7 +132,7 @@ class ListingImportExportTest extends TestCase
     {
         $listing = $this->listing(['phone' => '+264 61 123456']);
 
-        $file = $this->writeCsv(['id', 'preis_ab', 'telefon'], [[$listing->id, '1800', '']]);
+        $file = $this->writeCsv(['id', 'price_from', 'phone'], [[$listing->id, '1800', '']]);
 
         $plan = $this->importer()->plan($file);
         $this->importer()->apply($plan);
@@ -147,7 +147,7 @@ class ListingImportExportTest extends TestCase
     {
         $listing = $this->listing(['phone' => '+264 61 123456']);
 
-        $file = $this->writeCsv(['id', 'telefon'], [[$listing->id, 'LEEREN']]);
+        $file = $this->writeCsv(['id', 'phone'], [[$listing->id, 'CLEAR']]);
 
         $this->importer()->apply($this->importer()->plan($file));
 
@@ -158,7 +158,7 @@ class ListingImportExportTest extends TestCase
     {
         $listing = $this->listing();
 
-        $file = $this->writeCsv(['name', 'typ', 'preis_ab'], [['Okonjima Bush Camp', 'accommodation', '9999']]);
+        $file = $this->writeCsv(['name', 'type', 'price_from'], [['Okonjima Bush Camp', 'accommodation', '9999']]);
 
         $plan = $this->importer()->plan($file);
 
@@ -173,7 +173,7 @@ class ListingImportExportTest extends TestCase
         $city = City::query()->firstOrFail();
 
         $file = $this->writeCsv(
-            ['name', 'typ', 'stadt', 'preis_ab', 'koordinaten'],
+            ['name', 'type', 'city', 'price_from', 'coordinates'],
             [['Desert Whisper Lodge', 'accommodation', $city->name, '1.250,50', '-24,1 15,3']],
         );
 
@@ -195,7 +195,7 @@ class ListingImportExportTest extends TestCase
         $listing = $this->listing();
 
         $file = $this->writeCsv(
-            ['id', 'koordinaten'],
+            ['id', 'coordinates'],
             [[$listing->id, 'https://www.google.com/maps/@-22.559700,17.083200,15z']],
         );
 
@@ -209,10 +209,10 @@ class ListingImportExportTest extends TestCase
     public function test_an_unknown_city_and_an_unknown_id_are_reported_without_writing(): void
     {
         $file = $this->writeCsv(
-            ['id', 'name', 'typ', 'stadt'],
+            ['id', 'name', 'type', 'city'],
             [
-                ['', 'Neue Lodge', 'accommodation', 'Atlantis'],
-                ['999999', 'Gibt es nicht', '', ''],
+                ['', 'New Lodge', 'accommodation', 'Atlantis'],
+                ['999999', 'Does not exist', '', ''],
             ],
         );
 
@@ -227,7 +227,7 @@ class ListingImportExportTest extends TestCase
     public function test_a_dry_run_via_the_command_writes_nothing(): void
     {
         $listing = $this->listing();
-        $file = $this->writeCsv(['id', 'preis_ab'], [[$listing->id, '4000']]);
+        $file = $this->writeCsv(['id', 'price_from'], [[$listing->id, '4000']]);
 
         $this->artisan('namibway:import-listings', ['file' => $file, '--dry-run' => true])
             ->assertExitCode(0);
@@ -239,7 +239,7 @@ class ListingImportExportTest extends TestCase
     {
         $listing = $this->listing();
         $file = $this->writeCsv(
-            ['id', 'preis_ab'],
+            ['id', 'price_from'],
             [
                 [$listing->id, '4000'],
                 ['999999', '1'],

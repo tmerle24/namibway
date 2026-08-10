@@ -520,11 +520,11 @@ class ListingResource extends Resource
                     ->icon('heroicon-o-document-plus')
                     ->color('gray')
                     ->action(function (Pages\ListListings $livewire): void {
-                        $path = WorkbookDownload::path('listings-vorlage.xlsx');
+                        $path = WorkbookDownload::path('listings-template.xlsx');
 
                         app(ListingExporter::class)->template($path);
 
-                        $livewire->redirect(WorkbookDownload::link($path, 'listings-vorlage.xlsx'));
+                        $livewire->redirect(WorkbookDownload::link($path, 'listings-template.xlsx'));
                     }),
             ])
             ->actions([

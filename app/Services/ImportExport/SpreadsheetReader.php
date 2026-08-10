@@ -24,7 +24,7 @@ class SpreadsheetReader
     public function read(string $path): array
     {
         if (! is_file($path)) {
-            throw new RuntimeException("Datei nicht gefunden: {$path}");
+            throw new RuntimeException("File not found: {$path}");
         }
 
         $reader = $this->readerFor($path);
@@ -107,7 +107,7 @@ class SpreadsheetReader
     {
         $value = match (true) {
             $value === null => '',
-            is_bool($value) => $value ? 'ja' : 'nein',
+            is_bool($value) => $value ? 'yes' : 'no',
             $value instanceof DateTimeInterface => $value->format('Y-m-d'),
             is_float($value) => rtrim(rtrim(sprintf('%.10F', $value), '0'), '.'),
             is_scalar($value) => (string) $value,

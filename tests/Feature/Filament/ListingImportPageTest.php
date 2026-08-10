@@ -67,7 +67,7 @@ class ListingImportPageTest extends TestCase
 
         $url = (string) data_get($component->effects, 'redirect');
 
-        $this->actingAs($admin)->get($url)->assertOk()->assertDownload('listings-vorlage.xlsx');
+        $this->actingAs($admin)->get($url)->assertOk()->assertDownload('listings-template.xlsx');
     }
 
     public function test_checking_a_file_previews_the_changes_without_writing(): void
@@ -77,7 +77,7 @@ class ListingImportPageTest extends TestCase
 
         Livewire::actingAs($this->admin())
             ->test(ListingImport::class)
-            ->set('data.file', [$this->upload(['id', 'preis_ab'], [[$listing->id, 4000]])])
+            ->set('data.file', [$this->upload(['id', 'price_from'], [[$listing->id, 4000]])])
             ->call('check')
             ->assertSet('preview.updated', 1)
             ->assertSet('preview.changes', 1)
@@ -93,7 +93,7 @@ class ListingImportPageTest extends TestCase
 
         Livewire::actingAs($this->admin())
             ->test(ListingImport::class)
-            ->set('data.file', [$this->upload(['id', 'preis_ab'], [[$listing->id, 4000]])])
+            ->set('data.file', [$this->upload(['id', 'price_from'], [[$listing->id, 4000]])])
             ->call('import');
 
         $this->assertSame('4000.00', $listing->refresh()->price_from);
@@ -106,7 +106,7 @@ class ListingImportPageTest extends TestCase
 
         $component = Livewire::actingAs($this->admin())
             ->test(ListingImport::class)
-            ->set('data.file', [$this->upload(['id', 'preis_ab'], [[$listing->id, 4000], [999999, 1]])])
+            ->set('data.file', [$this->upload(['id', 'price_from'], [[$listing->id, 4000], [999999, 1]])])
             ->call('import')
             ->assertSet('preview.invalid', 1);
 

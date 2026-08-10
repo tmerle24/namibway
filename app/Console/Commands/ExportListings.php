@@ -31,7 +31,7 @@ class ExportListings extends Command
 
         if ($this->option('template')) {
             $exporter->template($path);
-            $this->info("Vorlage geschrieben: {$path}");
+            $this->info("Template written: {$path}");
 
             return self::SUCCESS;
         }
@@ -42,7 +42,7 @@ class ExportListings extends Command
             $listingType = ListingType::tryFrom($type);
 
             if ($listingType === null) {
-                $this->error("Unbekannter Typ \"{$type}\".");
+                $this->error("Unknown type \"{$type}\".");
 
                 return self::FAILURE;
             }
@@ -60,7 +60,7 @@ class ExportListings extends Command
 
         $count = $exporter->export($query, $path);
 
-        $this->info("{$count} Listings exportiert: {$path}");
+        $this->info("{$count} listing(s) exported: {$path}");
 
         return self::SUCCESS;
     }
@@ -79,7 +79,7 @@ class ExportListings extends Command
             mkdir($directory, 0755, true);
         }
 
-        $name = $this->option('template') ? 'listings-vorlage' : 'listings-'.now()->format('Y-m-d-Hi');
+        $name = $this->option('template') ? 'listings-template' : 'listings-'.now()->format('Y-m-d-Hi');
 
         return "{$directory}/{$name}.xlsx";
     }

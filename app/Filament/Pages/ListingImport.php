@@ -139,7 +139,7 @@ class ListingImport extends Page implements HasForms
             return;
         }
 
-        $name = 'listings-import-bericht-'.now()->format('Y-m-d-Hi').'.xlsx';
+        $name = 'listings-import-report-'.now()->format('Y-m-d-Hi').'.xlsx';
         $report = WorkbookDownload::path($name);
         app(ImportReportWriter::class)->write(app(ListingImporter::class)->plan($path), $report);
 
@@ -148,10 +148,10 @@ class ListingImport extends Page implements HasForms
 
     public function downloadTemplate(): void
     {
-        $path = WorkbookDownload::path('listings-vorlage.xlsx');
+        $path = WorkbookDownload::path('listings-template.xlsx');
         app(ListingExporter::class)->template($path);
 
-        $this->redirect(WorkbookDownload::link($path, 'listings-vorlage.xlsx'));
+        $this->redirect(WorkbookDownload::link($path, 'listings-template.xlsx'));
     }
 
     /**

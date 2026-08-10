@@ -9,9 +9,9 @@ use App\Models\Listing;
  * The column definition shared by ListingExporter and ListingImporter — change a
  * column here and both ends follow, so an exported file always re-imports.
  *
- * Headers are German because the workbook is a data-entry tool for the content
- * team, not a product surface; the database field name and the English label are
- * accepted as aliases so a renamed header never breaks an import.
+ * Headers are English — the content team works in English, and they double as the
+ * database field names. The German headers the first version shipped with are
+ * still accepted as aliases, so a workbook downloaded back then keeps importing.
  *
  * Two rules make round-tripping safe (see also CLAUDE.md's data-loss lesson):
  * an empty cell means "leave this field alone", never "set it to NULL", and the
@@ -21,11 +21,11 @@ use App\Models\Listing;
 final class ListingSheet
 {
     /** Typed into a cell to deliberately empty a field. A bare "-" is NOT one — too easy to type by accident. */
-    public const CLEAR_MARKERS = ['—', 'LEEREN', 'CLEAR'];
+    public const CLEAR_MARKERS = ['—', 'CLEAR', 'EMPTY'];
 
     public const SHEET_NAME = 'Listings';
 
-    public const HELP_SHEET_NAME = 'Anleitung';
+    public const HELP_SHEET_NAME = 'Instructions';
 
     /** @var list<SheetColumn>|null */
     private static ?array $columns = null;
@@ -43,7 +43,7 @@ final class ListingSheet
                 header: 'id',
                 type: SheetColumnType::Id,
                 attribute: 'id',
-                help: 'Vom Export gesetzt. Gefüllt = dieses Listing wird aktualisiert, leer = neues Listing. Niemals selbst ändern.',
+                help: 'Filled in by the export. Present = this listing is updated, empty = a new listing is created. Never edit it.',
                 aliases: ['listing_id'],
                 width: 8,
             ),
@@ -51,97 +51,97 @@ final class ListingSheet
                 header: 'name',
                 type: SheetColumnType::Translatable,
                 attribute: 'name',
-                help: 'Name des Betriebs. Pflicht bei neuen Zeilen.',
+                help: 'Name of the business. Required on new rows.',
                 aliases: ['title'],
                 requiredForNew: true,
                 width: 34,
             ),
             new SheetColumn(
-                header: 'typ',
+                header: 'type',
                 type: SheetColumnType::ListingTypeEnum,
                 attribute: 'type',
-                help: 'accommodation, activity, restaurant oder vehicle. Pflicht bei neuen Zeilen.',
-                aliases: ['type'],
+                help: 'accommodation, activity, restaurant or vehicle. Required on new rows.',
+                aliases: ['typ'],
                 requiredForNew: true,
                 width: 16,
             ),
             new SheetColumn(
-                header: 'fahrzeug_kategorie',
+                header: 'vehicle_category',
                 type: SheetColumnType::VehicleCategoryEnum,
                 attribute: 'vehicle_category',
-                help: 'Nur bei typ = vehicle: self_drive (Mietwagen) oder guided_tour (geführte Tour).',
-                aliases: ['vehicle_category'],
+                help: 'Only when type = vehicle: self_drive (rental) or guided_tour (tour with a driver-guide).',
+                aliases: ['fahrzeug_kategorie'],
                 width: 18,
             ),
             new SheetColumn(
-                header: 'stadt',
+                header: 'city',
                 type: SheetColumnType::City,
                 attribute: 'city_id',
-                help: 'Ort aus der Städteliste (Blatt "Anleitung"). Bei doppelten Namen: "Name (Region)". Ohne Ort taucht das Listing in Kaias Reiseplan nicht auf.',
-                aliases: ['city', 'ort'],
+                help: 'A place from the list on the "'.self::HELP_SHEET_NAME.'" sheet. For duplicate names: "Name (Region)". Without a city the listing never appears in a Kaia trip plan.',
+                aliases: ['stadt', 'ort'],
                 width: 24,
             ),
             new SheetColumn(
-                header: 'adresse',
+                header: 'address',
                 type: SheetColumnType::Text,
                 attribute: 'address',
-                help: 'Anschrift oder Wegbeschreibung. Grundlage für die automatische Koordinatensuche.',
-                aliases: ['address'],
+                help: 'Street address or directions. This is what the automatic coordinate lookup works from.',
+                aliases: ['adresse'],
                 width: 40,
             ),
             new SheetColumn(
-                header: 'koordinaten',
+                header: 'coordinates',
                 type: SheetColumnType::Coordinates,
                 attribute: 'latitude',
-                help: 'Ein Feld für beides: "-22.482100, 17.095400". Akzeptiert auch einen Google-Maps-Link und Grad-Minuten wie "S22°28.9 E17°05.7". Leer lassen — die Adresssuche füllt es später.',
-                aliases: ['coordinates', 'gps', 'lat_lng'],
+                help: 'One cell for both: "-22.482100, 17.095400". A Google Maps link works too, as do degrees-minutes like "S22°28.9 E17°05.7". Leave it empty — the address lookup fills it in later.',
+                aliases: ['koordinaten', 'gps', 'lat_lng'],
                 width: 26,
             ),
             new SheetColumn(
-                header: 'beschreibung_kurz',
+                header: 'short_description',
                 type: SheetColumnType::Translatable,
                 attribute: 'short_description',
-                help: 'Ein bis zwei Sätze für Karten und Listen.',
-                aliases: ['short_description'],
+                help: 'One or two sentences, shown on cards and in lists.',
+                aliases: ['beschreibung_kurz'],
                 width: 45,
             ),
             new SheetColumn(
-                header: 'beschreibung',
+                header: 'description',
                 type: SheetColumnType::RichText,
                 attribute: 'description',
-                help: 'Ausführlicher Text für die Detailseite. Reiner Text genügt — Formatierungen gehen beim Bearbeiten in Excel verloren.',
-                aliases: ['description'],
+                help: 'The full text for the detail page. Plain text is fine — any formatting is lost once the cell is edited in Excel.',
+                aliases: ['beschreibung'],
                 width: 60,
             ),
             new SheetColumn(
-                header: 'preis_ab',
+                header: 'price_from',
                 type: SheetColumnType::Decimal,
                 attribute: 'price_from',
-                help: 'Zahl ohne Währungszeichen, z. B. 1250 oder 1250,50.',
-                aliases: ['price_from', 'preis'],
+                help: 'A number without a currency symbol, e.g. 1250 or 1250.50.',
+                aliases: ['preis_ab', 'preis', 'price'],
                 width: 12,
             ),
             new SheetColumn(
-                header: 'waehrung',
+                header: 'currency',
                 type: SheetColumnType::Text,
                 attribute: 'price_currency',
-                help: 'Währung des Preises: '.implode(', ', self::supportedCurrencies()).'. Leer = NAD.',
-                aliases: ['price_currency', 'currency'],
+                help: 'Currency of the price: '.implode(', ', self::supportedCurrencies()).'. Empty = NAD.',
+                aliases: ['price_currency', 'waehrung'],
                 width: 12,
             ),
             new SheetColumn(
-                header: 'dauer_min',
+                header: 'duration_minutes',
                 type: SheetColumnType::Integer,
                 attribute: 'duration_minutes',
-                help: 'Nur Aktivitäten: Dauer in Minuten (Halbtagestour = 240).',
-                aliases: ['duration_minutes', 'dauer'],
-                width: 12,
+                help: 'Activities only: how long it takes, in minutes (a half-day tour is 240).',
+                aliases: ['dauer_min', 'dauer', 'duration'],
+                width: 16,
             ),
             new SheetColumn(
                 header: 'website',
                 type: SheetColumnType::Text,
                 attribute: 'website',
-                help: 'Vollständige Adresse inkl. https://',
+                help: 'Full address including https://',
                 aliases: ['url'],
                 width: 34,
             ),
@@ -149,55 +149,55 @@ final class ListingSheet
                 header: 'email',
                 type: SheetColumnType::Text,
                 attribute: 'contact_email',
-                help: 'Buchungs-/Kontaktadresse des Betriebs.',
+                help: 'The address bookings and enquiries go to.',
                 aliases: ['contact_email'],
                 width: 30,
             ),
             new SheetColumn(
-                header: 'kontaktperson',
+                header: 'contact_person',
                 type: SheetColumnType::Text,
                 attribute: 'contact_person',
-                help: 'Ansprechpartner beim Betrieb.',
-                aliases: ['contact_person'],
+                help: 'Who to ask for at the business.',
+                aliases: ['kontaktperson'],
                 width: 24,
             ),
             new SheetColumn(
-                header: 'telefon',
+                header: 'phone',
                 type: SheetColumnType::Text,
                 attribute: 'phone',
-                help: 'Mit Ländervorwahl, z. B. +264 61 123456.',
-                aliases: ['phone'],
+                help: 'With country code, e.g. +264 61 123456.',
+                aliases: ['telefon'],
                 width: 22,
             ),
             new SheetColumn(
-                header: 'ntb_nummer',
+                header: 'ntb_number',
                 type: SheetColumnType::Text,
                 attribute: 'ntb_number',
-                help: 'Registriernummer beim Namibia Tourism Board, falls bekannt.',
-                aliases: ['ntb_number'],
+                help: 'Namibia Tourism Board registration number, if known.',
+                aliases: ['ntb_nummer'],
                 width: 16,
             ),
             new SheetColumn(
-                header: 'veroeffentlichen',
+                header: 'published',
                 type: SheetColumnType::Boolean,
                 attribute: 'is_published',
-                help: 'ja = auf der Website sichtbar, nein = nur intern. Neue Zeilen ohne Angabe bleiben unsichtbar.',
-                aliases: ['is_published', 'published'],
-                width: 16,
+                help: 'yes = live on the website, no = internal only. New rows without an answer stay hidden.',
+                aliases: ['is_published', 'veroeffentlichen'],
+                width: 14,
             ),
             new SheetColumn(
-                header: 'anfragen_moeglich',
+                header: 'accepts_inquiries',
                 type: SheetColumnType::Boolean,
                 attribute: 'accepts_inquiries',
-                help: 'ja = Gäste können anfragen/buchen. Leer = ja.',
-                aliases: ['accepts_inquiries'],
+                help: 'yes = travellers can enquire and book. Empty = yes.',
+                aliases: ['anfragen_moeglich'],
                 width: 18,
             ),
             new SheetColumn(
                 header: 'slug',
                 type: SheetColumnType::Slug,
                 attribute: 'slug',
-                help: 'Teil der URL. Wird aus dem Namen erzeugt — nur ändern, wenn es einen Grund gibt.',
+                help: 'The listing\'s part of the URL. Generated from the name — only change it for a reason.',
                 aliases: [],
                 width: 30,
             ),
@@ -296,7 +296,7 @@ final class ListingSheet
                 : (int) $listing->getAttribute($column->attribute),
             SheetColumnType::Boolean => $listing->getAttribute($column->attribute) === null
                 ? null
-                : ($listing->getAttribute($column->attribute) ? 'ja' : 'nein'),
+                : ($listing->getAttribute($column->attribute) ? 'yes' : 'no'),
             SheetColumnType::ListingTypeEnum => $listing->type->value,
             SheetColumnType::VehicleCategoryEnum => $listing->vehicle_category instanceof VehicleCategory ? $listing->vehicle_category->value : null,
             SheetColumnType::City => $listing->city?->name,
