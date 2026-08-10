@@ -977,6 +977,71 @@ def extract_facilities(text: str) -> list[str]:
     )
 
 
+_VIDEO_HOSTS = ("youtube.com", "youtu.be", "vimeo.com", "dailymotion.com")
+
+
+def extract_embeds(html: str, page_url: str) -> list[str]:
+    """iframe / embed / object sources, which is where a video actually lives.
+
+    Nothing was collecting these — raw kept links and images only — so every
+    video on the site was invisible, including the ones the prose announces
+    ("YouTube video of Elizabeth Bay ruins"). Parsed from an untouched soup so
+    a player inside <noscript> counts too.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    out: list[str] = []
+    for tag in soup.find_all(["iframe", "embed", "object", "source"]):
+        src = (tag.get("src") or tag.get("data-src") or tag.get("data") or "").strip()
+        if not src:
+            continue
+        url = urljoin(page_url, src)
+        if url not in out:
+            out.append(url)
+    return out
+
+
+def _as_watch_url(url: str) -> str | None:
+    """Normalises a video URL to its canonical watchable form, or None."""
+    parsed = urlparse(url)
+    host = parsed.netloc.lower().replace("www.", "")
+    path = parsed.path
+
+    if host in ("youtube.com", "youtube-nocookie.com"):
+        if path.startswith("/embed/") or path.startswith("/v/"):
+            video_id = path.split("/")[2].split("?")[0]
+            return f"https://www.youtube.com/watch?v={video_id}" if video_id else None
+        if path == "/watch":
+            video_id = dict(
+                pair.split("=", 1) for pair in parsed.query.split("&") if "=" in pair
+            ).get("v")
+            return f"https://www.youtube.com/watch?v={video_id}" if video_id else None
+        return None  # a channel or user page is not a video
+    if host == "youtu.be":
+        video_id = path.strip("/").split("/")[0]
+        return f"https://www.youtube.com/watch?v={video_id}" if video_id else None
+    if host in ("vimeo.com", "player.vimeo.com"):
+        video_id = path.strip("/").split("/")[-1]
+        return f"https://vimeo.com/{video_id}" if video_id.isdigit() else None
+    return None
+
+
+def extract_videos(html: str, page_url: str) -> list[str]:
+    """Videos on the page, from embeds and from links alike."""
+    soup = BeautifulSoup(html, "lxml")
+    candidates = list(extract_embeds(html, page_url))
+    for a in soup.find_all("a", href=True):
+        href = a["href"].strip()
+        if any(h in href.lower() for h in _VIDEO_HOSTS):
+            candidates.append(urljoin(page_url, href))
+
+    out: list[str] = []
+    for url in candidates:
+        watch = _as_watch_url(url)
+        if watch and watch not in out:
+            out.append(watch)
+    return out
+
+
 def extract_raw(html: str, page_url: str) -> dict:
     """Everything on the page, unfiltered and uninterpreted.
 
@@ -1045,6 +1110,7 @@ def extract_raw(html: str, page_url: str) -> dict:
         "text_blocks": text_blocks(html),
         "images": images[:60],
         "links": links[:200],
+        "embeds": extract_embeds(html, page_url)[:20],
         "tables": tables[:12],
     }
 
@@ -1082,6 +1148,10 @@ def compute_hashes(record: dict) -> dict:
     else:
         photos = "|".join(sorted(record.get("photos") or []))
     social = "|".join(f"{k}={v.lower()}" for k, v in sorted((record.get("social_links") or {}).items()))
+    # Its own group rather than folded into social: the importer iterates a
+    # fixed group map and ignores what it does not know, so this rides along
+    # until a videos column exists to receive it.
+    videos = "|".join(sorted(v.lower() for v in (record.get("videos") or [])))
     facts = "|".join([
         str(record.get("latitude") or ""),
         str(record.get("longitude") or ""),
@@ -1098,6 +1168,7 @@ def compute_hashes(record: dict) -> dict:
         "contact": sha(contacts),
         "photos": sha(photos),
         "social": sha(social),
+        "videos": sha(videos),
         "facts": sha(facts),
     }
     hashes["content"] = sha(*[hashes[k] for k in _DIFF_FIELDS])
@@ -1149,6 +1220,7 @@ def parse_detail(page: "Page", chrome: set[str], chrome_social: set[str]) -> dic
         "description": description,
         "photos": extract_photos(html, page.url)[:30],
         "social_links": social,
+        "videos": extract_videos(html, page.url)[:10],
         "email": emails[0] if emails else None,
         "emails": emails[:5],
         "phone": phones[0] if phones else None,
@@ -1759,6 +1831,7 @@ def run_sample(urls: list[str], args, fetcher: Fetcher, run_at: str) -> int:
         print(f"Address     : {record['address']}")
         print(f"Website     : {record['website']}")
         print(f"Social      : {record['social_links'] or '—'}")
+        print(f"Videos      : {', '.join(record['videos']) if record['videos'] else '—'}")
         print(f"Email/Phone : {record['email'] or '—'} / {record['phone'] or '—'}")
         print(f"Price       : {record['price_from']} {record['price_currency'] or ''}".rstrip())
         print(f"Facilities  : {', '.join(record['facilities']) if record['facilities'] else '—'}")
