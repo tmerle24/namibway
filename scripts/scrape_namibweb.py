@@ -193,11 +193,21 @@ _SOCIAL_HOSTS: list[tuple[str, str]] = [
 _SOCIAL_JUNK_PATHS = (
     "/sharer", "/share", "/intent", "/plugins", "/dialog", "/login",
     "/signup", "/home", "/pages/create",
+    # A regional Facebook group and a photo-album media set are never the
+    # listing's own account. namibweb links several of each per page, and they
+    # were being reported as the lodge's Facebook.
+    "/groups", "/media",
 )
 
 _SKIP_WEBSITE_DOMAINS = {
     "namibweb.com", "www.namibweb.com", "google.com", "maps.google.com",
     "booking.com", "airbnb.com", "whatsapp.com", "wa.me", "paypal.com",
+    # Share widgets and the site's own sponsor/stock-portfolio links. Every
+    # namibweb page carries these, and taking the first external link made
+    # addthis.com the "website" of all three sample listings.
+    "addthis.com", "s7.addthis.com", "shutterstock.com", "pond5.com",
+    "adobe.com", "stock.adobe.com", "bit.ly", "blogspot.com", "t.me",
+    "telegram.org", "sa-nam-news.blogspot.com",
 } | {host for host, _ in _SOCIAL_HOSTS}
 
 # ---------------------------------------------------------------------------
@@ -232,9 +242,15 @@ _VOLATILE_PATTERNS = [
 ]
 
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
+# Only the fully spelled-out form, and both halves must be spelled out. The
+# previous pattern allowed a bare "." for "dot" and matched "at" without word
+# boundaries, so ordinary prose became an address: "Arrive at camp. Remainder
+# of day" → arrive@camp.remainder, "a personal attention. Apart from" →
+# personal@tention.apart. A real "@" is already covered by _EMAIL_RE.
 _EMAIL_OBFUSCATED_RE = re.compile(
-    r"([A-Za-z0-9._%+\-]+)\s*(?:\(|\[)?\s*(?:at|AT|@)\s*(?:\)|\])?\s*"
-    r"([A-Za-z0-9.\-]+)\s*(?:\(|\[)?\s*(?:dot|DOT|\.)\s*(?:\)|\])?\s*([A-Za-z]{2,})"
+    r"([A-Za-z0-9._%+\-]+)\s*(?:\(|\[)?\s*\bat\b\s*(?:\)|\])?\s*"
+    r"([A-Za-z0-9.\-]+)\s*(?:\(|\[)?\s*\bdot\b\s*(?:\)|\])?\s*([A-Za-z]{2,})",
+    re.IGNORECASE,
 )
 _PHONE_RE = re.compile(
     r"(?:\+\s?264|\(?0(?:0264)?\)?)[\s\-/().]?\d{2,3}[\s\-/().]?\d{3}[\s\-/().]?\d{3,4}"
@@ -247,9 +263,9 @@ _PRICE_RE = re.compile(r"(?:N\$|NAD|ZAR|R)\s?([\d][\d\s.,]{1,12})", re.IGNORECAS
 # only \d{1,2} there silently truncated 29.100' to 29' — a ~740 m error, on the
 # field the importer trusts as the locator for nearest-city matching.
 _DMS_RE = re.compile(
-    r"(?P<hemi>[NSEW])\s*(?P<deg>\d{1,3})\s*(?:°|º|deg|\s)\s*"
-    r"(?P<min>\d{1,2}(?:[.,]\d+)?)\s*(?:'|′|min|\s)?\s*"
-    r"(?P<sec>\d{1,2}(?:[.,]\d+)?)?\s*(?:\"|″|sec)?",
+    r"(?P<hemi>[NSEW])\s*(?P<deg>\d{1,3})\s*(?:°|º|deg)?\s*[;:,]?\s*"
+    r"(?P<min>\d{1,2}(?:[.,]\d+)?)\s*(?:['′´`]|min)?\s*"
+    r"(?P<sec>\d{1,3}(?:[.,]\d+)?)?\s*(?:[\"”″]|sec)?",
     re.IGNORECASE,
 )
 _DECIMAL_COORD_RE = re.compile(
@@ -298,7 +314,7 @@ _CATEGORY_KEYWORDS = [
 ]
 
 _FACILITY_KEYWORDS = {
-    "pool": ("swimming pool", "splash pool", "plunge pool"),
+    "pool": ("swimming pool", "splash pool", "plunge pool", "farm pool", " pool"),
     "restaurant": ("restaurant", "à la carte", "a la carte", "dining room"),
     "bar": ("bar ", "sundowner bar", "cocktail bar"),
     "wifi": ("wi-fi", "wifi", "wireless internet", "internet access"),
@@ -576,7 +592,11 @@ def build_chrome_index(all_blocks: list[list[str]]) -> set[str]:
     footer, nav strip and booking blurb are, by definition, the text that is
     identical on hundreds of otherwise unrelated pages.
     """
-    if len(all_blocks) < 4:
+    # Three pages is the smallest corpus that can say "this repeats": with the
+    # threshold below, a block then has to appear on all three. Requiring four
+    # meant a --url validation run stripped nothing and reported the site
+    # footer as part of the listing's description.
+    if len(all_blocks) < 3:
         return set()
 
     counts: Counter[str] = Counter()
@@ -597,6 +617,30 @@ def strip_boilerplate(blocks: list[str], chrome: set[str]) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
+def is_section_label(text: str) -> bool:
+    """A heading that names a part of the page, not the establishment.
+
+    namibweb marks its in-page sections with headings like "ACTIVITIES:" and
+    "RATES", and those sit above the property name in the document — so taking
+    the first heading made Kalahari Anib Lodge come out as "ACTIVITIES:".
+    """
+    stripped = text.strip().rstrip(":").strip()
+    if not stripped:
+        return True
+    if text.strip().endswith(":"):
+        return True
+    return stripped.lower() in _SECTION_LABELS
+
+
+_SECTION_LABELS = {
+    "activities", "activity", "rates", "prices", "pricing", "tariffs",
+    "location", "directions", "getting there", "accommodation", "facilities",
+    "contact", "contact us", "reservations", "booking", "bookings", "gps",
+    "gps coordinates", "description", "overview", "general information",
+    "related", "related links", "maps", "map", "photos", "gallery", "notes",
+}
+
+
 def extract_name(html: str, fallback: str, section: str | None = None) -> str:
     soup = BeautifulSoup(html, "lxml")
 
@@ -604,7 +648,7 @@ def extract_name(html: str, fallback: str, section: str | None = None) -> str:
         node = soup.find(tag)
         if node:
             text = clean_text(node.get_text(" ", strip=True))
-            if 3 <= len(text) <= 90:
+            if 3 <= len(text) <= 90 and not is_section_label(text):
                 return text
 
     if soup.title:
@@ -698,7 +742,7 @@ def build_chrome_social(all_social: list[dict[str, str]]) -> set[str]:
     Same frequency trick as the text chrome: a social URL that shows up on a
     large share of unrelated listing pages belongs to the site, not the lodge.
     """
-    if len(all_social) < 4:
+    if len(all_social) < 3:
         return set()
 
     counts: Counter[str] = Counter()
@@ -762,10 +806,16 @@ def extract_website(html: str, page_url: str) -> str | None:
 def dms_to_decimal(hemi: str, deg: str, minutes: str, seconds: str | None) -> float:
     minutes = minutes.replace(",", ".")
     value = float(deg) + float(minutes) / 60
-    # Decimal minutes and seconds are alternative notations, never both at once;
-    # if minutes already carry a fraction, a trailing number is not seconds.
+
     if seconds and "." not in minutes:
-        value += float(seconds.replace(",", ".")) / 3600
+        seconds = seconds.replace(",", ".")
+        # Seconds cannot reach three digits — 60 is already a minute. A run that
+        # long is the fractional part of the minutes, printed after a mangled
+        # minute sign: namibweb writes "S 22°; 38´644”" for 22° 38.644'.
+        if len(seconds.split(".")[0]) >= 3:
+            value += float(f"0.{seconds.replace('.', '')}") / 60
+        else:
+            value += float(seconds) / 3600
     if hemi.upper() in ("S", "W"):
         value = -value
     return round(value, 6)
@@ -813,7 +863,28 @@ def extract_price(text: str) -> tuple[float | None, str | None]:
     return min(prices), "NAD"
 
 
+# Activity words that only decide the type when they appear in the *name*.
+# "Safari" in the body describes what half of Namibia's lodges offer; in the
+# name it is what the listing is. Accommodation is still checked first, so
+# "Etosha Safari Lodge" stays a lodge.
+_ACTIVITY_NAME_KEYWORDS = (
+    "safari", "safaris", "tour", "tours", "trip", "trips", "cruise",
+    "excursion", "expedition", "adventure", "trail", "trails", "flight",
+    "flights", "charter", "transfer", "transfers",
+)
+
+
 def classify_listing_type(name: str, text: str, hint: str | None) -> str:
+    # The name is the strongest signal and the body the weakest: a tour page
+    # describes its camp in detail, which is why "Coastways Safaris to Saddle
+    # Hill" came out as accommodation off the word "campsite" in the itinerary.
+    name_l = name.lower()
+    for listing_type, keywords in _TYPE_KEYWORDS:
+        if any(k in name_l for k in keywords):
+            return listing_type
+    if any(k in name_l for k in _ACTIVITY_NAME_KEYWORDS):
+        return "activity"
+
     haystack = f"{name} {text[:2000]}".lower()
     for listing_type, keywords in _TYPE_KEYWORDS:
         if any(k in haystack for k in keywords):
@@ -822,10 +893,34 @@ def classify_listing_type(name: str, text: str, hint: str | None) -> str:
 
 
 def classify_category(name: str, text: str) -> str | None:
+    name_l = name.lower()
+    for category, keywords in _CATEGORY_KEYWORDS:
+        if any(k in name_l for k in keywords):
+            return category
+
     haystack = f"{name} {text[:1500]}".lower()
     for category, keywords in _CATEGORY_KEYWORDS:
         if any(k in haystack for k in keywords):
             return category
+    return None
+
+
+_REGION_RE = re.compile(
+    r"\b(Northern|Southern|Central|Eastern|Western|Coastal|North-?Western|North-?Eastern)\s+Region\b",
+    re.IGNORECASE,
+)
+
+
+def extract_region(blocks: list[str]) -> str | None:
+    """namibweb prints "Accommodation Namibia - Southern Region" on the page.
+
+    A crawl learns the region from the index it followed, but --url has no
+    index, and the page states it anyway — so read it rather than store null.
+    """
+    for block in blocks[:12]:
+        m = _REGION_RE.search(block)
+        if m:
+            return f"{m.group(1).title()} Region"
     return None
 
 
@@ -994,14 +1089,18 @@ def parse_detail(page: "Page", chrome: set[str], chrome_social: set[str]) -> dic
             address = block
             break
 
+    listing_type = classify_listing_type(name, body, page.type_hint)
+
     return {
         "scrape_id": page.scrape_id,
         "source_url": page.url,
         "index_url": page.parent_url,
         "name": name,
-        "region": page.section,
-        "listing_type": classify_listing_type(name, body, page.type_hint),
-        "category": classify_category(name, body),
+        "region": page.section or extract_region(blocks),
+        "listing_type": listing_type,
+        # Category describes the shape of a place to stay; on a tour page it
+        # would just report whichever accommodation word the itinerary used.
+        "category": classify_category(name, body) if listing_type == "accommodation" else None,
         "description": description,
         "photos": extract_photos(html, page.url)[:30],
         "social_links": social,
