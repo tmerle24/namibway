@@ -13,12 +13,53 @@ final class ImportPlan
      * @param  list<PlannedRow>  $rows
      * @param  list<string>  $fileErrors  Problems that stop the whole import (missing headers, unreadable file).
      * @param  list<string>  $ignoredHeaders  Columns in the file that the sheet doesn't know — skipped, not fatal.
+     * @param  list<PlannedRoomRow>  $roomRows  Rows of the RoomTypes sheet, if the workbook has one.
      */
     public function __construct(
         public readonly array $rows = [],
         public readonly array $fileErrors = [],
         public readonly array $ignoredHeaders = [],
+        public readonly array $roomRows = [],
     ) {}
+
+    /** @return list<PlannedRoomRow> */
+    public function invalidRoomRows(): array
+    {
+        return array_values(array_filter($this->roomRows, static fn (PlannedRoomRow $row) => ! $row->isValid()));
+    }
+
+    /** @return list<PlannedRoomRow> */
+    public function applicableRoomRows(): array
+    {
+        return array_values(array_filter($this->roomRows, static fn (PlannedRoomRow $row) => $row->isApplicable()));
+    }
+
+    public function roomNewCount(): int
+    {
+        return count(array_filter($this->applicableRoomRows(), static fn (PlannedRoomRow $row) => $row->isNew));
+    }
+
+    public function roomUpdateCount(): int
+    {
+        return count(array_filter($this->applicableRoomRows(), static fn (PlannedRoomRow $row) => ! $row->isNew));
+    }
+
+    /** Whether apply() has to open the photo ZIP at all. */
+    public function needsPhotos(): bool
+    {
+        foreach ($this->applicableRows() as $row) {
+            if ($row->photoFolder !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function photoCount(): int
+    {
+        return count(array_filter($this->applicableRows(), static fn (PlannedRow $row) => $row->photoFolder !== null));
+    }
 
     /** @return list<PlannedRow> */
     public function invalidRows(): array
@@ -40,7 +81,7 @@ final class ImportPlan
 
     public function hasErrors(): bool
     {
-        return $this->fileErrors !== [] || $this->invalidRows() !== [];
+        return $this->fileErrors !== [] || $this->invalidRows() !== [] || $this->invalidRoomRows() !== [];
     }
 
     public function isBlocked(): bool

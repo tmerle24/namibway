@@ -4,6 +4,7 @@ namespace App\Services\ImportExport;
 
 use App\Models\City;
 use App\Models\Listing;
+use App\Models\RoomType;
 use Illuminate\Database\Eloquent\Builder;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;
@@ -11,11 +12,11 @@ use OpenSpout\Writer\XLSX\Entity\SheetView;
 use OpenSpout\Writer\XLSX\Writer;
 
 /**
- * Writes the listings workbook: one row per listing, plus an "Anleitung" sheet
- * that explains every column and lists the valid cities and types. The `id`
- * column it writes is what makes a later re-import an update instead of a
- * duplicate, so an export is the intended starting point for bulk editing —
- * see ListingImporter.
+ * Writes the listings workbook: a "Listings" sheet with one row per listing, a
+ * "RoomTypes" sheet with their bookable units, and an "Instructions" sheet that
+ * explains every column and lists the valid cities and types. The `id` column it
+ * writes is what makes a later re-import an update instead of a duplicate, so an
+ * export is the intended starting point for bulk editing — see ListingImporter.
  */
 class ListingExporter
 {
@@ -30,15 +31,19 @@ class ListingExporter
 
         $writer = $this->open($path, $columns);
 
-        $query->with('city')->lazyById(500)->each(function (Listing $listing) use ($writer, $columns, &$written): void {
+        $ids = [];
+
+        $query->with('city')->lazyById(500)->each(function (Listing $listing) use ($writer, $columns, &$written, &$ids): void {
             $writer->addRow(Row::fromValues(array_map(
                 static fn (SheetColumn $column) => ListingSheet::cellValue($column, $listing),
                 $columns,
             )));
 
+            $ids[] = $listing->id;
             $written++;
         });
 
+        $this->addRoomTypeSheet($writer, $ids);
         $this->addHelpSheet($writer);
         $writer->close();
 
@@ -60,8 +65,50 @@ class ListingExporter
             $columns,
         )));
 
+        $this->addRoomTypeSheet($writer, []);
         $this->addHelpSheet($writer);
         $writer->close();
+    }
+
+    /**
+     * The room types of the listings just written — an accommodation's bookable
+     * units, on their own sheet because there are several per listing.
+     *
+     * @param  list<int>  $listingIds  empty for the template: headers only
+     */
+    private function addRoomTypeSheet(Writer $writer, array $listingIds): void
+    {
+        $columns = RoomTypeSheet::columns();
+
+        $sheet = $writer->addNewSheetAndMakeItCurrent();
+        $sheet->setName(RoomTypeSheet::SHEET_NAME);
+        $sheet->setSheetView((new SheetView)->setFreezeRow(2));
+
+        foreach ($columns as $index => $column) {
+            $sheet->setColumnWidth($column->width, $index + 1);
+        }
+
+        $writer->addRow(Row::fromValues(
+            array_map(static fn (SheetColumn $column) => $column->header, $columns),
+            (new Style)->setFontBold(),
+        ));
+
+        if ($listingIds === []) {
+            return;
+        }
+
+        RoomType::query()
+            ->with('listing')
+            ->whereIn('listing_id', $listingIds)
+            ->orderBy('listing_id')
+            ->orderBy('code')
+            ->lazy()
+            ->each(static function (RoomType $roomType) use ($writer, $columns): void {
+                $writer->addRow(Row::fromValues(array_map(
+                    static fn (SheetColumn $column) => RoomTypeSheet::cellValue($column, $roomType),
+                    $columns,
+                )));
+            });
     }
 
     /**
@@ -112,6 +159,26 @@ class ListingExporter
             'Never overwrite an id or make one up.',
             'Yes/no columns: yes, no (y/n, x, 1, 0 work too).',
             'Every import is checked first: it lists every change before anything is saved.',
+        ] as $line) {
+            $writer->addRow(Row::fromValues(['', $line]));
+        }
+
+        $writer->addRow(Row::fromValues([]));
+        $writer->addRow(Row::fromValues(['The "'.RoomTypeSheet::SHEET_NAME.'" sheet', ''], $bold));
+
+        foreach (RoomTypeSheet::columns() as $column) {
+            $writer->addRow(Row::fromValues([$column->header, $column->help]));
+        }
+
+        $writer->addRow(Row::fromValues([]));
+        $writer->addRow(Row::fromValues(['Photos', ''], $bold));
+
+        foreach ([
+            'Put one folder per listing in a ZIP file and upload it together with this workbook.',
+            'Write the folder name in the "photo_folder" column — nothing else is needed.',
+            'A file whose name starts with "cover" becomes the main image; the rest become the gallery, in name order.',
+            implode('/', PhotoArchive::EXTENSIONS).' only, at most '.PhotoArchive::MAX_FILES_PER_FOLDER.' images per listing and '.round(PhotoArchive::MAX_FILE_BYTES / 1024 / 1024).' MB per image.',
+            'Filling in photo_folder REPLACES the photos that listing already has. Only upload photos we are allowed to publish.',
         ] as $line) {
             $writer->addRow(Row::fromValues(['', $line]));
         }

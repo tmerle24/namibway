@@ -19,9 +19,10 @@ use RuntimeException;
 class SpreadsheetReader
 {
     /**
+     * @param  string|null  $sheetName  Read this sheet instead of the first one.
      * @return array{headers: list<string>, rows: list<array{line: int, cells: list<string>}>}
      */
-    public function read(string $path): array
+    public function read(string $path, ?string $sheetName = null): array
     {
         if (! is_file($path)) {
             throw new RuntimeException("File not found: {$path}");
@@ -34,6 +35,13 @@ class SpreadsheetReader
         $rows = [];
 
         foreach ($reader->getSheetIterator() as $sheet) {
+            // Without a name: the first sheet, which is where the main table lives
+            // (the others hold room types and the instructions). A CSV has exactly
+            // one sheet, so a named read of anything else simply finds nothing.
+            if ($sheetName !== null && ListingSheet::normalize($sheet->getName()) !== ListingSheet::normalize($sheetName)) {
+                continue;
+            }
+
             foreach ($sheet->getRowIterator() as $line => $row) {
                 $cells = array_map($this->stringify(...), $row->toArray());
 
@@ -51,7 +59,7 @@ class SpreadsheetReader
                 $rows[] = ['line' => $line, 'cells' => $cells];
             }
 
-            break; // Only the first sheet — the workbook's second sheet is the help text.
+            break;
         }
 
         $reader->close();

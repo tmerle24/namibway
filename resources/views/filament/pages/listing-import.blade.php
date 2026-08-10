@@ -30,12 +30,15 @@
             <x-filament::section>
                 <x-slot name="heading">2. What this file would do</x-slot>
 
-                <div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
+                <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                     @foreach ([
                         ['New listings', $preview['new'], 'text-success-600 dark:text-success-400'],
                         ['Updated', $preview['updated'], 'text-primary-600 dark:text-primary-400'],
                         ['Field changes', $preview['changes'], 'text-gray-950 dark:text-white'],
                         ['Unchanged', $preview['unchanged'], 'text-gray-500 dark:text-gray-400'],
+                        ['Room types added', $preview['room_new'], 'text-success-600 dark:text-success-400'],
+                        ['Room types updated', $preview['room_updated'], 'text-primary-600 dark:text-primary-400'],
+                        ['Listings getting photos', $preview['photos'], 'text-gray-950 dark:text-white'],
                         ['Rows with errors', $preview['invalid'], 'text-danger-600 dark:text-danger-400'],
                     ] as [$label, $value, $tone])
                         <div class="rounded-xl bg-gray-50 p-4 dark:bg-white/5">
@@ -132,6 +135,39 @@
                             … and {{ $preview['more_rows'] }} more rows. Use “Download report” for the full list.
                         </p>
                     @endif
+                </x-filament::section>
+            @endif
+
+            @if ($preview['room_rows'])
+                <x-filament::section collapsible>
+                    <x-slot name="heading">Room types</x-slot>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="text-gray-500 dark:text-gray-400">
+                                <tr>
+                                    <th class="w-16 py-2 text-start font-medium">Row</th>
+                                    <th class="py-2 text-start font-medium">Listing · code</th>
+                                    <th class="w-32 py-2 text-start font-medium">What happens</th>
+                                    <th class="py-2 text-start font-medium">Fields</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+                                @foreach ($preview['room_rows'] as $room)
+                                    <tr>
+                                        <td class="py-2 tabular-nums">{{ $room['line'] }}</td>
+                                        <td class="py-2">{{ $room['label'] }}</td>
+                                        <td class="py-2 {{ $room['is_new'] ? 'text-success-600 dark:text-success-400' : '' }}">
+                                            {{ $room['is_new'] ? 'created' : 'updated' }}
+                                        </td>
+                                        <td class="py-2 font-mono text-xs text-gray-500 dark:text-gray-400">
+                                            {{ $room['fields'] }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </x-filament::section>
             @endif
 

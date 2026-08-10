@@ -12,6 +12,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
+use ZipArchive;
 
 /**
  * The admin-side of the bulk capture flow: the content team uploads a workbook,
@@ -34,6 +35,7 @@ class ListingImportPageTest extends TestCase
         return Listing::factory()->create([
             'partner_id' => $partner->id,
             'name' => 'Okonjima Bush Camp',
+            'slug' => 'okonjima-bush-camp',
             'price_from' => 1250.00,
         ]);
     }
@@ -49,12 +51,61 @@ class ListingImportPageTest extends TestCase
         return UploadedFile::fake()->createWithContent('listings.csv', implode("\n", $lines)."\n");
     }
 
+    /** @param array<string, string> $files path inside the archive => contents */
+    private function uploadZip(array $files): File
+    {
+        $path = tempnam(sys_get_temp_dir(), 'photos').'.zip';
+
+        $zip = new ZipArchive;
+        $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+
+        foreach ($files as $name => $contents) {
+            $zip->addFromString($name, $contents);
+        }
+
+        $zip->close();
+
+        $bytes = (string) file_get_contents($path);
+        unlink($path);
+
+        return UploadedFile::fake()->createWithContent('photos.zip', $bytes);
+    }
+
     public function test_the_page_renders(): void
     {
         $this->actingAs($this->admin())
             ->get('/admin/listing-import')
             ->assertOk()
             ->assertSee('Import listings');
+    }
+
+    public function test_the_guide_renders_the_real_column_definitions(): void
+    {
+        $this->actingAs($this->admin())
+            ->get('/admin/bulk-capture-guide')
+            ->assertOk()
+            ->assertSee('photo_folder')
+            ->assertSee('rate_per_night')
+            ->assertSee('Only upload photos we are allowed to publish');
+    }
+
+    public function test_photos_are_imported_from_an_uploaded_zip(): void
+    {
+        Storage::fake('local');
+        Storage::fake('r2');
+        $listing = $this->listing();
+
+        Livewire::actingAs($this->admin())
+            ->test(ListingImport::class)
+            ->set('data.file', [$this->upload(['id', 'photo_folder'], [[$listing->id, 'Okonjima Bush Camp']])])
+            ->set('data.photos', [$this->uploadZip(['Okonjima Bush Camp/cover.jpg' => 'cover-bytes'])])
+            ->call('check')
+            ->assertSet('preview.photos', 1)
+            ->call('import');
+
+        $listing->refresh();
+        $this->assertStringContainsString('listings/okonjima-bush-camp/cover-', (string) $listing->image);
+        Storage::disk('r2')->assertExists((string) $listing->image);
     }
 
     public function test_the_template_can_be_downloaded_from_the_page(): void

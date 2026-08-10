@@ -38,6 +38,12 @@ class ImportReportWriter
             }
         }
 
+        foreach ($plan->invalidRoomRows() as $row) {
+            foreach ($row->errors as $error) {
+                $writer->addRow(Row::fromValues([$row->line, RoomTypeSheet::SHEET_NAME.': '.$row->label(), $error]));
+            }
+        }
+
         $sheet = $writer->addNewSheetAndMakeItCurrent();
         $sheet->setName('Changes');
         $sheet->setColumnWidth(10, 1);
@@ -61,6 +67,25 @@ class ImportReportWriter
                     $row->line,
                     $row->listingId,
                     $row->name,
+                    $change->column,
+                    $change->old,
+                    $change->new,
+                ]));
+            }
+        }
+
+        foreach ($plan->applicableRoomRows() as $row) {
+            if ($row->changes === []) {
+                $writer->addRow(Row::fromValues([$row->line, '', RoomTypeSheet::SHEET_NAME.': '.$row->label(), 'created', '', '']));
+
+                continue;
+            }
+
+            foreach ($row->changes as $change) {
+                $writer->addRow(Row::fromValues([
+                    $row->line,
+                    $row->listingId,
+                    RoomTypeSheet::SHEET_NAME.': '.$row->label(),
                     $change->column,
                     $change->old,
                     $change->new,

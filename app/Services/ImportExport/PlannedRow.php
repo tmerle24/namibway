@@ -26,6 +26,12 @@ final class PlannedRow
 
     public ?int $listingId = null;
 
+    /** Folder in the photo ZIP whose images replace this listing's photos. */
+    public ?string $photoFolder = null;
+
+    /** Set by apply() once the listing is saved, so room rows can find a just-created listing. */
+    public ?int $savedListingId = null;
+
     public bool $isNew = false;
 
     public string $name = '';

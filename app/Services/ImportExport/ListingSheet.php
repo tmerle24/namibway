@@ -178,6 +178,22 @@ final class ListingSheet
                 width: 16,
             ),
             new SheetColumn(
+                header: 'photo_folder',
+                type: SheetColumnType::PhotoFolder,
+                attribute: 'image',
+                help: 'Name of this listing\'s folder in the photo ZIP. A file called cover.jpg becomes the main image, the rest become the gallery. Filling this in REPLACES the photos this listing has.',
+                aliases: ['photos', 'photo_folder_name'],
+                width: 28,
+            ),
+            new SheetColumn(
+                header: 'photo_credit',
+                type: SheetColumnType::Text,
+                attribute: 'photos_attribution',
+                help: 'Who to credit for the photos, if anyone (e.g. "© Okonjima Lodge"). Only upload photos we are allowed to publish.',
+                aliases: ['photos_attribution'],
+                width: 28,
+            ),
+            new SheetColumn(
                 header: 'published',
                 type: SheetColumnType::Boolean,
                 attribute: 'is_published',
@@ -300,6 +316,9 @@ final class ListingSheet
             SheetColumnType::ListingTypeEnum => $listing->type->value,
             SheetColumnType::VehicleCategoryEnum => $listing->vehicle_category instanceof VehicleCategory ? $listing->vehicle_category->value : null,
             SheetColumnType::City => $listing->city?->name,
+            // Input only: the folder a listing's photos came from isn't stored, and
+            // writing anything here would make an untouched export re-upload them.
+            SheetColumnType::PhotoFolder => null,
             SheetColumnType::Coordinates => self::formatCoordinates($listing->latitude, $listing->longitude),
         };
     }

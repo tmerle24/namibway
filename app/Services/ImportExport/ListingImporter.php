@@ -2,16 +2,17 @@
 
 namespace App\Services\ImportExport;
 
-use App\Enums\ListingType;
-use App\Enums\VehicleCategory;
-use App\Models\City;
+use App\Enums\ContentSource;
 use App\Models\Listing;
-use App\Services\Enrichment\CoordinateTextParser;
+use App\Models\RoomType;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
- * Reads a listings workbook and turns it into an ImportPlan first — never
+ * Reads a listings workbook — the Listings sheet, the RoomTypes sheet, and the
+ * photo ZIP that goes with them — and turns it into an ImportPlan first, never
  * straight into writes. plan() validates and diffs every row, apply() executes
  * that same plan in one transaction.
  *
@@ -21,24 +22,27 @@ use Illuminate\Support\Str;
  *  - The only automatic update key is `id`, which only an export can produce. A
  *    row without an id whose name resolves to an existing listing is an ERROR,
  *    not a silent update and not a duplicate — the person is told which id to
- *    put in the cell.
+ *    put in the cell. Room types are the one exception, and only because they
+ *    have a real natural key: listing + code is unique in the database.
  *  - An empty cell means "don't touch this field". Emptying a field on purpose
- *    takes one of ListingSheet::CLEAR_MARKERS.
+ *    takes one of ListingSheet::CLEAR_MARKERS. Nothing is ever deleted: rooms
+ *    missing from the sheet stay, and replaced photos stay in the bucket for
+ *    `photos:audit-r2` to deal with.
  */
 class ListingImporter
 {
-    /** @var array<string, list<City>> normalized city name => cities with that name */
-    private array $citiesByName = [];
-
     /** @var array<string, int> slug => listing id */
     private array $slugsToId = [];
 
     /** @var array<string, list<int>> normalized name => listing ids */
     private array $idsByName = [];
 
-    public function __construct(private readonly SpreadsheetReader $reader) {}
+    public function __construct(
+        private readonly SpreadsheetReader $reader,
+        private readonly CellParser $parser,
+    ) {}
 
-    public function plan(string $path): ImportPlan
+    public function plan(string $path, ?string $zipPath = null): ImportPlan
     {
         $file = $this->reader->read($path);
 
@@ -77,12 +81,18 @@ class ListingImporter
             $fileErrors[] = 'The file needs at least an "id" column (to update) or a "name" column (to create).';
         }
 
-        if ($file['rows'] === [] && $fileErrors === []) {
-            $fileErrors[] = 'The file has no data rows.';
-        }
-
         if ($fileErrors !== []) {
             return new ImportPlan([], $fileErrors, $ignored);
+        }
+
+        $archive = null;
+
+        if ($zipPath !== null) {
+            try {
+                $archive = PhotoArchive::open($zipPath);
+            } catch (RuntimeException $exception) {
+                return new ImportPlan([], [$exception->getMessage()], $ignored);
+            }
         }
 
         $this->loadReferenceData();
@@ -98,64 +108,101 @@ class ListingImporter
                 $values[$column->header] = $raw['cells'][$index] ?? '';
             }
 
-            $rows[] = $this->planRow($raw['line'], $values, $idsInFile, $slugsInFile);
+            $rows[] = $this->planRow($raw['line'], $values, $idsInFile, $slugsInFile, $archive);
         }
 
-        return new ImportPlan($rows, [], $ignored);
+        $roomRows = $this->planRoomRows($path, $rows);
+
+        $archive?->close();
+
+        if ($rows === [] && $roomRows === []) {
+            return new ImportPlan([], ['The file has no data rows.'], $ignored);
+        }
+
+        return new ImportPlan($rows, [], $ignored, $roomRows);
     }
 
     /**
-     * @return int number of listings written
+     * @return int number of listings and room types written
      */
-    public function apply(ImportPlan $plan): int
+    public function apply(ImportPlan $plan, ?string $zipPath = null): int
     {
         $rows = $plan->applicableRows();
+        $roomRows = $plan->applicableRoomRows();
 
-        if ($rows === []) {
+        if ($rows === [] && $roomRows === []) {
             return 0;
         }
 
-        return DB::transaction(function () use ($rows): int {
-            $written = 0;
-            $locale = ListingSheet::locale();
+        $archive = $zipPath !== null && $plan->needsPhotos() ? PhotoArchive::open($zipPath) : null;
 
-            foreach ($rows as $row) {
-                $listing = $row->listingId !== null ? Listing::find($row->listingId) : new Listing;
+        try {
+            return DB::transaction(function () use ($rows, $roomRows, $archive): int {
+                $written = 0;
+                $locale = ListingSheet::locale();
 
-                if ($listing === null) {
-                    // Deleted between the preview and the import — skipping is safer
-                    // than resurrecting it under a new id.
-                    continue;
-                }
+                foreach ($rows as $row) {
+                    $listing = $row->listingId !== null ? Listing::find($row->listingId) : new Listing;
 
-                if ($row->isNew) {
-                    $listing->data_source = 'manual';
-
-                    // Nothing goes live by accident: a new listing is only published
-                    // when the sheet says so explicitly.
-                    $listing->is_published = false;
-                }
-
-                foreach ($row->attributes as $attribute => $value) {
-                    $listing->setAttribute($attribute, $value);
-                }
-
-                foreach ($row->translations as $attribute => $value) {
-                    if ($value === null) {
-                        $listing->forgetTranslation($attribute, $locale);
-
+                    if ($listing === null) {
+                        // Deleted between the preview and the import — skipping is safer
+                        // than resurrecting it under a new id.
                         continue;
                     }
 
-                    $listing->setTranslation($attribute, $locale, $value);
+                    if ($row->isNew) {
+                        $listing->data_source = 'manual';
+
+                        // Nothing goes live by accident: a new listing is only published
+                        // when the sheet says so explicitly.
+                        $listing->is_published = false;
+                    }
+
+                    foreach ($row->attributes as $attribute => $value) {
+                        $listing->setAttribute($attribute, $value);
+                    }
+
+                    foreach ($row->translations as $attribute => $value) {
+                        if ($value === null) {
+                            $listing->forgetTranslation($attribute, $locale);
+
+                            continue;
+                        }
+
+                        $listing->setTranslation($attribute, $locale, $value);
+                    }
+
+                    $listing->save();
+                    $row->savedListingId = $listing->id;
+                    $written++;
+
+                    if ($row->photoFolder !== null && $archive !== null) {
+                        $this->storePhotos($listing, $archive, $row->photoFolder);
+                    }
                 }
 
-                $listing->save();
-                $written++;
-            }
+                foreach ($roomRows as $room) {
+                    $listingId = $room->listingId ?? $room->listingRow?->savedListingId;
 
-            return $written;
-        });
+                    if ($listingId === null) {
+                        continue;
+                    }
+
+                    $roomType = RoomType::firstOrNew(['listing_id' => $listingId, 'code' => $room->code]);
+
+                    foreach ($room->attributes as $attribute => $value) {
+                        $roomType->setAttribute($attribute, $value);
+                    }
+
+                    $roomType->save();
+                    $written++;
+                }
+
+                return $written;
+            });
+        } finally {
+            $archive?->close();
+        }
     }
 
     /**
@@ -163,7 +210,7 @@ class ListingImporter
      * @param  array<int, int>  $idsInFile
      * @param  array<string, int>  $slugsInFile
      */
-    private function planRow(int $line, array $values, array &$idsInFile, array &$slugsInFile): PlannedRow
+    private function planRow(int $line, array $values, array &$idsInFile, array &$slugsInFile, ?PhotoArchive $archive): PlannedRow
     {
         $row = new PlannedRow($line);
         $row->name = $values['name'] ?? '';
@@ -193,6 +240,12 @@ class ListingImporter
                 continue;
             }
 
+            if ($column->type === SheetColumnType::PhotoFolder) {
+                $this->planPhotos($row, $listing, $raw, $archive);
+
+                continue;
+            }
+
             $this->applyCell($row, $listing, $column, $raw);
         }
 
@@ -205,6 +258,72 @@ class ListingImporter
         }
 
         return $row;
+    }
+
+    /**
+     * A filled-in photo folder REPLACES what the listing has — photos come as a set,
+     * and merging two sets would leave nobody able to say which cover image wins.
+     * The old files stay in the bucket; `photos:audit-r2` is what collects those.
+     */
+    private function planPhotos(PlannedRow $row, ?Listing $listing, string $raw, ?PhotoArchive $archive): void
+    {
+        $had = $listing !== null && ($listing->image || $listing->gallery) ? 'has photos' : null;
+
+        if (ListingSheet::isClearMarker($raw)) {
+            if ($had === null) {
+                return;
+            }
+
+            $row->attributes['image'] = null;
+            $row->attributes['gallery'] = [];
+            $row->changes[] = new FieldChange('photo_folder', $had, 'no photos');
+
+            return;
+        }
+
+        if ($archive === null) {
+            $row->errors[] = 'Column "photo_folder" is filled in, but no photo ZIP was uploaded.';
+
+            return;
+        }
+
+        if (! $archive->hasFolder($raw)) {
+            $found = $archive->folderNames();
+            $row->errors[] = "Column \"photo_folder\": the ZIP has no folder called \"{$raw}\"."
+                .($found === [] ? ' The ZIP contains no folders with images in them.' : ' It contains: '.implode(', ', array_slice($found, 0, 12)).(count($found) > 12 ? ', …' : ''));
+
+            return;
+        }
+
+        $photos = $archive->photos($raw);
+
+        if ($photos === []) {
+            $row->errors[] = "Column \"photo_folder\": the folder \"{$raw}\" has no ".implode('/', PhotoArchive::EXTENSIONS).' images in it.';
+
+            return;
+        }
+
+        if (count($photos) > PhotoArchive::MAX_FILES_PER_FOLDER) {
+            $row->errors[] = "Column \"photo_folder\": \"{$raw}\" holds ".count($photos).' images — at most '.PhotoArchive::MAX_FILES_PER_FOLDER.' per listing.';
+
+            return;
+        }
+
+        foreach ($photos as $photo) {
+            if ($photo['size'] > PhotoArchive::MAX_FILE_BYTES) {
+                $megabytes = round(PhotoArchive::MAX_FILE_BYTES / 1024 / 1024);
+                $row->errors[] = "Column \"photo_folder\": \"{$photo['name']}\" is larger than {$megabytes} MB. Please shrink it.";
+
+                return;
+            }
+        }
+
+        $row->photoFolder = $raw;
+        $row->changes[] = new FieldChange(
+            'photo_folder',
+            $had,
+            count($photos).' photo(s), main image: '.$photos[0]['name'],
+        );
     }
 
     /**
@@ -301,15 +420,15 @@ class ListingImporter
 
         /** @var array<string, mixed>|null $parsed attribute => value, or null on a parse error */
         $parsed = $clear
-            ? $this->clearedAttributes($column)
-            : $this->parseCell($row, $column, $raw);
+            ? $this->parser->cleared($column)
+            : $this->parser->parse($column, $raw, $row->errors);
 
         if ($parsed === null) {
             return;
         }
 
-        $display = $clear ? null : $this->displayValue($column, $parsed);
-        $old = $listing !== null ? $this->asString(ListingSheet::cellValue($column, $listing)) : null;
+        $display = $clear ? null : $this->parser->display($column, $parsed);
+        $old = $listing !== null ? $this->parser->asString(ListingSheet::cellValue($column, $listing)) : null;
 
         if ($listing !== null && ! $this->differs($column, $listing, $parsed)) {
             return;
@@ -329,124 +448,6 @@ class ListingImporter
     }
 
     /**
-     * @return array<string, mixed>
-     */
-    private function clearedAttributes(SheetColumn $column): array
-    {
-        if ($column->type === SheetColumnType::Coordinates) {
-            return ['latitude' => null, 'longitude' => null];
-        }
-
-        return [$column->attribute => null];
-    }
-
-    /**
-     * @return array<string, mixed>|null attribute => value; null means the cell could not be read
-     */
-    private function parseCell(PlannedRow $row, SheetColumn $column, string $raw): ?array
-    {
-        switch ($column->type) {
-            case SheetColumnType::Text:
-                return [$column->attribute => $raw];
-
-            case SheetColumnType::Slug:
-                return [$column->attribute => Str::slug($raw)];
-
-            case SheetColumnType::Translatable:
-            case SheetColumnType::RichText:
-                return [$column->attribute => $raw];
-
-            case SheetColumnType::Decimal:
-                $number = $this->parseNumber($raw);
-
-                if ($number === null) {
-                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is not a number.";
-
-                    return null;
-                }
-
-                return [$column->attribute => round($number, 2)];
-
-            case SheetColumnType::Integer:
-                $number = $this->parseNumber($raw);
-
-                if ($number === null) {
-                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is not a whole number.";
-
-                    return null;
-                }
-
-                return [$column->attribute => (int) round($number)];
-
-            case SheetColumnType::Boolean:
-                $bool = $this->parseBoolean($raw);
-
-                if ($bool === null) {
-                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is not clear — please write yes or no.";
-
-                    return null;
-                }
-
-                return [$column->attribute => $bool];
-
-            case SheetColumnType::ListingTypeEnum:
-                $type = ListingType::tryFrom(ListingSheet::normalize($raw));
-
-                if ($type === null) {
-                    $allowed = implode(', ', array_column(ListingType::cases(), 'value'));
-                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is not a valid type ({$allowed}).";
-
-                    return null;
-                }
-
-                return [$column->attribute => $type];
-
-            case SheetColumnType::VehicleCategoryEnum:
-                $category = VehicleCategory::tryFrom(ListingSheet::normalize($raw));
-
-                if ($category === null) {
-                    $allowed = implode(', ', array_column(VehicleCategory::cases(), 'value'));
-                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is not a valid category ({$allowed}).";
-
-                    return null;
-                }
-
-                return [$column->attribute => $category];
-
-            case SheetColumnType::City:
-                $city = $this->resolveCity($raw);
-
-                if ($city === null) {
-                    $row->errors[] = "Column \"{$column->header}\": there is no place called \"{$raw}\". The valid ones are on the \"".ListingSheet::HELP_SHEET_NAME.'" sheet.';
-
-                    return null;
-                }
-
-                if (is_string($city)) {
-                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is ambiguous — please write {$city}.";
-
-                    return null;
-                }
-
-                return [$column->attribute => $city->id];
-
-            case SheetColumnType::Coordinates:
-                $coordinates = $this->parseCoordinates($raw);
-
-                if ($coordinates === null) {
-                    $row->errors[] = "Column \"{$column->header}\": \"{$raw}\" is not readable as coordinates. Expected \"-22.482100, 17.095400\" or a Google Maps link.";
-
-                    return null;
-                }
-
-                return ['latitude' => $coordinates[0], 'longitude' => $coordinates[1]];
-
-            case SheetColumnType::Id:
-                return null;
-        }
-    }
-
-    /**
      * @param  array<string, mixed>  $parsed
      */
     private function differs(SheetColumn $column, Listing $listing, array $parsed): bool
@@ -456,8 +457,8 @@ class ListingImporter
         return match ($column->type) {
             SheetColumnType::Coordinates => ListingSheet::formatCoordinates($listing->latitude, $listing->longitude)
                 !== ListingSheet::formatCoordinates($parsed['latitude'] ?? null, $parsed['longitude'] ?? null),
-            SheetColumnType::Decimal => $this->numberOrNull($listing->getAttribute($column->attribute)) !== $this->numberOrNull($parsed[$column->attribute] ?? null),
-            SheetColumnType::Integer => $this->intOrNull($listing->getAttribute($column->attribute)) !== $this->intOrNull($parsed[$column->attribute] ?? null),
+            SheetColumnType::Decimal => $this->parser->numberOrNull($listing->getAttribute($column->attribute)) !== $this->parser->numberOrNull($parsed[$column->attribute] ?? null),
+            SheetColumnType::Integer => $this->parser->intOrNull($listing->getAttribute($column->attribute)) !== $this->parser->intOrNull($parsed[$column->attribute] ?? null),
             SheetColumnType::Boolean => (bool) $listing->getAttribute($column->attribute) !== (bool) ($parsed[$column->attribute] ?? false),
             SheetColumnType::City => $listing->city_id !== ($parsed['city_id'] ?? null),
             SheetColumnType::ListingTypeEnum, SheetColumnType::VehicleCategoryEnum => $listing->getAttribute($column->attribute) !== ($parsed[$column->attribute] ?? null),
@@ -468,157 +469,229 @@ class ListingImporter
     }
 
     /**
-     * @param  array<string, mixed>  $parsed
+     * The RoomTypes sheet. A CSV has no second sheet, so this is simply empty for one.
+     *
+     * @param  list<PlannedRow>  $listingRows
+     * @return list<PlannedRoomRow>
      */
-    private function displayValue(SheetColumn $column, array $parsed): ?string
+    private function planRoomRows(string $path, array $listingRows): array
     {
-        if ($column->type === SheetColumnType::Coordinates) {
-            return ListingSheet::formatCoordinates($parsed['latitude'] ?? null, $parsed['longitude'] ?? null);
+        $file = $this->reader->read($path, RoomTypeSheet::SHEET_NAME);
+
+        if ($file['rows'] === []) {
+            return [];
         }
 
-        $value = $parsed[$column->attribute] ?? null;
+        /** @var array<int, SheetColumn> $map */
+        $map = [];
 
-        return match (true) {
-            $value === null => null,
-            $column->type === SheetColumnType::Boolean => $value ? 'yes' : 'no',
-            $column->type === SheetColumnType::City => $this->cityName($value),
-            $value instanceof ListingType, $value instanceof VehicleCategory => $value->value,
-            default => $this->asString($value),
-        };
-    }
+        foreach ($file['headers'] as $index => $header) {
+            $column = $header === '' ? null : RoomTypeSheet::findColumn($header);
 
-    private function cityName(mixed $cityId): ?string
-    {
-        return is_int($cityId) ? City::find($cityId)?->name : null;
-    }
-
-    private function asString(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
+            if ($column !== null) {
+                $map[$index] = $column;
+            }
         }
 
-        return is_scalar($value) ? (string) $value : null;
-    }
+        $rows = [];
+        $seen = [];
 
-    private function numberOrNull(mixed $value): ?float
-    {
-        return $value === null ? null : round((float) $value, 2);
-    }
+        foreach ($file['rows'] as $raw) {
+            $values = [];
 
-    private function intOrNull(mixed $value): ?int
-    {
-        return $value === null ? null : (int) $value;
+            foreach ($map as $index => $column) {
+                $values[$column->header] = $raw['cells'][$index] ?? '';
+            }
+
+            $rows[] = $this->planRoomRow($raw['line'], $values, $listingRows, $seen);
+        }
+
+        return $rows;
     }
 
     /**
-     * Accepts what a spreadsheet actually produces: "1250", "1.250", "1.250,50",
-     * "1,250.50", "N$ 1250". The last separator wins as the decimal point, and a
-     * dot followed by exactly three digits is read as a thousands separator.
+     * @param  array<string, string>  $values
+     * @param  list<PlannedRow>  $listingRows
+     * @param  array<string, int>  $seen
      */
-    private function parseNumber(string $raw): ?float
+    private function planRoomRow(int $line, array $values, array $listingRows, array &$seen): PlannedRoomRow
     {
-        $value = preg_replace('/[^0-9,.\-]/', '', $raw) ?? '';
+        $row = new PlannedRoomRow($line);
+        $row->code = trim($values['code'] ?? '');
+        $row->listingName = trim($values['listing'] ?? '');
 
-        if ($value === '' || $value === '-') {
-            return null;
+        if ($row->code === '') {
+            $row->errors[] = 'A room type needs a code — it is what matches the row to a room.';
+
+            return $row;
         }
 
-        $hasComma = str_contains($value, ',');
-        $hasDot = str_contains($value, '.');
+        $existing = $this->resolveRoomListing($row, $values, $listingRows);
 
-        if ($hasComma && $hasDot) {
-            $value = strrpos($value, ',') > strrpos($value, '.')
-                ? str_replace('.', '', $value)
-                : str_replace(',', '', $value);
-            $value = str_replace(',', '.', $value);
-        } elseif ($hasComma) {
-            $value = str_replace(',', '.', $value);
-        } elseif (preg_match('/^-?\d{1,3}(\.\d{3})+$/', $value) === 1) {
-            $value = str_replace('.', '', $value);
+        if (! $row->isValid()) {
+            return $row;
         }
 
-        return is_numeric($value) ? (float) $value : null;
-    }
+        $key = ($row->listingId ?? spl_object_id($row->listingRow ?? $row)).'|'.ListingSheet::normalize($row->code);
 
-    private function parseBoolean(string $raw): ?bool
-    {
-        return match (ListingSheet::normalize($raw)) {
-            'ja', 'j', 'yes', 'y', 'true', 'wahr', 'x', '1' => true,
-            'nein', 'n', 'no', 'false', 'falsch', '0' => false,
-            default => null,
-        };
+        if (isset($seen[$key])) {
+            $row->errors[] = "The same listing and code already appear in row {$seen[$key]}.";
+
+            return $row;
+        }
+
+        $seen[$key] = $line;
+
+        $roomType = $existing;
+        $row->isNew = $roomType === null;
+        $row->roomTypeId = $roomType?->id;
+
+        foreach (RoomTypeSheet::columns() as $column) {
+            if ($column->type === SheetColumnType::Id || $column->attribute === '' || ! array_key_exists($column->header, $values)) {
+                continue;
+            }
+
+            $raw = $values[$column->header];
+
+            if ($raw === '') {
+                if ($row->isNew && $column->requiredForNew) {
+                    $row->errors[] = "Column \"{$column->header}\" is required on new room types.";
+                }
+
+                continue;
+            }
+
+            $clear = ListingSheet::isClearMarker($raw);
+
+            if ($clear && $column->requiredForNew) {
+                $row->errors[] = "Column \"{$column->header}\" cannot be emptied.";
+
+                continue;
+            }
+
+            $parsed = $clear
+                ? $this->parser->cleared($column)
+                : $this->parser->parse($column, $raw, $row->errors);
+
+            if ($parsed === null) {
+                continue;
+            }
+
+            $value = $parsed[$column->attribute] ?? null;
+            $old = $roomType !== null ? $this->parser->asString(RoomTypeSheet::cellValue($column, $roomType)) : null;
+            $new = $clear ? null : $this->parser->display($column, $parsed);
+
+            if ($roomType !== null && $old === $new) {
+                continue;
+            }
+
+            $row->changes[] = new FieldChange($column->header, $old, $new);
+            $row->attributes[$column->attribute] = $value;
+        }
+
+        return $row;
     }
 
     /**
-     * @return array{0: float, 1: float}|null
+     * @param  array<string, string>  $values
+     * @param  list<PlannedRow>  $listingRows
      */
-    private function parseCoordinates(string $raw): ?array
+    private function resolveRoomListing(PlannedRoomRow $row, array $values, array $listingRows): ?RoomType
     {
-        $candidates = [];
+        $id = trim($values['listing_id'] ?? '');
 
-        // Pasting the Google Maps URL straight from the browser is the fastest way
-        // to capture a coordinate, so read both shapes Maps puts in its URLs.
-        if (preg_match('/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/', $raw, $m) === 1) {
-            $candidates = [(float) $m[1], (float) $m[2]];
-        } elseif (preg_match('/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/', $raw, $m) === 1) {
-            $candidates = [(float) $m[1], (float) $m[2]];
-        } elseif (preg_match('/^(-?\d+\.\d+)\s*[,;\s]\s*(-?\d+\.\d+)$/', trim($raw), $m) === 1) {
-            $candidates = [(float) $m[1], (float) $m[2]];
-        } elseif (preg_match('/^(-?\d+(?:,\d+)?)\s*[;\s]\s*(-?\d+(?:,\d+)?)$/', trim($raw), $m) === 1) {
-            // Comma as the decimal separator — only unambiguous with a non-comma separator.
-            $candidates = [(float) str_replace(',', '.', $m[1]), (float) str_replace(',', '.', $m[2])];
-        } elseif (($parsed = CoordinateTextParser::parse($raw)) !== null) {
-            $candidates = $parsed;
+        if ($id !== '') {
+            if (! ctype_digit($id)) {
+                $row->errors[] = "The listing_id \"{$id}\" is not a number.";
+
+                return null;
+            }
+
+            $listing = Listing::find((int) $id);
+
+            if ($listing === null) {
+                $row->errors[] = "There is no listing with id {$id}.";
+
+                return null;
+            }
+
+            $row->listingId = $listing->id;
+
+            if ($row->listingName === '') {
+                $row->listingName = (string) $listing->getTranslation('name', ListingSheet::locale(), false);
+            }
+
+            return RoomType::where('listing_id', $listing->id)->where('code', $row->code)->first();
         }
 
-        if ($candidates === []) {
+        if ($row->listingName === '') {
+            $row->errors[] = 'A room type row needs either a listing_id or a listing name.';
+
             return null;
         }
 
-        [$latitude, $longitude] = $candidates;
+        $normalized = ListingSheet::normalize($row->listingName);
+        $ids = $this->idsByName[$normalized] ?? [];
 
-        if (abs($latitude) > 90 || abs($longitude) > 180) {
+        if (count($ids) > 1) {
+            $row->errors[] = "\"{$row->listingName}\" matches several listings (id ".implode(', ', $ids).'). Use listing_id instead.';
+
             return null;
         }
 
-        return [$latitude, $longitude];
+        if ($ids !== []) {
+            $row->listingId = $ids[0];
+
+            return RoomType::where('listing_id', $ids[0])->where('code', $row->code)->first();
+        }
+
+        // Not in the database yet — but it may be a listing this very import creates,
+        // which is what lets someone capture a lodge and its rooms in one file.
+        foreach ($listingRows as $listingRow) {
+            if ($listingRow->isNew && $listingRow->isValid() && ListingSheet::normalize($listingRow->name) === $normalized) {
+                $row->listingRow = $listingRow;
+
+                return null;
+            }
+        }
+
+        $row->errors[] = "There is no listing called \"{$row->listingName}\" — check the spelling, or add it on the Listings sheet of this same file.";
+
+        return null;
     }
 
-    /**
-     * @return City|string|null the city, a hint string when the name is ambiguous, or null when unknown
-     */
-    private function resolveCity(string $raw): City|string|null
+    private function storePhotos(Listing $listing, PhotoArchive $archive, string $folder): void
     {
-        $value = trim($raw);
-        $region = null;
+        $disk = Storage::disk('r2');
+        $keys = [];
 
-        if (preg_match('/^(.*?)\s*\((.+)\)\s*$/u', $value, $m) === 1) {
-            $value = trim($m[1]);
-            $region = ListingSheet::normalize($m[2]);
+        foreach ($archive->photos($folder) as $photo) {
+            $contents = $archive->contents($photo['index']);
+
+            if ($contents === null) {
+                continue;
+            }
+
+            // The key is built from the listing's slug and the file's own name, never
+            // from the path inside the archive — see PhotoArchive.
+            $name = Str::slug(pathinfo($photo['name'], PATHINFO_FILENAME));
+            $extension = mb_strtolower(pathinfo($photo['name'], PATHINFO_EXTENSION));
+            $key = "listings/{$listing->slug}/{$name}-".substr(md5($contents), 0, 8).".{$extension}";
+
+            $disk->put($key, $contents);
+            $keys[] = $key;
         }
 
-        $matches = $this->citiesByName[ListingSheet::normalize($value)] ?? [];
-
-        if ($region !== null) {
-            $matches = array_values(array_filter(
-                $matches,
-                static fn (City $city) => ListingSheet::normalize((string) $city->region?->name) === $region,
-            ));
+        if ($keys === []) {
+            return;
         }
 
-        if ($matches === []) {
-            return null;
-        }
-
-        if (count($matches) > 1) {
-            return implode(' or ', array_map(
-                static fn (City $city) => "\"{$city->name} ({$city->region?->name})\"",
-                $matches,
-            ));
-        }
-
-        return $matches[0];
+        $listing->forceFill([
+            'image' => array_shift($keys),
+            'gallery' => $keys,
+            'photos_source' => ContentSource::Partner,
+            'photos_approved_at' => now(),
+        ])->save();
     }
 
     /**
@@ -647,13 +720,8 @@ class ListingImporter
 
     private function loadReferenceData(): void
     {
-        $this->citiesByName = [];
         $this->slugsToId = [];
         $this->idsByName = [];
-
-        City::query()->with('region')->get()->each(function (City $city): void {
-            $this->citiesByName[ListingSheet::normalize($city->name)][] = $city;
-        });
 
         // Hydrated rather than plucked: `name` is a translatable JSON column, so the
         // readable value only exists on the model.

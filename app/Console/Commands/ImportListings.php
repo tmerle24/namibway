@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Services\ImportExport\ImportPlan;
 use App\Services\ImportExport\ImportReportWriter;
 use App\Services\ImportExport\ListingImporter;
+use App\Services\ImportExport\RoomTypeSheet;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
@@ -17,6 +18,7 @@ class ImportListings extends Command
 {
     protected $signature = 'namibway:import-listings
                             {file : Path to the .xlsx or .csv file}
+                            {--photos= : Path to the photo ZIP (folders named in the photo_folder column)}
                             {--dry-run : Only show what would change}
                             {--skip-invalid : Import the valid rows instead of stopping on errors}
                             {--force : Skip the confirmation prompt}
@@ -34,7 +36,16 @@ class ImportListings extends Command
             return self::FAILURE;
         }
 
-        $plan = $importer->plan($file);
+        $photos = $this->option('photos');
+        $photos = is_string($photos) && $photos !== '' ? $photos : null;
+
+        if ($photos !== null && ! is_file($photos)) {
+            $this->error("ZIP not found: {$photos}");
+
+            return self::FAILURE;
+        }
+
+        $plan = $importer->plan($file, $photos);
 
         $this->summarize($plan);
 
@@ -69,9 +80,9 @@ class ImportListings extends Command
             return self::SUCCESS;
         }
 
-        $written = $importer->apply($plan);
+        $written = $importer->apply($plan, $photos);
 
-        $this->info("{$written} listing(s) saved.");
+        $this->info("{$written} record(s) saved.");
 
         return self::SUCCESS;
     }
@@ -99,11 +110,30 @@ class ImportListings extends Command
             $plan->unchangedCount(),
             count($plan->invalidRows()),
         ));
+
+        if ($plan->roomRows !== []) {
+            $this->line(sprintf(
+                'Room types: %d new · %d updated · %d with errors',
+                $plan->roomNewCount(),
+                $plan->roomUpdateCount(),
+                count($plan->invalidRoomRows()),
+            ));
+        }
+
+        if ($plan->photoCount() > 0) {
+            $this->line($plan->photoCount().' listing(s) get their photos replaced from the ZIP.');
+        }
         $this->newLine();
 
         foreach ($plan->invalidRows() as $row) {
             foreach ($row->errors as $error) {
                 $this->error("Row {$row->line}: {$error}");
+            }
+        }
+
+        foreach ($plan->invalidRoomRows() as $row) {
+            foreach ($row->errors as $error) {
+                $this->error("RoomTypes row {$row->line}: {$error}");
             }
         }
 
@@ -131,6 +161,16 @@ class ImportListings extends Command
                     Str::limit($change->old ?? '—', 40).'  →  '.Str::limit($change->new ?? '—', 40),
                 ];
             }
+        }
+
+        foreach ($plan->applicableRoomRows() as $row) {
+            $changes[] = [
+                $row->line,
+                (string) $row->listingId,
+                RoomTypeSheet::SHEET_NAME.': '.$row->label(),
+                $row->isNew ? 'new room type' : 'updated',
+                Str::limit(implode(', ', array_map(static fn ($change) => $change->column, $row->changes)), 40),
+            ];
         }
 
         if ($changes !== []) {

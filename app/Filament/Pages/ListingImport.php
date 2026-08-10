@@ -7,7 +7,9 @@ use App\Services\ImportExport\ImportPlan;
 use App\Services\ImportExport\ImportReportWriter;
 use App\Services\ImportExport\ListingExporter;
 use App\Services\ImportExport\ListingImporter;
+use App\Services\ImportExport\PlannedRoomRow;
 use App\Services\ImportExport\PlannedRow;
+use App\Services\ImportExport\RoomTypeSheet;
 use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -67,6 +69,14 @@ class ListingImport extends Page implements HasForms
                     ->required()
                     ->live()
                     ->afterStateUpdated(fn () => $this->preview = null),
+                Forms\Components\FileUpload::make('photos')
+                    ->label('Photo ZIP (optional)')
+                    ->helperText('One folder per listing, named exactly as in the workbook\'s photo_folder column. A file called cover.jpg becomes the main image.')
+                    ->disk('local')
+                    ->directory('listing-imports')
+                    ->acceptedFileTypes(['application/zip', 'application/x-zip-compressed', 'multipart/x-zip'])
+                    ->live()
+                    ->afterStateUpdated(fn () => $this->preview = null),
                 Forms\Components\Toggle::make('skip_invalid')
                     ->label('Import valid rows even if some rows have errors')
                     ->helperText('Off: a single bad row stops the whole file — the safer default.')
@@ -83,7 +93,7 @@ class ListingImport extends Page implements HasForms
             return;
         }
 
-        $this->preview = $this->summarize(app(ListingImporter::class)->plan($path));
+        $this->preview = $this->summarize(app(ListingImporter::class)->plan($path, $this->uploadedZipPath()));
 
         Notification::make()
             ->title('File checked — nothing has been saved yet')
@@ -100,7 +110,8 @@ class ListingImport extends Page implements HasForms
         }
 
         $importer = app(ListingImporter::class);
-        $plan = $importer->plan($path);
+        $zip = $this->uploadedZipPath();
+        $plan = $importer->plan($path, $zip);
         $this->preview = $this->summarize($plan);
 
         if ($plan->isBlocked()) {
@@ -121,14 +132,15 @@ class ListingImport extends Page implements HasForms
             return;
         }
 
-        $written = $importer->apply($plan);
+        $written = $importer->apply($plan, $zip);
 
         Notification::make()
-            ->title($written === 1 ? '1 listing saved' : "{$written} listings saved")
+            ->title($written === 1 ? '1 record saved' : "{$written} records saved")
+            ->body($plan->photoCount() > 0 ? $plan->photoCount().' listing(s) got their photos from the ZIP.' : null)
             ->success()
             ->send();
 
-        $this->preview = $this->summarize($importer->plan($path));
+        $this->preview = $this->summarize($importer->plan($path, $zip));
     }
 
     public function downloadReport(): void
@@ -141,7 +153,7 @@ class ListingImport extends Page implements HasForms
 
         $name = 'listings-import-report-'.now()->format('Y-m-d-Hi').'.xlsx';
         $report = WorkbookDownload::path($name);
-        app(ImportReportWriter::class)->write(app(ListingImporter::class)->plan($path), $report);
+        app(ImportReportWriter::class)->write(app(ListingImporter::class)->plan($path, $this->uploadedZipPath()), $report);
 
         $this->redirect(WorkbookDownload::link($report, $name));
     }
@@ -160,6 +172,11 @@ class ListingImport extends Page implements HasForms
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('guide')
+                ->label('How this works')
+                ->icon('heroicon-o-book-open')
+                ->color('gray')
+                ->url(BulkCaptureGuide::getUrl()),
             Action::make('downloadTemplate')
                 ->label('Download template')
                 ->icon('heroicon-o-arrow-down-tray')
@@ -197,6 +214,24 @@ class ListingImport extends Page implements HasForms
             ->color('gray')
             ->visible(fn (): bool => $this->preview !== null)
             ->action(fn () => $this->downloadReport());
+    }
+
+    /** The photo ZIP is optional — no upload simply means "no photos in this import". */
+    private function uploadedZipPath(): ?string
+    {
+        $state = $this->getForm('form')?->getState()['photos'] ?? null;
+
+        if (is_array($state)) {
+            $state = $state === [] ? null : reset($state);
+        }
+
+        if (! is_string($state) || $state === '') {
+            return null;
+        }
+
+        $disk = Storage::disk('local');
+
+        return $disk->exists($state) ? $disk->path($state) : null;
     }
 
     private function uploadedFilePath(): ?string
@@ -249,6 +284,17 @@ class ListingImport extends Page implements HasForms
             ];
         }
 
+        $roomRows = [];
+
+        foreach (array_slice($plan->applicableRoomRows(), 0, self::PREVIEW_LIMIT) as $room) {
+            $roomRows[] = [
+                'line' => $room->line,
+                'label' => $room->label(),
+                'is_new' => $room->isNew,
+                'fields' => implode(', ', array_map(static fn ($change) => $change->column, $room->changes)),
+            ];
+        }
+
         return [
             'blocked' => $plan->isBlocked(),
             'file_errors' => $plan->fileErrors,
@@ -257,12 +303,40 @@ class ListingImport extends Page implements HasForms
             'updated' => $plan->updateCount(),
             'changes' => $plan->changeCount(),
             'unchanged' => $plan->unchangedCount(),
-            'invalid' => count($plan->invalidRows()),
-            'errors' => $this->flattenMessages($plan->invalidRows(), 'errors'),
+            'invalid' => count($plan->invalidRows()) + count($plan->invalidRoomRows()),
+            'errors' => array_merge(
+                $this->flattenMessages($plan->invalidRows(), 'errors'),
+                $this->roomMessages($plan->invalidRoomRows()),
+            ),
             'warnings' => $this->flattenMessages($plan->rowsWithWarnings(), 'warnings'),
             'rows' => $rows,
             'more_rows' => max(0, count($plan->applicableRows()) - count($rows)),
+            'room_rows' => $roomRows,
+            'room_new' => $plan->roomNewCount(),
+            'room_updated' => $plan->roomUpdateCount(),
+            'photos' => $plan->photoCount(),
         ];
+    }
+
+    /**
+     * @param  list<PlannedRoomRow>  $rows
+     * @return list<array{line: int, name: string, message: string}>
+     */
+    private function roomMessages(array $rows): array
+    {
+        $messages = [];
+
+        foreach ($rows as $row) {
+            foreach ($row->errors as $message) {
+                $messages[] = [
+                    'line' => $row->line,
+                    'name' => RoomTypeSheet::SHEET_NAME.': '.$row->label(),
+                    'message' => $message,
+                ];
+            }
+        }
+
+        return $messages;
     }
 
     /**

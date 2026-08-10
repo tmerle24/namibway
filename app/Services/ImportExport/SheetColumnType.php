@@ -42,4 +42,7 @@ enum SheetColumnType
 
     /** A single "lat, lng" cell that fills latitude + longitude. */
     case Coordinates;
+
+    /** Folder name inside the photo ZIP; fills image + gallery (see PhotoArchive). */
+    case PhotoFolder;
 }
