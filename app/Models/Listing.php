@@ -159,6 +159,17 @@ class Listing extends Model
                 && $listing->partner?->connector_type === ConnectorType::Native) {
                 $listing->connector_property_code = $listing->slug;
             }
+
+            // Text written through any human-facing path — the admin panel, the
+            // partner panel, the Excel importer, the owner's own editor — is the
+            // top of the content ladder. Marking it here rather than at each of
+            // those call sites means a hand-written description can never be
+            // mistaken for leftover scraped text and regenerated over. Writers
+            // that know their own provenance set both fields together, and are
+            // left alone.
+            if ($listing->isDirty('description') && ! $listing->isDirty('description_source')) {
+                $listing->description_source = ContentSource::Manual;
+            }
         });
     }
 

@@ -13,12 +13,14 @@ use App\Filament\Resources\ListingResource\Pages;
 use App\Filament\Resources\ListingResource\RelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
+use App\Filament\Support\WorkbookDownload;
 use App\Http\Controllers\Controller;
 use App\Models\City;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\PartnerMessage;
 use App\Services\Enrichment\ClaimInviteService;
+use App\Services\ImportExport\ListingExporter;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -496,6 +498,34 @@ class ListingResource extends Resource
                             ->where('direction', PartnerMessage::DIRECTION_INBOUND)
                             ->whereNull('read_at')),
                     ),
+            ])
+            ->headerActions([
+                // Exports whatever the table currently shows, filters included — the
+                // workbook carries the id column, so editing it and importing it back
+                // (Content → Import listings) updates exactly these rows.
+                Tables\Actions\Action::make('export_excel')
+                    ->label('Export to Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->action(function (Pages\ListListings $livewire): void {
+                        $name = 'listings-'.now()->format('Y-m-d-Hi').'.xlsx';
+                        $path = WorkbookDownload::path($name);
+
+                        app(ListingExporter::class)->export($livewire->getFilteredTableQuery(), $path);
+
+                        $livewire->redirect(WorkbookDownload::link($path, $name));
+                    }),
+                Tables\Actions\Action::make('export_template')
+                    ->label('Empty template')
+                    ->icon('heroicon-o-document-plus')
+                    ->color('gray')
+                    ->action(function (Pages\ListListings $livewire): void {
+                        $path = WorkbookDownload::path('listings-vorlage.xlsx');
+
+                        app(ListingExporter::class)->template($path);
+
+                        $livewire->redirect(WorkbookDownload::link($path, 'listings-vorlage.xlsx'));
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

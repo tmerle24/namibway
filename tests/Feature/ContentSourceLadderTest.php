@@ -121,6 +121,37 @@ class ContentSourceLadderTest extends TestCase
         $this->assertSame(ContentSource::WebsiteScrape, $listing->photos_source);
     }
 
+    /**
+     * Anything that edits a description through a human-facing path — the admin
+     * panel, the partner panel, the Excel importer — claims the top tier, so
+     * generated copy can never overwrite someone's actual writing.
+     */
+    public function test_a_hand_edited_description_claims_the_top_tier(): void
+    {
+        $listing = Listing::factory()->create([
+            'description' => 'Text lifted from a directory listing.',
+            'description_source' => ContentSource::Directory,
+        ]);
+
+        $listing->update(['description' => 'What an actual person wrote about this lodge.']);
+
+        $this->assertSame(ContentSource::Manual, $listing->refresh()->description_source);
+        $this->assertFalse(ContentSource::AiGenerated->outranks($listing->description_source));
+        $this->assertFalse(ContentSource::WebsiteScrape->outranks($listing->description_source));
+    }
+
+    public function test_a_writer_that_declares_its_own_source_keeps_it(): void
+    {
+        $listing = Listing::factory()->create(['description_source' => null]);
+
+        $listing->update([
+            'description' => 'Copy generated from the listing facts.',
+            'description_source' => ContentSource::AiGenerated,
+        ]);
+
+        $this->assertSame(ContentSource::AiGenerated, $listing->refresh()->description_source);
+    }
+
     public function test_the_public_page_offers_no_approve_action_for_reference_photos(): void
     {
         $listing = Listing::factory()->create([
