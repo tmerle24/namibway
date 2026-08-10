@@ -2039,8 +2039,12 @@ def pages_from_archive(path: Path) -> dict[str, "Page"]:
     fetching them a second time — which is the whole reason the archive keeps
     every page rather than only the ones a run happened to call listings.
     """
+    print(f"Reading the archive at {path}")
+    entries = load_archive(path)
+    print(f"  {len(entries)} pages of stored HTML")
+
     pages: dict[str, Page] = {}
-    for scrape_id, entry in load_archive(path).items():
+    for scrape_id, entry in entries.items():
         html = entry.get("html")
         if not html:
             continue
@@ -2055,7 +2059,10 @@ def classify_archived(pages: dict[str, "Page"]) -> tuple[dict[str, "Page"], set[
     """Applies the current index-vs-listing rule to already-fetched pages."""
     listings: dict[str, Page] = {}
     indexes: set[str] = set()
-    for scrape_id, page in pages.items():
+    print(f"Classifying {len(pages)} pages")
+    for done, (scrape_id, page) in enumerate(pages.items(), start=1):
+        if done % 200 == 0:
+            print(f"  classified {done}/{len(pages)} — {len(listings)} listings")
         html = page.html or ""
         if is_index_page(html, page.url):
             indexes.add(page.url)
