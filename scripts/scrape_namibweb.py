@@ -1631,6 +1631,17 @@ def is_index_page(html: str, url: str) -> bool:
     return len(listing_links) >= INDEX_LINK_THRESHOLD
 
 
+# A page that describes something carries at least one real paragraph about it.
+# An index carries names and links.
+OWN_CONTENT_MIN_CHARS = 200
+
+
+def has_own_content(html: str) -> bool:
+    """True when a page says something about itself, not just about others."""
+    return any(len(block) >= OWN_CONTENT_MIN_CHARS and not looks_like_boilerplate(block)
+               for block in text_blocks(html))
+
+
 def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[str, dict],
           *, max_depth: int, max_pages: int, limit: int, use_conditional: bool,
           workers: int) -> tuple[dict[str, Page], list[str], set[str], dict[str, Page]]:
@@ -1690,6 +1701,12 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
             # Banked before anything decides what this page *is*.
             fetched_pages[page.scrape_id] = page
 
+            # A page is not either an index or a listing. Nearly every detail
+            # page here carries an "Accommodation in the area" sidebar linking a
+            # dozen neighbours, which is what made anib.htm — a lodge we
+            # validated field by field — count as an index and be dropped, along
+            # with 757 others. Follow the links either way; record the page as a
+            # listing whenever it also describes something of its own.
             if page.depth < max_depth and is_index_page(page.html, page.url):
                 indexes.add(page.url)
                 sections = sections_by_link(page.html, page.url)
@@ -1705,10 +1722,11 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
                         parent_url=page.url,
                         depth=page.depth + 1,
                     ))
-                continue
+                if page.depth == 0 or not has_own_content(page.html):
+                    continue
 
-            if page.depth == 0:
-                continue  # a seed that is not an index carries no listing of its own
+            elif page.depth == 0:
+                continue  # a seed with no index behaviour carries no listing
 
             listings[page.scrape_id] = page
             if limit and len(listings) >= limit:
@@ -2013,6 +2031,39 @@ def run_sample(urls: list[str], args, fetcher: Fetcher, run_at: str) -> int:
     return 0
 
 
+def pages_from_archive(path: Path) -> dict[str, "Page"]:
+    """Rebuilds Page objects from the raw HTML archive, without any requests.
+
+    This is what makes the archive worth writing. A classifier or extractor
+    fixed after a crawl gets applied to the pages already fetched, instead of
+    fetching them a second time — which is the whole reason the archive keeps
+    every page rather than only the ones a run happened to call listings.
+    """
+    pages: dict[str, Page] = {}
+    for scrape_id, entry in load_archive(path).items():
+        html = entry.get("html")
+        if not html:
+            continue
+        page = Page(entry.get("url") or "", depth=1)
+        page.html = html
+        page.status = entry.get("status") or 200
+        pages[scrape_id] = page
+    return pages
+
+
+def classify_archived(pages: dict[str, "Page"]) -> tuple[dict[str, "Page"], set[str]]:
+    """Applies the current index-vs-listing rule to already-fetched pages."""
+    listings: dict[str, Page] = {}
+    indexes: set[str] = set()
+    for scrape_id, page in pages.items():
+        html = page.html or ""
+        if is_index_page(html, page.url):
+            indexes.add(page.url)
+        if has_own_content(html):
+            listings[scrape_id] = page
+    return listings, indexes
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Scrape namibweb.com listings")
     parser.add_argument("--seed", action="append", default=[], help="Extra entry-point URL (repeatable)")
@@ -2025,6 +2076,8 @@ def main() -> int:
     parser.add_argument("--changes", default=str(CHANGES_FILE), help="Change report path")
     parser.add_argument("--baseline", default=None, help="Baseline JSON (defaults to --out)")
     parser.add_argument("--full", action="store_true", help="Ignore ETag/Last-Modified, re-fetch everything")
+    parser.add_argument("--from-archive", action="store_true",
+                        help="Re-extract from the stored raw HTML instead of crawling (makes no requests)")
     parser.add_argument("--probe", type=int, default=0, help="Dump structure for N pages and exit")
     parser.add_argument("--url", action="append", default=[],
                         help="Scrape these detail pages only, full pipeline, no crawl (repeatable)")
@@ -2057,22 +2110,32 @@ def main() -> int:
     baseline = load_baseline(baseline_path)
     print(f"Baseline holds {len(baseline)} records from a previous run")
 
-    print("Crawling from: " + ", ".join(url for url, _ in seeds))
-    pages, unchanged_ids, indexes, fetched_pages = crawl(
-        seeds, fetcher, baseline,
-        max_depth=args.max_depth,
-        max_pages=args.max_pages,
-        limit=args.limit,
-        use_conditional=not (args.full or args.probe),
-        workers=args.workers,
-    )
-    print(f"Crawl done: {len(pages)} listing pages, {len(unchanged_ids)} unchanged (304), "
-          f"{len(indexes)} index pages ({', '.join(sorted(indexes)) or 'none'})")
+    if args.from_archive:
+        fetched_pages = pages_from_archive(Path(args.archive))
+        if not fetched_pages:
+            print(f"Archive {args.archive} holds no pages — nothing to re-extract.")
+            return 1
+        pages, indexes = classify_archived(fetched_pages)
+        unchanged_ids = []
+        print(f"Re-extracting {len(fetched_pages)} archived pages without contacting the site: "
+              f"{len(pages)} listings, {len(indexes)} index pages")
+    else:
+        print("Crawling from: " + ", ".join(url for url, _ in seeds))
+        pages, unchanged_ids, indexes, fetched_pages = crawl(
+            seeds, fetcher, baseline,
+            max_depth=args.max_depth,
+            max_pages=args.max_pages,
+            limit=args.limit,
+            use_conditional=not (args.full or args.probe),
+            workers=args.workers,
+        )
+        print(f"Crawl done: {len(pages)} listing pages, {len(unchanged_ids)} unchanged (304), "
+              f"{len(indexes)} index pages")
 
     # Archive first, before anything can return early. Every request already cost
     # the site something; a run that fetches pages and keeps none of them spends
     # that for nothing and forces a repeat visit. --probe used to do exactly that.
-    if not args.no_archive:
+    if not args.no_archive and not args.from_archive:
         archive_path = Path(args.archive)
         total = write_archive(archive_path, fetched_pages, load_archive(archive_path), run_at)
         print(f"Archived {total} pages of raw HTML ({len(fetched_pages)} from this run) "
@@ -2107,6 +2170,8 @@ def main() -> int:
 
     fresh: dict[str, dict] = {}
     for scrape_id, page in pages.items():
+        if is_coordinate_index(page.html or ""):
+            continue  # a lookup table, already harvested; not a listing
         try:
             record = parse_detail(page, chrome, chrome_social)
         except Exception as e:  # one broken page must not lose the run
