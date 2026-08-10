@@ -1090,39 +1090,98 @@ def is_coordinate_index(html: str) -> bool:
     return any(len(_CAMP_COORD_RE.findall(block)) >= 5 for block in text_blocks(html))
 
 
+def _linear_text_with_anchors(node) -> tuple[str, list[tuple[int, int, str, str]]]:
+    """Flattens an element to text plus the character span of every link.
+
+    Returns (text, [(start, end, href, anchor_text), ...]). The spans are what
+    let an entry be tied to its own link rather than to whichever name looks
+    similar.
+    """
+    parts: list[str] = []
+    anchors: list[tuple[int, int, str, str]] = []
+    position = 0
+
+    def walk(element, current_href: str | None):
+        nonlocal position
+        for child in element.children:
+            if isinstance(child, str):
+                parts.append(child)
+                position += len(child)
+                continue
+            href = child.get("href") if child.name == "a" else None
+            start = position
+            walk(child, href or current_href)
+            if href:
+                anchors.append((start, position, href, clean_text(child.get_text(" ", strip=True))))
+
+    walk(node, None)
+    return "".join(parts), anchors
+
+
 def parse_coordinate_index(html: str, page_url: str) -> list[dict]:
-    """Name → position for every entry on a coordinate index page."""
+    """Name, position and — where the page provides one — the entry's own link.
+
+    The link is the point. Matching these entries to listings by name goes
+    wrong on this data: one entry is called just "Camp", many carry a "Camping "
+    prefix the listing does not, and "Palmwag Lodge" appears twice with
+    positions 35 km apart. The href is the same page a listing is scraped from,
+    so it identifies the entry exactly.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    for tag in soup(["script", "style", "noscript"]):
+        tag.decompose()
+
+    container = None
+    for element in soup.find_all(["p", "td", "div", "body"]):
+        if len(_CAMP_COORD_RE.findall(element.get_text(" "))) >= 5:
+            container = element  # find_all is document order, so the last match is the innermost
+    if container is None:
+        return []
+
+    text, anchors = _linear_text_with_anchors(container)
     entries: list[dict] = []
-    for block in text_blocks(html):
-        if len(_CAMP_COORD_RE.findall(block)) < 5:
-            continue  # a stray coordinate in prose is not the table
+    previous_end = 0
 
-        previous_end = 0
-        for match in _CAMP_COORD_RE.finditer(block):
-            name = block[previous_end:match.start()].strip(" -\u2013\u2014,;")
-            previous_end = match.end()
+    for match in _CAMP_COORD_RE.finditer(text):
+        name = text[previous_end:match.start()].strip(" -\u2013\u2014,;\n\t")
+        link = None
 
-            # Some entries carry no coordinates ("Torra Bay Resort ( Skeleton
-            # Coast )") and would otherwise be glued to the front of the next
-            # name. Text after the final bracket belongs to this entry; a name
-            # that simply ends in a bracket keeps it.
-            if ")" in name and name[name.rindex(")") + 1:].strip():
-                name = name[name.rindex(")") + 1:].strip()
-            if not name or len(name) > 90:
-                continue
+        # The nearest link ending just before the coordinates is this entry's
+        # own, but only when nothing else sits between the two: otherwise it is
+        # the previous entry's place link and the name is plain text.
+        for start, end, href, anchor_text in anchors:
+            if previous_end <= start and end <= match.start() and not text[end:match.start()].strip():
+                link = urljoin(page_url, href)
+                if anchor_text:
+                    name = anchor_text
+                break
 
-            latitude = -(int(match.group(1)) + float(match.group(2)) / 60)
-            longitude = int(match.group(3)) + float(match.group(4)) / 60
-            if not (-29.5 <= latitude <= -16.5 and 11.0 <= longitude <= 26.0):
-                continue
+        previous_end = match.end()
 
-            entries.append({
-                "name": clean_text(name),
-                "latitude": round(latitude, 6),
-                "longitude": round(longitude, 6),
-                "place": clean_text(match.group(5)) or None,
-                "source_url": page_url,
-            })
+        # Entries without coordinates ("Torra Bay Resort ( Skeleton Coast )")
+        # would otherwise be glued to the front of the next name. Text after a
+        # final bracket belongs to this entry; a name merely ending in a
+        # bracket keeps it.
+        if ")" in name and name[name.rindex(")") + 1:].strip():
+            name = name[name.rindex(")") + 1:].strip()
+        name = clean_text(name)
+        if not name or len(name) > 90:
+            continue
+
+        latitude = -(int(match.group(1)) + float(match.group(2)) / 60)
+        longitude = int(match.group(3)) + float(match.group(4)) / 60
+        if not (-29.5 <= latitude <= -16.5 and 11.0 <= longitude <= 26.0):
+            continue
+
+        entries.append({
+            "name": name,
+            "scrape_id": scrape_id_for(link) if link else None,
+            "listing_url": link,
+            "latitude": round(latitude, 6),
+            "longitude": round(longitude, 6),
+            "place": clean_text(match.group(5)) or None,
+            "source_url": page_url,
+        })
     return entries
 
 
