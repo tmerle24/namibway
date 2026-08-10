@@ -32,3 +32,7 @@ yarn-error.log
 .claude/settings.local.json
 /scripts/scraped_providers.json
 /scripts/scraped_providers.csv
+
+# Byte-compiled output from running the scrapers in scripts/ locally.
+__pycache__/
+*.py[cod]
