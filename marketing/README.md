@@ -23,6 +23,16 @@ Colours are RGB. Most print shops convert to CMYK themselves; if yours insists o
 CMYK file, send them the print PDF and ask them to convert — the palette is muted
 enough that the shift is small, but check a proof before a large run.
 
+## Getting hold of the PDFs
+
+The admin panel has them under **Documentation → Marketing material**, so nobody has
+to be sent a file over WhatsApp or clone the repo to print something. That page lists
+whatever `config/marketing.php` names and serves the files straight out of `out/`;
+adding a piece means adding an entry there as well as building it.
+
+The PDFs are committed, so a deploy ships whatever is in the repo — if you rebuild
+them, commit the result or the admin panel keeps handing out the old ones.
+
 ## Building
 
 ```
