@@ -135,6 +135,55 @@ class ListingPartnerMessagesTest extends TestCase
             ->assertSee("Sounds good, let's proceed.");
     }
 
+    public function test_messages_page_stays_reachable_from_the_table_without_an_email(): void
+    {
+        // The normal state of an imported listing: the importer created a
+        // Partner from the source page, but that page carried no address.
+        $partner = Partner::create(['name' => 'Scraped Lodge']);
+        $listing = Listing::factory()->create(['partner_id' => $partner->id]);
+
+        $this->actingAs($this->admin())
+            ->get('/admin/listings')
+            ->assertOk()
+            ->assertSee("/admin/listings/{$listing->id}/messages");
+    }
+
+    public function test_contact_owner_falls_back_to_the_listings_own_email(): void
+    {
+        Mail::fake();
+
+        $partner = Partner::create(['name' => 'Scraped Lodge']);
+        $listing = Listing::factory()->create([
+            'partner_id' => $partner->id,
+            'contact_email' => 'info@lodge.example',
+        ]);
+
+        Livewire::actingAs($this->admin())
+            ->test(ListingMessages::class, ['record' => $listing->getKey()])
+            ->callTableAction('contact_owner', data: [
+                'subject' => 'Test subject',
+                'body' => 'Test body',
+            ]);
+
+        Mail::assertQueued(PartnerContactMail::class, fn ($mail) => $mail->hasTo('info@lodge.example'));
+
+        $this->assertDatabaseHas('partner_messages', [
+            'partner_id' => $partner->id,
+            'listing_id' => $listing->id,
+            'subject' => 'Test subject',
+        ]);
+    }
+
+    public function test_contact_owner_is_hidden_when_no_address_is_known_anywhere(): void
+    {
+        $partner = Partner::create(['name' => 'Scraped Lodge']);
+        $listing = Listing::factory()->create(['partner_id' => $partner->id, 'contact_email' => null]);
+
+        Livewire::actingAs($this->admin())
+            ->test(ListingMessages::class, ['record' => $listing->getKey()])
+            ->assertTableActionHidden('contact_owner');
+    }
+
     public function test_index_table_shows_unread_message_count(): void
     {
         $partner = Partner::create(['name' => 'Lodge', 'email' => 'owner@example.com']);

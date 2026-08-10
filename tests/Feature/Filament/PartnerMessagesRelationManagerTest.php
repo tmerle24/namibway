@@ -75,6 +75,16 @@ class PartnerMessagesRelationManagerTest extends TestCase
         ]);
     }
 
+    public function test_messages_page_stays_reachable_from_the_table_without_an_email(): void
+    {
+        $partner = Partner::create(['name' => 'Scraped Lodge']);
+
+        $this->actingAs($this->admin())
+            ->get('/admin/partners')
+            ->assertOk()
+            ->assertSee("/admin/partners/{$partner->id}/messages");
+    }
+
     public function test_send_claim_email_action_is_hidden_once_claimed(): void
     {
         $partner = Partner::create(['name' => 'Lodge', 'email' => 'owner@example.com', 'claimed_at' => now()]);

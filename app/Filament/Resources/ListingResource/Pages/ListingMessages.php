@@ -75,6 +75,24 @@ class ListingMessages extends Page implements HasTable
         return "About your listing on NamibWay: {$this->getListing()->name}";
     }
 
+    /**
+     * An imported property normally has its address on the listing, not on the
+     * Partner the importer created from the same page — so fall back to it
+     * rather than leaving the owner uncontactable. The thread is still the
+     * partner's; only the recipient differs.
+     */
+    protected function getContactEmail(): ?string
+    {
+        $partnerEmail = $this->getPartner()?->email;
+
+        return filled($partnerEmail) ? $partnerEmail : $this->getListing()->contact_email;
+    }
+
+    protected function getMissingEmailHint(): string
+    {
+        return 'Add an email address to this listing or its partner to enable owner contact.';
+    }
+
     protected function getContactListing(): ?Listing
     {
         return $this->getListing();
