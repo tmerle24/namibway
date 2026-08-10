@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en-GB" data-variant="print">
+<head>
+<meta charset="utf-8">
+<title>NamibWay — Partner flyer (A4)</title>
+
+<!--
+  ==========================================================================
+  NamibWay A4 partner flyer, front and back. Source file for the print PDF.
+
+  Build:   node marketing/build-flyer.mjs   (builds every flyer in marketing/)
+  Output:  marketing/out/namibway-partner-flyer-a4-print.pdf   (216 x 303 mm, 3 mm bleed)
+           marketing/out/namibway-partner-flyer-a4-screen.pdf  (210 x 297 mm, no bleed)
+
+  Things you are likely to want to edit, all marked with EDIT: below —
+    1. EDIT: phone      — a phone line in the contact strip, off by default
+    2. EDIT: commission — the costs block; swap in a named rate once decided
+    3. EDIT: hero photo — --hero-photo, empty by default (needs rights-cleared imagery)
+
+  Copy comes from marketing/partner-outreach-copy.md. Keep the two in step.
+  ==========================================================================
+-->
+
+<link rel="stylesheet" href="flyer-base.css">
+<style>
+/* The build script rewrites the next line for the screen variant. */
+@page { size: 216mm 303mm; margin: 0; } /* PAGESIZE */
+</style>
+</head>
+
+<body>
+
+<!-- ============================== FRONT ============================== -->
+<section class="page">
+
+    <header class="hero">
+        <img class="compass" src="assets/compass-on-brown.svg" alt="">
+        <img class="logo" src="../public/images/namibway-logo-light.png" alt="NamibWay">
+
+        <p class="eyebrow">For lodges, camps, guides and restaurants in Namibia</p>
+
+        <h1>Your guests are planning the whole trip before they land.</h1>
+
+        <p class="sub">
+            NamibWay is a travel platform built for Namibia alone. Our AI travel companion,
+            <strong>Kaia</strong>, interviews the traveller and builds one complete, bookable
+            route — where they sleep, what they do, where they eat, how far they drive each
+            day. Being listed means being part of that plan, not one of forty results on a
+            search page.
+        </p>
+    </header>
+
+    <div class="panels">
+        <article class="panel">
+            <span class="num">01</span>
+            <h3>Real requests,<br>not a flood</h3>
+            <p>
+                A traveller can only have one booking request running at a time, and only
+                after they have an account, a name, and firm dates. You hear from people who
+                have actually decided — not from someone shopping twelve lodges at once.
+            </p>
+        </article>
+
+        <article class="panel">
+            <span class="num">02</span>
+            <h3>Nothing to set up,<br>nothing to pay</h3>
+            <p>
+                A listing on NamibWay is free to create and free to keep. No software to
+                install, no channel manager required. A request arrives as an email with two
+                buttons: confirm or decline. That is the whole workflow.
+            </p>
+        </article>
+
+        <article class="panel">
+            <span class="num">03</span>
+            <h3>Your property,<br>your words</h3>
+            <p>
+                You control the description, the photos, the rates and how you are reachable.
+                If you run ResRequest, NightsBridge or hopeCloud, we can connect to it and
+                confirm automatically. If you would rather stay with email, that works just
+                as well.
+            </p>
+        </article>
+    </div>
+
+    <footer class="cta">
+        <div>
+            <h2>Claim your free listing</h2>
+            <p>
+                We have already prepared one for most Namibian properties from public
+                information. Scan the code, or write to team@namibway.com and we will send
+                you the link to your own listing.
+            </p>
+        </div>
+        <div class="qr">
+            <img src="assets/qr-namibway-com.svg" alt="">
+            <span>NAMIBWAY.COM</span>
+        </div>
+    </footer>
+
+</section>
+
+<!-- ============================== BACK ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>NamibWay for partners</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="back-body">
+
+        <section class="section">
+            <h2>How it works</h2>
+            <div class="steps">
+                <article class="step">
+                    <span class="n">1</span>
+                    <h3>Claim your listing</h3>
+                    <p>
+                        We have already prepared a free listing for most Namibian properties
+                        from public information. Claiming takes a minute and hands you the keys.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">2</span>
+                    <h3>Say how to reach you</h3>
+                    <p>
+                        One-click email is the default and needs no setup. Or connect
+                        ResConnect (ResRequest), NightsBridge or hopeCloud for automatic
+                        availability and confirmation.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">3</span>
+                    <h3>Answer in one click</h3>
+                    <p>
+                        Every request email carries a confirm and a decline link that works
+                        without logging in. Rooms we hold for you are released automatically
+                        if the request goes stale, so nothing sits blocked.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">4</span>
+                    <h3>The guest arrives prepared</h3>
+                    <p>
+                        They travel with a plan — your arrival time, the drive that gets them
+                        to you, and what they are doing the next morning.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>How this is different from a booking portal</h2>
+            <table class="compare">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Typical booking portal</th>
+                        <th class="ours">NamibWay</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Cost to be listed</td>
+                        <td>Free, but visibility is paid</td>
+                        <td class="ours">Free, and free to keep</td>
+                    </tr>
+                    <tr>
+                        <td>What the traveller gets</td>
+                        <td>A list of properties to compare</td>
+                        <td class="ours">One planned route, with you in it</td>
+                    </tr>
+                    <tr>
+                        <td>Requests you receive</td>
+                        <td>Every speculative search</td>
+                        <td class="ours">One committed traveller at a time</td>
+                    </tr>
+                    <tr>
+                        <td>Driving times and routing</td>
+                        <td>Not their problem</td>
+                        <td class="ours">Planned from real road data, so guests arrive when they say they will</td>
+                    </tr>
+                    <tr>
+                        <td>Languages</td>
+                        <td>Global</td>
+                        <td class="ours">English, German, Dutch, French, Spanish — Namibia's actual source markets</td>
+                    </tr>
+                    <tr>
+                        <td>Who answers the guest afterwards</td>
+                        <td>Nobody</td>
+                        <td class="ours">We do, before and during the trip</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="section">
+            <div class="blocks">
+                <!-- EDIT: commission — see marketing/partner-outreach-copy.md, section 2.
+                     Replace "below the rates the international portals charge" with a named
+                     rate only once that is signed off and the phone script agrees. -->
+                <article class="block">
+                    <h3>What it costs</h3>
+                    <p>
+                        Listing is free and stays free. We earn a commission only when a
+                        booking is confirmed — deliberately set below the rates the
+                        international portals charge.
+                    </p>
+                    <p>
+                        Nothing is owed on requests you decline, on requests that expire, or
+                        on guests who book with you directly after finding you here.
+                    </p>
+                </article>
+
+                <article class="block">
+                    <h3>Where we are today</h3>
+                    <p>
+                        NamibWay is live and we are signing our founding partners now. Your
+                        property is among the first travellers see, and we still have time to
+                        build the platform around what you tell us you need.
+                    </p>
+                    <p>
+                        If something about the way requests reach you does not fit how you
+                        work, say so — at this stage we can still change it.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="contact">
+        <div class="lines">
+            <strong>Claim your listing, or just ask us anything.</strong>
+            <!-- EDIT: phone — uncomment and fill in once there is a number that is answered.
+            +264 __ ___ ____<br> -->
+            <a href="mailto:team@namibway.com">team@namibway.com</a>
+            &nbsp;·&nbsp;
+            <a href="https://namibway.com">namibway.com</a>
+        </div>
+        <img class="compass" src="assets/compass-on-brown.svg" alt="">
+    </footer>
+
+</section>
+
+</body>
+</html>

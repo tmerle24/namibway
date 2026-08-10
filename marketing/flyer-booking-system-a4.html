@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en-GB" data-variant="print">
+<head>
+<meta charset="utf-8">
+<title>NamibWay — Booking system proposal (A4)</title>
+
+<!--
+  ==========================================================================
+  A4 flyer proposing a booking system, front and back. This one is addressed
+  to a named organisation, so it is a leave-behind for a meeting rather than
+  something to hand out at a counter.
+
+  Build:   node marketing/build-flyer.mjs   (builds every flyer in marketing/)
+
+  Things you are likely to want to edit, all marked with EDIT: below —
+    1. EDIT: organisation — "Namibia Wildlife Resorts" appears in the eyebrow
+       and in the closing block. Check the exact registered name and the
+       preferred short form before printing anything with it on.
+    2. EDIT: phone — a phone line in the contact strip, off by default
+    3. EDIT: hero photo — --hero-photo, empty by default
+
+  Two things this flyer must never start claiming, however it gets edited:
+  no connector has been validated against a live partner account yet, and no
+  partner is connected — so "designed to connect to" must not become
+  "integrated with", and no uptime or volume figures belong here. The list on
+  the back is deliberately limited to what is actually running in production.
+  Nothing in here criticises the system they run today; the argument is the
+  outcome, not their current supplier.
+  ==========================================================================
+-->
+
+<link rel="stylesheet" href="flyer-base.css">
+<style>
+/* The build script rewrites the next line for the screen variant. */
+@page { size: 216mm 303mm; margin: 0; } /* PAGESIZE */
+</style>
+</head>
+
+<body>
+
+<!-- ============================== FRONT ============================== -->
+<section class="page">
+
+    <header class="hero">
+        <img class="compass" src="assets/compass-on-brown.svg" alt="">
+        <img class="logo" src="../public/images/namibway-logo-light.png" alt="NamibWay">
+
+        <!-- EDIT: organisation -->
+        <p class="eyebrow">A proposal for Namibia Wildlife Resorts</p>
+
+        <h1>A booking system your guests can trust, and your staff can actually run.</h1>
+
+        <p class="sub">
+            NamibWay is a Namibian travel platform, built and operated here, running in
+            production today. We would like to build and run a booking system for your
+            camps — <strong>starting with one property</strong>, so you can judge it
+            against the real thing rather than against a proposal document.
+        </p>
+    </header>
+
+    <div class="panels">
+        <article class="panel">
+            <span class="num">01</span>
+            <h3>Availability<br>that holds</h3>
+            <p>
+                One answer per unit and date, not several. A reservation that is only half
+                made expires by itself and releases the bed, instead of blocking it for a
+                guest who never came back.
+            </p>
+        </article>
+
+        <article class="panel">
+            <span class="num">02</span>
+            <h3>Simple enough<br>to be used</h3>
+            <p>
+                A request arrives as an email with two links: confirm or decline. No login,
+                no training, no new screen to learn. Staff who prefer a dashboard get one;
+                staff who prefer the inbox keep working as they do.
+            </p>
+        </article>
+
+        <article class="panel">
+            <span class="num">03</span>
+            <h3>We build it<br>and we run it</h3>
+            <p>
+                No server to buy, no licence to renew, no IT project to staff. We host it,
+                back it up nightly, monitor it and answer the phone when something is wrong.
+            </p>
+        </article>
+    </div>
+
+    <footer class="cta">
+        <div>
+            <h2>Let us start with one camp</h2>
+            <p>
+                One property, one season, measures agreed before we begin, and a decision at
+                the end of it — extend, change, or walk away. We would rather be judged on a
+                working system than on a presentation.
+            </p>
+        </div>
+        <div class="qr">
+            <img src="assets/qr-namibway-com.svg" alt="">
+            <span>NAMIBWAY.COM</span>
+        </div>
+    </footer>
+
+</section>
+
+<!-- ============================== BACK ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>NamibWay — booking system proposal</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="back-body">
+
+        <section class="section">
+            <h2>This does not start from zero</h2>
+            <ul class="checklist">
+                <li><strong>A booking pipeline</strong> with real statuses, from first request to confirmation</li>
+                <li><strong>Room-level availability</strong> with holds that expire and tell the guest</li>
+                <li><strong>One-click confirm and decline</strong> from a signed link in an email</li>
+                <li><strong>A dashboard</strong> for staff who would rather use a screen than an inbox</li>
+                <li><strong>Nightly encrypted backups</strong> to separate off-site storage</li>
+                <li><strong>Automated deployments</strong> that only ship once the tests pass</li>
+                <li><strong>Five languages</strong> — English, German, Dutch, French, Spanish</li>
+                <li><strong>iOS and Android apps</strong> alongside the website</li>
+                <li><strong>A documented public API</strong>, so other systems can read and write</li>
+                <li><strong>Adapters designed for</strong> ResRequest, NightsBridge and hopeCloud</li>
+            </ul>
+            <p style="font-size: 8.8pt; line-height: 1.55; color: var(--muted); margin-top: 5mm;">
+                What a partnership adds to this is your inventory, your rules and your
+                branding — not a system written from scratch while you wait.
+            </p>
+        </section>
+
+        <section class="section">
+            <h2>What we propose</h2>
+            <div class="steps">
+                <article class="step">
+                    <span class="n">1</span>
+                    <h3>Agree the measures</h3>
+                    <p>
+                        Before a line is written: what would make this a success, and how it
+                        gets counted. In writing, so nobody argues about it afterwards.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">2</span>
+                    <h3>One camp, one season</h3>
+                    <p>
+                        We set the property up, train whoever takes the bookings, and run it
+                        alongside what you use today. Your bookings never depend on us alone.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">3</span>
+                    <h3>Look at the numbers</h3>
+                    <p>
+                        At the end of the season we sit down with what actually happened and
+                        you decide: extend it, change it, or stop.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">4</span>
+                    <h3>Then, if it works</h3>
+                    <p>
+                        Rolled out property by property, under your own branding, hosted and
+                        operated by us. No big-bang cutover of everything at once.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="blocks even">
+                <article class="block">
+                    <h3>What we would need from you</h3>
+                    <p>
+                        A named person who can decide. Your inventory, rates and booking rules
+                        as they really are, not as the manual describes them. And permission to
+                        talk to the people who take bookings today — they know where it breaks.
+                    </p>
+                </article>
+
+                <!-- EDIT: organisation -->
+                <article class="block dark">
+                    <h3>Why a supplier down the road</h3>
+                    <p>
+                        Same country, same time zone, on site within a day. Built for the
+                        connections your camps actually have, not for a fibre line in Europe.
+                    </p>
+                    <p>
+                        Your data stays yours and can be exported in full at any time — no
+                        lock-in beyond the notice period we agree. And the money stays in
+                        Namibia.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <p class="closing">
+                The ask is deliberately small: one camp, one season, measures agreed before
+                we start — and nothing owed beyond it if the numbers do not convince you.
+            </p>
+        </section>
+
+    </div>
+
+    <footer class="contact">
+        <div class="lines">
+            <strong>We would welcome an hour of your time.</strong>
+            <!-- EDIT: phone — uncomment and fill in once there is a number that is answered.
+            +264 __ ___ ____<br> -->
+            <a href="mailto:team@namibway.com">team@namibway.com</a>
+            &nbsp;·&nbsp;
+            <a href="https://namibway.com">namibway.com</a>
+        </div>
+        <img class="compass" src="assets/compass-on-brown.svg" alt="">
+    </footer>
+
+</section>
+
+</body>
+</html>

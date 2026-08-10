@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en-GB" data-variant="print">
+<head>
+<meta charset="utf-8">
+<title>NamibWay — Websites for Namibian businesses (A4)</title>
+
+<!--
+  ==========================================================================
+  A4 flyer for the website service, front and back. For the co-founder to
+  hand out while prospecting.
+
+  Build:   node marketing/build-flyer.mjs   (builds every flyer in marketing/)
+
+  Things you are likely to want to edit, all marked with EDIT: below —
+    1. EDIT: price — appears twice, in the call to action and in the costs
+       block on the back. N$ 399 per month is a proposal, not a decision.
+    2. EDIT: phone — a phone line in the contact strip, off by default
+    3. EDIT: hero photo — --hero-photo, empty by default
+
+  Claims are bounded by marketing/README.md. In particular: we can set a
+  business up on Google Maps and Google Business Profile, we cannot promise
+  where it ranks in search — do not let that sentence drift.
+  ==========================================================================
+-->
+
+<link rel="stylesheet" href="flyer-base.css">
+<style>
+/* The build script rewrites the next line for the screen variant. */
+@page { size: 216mm 303mm; margin: 0; } /* PAGESIZE */
+
+/* This back page carries four sections instead of three, so it runs tighter than
+   the shared defaults. Re-measure if you add copy: the page clips silently. */
+.back-body { padding-top: 8mm; }
+.section { margin-bottom: 7mm; }
+ul.checklist li { padding-bottom: 2.2mm; }
+</style>
+</head>
+
+<body>
+
+<!-- ============================== FRONT ============================== -->
+<section class="page">
+
+    <header class="hero">
+        <img class="compass" src="assets/compass-on-brown.svg" alt="">
+        <img class="logo" src="../public/images/namibway-logo-light.png" alt="NamibWay">
+
+        <p class="eyebrow">Websites for Namibian businesses</p>
+
+        <h1>Your customers are searching for you. Right now they find nothing.</h1>
+
+        <p class="sub">
+            We build small business websites here in Namibia, and we look after them for
+            you. Your own address on the internet, your photos, your prices, your opening
+            hours — on the phone your customers actually carry. <strong>One monthly fee
+            covers all of it:</strong> the building, the hosting, the domain, and the
+            changes you ask for later.
+        </p>
+    </header>
+
+    <div class="panels">
+        <article class="panel">
+            <span class="num">01</span>
+            <h3>A real website,<br>not a social page</h3>
+            <p>
+                Your own domain name, your photographs, your prices, directions that open
+                in Google Maps, and a button that starts a WhatsApp chat with you. Built
+                to load on an old phone and a slow connection.
+            </p>
+        </article>
+
+        <article class="panel">
+            <span class="num">02</span>
+            <h3>We keep it<br>running</h3>
+            <p>
+                You never touch a server, a renewal or an update. When your prices change
+                or the season changes, send us a message and we change it. That is part of
+                the monthly fee, not an extra invoice.
+            </p>
+        </article>
+
+        <article class="panel">
+            <span class="num">03</span>
+            <h3>No big bill<br>at the start</h3>
+            <p>
+                No setup fee and no multi-year contract. If it does not earn its keep, you
+                stop paying and we hand you your domain and your content. That is the whole
+                risk you are taking.
+            </p>
+        </article>
+    </div>
+
+    <footer class="cta">
+        <div>
+            <h2>Let us show you what yours would look like</h2>
+            <p>
+                A twenty-minute conversation, no charge and no obligation. Bring your photos
+                if you have them — if you do not, we will sort that out too.
+                Write to team@namibway.com or talk to the person who handed you this.
+            </p>
+        </div>
+        <!-- EDIT: price — also appears in the costs block on the back. Keep both in step. -->
+        <div class="price">
+            <span class="amount">N$ 399</span>
+            <span class="per">per month, everything included</span>
+        </div>
+    </footer>
+
+</section>
+
+<!-- ============================== BACK ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Websites &amp; software by NamibWay</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="back-body">
+
+        <section class="section">
+            <h2>What is included</h2>
+            <ul class="checklist">
+                <li><strong>Your own domain name</strong> — registered and renewed for you</li>
+                <li><strong>Built for phones first</strong>, then for computers</li>
+                <li><strong>Your photographs</strong>, cropped and tidied so they look right</li>
+                <li><strong>Prices, opening hours and directions</strong>, kept current</li>
+                <li><strong>A map</strong> that opens straight into Google Maps</li>
+                <li><strong>A WhatsApp button</strong> that starts a chat with you</li>
+                <li><strong>A contact form</strong> that arrives in your email</li>
+                <li><strong>English and German</strong>, further languages on request</li>
+                <li><strong>Google Maps and Google Business Profile</strong> set up properly</li>
+                <li><strong>A secure address</strong> (https), so browsers do not warn people off</li>
+                <li><strong>Hosting and backups</strong>, monitored by us</li>
+                <li><strong>Changes when you need them</strong>, at no extra cost</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>How it works</h2>
+            <div class="steps three">
+                <article class="step">
+                    <span class="n">1</span>
+                    <h3>One conversation</h3>
+                    <p>
+                        Twenty minutes, in person or on the phone. What you do, who your
+                        customers are, what they always ask you before they book or buy.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">2</span>
+                    <h3>We build a draft</h3>
+                    <p>
+                        About a week later you see a real website, not a sketch — with your
+                        photos and your text already in it. Nothing to pay at this point.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">3</span>
+                    <h3>You correct it, it goes live</h3>
+                    <p>
+                        You tell us what is wrong and we fix it. Then it goes online and the
+                        monthly fee starts. From there it is ours to look after.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="blocks even">
+                <!-- EDIT: price — must match the call to action on the front. -->
+                <article class="block">
+                    <h3>What it costs</h3>
+                    <p>
+                        <strong>N$ 399 per month, everything included.</strong> No setup fee,
+                        no charge for the draft, no annual contract. The domain, the hosting
+                        and the changes you ask for are all inside that number.
+                    </p>
+                    <p>
+                        Things that genuinely cost more — a full photo shoot, an online shop
+                        that takes payments, advertising budgets — we quote separately and
+                        tell you before, not after.
+                    </p>
+                </article>
+
+                <article class="block dark">
+                    <h3>If you need more than a website</h3>
+                    <p>
+                        We also build proper software: booking and reservation systems, stock
+                        and order tracking, internal tools, links between systems you already
+                        run, and mobile apps.
+                    </p>
+                    <p>
+                        This is the same team that built and operates NamibWay — a travel
+                        booking platform running in production, with backups, monitoring and
+                        automated deployments. Priced per project, after we understand it.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Questions people ask</h2>
+            <div class="steps three">
+                <article class="step">
+                    <h3>Do I need to understand computers?</h3>
+                    <p>
+                        No. You send us a message when something needs changing and we change
+                        it. If you can send a photograph on your phone, you can keep your
+                        website current.
+                    </p>
+                </article>
+                <article class="step">
+                    <h3>I already have a domain name.</h3>
+                    <p>
+                        Then we move it across, or point it at the new site — whichever
+                        suits you. It stays registered in your name either way, and there is
+                        no extra charge for doing it.
+                    </p>
+                </article>
+                <article class="step">
+                    <h3>Who owns it in the end?</h3>
+                    <p>
+                        You do — the domain, the words and the photographs. If you decide to
+                        stop, we hand all of it over rather than holding on to it. We would
+                        rather lose a customer than trap one.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="contact">
+        <div class="lines">
+            <strong>Let us take a look at your business.</strong>
+            <!-- EDIT: phone — uncomment and fill in once there is a number that is answered.
+            +264 __ ___ ____<br> -->
+            <a href="mailto:team@namibway.com">team@namibway.com</a>
+            &nbsp;·&nbsp;
+            <a href="https://namibway.com">namibway.com</a>
+        </div>
+        <img class="compass" src="assets/compass-on-brown.svg" alt="">
+    </footer>
+
+</section>
+
+</body>
+</html>
