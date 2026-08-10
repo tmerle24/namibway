@@ -385,15 +385,26 @@ class Fetcher:
 
 
 def robots_allows(url: str, fetcher: Fetcher) -> bool:
+    """Checks robots.txt, and says out loud what it found.
+
+    The status matters even when it does not block us: a 403 here is the same
+    refusal we may be about to hit on every page, and swallowing it silently
+    turns a "you are not welcome" into a mystery further down the log.
+    """
     parser = RobotFileParser()
     try:
         r = fetcher.session.get(urljoin(BASE, "/robots.txt"), timeout=10)
+        print(f"robots.txt → HTTP {r.status_code}")
         if r.status_code >= 400:
-            return True  # no robots.txt = no restriction
+            return True  # nothing served = nothing disallowed
         parser.parse(r.text.splitlines())
-    except requests.RequestException:
+    except requests.RequestException as e:
+        print(f"robots.txt → unreachable ({e})")
         return True
-    return parser.can_fetch(HEADERS["User-Agent"], url)
+
+    allowed = parser.can_fetch(HEADERS["User-Agent"], url)
+    print(f"robots.txt allows {url}: {allowed}")
+    return allowed
 
 
 # ---------------------------------------------------------------------------
@@ -1239,6 +1250,7 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
     listings: dict[str, Page] = {}
     unchanged: list[str] = []
     indexes: set[str] = set()
+    statuses: Counter[int] = Counter()
     fetched = 0
 
     def fetch(page: Page) -> Page:
@@ -1261,6 +1273,7 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
 
         for page in results:
             fetched += 1
+            statuses[page.status] += 1
 
             if page.status == 304:
                 unchanged.append(page.scrape_id)
@@ -1297,7 +1310,36 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
 
         print(f"  crawled {fetched} pages — {len(listings)} listings, {len(queue)} queued")
 
+    if not listings and not unchanged:
+        explain_total_failure(statuses)
+
     return listings, unchanged, indexes
+
+
+def explain_total_failure(statuses: "Counter[int]") -> None:
+    """Names the failure instead of leaving a wall of retry warnings.
+
+    A crawl that returns nothing is not a parsing problem, and reading it as
+    one wastes the next hour on the wrong layer.
+    """
+    summary = ", ".join(f"HTTP {code}: {n}" for code, n in sorted(statuses.items()))
+    print(f"\nNo page was fetched. Response codes seen — {summary}")
+
+    if statuses.get(403):
+        print(
+            "\n403 on every request, including the site root, is the server "
+            "refusing us rather than anything about our parsing. The usual "
+            "causes, in order of likelihood:\n"
+            "  1. The host blocks datacenter IP ranges. CI runners are the "
+            "textbook case; the same request often succeeds from a normal "
+            "connection. Run this script locally to tell the two apart.\n"
+            "  2. The site blocks non-browser User-Agents.\n"
+            "  3. The operator has deliberately blocked automated access.\n"
+            "\nWhich one it is decides what may legitimately be done next, so "
+            "establish that before changing anything about how we identify "
+            "ourselves. If it is (3), the answer is to ask them, not to look "
+            "like someone else."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1507,6 +1549,12 @@ def main() -> int:
           f"{len(indexes)} index pages ({', '.join(sorted(indexes)) or 'none'})")
 
     if args.probe:
+        if not pages:
+            print(
+                "\nProbe fetched nothing — there is no structure to show.\n"
+                "See the diagnosis above; the crawl never got a page back."
+            )
+            return 1
         probe(pages, args.probe)
         return 0
 
