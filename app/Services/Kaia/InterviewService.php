@@ -100,6 +100,12 @@ class InterviewService
                 'adults' => ['type' => 'integer', 'description' => 'Number of adults travelling'],
                 'children_under_13' => ['type' => 'integer', 'description' => 'Number of children under 13 in the group; 0 if none or not travelling with children'],
                 'vehicle_type' => ['type' => 'string', 'enum' => ['car', 'camper'], 'description' => 'car = regular 2WD or 4x4; camper = rooftop tent or motorhome'],
+                // Optional on purpose: the interview is capped at a handful of
+                // questions, so this must never cost one. Set it only when the
+                // traveler volunteers the detail; otherwise the trip plan's
+                // vehicle picker is where they refine it, and an absent value
+                // plans exactly as it did before this field existed.
+                'vehicle_class' => ['type' => 'string', 'enum' => ['sedan', 'suv', 'camper_4x4', 'motorhome', 'minibus'], 'description' => 'The specific kind of vehicle, ONLY if the traveler was specific about it (e.g. "a 4x4 with a rooftop tent" -> camper_4x4, "a motorhome" -> motorhome, "something cheap for tar roads" -> sedan). Never ask a question just to fill this — omit it when in doubt.'],
                 'start_location' => ['type' => 'string', 'description' => 'Where the trip starts, e.g. "Windhoek". Default to "Windhoek" unless the traveler said otherwise — do not ask for this unless a one-way trip is already implied.'],
                 'end_location' => ['type' => 'string', 'description' => 'Where the trip ends, e.g. "Windhoek". Same as start_location for the common round-trip case; a different city only for a one-way trip.'],
             ],

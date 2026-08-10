@@ -949,14 +949,153 @@ would be absurdly cheap. Two separate faults in one four-word label:
   with the city title ending at x=225 — no overlap, no page overflow.
   eslint, prettier and vue-tsc clean.
 
+### Session 16 — 2026-08-10 (a price now says what it is per)
+
+Picking up the gap session 15 left behind: the stage badge learned to name
+its period, but the numbers going *into* it still didn't. `price_from` was a
+bare decimal with no dimension, so an activity row printed "N$ 450" whether
+that was per head or for the whole group, and the stage total added a
+per-night lodge rate to it as though both meant the same thing.
+
+- ✅ **`listings.price_unit`, a nullable enum** (`App\Enums\PriceUnit`):
+  `per_night`, `per_person_per_night`, `per_day`, `per_person_per_day`,
+  `per_person`, `per_booking`. Two dimensions in one column — the period it
+  repeats over, and whether it is charged per traveler — because those are
+  the only combinations that occur and one select is one decision for the
+  partner filling it in.
+- ✅ **Nothing is backfilled, and nothing is guessed at display time.**
+  "Accommodation = per night per room" looks like a safe default and isn't:
+  per-person-sharing rates are the norm in this market, so a blanket
+  backfill would stamp a confident, frequently wrong claim onto thousands of
+  scraped rows that nothing downstream could tell from a confirmed one. Null
+  means "not recorded" and is a re-selectable answer in every editor. **The
+  entire change is therefore invisible in production until units get
+  entered** — every label and every sum is byte-identical for a null unit.
+- ✅ **Entered where the price is entered**: both Filament panels and the
+  partner self-service editor, each offering only the units that fit the
+  listing type (`PriceUnit::forType()` — a lodge can't be quoted "per
+  booking", which would break the per-night arithmetic the plan does with a
+  stay). The partner panel's price field used to be *labelled* "(per
+  night)"; an activity operator entering a per-person rate there was told it
+  meant something else entirely.
+- ✅ **Carried down every path a listing reaches a plan by** — Kaia's
+  itinerary references, the availability fallback, the alternatives list,
+  `/listings/search` (what the swap modal writes into the plan), the preview
+  endpoint, the homepage payload and the public `/api/v1`. Dropping it on
+  any one of them would leave a swapped-in listing unqualified and
+  mis-counted even though the catalog knew.
+- ✅ **The sums use it.** `itemCost()` multiplies a per-person rate by the
+  party from `trip_params`; the vehicle line — the one the plan multiplies
+  by trip length itself — no longer multiplies a flat package price by the
+  days. An unrecorded unit keeps counting exactly as before (×1, vehicle ×
+  days), so the arithmetic only ever changes where someone stated a fact.
+- ✅ **Shown next to the number** — stay card, entry row, vehicle line, swap
+  list, preview modal, Explore grid, listing detail. One fallback only, and
+  a stated one: the stay card still prints "/Nacht" for an unrecorded unit,
+  because that is what the stage total has always done with it. i18n in all
+  five locales.
+- Verified in the browser at 375px against a fixture covering all six units
+  plus null: stay card renders "N$ 1.500/Nacht", "…/Nacht p.P.", "…
+  pauschal" etc., an unpriced listing still falls back to "Preis auf
+  Anfrage" with no unit, and the sums come out 4500/18000 (3 nights,
+  4 travelers) for per-night vs per-person-per-night, with the per-booking
+  vehicle staying at 900 instead of 2700. No horizontal overflow. eslint,
+  prettier and vue-tsc clean. The PHP half could not be run in the session
+  itself — `composer install` cannot complete there because
+  `codeload.github.com` is 403 through the egress proxy and
+  `phpstan/phpstan` is dist-only — so CI executed it first: pint, phpstan
+  and 279 tests passed, and the one failure was a wrong assumption in the
+  new test rather than in the feature (`/api/v1` is Sanctum-gated, unlike
+  the in-app endpoints, so that case needs an `ApiClient` token).
+
+### Session 17 — 2026-08-10 (the traveler picks the vehicle)
+
+Backlog item since session 1: the plan's only notion of a vehicle was a binary
+`vehicle_type` ("car" | "camper"), set once during the interview and never
+editable afterwards — the "edit trip details" popup didn't even show it. On the
+catalog side the match was a free-text search of `highlights` for the literal
+string "Camper", which cannot tell a rooftop-tent 4x4 from a motorhome, or a
+sedan from a 4x4. The item was explicitly deferred rather than shipping "a
+dropdown that doesn't actually change results", so the point of this session was
+the results half as much as the picker.
+
+- ✅ **`listings.vehicle_class`, a nullable enum** (`App\Enums\VehicleClass`):
+  `sedan`, `suv`, `camper_4x4`, `motorhome`, `minibus`. Orthogonal to the
+  existing `vehicle_category`, which answers "does someone else drive it"
+  (self-drive vs. guided tour); this answers "what am I driving", which is
+  what the traveler actually decides. Entered in both Filament panels, a
+  table column and an admin filter, exposed on `/api/v1` (payload + a
+  `vehicle_class` query filter) and on the in-app listing payloads.
+- ✅ **Nothing backfilled from the old heuristic.** Same doctrine as
+  `price_unit`: writing "contains the word Camper → camper_4x4" into the
+  column would stamp a guess into the very field that exists to be more
+  precise than the guess, and nothing downstream could then tell it from a
+  partner-confirmed value. Null means "not recorded".
+- ✅ **Two sources of truth on purpose, while the catalog is empty.**
+  `matchingVehicles()` matches a recorded class exactly and falls back to the
+  old highlights heuristic for rows without one — so today, with no listing
+  classified, the shortlist comes out exactly as it did before. The fallback
+  is deliberately coarse in the traveler's favour: an unclassified sedan and
+  an unclassified 4x4 are indistinguishable, so asking for an SUV keeps both
+  rather than returning nothing. An over-broad shortlist is a slightly worse
+  suggestion; an empty one is a plan with no vehicle.
+- ✅ **A per-day vehicle budget that orders rather than filters.**
+  `vehicle_daily_budget` (NAD) sorts the vehicle shortlist affordable →
+  unpriced → over budget before the `MAX_CANDIDATES_PER_TYPE` cap, so it
+  always decides *which* vehicles Claude may choose from, never whether it
+  gets any. The per-day figure mirrors `vehicleTotal()` in
+  `ItinerarySection.vue` exactly — a per-person rate carries the party
+  multiplier, a flat package price is spread over the trip — so a 7 000
+  per-booking week beats a 2 000/day rate at a 1 200 ceiling, which is the
+  right answer and the opposite of what the sticker prices suggest.
+- ✅ **The class decides the legacy binary.** `vehicle_type` is now derived
+  from the class whenever there is one, so "motorhome" + "car" is not a state
+  anything downstream has to reconcile. Without a class — every plan made
+  before this session — it is left exactly as it was, and the whole feature
+  is inert.
+- ✅ **`VehiclePicker.vue`**: five tap-target cards (icon, name, one-line
+  hint) in an `auto-fit` grid — three across on a phone, five in a row on a
+  wide modal, no breakpoint to keep in sync — plus a budget field prefixed
+  with the traveler's own currency symbol. The amount is typed in the display
+  currency and converted to NAD on the way out (`toNad()`/`fromNad()` in
+  `currency.ts`), since NAD is what every price here is stored in. Wired into
+  the trip-params popup, with a summary chip ("4x4-Camper, bis € 65/Tag") in
+  `TripMeta`.
+- ✅ **Kaia can capture it without spending a question.** `vehicle_class` is
+  an *optional* property on the interview tool schema, described as
+  "only if the traveler was specific" — the interview is capped at a handful
+  of questions and this must never cost one. The itinerary prompt now
+  explains both the class (overriding the coarse binary, with the explicit
+  instruction not to leave the vehicle empty when nothing carries the exact
+  class) and the budget (a strong preference, not a hard rule).
+- Tests: six new cases in `ItineraryServiceCandidateListingsTest` covering
+  exact class matching, the highlights fallback in both directions, the class
+  beating a contradicting binary, budget ordering without dropping anything,
+  the per-booking spread and the per-person multiplier; plus
+  `tests/Feature/Kaia/VehicleTripParamsTest` for the derivation rules,
+  the budget's rejection of non-positive input, the regenerate endpoint's
+  validation and the params it actually forwards.
+- **Not done here:** the picker is only in the trip-params popup, not in the
+  chat interview itself, and the budget applies to the vehicle line alone —
+  it is not a whole-trip daily spend and doesn't touch `budget_tier`. i18n
+  covers en + de; nl/fr/es fall back to English exactly as they already do
+  for the rest of the params editor (those locales have no `paramsEditor` or
+  `meta` block at all).
+- Same session limitation as session 16: eslint, prettier and vue-tsc are
+  clean locally, but `composer install` can't complete here
+  (`codeload.github.com` is 403 through the egress proxy), so pint, phpstan
+  and `artisan test` run first in CI.
+
 ### Known gaps / next up
 
-- ⬜ **Per-item price periods are still unstated.** This fixes the stage
-  badge, but an activity or restaurant row prints a bare `price_from` with
-  no clue whether it is per person or per booking — the column simply does
-  not record which. The stage total inherits that ambiguity: it adds
-  per-night stays to per-item entries. Wants a `price_unit` on `listings`
-  before the plan can promise a number a traveler could budget against.
+- 🟡 **Price units are recorded but nowhere entered.** The column, the
+  editors, the payloads and the arithmetic landed in session 16; no listing
+  has a value yet, so every price still prints exactly as it did before.
+  Same shape as the room types: this is content work now, not code. Two code
+  follow-ups were deliberately left out — the budget tiers
+  (`ItineraryService::budgetTier`, `Listing::scopeFilterBy`) still band on
+  the raw `price_from`, so a per-person rate lands a tier too low, and
+  Kaia's catalog isn't told the unit either.
 
 - ⬜ **Booking facts on a plan entry.** The entry's detail line and its
   modal are both structured to take them, but nothing links an `Inquiry`
@@ -978,14 +1117,16 @@ would be absurdly cheap. Two separate faults in one four-word label:
   shows its empty state everywhere in production. Filling that in is content
   work (and, for partner-owned listings, the partner's own job now that they
   have the editor).
-- ⬜ **Vehicle type + daily budget picker.** The trip already carries a
-  binary `vehicle_type` ("car" | "camper") in `TripParams`. The ask is a
-  richer selector (Jeep, Mid-range, Camper, etc.) plus a budget-per-day
-  field, explicitly so vehicles can later be searched/filtered by type —
-  which means it also needs real vehicle categorization on the `Listing`
-  side (today "camper" detection is a `highlights` string match, nothing
-  richer). Scoped out of session 1 rather than shipping a dropdown that
-  doesn't actually change results.
+- 🟡 **Vehicle type + daily budget picker** — built in session 17: a real
+  `VehicleClass` enum on the listing, a five-option picker plus a per-day
+  budget in the trip params, and both actually narrowing and ordering the
+  vehicle shortlist. What remains is not code: **no listing has
+  `vehicle_class` set yet**, so the class currently resolves through the old
+  highlights fallback everywhere in production and only starts biting as the
+  catalog gets filled in. Same content-work shape as room types and price
+  units. Open questions deliberately left: the picker lives in the
+  trip-params popup only (the chat interview asks nothing extra), and the
+  budget covers the vehicle line, not a whole-trip daily spend.
 - 🟡 **Collaborative trip plan** (read-only vs. write sharing, co-planning,
   comments with follow-ups, change log) — see the dedicated section above.
   The live-relevant halves are done: the share link is read-only and a stale

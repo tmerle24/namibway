@@ -29,6 +29,7 @@ class ListingController extends Controller
      *
      * @queryParam type string Filter by listing type. Example: accommodation
      * @queryParam vehicle_category string Filter vehicle listings by category: `self_drive` or `guided_tour`. Example: self_drive
+     * @queryParam vehicle_class string Filter vehicle listings by what they are: `sedan`, `suv`, `camper_4x4`, `motorhome` or `minibus`. Example: camper_4x4
      * @queryParam region string Filter by region (partial match). Example: Erongo
      * @queryParam keyword string Free-text search across name/description/region/type. Example: dune
      * @queryParam budget string One of `budget`, `mid-range`, `premium` (price_from bands). Example: mid-range
@@ -42,7 +43,7 @@ class ListingController extends Controller
      *       "description": "A quiet lodge on the edge of the dunes.", "short_description": null,
      *       "image": "https://namibway.com/storage/listings/desert-lodge.jpg", "gallery": [],
      *       "region": "Hardap", "latitude": -24.7592, "longitude": 15.7092,
-     *       "price_from": 1500.0, "price_currency": "NAD",
+     *       "price_from": 1500.0, "price_currency": "NAD", "price_unit": "per_night",
      *       "rating": 4.5, "rating_count": 12, "accepts_inquiries": true,
      *       "booking_mode": "connector"
      *     }
@@ -78,7 +79,7 @@ class ListingController extends Controller
      *     "description": "A quiet lodge on the edge of the dunes.", "short_description": null,
      *     "image": "https://namibway.com/storage/listings/desert-lodge.jpg", "gallery": [],
      *     "region": "Hardap", "latitude": -24.7592, "longitude": 15.7092,
-     *     "price_from": 1500.0, "price_currency": "NAD",
+     *     "price_from": 1500.0, "price_currency": "NAD", "price_unit": "per_night",
      *     "rating": 4.5, "rating_count": 12, "accepts_inquiries": true,
      *     "booking_mode": "connector"
      *   }

@@ -27,7 +27,9 @@ import type {
     RoomOption,
     TripParams,
 } from '@/lib/kaia-types';
+import { vehicleTypeForClass } from '@/lib/kaia-types';
 import { onImageError, thumbAttrs } from '@/lib/media';
+import { isRecurring, travelerFactor } from '@/lib/price-unit';
 import ConfirmModal from './ConfirmModal.vue';
 import ItineraryDayPlanCard from './ItineraryDayPlanCard.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
@@ -287,7 +289,14 @@ async function applyParamsEdit(values: TripParamsFormValues) {
             adults: values.adults,
             children_under_13: computeChildrenUnder13(values.childrenAges),
             children_ages: values.childrenAges || null,
-            vehicle_type: currentTripParams.value?.vehicle_type || 'car',
+            // The class the traveler picked decides the legacy binary, so the
+            // two can't contradict each other; without one, the plan keeps
+            // whatever the interview established.
+            vehicle_type: values.vehicleClass
+                ? vehicleTypeForClass(values.vehicleClass)
+                : currentTripParams.value?.vehicle_type || 'car',
+            vehicle_class: values.vehicleClass,
+            vehicle_daily_budget: values.vehicleDailyBudget,
             start_location: values.startLocation,
             end_location: values.endLocation,
         });
@@ -623,13 +632,39 @@ function dayRegion(day: {
     return region && region !== city ? region : null;
 }
 
+// How many people the prices apply to. Only ever used to multiply a rate the
+// listing itself declares as per-person — a party of four in one room does not
+// pay four times a per-room rate, and a plan that assumed otherwise would be
+// wrong in the expensive direction.
+const travelerCount = computed(() =>
+    Math.max(
+        1,
+        (currentTripParams.value?.adults ?? 2) +
+            (currentTripParams.value?.children_under_13 ?? 0),
+    ),
+);
+
+// What a single plan entry costs this party — its rate times the number of
+// travelers it is charged for. Null when the listing has no rate at all, which
+// the callers count as "nothing to add" rather than as zero.
+function itemCost(item: ItineraryListingRef | null | undefined): number | null {
+    if (!item?.price_from) {
+        return null;
+    }
+
+    return (
+        Number(item.price_from) *
+        travelerFactor(item.price_unit, travelerCount.value)
+    );
+}
+
 // Sums a whole stage — its stay for every night it covers, plus every
 // activity and restaurant on every one of its days — for the price badge on
 // the stage heading. Mirrors estimatedLabel()'s per-day additive logic
-// (price_from is a per-night rate) but bounded to one stage rather than the
-// whole trip. Deliberately not just the first day's items: the heading now
-// spans the entire stage, so a badge counting one night would contradict the
-// date range sitting right next to it.
+// (a stay's rate is charged again for each night) but bounded to one stage
+// rather than the whole trip. Deliberately not just the first day's items: the
+// heading now spans the entire stage, so a badge counting one night would
+// contradict the date range sitting right next to it.
 function stageTotal(
     variantIndex: number,
     dayIndex: number,
@@ -653,8 +688,10 @@ function stageTotal(
         ];
 
         for (const item of items) {
-            if (item?.price_from) {
-                amount += Number(item.price_from);
+            const cost = itemCost(item);
+
+            if (cost !== null) {
+                amount += cost;
                 hasAnyPrice = true;
             }
         }
@@ -1791,19 +1828,40 @@ function estimatedTotal(variant: ItineraryVariant): number | null {
         ];
 
         for (const item of items) {
-            if (item?.price_from) {
-                amount += Number(item.price_from);
+            const cost = itemCost(item);
+
+            if (cost !== null) {
+                amount += cost;
                 hasAnyPrice = true;
             }
         }
     }
 
-    if (variant.vehicle?.price_from) {
-        amount += Number(variant.vehicle.price_from) * variant.days.length;
+    const vehicle = vehicleTotal(variant);
+
+    if (vehicle !== null) {
+        amount += vehicle;
         hasAnyPrice = true;
     }
 
     return hasAnyPrice ? amount : null;
+}
+
+// The vehicle is the one line the plan multiplies by the trip length itself
+// (it appears once, not once per day), so it's the one place the difference
+// between a daily rate and a flat package price actually changes the sum. An
+// unrecorded unit keeps the old behaviour — a daily rate, which is what the
+// column's absence has always implicitly meant here.
+function vehicleTotal(variant: ItineraryVariant): number | null {
+    const perCharge = itemCost(variant.vehicle);
+
+    if (perCharge === null) {
+        return null;
+    }
+
+    return isRecurring(variant.vehicle?.price_unit ?? 'per_day')
+        ? perCharge * variant.days.length
+        : perCharge;
 }
 
 function estimatedLabel(variant: ItineraryVariant): string | null {
@@ -1829,25 +1887,27 @@ function estimatedPerDayLabel(variant: ItineraryVariant): string | null {
 }
 
 function vehicleEstimatedLabel(variant: ItineraryVariant): string | null {
-    if (!variant.vehicle?.price_from) {
-        return null;
-    }
+    const amount = vehicleTotal(variant);
 
-    const amount = Number(variant.vehicle.price_from) * variant.days.length;
-
-    return t('itinerary.estimated', { price: formatPrice(amount) });
+    return amount === null
+        ? null
+        : t('itinerary.estimated', { price: formatPrice(amount) });
 }
 
-// price_from is already the vehicle's daily rate, so no division needed here
-// (unlike estimatedPerDayLabel(), which derives a per-day figure from a mix
-// of per-stay and per-night items).
+// Derived from the same total as the line above rather than printing
+// `price_from` straight through, which was only ever right while every vehicle
+// was assumed to be quoted per day: a per-booking package divided by the trip
+// length is what that price costs per day, and a per-person daily rate has to
+// carry the party's multiplier here too.
 function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
-    if (!variant.vehicle?.price_from) {
+    const amount = vehicleTotal(variant);
+
+    if (amount === null || variant.days.length === 0) {
         return null;
     }
 
     return t('itinerary.estimatedPerDay', {
-        price: formatPrice(variant.vehicle.price_from),
+        price: formatPrice(amount / variant.days.length),
     });
 }
 </script>

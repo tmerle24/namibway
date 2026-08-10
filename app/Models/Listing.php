@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Enums\ConnectorType;
 use App\Enums\ListingType;
+use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
+use App\Enums\VehicleClass;
 use Database\Factories\ListingFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,6 +33,7 @@ class Listing extends Model
         'partner_id',
         'type',
         'vehicle_category',
+        'vehicle_class',
         'name',
         'slug',
         'wetu_id',
@@ -56,6 +59,7 @@ class Listing extends Model
         'longitude',
         'price_from',
         'price_currency',
+        'price_unit',
         'duration_minutes',
         'rating',
         'rating_count',
@@ -94,6 +98,7 @@ class Listing extends Model
     protected $casts = [
         'type' => ListingType::class,
         'vehicle_category' => VehicleCategory::class,
+        'vehicle_class' => VehicleClass::class,
         'gallery' => 'array',
         'pending_gallery' => 'array',
         'photos_approved_at' => 'datetime',
@@ -103,6 +108,7 @@ class Listing extends Model
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
         'price_from' => 'decimal:2',
+        'price_unit' => PriceUnit::class,
         'duration_minutes' => 'integer',
         'rating' => 'decimal:1',
         'rating_count' => 'integer',
@@ -301,6 +307,12 @@ class Listing extends Model
 
         if (is_string($vehicleCategory) && $vehicleCategory !== '') {
             $query->where('vehicle_category', $vehicleCategory);
+        }
+
+        $vehicleClass = $filters['vehicle_class'] ?? null;
+
+        if (is_string($vehicleClass) && $vehicleClass !== '') {
+            $query->where('vehicle_class', $vehicleClass);
         }
 
         $region = $filters['region'] ?? null;

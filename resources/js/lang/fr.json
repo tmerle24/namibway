@@ -98,6 +98,16 @@
         "roomTotalForNights": "Total {total} pour {count} nuit | Total {total} pour {count} nuits",
         "roomPhotoStandIn": "Photo de l'établissement — pas encore de photo de cette chambre"
     },
+    "priceUnit": {
+        "withPrice": {
+            "per_night": "{price}/nuit",
+            "per_person_per_night": "{price}/nuit/pers.",
+            "per_day": "{price}/jour",
+            "per_person_per_day": "{price}/jour/pers.",
+            "per_person": "{price}/pers.",
+            "per_booking": "{price} forfait"
+        }
+    },
     "booking": {
         "eyebrow": "Assistant de réservation",
         "title": "Transformer le plan en réservation confirmée",

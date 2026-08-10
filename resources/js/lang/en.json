@@ -200,7 +200,9 @@
                 "budget": "Budget",
                 "mid-range": "Mid-range",
                 "premium": "Premium"
-            }
+            },
+            "vehicle": "Vehicle",
+            "upToPerDay": "up to {price}/day"
         },
         "confirmRemove": {
             "title": "Remove this?",
@@ -232,6 +234,45 @@
             "datesRequired": "Please choose a start and end date.",
             "dateOrderInvalid": "The end date must be after the start date.",
             "locationsRequired": "Please enter a start and end city."
+        },
+        "vehiclePicker": {
+            "label": "Vehicle",
+            "budget": "Vehicle budget",
+            "optional": "(optional)",
+            "budgetPlaceholder": "e.g. 1200",
+            "perDay": "per day",
+            "classes": {
+                "sedan": {
+                    "name": "Sedan",
+                    "hint": "2WD, sealed roads"
+                },
+                "suv": {
+                    "name": "SUV / 4x4",
+                    "hint": "Gravel and parks"
+                },
+                "camper_4x4": {
+                    "name": "4x4 camper",
+                    "hint": "Rooftop tent"
+                },
+                "motorhome": {
+                    "name": "Motorhome",
+                    "hint": "Sleep inside"
+                },
+                "minibus": {
+                    "name": "Minibus",
+                    "hint": "Larger group"
+                }
+            }
+        }
+    },
+    "priceUnit": {
+        "withPrice": {
+            "per_night": "{price}/night",
+            "per_person_per_night": "{price}/night pp",
+            "per_day": "{price}/day",
+            "per_person_per_day": "{price}/day pp",
+            "per_person": "{price} pp",
+            "per_booking": "{price} total"
         }
     },
     "booking": {

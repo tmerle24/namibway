@@ -4,6 +4,8 @@ namespace App\Services\Kaia;
 
 use App\Connectors\ConnectorFactory;
 use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
+use App\Enums\PriceUnit;
+use App\Enums\VehicleClass;
 use App\Http\Controllers\Controller;
 use App\Models\City;
 use App\Models\Listing;
@@ -391,7 +393,7 @@ class ItineraryService
      */
     private function resolveReferences(array $plan, Collection $listings): array
     {
-        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string, duration_minutes: int|null, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, short_description: string|null, rating: float|null, rating_count: int|null}> $index */
+        /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string, price_unit: string|null, duration_minutes: int|null, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, short_description: string|null, rating: float|null, rating_count: int|null}> $index */
         $index = [];
 
         foreach ($listings as $listing) {
@@ -403,6 +405,10 @@ class ItineraryService
                 'type' => $listing->type->value,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                // Without this the plan can only print the bare number: whether
+                // it repeats per night and whether it is per traveler is the
+                // difference between an estimate and a guess (see PriceUnit).
+                'price_unit' => $listing->price_unit?->value,
                 'duration_minutes' => $listing->duration_minutes,
                 'lat' => $listing->latitude ? (float) $listing->latitude : null,
                 'lng' => $listing->longitude ? (float) $listing->longitude : null,
@@ -424,7 +430,7 @@ class ItineraryService
                 return null;
             }
 
-            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'duration_minutes' => null, 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'region' => null, 'short_description' => null, 'rating' => null, 'rating_count' => null];
+            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'price_unit' => null, 'duration_minutes' => null, 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'region' => null, 'short_description' => null, 'rating' => null, 'rating_count' => null];
         };
 
         $plan['variants'] = array_map(function (array $variant) use ($resolve, $listings) {
@@ -546,6 +552,7 @@ class ItineraryService
                 'type' => 'accommodation',
                 'price_from' => $fallback->price_from,
                 'price_currency' => $fallback->price_currency,
+                'price_unit' => $fallback->price_unit?->value,
                 'duration_minutes' => $fallback->duration_minutes,
                 'lat' => $fallback->latitude ? (float) $fallback->latitude : null,
                 'lng' => $fallback->longitude ? (float) $fallback->longitude : null,
@@ -666,7 +673,7 @@ class ItineraryService
      * preferring same city, then same region, then adjacent budget tier
      * alone. No AI involved.
      *
-     * @return array<int, array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, duration_minutes: int|null, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, short_description: string|null, rating: float|null, rating_count: int|null}>
+     * @return array<int, array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, price_unit: string|null, duration_minutes: int|null, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, short_description: string|null, rating: float|null, rating_count: int|null}>
      */
     public function alternatives(string $type, ?int $excludeId = null): array
     {
@@ -718,6 +725,7 @@ class ItineraryService
                 'type' => $listing->type->value,
                 'price_from' => $listing->price_from,
                 'price_currency' => $listing->price_currency,
+                'price_unit' => $listing->price_unit?->value,
                 'duration_minutes' => $listing->duration_minutes,
                 // Without coordinates a swapped-in alternative drops off the
                 // trip map — every other builder of this shape carries them.
@@ -920,7 +928,7 @@ class ItineraryService
      * a same-region/budget match — better than leaving a confirmed-gone
      * listing in the plan) or null if there's no alternative in the catalog.
      *
-     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, lat: float|null, lng: float|null}|null
+     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, price_unit: string|null, lat: float|null, lng: float|null}|null
      */
     private function findAvailableAlternative(int $excludeId, Carbon $checkIn, Carbon $checkOut, int $adults, int $children): ?array
     {
@@ -950,7 +958,7 @@ class ItineraryService
     }
 
     /**
-     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, region: string|null, short_description: string|null, rating: float|null, rating_count: int|null}|null
+     * @return array{id: int, slug: string|null, name: string, type: string, price_from: string|null, price_currency: string, price_unit: string|null, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, region: string|null, short_description: string|null, rating: float|null, rating_count: int|null}|null
      */
     private function toAccommodationReference(?Listing $listing): ?array
     {
@@ -965,6 +973,7 @@ class ItineraryService
             'type' => $listing->type->value,
             'price_from' => $listing->price_from,
             'price_currency' => $listing->price_currency,
+            'price_unit' => $listing->price_unit?->value,
             'lat' => $listing->latitude ? (float) $listing->latitude : null,
             'lng' => $listing->longitude ? (float) $listing->longitude : null,
             'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
@@ -1059,6 +1068,19 @@ class ItineraryService
             camping gear; for vehicle_type "car", use regular lodges/guesthouses instead of camping-only
             sites. Put the chosen vehicle name in the variant's "vehicle" field (once per variant, not per
             day).
+
+            When the trip parameters also carry a vehicle_class ("sedan", "suv", "camper_4x4", "motorhome"
+            or "minibus"), that is the traveler's explicit pick and it overrides the coarser vehicle_type
+            rule above: prefer a catalog vehicle whose own "vehicle_class" is exactly that. Many vehicles
+            have no vehicle_class recorded yet — those are still eligible, so fall back to the name and
+            highlights to judge whether one is the requested kind, and never leave the vehicle field empty
+            just because nothing carries the exact class.
+
+            When the trip parameters carry a vehicle_daily_budget, it is what the traveler wants to spend on
+            the vehicle per day, in the same currency as the catalog's price_from. Prefer a vehicle at or
+            under it. Treat it as a strong preference, not a hard rule: if the closest match is only
+            slightly over, or nothing suitable fits at all, still pick the best-fitting vehicle rather than
+            leaving the traveler without one.
 
             Respond only by calling propose_itinerary — do not reply with plain text.
 
@@ -1455,11 +1477,12 @@ class ItineraryService
 
     /**
      * @param  array<string, mixed>  $tripParams
-     * @return array{nights: int|null, travel_period: string, interests: string, adults: int, children_under_13: int, children_ages: string|null, vehicle_type: string, budget_tier: string}
+     * @return array{nights: int|null, travel_period: string, interests: string, adults: int, children_under_13: int, children_ages: string|null, vehicle_type: string, vehicle_class: string|null, vehicle_daily_budget: int|null, budget_tier: string}
      */
     private function extractTripParams(array $tripParams): array
     {
         $childrenAges = $tripParams['children_ages'] ?? null;
+        $vehicleClass = $this->vehicleClass($tripParams);
 
         return [
             'nights' => is_numeric($tripParams['nights'] ?? null) ? (int) $tripParams['nights'] : null,
@@ -1468,9 +1491,44 @@ class ItineraryService
             'adults' => is_numeric($tripParams['adults'] ?? null) ? (int) $tripParams['adults'] : 1,
             'children_under_13' => is_numeric($tripParams['children_under_13'] ?? null) ? (int) $tripParams['children_under_13'] : 0,
             'children_ages' => is_string($childrenAges) && $childrenAges !== '' ? $childrenAges : null,
-            'vehicle_type' => $this->stringParam($tripParams, 'vehicle_type', ''),
+            // The class is the richer value, so when there is one it decides
+            // the legacy binary rather than being stored next to a
+            // contradicting one ("motorhome" + "car" is not a state anything
+            // downstream should have to reconcile). Without a class this is
+            // exactly what it always was.
+            'vehicle_type' => $vehicleClass?->vehicleType() ?? $this->stringParam($tripParams, 'vehicle_type', ''),
+            'vehicle_class' => $vehicleClass?->value,
+            'vehicle_daily_budget' => $this->vehicleDailyBudget($tripParams),
             'budget_tier' => $this->stringParam($tripParams, 'budget_tier', ''),
         ];
+    }
+
+    /**
+     * The traveler's chosen vehicle class, or null when they never picked one
+     * — which is every plan generated before the picker existed, and every
+     * plan whose interview didn't get specific.
+     *
+     * @param  array<string, mixed>  $tripParams
+     */
+    private function vehicleClass(array $tripParams): ?VehicleClass
+    {
+        $value = $tripParams['vehicle_class'] ?? null;
+
+        return is_string($value) ? VehicleClass::tryFrom($value) : null;
+    }
+
+    /**
+     * The ceiling the traveler set for the vehicle, in NAD per day — the
+     * currency every price in this system is stored in, so the UI converts
+     * from the display currency before sending it.
+     *
+     * @param  array<string, mixed>  $tripParams
+     */
+    private function vehicleDailyBudget(array $tripParams): ?int
+    {
+        $value = $tripParams['vehicle_daily_budget'] ?? null;
+
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : null;
     }
 
     /**
@@ -1535,6 +1593,11 @@ class ItineraryService
     {
         $requestedTier = is_string($tripParams['budget_tier'] ?? null) ? $tripParams['budget_tier'] : null;
         $vehicleType = is_string($tripParams['vehicle_type'] ?? null) ? $tripParams['vehicle_type'] : null;
+        $vehicleClass = $this->vehicleClass($tripParams);
+        $vehicleDailyBudget = $this->vehicleDailyBudget($tripParams);
+        $party = (is_numeric($tripParams['adults'] ?? null) ? (int) $tripParams['adults'] : 1)
+            + (is_numeric($tripParams['children_under_13'] ?? null) ? (int) $tripParams['children_under_13'] : 0);
+        $nights = is_numeric($tripParams['nights'] ?? null) ? (int) $tripParams['nights'] : null;
 
         // Deliberately two queries, and the first one deliberately does NOT
         // hydrate models. The shortlist is decided in PHP (the budget tier and
@@ -1556,13 +1619,15 @@ class ItineraryService
         $shortlisted = Listing::query()
             ->where('is_published', true)
             ->toBase()
-            ->get(['id', 'type', 'price_from', 'highlights'])
+            ->get(['id', 'type', 'price_from', 'price_unit', 'highlights', 'vehicle_class'])
             ->groupBy(fn (object $row) => (string) $row->type)
-            ->flatMap(function (Collection $rows, string $type) use ($requestedTier, $vehicleType) {
-                if ($type === 'vehicle' && $vehicleType !== null) {
-                    $rows = $rows->filter(
-                        fn (object $row) => $this->rawHighlightsContainCamper($row->highlights) === ($vehicleType === 'camper')
-                    );
+            ->flatMap(function (Collection $rows, string $type) use ($requestedTier, $vehicleType, $vehicleClass, $vehicleDailyBudget, $party, $nights) {
+                if ($type === 'vehicle' && ($vehicleClass !== null || $vehicleType !== null)) {
+                    $rows = $this->matchingVehicles($rows, $vehicleClass, $vehicleType);
+
+                    if ($vehicleDailyBudget !== null) {
+                        $rows = $this->sortByDailyBudgetFit($rows, $vehicleDailyBudget, $party, $nights);
+                    }
                 } elseif ($type !== 'vehicle' && $requestedTier !== null) {
                     $rows = $rows->filter(
                         fn (object $row) => $this->budgetTierDistance(
@@ -1604,20 +1669,127 @@ class ItineraryService
     private function toAiCatalog(Collection $listings): array
     {
         return $listings
-            ->map(fn (Listing $listing) => [
-                'name' => $listing->getTranslation('name', 'en', useFallbackLocale: true),
-                'type' => $listing->type->value,
-                // Both sent: 'region' satisfies the macro ROUTE guidance ("which regions to
-                // visit"), 'city' is what the day-by-day "location" field must be filled with.
-                'region' => $listing->region,
-                'city' => $listing->city?->name,
-                'description' => $listing->getTranslation('description', 'en', useFallbackLocale: true),
-                'highlights' => $listing->getTranslation('highlights', 'en', useFallbackLocale: true) ?? [],
-                'price_from' => $listing->price_from,
-                'price_currency' => $listing->price_currency,
-            ])
+            ->map(function (Listing $listing): array {
+                $entry = [
+                    'name' => $listing->getTranslation('name', 'en', useFallbackLocale: true),
+                    'type' => $listing->type->value,
+                    // Both sent: 'region' satisfies the macro ROUTE guidance ("which regions to
+                    // visit"), 'city' is what the day-by-day "location" field must be filled with.
+                    'region' => $listing->region,
+                    'city' => $listing->city?->name,
+                    'description' => $listing->getTranslation('description', 'en', useFallbackLocale: true),
+                    'highlights' => $listing->getTranslation('highlights', 'en', useFallbackLocale: true) ?? [],
+                    'price_from' => $listing->price_from,
+                    'price_currency' => $listing->price_currency,
+                ];
+
+                // Only where it exists, rather than a null on every entry:
+                // the catalog is up to MAX_CANDIDATES_PER_TYPE rows per type
+                // and this key is meaningful for exactly one of those types.
+                if ($listing->vehicle_class !== null) {
+                    $entry['vehicle_class'] = $listing->vehicle_class->value;
+                }
+
+                return $entry;
+            })
             ->values()
             ->all();
+    }
+
+    /**
+     * The vehicles that satisfy the traveler's pick.
+     *
+     * Two sources of truth on purpose, because the catalog is mid-migration:
+     * a row with a `vehicle_class` is matched on that column exactly, and a
+     * row without one falls back to the old "do the highlights say Camper"
+     * heuristic. Since no listing has the column filled yet, the fallback is
+     * currently doing all the work and the shortlist comes out exactly as it
+     * did before this method existed — the class only starts narrowing things
+     * as partners and the team fill it in.
+     *
+     * The fallback is deliberately coarse: an unclassified sedan and an
+     * unclassified 4x4 are indistinguishable from their highlights, so a
+     * traveler asking for an SUV still sees both rather than seeing nothing.
+     * Erring toward "might match" is right here — an over-broad shortlist is
+     * a slightly worse suggestion, an empty one is a plan with no vehicle.
+     *
+     * @param  Collection<int, \stdClass>  $rows
+     * @return Collection<int, \stdClass>
+     */
+    private function matchingVehicles(Collection $rows, ?VehicleClass $class, ?string $vehicleType): Collection
+    {
+        $accepted = array_map(
+            fn (VehicleClass $accepted): string => $accepted->value,
+            $class !== null ? [$class] : VehicleClass::forVehicleType($vehicleType ?? 'car'),
+        );
+
+        $wantsCamper = $class?->isCamper() ?? ($vehicleType === 'camper');
+
+        return $rows->filter(function (\stdClass $row) use ($accepted, $wantsCamper): bool {
+            $recorded = $row->vehicle_class ?? null;
+
+            return is_string($recorded)
+                ? in_array($recorded, $accepted, true)
+                : $this->rawHighlightsContainCamper($row->highlights) === $wantsCamper;
+        });
+    }
+
+    /**
+     * Orders vehicles by whether they fit the traveler's per-day ceiling:
+     * affordable first, unpriced next, over budget last.
+     *
+     * Ordering rather than filtering, because the shortlist is capped at
+     * MAX_CANDIDATES_PER_TYPE and a budget nobody in the catalog meets must
+     * not produce a plan with no vehicle at all. So the budget always decides
+     * *which* vehicles Claude gets to choose from (the cheap ones survive the
+     * cap), never whether it gets any. An unpriced vehicle sits between the
+     * two: it can't be ruled out, but it shouldn't crowd out one that is
+     * demonstrably affordable.
+     *
+     * @param  Collection<int, \stdClass>  $rows
+     * @return Collection<int, \stdClass>
+     */
+    private function sortByDailyBudgetFit(Collection $rows, int $budget, int $party, ?int $nights): Collection
+    {
+        return $rows
+            ->sortBy(function (\stdClass $row) use ($budget, $party, $nights): int {
+                $perDay = $this->vehicleDailyCost($row, $party, $nights);
+
+                if ($perDay === null) {
+                    return 1;
+                }
+
+                return $perDay <= $budget ? 0 : 2;
+            })
+            ->values();
+    }
+
+    /**
+     * What a vehicle row costs per day for this party, in NAD.
+     *
+     * Mirrors vehicleTotal() in ItinerarySection.vue, inverted to a per-day
+     * figure: a per-person rate carries the party multiplier, and a flat
+     * package price is spread across the trip rather than counted as a daily
+     * one. An unrecorded unit means per day, which is what its absence has
+     * always implicitly meant for a vehicle.
+     */
+    private function vehicleDailyCost(\stdClass $row, int $party, ?int $nights): ?float
+    {
+        $price = $row->price_from ?? null;
+
+        if (! is_numeric($price)) {
+            return null;
+        }
+
+        $rawUnit = $row->price_unit ?? null;
+        $unit = is_string($rawUnit) ? PriceUnit::tryFrom($rawUnit) : null;
+        $perCharge = (float) $price * ($unit?->isPerPerson() === true ? max(1, $party) : 1);
+
+        if ($unit === null || $unit->isRecurring()) {
+            return $perCharge;
+        }
+
+        return $perCharge / max(1, $nights ?? 1);
     }
 
     /**

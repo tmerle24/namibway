@@ -1,3 +1,5 @@
+import type { PriceUnit } from '@/lib/price-unit';
+
 export interface ItineraryListingRef {
     id: number | null;
     slug: string | null;
@@ -7,6 +9,11 @@ export interface ItineraryListingRef {
     vehicle_category?: 'self_drive' | 'guided_tour' | null;
     price_from: string | null;
     price_currency: string;
+    // What price_from is quoted per. Null on most of the catalog (nobody has
+    // recorded it) and absent entirely on plans saved before the column
+    // existed — both mean "unstated", and the plan then shows and counts the
+    // price exactly as it did before. See @/lib/price-unit.
+    price_unit?: PriceUnit | null;
     // Typical length of the experience in minutes (activities and guided
     // tours). Part of what the traveler books — a 2h quad ride is a different
     // product from a full-day one — so it rides along in the plan's own copy
@@ -107,6 +114,28 @@ export interface ItineraryVariant {
     days: ItineraryDay[];
 }
 
+// What kind of vehicle the traveler drives — the frontend half of
+// App\Enums\VehicleClass. Null means they never picked one, which is every
+// plan made before the picker existed; the plan then falls back to the coarse
+// `vehicle_type` binary exactly as it always did.
+export type VehicleClass =
+    'sedan' | 'suv' | 'camper_4x4' | 'motorhome' | 'minibus';
+
+export const VEHICLE_CLASSES: readonly VehicleClass[] = [
+    'sedan',
+    'suv',
+    'camper_4x4',
+    'motorhome',
+    'minibus',
+];
+
+/** The legacy "car" | "camper" binary a class implies. */
+export function vehicleTypeForClass(vehicleClass: VehicleClass): string {
+    return vehicleClass === 'camper_4x4' || vehicleClass === 'motorhome'
+        ? 'camper'
+        : 'car';
+}
+
 export interface TripParams {
     nights: number | null;
     travel_period: string;
@@ -115,6 +144,10 @@ export interface TripParams {
     children_under_13: number;
     children_ages?: string | null;
     vehicle_type: string;
+    vehicle_class?: VehicleClass | null;
+    // NAD per day — the currency every price in this system is stored in. The
+    // picker takes it in the traveler's display currency and converts.
+    vehicle_daily_budget?: number | null;
     budget_tier: string;
 }
 
@@ -146,6 +179,7 @@ export interface ListingRecommendation {
     image: string | null;
     price_from: string | null;
     price_currency: string;
+    price_unit?: PriceUnit | null;
     rating: number | null;
     rating_count: number | null;
 }

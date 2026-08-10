@@ -26,6 +26,7 @@ interface Listing {
     longitude: number | null;
     price_from: string | null;
     price_currency: string;
+    price_unit: string | null;
     is_published: boolean;
     image: string | null;
     gallery: string[];
@@ -41,9 +42,17 @@ interface ConnectorOption {
     label: string;
 }
 
+// Same {value,label} shape as the connector options, and likewise built
+// server-side — see ListingController::edit().
+interface PriceUnitOption {
+    value: string;
+    label: string;
+}
+
 const props = defineProps<{
     listing: Listing;
     connector_options: ConnectorOption[];
+    price_unit_options: PriceUnitOption[];
     preview_token?: string | null;
     claim_url?: string | null;
 }>();
@@ -62,6 +71,7 @@ const form = reactive({
     longitude: props.listing.longitude,
     price_from: props.listing.price_from ?? '',
     price_currency: props.listing.price_currency ?? 'NAD',
+    price_unit: props.listing.price_unit ?? '',
     connector_type: props.listing.connector_type ?? '',
     connector_property_code: props.listing.connector_property_code ?? '',
     wetu_id: props.listing.wetu_id ?? '',
@@ -522,6 +532,23 @@ function handleUnpublishClick() {
                         type="text"
                         maxlength="3"
                     />
+                </label>
+                <!-- Empty stays a valid answer: travelers then see the price
+                     with no period attached, which beats the plan inventing
+                     one. The options are narrowed to what makes sense for this
+                     listing's type — see App\Enums\PriceUnit::forType(). -->
+                <label>
+                    Price is per
+                    <select v-model="form.price_unit">
+                        <option value="">Not specified</option>
+                        <option
+                            v-for="option in price_unit_options"
+                            :key="option.value"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </option>
+                    </select>
                 </label>
             </div>
 

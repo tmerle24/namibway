@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\VehicleClass;
 use App\Models\City;
 use App\Models\Destination;
 use App\Models\Listing;
@@ -13,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 class KaiaController extends Controller
@@ -304,6 +306,12 @@ class KaiaController extends Controller
             'children_under_13' => ['required', 'integer', 'min:0', 'max:20'],
             'children_ages' => ['nullable', 'string', 'max:200'],
             'vehicle_type' => ['required', 'string', 'in:car,camper'],
+            'vehicle_class' => ['nullable', 'string', Rule::enum(VehicleClass::class)],
+            // NAD per day, the currency every price here is stored in — the
+            // picker converts from the traveler's display currency before
+            // sending. The ceiling is a sanity bound, not a business rule: it
+            // is far above any real daily rental rate.
+            'vehicle_daily_budget' => ['nullable', 'integer', 'min:1', 'max:1000000'],
             'start_location' => ['nullable', 'string', 'max:120'],
             'end_location' => ['nullable', 'string', 'max:120'],
         ]);
@@ -370,6 +378,7 @@ class KaiaController extends Controller
                     'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
                     'price_from' => $listing->price_from,
                     'price_currency' => $listing->price_currency,
+                    'price_unit' => $listing->price_unit?->value,
                     'rating' => $listing->rating !== null ? (float) $listing->rating : null,
                     'rating_count' => $listing->rating_count,
                 ] : null;

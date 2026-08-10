@@ -23,7 +23,7 @@ class HomeController extends Controller
     private const LISTING_COLUMNS = [
         'id', 'type', 'name', 'slug', 'description',
         'image', 'city_id', 'address', 'latitude', 'longitude',
-        'price_from', 'price_currency', 'rating', 'rating_count',
+        'price_from', 'price_currency', 'price_unit', 'rating', 'rating_count',
     ];
 
     /**
@@ -125,6 +125,7 @@ class HomeController extends Controller
             'longitude' => $listing->longitude !== null ? (float) $listing->longitude : null,
             'price_from' => $listing->price_from,
             'price_currency' => $listing->price_currency,
+            'price_unit' => $listing->price_unit?->value,
             'rating' => $listing->rating !== null ? (float) $listing->rating : null,
             'rating_count' => $listing->rating_count,
         ];

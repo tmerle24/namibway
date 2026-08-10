@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
     Calendar,
+    Car,
     Compass,
     Moon,
     Pencil,
@@ -11,6 +12,7 @@ import {
 import type { ComponentPublicInstance, FunctionalComponent } from 'vue';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { formatPrice } from '@/lib/currency';
 import type { TripParams } from '@/lib/kaia-types';
 
 const props = defineProps<{
@@ -45,6 +47,26 @@ const travelersLabel = computed(() => {
     }
 
     return parts.join(', ');
+});
+
+// The vehicle reads as one fact ("4x4 camper, up to € 65/Tag"), not two
+// chips: the budget is a qualifier on the choice, and on a phone every extra
+// chip costs a line in a row that already clamps.
+const vehicleLabel = computed(() => {
+    const p = props.tripParams;
+
+    if (!p?.vehicle_class) {
+        return null;
+    }
+
+    const name = t(`itinerary.vehiclePicker.classes.${p.vehicle_class}.name`);
+    const budget = p.vehicle_daily_budget
+        ? formatPrice(p.vehicle_daily_budget)
+        : null;
+
+    return budget
+        ? `${name}, ${t('itinerary.meta.upToPerDay', { price: budget })}`
+        : name;
 });
 
 const durationLabel = computed(() => {
@@ -120,6 +142,13 @@ const items = computed<MetaItem[]>(() => {
                   icon: Wallet,
                   label: t('itinerary.meta.budget'),
                   value: t(`itinerary.meta.budgetTiers.${p.budget_tier}`),
+              }
+            : null,
+        vehicleLabel.value
+            ? {
+                  icon: Car,
+                  label: t('itinerary.meta.vehicle'),
+                  value: vehicleLabel.value,
               }
             : null,
     );
