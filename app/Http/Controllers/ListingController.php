@@ -745,13 +745,6 @@ class ListingController extends Controller
     }
 
     /**
-     * The self-service preview/edit link only gets someone as far as editing content —
-     * it was never wired to the actual "create an account" step (a separate /claim/{token}
-     * URL only ever sent as a second link in the invite email). Surface it here too, but
-     * only while there's still an account worth creating: once claimed, the owner already
-     * has one and should use the Filament partner portal instead.
-     */
-    /**
      * The listing's own social profiles, for the sidebar's further-links block.
      *
      * Most of these arrive from scrapers, so the platform key is whitelisted and
@@ -763,22 +756,42 @@ class ListingController extends Controller
     private static function publicSocialLinks(Listing $listing): array
     {
         $allowed = ['facebook', 'instagram', 'youtube', 'twitter', 'linkedin', 'tiktok', 'pinterest', 'tripadvisor', 'vimeo'];
+        $stored = $listing->social_links ?? [];
 
-        $links = collect($listing->social_links ?? [])
-            ->only($allowed)
-            ->filter(fn ($url) => is_string($url) && filter_var($url, FILTER_VALIDATE_URL) !== false)
-            ->filter(fn (string $url) => in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true));
+        /** @var array<string, string> $links */
+        $links = [];
 
-        // The partner's own accounts are the fallback when the listing has none.
-        foreach (['facebook', 'instagram'] as $platform) {
-            if (! $links->has($platform) && filled($listing->partner?->{$platform})) {
-                $links->put($platform, $listing->partner->{$platform});
+        foreach ($allowed as $platform) {
+            $url = $stored[$platform] ?? null;
+
+            // The partner's own accounts are the fallback when the listing has none.
+            if (! is_string($url) || $url === '') {
+                $url = in_array($platform, ['facebook', 'instagram'], true)
+                    ? $listing->partner?->{$platform}
+                    : null;
             }
+
+            if (! is_string($url) || filter_var($url, FILTER_VALIDATE_URL) === false) {
+                continue;
+            }
+
+            if (! in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)) {
+                continue;
+            }
+
+            $links[$platform] = $url;
         }
 
-        return $links->all();
+        return $links;
     }
 
+    /**
+     * The self-service preview/edit link only gets someone as far as editing content —
+     * it was never wired to the actual "create an account" step (a separate /claim/{token}
+     * URL only ever sent as a second link in the invite email). Surface it here too, but
+     * only while there's still an account worth creating: once claimed, the owner already
+     * has one and should use the Filament partner portal instead.
+     */
     private static function claimUrl(Listing $listing, bool $isOwnerPreview): ?string
     {
         if (! $isOwnerPreview || ! $listing->partner || $listing->partner->claimed_at !== null) {
