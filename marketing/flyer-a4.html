@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en-GB" data-variant="print">
+<head>
+<meta charset="utf-8">
+<title>NamibWay — Partner flyer (A4)</title>
+
+<!--
+  ==========================================================================
+  NamibWay A4 partner flyer, front and back. Source file for the print PDF.
+
+  Build:   node marketing/build-flyer.mjs
+  Output:  marketing/out/namibway-partner-flyer-a4-print.pdf   (216 x 303 mm, 3 mm bleed)
+           marketing/out/namibway-partner-flyer-a4-screen.pdf  (210 x 297 mm, no bleed)
+
+  Things you are likely to want to edit, all marked with EDIT: below —
+    1. EDIT: phone      — a phone line in the contact strip, off by default
+    2. EDIT: commission — the costs block; swap in a named rate once decided
+    3. EDIT: hero photo — --hero-photo, empty by default (needs rights-cleared imagery)
+
+  Copy comes from marketing/partner-outreach-copy.md. Keep the two in step.
+  ==========================================================================
+-->
+
+<style>
+/* The build script rewrites the next line for the screen variant. */
+@page { size: 216mm 303mm; margin: 0; } /* PAGESIZE */
+
+:root {
+    --bleed: 3mm;          /* trim-edge overhang; 0 in the screen variant */
+    --safe: 15mm;          /* text inset from the trim edge */
+    --pad: calc(var(--bleed) + var(--safe));
+
+    --brown: #3B2418;      /* brand ground */
+    --brown-deep: #2E1B10;
+    --ink: #2A2317;
+    --amber: #B45309;      /* calls to action */
+    --gold: #B9812E;       /* eyebrows, rules, numerals */
+    --mark: #E2AB6C;       /* the compass amber, sampled from the logo */
+    --sand: #F5F0E3;
+    --paper: #FDFBF6;
+    --rule: #E4D9BE;
+    --muted: #6B6350;
+    --cream: #F3E7D3;
+
+    /* EDIT: hero photo — e.g. url('assets/hero.jpg'). Rights-cleared images only. */
+    --hero-photo: none;
+
+    --serif: 'Bitstream Charter', 'Charter', 'DejaVu Serif', Georgia, serif;
+    --sans: 'Liberation Sans', 'DejaVu Sans', Arial, sans-serif;
+}
+
+html[data-variant="screen"] { --bleed: 0mm; }
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: var(--sans);
+    color: var(--ink);
+    background: #9c9c9c;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.page {
+    position: relative;
+    width: calc(210mm + 2 * var(--bleed));
+    height: calc(297mm + 2 * var(--bleed));
+    overflow: hidden;
+    background: var(--paper);
+    display: flex;
+    flex-direction: column;
+    break-after: page;
+}
+.page:last-child { break-after: auto; }
+
+@media screen {
+    body { padding: 10mm; }
+    .page { margin: 0 auto 10mm; box-shadow: 0 2mm 8mm rgba(0,0,0,.35); }
+}
+
+/* ---------- shared type ---------- */
+
+.eyebrow {
+    font-size: 8pt;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-weight: bold;
+    color: var(--gold);
+    margin: 0 0 5mm;
+}
+h1, h2, h3 { font-family: var(--serif); font-weight: normal; margin: 0; }
+p { margin: 0; }
+
+/* ================= FRONT ================= */
+
+.hero {
+    position: relative;
+    background: var(--brown);
+    background-image: var(--hero-photo);
+    background-size: cover;
+    background-position: center;
+    color: var(--cream);
+    padding: calc(var(--bleed) + 17mm) var(--pad) 17mm;
+    overflow: hidden;
+}
+/* Sits between an optional photograph and the text so the headline always holds. */
+.hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, rgba(46,27,16,.94) 0%, rgba(46,27,16,.88) 48%, rgba(59,36,24,.72) 100%);
+}
+.hero > * { position: relative; }
+
+.hero .compass {
+    position: absolute;
+    width: 132mm;
+    right: -34mm;
+    top: -26mm;
+    opacity: .16;
+}
+.hero .logo { height: 12.5mm; margin: 0 0 16mm; }
+.hero .eyebrow { color: var(--mark); }
+
+.hero h1 {
+    font-size: 28.5pt;
+    line-height: 1.14;
+    color: #FFF8EC;
+    max-width: 148mm;
+    margin-bottom: 8mm;
+}
+.hero .sub {
+    font-size: 10.5pt;
+    line-height: 1.62;
+    color: #DDCCB2;
+    max-width: 138mm;
+}
+.hero .sub strong { color: var(--cream); font-weight: normal; }
+
+.panels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 9mm;
+    /* The call to action is pinned to the foot, so this padding is what balances the
+       air above and below the panel row. Re-check it if the panel copy changes. */
+    padding: 23mm var(--pad) 0;
+}
+.panel .num {
+    font-family: var(--serif);
+    font-size: 15pt;
+    color: var(--gold);
+    line-height: 1;
+    display: block;
+    padding-bottom: 3.5mm;
+    margin-bottom: 4mm;
+    border-bottom: 1.2pt solid var(--rule);
+}
+.panel h3 {
+    font-size: 12.5pt;
+    line-height: 1.25;
+    color: var(--ink);
+    margin-bottom: 3.5mm;
+}
+.panel p {
+    font-size: 9.2pt;
+    line-height: 1.58;
+    color: var(--muted);
+}
+
+.cta {
+    margin-top: auto;
+    background: var(--amber);
+    color: #fff;
+    padding: 12mm var(--pad) calc(var(--bleed) + 12mm);
+    display: flex;
+    align-items: center;
+    gap: 12mm;
+}
+.cta h2 { font-size: 17pt; line-height: 1.2; margin-bottom: 3.5mm; }
+.cta p { font-size: 9.6pt; line-height: 1.55; color: #FDECD8; max-width: 105mm; }
+.cta .qr {
+    flex: 0 0 auto;
+    background: #fff;
+    padding: 3mm;
+    width: 31mm;
+    text-align: center;
+}
+.cta .qr img { width: 25mm; height: 25mm; display: block; }
+.cta .qr span {
+    display: block;
+    margin-top: 2mm;
+    font-size: 6.6pt;
+    letter-spacing: .05em;
+    color: var(--brown);
+}
+
+/* ================= BACK ================= */
+
+.topstrip {
+    background: var(--brown);
+    color: var(--cream);
+    padding: calc(var(--bleed) + 5mm) var(--pad) 5mm;
+    display: flex;
+    align-items: center;
+    gap: 4mm;
+}
+.topstrip img { height: 7mm; }
+.topstrip .rule { flex: 1; height: 1px; background: rgba(226,171,108,.35); }
+.topstrip span {
+    font-size: 7.6pt;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--mark);
+}
+
+.back-body { flex: 1; padding: 10mm var(--pad) 0; }
+
+/* The back is the tight page: three sections, a table and the contact strip all
+   have to sit inside 297 mm. Trailing margin off, so leftover space collects as
+   air above the contact strip rather than pushing it over the trim edge. */
+.section { margin-bottom: 9mm; }
+.section:last-child { margin-bottom: 0; }
+.section > h2 {
+    font-size: 8pt;
+    font-family: var(--sans);
+    font-weight: bold;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--gold);
+    padding-bottom: 3mm;
+    margin-bottom: 6mm;
+    border-bottom: 1.2pt solid var(--gold);
+}
+
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7mm; }
+.step .n {
+    font-family: var(--serif);
+    font-size: 21pt;
+    color: var(--rule);
+    line-height: 1;
+    display: block;
+    margin-bottom: 2.5mm;
+}
+.step h3 { font-size: 10.5pt; line-height: 1.25; margin-bottom: 2.5mm; }
+.step p { font-size: 8.4pt; line-height: 1.5; color: var(--muted); }
+
+table.compare { width: 100%; border-collapse: collapse; }
+table.compare th, table.compare td {
+    text-align: left;
+    padding: 2.9mm 4mm 2.9mm 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    font-size: 8.6pt;
+    line-height: 1.42;
+}
+table.compare thead th {
+    font-size: 7.4pt;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    font-weight: bold;
+    color: var(--muted);
+    border-bottom: 1.2pt solid var(--gold);
+    padding-bottom: 2.4mm;
+}
+table.compare td:first-child, table.compare th:first-child {
+    width: 30%;
+    color: var(--muted);
+}
+table.compare td:nth-child(2) { width: 33%; color: var(--muted); }
+table.compare .ours { background: var(--sand); padding-left: 4mm; color: var(--ink); }
+table.compare thead .ours { color: var(--brown); }
+
+.blocks { display: grid; grid-template-columns: 1.15fr 1fr; gap: 8mm; }
+.block { background: var(--sand); padding: 7mm; }
+.block h3 { font-size: 12pt; margin-bottom: 3.5mm; }
+.block p { font-size: 8.8pt; line-height: 1.55; color: var(--muted); }
+.block p + p { margin-top: 3mm; }
+
+.contact {
+    background: var(--brown);
+    color: var(--cream);
+    padding: 7mm var(--pad) calc(var(--bleed) + 7mm);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8mm;
+}
+.contact .lines { font-size: 9.4pt; line-height: 1.65; }
+.contact .lines strong {
+    font-family: var(--serif);
+    font-weight: normal;
+    font-size: 13pt;
+    display: block;
+    margin-bottom: 1.5mm;
+    color: #FFF8EC;
+}
+.contact .lines a { color: var(--mark); text-decoration: none; }
+.contact img.compass { height: 13mm; opacity: .9; }
+</style>
+</head>
+
+<body>
+
+<!-- ============================== FRONT ============================== -->
+<section class="page">
+
+    <header class="hero">
+        <img class="compass" src="assets/compass-on-brown.svg" alt="">
+        <img class="logo" src="../public/images/namibway-logo-light.png" alt="NamibWay">
+
+        <p class="eyebrow">For lodges, camps, guides and restaurants in Namibia</p>
+
+        <h1>Your guests are planning the whole trip before they land.</h1>
+
+        <p class="sub">
+            NamibWay is a travel platform built for Namibia alone. Our AI travel companion,
+            <strong>Kaia</strong>, interviews the traveller and builds one complete, bookable
+            route — where they sleep, what they do, where they eat, how far they drive each
+            day. Being listed means being part of that plan, not one of forty results on a
+            search page.
+        </p>
+    </header>
+
+    <div class="panels">
+        <article class="panel">
+            <span class="num">01</span>
+            <h3>Real requests,<br>not a flood</h3>
+            <p>
+                A traveller can only have one booking request running at a time, and only
+                after they have an account, a name, and firm dates. You hear from people who
+                have actually decided — not from someone shopping twelve lodges at once.
+            </p>
+        </article>
+
+        <article class="panel">
+            <span class="num">02</span>
+            <h3>Nothing to set up,<br>nothing to pay</h3>
+            <p>
+                A listing on NamibWay is free to create and free to keep. No software to
+                install, no channel manager required. A request arrives as an email with two
+                buttons: confirm or decline. That is the whole workflow.
+            </p>
+        </article>
+
+        <article class="panel">
+            <span class="num">03</span>
+            <h3>Your property,<br>your words</h3>
+            <p>
+                You control the description, the photos, the rates and how you are reachable.
+                If you run ResRequest, NightsBridge or hopeCloud, we can connect to it and
+                confirm automatically. If you would rather stay with email, that works just
+                as well.
+            </p>
+        </article>
+    </div>
+
+    <footer class="cta">
+        <div>
+            <h2>Claim your free listing</h2>
+            <p>
+                We have already prepared one for most Namibian properties from public
+                information. Scan the code, or write to team@namibway.com and we will send
+                you the link to your own listing.
+            </p>
+        </div>
+        <div class="qr">
+            <img src="assets/qr-namibway-com.svg" alt="">
+            <span>NAMIBWAY.COM</span>
+        </div>
+    </footer>
+
+</section>
+
+<!-- ============================== BACK ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>NamibWay for partners</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="back-body">
+
+        <section class="section">
+            <h2>How it works</h2>
+            <div class="steps">
+                <article class="step">
+                    <span class="n">1</span>
+                    <h3>Claim your listing</h3>
+                    <p>
+                        We have already prepared a free listing for most Namibian properties
+                        from public information. Claiming takes a minute and hands you the keys.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">2</span>
+                    <h3>Say how to reach you</h3>
+                    <p>
+                        One-click email is the default and needs no setup. Or connect
+                        ResConnect (ResRequest), NightsBridge or hopeCloud for automatic
+                        availability and confirmation.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">3</span>
+                    <h3>Answer in one click</h3>
+                    <p>
+                        Every request email carries a confirm and a decline link that works
+                        without logging in. Rooms we hold for you are released automatically
+                        if the request goes stale, so nothing sits blocked.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">4</span>
+                    <h3>The guest arrives prepared</h3>
+                    <p>
+                        They travel with a plan — your arrival time, the drive that gets them
+                        to you, and what they are doing the next morning.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>How this is different from a booking portal</h2>
+            <table class="compare">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Typical booking portal</th>
+                        <th class="ours">NamibWay</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Cost to be listed</td>
+                        <td>Free, but visibility is paid</td>
+                        <td class="ours">Free, and free to keep</td>
+                    </tr>
+                    <tr>
+                        <td>What the traveller gets</td>
+                        <td>A list of properties to compare</td>
+                        <td class="ours">One planned route, with you in it</td>
+                    </tr>
+                    <tr>
+                        <td>Requests you receive</td>
+                        <td>Every speculative search</td>
+                        <td class="ours">One committed traveller at a time</td>
+                    </tr>
+                    <tr>
+                        <td>Driving times and routing</td>
+                        <td>Not their problem</td>
+                        <td class="ours">Planned from real road data, so guests arrive when they say they will</td>
+                    </tr>
+                    <tr>
+                        <td>Languages</td>
+                        <td>Global</td>
+                        <td class="ours">English, German, Dutch, French, Spanish — Namibia's actual source markets</td>
+                    </tr>
+                    <tr>
+                        <td>Who answers the guest afterwards</td>
+                        <td>Nobody</td>
+                        <td class="ours">We do, before and during the trip</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="section">
+            <div class="blocks">
+                <!-- EDIT: commission — see marketing/partner-outreach-copy.md, section 2.
+                     Replace "below the rates the international portals charge" with a named
+                     rate only once that is signed off and the phone script agrees. -->
+                <article class="block">
+                    <h3>What it costs</h3>
+                    <p>
+                        Listing is free and stays free. We earn a commission only when a
+                        booking is confirmed — deliberately set below the rates the
+                        international portals charge.
+                    </p>
+                    <p>
+                        Nothing is owed on requests you decline, on requests that expire, or
+                        on guests who book with you directly after finding you here.
+                    </p>
+                </article>
+
+                <article class="block">
+                    <h3>Where we are today</h3>
+                    <p>
+                        NamibWay is live and we are signing our founding partners now. Your
+                        property is among the first travellers see, and we still have time to
+                        build the platform around what you tell us you need.
+                    </p>
+                    <p>
+                        If something about the way requests reach you does not fit how you
+                        work, say so — at this stage we can still change it.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="contact">
+        <div class="lines">
+            <strong>Claim your listing, or just ask us anything.</strong>
+            <!-- EDIT: phone — uncomment and fill in once there is a number that is answered.
+            +264 __ ___ ____<br> -->
+            <a href="mailto:team@namibway.com">team@namibway.com</a>
+            &nbsp;·&nbsp;
+            <a href="https://namibway.com">namibway.com</a>
+        </div>
+        <img class="compass" src="assets/compass-on-brown.svg" alt="">
+    </footer>
+
+</section>
+
+</body>
+</html>

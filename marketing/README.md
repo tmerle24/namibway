@@ -6,10 +6,29 @@ operators and restaurants as NamibWay partners.
 | File | What it is |
 |---|---|
 | `partner-outreach-copy.md` | The approved copy: A4 flyer (front/back), A5 hand-out, A6 leave-behind card, phone talk track, objection FAQ |
-| `claude-designer-prompt.md` | Ready-to-paste prompt for designing the pieces, plus which brand files to attach and why the domain alone is not enough |
+| `flyer-a4.html` | The designed A4 flyer, front and back. Source of the PDFs |
+| `build-flyer.mjs` | `node marketing/build-flyer.mjs` — renders the PDFs with headless Chromium, no npm dependencies |
+| `assets/` | QR code for namibway.com and the compass mark recoloured for the brown and sand grounds |
+| `out/` | The built PDFs |
+| `claude-designer-prompt.md` | Ready-to-paste prompt if you would rather design a piece elsewhere, plus which brand files to attach and why the domain alone is not enough |
 
-Designed pieces (HTML/PDF) are not committed yet — add them under `marketing/out/`
-when they exist, and keep this table current.
+## The A4 flyer
+
+`out/namibway-partner-flyer-a4-print.pdf` — 216 × 303 mm, that is A4 plus 3 mm bleed
+on all four sides, no crop marks. This is the file for a print shop. The brown bands
+and the amber call to action run into the bleed, so a small trim variance never leaves
+a white sliver at the edge.
+
+`out/namibway-partner-flyer-a4-screen.pdf` — plain A4, for email and the office
+printer.
+
+Both come from `flyer-a4.html`; edit that and re-run the build. Three things in it are
+marked `EDIT:` — a phone line in the contact strip (off, because there is no number
+that is answered yet), the commission wording, and an optional hero photograph.
+
+Colours are RGB. Most print shops convert to CMYK themselves; if yours insists on a
+CMYK file, send them the print PDF and ask them to convert — the palette is muted
+enough that the shift is small, but check a proof before a large run.
 
 ## Claims we may make
 
