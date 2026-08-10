@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Enums\ConnectorType;
 use App\Filament\Resources\PartnerResource\Pages;
+use App\Filament\Support\MessagesColumn;
 use App\Http\Controllers\Controller;
 use App\Models\Partner;
 use App\Models\PartnerMessage;
@@ -140,27 +141,10 @@ class PartnerResource extends Resource
                     ->whereNull('read_at'),
             ]))
             ->columns([
-                Tables\Columns\TextColumn::make('unread_messages_count')
-                    ->label('Messages')
-                    ->badge(fn (Partner $record): bool => $record->email !== null)
-                    ->icon(fn (Partner $record): ?string => $record->email !== null
-                        ? 'heroicon-o-envelope'
-                        : null)
-                    ->formatStateUsing(fn (int $state, Partner $record): string => match (true) {
-                        $record->email === null => '',
-                        $state > 0 => (string) $state,
-                        default => "\u{00A0}",
-                    })
-                    ->color(fn (int $state): string => $state > 0 ? 'danger' : 'gray')
-                    ->tooltip(fn (int $state, Partner $record): ?string => match (true) {
-                        $record->email === null => null,
-                        $state > 0 => "{$state} unread message(s) — click to view",
-                        default => 'View messages',
-                    })
-                    ->url(fn (Partner $record): ?string => $record->email !== null
-                        ? static::getUrl('messages', ['record' => $record])
-                        : null)
-                    ->sortable(),
+                MessagesColumn::make(
+                    url: fn (Partner $record): string => static::getUrl('messages', ['record' => $record]),
+                    contactEmail: fn (Partner $record): ?string => $record->email,
+                ),
                 Tables\Columns\ImageColumn::make('logo')
                     // Not disk('public'): logo can be on either 'r2' (current default)
                     // or 'public' (rows uploaded before the r2 switch) — resolveMediaUrl

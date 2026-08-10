@@ -55,9 +55,29 @@ trait HasPartnerMessagesTable
         return 'Message from NamibWay';
     }
 
+    /**
+     * Address "Contact owner" writes to. Defaults to the partner's own email;
+     * ListingMessages widens it to the listing's contact_email, which is where
+     * the address usually is for an imported property (the importer creates a
+     * Partner per source page, but those pages rarely carry an email, while
+     * enrichment does write one onto the listing). Replies come back correctly
+     * either way — PartnerEmailFetcher::resolveRecipients() matches inbound
+     * mail on Listing.contact_email first, then Partner.email.
+     */
+    protected function getContactEmail(): ?string
+    {
+        return $this->getPartner()?->email;
+    }
+
     protected function getContactListing(): ?Listing
     {
         return null;
+    }
+
+    /** Shown as the empty state when there is nobody to write to yet. */
+    protected function getMissingEmailHint(): string
+    {
+        return 'Add an email address to this partner to enable owner contact.';
     }
 
     private function getContactListingId(): ?int
@@ -90,14 +110,16 @@ trait HasPartnerMessagesTable
         return $table
             ->query(fn () => $this->getMessagesQuery())
             ->recordTitleAttribute('subject')
-            ->emptyStateHeading($this->getPartner()?->email !== null
-                ? 'No messages yet'
-                : ($this->getPartner() !== null ? 'Partner has no email on file' : 'No partner assigned'))
-            ->emptyStateDescription($this->getPartner()?->email !== null
-                ? 'Use "Contact owner" or "Send claim email" above to start the conversation.'
-                : ($this->getPartner() !== null
-                    ? 'Add an email address to this partner to enable owner contact.'
-                    : 'Assign a partner to this listing to enable owner contact.'))
+            ->emptyStateHeading(match (true) {
+                $this->getPartner() === null => 'No partner assigned',
+                filled($this->getContactEmail()) => 'No messages yet',
+                default => 'No email on file',
+            })
+            ->emptyStateDescription(match (true) {
+                $this->getPartner() === null => 'Assign a partner to this listing to enable owner contact.',
+                filled($this->getContactEmail()) => 'Use "Contact owner" or "Send claim email" above to start the conversation.',
+                default => $this->getMissingEmailHint(),
+            })
             ->columns([
                 Tables\Columns\IconColumn::make('direction')
                     ->label('')
@@ -154,7 +176,10 @@ trait HasPartnerMessagesTable
                     ->label('Contact owner')
                     ->icon('heroicon-o-envelope')
                     ->color('primary')
-                    ->visible(fn (): bool => $this->getPartner()?->email !== null)
+                    // A Partner row is still required even when the address comes
+                    // from the listing — partner_messages.partner_id is what the
+                    // thread hangs off, and it is not nullable.
+                    ->visible(fn (): bool => $this->getPartner() !== null && filled($this->getContactEmail()))
                     ->form([
                         Forms\Components\TextInput::make('subject')
                             ->required()
@@ -167,8 +192,9 @@ trait HasPartnerMessagesTable
                     ])
                     ->action(function (array $data): void {
                         $partner = $this->getPartner();
+                        $email = $this->getContactEmail();
 
-                        Mail::to($partner->email, $partner->name)
+                        Mail::to($email, $partner->name)
                             ->send(new PartnerContactMail($partner, $data['subject'], $data['body'], $this->getContactListing()));
 
                         PartnerMessage::create([
@@ -181,7 +207,7 @@ trait HasPartnerMessagesTable
                             'sent_at' => now(),
                         ]);
 
-                        Notification::make()->title('Message sent to '.$partner->email)->success()->send();
+                        Notification::make()->title('Message sent to '.$email)->success()->send();
                     }),
             ])
             ->actions([
