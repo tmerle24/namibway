@@ -262,11 +262,14 @@ _PRICE_RE = re.compile(r"(?:N\$|NAD|ZAR|R)\s?([\d][\d\s.,]{1,12})", re.IGNORECAS
 # minutes, the format these tourism pages actually print their GPS in. Matching
 # only \d{1,2} there silently truncated 29.100' to 29' — a ~740 m error, on the
 # field the importer trusts as the locator for nearest-city matching.
+# The hemisphere letter is upper case and stands alone. Case-insensitive
+# matching turned the tail of an ordinary word into a coordinate: "accommodate
+# 23 4x4 vehicles" parsed as E 23° 04', which is in Botswana and sat inside the
+# Namibia bounding box, so nothing downstream caught it.
 _DMS_RE = re.compile(
-    r"(?P<hemi>[NSEW])\s*(?P<deg>\d{1,3})\s*(?:°|º|deg)?\s*[;:,]?\s*"
+    r"(?<![A-Za-z])(?P<hemi>[NSEW])\s*(?P<deg>\d{1,3})\s*(?:°|º|deg|DEG)?\s*[;:,]?\s*"
     r"(?P<min>\d{1,2}(?:[.,]\d+)?)\s*(?:['′´`]|min)?\s*"
-    r"(?P<sec>\d{1,3}(?:[.,]\d+)?)?\s*(?:[\"”″]|sec)?",
-    re.IGNORECASE,
+    r"(?P<sec>\d{1,3}(?:[.,]\d+)?)?\s*(?:[\"”″]|sec)?"
 )
 _DECIMAL_COORD_RE = re.compile(
     r"(?<![\d.])(-\d{2}\.\d{3,7})\s*[,;/ ]\s*(\d{2}\.\d{3,7})(?![\d.])"
@@ -550,9 +553,36 @@ def strip_volatile(value: str) -> str:
     return clean_text(value)
 
 
+# Booking furniture namibweb repeats on every page. Frequency alone does not
+# catch it: the wording is identical but the block boundaries are not, so a
+# sentence standing alone on one page is glued to a neighbour on the next and
+# the counter sees two different blocks. These are only applied to short
+# blocks, so a long paragraph that happens to end with such a sentence keeps
+# its actual content.
+_TRANSACTIONAL_MARKERS = (
+    "reservations are only accepted",
+    "final availability confirmation",
+    "terms & conditions",
+    "payment options",
+    "subject to change without prior notice",
+    "value added tax",
+    "government levies",
+    "contact & reservations",
+)
+_TRANSACTIONAL_MAX_LEN = 400
+
+_LINK_LINE_RE = re.compile(r"https?://\S+$")
+
+
 def looks_like_boilerplate(block: str) -> bool:
     lowered = block.lower()
     if any(marker in lowered for marker in _BOILERPLATE_MARKERS):
+        return True
+    if len(block) <= _TRANSACTIONAL_MAX_LEN and any(m in lowered for m in _TRANSACTIONAL_MARKERS):
+        return True
+    # "TRAVEL NAMIBIA: https://www.facebook.com/groups/travelnamibia" — a label
+    # and a link is a link line, not a sentence about the listing.
+    if len(block) <= 160 and _LINK_LINE_RE.search(block.strip()):
         return True
     # Nav strips are mostly separators and single words.
     if len(block) < 40 and block.count("|") + block.count("»") + block.count(">") >= 2:
@@ -700,15 +730,17 @@ def extract_photos(html: str, page_url: str) -> list[str]:
     return photos
 
 
-def extract_social_links(html: str) -> dict[str, str]:
-    """Facebook / Instagram / YouTube / … profile URLs found on a page.
+def social_candidates(html: str) -> dict[str, list[str]]:
+    """Every plausible profile URL per platform, in document order.
 
-    These end up in the listing sidebar as further links, so a share widget or
-    a bare platform root is worse than nothing — both are filtered out here,
-    and the site's own accounts are filtered later by corpus frequency.
+    Keeping all of them is what lets corpus frequency work: a page carries
+    several Facebook links and only some are the site's own, so collapsing to
+    the first one immediately means the frequency counter compares whichever
+    happened to come first — and the site's account then survives on the page
+    where it is not first. The single-value pick happens after filtering.
     """
     soup = BeautifulSoup(html, "lxml")
-    found: dict[str, str] = {}
+    found: dict[str, list[str]] = {}
 
     for a in soup.find_all("a", href=True):
         href = a["href"].strip()
@@ -731,12 +763,25 @@ def extract_social_links(html: str) -> dict[str, str]:
         if parsed.query and key in ("youtube", "vimeo"):  # watch?v=… is the video id
             url = f"{url}?{parsed.query}"
 
-        found.setdefault(key, url)
+        bucket = found.setdefault(key, [])
+        if url not in bucket:
+            bucket.append(url)
 
     return found
 
 
-def build_chrome_social(all_social: list[dict[str, str]]) -> set[str]:
+def extract_social_links(html: str, chrome_social: set[str] | frozenset = frozenset()) -> dict[str, str]:
+    """One profile URL per platform — the first that is not the site's own."""
+    out: dict[str, str] = {}
+    for key, urls in social_candidates(html).items():
+        for url in urls:
+            if url not in chrome_social:
+                out[key] = url
+                break
+    return out
+
+
+def build_chrome_social(all_social: list[dict[str, list[str]]]) -> set[str]:
     """namibweb's own Facebook/YouTube links sit in the template on every page.
 
     Same frequency trick as the text chrome: a social URL that shows up on a
@@ -747,7 +792,7 @@ def build_chrome_social(all_social: list[dict[str, str]]) -> set[str]:
 
     counts: Counter[str] = Counter()
     for social in all_social:
-        for url in set(social.values()):
+        for url in {u for urls in social.values() for u in urls}:
             counts[url] += 1
 
     threshold = max(3, int(len(all_social) * 0.2))
@@ -1080,7 +1125,7 @@ def parse_detail(page: "Page", chrome: set[str], chrome_social: set[str]) -> dic
     phones = extract_phones(full_text)
     lat, lon = extract_coordinates(full_text)
     price_from, currency = extract_price(full_text)
-    social = {k: v for k, v in extract_social_links(html).items() if v not in chrome_social}
+    social = extract_social_links(html, chrome_social)
 
     # The address line is the block that mentions a postal marker and stays short.
     address = None
@@ -1665,7 +1710,7 @@ def run_sample(urls: list[str], args, fetcher: Fetcher, run_at: str) -> int:
     corpus += [p.html or "" for p in pages.values()]
 
     chrome = build_chrome_index([text_blocks(h) for h in corpus])
-    chrome_social = build_chrome_social([extract_social_links(h) for h in corpus])
+    chrome_social = build_chrome_social([social_candidates(h) for h in corpus])
     if chrome or chrome_social:
         print(f"Chrome learned from {len(corpus)} known pages: "
               f"{len(chrome)} repeated blocks, {len(chrome_social)} site-owned social links")
@@ -1808,7 +1853,7 @@ def main() -> int:
     # Parsing needs the whole corpus first: template chrome (text blocks and the
     # site's own social accounts) is identified by how often it repeats.
     all_blocks = [text_blocks(p.html or "") for p in pages.values()]
-    all_social = [extract_social_links(p.html or "") for p in pages.values()]
+    all_social = [social_candidates(p.html or "") for p in pages.values()]
     chrome = build_chrome_index(all_blocks)
     chrome_social = build_chrome_social(all_social)
     print(f"Stripping {len(chrome)} repeated template blocks and "
