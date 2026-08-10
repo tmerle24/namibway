@@ -52,6 +52,17 @@ const FALLBACK_HERO_IMAGES: Record<Listing['type'], string[]> = {
     ],
 };
 
+type SocialPlatform =
+    | 'facebook'
+    | 'instagram'
+    | 'youtube'
+    | 'twitter'
+    | 'linkedin'
+    | 'tiktok'
+    | 'pinterest'
+    | 'tripadvisor'
+    | 'vimeo';
+
 interface Partner {
     name: string;
     logo: string | null;
@@ -69,16 +80,25 @@ interface Listing {
     highlights: string[];
     image: string | null;
     gallery: string[];
-    photos_source: 'manual' | 'website_scrape' | 'google_places' | null;
+    photos_source:
+        | 'partner'
+        | 'manual'
+        | 'website_scrape'
+        | 'ai_generated'
+        | 'google_places'
+        | 'directory'
+        | null;
     photos_attribution: string | null;
     pending_image: string | null;
     pending_gallery: string[];
+    pending_photos_source: string | null;
     region: string | null;
     city: string | null;
     address: string | null;
     phone: string | null;
     phone_href: string | null;
     website: string | null;
+    social_links: Partial<Record<SocialPlatform, string>>;
     latitude: number | null;
     longitude: number | null;
     price_from: string | null;
@@ -161,6 +181,15 @@ const pendingPhotoCount = computed(
     () =>
         props.listing.pending_gallery.length +
         (props.listing.pending_image ? 1 : 0),
+);
+
+// Staged photos that no approval can publish (see App\Enums\ContentSource).
+// The server only sends pending photos to someone allowed to see them, so their
+// presence is the visibility check.
+const referenceOnlyPhotoCount = computed(() =>
+    props.listing.pending_photos_source === 'directory'
+        ? pendingPhotoCount.value
+        : 0,
 );
 
 function publishListing() {
@@ -281,6 +310,30 @@ const directionsUrl = computed(() => {
 const websiteUrl = computed(
     () => props.listing.partner?.website || props.listing.website,
 );
+
+// Fixed order so the sidebar reads the same on every listing, regardless of
+// which platforms a given source happened to publish.
+const SOCIAL_ORDER: SocialPlatform[] = [
+    'facebook',
+    'instagram',
+    'youtube',
+    'tiktok',
+    'twitter',
+    'linkedin',
+    'pinterest',
+    'vimeo',
+    'tripadvisor',
+];
+
+const socialLinks = computed(() =>
+    SOCIAL_ORDER.filter(
+        (platform) => !!props.listing.social_links?.[platform],
+    ).map((platform) => ({
+        platform,
+        url: props.listing.social_links[platform] as string,
+        label: t(`listing.links.${platform}`),
+    })),
+);
 </script>
 
 <template>
@@ -390,6 +443,35 @@ const websiteUrl = computed(
                     :key="i"
                     v-bind="thumbAttrs(src, 56)"
                     :alt="`Pending gallery image ${i + 1}`"
+                    loading="lazy"
+                    decoding="async"
+                />
+            </div>
+        </div>
+
+        <!-- Staged photos from a third-party directory. Visible to an admin or the
+             owner as reference while a listing is being matched up, but there is no
+             approve action: nobody here can license someone else's photography. -->
+        <div v-if="referenceOnlyPhotoCount" class="pending-photos-preview">
+            <p>
+                {{ referenceOnlyPhotoCount }} photo(s) from
+                {{ props.listing.pending_photos_source }} — reference only, not
+                publishable. They disappear once the listing's own website is
+                crawled or the owner uploads their own.
+            </p>
+            <div class="pending-photos-thumbs">
+                <img
+                    v-if="props.listing.pending_image"
+                    v-bind="thumbAttrs(props.listing.pending_image, 56)"
+                    alt="Reference image"
+                    loading="lazy"
+                    decoding="async"
+                />
+                <img
+                    v-for="(src, i) in props.listing.pending_gallery"
+                    :key="i"
+                    v-bind="thumbAttrs(src, 56)"
+                    :alt="`Reference image ${i + 1}`"
                     loading="lazy"
                     decoding="async"
                 />
@@ -690,19 +772,19 @@ const websiteUrl = computed(
                                 rel="noopener noreferrer"
                                 >{{ t('listing.contact.website') }}</a
                             >
+                        </div>
+                    </div>
+
+                    <div v-if="socialLinks.length" class="links-card">
+                        <h3>{{ t('listing.links.title') }}</h3>
+                        <div class="further-links">
                             <a
-                                v-if="props.listing.partner?.instagram"
-                                :href="props.listing.partner.instagram"
+                                v-for="link in socialLinks"
+                                :key="link.platform"
+                                :href="link.url"
                                 target="_blank"
-                                rel="noopener noreferrer"
-                                >{{ t('listing.contact.instagram') }}</a
-                            >
-                            <a
-                                v-if="props.listing.partner?.facebook"
-                                :href="props.listing.partner.facebook"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                >{{ t('listing.contact.facebook') }}</a
+                                rel="noopener noreferrer nofollow"
+                                >{{ link.label }}</a
                             >
                         </div>
                     </div>

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ConnectorType;
+use App\Enums\ContentSource;
 use App\Enums\ListingType;
 use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
@@ -41,6 +42,7 @@ class Listing extends Model
         'connector_property_code',
         'description',
         'short_description',
+        'description_source',
         'seo_description',
         'meta_title',
         'highlights',
@@ -48,6 +50,7 @@ class Listing extends Model
         'gallery',
         'pending_image',
         'pending_gallery',
+        'pending_photos_source',
         'photos_source',
         'photos_attribution',
         'photos_approved_at',
@@ -70,6 +73,7 @@ class Listing extends Model
         'source_url',
         'claim_status',
         'website',
+        'social_links',
         'contact_email',
         'contact_person',
         'phone',
@@ -100,7 +104,11 @@ class Listing extends Model
         'vehicle_category' => VehicleCategory::class,
         'vehicle_class' => VehicleClass::class,
         'gallery' => 'array',
+        'social_links' => 'array',
         'pending_gallery' => 'array',
+        'pending_photos_source' => ContentSource::class,
+        'photos_source' => ContentSource::class,
+        'description_source' => ContentSource::class,
         'photos_approved_at' => 'datetime',
         'google_photos_expire_at' => 'datetime',
         'terms_accepted_at' => 'datetime',
@@ -150,6 +158,17 @@ class Listing extends Model
             if (blank($listing->connector_property_code)
                 && $listing->partner?->connector_type === ConnectorType::Native) {
                 $listing->connector_property_code = $listing->slug;
+            }
+
+            // Text written through any human-facing path — the admin panel, the
+            // partner panel, the Excel importer, the owner's own editor — is the
+            // top of the content ladder. Marking it here rather than at each of
+            // those call sites means a hand-written description can never be
+            // mistaken for leftover scraped text and regenerated over. Writers
+            // that know their own provenance set both fields together, and are
+            // left alone.
+            if ($listing->isDirty('description') && ! $listing->isDirty('description_source')) {
+                $listing->description_source = ContentSource::Manual;
             }
         });
     }
@@ -384,6 +403,19 @@ class Listing extends Model
     }
 
     /**
+     * Staged photos an approval could actually publish.
+     *
+     * Directory photos are staged too — they are useful internally, so an admin
+     * matching a listing can see what the property looks like — but they are
+     * someone else's photography and no approval of ours can license them.
+     */
+    public function hasApprovablePhotos(): bool
+    {
+        return $this->hasPendingPhotos()
+            && ($this->pending_photos_source ?? ContentSource::WebsiteScrape)->publishable();
+    }
+
+    /**
      * Promotes website-scraped photos staged in pending_image/pending_gallery to the
      * live image/gallery columns, once the owner (or an admin, on their behalf) has
      * confirmed we may publish them — see EnrichmentPipeline's website image step,
@@ -391,16 +423,22 @@ class Listing extends Model
      */
     public function approvePendingPhotos(): void
     {
-        if (! $this->hasPendingPhotos()) {
+        // Not merely "nothing staged": a listing can hold staged directory
+        // photos, and consent from the owner cannot license someone else's
+        // photography. Those stay pending as internal reference.
+        if (! $this->hasApprovablePhotos()) {
             return;
         }
+
+        $source = $this->pending_photos_source ?? ContentSource::WebsiteScrape;
 
         $this->forceFill([
             'image' => $this->image ?: $this->pending_image,
             'gallery' => empty($this->gallery) ? $this->pending_gallery : $this->gallery,
             'pending_image' => null,
             'pending_gallery' => null,
-            'photos_source' => 'website_scrape',
+            'pending_photos_source' => null,
+            'photos_source' => $source,
             'photos_approved_at' => now(),
         ])->save();
     }

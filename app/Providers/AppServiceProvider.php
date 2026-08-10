@@ -4,9 +4,11 @@ namespace App\Providers;
 
 use App\Models\ApiClient;
 use App\Models\Inquiry;
+use App\Models\Listing;
 use App\Models\Review;
 use App\Models\User;
 use App\Observers\InquiryObserver;
+use App\Observers\ListingObserver;
 use App\Observers\ReviewObserver;
 use Carbon\CarbonImmutable;
 use Filament\Forms\Components\FileUpload;
@@ -40,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         Inquiry::observe(InquiryObserver::class);
+        Listing::observe(ListingObserver::class);
         Review::observe(ReviewObserver::class);
 
         Event::listen(function (Login $event) {

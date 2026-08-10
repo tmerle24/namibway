@@ -297,7 +297,13 @@ class ListingController extends Controller
         // Website-scraped photos the owner hasn't approved yet — only shown to the
         // owner themselves or an admin, never to the public, since we don't have the
         // right to publish them without consent (see Listing::approvePendingPhotos()).
-        $canApprovePhotos = $isAdmin || $isOwnerPreview;
+        $canSeePendingPhotos = $isAdmin || $isOwnerPreview;
+
+        // Seeing them and being able to publish them are different rights.
+        // Directory-sourced staged photos stay visible to an admin as reference
+        // while matching a property, but consent from this owner cannot license
+        // a third party's photography — so no approve button is offered for them.
+        $canApprovePhotos = $canSeePendingPhotos && $listing->hasApprovablePhotos();
 
         // Detect coordinate text saved into `address` so the public page shows a
         // working map instead of a raw "S20°47.482 E016°42.704" string next to the
@@ -355,18 +361,22 @@ class ListingController extends Controller
                     ->values(),
                 'photos_source' => $listing->photos_source,
                 'photos_attribution' => $listing->photos_attribution,
-                'pending_image' => $canApprovePhotos && $listing->pending_image
+                'pending_image' => $canSeePendingPhotos && $listing->pending_image
                     ? self::resolveMediaUrl($listing->pending_image)
                     : null,
-                'pending_gallery' => $canApprovePhotos
+                'pending_gallery' => $canSeePendingPhotos
                     ? collect($listing->pending_gallery ?? [])->map(fn (string $path) => self::resolveMediaUrl($path))->values()
                     : [],
+                'pending_photos_source' => $canSeePendingPhotos
+                    ? $listing->pending_photos_source?->value
+                    : null,
                 'region' => $listing->region,
                 'city' => $listing->city?->name,
                 'address' => $parsedCoordinates ? null : $listing->address,
                 'phone' => $phone['display'] ?? null,
                 'phone_href' => $phone['href'] ?? null,
                 'website' => $listing->website,
+                'social_links' => self::publicSocialLinks($listing),
                 'latitude' => $listing->latitude !== null
                     ? (float) $listing->latitude
                     : $resolvedCoordinates[0] ?? null,
@@ -732,6 +742,47 @@ class ListingController extends Controller
             ], fn ($v) => filled($v)),
             default => [],
         };
+    }
+
+    /**
+     * The listing's own social profiles, for the sidebar's further-links block.
+     *
+     * Most of these arrive from scrapers, so the platform key is whitelisted and
+     * the URL is required to be http(s) — an unvalidated value out of a scraped
+     * page must never become an href.
+     *
+     * @return array<string, string>
+     */
+    private static function publicSocialLinks(Listing $listing): array
+    {
+        $allowed = ['facebook', 'instagram', 'youtube', 'twitter', 'linkedin', 'tiktok', 'pinterest', 'tripadvisor', 'vimeo'];
+        $stored = $listing->social_links ?? [];
+
+        /** @var array<string, string> $links */
+        $links = [];
+
+        foreach ($allowed as $platform) {
+            $url = $stored[$platform] ?? null;
+
+            // The partner's own accounts are the fallback when the listing has none.
+            if (! is_string($url) || $url === '') {
+                $url = in_array($platform, ['facebook', 'instagram'], true)
+                    ? $listing->partner?->{$platform}
+                    : null;
+            }
+
+            if (! is_string($url) || filter_var($url, FILTER_VALIDATE_URL) === false) {
+                continue;
+            }
+
+            if (! in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)) {
+                continue;
+            }
+
+            $links[$platform] = $url;
+        }
+
+        return $links;
     }
 
     /**

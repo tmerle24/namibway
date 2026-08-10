@@ -251,6 +251,18 @@
             "instagram": "Instagram",
             "facebook": "Facebook"
         },
+        "links": {
+            "title": "Meer links",
+            "facebook": "Facebook",
+            "instagram": "Instagram",
+            "youtube": "YouTube",
+            "twitter": "X (Twitter)",
+            "linkedin": "LinkedIn",
+            "tiktok": "TikTok",
+            "pinterest": "Pinterest",
+            "tripadvisor": "Tripadvisor",
+            "vimeo": "Vimeo"
+        },
         "inquiry": {
             "title": "Beschikbaarheid aanvragen",
             "contactPerson": "Je contactpersoon: {name}",
