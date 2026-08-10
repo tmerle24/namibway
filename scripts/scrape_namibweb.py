@@ -2065,6 +2065,11 @@ def classify_archived(pages: dict[str, "Page"]) -> tuple[dict[str, "Page"], set[
 
 
 def main() -> int:
+    # Piping to tee makes stdout block-buffered, so progress vanishes for
+    # minutes at a time and a working run is indistinguishable from a hung one.
+    # It cost an hour of watching a silent terminal to learn that.
+    sys.stdout.reconfigure(line_buffering=True)
+
     parser = argparse.ArgumentParser(description="Scrape namibweb.com listings")
     parser.add_argument("--seed", action="append", default=[], help="Extra entry-point URL (repeatable)")
     parser.add_argument("--limit", type=int, default=0, help="Max listing pages (0 = all)")
@@ -2161,6 +2166,7 @@ def main() -> int:
 
     # Parsing needs the whole corpus first: template chrome (text blocks and the
     # site's own social accounts) is identified by how often it repeats.
+    print(f"Building the template-chrome corpus from {len(pages)} pages")
     all_blocks = [text_blocks(p.html or "") for p in pages.values()]
     all_social = [social_candidates(p.html or "") for p in pages.values()]
     chrome = build_chrome_index(all_blocks)
@@ -2169,7 +2175,10 @@ def main() -> int:
           f"{len(chrome_social)} site-owned social links")
 
     fresh: dict[str, dict] = {}
-    for scrape_id, page in pages.items():
+    print(f"Extracting {len(pages)} pages")
+    for done, (scrape_id, page) in enumerate(pages.items(), start=1):
+        if done % 100 == 0:
+            print(f"  extracted {done}/{len(pages)} — {len(fresh)} records")
         if is_coordinate_index(page.html or ""):
             continue  # a lookup table, already harvested; not a listing
         try:
