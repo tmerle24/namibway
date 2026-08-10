@@ -1237,10 +1237,17 @@ def is_index_page(html: str, url: str) -> bool:
 
 def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[str, dict],
           *, max_depth: int, max_pages: int, limit: int, use_conditional: bool,
-          workers: int) -> tuple[dict[str, Page], list[str], set[str]]:
+          workers: int) -> tuple[dict[str, Page], list[str], set[str], dict[str, Page]]:
     """Breadth-first crawl that sorts pages into indexes and listings as it goes.
 
-    Returns (listing pages by scrape_id, scrape_ids that answered 304, index URLs).
+    Returns (listing pages by scrape_id, scrape_ids that answered 304, index URLs,
+    every fetched page by scrape_id).
+
+    The fourth value is what gets archived, and it is deliberately not the first:
+    archiving only the pages this crawl happened to call listings would make the
+    archive hostage to the classifier. A page misread as an index would be lost,
+    and fixing that misreading later would mean crawling the site again — which
+    is exactly what the archive exists to prevent.
     """
     queue: deque[Page] = deque(
         Page(url, type_hint=hint, depth=0) for url, hint in seeds
@@ -1250,6 +1257,7 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
     listings: dict[str, Page] = {}
     unchanged: list[str] = []
     indexes: set[str] = set()
+    fetched_pages: dict[str, Page] = {}
     statuses: Counter[int] = Counter()
     fetched = 0
 
@@ -1283,6 +1291,9 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
                     print(f"  [warn] seed {page.url} failed (status {page.status})")
                 continue
 
+            # Banked before anything decides what this page *is*.
+            fetched_pages[page.scrape_id] = page
+
             if page.depth < max_depth and is_index_page(page.html, page.url):
                 indexes.add(page.url)
                 sections = sections_by_link(page.html, page.url)
@@ -1313,7 +1324,7 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
     if not listings and not unchanged:
         explain_total_failure(statuses)
 
-    return listings, unchanged, indexes
+    return listings, unchanged, indexes, fetched_pages
 
 
 def explain_total_failure(statuses: "Counter[int]") -> None:
@@ -1537,7 +1548,7 @@ def main() -> int:
     print(f"Baseline holds {len(baseline)} records from a previous run")
 
     print("Crawling from: " + ", ".join(url for url, _ in seeds))
-    pages, unchanged_ids, indexes = crawl(
+    pages, unchanged_ids, indexes, fetched_pages = crawl(
         seeds, fetcher, baseline,
         max_depth=args.max_depth,
         max_pages=args.max_pages,
@@ -1547,6 +1558,15 @@ def main() -> int:
     )
     print(f"Crawl done: {len(pages)} listing pages, {len(unchanged_ids)} unchanged (304), "
           f"{len(indexes)} index pages ({', '.join(sorted(indexes)) or 'none'})")
+
+    # Archive first, before anything can return early. Every request already cost
+    # the site something; a run that fetches pages and keeps none of them spends
+    # that for nothing and forces a repeat visit. --probe used to do exactly that.
+    if not args.no_archive:
+        archive_path = Path(args.archive)
+        total = write_archive(archive_path, fetched_pages, load_archive(archive_path), run_at)
+        print(f"Archived {total} pages of raw HTML ({len(fetched_pages)} from this run) "
+              f"→ {archive_path}")
 
     if args.probe:
         if not pages:
@@ -1586,11 +1606,6 @@ def main() -> int:
         previous = baseline.get(scrape_id)
         if previous and scrape_id not in fresh:
             fresh[scrape_id] = {k: v for k, v in previous.items() if k not in ("status", "changed_fields")}
-
-    if not args.no_archive:
-        archive_path = Path(args.archive)
-        total = write_archive(archive_path, pages, load_archive(archive_path), run_at)
-        print(f"Archived {total} pages of raw HTML → {archive_path}")
 
     if not args.no_photos:
         downloaded, reused = download_photos(fresh, baseline, Path(args.photos_dir), fetcher, args.workers)
