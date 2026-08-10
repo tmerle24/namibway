@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ListingType;
 use App\Enums\PriceUnit;
+use App\Models\ApiClient;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\User;
@@ -72,7 +73,13 @@ class ListingPriceUnitTest extends TestCase
             'price_unit' => PriceUnit::PerDay,
         ]);
 
-        $this->getJson("/api/v1/listings/{$listing->slug}")
+        // /api/v1 is Sanctum-gated (see Tests\Feature\Api\ListingApiTest) —
+        // unlike the in-app endpoints above, which stay open so browsing and
+        // planning need no account.
+        $client = ApiClient::create(['name' => 'Price Unit Consumer']);
+
+        $this->withToken($client->createToken('test')->plainTextToken)
+            ->getJson("/api/v1/listings/{$listing->slug}")
             ->assertOk()
             ->assertJsonPath('data.price_unit', 'per_day');
     }

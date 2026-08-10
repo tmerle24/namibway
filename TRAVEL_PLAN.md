@@ -1000,11 +1000,13 @@ per-night lodge rate to it as though both meant the same thing.
   Anfrage" with no unit, and the sums come out 4500/18000 (3 nights,
   4 travelers) for per-night vs per-person-per-night, with the per-booking
   vehicle staying at 900 instead of 2700. No horizontal overflow. eslint,
-  prettier and vue-tsc clean. **The PHP half (pint/phpstan/`artisan test`,
-  incl. the new `ListingPriceUnitTest`) could not be run in this session:
-  `composer install` cannot complete because `codeload.github.com` is 403
-  through the session's egress proxy, and `phpstan/phpstan` is dist-only.
-  CI is the first thing to actually execute it.**
+  prettier and vue-tsc clean. The PHP half could not be run in the session
+  itself — `composer install` cannot complete there because
+  `codeload.github.com` is 403 through the egress proxy and
+  `phpstan/phpstan` is dist-only — so CI executed it first: pint, phpstan
+  and 279 tests passed, and the one failure was a wrong assumption in the
+  new test rather than in the feature (`/api/v1` is Sanctum-gated, unlike
+  the in-app endpoints, so that case needs an `ApiClient` token).
 
 ### Known gaps / next up
 
