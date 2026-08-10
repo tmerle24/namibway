@@ -46,6 +46,29 @@ export function initializeCurrency(
  * formats it with the right symbol — e.g. formatPrice("1200") -> "$ 66".
  * Returns null for missing/empty amounts so callers can `v-if` on it.
  */
+/**
+ * The inverse of formatPrice's conversion: what the traveler typed in their
+ * display currency, as NAD — which is what every price in this system is
+ * stored and compared in, so anything the traveler enters has to cross back
+ * over before it is sent.
+ *
+ * Rounded to whole NAD on purpose: these are round numbers a person picked
+ * ("about 1200 a day"), and carrying cents through an exchange rate would
+ * dress a guess up as a measurement.
+ */
+export function toNad(amountInDisplayCurrency: number): number {
+    const rate = rates.value[currentCurrency.value] || 1;
+
+    return Math.round(amountInDisplayCurrency / rate);
+}
+
+/** The same trip the other way, for pre-filling an input from a stored NAD amount. */
+export function fromNad(amountNad: number): number {
+    const rate = rates.value[currentCurrency.value] || 1;
+
+    return Math.round(amountNad * rate);
+}
+
 export function formatPrice(
     amountNad: string | number | null | undefined,
 ): string | null {

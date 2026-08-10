@@ -5,6 +5,7 @@ namespace App\Filament\Partner\Resources;
 use App\Enums\ListingType;
 use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
+use App\Enums\VehicleClass;
 use App\Filament\Partner\Resources\ListingResource\Pages;
 use App\Filament\Resources\ListingResource\RelationManagers as AdminRelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
@@ -94,6 +95,11 @@ class ListingResource extends Resource
                             ->helperText('Self-drive rental vs. a guided tour with a driver-guide included.')
                             ->visible(fn (?Listing $record): bool => $record?->type === ListingType::Vehicle)
                             ->required(fn (?Listing $record): bool => $record?->type === ListingType::Vehicle),
+                        Forms\Components\Select::make('vehicle_class')
+                            ->label('Vehicle class')
+                            ->options(VehicleClass::class)
+                            ->helperText('What the traveler actually drives. Setting this is how your vehicle reaches travelers who pick that class when planning.')
+                            ->visible(fn (?Listing $record): bool => $record?->type === ListingType::Vehicle),
                     ])
                     ->columns(2),
 
@@ -228,6 +234,10 @@ class ListingResource extends Resource
                     ->badge(),
                 Tables\Columns\TextColumn::make('vehicle_category')
                     ->label('Vehicle category')
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('vehicle_class')
+                    ->label('Vehicle class')
                     ->badge()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('city.name')

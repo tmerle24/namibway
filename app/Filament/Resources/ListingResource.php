@@ -8,6 +8,7 @@ use App\Enums\ConnectorType;
 use App\Enums\ListingType;
 use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
+use App\Enums\VehicleClass;
 use App\Filament\Resources\ListingResource\Pages;
 use App\Filament\Resources\ListingResource\RelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
@@ -63,6 +64,11 @@ class ListingResource extends Resource
                                     ->helperText('Self-drive rental vs. a guided tour with a driver-guide included.')
                                     ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value)
                                     ->required(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
+                                Forms\Components\Select::make('vehicle_class')
+                                    ->label('Vehicle class')
+                                    ->options(VehicleClass::class)
+                                    ->helperText('What the traveler actually drives. Optional — left empty, this vehicle is matched by the old "Camper" highlights heuristic instead, which cannot tell a rooftop-tent 4x4 from a motorhome.')
+                                    ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
                                 Forms\Components\Select::make('partner_id')
                                     ->label('Partner')
                                     ->relationship('partner', 'name')
@@ -356,6 +362,10 @@ class ListingResource extends Resource
                     ->label('Vehicle category')
                     ->badge()
                     ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('vehicle_class')
+                    ->label('Vehicle class')
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->wrap(),
@@ -429,6 +439,9 @@ class ListingResource extends Resource
                 Tables\Filters\SelectFilter::make('vehicle_category')
                     ->label('Vehicle category')
                     ->options(VehicleCategory::class),
+                Tables\Filters\SelectFilter::make('vehicle_class')
+                    ->label('Vehicle class')
+                    ->options(VehicleClass::class),
                 Tables\Filters\SelectFilter::make('claim_status')
                     ->options([
                         'unclaimed' => 'Unclaimed',

@@ -158,7 +158,9 @@
                 "budget": "Budget",
                 "mid-range": "Mittelklasse",
                 "premium": "Premium"
-            }
+            },
+            "vehicle": "Fahrzeug",
+            "upToPerDay": "bis {price}/Tag"
         },
         "paramsEditor": {
             "title": "Reisedetails bearbeiten",
@@ -179,6 +181,35 @@
             "datesRequired": "Bitte Start- und Enddatum wählen.",
             "dateOrderInvalid": "Das Enddatum muss nach dem Startdatum liegen.",
             "locationsRequired": "Bitte Start- und Zielort angeben."
+        },
+        "vehiclePicker": {
+            "label": "Fahrzeug",
+            "budget": "Fahrzeug-Budget",
+            "optional": "(optional)",
+            "budgetPlaceholder": "z. B. 1200",
+            "perDay": "pro Tag",
+            "classes": {
+                "sedan": {
+                    "name": "Limousine",
+                    "hint": "2WD, Teerstraßen"
+                },
+                "suv": {
+                    "name": "SUV / 4x4",
+                    "hint": "Schotter und Parks"
+                },
+                "camper_4x4": {
+                    "name": "4x4-Camper",
+                    "hint": "Dachzelt"
+                },
+                "motorhome": {
+                    "name": "Wohnmobil",
+                    "hint": "Schlafen im Fahrzeug"
+                },
+                "minibus": {
+                    "name": "Minibus",
+                    "hint": "Größere Gruppe"
+                }
+            }
         }
     },
     "priceUnit": {

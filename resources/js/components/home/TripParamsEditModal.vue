@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { TripParams } from '@/lib/kaia-types';
+import type { TripParams, VehicleClass } from '@/lib/kaia-types';
+import VehiclePicker from './VehiclePicker.vue';
 
 export interface TripParamsFormValues {
     dateFrom: string;
@@ -10,6 +11,9 @@ export interface TripParamsFormValues {
     childrenAges: string;
     interests: string;
     budgetTier: string;
+    vehicleClass: VehicleClass | null;
+    /** NAD per day, or null when the traveler left the field empty. */
+    vehicleDailyBudget: number | null;
     startLocation: string;
     endLocation: string;
 }
@@ -59,6 +63,12 @@ const adults = ref(props.tripParams?.adults ?? 2);
 const childrenAges = ref(props.tripParams?.children_ages ?? '');
 const interests = ref(props.tripParams?.interests ?? '');
 const budgetTier = ref(props.tripParams?.budget_tier || 'mid-range');
+const vehicleClass = ref<VehicleClass | null>(
+    props.tripParams?.vehicle_class ?? null,
+);
+const vehicleDailyBudget = ref<number | null>(
+    props.tripParams?.vehicle_daily_budget ?? null,
+);
 const startLocation = ref(props.startLocation);
 const endLocation = ref(props.endLocation);
 
@@ -92,6 +102,8 @@ function submit() {
         childrenAges: childrenAges.value,
         interests: interests.value,
         budgetTier: budgetTier.value,
+        vehicleClass: vehicleClass.value,
+        vehicleDailyBudget: vehicleDailyBudget.value,
         startLocation: startLocation.value.trim(),
         endLocation: endLocation.value.trim(),
     });
@@ -176,6 +188,13 @@ function submit() {
                         </option>
                     </select>
                 </label>
+
+                <VehiclePicker
+                    :vehicle-class="vehicleClass"
+                    :daily-budget="vehicleDailyBudget"
+                    @update:vehicle-class="vehicleClass = $event"
+                    @update:daily-budget="vehicleDailyBudget = $event"
+                />
 
                 <div class="params-row">
                     <label class="params-field">

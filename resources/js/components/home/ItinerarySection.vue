@@ -27,6 +27,7 @@ import type {
     RoomOption,
     TripParams,
 } from '@/lib/kaia-types';
+import { vehicleTypeForClass } from '@/lib/kaia-types';
 import { onImageError, thumbAttrs } from '@/lib/media';
 import { isRecurring, travelerFactor } from '@/lib/price-unit';
 import ConfirmModal from './ConfirmModal.vue';
@@ -288,7 +289,14 @@ async function applyParamsEdit(values: TripParamsFormValues) {
             adults: values.adults,
             children_under_13: computeChildrenUnder13(values.childrenAges),
             children_ages: values.childrenAges || null,
-            vehicle_type: currentTripParams.value?.vehicle_type || 'car',
+            // The class the traveler picked decides the legacy binary, so the
+            // two can't contradict each other; without one, the plan keeps
+            // whatever the interview established.
+            vehicle_type: values.vehicleClass
+                ? vehicleTypeForClass(values.vehicleClass)
+                : currentTripParams.value?.vehicle_type || 'car',
+            vehicle_class: values.vehicleClass,
+            vehicle_daily_budget: values.vehicleDailyBudget,
             start_location: values.startLocation,
             end_location: values.endLocation,
         });

@@ -5,6 +5,7 @@ import type {
     ItineraryPlan,
     ListingRecommendation,
     SearchIntent,
+    VehicleClass,
 } from '@/lib/kaia-types';
 import type { PriceUnit } from '@/lib/price-unit';
 
@@ -663,6 +664,8 @@ export interface RegeneratePlanParams {
     children_under_13: number;
     children_ages: string | null;
     vehicle_type: string;
+    vehicle_class: VehicleClass | null;
+    vehicle_daily_budget: number | null;
     start_location: string;
     end_location: string;
 }

@@ -114,6 +114,28 @@ export interface ItineraryVariant {
     days: ItineraryDay[];
 }
 
+// What kind of vehicle the traveler drives — the frontend half of
+// App\Enums\VehicleClass. Null means they never picked one, which is every
+// plan made before the picker existed; the plan then falls back to the coarse
+// `vehicle_type` binary exactly as it always did.
+export type VehicleClass =
+    'sedan' | 'suv' | 'camper_4x4' | 'motorhome' | 'minibus';
+
+export const VEHICLE_CLASSES: readonly VehicleClass[] = [
+    'sedan',
+    'suv',
+    'camper_4x4',
+    'motorhome',
+    'minibus',
+];
+
+/** The legacy "car" | "camper" binary a class implies. */
+export function vehicleTypeForClass(vehicleClass: VehicleClass): string {
+    return vehicleClass === 'camper_4x4' || vehicleClass === 'motorhome'
+        ? 'camper'
+        : 'car';
+}
+
 export interface TripParams {
     nights: number | null;
     travel_period: string;
@@ -122,6 +144,10 @@ export interface TripParams {
     children_under_13: number;
     children_ages?: string | null;
     vehicle_type: string;
+    vehicle_class?: VehicleClass | null;
+    // NAD per day — the currency every price in this system is stored in. The
+    // picker takes it in the traveler's display currency and converts.
+    vehicle_daily_budget?: number | null;
     budget_tier: string;
 }
 
