@@ -9,6 +9,7 @@ use App\Models\Listing;
 use App\Models\Partner;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -86,8 +87,8 @@ class ImportNamibweb extends Command
     /** @var array<int, array{listing: string, url: string}> */
     private array $vanished = [];
 
-    /** @var \Illuminate\Support\Collection<int, City>|null */
-    private ?\Illuminate\Support\Collection $cities = null;
+    /** @var Collection<int, City>|null */
+    private ?Collection $cities = null;
 
     public function handle(): int
     {
@@ -318,8 +319,8 @@ class ImportNamibweb extends Command
         return null;
     }
 
-    /** @return \Illuminate\Support\Collection<int, City> */
-    private function cities(): \Illuminate\Support\Collection
+    /** @return Collection<int, City> */
+    private function cities(): Collection
     {
         return $this->cities ??= City::query()
             ->whereNotNull('lat')

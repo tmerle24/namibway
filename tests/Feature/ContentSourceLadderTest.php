@@ -4,13 +4,16 @@ namespace Tests\Feature;
 
 use App\Enums\ContentSource;
 use App\Models\Listing;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
  * The rules that decide what a listing may publish, and what replaces what.
  *
- * @see \App\Enums\ContentSource
+ * @see ContentSource
  */
 class ContentSourceLadderTest extends TestCase
 {
@@ -160,9 +163,13 @@ class ContentSourceLadderTest extends TestCase
             'pending_photos_source' => ContentSource::Directory,
         ]);
 
-        $this->actingAs($this->adminUser())
+        // Viewing a listing queues an enrichment run when one is due, which on
+        // the sync test queue would crawl the open internet.
+        Queue::fake();
+
+        $this->actingAs($this->admin())
             ->get("/listings/{$listing->slug}")
-            ->assertInertia(fn ($page) => $page
+            ->assertInertia(fn (Assert $page) => $page
                 ->where('can_approve_photos', false)
                 // …but an admin still sees them, as reference.
                 ->where('listing.pending_photos_source', 'directory')
@@ -170,8 +177,8 @@ class ContentSourceLadderTest extends TestCase
             );
     }
 
-    private function adminUser(): \App\Models\User
+    private function admin(): User
     {
-        return \App\Models\User::factory()->create(['is_admin' => true]);
+        return User::factory()->create(['is_admin' => true]);
     }
 }
