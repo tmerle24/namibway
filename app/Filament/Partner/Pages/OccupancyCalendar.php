@@ -13,6 +13,7 @@ use Carbon\Exceptions\InvalidFormatException;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
+use Filament\Support\Enums\MaxWidth;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Url;
 
@@ -59,6 +60,17 @@ class OccupancyCalendar extends Page implements HasForms
     public static function canAccess(): bool
     {
         return filled(auth()->user()?->partner_id);
+    }
+
+    /**
+     * The panel's default content width is meant for forms and tables, where a
+     * measure that stops around 80 characters is the point. A wall planner is
+     * the opposite: every centimetre is another night on screen, and the width
+     * a lodge has is the width it should get.
+     */
+    public function getMaxContentWidth(): MaxWidth
+    {
+        return MaxWidth::Full;
     }
 
     public function getSubheading(): ?string

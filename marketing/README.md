@@ -123,6 +123,12 @@ registered name and preferred short form of the organisation before printing.
 system before the meeting, and prints a sign-in link to hand over. **What it shows is
 real software on made-up data — not a mock-up, and not a pilot.** Say it that way.
 
+**If the lodge has no room types on file — today that is all of them — the demo invents
+three.** The command tells you when it has done that. Say so in the room: the room names
+and the rates are examples, not their prices. Entering their real room types on the
+listing makes the next rebuild use those instead, and that is worth doing before a
+meeting that matters.
+
 Demonstrable, because it works:
 
 - An occupancy calendar for one property: room types down, nights across, stays and

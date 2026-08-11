@@ -92,10 +92,17 @@ class CreateDemoTenant extends Command
             ['Partner', $tenant->partner->name],
             ['Property', $tenant->listing->name],
             ['Copied from', $tenant->source->name.' (untouched)'],
-            ['Room types', (string) $tenant->roomTypes],
+            ['Room types', $tenant->roomTypes.($tenant->roomTypesAreInvented ? ' (made up)' : ' (the lodge’s own)')],
             ['Stays seeded', (string) $tenant->stays],
             ['Blocks seeded', (string) $tenant->blocks],
         ]);
+
+        if ($tenant->roomTypesAreInvented) {
+            $this->newLine();
+            $this->warn('This lodge has no room types on file, so the demo invented three.');
+            $this->line('  Say so in the meeting: the layout and the rates are examples, not their prices.');
+            $this->line('  Entering their real room types on the listing makes the next rebuild use those instead.');
+        }
 
         $this->newLine();
         $this->comment('Hand this over in the meeting:');

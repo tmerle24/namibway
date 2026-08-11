@@ -36,16 +36,27 @@ return [
     | A sandbox partner built from a real listing so a prospect sees their own
     | lodge already running in the system. See booking:demo-tenant.
     |
-    | The email domain matters: a demo tenant inherits no contact details from
-    | the partner it was copied from, precisely so that nothing it does can
-    | reach the real lodge owner. Its own addresses are built under a domain we
-    | control, so mail from a demo behaves like mail from anywhere else — it
-    | is simply addressed to us.
+    | A demo tenant inherits no contact details from the partner it was copied
+    | from, precisely so that nothing it does can reach the real lodge owner.
+    | Every address it holds is a plus-address on the team mailbox above.
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Where booking mail goes before a lodge is switched on
+    |--------------------------------------------------------------------------
+    |
+    | The team mailbox, used with plus-addressing: team+okonjima-bush-camp@…
+    | delivers to the same box but says which property it is about. Demo
+    | tenants address everything here, so a demo can send real mail through
+    | the normal mailer and still never reach a lodge owner.
+    |
+    */
+
+    'team_address' => env('BOOKING_TEAM_ADDRESS', 'team@namibway.com'),
+
     'demo' => [
-        'email_domain' => env('BOOKING_DEMO_EMAIL_DOMAIN', 'demo.namibway.com'),
 
         // How long a printed sign-in link stays valid. Long enough to survive
         // a meeting being moved, short enough that a link left in a chat

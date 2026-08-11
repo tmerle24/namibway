@@ -13,6 +13,7 @@ use Carbon\Exceptions\InvalidFormatException;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
+use Filament\Support\Enums\MaxWidth;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Url;
 
@@ -52,6 +53,12 @@ class ArrivalsDepartures extends Page implements HasForms
     public static function canAccess(): bool
     {
         return filled(auth()->user()?->partner_id);
+    }
+
+    /** Three wide tables and a print target — see OccupancyCalendar. */
+    public function getMaxContentWidth(): MaxWidth
+    {
+        return MaxWidth::Full;
     }
 
     public function getSubheading(): ?string

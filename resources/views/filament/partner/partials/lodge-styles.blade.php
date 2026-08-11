@@ -142,17 +142,33 @@
 
     /* ---------- the grid ---------- */
 
+    /* The grid takes the room it is given, in both directions. A wall planner
+       that occupies a corner of the screen while the rest is empty is harder
+       to read than one that does not, and this is the screen a lodge leaves
+       open all day.
+
+       Height is the window minus the chrome above and below it, so the
+       viewport ends where the screen does rather than at an arbitrary
+       fraction. Below a laptop-sized window it stops shrinking and scrolls
+       instead, because a calendar squeezed into 200px is not a calendar. */
     .nw-cal__viewport {
-        max-height: 70vh;
+        height: calc(100vh - 19rem);
+        min-height: 22rem;
         overflow: auto;
         border: 1px solid var(--nw-line);
         border-radius: 0.75rem;
         background: var(--nw-surface);
     }
 
+    /* A flex column so the rows can share whatever height is left over: three
+       room types fill the frame instead of huddling at the top, and twenty
+       scroll. */
     .nw-cal__table {
-        width: max-content;
-        min-width: 100%;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-width: max-content;
+        min-height: 100%;
         font-size: 0.75rem;
         color: var(--nw-text);
     }
@@ -162,6 +178,17 @@
     .nw-cal__foot {
         display: flex;
         align-items: stretch;
+    }
+
+    .nw-cal__head,
+    .nw-cal__foot {
+        flex: 0 0 auto;
+    }
+
+    .nw-cal__row {
+        /* Grows into spare vertical space, never below what a bar needs. */
+        flex: 1 1 auto;
+        min-height: 3rem;
     }
 
     .nw-cal__head {
@@ -214,7 +241,25 @@
     .nw-cal__lane,
     .nw-cal__cells {
         display: grid;
-        grid-template-columns: repeat(var(--nw-cols), var(--nw-col-w));
+        grid-template-columns: repeat(var(--nw-cols), minmax(var(--nw-col-w), 1fr));
+    }
+
+    /* The night columns take everything the label column does not. */
+    .nw-cal__body,
+    .nw-cal__head .nw-cal__days,
+    .nw-cal__foot .nw-cal__days {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    /* Cells fill their row so a tall row does not leave a gap under them. */
+    .nw-cal__body {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .nw-cal__cells {
+        flex: 1 1 auto;
     }
 
     .nw-cal__dayhead {
@@ -626,10 +671,23 @@
             display: none !important;
         }
 
+        /* On paper there is no window to fill, so the grid goes back to being
+           as tall as its contents — a fixed viewport height would print one
+           screenful and cut the rest. */
         .nw-cal__viewport {
+            height: auto;
+            min-height: 0;
             max-height: none;
             overflow: visible;
             border: 0;
+        }
+
+        .nw-cal__table {
+            min-height: 0;
+        }
+
+        .nw-cal__row {
+            min-height: 0;
         }
 
         .nw-table tbody tr {

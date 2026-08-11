@@ -236,7 +236,16 @@ before the write, naming the room type and the night, rather than surfacing a Po
 CHECK violation.
 
 **`booking:demo-tenant`.** A sandbox partner built from a real listing, so a meeting opens
-with the prospect's own lodge running rather than an empty grid. It gets its **own
+with the prospect's own lodge running rather than an empty grid.
+
+> **Corrected 2026-08-11, after it failed on the first real attempt.** The command
+> originally refused any listing with no room types — which is *every* listing in
+> production, so it could not be built for a single lodge. It now invents a plausible
+> three-tier room list when the lodge has none on file, anchored to the listing's own
+> "from" price and its country's currency, and says out loud that it did so. A demo that
+> needs a precondition nothing satisfies is not a demo.
+
+It gets its **own
 unpublished copy** of the listing: room types belong to a listing, so copied rooms would
 otherwise hang off a published listing and appear on namibway.com, and every edit a
 prospect made would be an edit to real content. Re-running wipes and rebuilds that tenant
@@ -253,8 +262,10 @@ controller refuses any account that is not a demo account, which is the check th
 > booking mailing a real lodge owner — is closed by what the copy *contains* instead of by
 > a layer somebody can forget to switch on: the tenant inherits no contact email, no
 > phone, no website and no connector credentials, so there is no third party's address
-> inside it at all. Every address it does hold is under `config('booking.demo.email_domain')`,
-> and a test walks the tenant asserting exactly that.
+> inside it at all. Every address it does hold is a plus-address on the team mailbox
+> (`config('booking.team_address')` → `team+okonjima-bush-camp@namibway.com`), so a demo
+> booking sends real mail through the normal mailer and still only ever reaches us, tagged
+> by lodge. A test walks the tenant asserting exactly that.
 
 **The panel on `booking.namibway.com`**, via `config('booking.panel_domain')`. Unset — local
 development, CI, and production until the DNS record exists — nothing changes. Set, the
