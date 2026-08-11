@@ -44,7 +44,7 @@ return [
         'websites-flyer' => [
             'title' => 'Websites flyer',
             'audience' => 'Namibian business owners with no website',
-            'description' => 'The website service, for prospecting: one monthly price covering build, hosting, domain and later changes, plus a block on the back for custom software. Carries a price, so check it is still the one we quote before printing a batch.',
+            'description' => 'The website service, for prospecting: a phone mock-up of what a customer gets, one monthly price covering build, hosting, domain and later changes, the "built in Namibia" argument, and a block on the back for custom software. Carries a price and a phone number, so check both are still current before printing a batch.',
             'basename' => 'namibway-websites-flyer-a4',
             'source' => 'marketing/flyer-websites-a4.html',
         ],

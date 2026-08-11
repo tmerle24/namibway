@@ -53,6 +53,48 @@ because there is no number that is answered yet), an optional hero photograph, t
 commission wording on the partner flyer, the monthly price on the websites flyer, and
 the organisation name on the booking-system flyer.
 
+## Brand marks
+
+### The "Built in Namibia" seal
+
+`assets/built-in-namibia-seal.svg` (for light grounds) and
+`assets/built-in-namibia-seal-light.svg` (for the brown ground). A round stamp —
+double ring, **BUILT IN NAMIBIA** around the top, **NAMIBWAY** along the bottom, the
+compass mark in the middle.
+
+This is meant to be reused, not redrawn: put it on flyers, quotes, proposals, email
+signatures, the website footer, invoices. It is the one argument no overseas builder
+can answer, so it should look the same everywhere it appears.
+
+- Generated from the compass mark itself, so it stays in step with the logo. There is
+  no hand-drawn copy of the needle to drift out of date.
+- Vector, so it scales without loss. It stays legible down to about 20 mm across;
+  below that the ring text closes up and you should use the plain compass instead.
+- Keep it circular. Do not stretch it, recolour it outside the two files, or set it on
+  a busy photograph — it reads as a stamp only if it looks stamped.
+- Regenerate with the snippet in this repo's history if the mark ever changes; the two
+  files differ only in their ink, accent and mark colours.
+
+### Logos
+
+In `public/images/` — these are the app's own files, not copies, so they cannot fall
+out of date:
+
+| File | Use on |
+|---|---|
+| `namibway-logo-dark.png` | light grounds (paper, sand) |
+| `namibway-logo-light.png` | dark grounds (the brown band) |
+| `namibway-icon-amber.png` | the compass mark alone, large |
+| `namibway-icon-amber-inline.svg` | the compass mark alone, vector |
+| `pwa/icon-512.png` | the app icon, tan compass on brown |
+
+`assets/compass-on-brown.svg` and `assets/compass-on-sand.svg` are the same mark
+recoloured for those two grounds, used as the small ornament in the flyer strips.
+
+Anyone who needs the logo — a co-founder building something in Canva, a print shop —
+should be sent these files rather than a screenshot. A wordmark typed out in whatever
+bold font is to hand is not the logo, and it is what makes material look homemade.
+
 ## Other files
 
 | File | What it is |
