@@ -39,22 +39,26 @@ class PanelDomainTest extends TestCase
 
     protected function setUp(): void
     {
-        $_ENV['BOOKING_PANEL_DOMAIN'] = self::HOST;
-        putenv('BOOKING_PANEL_DOMAIN='.self::HOST);
-
-        // Pinned so the forwarding rule's host is not whatever the runner's
-        // environment happens to say.
-        $_ENV['APP_URL'] = 'http://localhost';
-        putenv('APP_URL=http://localhost');
+        // Written to every place Laravel's environment repository reads from,
+        // and before the application exists: the panel binds its routes while
+        // its provider registers, so setting config afterwards is too late.
+        // .env deliberately carries no BOOKING_PANEL_DOMAIN key at all, so
+        // there is nothing to overwrite these.
+        foreach (['BOOKING_PANEL_DOMAIN' => self::HOST, 'APP_URL' => 'http://localhost'] as $key => $value) {
+            $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
+            putenv("{$key}={$value}");
+        }
 
         parent::setUp();
     }
 
     protected function tearDown(): void
     {
-        unset($_ENV['BOOKING_PANEL_DOMAIN'], $_ENV['APP_URL']);
-        putenv('BOOKING_PANEL_DOMAIN');
-        putenv('APP_URL');
+        foreach (['BOOKING_PANEL_DOMAIN', 'APP_URL'] as $key) {
+            unset($_ENV[$key], $_SERVER[$key]);
+            putenv($key);
+        }
 
         parent::tearDown();
     }
