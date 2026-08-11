@@ -35,4 +35,14 @@ class OccupancyRow
     {
         return $this->lanes !== [];
     }
+
+    /**
+     * Whether this unit is sold by departure. Read off a cell rather than
+     * stored again: the cells are what know, and two answers to one question
+     * is how a screen starts contradicting itself.
+     */
+    public function isDepartureUnit(): bool
+    {
+        return ($this->cells[0] ?? null)?->isDepartureDay() ?? false;
+    }
 }

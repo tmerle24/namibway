@@ -8,6 +8,10 @@
     // neither the booking form nor the detail drawer behind it.
     $bookable = $bookable ?? true;
     $showLegend = $showLegend ?? true;
+    // Sized to content rather than to a minimum: set where the grid shares the
+    // page with the hour axis, so the thing somebody opened the day view for is
+    // not pushed below an empty frame.
+    $compact = $compact ?? false;
 @endphp
 
 {{--
@@ -18,7 +22,7 @@
     $grid, already clipped and lane-packed by OccupancyGrid — this file does no
     date arithmetic and issues no queries.
 --}}
-<div class="nw-cal">
+<div @class(['nw-cal', 'nw-cal--compact' => $compact])>
     <div class="nw-cal__viewport">
         <div class="nw-cal__table" style="--nw-cols: {{ $grid->columnCount() }}">
             <div class="nw-cal__head">
@@ -55,7 +59,11 @@
                         <div class="nw-cal__name">{{ $row->roomType->name }}</div>
                         <div class="nw-cal__meta">
                             {{ $row->roomType->code }} ·
-                            {{ $row->roomType->total_units }} {{ Str::plural('unit', $row->roomType->total_units) }} ·
+                            @if ($row->isDepartureUnit())
+                                {{ $row->roomType->total_units }} seats per departure ·
+                            @else
+                                {{ $row->roomType->total_units }} {{ Str::plural('unit', $row->roomType->total_units) }} ·
+                            @endif
                             {{ Money::symbol($row->currency) }}
                             @if ($row->isRetired)
                                 · inactive
@@ -119,11 +127,20 @@
                                     // Built here rather than inline: a tooltip stitched together
                                     // from @if directives inside an attribute is where this view
                                     // is hardest to read and easiest to break.
+                                    // A unit sold by departure counts seats
+                                    // across its timetable, so the words have
+                                    // to change with it — "2 of 16 free" on a
+                                    // quad tour is seats, not quads.
                                     $facts = [
                                         $cell->date->isoFormat('ddd D MMM'),
-                                        $cell->unitsFree.' of '.$cell->capacity.' free',
+                                        $cell->unitsFree.' of '.$cell->capacity
+                                            .($cell->isDepartureDay() ? ' seats free' : ' free'),
                                         $cell->unitsSold.' sold',
                                     ];
+
+                                    if ($cell->isDepartureDay()) {
+                                        $facts[] = $cell->departures.' '.Str::plural('departure', $cell->departures);
+                                    }
 
                                     if ($cell->unitsBlocked) {
                                         $facts[] = $cell->unitsBlocked.' blocked';
@@ -153,7 +170,18 @@
                                     inert — offering a form that can only refuse would be a
                                     dead end, and the writer would refuse it anyway.
                                 --}}
-                                @php($cellBookable = $bookable && $cell->unitsFree > 0)
+                                {{--
+                                    A departure day is inert here even when
+                                    seats are free. The booking form sells
+                                    nights, and a click that quietly took a
+                                    seat off the property's own counter
+                                    instead of off the 09:00 tour would put
+                                    the calendar wrong in the one way this
+                                    whole design exists to prevent. Selling a
+                                    departure is the day view's job, and it is
+                                    the next step — see BOOKING_SYSTEM.md.
+                                --}}
+                                @php($cellBookable = $bookable && $cell->unitsFree > 0 && ! $cell->isDepartureDay())
 
                                 <button
                                     type="button"
@@ -194,6 +222,10 @@
                                     @if ($cell->minStay > 1)
                                         <span class="nw-cell__minstay">{{ $cell->minStay }}+</span>
                                     @endif
+
+                                    @if ($cell->isDepartureDay())
+                                        <span class="nw-cell__departures">&times;{{ $cell->departures }}</span>
+                                    @endif
                                 </button>
                             @endforeach
                         </div>
@@ -204,7 +236,13 @@
             <div class="nw-cal__foot">
                 <div class="nw-cal__label">
                     <div class="nw-cal__name">Free that night</div>
-                    <div class="nw-cal__meta">across every room type</div>
+                    <div class="nw-cal__meta">
+                        @if ($grid->hasDepartureUnits())
+                            rooms and seats, across every room type
+                        @else
+                            across every room type
+                        @endif
+                    </div>
                 </div>
 
                 <div class="nw-cal__days">

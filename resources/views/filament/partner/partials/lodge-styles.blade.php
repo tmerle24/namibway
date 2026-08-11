@@ -18,6 +18,10 @@
         --nw-col-w: 42px;
         --nw-label-w: 190px;
         --nw-lane-h: 22px;
+        /* One row of the hour axis. Deliberately generous: at 15 minutes a
+           three-hour tour is twelve rows, and a block has a time, a price and
+           its passengers to fit in. */
+        --nw-day-row-h: 26px;
         --nw-surface: rgb(255 255 255);
         --nw-line: rgb(var(--gray-200, 229 231 235));
         --nw-line-strong: rgb(var(--gray-300, 209 213 219));
@@ -104,6 +108,39 @@
         border-top: 1px solid var(--nw-line);
     }
 
+    /* Native, on purpose: a month and a year are the two things every browser
+       and every screen reader already knows how to pick, and a twelve-item
+       list is not worth a combobox. Styled to sit level with .nw-btn. */
+    .nw-select {
+        /*
+            Filament's CSS reset strips every select down to `appearance: none`
+            plus a chevron as a background-image, and then relies on Tailwind's
+            own padding and background-position to place it. This panel has no
+            Tailwind of its own, so those never arrive: the chevron tiled across
+            the control and sat on top of the month name.
+
+            The fix is to hand the control back to the browser rather than
+            guess at somebody else's numbers. A month and a year are exactly
+            what a native select is for.
+        */
+        appearance: auto;
+        -webkit-appearance: auto;
+        background-image: none;
+        background-color: var(--nw-surface);
+        min-width: 11ch;
+        border: 1px solid var(--nw-line-strong);
+        border-radius: 0.5rem;
+        padding: 0.3rem 0.4rem;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--nw-text);
+        cursor: pointer;
+    }
+
+    .nw-select--year {
+        min-width: 8ch;
+    }
+
     .nw-range {
         font-size: 0.9375rem;
         font-weight: 600;
@@ -155,6 +192,14 @@
     .nw-lodge--widget .nw-cal__viewport {
         min-height: 0;
         max-height: 24rem;
+    }
+
+    /* Above the hour axis the night grid is the smaller half of the screen, so
+       it takes only the height its room types need. The floor exists to stop a
+       lone grid looking broken; here there is a whole second grid under it. */
+    .nw-cal--compact .nw-cal__viewport {
+        min-height: 0;
+        max-height: 40vh;
     }
 
     .nw-lodge--widget .nw-cal__row {
@@ -523,6 +568,18 @@
         color: rgb(var(--warning-600, 217 119 6));
     }
 
+    /* How many departures the day's seats were summed from. Bottom left, so it
+       never collides with a minimum stay — a departure day has neither, but
+       the two markers should not be arguing about a corner. */
+    .nw-cell__departures {
+        position: absolute;
+        bottom: 1px;
+        left: 2px;
+        font-size: 0.5625rem;
+        font-weight: 700;
+        color: var(--nw-muted);
+    }
+
     .nw-cal__total {
         padding: 0.35rem 0 0.4rem;
         text-align: center;
@@ -533,6 +590,212 @@
     .nw-cal__total--full {
         color: rgb(var(--danger-600, 220 38 38));
         font-weight: 700;
+    }
+
+    /* ---------- the hour axis ---------- */
+
+    /*
+        The other reading of the same rows: time down, departures across.
+
+        It shares the grid's variables and its label width so the two line up
+        when a property that sells both a chalet and a sunset drive has them
+        one above the other — that is the whole claim of "one calendar, two
+        readings", and it has to be visibly true.
+    */
+    .nw-day {
+        margin-top: 1.25rem;
+    }
+
+    .nw-day__bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .nw-day__spacer {
+        flex: 1 1 auto;
+    }
+
+    .nw-day__viewport {
+        max-height: calc(100vh - 22rem);
+        min-height: 18rem;
+        overflow: auto;
+        border: 1px solid var(--nw-line);
+        border-radius: 0.75rem;
+        background: var(--nw-surface);
+    }
+
+    .nw-day__table {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-width: max-content;
+        font-size: 0.75rem;
+        color: var(--nw-text);
+    }
+
+    .nw-day__head {
+        display: flex;
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: var(--nw-surface);
+        border-bottom: 1px solid var(--nw-line-strong);
+    }
+
+    .nw-day__body {
+        display: flex;
+        align-items: stretch;
+    }
+
+    .nw-day__corner,
+    .nw-day__axis {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        flex: 0 0 var(--nw-label-w);
+        width: var(--nw-label-w);
+        background: var(--nw-surface);
+        border-right: 1px solid var(--nw-line-strong);
+    }
+
+    .nw-day__corner {
+        padding: 0.4rem 0.6rem;
+    }
+
+    .nw-day__heads,
+    .nw-day__field {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: grid;
+        grid-template-columns: repeat(var(--nw-day-cols), minmax(9rem, 1fr));
+    }
+
+    .nw-day__colhead {
+        padding: 0.4rem 0.6rem;
+        border-left: 1px solid var(--nw-line);
+    }
+
+    /* The axis is a ruler and nothing else — no counters live on it, which is
+       the whole reason this is a second component and not the night grid
+       turned ninety degrees. */
+    .nw-day__axis {
+        display: grid;
+        grid-template-rows: repeat(var(--nw-day-rows), var(--nw-day-row-h));
+    }
+
+    .nw-day__tick {
+        padding-right: 0.5rem;
+        text-align: right;
+        font-size: 0.6875rem;
+        color: var(--nw-muted);
+        font-variant-numeric: tabular-nums;
+        border-top: 1px dashed var(--nw-line);
+    }
+
+    .nw-day__tick--hour {
+        border-top: 1px solid var(--nw-line-strong);
+        font-weight: 600;
+        color: var(--nw-text);
+    }
+
+    .nw-day__field {
+        position: relative;
+        grid-template-rows: repeat(var(--nw-day-rows), var(--nw-day-row-h));
+    }
+
+    .nw-day__gridline {
+        border-top: 1px dashed var(--nw-line);
+        pointer-events: none;
+    }
+
+    .nw-day__gridline--hour {
+        border-top: 1px solid var(--nw-line-strong);
+    }
+
+    /* A departure is one block, positioned by the rows it covers. There is no
+       cell underneath it: an empty (time step, departure) pair means nothing,
+       and inventing one for each would put the 15-minute grid back into the
+       model that "Time inside a day" kept it out of. */
+    .nw-departure {
+        position: relative;
+        z-index: 1;
+        margin: 1px 3px;
+        padding: 0.3rem 0.4rem;
+        overflow: hidden;
+        border: 1px solid rgb(var(--primary-600, 163 91 26) / 0.65);
+        /* A left edge in full strength: at fifteen minutes a row the block's
+           own tint is a wash against the ruler behind it, and the eye needs
+           one solid line to read a column by. */
+        border-left: 3px solid rgb(var(--primary-600, 163 91 26));
+        border-radius: 0.4rem;
+        background: rgb(var(--primary-500, 181 101 29) / 0.16);
+    }
+
+    .nw-departure--soldout {
+        border-color: rgb(var(--danger-500, 239 68 68) / 0.6);
+        border-left-color: rgb(var(--danger-600, 220 38 38));
+        background: rgb(var(--danger-500, 239 68 68) / 0.14);
+    }
+
+    .nw-departure--overbooked {
+        border-color: rgb(var(--danger-600, 220 38 38));
+        background: rgb(var(--danger-600, 220 38 38) / 0.28);
+    }
+
+    /* Cut off rather than stopped: a sunset drive ending after midnight runs
+       past the bottom of a day that ends at midnight, and a clean edge would
+       read as a tour that finishes at 23:59. */
+    .nw-departure--clipped-end {
+        border-end-start-radius: 0;
+        border-end-end-radius: 0;
+        border-bottom: 2px dashed var(--nw-line-strong);
+    }
+
+    .nw-departure__head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.4rem;
+        font-weight: 600;
+    }
+
+    .nw-departure__time,
+    .nw-departure__seats {
+        font-variant-numeric: tabular-nums;
+    }
+
+    .nw-departure--soldout .nw-departure__seats {
+        color: rgb(var(--danger-700, 185 28 28));
+    }
+
+    .dark .nw-departure--soldout .nw-departure__seats {
+        color: rgb(var(--danger-400, 248 113 113));
+    }
+
+    .nw-departure__rate {
+        font-size: 0.6875rem;
+        color: var(--nw-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .nw-departure__stay {
+        display: block;
+        width: 100%;
+        margin-top: 3px;
+        padding: 0.1rem 0.35rem;
+        border: 1px solid transparent;
+        border-radius: 0.3rem;
+        font: inherit;
+        font-size: 0.6875rem;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: rgb(255 255 255);
+        cursor: pointer;
     }
 
     /* ---------- detail drawer ---------- */
@@ -694,7 +957,8 @@
            entirely — leaving it on would print one screenful and cut the rest.
            Rows lose their floor too: paper has no empty frame to look sparse
            in, so a room type only takes the height its bars need. */
-        .nw-cal__viewport {
+        .nw-cal__viewport,
+        .nw-day__viewport {
             min-height: 0;
             max-height: none;
             overflow: visible;

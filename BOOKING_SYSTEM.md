@@ -402,6 +402,28 @@ be true either way is that the rows underneath are the same rows, because the
 moment they are not, a property that sells both a chalet and a sunset drive has
 two calendars and no way to see its day.
 
+**Answered, 2026-08-12: two components, one read model.** Built against a real
+grid, the transposition turned out to be the wrong shape, and for a reason worth
+keeping.
+
+A night grid's second axis is a **series of counters**. Every (unit, night) pair
+has one, every cell is populated, and a stay is drawn *over* those cells as a bar
+spanning some of them. An hour axis carries no counters at all: it is a ruler,
+the only thing on it is a departure block positioned against it, and a
+fifteen-minute axis across eight departures is 96 × 8 positions of which eight
+mean anything. Transposing the one component would therefore have to invent an
+empty cell for every (time step, departure) pair — which is decision 1 above,
+*the grid is drawing, the slot is inventory*, re-committed one abstraction down
+in the view layer. Going the other way is no better: making a departure "a cell
+with a span" puts a concept into the night grid that no night has.
+
+So `OccupancyGrid` and `DayGrid` are two builders and
+`occupancy-grid.blade.php` / `departure-grid.blade.php` two partials — but they
+read the same table through the same sparse-calendar rules on
+`CalendarSnapshot`, which is the part the decision above actually insisted on. A
+property that sells a chalet and a sunset drive sees one calendar twice on one
+screen, not two calendars.
+
 **Where it stands.** The data model is built (2026-08-12): `booking_slots` is the
 timetable a unit runs, `room_type_calendar_days.slot_id` keys a row to a
 departure, and the uniqueness rule is two partial indexes — one row per unit per
@@ -420,6 +442,59 @@ A rate per departure works the same way and for the same reason: `rate_plan_days
 gained the slot, with the same two partial indexes, and the lookup is three steps
 that all already existed — the departure's own rate, else the day's, else the
 unit's. A sunset drive can cost more than the morning one.
+
+**The screen, built 2026-08-12.** The calendar stopped being a fixed fortnight:
+it is a day, a week or a month (`App\Enums\CalendarRange`), with a month and a
+year to jump to.
+
+Ranges **snap** — a month runs from the 1st to the last, a week from Monday, and
+the arrows move a whole one at a time. The alternative, a rolling thirty days
+from wherever you happen to be, cannot survive a jump control: a range labelled
+"September" that runs 12 September to 11 October is a lie, and two Septembers
+compared that way are two different windows. The cost is real and named rather
+than hidden: opening the calendar on the 28th shows three days ahead, which is
+what the week view and one press of "Later" are for.
+
+In the day view a property that runs departures gets the hour axis underneath
+its nights, at a resolution **derived from its own timetable** — the coarsest of
+60/30/15 minutes that still lands every departure's start and end on a line — and
+overridable on screen. Nothing to configure, and nothing stored: the resolution
+is a property of the screen, as decision 1 says.
+
+Two things the build decided that the design had not:
+
+- **A week and a month sum the day's departures.** A unit sold by departure has
+  its counters on the departures' rows and never writes the row beside them, so
+  a month view reading nights would have said "8 free" on every day of a fully
+  booked season. Its cell counts the day's seats instead — capacity, sold and
+  free summed across the timetable, priced at the cheapest seat, marked with the
+  number of departures it came from. The detail of which departure sold what is
+  the day view's, because drawing each seat sale as a bar makes a row as many
+  lanes tall as the month has bookings.
+- **A departure day's cell does not start a booking.** Every other free cell on
+  the calendar opens the booking form on that room and that night; a departure
+  has no night to sell, and a click that quietly moved the property's own
+  counter instead of the 09:00 tour's would put the calendar wrong in exactly
+  the way this design exists to prevent. Selling a departure from the day view
+  is the next step and wants a departure field on the booking form; until it
+  exists the block is a place to read the day and open the stays on it.
+
+**A guard test, because the risk here is a leak and not a bug.**
+`AccommodationUnchangedByTimeTest` asserts the thing the whole section rests on:
+a property that sells nights does not notice that departures exist. It is the
+same kind of test as the one that sat on the two availability readers before
+they were joined, and for the same reason — a departure's row shares a table, a
+date and a unit with a night's row, so every reader that forgets to say which of
+the two it wants gets a *plausible* number back, and nobody looks twice at a
+calendar that reads eight free.
+
+It started red, which is the point. `AvailabilityCalendar::snapshot()` — the bulk
+read the whole occupancy grid is built on — fetched both kinds of row and keyed
+them by date alone, so whichever the database returned last silently became the
+day; `rateDaysKeyedByDate()`, which prices a stay, did the same. Both are fixed,
+and the route the leak actually reaches a night by is now pinned: an operator
+retires a departure, the unit goes back to being sold by the period, and last
+month's 09:00 tour must not start answering for the night.
 
 **What none of this changes, which is the point.** Every rate a lodge has ever
 entered is a null-slot row; every row it will enter stays one; every query that

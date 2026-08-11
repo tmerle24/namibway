@@ -20,18 +20,57 @@
             <x-filament::section>
                 <div class="nw-toolbar nw-noprint">
                     <div class="nw-toolbar__group">
-                        <button type="button" class="nw-btn" wire:click="shift(-{{ $stepDays }})">
-                            &larr; Earlier
+                        <button type="button" class="nw-btn" wire:click="shift(-1)" aria-label="Previous {{ Str::lower($activeRange->label()) }}">
+                            &larr;
                         </button>
                         <button type="button" class="nw-btn" wire:click="today">Today</button>
-                        <button type="button" class="nw-btn" wire:click="shift({{ $stepDays }})">
-                            Later &rarr;
+                        <button type="button" class="nw-btn" wire:click="shift(1)" aria-label="Next {{ Str::lower($activeRange->label()) }}">
+                            &rarr;
                         </button>
 
-                        <span class="nw-range">
-                            {{ $grid->from->isoFormat('D MMM YYYY') }} &ndash;
-                            {{ $grid->to->copy()->subDay()->isoFormat('D MMM YYYY') }}
-                        </span>
+                        <span class="nw-range">{{ $rangeLabel }}</span>
+
+                        {{--
+                            A month and a year to jump to. Both selects post
+                            both values, so choosing one never silently resets
+                            the other.
+                        --}}
+                        <select
+                            class="nw-select"
+                            aria-label="Month"
+                            wire:change="jumpTo($event.target.value, {{ $jumpYear }})"
+                        >
+                            @foreach ($months as $number => $name)
+                                <option value="{{ $number }}" @selected($number === $jumpMonth)>{{ $name }}</option>
+                            @endforeach
+                        </select>
+
+                        <select
+                            class="nw-select nw-select--year"
+                            aria-label="Year"
+                            wire:change="jumpTo({{ $jumpMonth }}, $event.target.value)"
+                        >
+                            @foreach ($years as $year)
+                                <option value="{{ $year }}" @selected($year === $jumpYear)>{{ $year }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="nw-toolbar__group">
+                        {{--
+                            How much is on screen. The same book either way —
+                            a range is a reading of the rows, not a second
+                            calendar.
+                        --}}
+                        @foreach ($ranges as $option)
+                            <button
+                                type="button"
+                                class="nw-btn @if ($activeRange === $option) nw-btn--primary @endif"
+                                wire:click="showRange('{{ $option->value }}')"
+                            >
+                                {{ $option->label() }}
+                            </button>
+                        @endforeach
                     </div>
 
                     <div class="nw-toolbar__group">
@@ -55,23 +94,49 @@
                             @endforeach
                         @endif
 
-                        <span class="nw-hint">
-                            {{ $grid->occupancyPercent() }}% sold over these {{ $grid->columnCount() }} nights
-                        </span>
+                        @if (! $grid->isEmpty())
+                            <span class="nw-hint">
+                                {{ $grid->occupancyPercent() }}% sold over
+                                {{ $grid->columnCount() }} {{ Str::plural('night', $grid->columnCount()) }}
+                            </span>
+                        @endif
+
+                        @if ($dayGrid)
+                            <span class="nw-hint">
+                                {{ $dayGrid->seatsSold() }} of {{ $dayGrid->capacity() }} seats sold
+                            </span>
+                        @endif
 
                         {{ $this->createBookingAction }}
                         {{ $this->createBlockAction }}
                     </div>
                 </div>
 
-                @if ($grid->isEmpty())
+                @if ($grid->isEmpty() && ! $dayGrid)
                     <p class="nw-hint" style="margin-top: 1rem;">
                         {{ $property->name }} has no room types yet, so there is nothing to show a calendar for.
                         Room types — how many units of each, and what they cost a night — are what the calendar
                         is built from.
                     </p>
                 @else
-                    @include('filament.partner.partials.occupancy-grid', ['grid' => $grid])
+                    @if (! $grid->isEmpty())
+                        @include('filament.partner.partials.occupancy-grid', [
+                            'grid' => $grid,
+                            'compact' => (bool) $dayGrid,
+                        ])
+                    @endif
+
+                    {{--
+                        The same day, read down the hour axis instead of across
+                        the nights. Only where the property runs departures —
+                        a lodge never reaches this.
+                    --}}
+                    @if ($dayGrid)
+                        @include('filament.partner.partials.departure-grid', [
+                            'day' => $dayGrid,
+                            'resolutions' => $resolutions,
+                        ])
+                    @endif
                 @endif
             </x-filament::section>
         @endif

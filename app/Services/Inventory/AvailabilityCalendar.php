@@ -417,6 +417,7 @@ class AvailabilityCalendar
         }
 
         $days = [];
+        $slotDays = [];
 
         if ($keyed !== []) {
             $rows = RoomTypeCalendarDay::query()
@@ -425,12 +426,22 @@ class AvailabilityCalendar
                 ->whereDate('date', '<', Carbon::parse($to)->toDateString())
                 ->get();
 
+            // Both kinds of row come back in the one query — they are the same
+            // table — and are then filed apart. Filing them together is not a
+            // cosmetic mistake: two rows share a date, so whichever arrived
+            // last would silently become the day, and a tour operator's grid
+            // would report the last departure's counters as the property's.
             foreach ($rows as $row) {
-                $days[$row->room_type_id][$row->date->toDateString()] = $row;
+                if ($row->slot_id === null) {
+                    $days[$row->room_type_id][$row->date->toDateString()] = $row;
+                } else {
+                    $slotDays[$row->room_type_id][$row->date->toDateString()][$row->slot_id] = $row;
+                }
             }
         }
 
         $rateDays = [];
+        $slotRateDays = [];
 
         if ($keyed !== [] && $ratePlan !== null) {
             $rows = RatePlanDay::query()
@@ -441,11 +452,15 @@ class AvailabilityCalendar
                 ->get();
 
             foreach ($rows as $row) {
-                $rateDays[$row->room_type_id][$row->date->toDateString()] = $row;
+                if ($row->slot_id === null) {
+                    $rateDays[$row->room_type_id][$row->date->toDateString()] = $row;
+                } else {
+                    $slotRateDays[$row->room_type_id][$row->date->toDateString()][$row->slot_id] = $row;
+                }
             }
         }
 
-        return new CalendarSnapshot($days, $keyed, $rateDays);
+        return new CalendarSnapshot($days, $keyed, $rateDays, $slotDays, $slotRateDays);
     }
 
     /**
@@ -476,7 +491,6 @@ class AvailabilityCalendar
         return RatePlanDay::query()
             ->where('rate_plan_id', $ratePlan->id)
             ->where('room_type_id', $roomType->id)
-            ->whereNull('slot_id')
             // The day's own rate, never a departure's. Without this a tour
             // operator's 14:00 price would answer the question "what does this
             // day cost" — and, worse, would answer it for the 09:00 departure
@@ -504,6 +518,10 @@ class AvailabilityCalendar
         return RatePlanDay::query()
             ->where('rate_plan_id', $ratePlan->id)
             ->where('room_type_id', $roomType->id)
+            // Nights, so the day's rows. A stay priced by the night on a unit
+            // that also runs departures must not pick up a departure's price
+            // — and keyBy() would have let the last one written win.
+            ->whereNull('slot_id')
             ->whereBetween('date', [
                 Carbon::parse($checkIn)->toDateString(),
                 Carbon::parse($checkOut)->toDateString(),

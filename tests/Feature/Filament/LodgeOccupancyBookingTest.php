@@ -254,8 +254,11 @@ class LodgeOccupancyBookingTest extends TestCase
         ]);
 
         $writer = app(InventoryWriter::class);
-        $from = Carbon::parse('2026-09-10');
-        $to = $from->copy()->addDays(5);
+        // The whole month the calendar opens on: the range snaps to the 1st,
+        // so a season starting on the 10th would leave the first cell showing
+        // the room's own rate and prove nothing about rate plans.
+        $from = Carbon::parse('2026-09-01');
+        $to = Carbon::parse('2026-09-30');
 
         $writer->setRates($resident, $room, $from, $to, ['rate' => 900]);
         $writer->setRates($international, $room, $from, $to, ['rate' => 2400]);
@@ -285,8 +288,11 @@ class LodgeOccupancyBookingTest extends TestCase
         $theirPlan = $this->plan($theirListing, PricingStrategy::PerUnit);
 
         $writer = app(InventoryWriter::class);
-        $from = Carbon::parse('2026-09-10');
-        $to = $from->copy()->addDays(5);
+        // The whole month the calendar opens on: the range snaps to the 1st,
+        // so a season starting on the 10th would leave the first cell showing
+        // the room's own rate and prove nothing about rate plans.
+        $from = Carbon::parse('2026-09-01');
+        $to = Carbon::parse('2026-09-30');
 
         $writer->setRates($myPlan, $myRoom, $from, $to, ['rate' => 900]);
         $writer->setRates($theirPlan, $theirRoom, $from, $to, ['rate' => 5555]);

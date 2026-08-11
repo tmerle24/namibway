@@ -33,14 +33,26 @@ use Illuminate\Support\Carbon;
 class CalendarSnapshot
 {
     /**
+     * Departures are kept apart from the day, in their own two arrays, for the
+     * reason the migration gives: a row keyed to a slot counts seats on one
+     * tour and a row keyed to nothing counts the property's units, and a
+     * reader that mixed them would answer "how full is this day" with the
+     * 14:00 tour's number. Keyed by slot inside the date, because the whole
+     * point of a slot being a row is that the 09:00 departure selling out says
+     * nothing about the 14:00 one.
+     *
      * @param  array<int, array<string, RoomTypeCalendarDay>>  $days  room type id => Y-m-d => inventory row
      * @param  array<int, RoomType>  $roomTypes  keyed by id
      * @param  array<int, array<string, RatePlanDay>>  $rateDays  room type id => Y-m-d => rate row
+     * @param  array<int, array<string, array<int, RoomTypeCalendarDay>>>  $slotDays  room type id => Y-m-d => slot id => inventory row
+     * @param  array<int, array<string, array<int, RatePlanDay>>>  $slotRateDays  room type id => Y-m-d => slot id => rate row
      */
     public function __construct(
         private readonly array $days,
         private readonly array $roomTypes,
         private readonly array $rateDays = [],
+        private readonly array $slotDays = [],
+        private readonly array $slotRateDays = [],
     ) {}
 
     public function day(int $roomTypeId, CarbonInterface|string $date): ?RoomTypeCalendarDay
@@ -52,6 +64,23 @@ class CalendarSnapshot
     public function rateDay(int $roomTypeId, CarbonInterface|string $date): ?RatePlanDay
     {
         return $this->rateDays[$roomTypeId][$this->key($date)] ?? null;
+    }
+
+    /**
+     * One departure's inventory row on a date, if it has one.
+     *
+     * A sparse calendar means the same thing here as it does for a night: no
+     * row is "as many seats as the unit has", not "none".
+     */
+    public function slotDay(int $roomTypeId, CarbonInterface|string $date, int $slotId): ?RoomTypeCalendarDay
+    {
+        return $this->slotDays[$roomTypeId][$this->key($date)][$slotId] ?? null;
+    }
+
+    /** One departure's own rate row, where the plan set a price for it. */
+    public function slotRateDay(int $roomTypeId, CarbonInterface|string $date, int $slotId): ?RatePlanDay
+    {
+        return $this->slotRateDays[$roomTypeId][$this->key($date)][$slotId] ?? null;
     }
 
     public function capacity(int $roomTypeId, CarbonInterface|string $date): int
@@ -120,6 +149,16 @@ class CalendarSnapshot
 
             if ($day->closed_to_arrival || $day->closed_to_departure) {
                 return true;
+            }
+        }
+
+        // Seats sold on a departure count too: a retired unit is hidden as
+        // noise, and hiding a booking is not what that is for.
+        foreach ($this->slotDays[$roomTypeId] ?? [] as $slots) {
+            foreach ($slots as $day) {
+                if ($day->units_total !== null || $day->units_sold > 0 || $day->units_blocked > 0) {
+                    return true;
+                }
             }
         }
 
