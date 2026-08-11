@@ -14,6 +14,7 @@ use App\Models\GuestCategory;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\RoomType;
+use App\Services\Booking\BookingMailbox;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\ManualBookingLinePreview;
 use App\Services\Inventory\InventoryWriter;
@@ -385,10 +386,17 @@ trait EditsInventory
             $this->refuse('That stay has no price yet', [$unpriceable->getMessage()]);
         }
 
+        // Where the confirmation went, said at the one moment it matters. The
+        // panel used to carry this as a strip above every screen, which is
+        // both too often and — while somebody is booking — too far from the
+        // click that sent the mail. It is silent once a property is live.
+        $holding = BookingMailbox::for($reservation)->holdingNotice();
+
         Notification::make()
             ->success()
             ->title('Booking saved')
-            ->body($reservation->reference.' — '.$reservation->guest_name)
+            ->body($reservation->reference.' — '.$reservation->guest_name
+                .($holding === null ? '' : '. '.$holding))
             ->send();
 
         $this->prefillRoomTypeId = null;

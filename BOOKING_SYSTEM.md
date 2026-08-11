@@ -283,6 +283,27 @@ possible at all.
 **New pages**, each small: rate plans, guest categories, promotions. Amenities and
 photos go on the existing room type editor.
 
+### Where the panel talks to the operator
+
+**One notice board on the dashboard, and no strips above the screens.** The first
+attempt at telling an operator something — that this property's booking mail is
+being held rather than sent — was a coloured strip pinned above every page. Two
+things were wrong with it: it took a slice off the top of the panel and fought the
+sticky page header on every scroll, and a strip has no room for the sentence that
+actually helps, which is *what to do about it*.
+
+So notices live in a widget at the top of the dashboard
+(`App\Filament\Partner\Support\PropertyNotices`), each with the screen that answers
+it, and the panel gains a **Getting started** page — the three booking states, what
+each does with the mail, a checklist that derives itself from the data, and the
+address to write to. A notice must be **true right now, about this property, and
+either actionable or explainable**, and it disappears by itself when its condition
+stops holding.
+
+The one thing a dashboard cannot do is warn somebody at the moment they act, so
+where the confirmation went is also said in the notification after a booking is
+saved — the point in the day when it matters, and nowhere else.
+
 ### How it stays operable
 
 - **Profiles, not configuration.** Setting a property up offers "Lodge, per person
