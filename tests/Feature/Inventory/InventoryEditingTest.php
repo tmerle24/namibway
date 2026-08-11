@@ -9,6 +9,7 @@ use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Models\InventoryBlock;
 use App\Models\Listing;
 use App\Models\Partner;
+use App\Models\RatePlanDay;
 use App\Models\Reservation;
 use App\Models\RoomType;
 use App\Models\RoomTypeCalendarDay;
@@ -264,8 +265,10 @@ class InventoryEditingTest extends TestCase
         $this->assertSame(2200.0, $this->calendar->rateFor($room, now()->parse('2026-09-14')));
         $this->assertSame(1000.0, $this->calendar->rateFor($room, now()->parse('2026-09-15')));
 
-        // Nothing outside the range gained a row at all.
-        $this->assertSame(5, RoomTypeCalendarDay::where('room_type_id', $room->id)->count());
+        // Nothing outside the range gained a row at all — and rates land in the
+        // rate plan, so the inventory calendar stays empty here.
+        $this->assertSame(5, RatePlanDay::where('room_type_id', $room->id)->count());
+        $this->assertSame(0, RoomTypeCalendarDay::where('room_type_id', $room->id)->count());
     }
 
     public function test_a_bulk_edit_can_be_restricted_to_certain_weekdays(): void

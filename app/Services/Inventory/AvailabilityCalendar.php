@@ -3,6 +3,8 @@
 namespace App\Services\Inventory;
 
 use App\Exceptions\Inventory\StayRuleViolationException;
+use App\Models\RatePlan;
+use App\Models\RatePlanDay;
 use App\Models\RoomType;
 use App\Models\RoomTypeCalendarDay;
 use App\Services\Inventory\DTOs\CalendarSnapshot;
@@ -26,6 +28,19 @@ use Illuminate\Support\Carbon;
  * Everything here is a read. Nothing in this class writes a row, including
  * the calendar rows it finds missing: a sparse calendar is the normal state,
  * not a gap to repair.
+ *
+ * ## Rate plans
+ *
+ * Availability is read without one — a room is sold once however many plans it
+ * is offered under. Anything about money or restrictions takes an optional
+ * rate plan, and **null means the property's default plan**, falling back to
+ * the room type's own rate where a property has defined none — which is the
+ * behaviour before rate plans existed. A caller that knows which product it is
+ * selling names it; one that just wants "the price of this room" does not have
+ * to know rate plans exist.
+ *
+ * snapshot() is the exception and takes the plan explicitly: it is handed room
+ * types rather than a property, so there is nothing for it to resolve against.
  */
 class AvailabilityCalendar
 {
@@ -71,14 +86,14 @@ class AvailabilityCalendar
     }
 
     /**
-     * The rate for one night: the calendar's override where there is one, the
-     * room type's own rate otherwise. A pure function of (room type, date) —
-     * which is exactly why seasons are written onto dates rather than
-     * resolved at read time.
+     * The rate for one night: what the plan says for that night where it says
+     * anything, the room type's own rate otherwise. A pure function of (room
+     * type, date, plan) — which is exactly why seasons are written onto dates
+     * rather than resolved at read time.
      */
-    public function rateFor(RoomType $roomType, CarbonInterface $date): float
+    public function rateFor(RoomType $roomType, CarbonInterface $date, ?RatePlan $ratePlan = null): float
     {
-        return $this->rateFrom($roomType, $this->day($roomType, $date));
+        return $this->rateFrom($roomType, $this->rateDay($roomType, $date, $ratePlan));
     }
 
     public function capacityFor(RoomType $roomType, CarbonInterface $date): int
@@ -91,9 +106,14 @@ class AvailabilityCalendar
      * the total, so a quote stays correct if a line's quantity ever varies
      * across the stay.
      */
-    public function quote(RoomType $roomType, CarbonInterface $checkIn, CarbonInterface $checkOut, int $units = 1): Quote
-    {
-        $days = $this->daysKeyedByDate($roomType, $checkIn, $checkOut);
+    public function quote(
+        RoomType $roomType,
+        CarbonInterface $checkIn,
+        CarbonInterface $checkOut,
+        int $units = 1,
+        ?RatePlan $ratePlan = null,
+    ): Quote {
+        $days = $this->rateDaysKeyedByDate($roomType, $checkIn, $checkOut, $ratePlan);
         $nights = [];
 
         foreach ($this->nights($checkIn, $checkOut) as $night) {
@@ -118,13 +138,17 @@ class AvailabilityCalendar
      *
      * @throws StayRuleViolationException
      */
-    public function assertStayRules(RoomType $roomType, CarbonInterface $checkIn, CarbonInterface $checkOut): void
-    {
+    public function assertStayRules(
+        RoomType $roomType,
+        CarbonInterface $checkIn,
+        CarbonInterface $checkOut,
+        ?RatePlan $ratePlan = null,
+    ): void {
         $checkInDate = Carbon::parse($checkIn)->startOfDay();
         $checkOutDate = Carbon::parse($checkOut)->startOfDay();
         $nights = (int) $checkInDate->diffInDays($checkOutDate);
 
-        $arrival = $this->day($roomType, $checkInDate);
+        $arrival = $this->rateDay($roomType, $checkInDate, $ratePlan);
 
         if ($arrival?->closed_to_arrival === true) {
             throw StayRuleViolationException::closedToArrival($checkInDate->toDateString());
@@ -132,7 +156,7 @@ class AvailabilityCalendar
 
         // Closed-to-departure is a rule about the day the guest leaves, which
         // is the check-out date itself and not one of the booked nights.
-        $departure = $this->day($roomType, $checkOutDate);
+        $departure = $this->rateDay($roomType, $checkOutDate, $ratePlan);
 
         if ($departure?->closed_to_departure === true) {
             throw StayRuleViolationException::closedToDeparture($checkOutDate->toDateString());
@@ -145,10 +169,14 @@ class AvailabilityCalendar
         }
     }
 
-    public function passesStayRules(RoomType $roomType, CarbonInterface $checkIn, CarbonInterface $checkOut): bool
-    {
+    public function passesStayRules(
+        RoomType $roomType,
+        CarbonInterface $checkIn,
+        CarbonInterface $checkOut,
+        ?RatePlan $ratePlan = null,
+    ): bool {
         try {
-            $this->assertStayRules($roomType, $checkIn, $checkOut);
+            $this->assertStayRules($roomType, $checkIn, $checkOut, $ratePlan);
         } catch (StayRuleViolationException) {
             return false;
         }
@@ -191,8 +219,12 @@ class AvailabilityCalendar
      *
      * @param  iterable<int, RoomType>  $roomTypes
      */
-    public function snapshot(iterable $roomTypes, CarbonInterface $from, CarbonInterface $to): CalendarSnapshot
-    {
+    public function snapshot(
+        iterable $roomTypes,
+        CarbonInterface $from,
+        CarbonInterface $to,
+        ?RatePlan $ratePlan = null,
+    ): CalendarSnapshot {
         $keyed = [];
 
         foreach ($roomTypes as $roomType) {
@@ -213,7 +245,81 @@ class AvailabilityCalendar
             }
         }
 
-        return new CalendarSnapshot($days, $keyed);
+        $rateDays = [];
+
+        if ($keyed !== [] && $ratePlan !== null) {
+            $rows = RatePlanDay::query()
+                ->where('rate_plan_id', $ratePlan->id)
+                ->whereIn('room_type_id', array_keys($keyed))
+                ->whereDate('date', '>=', Carbon::parse($from)->toDateString())
+                ->whereDate('date', '<', Carbon::parse($to)->toDateString())
+                ->get();
+
+            foreach ($rows as $row) {
+                $rateDays[$row->room_type_id][$row->date->toDateString()] = $row;
+            }
+        }
+
+        return new CalendarSnapshot($days, $keyed, $rateDays);
+    }
+
+    /**
+     * The plan to read when the caller named none: the property's default.
+     * Null comes back only where a property has no plan at all, and that reads
+     * as the room type's own rate.
+     */
+    private function planFor(RoomType $roomType, ?RatePlan $ratePlan): ?RatePlan
+    {
+        if ($ratePlan !== null) {
+            return $ratePlan;
+        }
+
+        $listing = $roomType->listing;
+
+        return $listing === null ? null : RatePlan::defaultFor($listing);
+    }
+
+    /** One night's rate row, or null when the plan — or the property — has none. */
+    private function rateDay(RoomType $roomType, CarbonInterface $date, ?RatePlan $ratePlan): ?RatePlanDay
+    {
+        $ratePlan = $this->planFor($roomType, $ratePlan);
+
+        if ($ratePlan === null) {
+            return null;
+        }
+
+        return RatePlanDay::query()
+            ->where('rate_plan_id', $ratePlan->id)
+            ->where('room_type_id', $roomType->id)
+            ->whereDate('date', Carbon::parse($date)->toDateString())
+            ->first();
+    }
+
+    /**
+     * @return array<string, RatePlanDay>
+     */
+    private function rateDaysKeyedByDate(
+        RoomType $roomType,
+        CarbonInterface $checkIn,
+        CarbonInterface $checkOut,
+        ?RatePlan $ratePlan,
+    ): array {
+        $ratePlan = $this->planFor($roomType, $ratePlan);
+
+        if ($ratePlan === null) {
+            return [];
+        }
+
+        return RatePlanDay::query()
+            ->where('rate_plan_id', $ratePlan->id)
+            ->where('room_type_id', $roomType->id)
+            ->whereBetween('date', [
+                Carbon::parse($checkIn)->toDateString(),
+                Carbon::parse($checkOut)->toDateString(),
+            ])
+            ->get()
+            ->keyBy(fn (RatePlanDay $day) => $day->date->toDateString())
+            ->all();
     }
 
     /**
@@ -286,7 +392,7 @@ class AvailabilityCalendar
         return CalendarSnapshot::capacityFor($roomType, $day);
     }
 
-    private function rateFrom(RoomType $roomType, ?RoomTypeCalendarDay $day): float
+    private function rateFrom(RoomType $roomType, ?RatePlanDay $day): float
     {
         return CalendarSnapshot::rateFor($roomType, $day);
     }

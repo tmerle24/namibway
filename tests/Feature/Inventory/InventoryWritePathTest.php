@@ -9,6 +9,8 @@ use App\Exceptions\Inventory\DirectInventoryWriteException;
 use App\Models\Concerns\GuardsInventoryWrites;
 use App\Models\InventoryBlock;
 use App\Models\Listing;
+use App\Models\RatePlan;
+use App\Models\RatePlanDay;
 use App\Models\Reservation;
 use App\Models\ReservationNight;
 use App\Models\ReservationUnit;
@@ -38,6 +40,7 @@ class InventoryWritePathTest extends TestCase
      */
     private const INVENTORY_TABLES = [
         'room_type_calendar_days',
+        'rate_plan_days',
         'reservations',
         'reservation_units',
         'reservation_nights',
@@ -51,6 +54,7 @@ class InventoryWritePathTest extends TestCase
      */
     private const INVENTORY_MODELS = [
         RoomTypeCalendarDay::class,
+        RatePlanDay::class,
         Reservation::class,
         ReservationUnit::class,
         ReservationNight::class,
@@ -96,6 +100,26 @@ class InventoryWritePathTest extends TestCase
             'room_type_id' => $room->id,
             'date' => '2026-09-01',
             'units_sold' => 99,
+        ]);
+    }
+
+    /**
+     * A rate is money, and money written from five places is money nobody can
+     * account for. The rate calendar is guarded exactly like the inventory one.
+     */
+    public function test_writing_a_rate_outside_the_writer_is_refused(): void
+    {
+        $listing = Listing::factory()->create();
+        $room = RoomType::factory()->create(['listing_id' => $listing->id]);
+        $plan = RatePlan::ensureDefaultFor($listing);
+
+        $this->expectException(DirectInventoryWriteException::class);
+
+        RatePlanDay::create([
+            'rate_plan_id' => $plan->id,
+            'room_type_id' => $room->id,
+            'date' => '2026-09-01',
+            'rate' => 1,
         ]);
     }
 

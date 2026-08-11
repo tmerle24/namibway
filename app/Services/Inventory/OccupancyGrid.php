@@ -6,6 +6,7 @@ use App\Enums\BlockReason;
 use App\Enums\StayStatus;
 use App\Models\InventoryBlock;
 use App\Models\Listing;
+use App\Models\RatePlan;
 use App\Models\ReservationUnit;
 use App\Models\RoomType;
 use App\Services\Inventory\DTOs\CalendarSnapshot;
@@ -42,15 +43,26 @@ class OccupancyGrid
 
     public function __construct(private readonly AvailabilityCalendar $calendar) {}
 
-    public function build(Listing $listing, CarbonInterface $from, int $days = self::DEFAULT_DAYS): OccupancyGridData
-    {
+    /**
+     * `$ratePlan` is which product's rates the cells show. Null means the
+     * property's default plan, and a property with none shows its room types'
+     * own rates — the behaviour before rate plans existed.
+     */
+    public function build(
+        Listing $listing,
+        CarbonInterface $from,
+        int $days = self::DEFAULT_DAYS,
+        ?RatePlan $ratePlan = null,
+    ): OccupancyGridData {
+        $ratePlan ??= RatePlan::defaultFor($listing);
+
         $days = max(1, min($days, 92));
         $start = Carbon::parse($from)->startOfDay();
         $end = $start->copy()->addDays($days);
         $today = CountrySettings::for($listing)->today();
 
         $roomTypes = $listing->roomTypes()->orderBy('name')->get();
-        $snapshot = $this->calendar->snapshot($roomTypes, $start, $end);
+        $snapshot = $this->calendar->snapshot($roomTypes, $start, $end, $ratePlan);
 
         $bars = $this->bars($listing, $roomTypes->pluck('id')->all(), $start, $end, $days);
 
@@ -101,7 +113,12 @@ class OccupancyGrid
 
         foreach ($dates as $index => $date) {
             $key = $date->toDateString();
-            $day = $snapshot->day($roomType->id, $key);
+
+            // Counters come from the inventory row, restrictions from the rate
+            // plan's — they are commercial, not physical, so a non-refundable
+            // plan can want a three-night minimum on a night the flexible plan
+            // sells singly.
+            $restrictions = $snapshot->rateDay($roomType->id, $key);
 
             $cells[$index] = new OccupancyCell(
                 date: $date,
@@ -110,9 +127,9 @@ class OccupancyGrid
                 unitsBlocked: $snapshot->blocked($roomType->id, $key),
                 unitsFree: $snapshot->unitsFree($roomType->id, $key),
                 rate: $snapshot->rate($roomType->id, $key),
-                minStay: $day?->min_stay,
-                closedToArrival: (bool) $day?->closed_to_arrival,
-                closedToDeparture: (bool) $day?->closed_to_departure,
+                minStay: $restrictions?->min_stay,
+                closedToArrival: (bool) $restrictions?->closed_to_arrival,
+                closedToDeparture: (bool) $restrictions?->closed_to_departure,
             );
         }
 
