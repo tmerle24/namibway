@@ -28,6 +28,15 @@ class CalendarWidget extends Widget
 
     protected static ?int $sort = 2;
 
+    /**
+     * Rendered with the page, not fetched afterwards. Filament defers widgets
+     * by default, which turns opening the dashboard into three round trips
+     * instead of one — and these lodges are on satellite links, where a round
+     * trip is the expensive part. Both widgets read a bounded number of rows,
+     * so there is nothing here worth deferring.
+     */
+    protected static bool $isLazy = false;
+
     /** Two weeks: enough to see the shape of the week ahead without becoming the page. */
     private const DAYS = 14;
 
