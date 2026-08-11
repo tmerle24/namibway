@@ -282,11 +282,11 @@ class ListingResource extends Resource
             ->filters([])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                // The same button the team has, doing the same thing. The
-                // offer is that the owner can do it themselves and that we
-                // will also do it for them — two buttons that drifted apart
-                // would quietly turn that into two products.
-                CreateWebsiteAction::make(),
+                // The same button the team has, and switched off until the
+                // subscription exists to unlock it. Shown rather than hidden:
+                // the owner should see that a website is one click away, which
+                // is the whole offer.
+                CreateWebsiteAction::locked(),
             ])
             ->paginated(false);
     }

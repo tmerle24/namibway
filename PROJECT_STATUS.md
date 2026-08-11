@@ -649,6 +649,33 @@ Decisions worth knowing before the next slice:
   partner's connector rather than our calendar. The block quotes and then hands over to
   namibway.com.
 
+### Next up, in the order it was asked for
+
+- **The custom domain, entered in the admin, and nginx following by itself.**
+  Decided 2026-08-12, deliberately deferred. A site's own domain is one field away
+  today (`sites.host`), but a wildcard certificate does not cover somebody's own
+  `.com.na` — each one needs its own certificate and its own `server_name`.
+
+  The shape when it gets built: an admin field for the domain, and a **reconciler
+  outside the application** — a root-side script on a systemd timer that asks the app
+  which hosts are still without a certificate, checks each one actually points at us,
+  issues it, writes the vhost, reloads nginx. HTTP-01 is enough there, since it is the
+  customer's own domain resolving to our server; no OVH API needed, unlike the wildcard.
+
+  **PHP must not be the thing that runs certbot.** A queue worker allowed to `sudo` and
+  to write into `/etc/nginx` is a web process with root, and the 2026-08-11 outage in
+  `CLAUDE.md` is a fair illustration of what one bad nginx file costs on this box. The
+  app's half of this is read-only: a command that lists the pending hosts.
+
+  For the customer it is still click-free, just not instant — DNS has to propagate, and
+  the site runs on its subdomain in the meantime.
+
+- **The subscription gates the owner's button.** The create-website action exists in the
+  partner panel and is switched off (`CreateWebsiteAction::locked()`), because nothing
+  yet knows whether a customer is paying. When the state machine lands, the entitlement
+  check goes *behind* the action as well as on it — a greyed-out button is what an owner
+  should see, and not what the platform should rely on.
+
 ### Decided 2026-08-12 — the answers slice 2 builds against
 
 Every question this section listed as open has now been answered. Recorded here in the

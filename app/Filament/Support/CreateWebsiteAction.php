@@ -32,6 +32,28 @@ use Filament\Tables\Actions\Action;
  */
 class CreateWebsiteAction
 {
+    /**
+     * The owner's own copy of the button — visible, and switched off.
+     *
+     * Deliberately not hidden. The whole point of it being there is that the
+     * owner sees a website is one click away; hiding it would sell nothing and
+     * explain nothing. What holds it shut is the subscription, which does not
+     * exist yet — there is no provider for this market and billing runs by
+     * invoice in the meantime.
+     *
+     * **This is a lock on a door, not a wall.** When the subscription state
+     * machine lands, the entitlement check belongs behind the action as well as
+     * on it — a disabled button is the right thing for an owner to see, and the
+     * wrong thing to rely on.
+     */
+    public static function locked(string $name = 'create_website'): Action
+    {
+        return self::make($name)
+            ->disabled()
+            ->color('gray')
+            ->tooltip('Included once your website subscription starts — talk to us and we switch it on.');
+    }
+
     public static function make(string $name = 'create_website'): Action
     {
         return Action::make($name)
