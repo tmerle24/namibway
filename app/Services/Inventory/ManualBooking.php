@@ -6,6 +6,7 @@ use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Models\Listing;
+use App\Models\RatePlan;
 use App\Models\Reservation;
 use App\Models\RoomType;
 use App\Services\Inventory\DTOs\BookingLine;
@@ -48,6 +49,7 @@ class ManualBooking
     public function preview(Listing $listing, ?CarbonInterface $checkIn, ?CarbonInterface $checkOut, array $lines): ManualBookingPreview
     {
         $currency = CountrySettings::for($listing)->currency();
+        $ratePlan = RatePlan::defaultFor($listing);
 
         if ($checkIn === null || $checkOut === null) {
             return new ManualBookingPreview(0.0, $currency, 0, ['Choose an arrival and a departure date.']);
@@ -79,12 +81,12 @@ class ManualBooking
             }
 
             try {
-                $this->calendar->assertStayRules($room, $in, $out);
+                $this->calendar->assertStayRules($room, $in, $out, $ratePlan);
             } catch (StayRuleViolationException $violation) {
                 $problems[] = $room->name.': '.$violation->getMessage();
             }
 
-            $quote = $this->calendar->quote($room, $in, $out, $quantity);
+            $quote = $this->calendar->quote($room, $in, $out, $quantity, $ratePlan);
             $total += $quote->total();
 
             $previews[] = new ManualBookingLinePreview(
@@ -135,6 +137,9 @@ class ManualBooking
 
         $bookingLines = [];
 
+        // The writer resolves the plan again for the line it records. Passing
+        // it here as well would be the same lookup twice; leaving it null lets
+        // the one place that writes decide, which is where it belongs.
         foreach ($this->resolveRooms($listing, $lines) as [$room, $quantity]) {
             $bookingLines[] = new BookingLine($room, $quantity, $in, $out);
         }

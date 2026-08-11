@@ -32,6 +32,7 @@ class ReservationUnit extends Model
     protected $fillable = [
         'reservation_id',
         'room_type_id',
+        'rate_plan_id',
         'quantity',
         'check_in',
         'check_out',

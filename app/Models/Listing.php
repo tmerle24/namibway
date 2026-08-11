@@ -253,6 +253,20 @@ class Listing extends Model
     }
 
     /**
+     * The products this property sells its rooms under — board basis,
+     * eligibility, and how a night becomes an amount. See BOOKING_SYSTEM.md.
+     *
+     * A property with none is a valid state: every reader falls back to the
+     * room type's own rate, which is what it did before rate plans existed.
+     *
+     * @return HasMany<RatePlan, $this>
+     */
+    public function ratePlans(): HasMany
+    {
+        return $this->hasMany(RatePlan::class);
+    }
+
+    /**
      * @return HasMany<RoomType, $this>
      */
     public function roomTypes(): HasMany

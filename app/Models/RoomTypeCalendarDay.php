@@ -9,8 +9,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * One night of one room type in the ARI calendar. Rows are sparse: a missing
- * row means "the room type's defaults apply", and `units_total` / `rate` are
- * overrides where null means the same thing.
+ * row means "the room type's defaults apply", and `units_total` is an
+ * override where null means the same thing.
+ *
+ * **Inventory only.** Rate and restrictions moved to RatePlanDay, because a
+ * room is sold once however many rate plans it is offered under — see
+ * BOOKING_SYSTEM.md. Everything left here is keyed by room type alone, which
+ * is what keeps the conditional UPDATE below correct no matter how many
+ * products the property sells the room under.
  *
  * The counters are the availability answer, not a cache of one. They move
  * only through App\Services\Inventory\InventoryWriter, and only by
@@ -22,10 +28,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $units_total
  * @property int $units_sold
  * @property int $units_blocked
- * @property float|null $rate
- * @property int|null $min_stay
- * @property bool $closed_to_arrival
- * @property bool $closed_to_departure
  * @property-read RoomType|null $roomType
  */
 class RoomTypeCalendarDay extends Model
@@ -38,10 +40,6 @@ class RoomTypeCalendarDay extends Model
         'units_total',
         'units_sold',
         'units_blocked',
-        'rate',
-        'min_stay',
-        'closed_to_arrival',
-        'closed_to_departure',
     ];
 
     protected $casts = [
@@ -49,10 +47,6 @@ class RoomTypeCalendarDay extends Model
         'units_total' => 'integer',
         'units_sold' => 'integer',
         'units_blocked' => 'integer',
-        'rate' => 'float',
-        'min_stay' => 'integer',
-        'closed_to_arrival' => 'boolean',
-        'closed_to_departure' => 'boolean',
     ];
 
     /**

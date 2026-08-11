@@ -7,6 +7,8 @@ use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Models\InventoryBlock;
 use App\Models\Listing;
+use App\Models\RatePlan;
+use App\Models\RatePlanDay;
 use App\Models\Reservation;
 use App\Models\ReservationNight;
 use App\Models\ReservationUnit;
@@ -73,15 +75,31 @@ class InventoryWriter
         $lines = $this->validatedLines($request);
 
         return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($request, $lines) {
-            foreach ($lines as $line) {
-                $this->calendar->assertStayRules($line->roomType, $line->checkIn, $line->checkOut);
+            // Resolved once per line and reused for rules, pricing and the
+            // recorded line, so a stay cannot be checked against one plan and
+            // priced under another.
+            $fallback = RatePlan::defaultFor($request->listing);
+            $plans = [];
+
+            foreach ($lines as $index => $line) {
+                $plans[$index] = $line->ratePlan ?? $fallback;
+            }
+
+            foreach ($lines as $index => $line) {
+                $this->calendar->assertStayRules($line->roomType, $line->checkIn, $line->checkOut, $plans[$index]);
             }
 
             $quotes = [];
             $currencies = [];
 
             foreach ($lines as $index => $line) {
-                $quote = $this->calendar->quote($line->roomType, $line->checkIn, $line->checkOut, $line->quantity);
+                $quote = $this->calendar->quote(
+                    $line->roomType,
+                    $line->checkIn,
+                    $line->checkOut,
+                    $line->quantity,
+                    $plans[$index],
+                );
                 $quotes[$index] = $quote;
                 $currencies[] = $quote->currency;
             }
@@ -148,6 +166,7 @@ class InventoryWriter
                 $unit = new ReservationUnit([
                     'reservation_id' => $reservation->id,
                     'room_type_id' => $line->roomType->id,
+                    'rate_plan_id' => $plans[$index]?->id,
                     'quantity' => $line->quantity,
                     'check_in' => $line->checkIn,
                     'check_out' => $line->checkOut,
@@ -358,13 +377,63 @@ class InventoryWriter
     }
 
     /**
-     * Write rates and restrictions across a date range — how a season is
-     * expressed. Both ends inclusive, because these are nights.
+     * Write to the property's **default** rate plan, and to its inventory,
+     * from one call.
      *
-     * Only overrides and restrictions can be set here. The counters are
-     * deliberately not writable: they are the outcome of bookings and blocks,
-     * and letting a rate update reset them is precisely the class of bug the
-     * single write path exists to prevent.
+     * Most callers genuinely mean this: a seeder, a demo, a lodge that sells
+     * one product and has never heard the words "rate plan". They should not
+     * have to name one, and this resolves it — creating the default plan if
+     * the property has none, because a rate has to be written somewhere.
+     *
+     * `units_total` goes to the inventory calendar and everything else to the
+     * rate plan's, which is the split this method exists to hide. Anything
+     * that cares which plan it is writing to should call setRates() and
+     * setInventory() directly and say so.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @param  array<int, int>|null  $weekdays
+     * @return int number of nights written
+     */
+    public function setCalendar(
+        RoomType $roomType,
+        CarbonInterface $from,
+        CarbonInterface $to,
+        array $attributes,
+        ?array $weekdays = null,
+    ): int {
+        $inventory = array_intersect_key($attributes, ['units_total' => true]);
+        $rates = array_diff_key($attributes, $inventory);
+        $written = 0;
+
+        if ($inventory !== []) {
+            $written = $this->setInventory($roomType, $from, $to, $inventory, $weekdays);
+        }
+
+        if ($rates !== []) {
+            $listing = $roomType->listing;
+
+            if ($listing === null) {
+                throw new InvalidArgumentException(
+                    "Room type [{$roomType->id}] has no listing, so there is no rate plan to write to."
+                );
+            }
+
+            $written = max($written, $this->setRates(
+                RatePlan::ensureDefaultFor($listing),
+                $roomType,
+                $from,
+                $to,
+                $rates,
+                $weekdays,
+            ));
+        }
+
+        return $written;
+    }
+
+    /**
+     * Write a rate plan's rates and restrictions across a date range — how a
+     * season is expressed. Both ends inclusive, because these are nights.
      *
      * `$weekdays` restricts the write to certain days of the week, as ISO-8601
      * numbers (1 = Monday … 7 = Sunday). Null or empty means every night. This
@@ -376,36 +445,77 @@ class InventoryWriter
      * year, and a per-night round trip is hundreds of queries over the kind of
      * connection these properties have.
      *
-     * @param  array<string, mixed>  $attributes  units_total, rate, min_stay,
-     *                                            closed_to_arrival, closed_to_departure.
-     *                                            A null value clears the override.
+     * Counters are deliberately unreachable from here — they belong to the
+     * room type, not to a product sold under it, and letting a rate update
+     * touch them is precisely the class of bug the single write path exists to
+     * prevent. Capacity goes through setInventory().
+     *
+     * @param  array<string, mixed>  $attributes  rate, min_stay, closed_to_arrival,
+     *                                            closed_to_departure. A null value
+     *                                            clears the override.
      * @param  array<int, int>|null  $weekdays  ISO-8601 day numbers, or null for every night
      * @return int number of nights written
      */
-    public function setCalendar(
+    public function setRates(
+        RatePlan $ratePlan,
         RoomType $roomType,
         CarbonInterface $from,
         CarbonInterface $to,
         array $attributes,
         ?array $weekdays = null,
     ): int {
-        $allowed = ['units_total', 'rate', 'min_stay', 'closed_to_arrival', 'closed_to_departure'];
-        $unknown = array_diff(array_keys($attributes), $allowed);
+        $this->assertOnly($attributes, ['rate', 'min_stay', 'closed_to_arrival', 'closed_to_departure'], 'setRates()');
 
-        if ($unknown !== []) {
+        if ($roomType->listing_id !== $ratePlan->listing_id) {
             throw new InvalidArgumentException(
-                'setCalendar() does not write ['.implode(', ', $unknown).']. Allowed: '.implode(', ', $allowed).'.'
+                "Rate plan [{$ratePlan->id}] and room type [{$roomType->id}] belong to different properties."
             );
         }
 
-        $first = Carbon::parse($from)->startOfDay();
-        $last = Carbon::parse($to)->startOfDay();
+        $dates = $this->rangeDates($from, $to, $weekdays);
 
-        if ($last->lt($first)) {
-            throw new InvalidArgumentException('The calendar range cannot end before it starts.');
+        if ($dates === [] || $attributes === []) {
+            return 0;
         }
 
-        $dates = $this->datesToWrite($first, $last, $weekdays);
+        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($ratePlan, $roomType, $dates, $attributes) {
+            foreach (array_chunk($dates, 500) as $chunk) {
+                $this->ensureRateDays($ratePlan, $roomType, $chunk);
+
+                RatePlanDay::query()
+                    ->where('rate_plan_id', $ratePlan->id)
+                    ->where('room_type_id', $roomType->id)
+                    ->whereIn('date', $chunk)
+                    ->update($attributes);
+            }
+
+            return count($dates);
+        }));
+    }
+
+    /**
+     * Write how many units of a room type are on sale across a date range.
+     *
+     * Separate from setRates() because inventory is not a property of a rate
+     * plan: a room is sold once however many products it is offered under. See
+     * BOOKING_SYSTEM.md.
+     *
+     * @param  array<string, mixed>  $attributes  units_total. Null clears the override,
+     *                                            putting the night back on the room
+     *                                            type's own total.
+     * @param  array<int, int>|null  $weekdays  ISO-8601 day numbers, or null for every night
+     * @return int number of nights written
+     */
+    public function setInventory(
+        RoomType $roomType,
+        CarbonInterface $from,
+        CarbonInterface $to,
+        array $attributes,
+        ?array $weekdays = null,
+    ): int {
+        $this->assertOnly($attributes, ['units_total'], 'setInventory()');
+
+        $dates = $this->rangeDates($from, $to, $weekdays);
 
         if ($dates === [] || $attributes === []) {
             return 0;
@@ -423,6 +533,39 @@ class InventoryWriter
 
             return count($dates);
         }));
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @param  array<int, string>  $allowed
+     */
+    private function assertOnly(array $attributes, array $allowed, string $method): void
+    {
+        $unknown = array_diff(array_keys($attributes), $allowed);
+
+        if ($unknown !== []) {
+            throw new InvalidArgumentException(
+                $method.' does not write ['.implode(', ', $unknown).']. Allowed: '.implode(', ', $allowed).'.'
+            );
+        }
+    }
+
+    /**
+     * The nights a bulk write covers, as Y-m-d strings.
+     *
+     * @param  array<int, int>|null  $weekdays
+     * @return array<int, string>
+     */
+    private function rangeDates(CarbonInterface $from, CarbonInterface $to, ?array $weekdays): array
+    {
+        $first = Carbon::parse($from)->startOfDay();
+        $last = Carbon::parse($to)->startOfDay();
+
+        if ($last->lt($first)) {
+            throw new InvalidArgumentException('The calendar range cannot end before it starts.');
+        }
+
+        return $this->datesToWrite($first, $last, $weekdays);
     }
 
     /**
@@ -568,10 +711,6 @@ class InventoryWriter
             'units_total' => null,
             'units_sold' => 0,
             'units_blocked' => 0,
-            'rate' => null,
-            'min_stay' => null,
-            'closed_to_arrival' => false,
-            'closed_to_departure' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -597,6 +736,31 @@ class InventoryWriter
                 'units_total' => null,
                 'units_sold' => 0,
                 'units_blocked' => 0,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        DB::table('room_type_calendar_days')->insertOrIgnore($rows);
+    }
+
+    /**
+     * ensureDays() for the rate calendar. Same reason: a night with no row
+     * cannot be updated, and creating one with pure nulls changes no meaning
+     * because null still reads as "follow the room type".
+     *
+     * @param  array<int, string>  $dates
+     */
+    private function ensureRateDays(RatePlan $ratePlan, RoomType $roomType, array $dates): void
+    {
+        $now = now();
+        $rows = [];
+
+        foreach ($dates as $date) {
+            $rows[] = [
+                'rate_plan_id' => $ratePlan->id,
+                'room_type_id' => $roomType->id,
+                'date' => $date,
                 'rate' => null,
                 'min_stay' => null,
                 'closed_to_arrival' => false,
@@ -606,7 +770,7 @@ class InventoryWriter
             ];
         }
 
-        DB::table('room_type_calendar_days')->insertOrIgnore($rows);
+        DB::table('rate_plan_days')->insertOrIgnore($rows);
     }
 
     /** Allowlist, so no caller can ever aim these UPDATEs at another column. */

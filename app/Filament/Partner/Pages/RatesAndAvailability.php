@@ -4,6 +4,7 @@ namespace App\Filament\Partner\Pages;
 
 use App\Filament\Partner\Support\SelectedProperty;
 use App\Models\Listing;
+use App\Models\RatePlan;
 use App\Models\RoomType;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\InventoryWriter;
@@ -39,9 +40,10 @@ use Throwable;
  * weekend surcharge must not silently clear the minimum stay they set last
  * week. Clearing is available, but it has to be chosen.
  *
- * Everything is written through InventoryWriter::setCalendar(), which refuses
- * to touch the counters — a rate edit can never reset what a booking has
- * consumed.
+ * Everything is written through InventoryWriter, which refuses to touch the
+ * counters — a rate edit can never reset what a booking has consumed. Rates go
+ * to the property's rate plan and capacity to its inventory calendar, because
+ * a room is sold once however many products it is offered under.
  */
 class RatesAndAvailability extends Page implements HasForms
 {
@@ -254,11 +256,26 @@ class RatesAndAvailability extends Page implements HasForms
         }
 
         $writer = app(InventoryWriter::class);
+        $ratePlan = RatePlan::ensureDefaultFor($property);
+        $days = $weekdays === [] ? null : $weekdays;
+
+        $inventory = array_intersect_key($attributes, ['units_total' => true]);
+        $rates = array_diff_key($attributes, $inventory);
         $nights = 0;
 
         try {
             foreach ($rooms as $room) {
-                $nights += $writer->setCalendar($room, $from, $to, $attributes, $weekdays === [] ? null : $weekdays);
+                $written = 0;
+
+                if ($rates !== []) {
+                    $written = $writer->setRates($ratePlan, $room, $from, $to, $rates, $days);
+                }
+
+                if ($inventory !== []) {
+                    $written = max($written, $writer->setInventory($room, $from, $to, $inventory, $days));
+                }
+
+                $nights += $written;
             }
         } catch (Throwable $failure) {
             Notification::make()->danger()->title('Nothing was changed')->body($failure->getMessage())->send();

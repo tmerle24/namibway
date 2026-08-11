@@ -2,6 +2,7 @@
 
 namespace App\Services\Inventory\DTOs;
 
+use App\Models\RatePlanDay;
 use App\Models\RoomType;
 use App\Models\RoomTypeCalendarDay;
 use Carbon\CarbonInterface;
@@ -17,26 +18,40 @@ use Illuminate\Support\Carbon;
  * way. Nothing here reads the database — App\Services\Inventory\AvailabilityCalendar
  * fills it, and it is a read model, never a cache to be invalidated.
  *
- * The three static rules below are the sparse-calendar contract, and they live
- * here so there is one copy of them: a missing row, or a null override, means
+ * The static rules below are the sparse-calendar contract, and they live here
+ * so there is one copy of them: a missing row, or a null override, means
  * "follow the room type". AvailabilityCalendar's own single-night reads call
- * the same three, so the grid and the booking path can never disagree about
+ * the same ones, so the grid and the booking path can never disagree about
  * what a night costs.
+ *
+ * It reads from **two** sparse calendars, because a room is sold once however
+ * many rate plans it is offered under: inventory keyed by room type, rates and
+ * restrictions keyed by rate plan as well. See BOOKING_SYSTEM.md. A snapshot
+ * is always taken for one rate plan; a property with none passes null and gets
+ * the room types' own rates, exactly as before rate plans existed.
  */
 class CalendarSnapshot
 {
     /**
-     * @param  array<int, array<string, RoomTypeCalendarDay>>  $days  room type id => Y-m-d => row
+     * @param  array<int, array<string, RoomTypeCalendarDay>>  $days  room type id => Y-m-d => inventory row
      * @param  array<int, RoomType>  $roomTypes  keyed by id
+     * @param  array<int, array<string, RatePlanDay>>  $rateDays  room type id => Y-m-d => rate row
      */
     public function __construct(
         private readonly array $days,
         private readonly array $roomTypes,
+        private readonly array $rateDays = [],
     ) {}
 
     public function day(int $roomTypeId, CarbonInterface|string $date): ?RoomTypeCalendarDay
     {
         return $this->days[$roomTypeId][$this->key($date)] ?? null;
+    }
+
+    /** The rate plan's row for a night, if the plan said anything about it. */
+    public function rateDay(int $roomTypeId, CarbonInterface|string $date): ?RatePlanDay
+    {
+        return $this->rateDays[$roomTypeId][$this->key($date)] ?? null;
     }
 
     public function capacity(int $roomTypeId, CarbonInterface|string $date): int
@@ -50,7 +65,7 @@ class CalendarSnapshot
     {
         $roomType = $this->roomTypes[$roomTypeId] ?? null;
 
-        return $roomType === null ? 0.0 : self::rateFor($roomType, $this->day($roomTypeId, $date));
+        return $roomType === null ? 0.0 : self::rateFor($roomType, $this->rateDay($roomTypeId, $date));
     }
 
     public function sold(int $roomTypeId, CarbonInterface|string $date): int
@@ -93,15 +108,17 @@ class CalendarSnapshot
     public function hasActivity(int $roomTypeId): bool
     {
         foreach ($this->days[$roomTypeId] ?? [] as $day) {
-            if ($day->units_total !== null || $day->rate !== null || $day->min_stay !== null) {
+            if ($day->units_total !== null || $day->units_sold > 0 || $day->units_blocked > 0) {
+                return true;
+            }
+        }
+
+        foreach ($this->rateDays[$roomTypeId] ?? [] as $day) {
+            if ($day->rate !== null || $day->min_stay !== null) {
                 return true;
             }
 
             if ($day->closed_to_arrival || $day->closed_to_departure) {
-                return true;
-            }
-
-            if ($day->units_sold > 0 || $day->units_blocked > 0) {
                 return true;
             }
         }
@@ -124,8 +141,12 @@ class CalendarSnapshot
         return (int) $roomType->total_units;
     }
 
-    /** Same null-means-fall-back rule as capacity, for the rate. */
-    public static function rateFor(RoomType $roomType, ?RoomTypeCalendarDay $day): float
+    /**
+     * Same null-means-fall-back rule as capacity, for the rate — but read from
+     * the rate plan's calendar. A property with no rate plan, or a plan that
+     * has said nothing about this night, charges what the room type charges.
+     */
+    public static function rateFor(RoomType $roomType, ?RatePlanDay $day): float
     {
         if ($day !== null && $day->rate !== null) {
             return $day->rate;
