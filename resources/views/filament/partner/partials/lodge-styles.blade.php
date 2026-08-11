@@ -148,34 +148,31 @@
         margin-top: 1rem;
     }
 
-    /* On the dashboard the grid is one card among several, so it sizes to its
-       contents with a ceiling instead of reaching for the window — a widget
-       that fills the screen is not a widget. */
+    /* On the dashboard the grid is one card among several, so its ceiling is a
+       fixed height rather than the window — a widget that fills the screen is
+       not a widget — and its rows sit tighter than on the full page. Sizing to
+       content is the shared behaviour now, so only the two limits differ. */
     .nw-lodge--widget .nw-cal__viewport {
-        height: auto;
         min-height: 0;
         max-height: 24rem;
-    }
-
-    .nw-lodge--widget .nw-cal__table {
-        min-height: 0;
     }
 
     .nw-lodge--widget .nw-cal__row {
         min-height: 2.5rem;
     }
 
-    /* The grid takes the room it is given, in both directions. A wall planner
-       that occupies a corner of the screen while the rest is empty is harder
-       to read than one that does not, and this is the screen a lodge leaves
-       open all day.
+    /* The grid takes the width it is given, but only the height it needs.
 
-       Height is the window minus the chrome above and below it, so the
-       viewport ends where the screen does rather than at an arbitrary
-       fraction. Below a laptop-sized window it stops shrinking and scrolls
-       instead, because a calendar squeezed into 200px is not a calendar. */
+       The window minus the chrome above and below it is a *ceiling*, not a
+       height: a lodge with three room types got three ~190px rows carrying
+       ~110px of empty space each, which reads as a rendering fault rather
+       than as a spacious calendar. As a max the frame ends under the last
+       room type when there are few, and scrolls when there are many.
+
+       Below a laptop-sized window it stops shrinking and scrolls instead,
+       because a calendar squeezed into 200px is not a calendar. */
     .nw-cal__viewport {
-        height: calc(100vh - 19rem);
+        max-height: calc(100vh - 19rem);
         min-height: 22rem;
         overflow: auto;
         border: 1px solid var(--nw-line);
@@ -183,15 +180,11 @@
         background: var(--nw-surface);
     }
 
-    /* A flex column so the rows can share whatever height is left over: three
-       room types fill the frame instead of huddling at the top, and twenty
-       scroll. */
     .nw-cal__table {
         display: flex;
         flex-direction: column;
         width: 100%;
         min-width: max-content;
-        min-height: 100%;
         font-size: 0.75rem;
         color: var(--nw-text);
     }
@@ -209,9 +202,12 @@
     }
 
     .nw-cal__row {
-        /* Grows into spare vertical space, never below what a bar needs. */
-        flex: 1 1 auto;
-        min-height: 3rem;
+        /* As tall as the bars stacked in it, and no taller. Deliberately not a
+           max-height: lane packing is unbounded — a room type with eight units
+           can stack eight lanes — so a cap would hide real bookings. The floor
+           keeps a room type with none from collapsing onto its own label. */
+        flex: 0 0 auto;
+        min-height: 3.5rem;
     }
 
     .nw-cal__head {
@@ -694,19 +690,15 @@
             display: none !important;
         }
 
-        /* On paper there is no window to fill, so the grid goes back to being
-           as tall as its contents — a fixed viewport height would print one
-           screenful and cut the rest. */
+        /* On paper there is no window to cap against, so the ceiling comes off
+           entirely — leaving it on would print one screenful and cut the rest.
+           Rows lose their floor too: paper has no empty frame to look sparse
+           in, so a room type only takes the height its bars need. */
         .nw-cal__viewport {
-            height: auto;
             min-height: 0;
             max-height: none;
             overflow: visible;
             border: 0;
-        }
-
-        .nw-cal__table {
-            min-height: 0;
         }
 
         .nw-cal__row {
