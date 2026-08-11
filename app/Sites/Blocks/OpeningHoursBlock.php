@@ -27,6 +27,9 @@ class OpeningHoursBlock extends BlockDefinition
         return 'Opening hours';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -43,6 +46,9 @@ class OpeningHoursBlock extends BlockDefinition
         return $this->filled($data, 'days');
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function defaults(): array
     {
         return ['heading' => 'Opening hours', 'note' => null, 'days' => []];

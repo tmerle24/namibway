@@ -39,6 +39,9 @@ class BookingBlock extends BlockDefinition
         return 'Booking';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -56,6 +59,9 @@ class BookingBlock extends BlockDefinition
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function defaults(): array
     {
         return [

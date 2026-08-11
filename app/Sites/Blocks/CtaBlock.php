@@ -21,6 +21,9 @@ class CtaBlock extends BlockDefinition
         return 'Call to action';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -36,6 +39,9 @@ class CtaBlock extends BlockDefinition
         return $this->filled($data, 'heading') || $this->filled($data, 'label');
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function defaults(): array
     {
         return ['heading' => null, 'text' => null, 'label' => null, 'href' => null];

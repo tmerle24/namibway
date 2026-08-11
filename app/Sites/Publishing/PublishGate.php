@@ -95,8 +95,10 @@ class PublishGate
         $blocks = SiteBlock::whereIn('site_page_id', $site->pages()->select('id'))->get();
 
         foreach ($blocks as $block) {
+            $data = $block->data ?? [];
+
             foreach (['image_id', 'image_ids'] as $key) {
-                foreach ((array) ($block->data[$key] ?? []) as $id) {
+                foreach ((array) ($data[$key] ?? []) as $id) {
                     if (is_int($id) || (is_string($id) && ctype_digit($id))) {
                         $ids[] = (int) $id;
                     }

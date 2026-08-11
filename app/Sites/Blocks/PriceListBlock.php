@@ -27,6 +27,9 @@ class PriceListBlock extends BlockDefinition
         return 'Price list';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -44,6 +47,9 @@ class PriceListBlock extends BlockDefinition
         return $this->filled($data, 'items');
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function defaults(): array
     {
         return ['heading' => 'Prices', 'note' => null, 'items' => []];

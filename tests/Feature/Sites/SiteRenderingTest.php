@@ -6,6 +6,7 @@ use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Models\SitePage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -134,7 +135,7 @@ class SiteRenderingTest extends TestCase
 
         // Written straight to the table, the way a row left behind by a
         // withdrawn type would look after the class was deleted.
-        \Illuminate\Support\Facades\DB::table('site_blocks')->insert([
+        DB::table('site_blocks')->insert([
             'site_page_id' => $site->pages()->first()->id,
             'type' => 'weather_widget',
             'data' => '{}',

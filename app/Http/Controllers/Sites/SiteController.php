@@ -159,14 +159,16 @@ class SiteController
      * is simply dropped by the partial. A missing picture is a smaller failure
      * than a page that will not render.
      *
-     * @param  array<int, array<string, mixed>>  $payloads
+     * @param  array<int, array<string, mixed>|null>  $payloads
      * @return Collection<int, SiteImage>
      */
     private function images(Site $site, array $payloads): Collection
     {
         $ids = [];
 
-        foreach ($payloads as $data) {
+        foreach ($payloads as $payload) {
+            $data = $payload ?? [];
+
             foreach (['image_id', 'image_ids'] as $key) {
                 foreach ((array) ($data[$key] ?? []) as $id) {
                     if (is_int($id) || (is_string($id) && ctype_digit($id))) {

@@ -21,6 +21,9 @@ class HighlightsBlock extends BlockDefinition
         return 'Highlights';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -36,6 +39,9 @@ class HighlightsBlock extends BlockDefinition
         return $this->filled($data, 'items');
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function defaults(): array
     {
         return ['heading' => 'What we offer', 'items' => []];

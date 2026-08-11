@@ -24,6 +24,9 @@ class GalleryBlock extends BlockDefinition
         return 'Gallery';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -43,6 +46,9 @@ class GalleryBlock extends BlockDefinition
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function defaults(): array
     {
         return ['heading' => null, 'image_ids' => []];

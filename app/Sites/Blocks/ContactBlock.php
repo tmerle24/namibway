@@ -24,6 +24,9 @@ class ContactBlock extends BlockDefinition
         return 'Contact';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -41,6 +44,9 @@ class ContactBlock extends BlockDefinition
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function defaults(): array
     {
         return ['heading' => 'Get in touch', 'intro' => null, 'show_form' => false];

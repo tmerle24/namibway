@@ -27,6 +27,9 @@ class LocationBlock extends BlockDefinition
         return 'Location';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -43,6 +46,9 @@ class LocationBlock extends BlockDefinition
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function defaults(): array
     {
         return ['heading' => 'Find us', 'directions_note' => null];

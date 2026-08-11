@@ -22,6 +22,9 @@ class AboutBlock extends BlockDefinition
         return 'About';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -37,6 +40,9 @@ class AboutBlock extends BlockDefinition
         return $this->filled($data, 'body');
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function defaults(): array
     {
         return [

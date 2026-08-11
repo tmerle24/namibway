@@ -22,6 +22,9 @@ class HeroBlock extends BlockDefinition
         return 'Hero';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -47,6 +50,9 @@ class HeroBlock extends BlockDefinition
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function defaults(): array
     {
         return [

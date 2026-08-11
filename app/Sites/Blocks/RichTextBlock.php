@@ -22,6 +22,9 @@ class RichTextBlock extends BlockDefinition
         return 'Text';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -35,6 +38,9 @@ class RichTextBlock extends BlockDefinition
         return $this->filled($data, 'body');
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function defaults(): array
     {
         return ['heading' => null, 'body' => null];

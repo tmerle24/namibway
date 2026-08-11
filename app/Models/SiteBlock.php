@@ -16,7 +16,7 @@ use InvalidArgumentException;
  * @property int $id
  * @property int $site_page_id
  * @property string $type
- * @property array<string, mixed> $data
+ * @property array<string, mixed>|null $data
  * @property int $sort
  * @property bool $is_enabled
  */

@@ -28,6 +28,9 @@ class FooterBlock extends BlockDefinition
         return 'Footer';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -49,6 +52,9 @@ class FooterBlock extends BlockDefinition
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function defaults(): array
     {
         return [

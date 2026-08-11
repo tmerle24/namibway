@@ -32,7 +32,13 @@ final class BookingPanelData
 
     public function nights(): int
     {
-        return $this->hasQuery() ? max(1, (int) $this->checkIn->diffInDays($this->checkOut)) : 0;
+        // Both checked inline rather than through hasQuery(), so the nulls are
+        // narrowed where a reader — and a static analyser — can see it.
+        if ($this->checkIn === null || $this->checkOut === null) {
+            return 0;
+        }
+
+        return max(1, (int) $this->checkIn->diffInDays($this->checkOut));
     }
 
     /**
