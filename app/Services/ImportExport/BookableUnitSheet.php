@@ -2,18 +2,18 @@
 
 namespace App\Services\ImportExport;
 
-use App\Models\RoomType;
+use App\Models\BookableUnit;
 
 /**
- * The "RoomTypes" sheet of the listings workbook: the bookable units of an
- * accommodation (see App\Models\RoomType), one row per room type.
+ * The "BookableUnits" sheet of the listings workbook: the bookable units of an
+ * accommodation (see App\Models\BookableUnit), one row per room type.
  *
  * Unlike a listing, a room type has a natural key — `listing_id` + `code` is
  * unique in the database — so a row can be matched without an internal id, and
  * the same sheet both creates and updates. Rooms that are in the database but
  * not in the sheet are left alone: an import never deletes.
  */
-final class RoomTypeSheet
+final class BookableUnitSheet
 {
     public const SHEET_NAME = 'RoomTypes';
 
@@ -151,20 +151,20 @@ final class RoomTypeSheet
         return self::$lookup[ListingSheet::normalize($header)] ?? null;
     }
 
-    public static function cellValue(SheetColumn $column, RoomType $roomType): string|int|float|null
+    public static function cellValue(SheetColumn $column, BookableUnit $bookableUnit): string|int|float|null
     {
         return match ($column->type) {
-            SheetColumnType::Id => $roomType->listing_id,
+            SheetColumnType::Id => $bookableUnit->listing_id,
             // Input only, exactly like the Listings sheet: the folder a room's photos
             // came from isn't stored, and writing anything here would make an
             // untouched export re-upload them.
             SheetColumnType::PhotoFolder => null,
-            SheetColumnType::Integer => (int) $roomType->getAttribute($column->attribute),
-            SheetColumnType::Decimal => round((float) $roomType->getAttribute($column->attribute), 2),
-            SheetColumnType::Boolean => $roomType->getAttribute($column->attribute) ? 'yes' : 'no',
+            SheetColumnType::Integer => (int) $bookableUnit->getAttribute($column->attribute),
+            SheetColumnType::Decimal => round((float) $bookableUnit->getAttribute($column->attribute), 2),
+            SheetColumnType::Boolean => $bookableUnit->getAttribute($column->attribute) ? 'yes' : 'no',
             default => $column->header === 'listing'
-                ? $roomType->listing?->getTranslation('name', ListingSheet::locale(), false)
-                : self::stringOrNull($roomType->getAttribute($column->attribute)),
+                ? $bookableUnit->listing?->getTranslation('name', ListingSheet::locale(), false)
+                : self::stringOrNull($bookableUnit->getAttribute($column->attribute)),
         };
     }
 

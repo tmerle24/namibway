@@ -30,7 +30,7 @@
 | Room | Sold as | Dates | Amount |
 |---|---|---|---|
 @foreach ($reservation->units as $unit)
-| {{ $unit->roomType?->name ?? 'Room' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif | {{ $unit->soldAs() ?? '—' }} | {{ $unit->check_in->isoFormat('D MMM') }} – {{ $unit->check_out->isoFormat('D MMM') }} | {{ \App\Support\Money::format($unit->total_amount, $unit->currency) }} |
+| {{ $unit->bookableUnit?->name ?? 'Room' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif | {{ $unit->soldAs() ?? '—' }} | {{ $unit->check_in->isoFormat('D MMM') }} – {{ $unit->check_out->isoFormat('D MMM') }} | {{ \App\Support\Money::format($unit->total_amount, $unit->currency) }} |
 @endforeach
 </x-mail::table>
 

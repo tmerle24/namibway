@@ -5,9 +5,9 @@ namespace Tests\Feature\Inventory;
 use App\Enums\ListingType;
 use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
+use App\Models\BookableUnit;
 use App\Models\Listing;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Services\Inventory\ArrivalsBoard;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
@@ -44,7 +44,7 @@ class ArrivalsBoardTest extends TestCase
     public function test_one_date_with_an_arrival_a_departure_and_a_stay_in_progress(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing, ['total_units' => 6]);
+        $room = $this->bookableUnit($listing, ['total_units' => 6]);
 
         $this->book($listing, $room, '2026-09-10', '2026-09-13', guest: 'Arriving Today');
         $this->book($listing, $room, '2026-09-07', '2026-09-10', guest: 'Leaving Today');
@@ -61,7 +61,7 @@ class ArrivalsBoardTest extends TestCase
     public function test_a_room_turning_over_the_same_day_is_a_departure_and_an_arrival_not_a_stay(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing, ['total_units' => 2]);
+        $room = $this->bookableUnit($listing, ['total_units' => 2]);
 
         $out = $this->book($listing, $room, '2026-09-08', '2026-09-10', guest: 'Out');
         $in = $this->book($listing, $room, '2026-09-10', '2026-09-12', guest: 'In');
@@ -76,7 +76,7 @@ class ArrivalsBoardTest extends TestCase
     public function test_rooms_and_guests_tonight_count_arrivals_and_stays_but_not_departures(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing, ['total_units' => 8, 'max_adults' => 4]);
+        $room = $this->bookableUnit($listing, ['total_units' => 8, 'max_adults' => 4]);
 
         $this->book($listing, $room, '2026-09-10', '2026-09-12', quantity: 2, guest: 'Arriving', adults: 3);
         $this->book($listing, $room, '2026-09-08', '2026-09-12', quantity: 1, guest: 'Staying', adults: 2, children: 1);
@@ -91,7 +91,7 @@ class ArrivalsBoardTest extends TestCase
     public function test_a_cancelled_stay_is_off_the_board_and_a_no_show_is_not(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing, ['total_units' => 4]);
+        $room = $this->bookableUnit($listing, ['total_units' => 4]);
         $writer = app(InventoryWriter::class);
 
         $cancelled = $this->book($listing, $room, '2026-09-10', '2026-09-12', guest: 'Cancelled');
@@ -110,19 +110,19 @@ class ArrivalsBoardTest extends TestCase
         $mine = $this->property();
         $theirs = $this->property();
 
-        $this->book($mine, $this->roomType($mine), '2026-09-10', '2026-09-12', guest: 'My Guest');
-        $this->book($theirs, $this->roomType($theirs), '2026-09-10', '2026-09-12', guest: 'Their Guest');
+        $this->book($mine, $this->bookableUnit($mine), '2026-09-10', '2026-09-12', guest: 'My Guest');
+        $this->book($theirs, $this->bookableUnit($theirs), '2026-09-10', '2026-09-12', guest: 'Their Guest');
 
         $board = app(ArrivalsBoard::class)->forDate($mine, Carbon::parse('2026-09-10'));
 
         $this->assertSame(['My Guest'], $board->arrivals->pluck('guest_name')->all());
     }
 
-    public function test_a_multi_room_stay_is_one_row_with_every_room_type_on_it(): void
+    public function test_a_multi_room_stay_is_one_row_with_every_bookable_unit_on_it(): void
     {
         $listing = $this->property();
-        $standard = $this->roomType($listing, ['name' => 'Standard', 'total_units' => 4]);
-        $family = $this->roomType($listing, ['name' => 'Family', 'total_units' => 2]);
+        $standard = $this->bookableUnit($listing, ['name' => 'Standard', 'total_units' => 4]);
+        $family = $this->bookableUnit($listing, ['name' => 'Family', 'total_units' => 2]);
 
         app(InventoryWriter::class)->book(new BookingRequest(
             listing: $listing,
@@ -142,7 +142,7 @@ class ArrivalsBoardTest extends TestCase
         $this->assertSame(3, $board->units($board->arrivals));
         $this->assertEqualsCanonicalizing(
             ['Standard', 'Family'],
-            $board->arrivals->first()->units->map(fn ($unit) => $unit->roomType->name)->all()
+            $board->arrivals->first()->units->map(fn ($unit) => $unit->bookableUnit->name)->all()
         );
     }
 
@@ -154,9 +154,9 @@ class ArrivalsBoardTest extends TestCase
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function roomType(Listing $listing, array $attributes = []): RoomType
+    private function bookableUnit(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create(array_merge([
+        return BookableUnit::factory()->create(array_merge([
             'listing_id' => $listing->id,
             'total_units' => 3,
             'rate_per_night' => 1500.00,
@@ -166,7 +166,7 @@ class ArrivalsBoardTest extends TestCase
 
     private function book(
         Listing $listing,
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         string $checkIn,
         string $checkOut,
         int $quantity = 1,
@@ -176,7 +176,7 @@ class ArrivalsBoardTest extends TestCase
     ): Reservation {
         return app(InventoryWriter::class)->book(new BookingRequest(
             listing: $listing,
-            lines: [new BookingLine($roomType, $quantity, Carbon::parse($checkIn), Carbon::parse($checkOut))],
+            lines: [new BookingLine($bookableUnit, $quantity, Carbon::parse($checkIn), Carbon::parse($checkOut))],
             guestName: $guest,
             source: ReservationSource::PartnerEntered,
             adults: $adults,

@@ -7,11 +7,11 @@ use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
+use App\Models\BookableUnit;
 use App\Models\Customer;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Models\User;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
@@ -70,7 +70,7 @@ class DemoTenantBuilder
     {
         $weeks = max(2, $weeks ?? (int) config('booking.demo.weeks', 12));
 
-        $ownRoomTypes = $source->roomTypes()->count() > 0;
+        $ownBookableUnits = $source->bookableUnits()->count() > 0;
 
         $partner = $this->partner($source);
         $listing = $this->listing($partner, $source);
@@ -86,7 +86,7 @@ class DemoTenantBuilder
         // any bookings to explain it.
         Customer::query()->where('partner_id', $partner->id)->delete();
 
-        $rooms = $this->copyRoomTypes($source, $listing);
+        $rooms = $this->copyBookableUnits($source, $listing);
 
         // Seeded so a demo does not reinvent itself on every run. It makes the
         // shape of the business stable — the same guest names, the same
@@ -122,8 +122,8 @@ class DemoTenantBuilder
             user: $user,
             password: $password,
             signInUrl: $this->signInUrl($user),
-            roomTypes: count($rooms),
-            roomTypesAreInvented: ! $ownRoomTypes,
+            bookableUnits: count($rooms),
+            bookableUnitsAreInvented: ! $ownBookableUnits,
             stays: $stays,
             blocks: $blocks,
         );
@@ -160,7 +160,7 @@ class DemoTenantBuilder
         DB::transaction(function () use ($partner) {
             foreach ($partner->listings()->get() as $listing) {
                 $this->wipe($listing);
-                $listing->roomTypes()->delete();
+                $listing->bookableUnits()->delete();
                 $listing->delete();
             }
 
@@ -283,17 +283,17 @@ class DemoTenantBuilder
      * Either way they are the demo listing's own rows. Rebuilt from scratch
      * each run, so a room type a prospect renamed comes back.
      *
-     * @return array<int, RoomType>
+     * @return array<int, BookableUnit>
      */
-    private function copyRoomTypes(Listing $source, Listing $listing): array
+    private function copyBookableUnits(Listing $source, Listing $listing): array
     {
-        $listing->roomTypes()->delete();
+        $listing->bookableUnits()->delete();
 
-        $existing = $source->roomTypes()->orderBy('id')->get();
+        $existing = $source->bookableUnits()->orderBy('id')->get();
 
         return $existing->isEmpty()
-            ? $this->inventRoomTypes($listing)
-            : $existing->map(fn (RoomType $room) => RoomType::create([
+            ? $this->inventBookableUnits($listing)
+            : $existing->map(fn (BookableUnit $room) => BookableUnit::create([
                 'listing_id' => $listing->id,
                 'code' => $room->code,
                 'name' => $room->name,
@@ -319,9 +319,9 @@ class DemoTenantBuilder
      * These are made up, and the command says so out loud — a prospect must
      * not take an invented rate for their own.
      *
-     * @return array<int, RoomType>
+     * @return array<int, BookableUnit>
      */
-    private function inventRoomTypes(Listing $listing): array
+    private function inventBookableUnits(Listing $listing): array
     {
         $base = (float) ($listing->price_from ?: 0);
         $base = $base > 0 ? round($base, 2) : 1850.00;
@@ -336,7 +336,7 @@ class DemoTenantBuilder
         $rooms = [];
 
         foreach ($definitions as [$code, $name, $units, $factor, $adults, $children]) {
-            $rooms[] = RoomType::create([
+            $rooms[] = BookableUnit::create([
                 'listing_id' => $listing->id,
                 'code' => $code,
                 'name' => $name,
@@ -363,7 +363,7 @@ class DemoTenantBuilder
      * Two seasons and the two restrictions a front desk actually uses, so the
      * calendar shows rates that move and markers that mean something.
      *
-     * @param  array<int, RoomType>  $rooms
+     * @param  array<int, BookableUnit>  $rooms
      */
     private function seasons(array $rooms, Carbon $start, Carbon $today, Carbon $end): void
     {
@@ -409,7 +409,7 @@ class DemoTenantBuilder
     }
 
     /**
-     * @param  array<int, RoomType>  $rooms
+     * @param  array<int, BookableUnit>  $rooms
      */
     private function blocks(array $rooms, Carbon $today, Carbon $end): int
     {
@@ -443,7 +443,7 @@ class DemoTenantBuilder
 
             try {
                 $this->writer->block(new BlockRequest(
-                    roomType: $room,
+                    bookableUnit: $room,
                     units: $units,
                     firstNight: $firstNight,
                     lastNight: $lastBlockNight,
@@ -465,7 +465,7 @@ class DemoTenantBuilder
      * Stays across the window, each in the lifecycle state it would really be
      * in by now: departed in the past, in house today, expected later.
      *
-     * @param  array<int, RoomType>  $rooms
+     * @param  array<int, BookableUnit>  $rooms
      */
     private function stays(Listing $listing, array $rooms, Carbon $start, Carbon $end): int
     {

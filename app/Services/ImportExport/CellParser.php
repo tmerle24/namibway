@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 /**
  * Turns spreadsheet text into the values a model wants — shared by every sheet
  * in the workbook, so a price is read the same way on the Listings sheet as on
- * the RoomTypes sheet, and a city name resolves identically everywhere.
+ * the BookableUnits sheet, and a city name resolves identically everywhere.
  *
  * It is deliberately forgiving about what a spreadsheet produces (thousands
  * separators either way round, a pasted Google Maps URL, "yes"/"x"/"1") and

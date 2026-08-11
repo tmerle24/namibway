@@ -54,7 +54,7 @@ exist and are live.
 
 | | What it is | Where it lives today |
 |---|---|---|
-| **Inventory** | How many units of a room type are free on a night | `room_type_calendar_days` counters, moved by a conditional `UPDATE` |
+| **Inventory** | How many units of a bookable unit are free on a night | `bookable_unit_calendar_days` counters, moved by a conditional `UPDATE` |
 | **Restrictions** | Minimum stay, closed to arrival, closed to departure | same table |
 | **The price of a stay, as a result** | An amount per night, recorded | `reservation_nights` |
 
@@ -233,10 +233,10 @@ We do not need a more general model than the standard. We need the standard.
 Today one table carries both inventory and rate. With rate plans those separate,
 because **a room is sold once no matter how many rate plans it is offered under**:
 
-- `room_type_calendar_days` **keeps the counters** — `units_total`, `units_sold`,
+- `bookable_unit_calendar_days` **keeps the counters** — `units_total`, `units_sold`,
   `units_blocked` — per room type per night. Inventory is shared across rate plans.
   The concurrency mechanism and its process-forking test stay untouched.
-- `rate_plan_days` is new — `rate_plan_id`, `room_type_id`, `date`, `rate`,
+- `rate_plan_days` is new — `rate_plan_id`, `bookable_unit_id`, `date`, `rate`,
   `min_stay`, `closed_to_arrival`, `closed_to_departure`. Rates and restrictions
   differ per rate plan; availability does not.
 
@@ -253,7 +253,7 @@ pointless.
 | `rate_plan_guest_amounts` | Base amount by guest count, per rate plan × room type × **night** |
 | `guest_categories` | Per property: adult, child 3–11, infant 0–2 … name, age range, share of the adult price, whether it counts as an occupant |
 | `promotions` | Discount, optional code, stay window, booking window, which rate plans and room types, minimum nights, usage cap |
-| `amenities` + `room_type_amenity` | Amenity catalogue with categories, and what each room type has |
+| `amenities` + `amenity_bookable_unit` | Amenity catalogue with categories, and what each room type has |
 
 Two departures from the first draft of this table, both made while building step 2
 and both worth stating rather than leaving to be discovered:
@@ -402,8 +402,30 @@ be true either way is that the rows underneath are the same rows, because the
 moment they are not, a property that sells both a chalet and a sunset drive has
 two calendars and no way to see its day.
 
+**Answered, 2026-08-12: two components, one read model.** Built against a real
+grid, the transposition turned out to be the wrong shape, and for a reason worth
+keeping.
+
+A night grid's second axis is a **series of counters**. Every (unit, night) pair
+has one, every cell is populated, and a stay is drawn *over* those cells as a bar
+spanning some of them. An hour axis carries no counters at all: it is a ruler,
+the only thing on it is a departure block positioned against it, and a
+fifteen-minute axis across eight departures is 96 × 8 positions of which eight
+mean anything. Transposing the one component would therefore have to invent an
+empty cell for every (time step, departure) pair — which is decision 1 above,
+*the grid is drawing, the slot is inventory*, re-committed one abstraction down
+in the view layer. Going the other way is no better: making a departure "a cell
+with a span" puts a concept into the night grid that no night has.
+
+So `OccupancyGrid` and `DayGrid` are two builders and
+`occupancy-grid.blade.php` / `departure-grid.blade.php` two partials — but they
+read the same table through the same sparse-calendar rules on
+`CalendarSnapshot`, which is the part the decision above actually insisted on. A
+property that sells a chalet and a sunset drive sees one calendar twice on one
+screen, not two calendars.
+
 **Where it stands.** The data model is built (2026-08-12): `booking_slots` is the
-timetable a unit runs, `room_type_calendar_days.slot_id` keys a row to a
+timetable a unit runs, `bookable_unit_calendar_days.slot_id` keys a row to a
 departure, and the uniqueness rule is two partial indexes — one row per unit per
 night where there is no slot, one per unit per date per departure where there is.
 Two indexes rather than one over three columns because SQL treats NULLs as
@@ -420,6 +442,136 @@ A rate per departure works the same way and for the same reason: `rate_plan_days
 gained the slot, with the same two partial indexes, and the lookup is three steps
 that all already existed — the departure's own rate, else the day's, else the
 unit's. A sunset drive can cost more than the morning one.
+
+**The screen, built 2026-08-12.** The calendar stopped being a fixed fortnight:
+it is a day, a week or a month (`App\Enums\CalendarRange`), with a month and a
+year to jump to.
+
+Ranges **snap** — a month runs from the 1st to the last, a week from Monday, and
+the arrows move a whole one at a time. The alternative, a rolling thirty days
+from wherever you happen to be, cannot survive a jump control: a range labelled
+"September" that runs 12 September to 11 October is a lie, and two Septembers
+compared that way are two different windows. The cost is real and named rather
+than hidden: opening the calendar on the 28th shows three days ahead, which is
+what the week view and one press of "Later" are for.
+
+In the day view a property that runs departures gets the hour axis underneath
+its nights, at a resolution **derived from its own timetable** — the coarsest of
+60/30/15 minutes that still lands every departure's start and end on a line — and
+overridable on screen. Nothing to configure, and nothing stored: the resolution
+is a property of the screen, as decision 1 says.
+
+Two things the build decided that the design had not:
+
+- **A week and a month sum the day's departures.** A unit sold by departure has
+  its counters on the departures' rows and never writes the row beside them, so
+  a month view reading nights would have said "8 free" on every day of a fully
+  booked season. Its cell counts the day's seats instead — capacity, sold and
+  free summed across the timetable, priced at the cheapest seat, marked with the
+  number of departures it came from. The detail of which departure sold what is
+  the day view's, because drawing each seat sale as a bar makes a row as many
+  lanes tall as the month has bookings.
+- **A departure day's cell does not start a booking.** Every other free cell on
+  the calendar opens the booking form on that room and that night; a departure
+  has no night to sell, and a click that quietly moved the property's own
+  counter instead of the 09:00 tour's would put the calendar wrong in exactly
+  the way this design exists to prevent. On the *month* view that is still
+  true — the cell there is a day of departures summed, and there is no one
+  departure to sell. On the day view it is now the block itself that sells;
+  see below.
+
+**A timetable, and a seat sold on it — 2026-08-12.** The two halves of the
+same slice, because either alone leaves the feature unreachable: a departure
+nobody can enter is a screen nobody sees, and a departure nobody can sell is a
+screen nobody uses.
+
+The timetable is entered **inside the unit that runs it**, as a collapsed
+"Departures" section on the room type — not a nav item of its own. A departure
+has no meaning apart from the thing it departs, and a heading called
+"Departures" in the sidebar is one more thing every lodge in the panel has to
+read past. A property selling nights leaves the section closed and empty
+forever, which is the rule the whole design is judged by.
+
+Selling one: the day view's block carries a "+ Seat" that opens the booking
+form already knowing the unit, the date and the departure, and the form itself
+grows one field — **"Which departure"**, visible only where the unit has any,
+and required there. Required, because leaving it blank on a unit that runs
+departures takes the seat off the property's own counter instead: a different
+pool, and the calendar would go on offering a tour that is full. A lodge is
+never shown the field and never learns it exists.
+
+Three decisions the build made that are worth stating:
+
+- **Stay restrictions do not reach a departure.** A minimum stay and a
+  closed-to-arrival day are rules about selling a *night*; a seat on the 09:00
+  ride is not one, and a lodge's three-night minimum on the same property has
+  no business refusing it. Skipped in the preview and in `InventoryWriter`
+  alike — availability is still enforced, exactly as it is for a night.
+- **Two rows of one unit on two departures are two lines.** Rows that say
+  nothing about who is in the room are merged, because "2 standard" twice means
+  four rooms. Two departures are two pools of seats, so the merge key gained
+  the departure — merged, a booking for two on each tour would hold four on one.
+- **Deleting a departure that has been sold is refused, on the model.**
+  `bookable_unit_calendar_days.slot_id` and `rate_plan_days.slot_id` both cascade,
+  so a delete reaches the counters through the database — below Eloquent, past
+  `InventoryWriteGuard`, and with nothing to restore from. The rule lives on
+  `BookingSlot` rather than on a screen because the timetable is editable from
+  more than one panel, and a rule only one of them knows is not a rule. An
+  empty departure still deletes; a sold one is switched off instead.
+
+The words changed with the thing being sold, because the screen made it obvious:
+a room line on a tour says **Seats** rather than Units, the preview counts
+**days** rather than nights when every line is a departure, and the field is
+"Which departure" rather than "Departure" — the booking form already had a
+field by that name, and it is the check-out date.
+
+**The morning board — 2026-08-12.** The arrivals board was night-shaped, and for
+a seat that produced a plausible lie: a booking for three places on the morning
+ride read as *3 rooms arriving*, a number a desk lays tables from.
+
+It now carries a **passenger list per departure** — time order down the page,
+one section each so a page breaks between departures and a guide can be handed
+the sheet for their own vehicle, with the seats, the party, the status and the
+phone number. The phone is the reason the sheet leaves the office at all:
+somebody is not at the vehicle and there is five minutes to find out why.
+
+The manifests come from `DayGrid`, which is the calendar's own answer to what
+departs today and how full it is. One definition read twice, so a list carried
+to a vehicle and the grid on the office wall cannot disagree about who is on the
+09:00.
+
+Three rules, each of which is the board telling the truth rather than a feature:
+
+- **A booking made only of seats is not an arrival.** Nobody checks in, nobody
+  is given a key, and it is on its manifest and nowhere else. A booking holding
+  a chalet *and* a ride is on both — the guest really does arrive — but it
+  counts as the one room it holds. `ArrivalsBoardData::units()` ignores seat
+  lines for the same reason: three seats are not three rooms, and the room
+  count is what a kitchen lays tables from.
+- **A departure nobody booked is not a page.** It is on the calendar, where an
+  empty seat count is the entire point; on a passenger list it is a sheet of
+  nothing.
+- **An operator who sells nothing by the night is not asked about rooms.**
+  Arriving / departing / staying-on come off the screen entirely rather than
+  printing three headings that say "nobody" — that is not a board, it is
+  somebody else's board with the rows taken out.
+
+**A guard test, because the risk here is a leak and not a bug.**
+`AccommodationUnchangedByTimeTest` asserts the thing the whole section rests on:
+a property that sells nights does not notice that departures exist. It is the
+same kind of test as the one that sat on the two availability readers before
+they were joined, and for the same reason — a departure's row shares a table, a
+date and a unit with a night's row, so every reader that forgets to say which of
+the two it wants gets a *plausible* number back, and nobody looks twice at a
+calendar that reads eight free.
+
+It started red, which is the point. `AvailabilityCalendar::snapshot()` — the bulk
+read the whole occupancy grid is built on — fetched both kinds of row and keyed
+them by date alone, so whichever the database returned last silently became the
+day; `rateDaysKeyedByDate()`, which prices a stay, did the same. Both are fixed,
+and the route the leak actually reaches a night by is now pinned: an operator
+retires a departure, the unit goes back to being sold by the period, and last
+month's 09:00 tour must not start answering for the night.
 
 **What none of this changes, which is the point.** Every rate a lodge has ever
 entered is a null-slot row; every row it will enter stays one; every query that
@@ -624,28 +776,39 @@ here at all.
 
 ---
 
-### Open bug: printing the arrivals board prints the menu — found 2026-08-12
+### Printing the arrivals board printed the menu — found 2026-08-12, fixed the same day
 
-Printing the arrivals view produces the navigation and none of the board.
+Printing the arrivals view produced the navigation and none of the board.
 
-The print rules that exist are the ones this codebase wrote — `nw-noprint`, the
-calendar viewport's ceiling coming off, table rows not breaking across pages
+The print rules that existed were the ones this codebase wrote — `nw-noprint`,
+the calendar viewport's ceiling coming off, table rows not breaking across pages
 (`lodge-styles.blade.php`). They all assume the *page* prints and only some
-parts of it need hiding. What they never handle is Filament's own shell: the
+parts of it need hiding. What they never handled is Filament's own shell: the
 sidebar and topbar are laid out as fixed/positioned elements and the main
 content sits in a scrolling container, so on paper the shell is what has a
 position and the content is what gets clipped.
 
-The fix belongs in one place — a print stylesheet on the panel, not on the
-board — because every screen a lodge prints has the same problem: hide the
-sidebar, the topbar and the page header, and let the main region flow at full
-width with no scroll container. Worth doing properly rather than patching the
-arrivals view, since a printed arrivals list is carried around the property and
-a printed calendar goes on the office wall.
+Fixed as designed — one print stylesheet on the panel
+(`filament.partner.partials.print-styles`, a `HEAD_END` render hook), not on the
+board, because every screen a property prints has the same problem. A printed
+passenger list is carried to a vehicle and a printed calendar goes on the office
+wall.
+
+Two things the fix turned up that the diagnosis had not:
+
+- **The page header is sticky in this panel** (`sticky-page-header`, so header
+  actions stay put while a long form scrolls), and a sticky element on paper is
+  one that has left the flow. It printed *on top of* the first line of the
+  board, which is where the date was. A passenger list with no date on it is
+  worse than no sheet, and nothing about it was visible on screen — which is the
+  argument for looking at the print, not only at the page.
+- **A date that only exists next to the arrows does not print**, because the
+  arrows do not. The calendar's range now also renders as a `nw-printonly`
+  heading, so what comes off the printer says which week it is.
 
 ---
 
-### Open bug: capacity is a filter, not a rule — found 2026-08-12
+### Capacity was a filter, not a rule — found 2026-08-12, fixed the same day
 
 Reported from the panel: a room for 2 adults and 2 children took a booking for
 2 adults and **3 children** without an error or a warning.
@@ -657,7 +820,7 @@ gets the arithmetic right, including letting a child take a spare adult slot. Bu
 
 - **`ListingController::storeInquiry` validates nothing about it.** `adults` and
   `children` are checked as integers 1–20 and 0–20, and the chosen
-  `room_type_code` is never compared against the room it names. A party that
+  `bookable_unit_code` (then `room_type_code`) is never compared against the room it names. A party that
   grows after the room was picked, or a request posted directly, goes through.
 - **`InventoryWriter::book()` never compares them at all.** `assertFits()` looks
   at the `Occupancy` object, so it only runs where a rate plan prices by guests;
@@ -678,6 +841,38 @@ at the desk warn with a reason the operator confirms — "sleeps 2 + 2, this is 
 3, extra bed?" — recorded on the stay like a price override is, so the
 housekeeping list and the arrivals board know a cot is needed. That last part is
 the reason to record it rather than merely allow it.
+
+**Built as designed.** The arithmetic moved out of `RoomAvailability` into
+`App\Services\Booking\RoomCapacity`, which owns both the sum and the sentence, so
+the three places that now have an opinion share one answer and differ only in
+what they *do* with it:
+
+- the picker still declines to offer a room the party does not fit;
+- `TripController::store` refuses one, before the trip is created and before an
+  anonymous plan is claimed — a rejected request leaves no trace, which is the
+  rule the one-active-request gate above it already follows;
+- the desk is warned in the price block, and the answer it types
+  (`reservations.over_capacity_note`) is kept and shown on the stay detail and
+  on the arrivals board, which is the list a room is made up from.
+
+Four decisions worth stating:
+
+- **Capacity is asked of the whole booking, not of each room.** A stay holding
+  two rooms under a per-room tariff has its guest counts on the header and
+  nothing that says who is where; splitting them would be inventing an
+  attribution, and the honest question is whether the party fits what was
+  booked. Seven people in two doubles is over capacity however they arrange
+  themselves.
+- **`InventoryWriter` records the note and enforces nothing.** Whether a room
+  may be overfilled is a question about *who is asking*, and the writer is
+  neither the website nor a desk. Making it refuse would also break promoting a
+  request taken before any of this existed.
+- **Where a plan prices by guests, nothing changed.** Those lines carry their own
+  people and `AvailabilityCalendar::assertFits` already refuses a line it cannot
+  price — a hard refusal, since there is no price to compute. The header-count
+  warning is skipped there rather than saying it twice in two voices.
+- **A room type with no capacity entered refuses nobody.** Blank is not zero, and
+  refusing every booking of a half-set-up room would be worse than not checking.
 
 ---
 

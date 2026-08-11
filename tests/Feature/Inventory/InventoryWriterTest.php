@@ -7,10 +7,10 @@ use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
+use App\Models\BookableUnit;
+use App\Models\BookableUnitCalendarDay;
 use App\Models\Listing;
 use App\Models\Reservation;
-use App\Models\RoomType;
-use App\Models\RoomTypeCalendarDay;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
@@ -46,9 +46,9 @@ class InventoryWriterTest extends TestCase
     }
 
     /** @param array<string, mixed> $attributes */
-    private function room(Listing $listing, array $attributes = []): RoomType
+    private function room(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create([
+        return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 2,
             'rate_per_night' => 1000,
@@ -57,7 +57,7 @@ class InventoryWriterTest extends TestCase
         ]);
     }
 
-    private function book(Listing $listing, RoomType $room, string $checkIn, string $checkOut, int $quantity = 1): Reservation
+    private function book(Listing $listing, BookableUnit $room, string $checkIn, string $checkOut, int $quantity = 1): Reservation
     {
         return $this->writer->book(new BookingRequest(
             listing: $listing,
@@ -67,7 +67,7 @@ class InventoryWriterTest extends TestCase
         ));
     }
 
-    public function test_overlapping_stays_consume_a_room_type_with_several_units(): void
+    public function test_overlapping_stays_consume_a_bookable_unit_with_several_units(): void
     {
         $listing = $this->listing();
         $room = $this->room($listing, ['total_units' => 3]);
@@ -177,7 +177,7 @@ class InventoryWriterTest extends TestCase
         $room = $this->room($listing, ['total_units' => 2]);
 
         $block = $this->writer->block(new BlockRequest(
-            roomType: $room,
+            bookableUnit: $room,
             units: 1,
             firstNight: now()->parse('2026-11-02'),
             lastNight: now()->parse('2026-11-04'),
@@ -192,7 +192,7 @@ class InventoryWriterTest extends TestCase
         $this->assertSame(2, $this->calendar->unitsFree($room, now()->parse('2026-11-05')));
 
         // A block is not a guest booking, and reading the day back says so.
-        $day = RoomTypeCalendarDay::where('room_type_id', $room->id)
+        $day = BookableUnitCalendarDay::where('bookable_unit_id', $room->id)
             ->whereDate('date', '2026-11-02')
             ->firstOrFail();
         $this->assertSame(1, $day->units_blocked);
@@ -206,12 +206,12 @@ class InventoryWriterTest extends TestCase
         $this->assertSame(1, $this->calendar->unitsFree($room, now()->parse('2026-11-02')));
     }
 
-    public function test_a_night_with_no_calendar_row_falls_back_to_the_room_type_defaults(): void
+    public function test_a_night_with_no_calendar_row_falls_back_to_the_bookable_unit_defaults(): void
     {
         $listing = $this->listing();
         $room = $this->room($listing, ['total_units' => 4, 'rate_per_night' => 1750]);
 
-        $this->assertSame(0, RoomTypeCalendarDay::where('room_type_id', $room->id)->count());
+        $this->assertSame(0, BookableUnitCalendarDay::where('bookable_unit_id', $room->id)->count());
 
         $this->assertSame(4, $this->calendar->unitsFree($room, now()->parse('2027-01-15')));
         $this->assertSame(1750.0, $this->calendar->rateFor($room, now()->parse('2027-01-15')));
@@ -222,7 +222,7 @@ class InventoryWriterTest extends TestCase
         $this->assertSame(6, $this->calendar->unitsFree($room->fresh(), now()->parse('2027-01-15')));
     }
 
-    public function test_an_override_wins_over_the_room_type_default(): void
+    public function test_an_override_wins_over_the_bookable_unit_default(): void
     {
         $listing = $this->listing();
         $room = $this->room($listing, ['total_units' => 4, 'rate_per_night' => 1000]);
@@ -258,7 +258,7 @@ class InventoryWriterTest extends TestCase
         $this->assertSame(1, $this->calendar->unitsFree($room, now()->parse('2026-09-20')));
     }
 
-    public function test_one_reservation_can_hold_several_room_types_with_quantities(): void
+    public function test_one_reservation_can_hold_several_bookable_units_with_quantities(): void
     {
         $listing = $this->listing();
         $standard = $this->room($listing, ['total_units' => 4, 'rate_per_night' => 1000]);

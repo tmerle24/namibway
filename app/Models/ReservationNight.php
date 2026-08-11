@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * What one night of one unit line cost. A price record, never an availability
- * record — availability is the counter on room_type_calendar_days.
+ * record — availability is the counter on bookable_unit_calendar_days.
  *
  * @property int $id
  * @property int $reservation_unit_id

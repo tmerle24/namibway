@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Services\ImportExport\BookableUnitSheet;
 use App\Services\ImportExport\ImportPlan;
 use App\Services\ImportExport\ImportReportWriter;
 use App\Services\ImportExport\ListingImporter;
-use App\Services\ImportExport\RoomTypeSheet;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
@@ -133,7 +133,7 @@ class ImportListings extends Command
 
         foreach ($plan->invalidRoomRows() as $row) {
             foreach ($row->errors as $error) {
-                $this->error("RoomTypes row {$row->line}: {$error}");
+                $this->error("BookableUnits row {$row->line}: {$error}");
             }
         }
 
@@ -167,7 +167,7 @@ class ImportListings extends Command
             $changes[] = [
                 $row->line,
                 (string) $row->listingId,
-                RoomTypeSheet::SHEET_NAME.': '.$row->label(),
+                BookableUnitSheet::SHEET_NAME.': '.$row->label(),
                 $row->isNew ? 'new room type' : 'updated',
                 Str::limit(implode(', ', array_map(static fn ($change) => $change->column, $row->changes)), 40),
             ];

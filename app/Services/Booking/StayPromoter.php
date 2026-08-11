@@ -6,9 +6,9 @@ use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Booking\StayNotPromotableException;
 use App\Mail\StayPromotionFailed;
+use App\Models\BookableUnit;
 use App\Models\Inquiry;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\InventoryWriter;
@@ -146,11 +146,11 @@ class StayPromoter
             throw StayNotPromotableException::withoutDates($inquiry);
         }
 
-        $roomType = $this->roomTypeFor($inquiry);
+        $bookableUnit = $this->bookableUnitFor($inquiry);
 
         return $this->writer->book(new BookingRequest(
             listing: $listing,
-            lines: [new BookingLine($roomType, 1, $inquiry->check_in->copy(), $inquiry->check_out->copy())],
+            lines: [new BookingLine($bookableUnit, 1, $inquiry->check_in->copy(), $inquiry->check_out->copy())],
             guestName: $inquiry->name,
             guestEmail: $inquiry->email,
             guestPhone: $inquiry->phone,
@@ -200,15 +200,15 @@ class StayPromoter
      * with room types entered — a property with exactly one active room type is
      * unambiguous and anything else is a guess, which is refused.
      */
-    private function roomTypeFor(Inquiry $inquiry): RoomType
+    private function bookableUnitFor(Inquiry $inquiry): BookableUnit
     {
-        $rooms = RoomType::query()
+        $rooms = BookableUnit::query()
             ->where('listing_id', $inquiry->listing_id)
             ->where('is_active', true)
             ->get();
 
-        if (filled($inquiry->room_type_code)) {
-            $matched = $rooms->firstWhere('code', $inquiry->room_type_code);
+        if (filled($inquiry->bookable_unit_code)) {
+            $matched = $rooms->firstWhere('code', $inquiry->bookable_unit_code);
 
             if ($matched !== null) {
                 return $matched;
@@ -216,13 +216,13 @@ class StayPromoter
         }
 
         if ($rooms->count() === 1) {
-            /** @var RoomType $only */
+            /** @var BookableUnit $only */
             $only = $rooms->first();
 
             return $only;
         }
 
-        throw StayNotPromotableException::withoutRoomType($inquiry);
+        throw StayNotPromotableException::withoutBookableUnit($inquiry);
     }
 
     /**

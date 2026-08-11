@@ -2,7 +2,7 @@
 
 namespace App\Services\Inventory\DTOs;
 
-use App\Models\RoomType;
+use App\Models\BookableUnit;
 
 /**
  * One room type's row: the bars across the top, packed into as few lanes as
@@ -18,7 +18,7 @@ class OccupancyRow
      * @param  array<int, OccupancyCell>  $cells  indexed by column position
      */
     public function __construct(
-        public readonly RoomType $roomType,
+        public readonly BookableUnit $bookableUnit,
         public readonly array $lanes,
         public readonly array $cells,
         public readonly string $currency,
@@ -34,5 +34,15 @@ class OccupancyRow
     public function hasAnyBar(): bool
     {
         return $this->lanes !== [];
+    }
+
+    /**
+     * Whether this unit is sold by departure. Read off a cell rather than
+     * stored again: the cells are what know, and two answers to one question
+     * is how a screen starts contradicting itself.
+     */
+    public function isDepartureUnit(): bool
+    {
+        return ($this->cells[0] ?? null)?->isDepartureDay() ?? false;
     }
 }

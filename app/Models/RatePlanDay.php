@@ -21,14 +21,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property int $id
  * @property int $rate_plan_id
- * @property int $room_type_id
+ * @property int $bookable_unit_id
  * @property CarbonImmutable $date
  * @property float|null $rate
  * @property int|null $min_stay
  * @property bool $closed_to_arrival
  * @property bool $closed_to_departure
  * @property-read RatePlan|null $ratePlan
- * @property-read RoomType|null $roomType
+ * @property-read BookableUnit|null $bookableUnit
  */
 class RatePlanDay extends Model
 {
@@ -36,7 +36,7 @@ class RatePlanDay extends Model
 
     protected $fillable = [
         'rate_plan_id',
-        'room_type_id',
+        'bookable_unit_id',
         'slot_id',
         'date',
         'rate',
@@ -62,10 +62,10 @@ class RatePlanDay extends Model
     }
 
     /**
-     * @return BelongsTo<RoomType, $this>
+     * @return BelongsTo<BookableUnit, $this>
      */
-    public function roomType(): BelongsTo
+    public function bookableUnit(): BelongsTo
     {
-        return $this->belongsTo(RoomType::class);
+        return $this->belongsTo(BookableUnit::class);
     }
 }

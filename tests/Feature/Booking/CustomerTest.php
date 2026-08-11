@@ -4,12 +4,12 @@ namespace Tests\Feature\Booking;
 
 use App\Enums\ListingType;
 use App\Enums\ReservationSource;
+use App\Models\BookableUnit;
 use App\Models\Customer;
 use App\Models\Listing;
 use App\Models\Note;
 use App\Models\Partner;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Models\User;
 use App\Services\Booking\CustomerDirectory;
 use App\Services\Inventory\DTOs\BookingLine;
@@ -34,7 +34,7 @@ class CustomerTest extends TestCase
 
     private Listing $listing;
 
-    private RoomType $room;
+    private BookableUnit $room;
 
     protected function setUp(): void
     {
@@ -47,7 +47,7 @@ class CustomerTest extends TestCase
             'partner_id' => $this->partner->id,
             'type' => ListingType::Accommodation,
         ]);
-        $this->room = RoomType::factory()->create([
+        $this->room = BookableUnit::factory()->create([
             'listing_id' => $this->listing->id,
             'total_units' => 5,
             'rate_per_night' => 1200,
@@ -153,7 +153,7 @@ class CustomerTest extends TestCase
             'partner_id' => $this->partner->id,
             'type' => ListingType::Accommodation,
         ]);
-        $secondRoom = RoomType::factory()->create([
+        $secondRoom = BookableUnit::factory()->create([
             'listing_id' => $second->id,
             'total_units' => 2,
             'rate_per_night' => 900,
@@ -182,7 +182,7 @@ class CustomerTest extends TestCase
             'partner_id' => $otherPartner->id,
             'type' => ListingType::Accommodation,
         ]);
-        $otherRoom = RoomType::factory()->create([
+        $otherRoom = BookableUnit::factory()->create([
             'listing_id' => $otherListing->id,
             'total_units' => 2,
             'rate_per_night' => 900,
@@ -223,7 +223,7 @@ class CustomerTest extends TestCase
         // A scraped listing nobody has claimed has no business to own a
         // customer record. That is a missing link, not a failed booking.
         $unclaimed = Listing::factory()->create(['partner_id' => null, 'type' => ListingType::Accommodation]);
-        $room = RoomType::factory()->create([
+        $room = BookableUnit::factory()->create([
             'listing_id' => $unclaimed->id,
             'total_units' => 1,
             'rate_per_night' => 500,

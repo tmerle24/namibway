@@ -4,10 +4,10 @@ namespace App\Services\Booking;
 
 use App\Enums\GuestKind;
 use App\Exceptions\Pricing\UnpriceableStayException;
+use App\Models\BookableUnit;
 use App\Models\GuestCategory;
 use App\Models\Listing;
 use App\Models\RatePlan;
-use App\Models\RoomType;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\DTOs\NightlyRate;
 use App\Services\Pricing\ChargeableStay;
@@ -70,11 +70,11 @@ class RoomOffers
         $offers = [];
 
         foreach (RoomAvailability::bookableFor($listing->id, $checkIn, $checkOut, $adults, $children) as $row) {
-            /** @var RoomType $roomType */
-            $roomType = $row['room_type'];
+            /** @var BookableUnit $bookableUnit */
+            $bookableUnit = $row['bookable_unit'];
 
             try {
-                $quote = $this->calendar->quote($roomType, $checkIn, $checkOut, 1, $plan, $occupancy);
+                $quote = $this->calendar->quote($bookableUnit, $checkIn, $checkOut, 1, $plan, $occupancy);
             } catch (UnpriceableStayException) {
                 continue;
             }
@@ -104,7 +104,7 @@ class RoomOffers
             ));
 
             $offers[] = new RoomOffer(
-                roomType: $roomType,
+                bookableUnit: $bookableUnit,
                 unitsLeft: $row['units_left'],
                 nights: $nights,
                 currency: $quote->currency,

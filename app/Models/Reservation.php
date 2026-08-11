@@ -36,6 +36,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property float|null $quoted_amount
  * @property float|null $charges_amount
  * @property string|null $price_override_reason
+ * @property string|null $over_capacity_note
  * @property int|null $price_overridden_by
  * @property CarbonImmutable|null $price_overridden_at
  * @property string $currency
@@ -74,6 +75,7 @@ class Reservation extends Model
         'price_override_reason',
         'price_overridden_by',
         'price_overridden_at',
+        'over_capacity_note',
         'currency',
         'notes',
         'created_by',

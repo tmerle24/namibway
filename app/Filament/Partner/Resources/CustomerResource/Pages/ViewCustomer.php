@@ -72,7 +72,7 @@ class ViewCustomer extends ViewRecord
 
         return Reservation::query()
             ->where('customer_id', $customer->id)
-            ->with(['listing', 'units.roomType'])
+            ->with(['listing', 'units.bookableUnit'])
             ->orderByDesc('check_in')
             ->limit(50)
             ->get();

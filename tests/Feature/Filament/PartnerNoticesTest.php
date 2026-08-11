@@ -6,10 +6,10 @@ use App\Enums\ListingType;
 use App\Enums\PricingStrategy;
 use App\Filament\Partner\Support\Notice;
 use App\Filament\Partner\Support\PropertyNotices;
+use App\Models\BookableUnit;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\RatePlan;
-use App\Models\RoomType;
 use App\Models\User;
 use App\Services\Inventory\InventoryWriter;
 use Filament\Facades\Filament;
@@ -32,7 +32,7 @@ class PartnerNoticesTest extends TestCase
     public function test_a_property_that_is_not_live_says_so_on_the_dashboard_with_a_way_to_change_it(): void
     {
         [$user, $listing] = $this->partnerWithProperty();
-        $this->roomType($listing);
+        $this->bookableUnit($listing);
 
         $this->actingAs($user)
             ->get('/partner')
@@ -45,7 +45,7 @@ class PartnerNoticesTest extends TestCase
     public function test_the_notice_is_gone_once_the_property_is_live(): void
     {
         [$user, $listing] = $this->partnerWithProperty();
-        $this->roomType($listing);
+        $this->bookableUnit($listing);
 
         $listing->partner?->update(['booking_enabled' => true]);
 
@@ -59,7 +59,7 @@ class PartnerNoticesTest extends TestCase
     public function test_test_mode_is_a_note_rather_than_a_warning(): void
     {
         [, $listing] = $this->partnerWithProperty();
-        $this->roomType($listing);
+        $this->bookableUnit($listing);
 
         $listing->partner?->update([
             'booking_enabled' => true,
@@ -83,7 +83,7 @@ class PartnerNoticesTest extends TestCase
             ->assertOk()
             ->assertSee('Add the rooms you sell');
 
-        $this->roomType($listing);
+        $this->bookableUnit($listing);
 
         $this->actingAs($user)
             ->get('/partner')
@@ -94,7 +94,7 @@ class PartnerNoticesTest extends TestCase
     public function test_a_room_nobody_priced_is_named_before_a_guest_is_standing_there(): void
     {
         [, $listing] = $this->partnerWithProperty();
-        $this->roomType($listing, ['name' => 'Riverside Chalet', 'rate_per_night' => 0]);
+        $this->bookableUnit($listing, ['name' => 'Riverside Chalet', 'rate_per_night' => 0]);
 
         $notice = $this->noticeKeyed($listing, 'no-prices');
 
@@ -105,7 +105,7 @@ class PartnerNoticesTest extends TestCase
     public function test_a_rate_set_on_a_plan_counts_as_a_price(): void
     {
         [, $listing] = $this->partnerWithProperty();
-        $room = $this->roomType($listing, ['rate_per_night' => 0]);
+        $room = $this->bookableUnit($listing, ['rate_per_night' => 0]);
 
         $plan = RatePlan::create([
             'listing_id' => $listing->id,
@@ -191,9 +191,9 @@ class PartnerNoticesTest extends TestCase
     }
 
     /** @param array<string, mixed> $attributes */
-    private function roomType(Listing $listing, array $attributes = []): RoomType
+    private function bookableUnit(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create(array_merge([
+        return BookableUnit::factory()->create(array_merge([
             'listing_id' => $listing->id,
             'total_units' => 3,
             'rate_per_night' => 1500.00,

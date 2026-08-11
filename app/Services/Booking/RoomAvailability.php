@@ -3,8 +3,8 @@
 namespace App\Services\Booking;
 
 use App\Enums\InquiryStatus;
+use App\Models\BookableUnit;
 use App\Models\Inquiry;
-use App\Models\RoomType;
 use App\Services\Inventory\AvailabilityCalendar;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
  *
  * Two counts, and the answer is the smaller of them.
  *
- * **The calendar** — `room_type_calendar_days`, the ARI counters the lodge
+ * **The calendar** — `bookable_unit_calendar_days`, the ARI counters the lodge
  * sells from — knows every stay the property has taken, including the walk-in
  * somebody typed in at the desk this morning. Until 2026-08-12 the
  * traveller-facing picker did not read it at all, so a lodge could fill itself
@@ -35,8 +35,8 @@ use Illuminate\Support\Collection;
  * always zero and the calendar is the only counter, with no further change
  * here.
  *
- * `Inquiry::room_type_code` matches `RoomType::code` (a string, not a foreign
- * key — see the RoomType model), so a room type that is renamed keeps its
+ * `Inquiry::bookable_unit_code` matches `BookableUnit::code` (a string, not a foreign
+ * key — see the BookableUnit model), so a room type that is renamed keeps its
  * bookings and one that changes its code does not.
  */
 class RoomAvailability
@@ -48,12 +48,12 @@ class RoomAvailability
      */
     public static function unitsLeft(
         int $listingId,
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         CarbonInterface $checkIn,
         CarbonInterface $checkOut,
     ): int {
         $overlapping = Inquiry::where('listing_id', $listingId)
-            ->where('room_type_code', $roomType->code)
+            ->where('bookable_unit_code', $bookableUnit->code)
             ->whereIn('status', [InquiryStatus::OnRequest, InquiryStatus::Confirmed])
             // Half-open interval: a stay ending on the day another begins does
             // not overlap it, so the room turns over the same day.
@@ -65,12 +65,12 @@ class RoomAvailability
             ->whereDoesntHave('reservation')
             ->count();
 
-        $afterRequests = $roomType->total_units - $overlapping;
+        $afterRequests = $bookableUnit->total_units - $overlapping;
 
         // What the lodge's own calendar has left. Sparse by design: a room
         // type with no rows falls back to `total_units`, so a property that
         // has never opened the calendar reads exactly as it did before.
-        $onCalendar = app(AvailabilityCalendar::class)->unitsFreeThroughout($roomType, $checkIn, $checkOut);
+        $onCalendar = app(AvailabilityCalendar::class)->unitsFreeThroughout($bookableUnit, $checkIn, $checkOut);
 
         return min($afterRequests, $onCalendar);
     }
@@ -86,7 +86,7 @@ class RoomAvailability
      * `units_left` is typed as at least 1 because sold-out rows are filtered
      * out — a caller never has to check it before offering the room.
      *
-     * @return Collection<int, array{room_type: RoomType, units_left: int<1, max>}>
+     * @return Collection<int, array{bookable_unit: BookableUnit, units_left: int<1, max>}>
      */
     public static function bookableFor(
         int $listingId,
@@ -95,32 +95,20 @@ class RoomAvailability
         int $adults = 1,
         int $children = 0,
     ): Collection {
-        return RoomType::query()
+        return BookableUnit::query()
             ->where('listing_id', $listingId)
             ->where('is_active', true)
             ->orderBy('rate_per_night')
             ->get()
-            ->map(fn (RoomType $roomType) => [
-                'room_type' => $roomType,
-                'units_left' => self::unitsLeft($listingId, $roomType, $checkIn, $checkOut),
+            ->map(fn (BookableUnit $bookableUnit) => [
+                'bookable_unit' => $bookableUnit,
+                'units_left' => self::unitsLeft($listingId, $bookableUnit, $checkIn, $checkOut),
             ])
-            ->filter(fn (array $row) => $row['units_left'] >= 1 && self::seats($row['room_type'], $adults, $children))
+            ->filter(fn (array $row) => $row['units_left'] >= 1 && RoomCapacity::fits($row['bookable_unit'], $adults, $children))
             ->values();
     }
 
-    /**
-     * Children are allowed to take an adult slot when the room has spare adult
-     * capacity — a family of two adults and one child fits a room for three
-     * adults. The reverse is not true: an adult never occupies a child slot.
-     */
-    private static function seats(RoomType $roomType, int $adults, int $children): bool
-    {
-        if ($adults > $roomType->max_adults) {
-            return false;
-        }
-
-        $childOverflow = max(0, $children - $roomType->max_children);
-
-        return $adults + $childOverflow <= $roomType->max_adults;
-    }
+    // Whether a party fits a room now lives on RoomCapacity, because this
+    // screen declining to *offer* a room was the only opinion anything had
+    // about capacity — and a filter is not a rule. See BOOKING_SYSTEM.md.
 }

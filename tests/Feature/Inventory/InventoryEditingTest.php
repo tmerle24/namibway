@@ -6,13 +6,13 @@ use App\Enums\BlockReason;
 use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
+use App\Models\BookableUnit;
+use App\Models\BookableUnitCalendarDay;
 use App\Models\InventoryBlock;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\RatePlanDay;
 use App\Models\Reservation;
-use App\Models\RoomType;
-use App\Models\RoomTypeCalendarDay;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
@@ -54,9 +54,9 @@ class InventoryEditingTest extends TestCase
     }
 
     /** @param array<string, mixed> $attributes */
-    private function room(Listing $listing, array $attributes = []): RoomType
+    private function room(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create([
+        return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 3,
             'rate_per_night' => 1000,
@@ -150,7 +150,7 @@ class InventoryEditingTest extends TestCase
         $room = $this->room($listing, ['total_units' => 2]);
 
         $block = $this->writer->block(new BlockRequest(
-            roomType: $room,
+            bookableUnit: $room,
             units: 1,
             firstNight: now()->parse('2026-10-01'),
             lastNight: now()->parse('2026-10-03'),
@@ -160,7 +160,7 @@ class InventoryEditingTest extends TestCase
         $this->assertSame(1, $this->calendar->unitsFree($room, now()->parse('2026-10-01')));
 
         $this->writer->updateBlock($block, new BlockRequest(
-            roomType: $room,
+            bookableUnit: $room,
             units: 2,
             firstNight: now()->parse('2026-10-05'),
             lastNight: now()->parse('2026-10-06'),
@@ -184,7 +184,7 @@ class InventoryEditingTest extends TestCase
         $room = $this->room($listing, ['total_units' => 2]);
 
         $block = $this->writer->block(new BlockRequest(
-            roomType: $room,
+            bookableUnit: $room,
             units: 1,
             firstNight: now()->parse('2026-11-01'),
             lastNight: now()->parse('2026-11-02'),
@@ -201,7 +201,7 @@ class InventoryEditingTest extends TestCase
 
         try {
             $this->writer->updateBlock($block, new BlockRequest(
-                roomType: $room,
+                bookableUnit: $room,
                 units: 2,
                 firstNight: now()->parse('2026-11-01'),
                 lastNight: now()->parse('2026-11-02'),
@@ -225,7 +225,7 @@ class InventoryEditingTest extends TestCase
         $room = $this->room($listing, ['total_units' => 2]);
 
         $block = $this->writer->block(new BlockRequest(
-            roomType: $room,
+            bookableUnit: $room,
             units: 2,
             firstNight: now()->parse('2026-12-01'),
             lastNight: now()->parse('2026-12-02'),
@@ -239,7 +239,7 @@ class InventoryEditingTest extends TestCase
 
         $this->expectException(InvalidArgumentException::class);
         $this->writer->updateBlock($block->refresh(), new BlockRequest(
-            roomType: $room,
+            bookableUnit: $room,
             units: 1,
             firstNight: now()->parse('2026-12-01'),
             lastNight: now()->parse('2026-12-02'),
@@ -267,8 +267,8 @@ class InventoryEditingTest extends TestCase
 
         // Nothing outside the range gained a row at all — and rates land in the
         // rate plan, so the inventory calendar stays empty here.
-        $this->assertSame(5, RatePlanDay::where('room_type_id', $room->id)->count());
-        $this->assertSame(0, RoomTypeCalendarDay::where('room_type_id', $room->id)->count());
+        $this->assertSame(5, RatePlanDay::where('bookable_unit_id', $room->id)->count());
+        $this->assertSame(0, BookableUnitCalendarDay::where('bookable_unit_id', $room->id)->count());
     }
 
     public function test_a_bulk_edit_can_be_restricted_to_certain_weekdays(): void
@@ -365,7 +365,7 @@ class InventoryEditingTest extends TestCase
         ));
 
         $this->writer->block(new BlockRequest(
-            roomType: $room,
+            bookableUnit: $room,
             units: 1,
             firstNight: now()->parse('2026-09-05'),
             lastNight: now()->parse('2026-09-06'),
@@ -376,12 +376,12 @@ class InventoryEditingTest extends TestCase
         $this->assertSame(1, $removed['reservations']);
         $this->assertSame(1, $removed['blocks']);
         $this->assertSame(0, Reservation::where('listing_id', $listing->id)->count());
-        $this->assertSame(0, InventoryBlock::where('room_type_id', $room->id)->count());
-        $this->assertSame(0, RoomTypeCalendarDay::where('room_type_id', $room->id)->count());
+        $this->assertSame(0, InventoryBlock::where('bookable_unit_id', $room->id)->count());
+        $this->assertSame(0, BookableUnitCalendarDay::where('bookable_unit_id', $room->id)->count());
 
         // And the room type survives, because purging is about the book, not
         // about the property's shape.
-        $this->assertTrue(RoomType::whereKey($room->id)->exists());
+        $this->assertTrue(BookableUnit::whereKey($room->id)->exists());
     }
 
     public function test_the_stay_lifecycle_rejects_a_transition_that_skips_the_guest_arriving(): void

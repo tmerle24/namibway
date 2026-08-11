@@ -6,9 +6,9 @@ use App\Enums\BlockReason;
 use App\Enums\ListingType;
 use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
+use App\Models\BookableUnit;
 use App\Models\Listing;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
@@ -53,7 +53,7 @@ class OccupancyGridTest extends TestCase
     public function test_a_stay_becomes_a_bar_on_the_nights_it_covers(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing, ['total_units' => 4]);
+        $room = $this->bookableUnit($listing, ['total_units' => 4]);
 
         $this->book($listing, $room, '2026-09-03', '2026-09-06', quantity: 2, guest: 'Anna Shipanga');
 
@@ -78,7 +78,7 @@ class OccupancyGridTest extends TestCase
     public function test_a_stay_crossing_a_season_boundary_shows_each_nights_own_rate(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing, ['rate_per_night' => 1000]);
+        $room = $this->bookableUnit($listing, ['rate_per_night' => 1000]);
 
         $writer = app(InventoryWriter::class);
         $writer->setCalendar($room, Carbon::parse('2026-09-01'), Carbon::parse('2026-09-04'), ['rate' => 1000.00]);
@@ -94,14 +94,14 @@ class OccupancyGridTest extends TestCase
         $this->assertSame(1600.00, $cells[6]->rate);
     }
 
-    public function test_a_night_with_no_calendar_row_falls_back_to_the_room_type(): void
+    public function test_a_night_with_no_calendar_row_falls_back_to_the_bookable_unit(): void
     {
         $listing = $this->property();
-        $this->roomType($listing, ['total_units' => 5, 'rate_per_night' => 2250]);
+        $this->bookableUnit($listing, ['total_units' => 5, 'rate_per_night' => 2250]);
 
         $cells = $this->grid($listing)->rows[0]->cells;
 
-        $this->assertSame(0, DB::table('room_type_calendar_days')->count(), 'A sparse calendar is the normal state.');
+        $this->assertSame(0, DB::table('bookable_unit_calendar_days')->count(), 'A sparse calendar is the normal state.');
         $this->assertSame(5, $cells[10]->capacity);
         $this->assertSame(5, $cells[10]->unitsFree);
         $this->assertSame(2250.00, $cells[10]->rate);
@@ -110,10 +110,10 @@ class OccupancyGridTest extends TestCase
     public function test_a_block_is_drawn_apart_from_a_sale_and_still_takes_the_room(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing, ['total_units' => 3]);
+        $room = $this->bookableUnit($listing, ['total_units' => 3]);
 
         app(InventoryWriter::class)->block(new BlockRequest(
-            roomType: $room,
+            bookableUnit: $room,
             units: 2,
             firstNight: Carbon::parse('2026-09-04'),
             lastNight: Carbon::parse('2026-09-06'),
@@ -138,7 +138,7 @@ class OccupancyGridTest extends TestCase
     public function test_a_stay_running_past_both_edges_is_clipped_and_says_so(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
 
         $this->book($listing, $room, '2026-08-25', '2026-10-15');
 
@@ -154,7 +154,7 @@ class OccupancyGridTest extends TestCase
     public function test_overlapping_stays_are_stacked_into_separate_lanes(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing, ['total_units' => 4]);
+        $room = $this->bookableUnit($listing, ['total_units' => 4]);
 
         $this->book($listing, $room, '2026-09-02', '2026-09-06', guest: 'First');
         $this->book($listing, $room, '2026-09-04', '2026-09-08', guest: 'Second');
@@ -168,13 +168,13 @@ class OccupancyGridTest extends TestCase
         $this->assertSame(['Second'], array_map(fn (OccupancyBar $bar) => $bar->label, $lanes[1]));
     }
 
-    public function test_a_month_costs_the_same_number_of_queries_at_three_room_types_and_at_twenty(): void
+    public function test_a_month_costs_the_same_number_of_queries_at_three_bookable_units_and_at_twenty(): void
     {
         $small = $this->property();
-        $room = $this->roomType($small);
+        $room = $this->bookableUnit($small);
 
         for ($i = 0; $i < 2; $i++) {
-            $this->roomType($small);
+            $this->bookableUnit($small);
         }
 
         $this->book($small, $room, '2026-09-05', '2026-09-08');
@@ -183,7 +183,7 @@ class OccupancyGridTest extends TestCase
         $rooms = [];
 
         for ($i = 0; $i < 20; $i++) {
-            $rooms[] = $this->roomType($large);
+            $rooms[] = $this->bookableUnit($large);
         }
 
         foreach ($rooms as $index => $each) {
@@ -208,11 +208,11 @@ class OccupancyGridTest extends TestCase
     public function test_it_shows_only_the_property_it_was_asked_about(): void
     {
         $mine = $this->property();
-        $myRoom = $this->roomType($mine);
+        $myRoom = $this->bookableUnit($mine);
         $this->book($mine, $myRoom, '2026-09-03', '2026-09-05', guest: 'My Guest');
 
         $theirs = $this->property();
-        $theirRoom = $this->roomType($theirs);
+        $theirRoom = $this->bookableUnit($theirs);
         $this->book($theirs, $theirRoom, '2026-09-03', '2026-09-05', guest: 'Their Guest');
 
         $grid = $this->grid($mine);
@@ -230,15 +230,15 @@ class OccupancyGridTest extends TestCase
         $this->assertCount(1, $grid->rows);
     }
 
-    public function test_a_retired_room_type_is_hidden_unless_it_still_has_a_stay_on_screen(): void
+    public function test_a_retired_bookable_unit_is_hidden_unless_it_still_has_a_stay_on_screen(): void
     {
         $listing = $this->property();
-        $quiet = $this->roomType($listing, ['name' => 'Aardvark Suite', 'is_active' => false]);
-        $busy = $this->roomType($listing, ['name' => 'Baobab Suite', 'is_active' => false]);
+        $quiet = $this->bookableUnit($listing, ['name' => 'Aardvark Suite', 'is_active' => false]);
+        $busy = $this->bookableUnit($listing, ['name' => 'Baobab Suite', 'is_active' => false]);
 
         $this->book($listing, $busy, '2026-09-03', '2026-09-05', guest: 'Late Guest');
 
-        $names = array_map(fn ($row) => $row->roomType->name, $this->grid($listing)->rows);
+        $names = array_map(fn ($row) => $row->bookableUnit->name, $this->grid($listing)->rows);
 
         $this->assertSame(['Baobab Suite'], $names, 'Hiding a retired room type must never hide a booking.');
         $this->assertNotContains($quiet->name, $names);
@@ -247,7 +247,7 @@ class OccupancyGridTest extends TestCase
     public function test_lowering_capacity_under_what_is_already_sold_reads_as_overbooked(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing, ['total_units' => 3]);
+        $room = $this->bookableUnit($listing, ['total_units' => 3]);
 
         $this->book($listing, $room, '2026-09-04', '2026-09-06', quantity: 3);
 
@@ -265,7 +265,7 @@ class OccupancyGridTest extends TestCase
     public function test_restrictions_reach_the_cells_that_carry_them(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
 
         $writer = app(InventoryWriter::class);
         $writer->setCalendar($room, Carbon::parse('2026-09-04'), Carbon::parse('2026-09-04'), [
@@ -288,7 +288,7 @@ class OccupancyGridTest extends TestCase
     public function test_a_cancelled_stay_leaves_the_calendar(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing, ['total_units' => 2]);
+        $room = $this->bookableUnit($listing, ['total_units' => 2]);
 
         $reservation = $this->book($listing, $room, '2026-09-03', '2026-09-05', guest: 'Gone Away');
         app(InventoryWriter::class)->cancel($reservation, 'Changed plans');
@@ -302,7 +302,7 @@ class OccupancyGridTest extends TestCase
     public function test_a_no_show_stays_on_the_calendar_because_the_room_was_held(): void
     {
         $listing = $this->property();
-        $room = $this->roomType($listing, ['total_units' => 2]);
+        $room = $this->bookableUnit($listing, ['total_units' => 2]);
 
         $reservation = $this->book($listing, $room, '2026-09-03', '2026-09-05', guest: 'Never Came');
         app(InventoryWriter::class)->transition($reservation, StayStatus::NoShow);
@@ -339,9 +339,9 @@ class OccupancyGridTest extends TestCase
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function roomType(Listing $listing, array $attributes = []): RoomType
+    private function bookableUnit(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create(array_merge([
+        return BookableUnit::factory()->create(array_merge([
             'listing_id' => $listing->id,
             'total_units' => 3,
             'rate_per_night' => 1500.00,
@@ -351,7 +351,7 @@ class OccupancyGridTest extends TestCase
 
     private function book(
         Listing $listing,
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         string $checkIn,
         string $checkOut,
         int $quantity = 1,
@@ -359,7 +359,7 @@ class OccupancyGridTest extends TestCase
     ): Reservation {
         return app(InventoryWriter::class)->book(new BookingRequest(
             listing: $listing,
-            lines: [new BookingLine($roomType, $quantity, Carbon::parse($checkIn), Carbon::parse($checkOut))],
+            lines: [new BookingLine($bookableUnit, $quantity, Carbon::parse($checkIn), Carbon::parse($checkOut))],
             guestName: $guest,
             source: ReservationSource::PartnerEntered,
         ));

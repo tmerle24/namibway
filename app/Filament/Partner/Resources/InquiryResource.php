@@ -70,7 +70,7 @@ class InquiryResource extends Resource
                         Infolists\Components\TextEntry::make('check_out')->label('Check-out')->date('D, d M Y')->placeholder('—'),
                         Infolists\Components\TextEntry::make('adults')->label('Adults'),
                         Infolists\Components\TextEntry::make('children')->label('Children'),
-                        Infolists\Components\TextEntry::make('room_type_code')->label('Room type')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('bookable_unit_code')->label('Room type')->placeholder('—'),
                     ])
                     ->columns(3),
 

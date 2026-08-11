@@ -3,7 +3,7 @@
 namespace App\Services\Inventory\DTOs;
 
 use App\Enums\BlockReason;
-use App\Models\RoomType;
+use App\Models\BookableUnit;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
@@ -19,7 +19,7 @@ class BlockRequest
     public readonly Carbon $lastNight;
 
     public function __construct(
-        public readonly RoomType $roomType,
+        public readonly BookableUnit $bookableUnit,
         public readonly int $units,
         CarbonInterface $firstNight,
         CarbonInterface $lastNight,

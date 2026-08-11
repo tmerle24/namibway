@@ -5,8 +5,8 @@ namespace Tests\Feature\Inventory;
 use App\Enums\ListingType;
 use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
+use App\Models\BookableUnit;
 use App\Models\Listing;
-use App\Models\RoomType;
 use App\Services\Inventory\InventoryWriter;
 use App\Services\Inventory\ManualBooking;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -49,9 +49,9 @@ class ManualBookingTest extends TestCase
     }
 
     /** @param array<string, mixed> $attributes */
-    private function room(Listing $listing, array $attributes = []): RoomType
+    private function room(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create([
+        return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 2,
             'rate_per_night' => 1000,
@@ -61,7 +61,7 @@ class ManualBookingTest extends TestCase
         ]);
     }
 
-    public function test_a_booking_beyond_availability_is_refused_by_room_type_and_by_night(): void
+    public function test_a_booking_beyond_availability_is_refused_by_bookable_unit_and_by_night(): void
     {
         $listing = $this->listing();
         $room = $this->room($listing, ['name' => 'Standard Chalet', 'total_units' => 2]);
@@ -71,7 +71,7 @@ class ManualBookingTest extends TestCase
             $listing,
             Carbon::parse('2026-09-11'),
             Carbon::parse('2026-09-12'),
-            [['room_type_id' => $room->id, 'quantity' => 2]],
+            [['bookable_unit_id' => $room->id, 'quantity' => 2]],
             'Already Here',
             ReservationSource::Website,
         );
@@ -80,7 +80,7 @@ class ManualBookingTest extends TestCase
             $listing,
             Carbon::parse('2026-09-10'),
             Carbon::parse('2026-09-13'),
-            [['room_type_id' => $room->id, 'quantity' => 1]],
+            [['bookable_unit_id' => $room->id, 'quantity' => 1]],
         );
 
         $this->assertFalse($preview->isBookable());
@@ -102,7 +102,7 @@ class ManualBookingTest extends TestCase
             $listing,
             Carbon::parse('2026-09-10'),
             Carbon::parse('2026-09-14'),
-            [['room_type_id' => $room->id, 'quantity' => 1]],
+            [['bookable_unit_id' => $room->id, 'quantity' => 1]],
         );
 
         $this->assertTrue($preview->isBookable());
@@ -120,7 +120,7 @@ class ManualBookingTest extends TestCase
             $listing,
             Carbon::parse('2026-09-10'),
             Carbon::parse('2026-09-12'),
-            [['room_type_id' => $room->id, 'quantity' => 1]],
+            [['bookable_unit_id' => $room->id, 'quantity' => 1]],
             'Repeat Guest',
             ReservationSource::Telephone,
             totalOverride: 1500.0,
@@ -137,7 +137,7 @@ class ManualBookingTest extends TestCase
         $this->assertSame(ReservationSource::Telephone, $reservation->source);
     }
 
-    public function test_two_rows_of_the_same_room_type_are_one_line_of_the_right_size(): void
+    public function test_two_rows_of_the_same_bookable_unit_are_one_line_of_the_right_size(): void
     {
         $listing = $this->listing();
         $room = $this->room($listing, ['total_units' => 5]);
@@ -147,8 +147,8 @@ class ManualBookingTest extends TestCase
             Carbon::parse('2026-09-10'),
             Carbon::parse('2026-09-11'),
             [
-                ['room_type_id' => $room->id, 'quantity' => 2],
-                ['room_type_id' => $room->id, 'quantity' => 1],
+                ['bookable_unit_id' => $room->id, 'quantity' => 2],
+                ['bookable_unit_id' => $room->id, 'quantity' => 1],
             ],
             'Group Of Three Rooms',
             ReservationSource::Email,
@@ -159,7 +159,7 @@ class ManualBookingTest extends TestCase
         $this->assertSame(3000.0, $reservation->total_amount);
     }
 
-    public function test_a_room_type_belonging_to_another_property_is_ignored(): void
+    public function test_a_bookable_unit_belonging_to_another_property_is_ignored(): void
     {
         $listing = $this->listing();
         $this->room($listing);
@@ -170,7 +170,7 @@ class ManualBookingTest extends TestCase
             $listing,
             Carbon::parse('2026-09-10'),
             Carbon::parse('2026-09-12'),
-            [['room_type_id' => $foreign->id, 'quantity' => 1]],
+            [['bookable_unit_id' => $foreign->id, 'quantity' => 1]],
         );
 
         $this->assertFalse($preview->isBookable());
@@ -193,7 +193,7 @@ class ManualBookingTest extends TestCase
             $listing,
             Carbon::parse('2026-09-10'),
             Carbon::parse('2026-09-11'),
-            [['room_type_id' => $room->id, 'quantity' => 1]],
+            [['bookable_unit_id' => $room->id, 'quantity' => 1]],
         );
 
         $this->assertFalse($preview->isBookable());
@@ -205,14 +205,14 @@ class ManualBookingTest extends TestCase
         $listing = $this->listing();
         $room = $this->room($listing);
 
-        $noDates = $this->manual->preview($listing, null, null, [['room_type_id' => $room->id, 'quantity' => 1]]);
+        $noDates = $this->manual->preview($listing, null, null, [['bookable_unit_id' => $room->id, 'quantity' => 1]]);
         $this->assertSame(['Choose an arrival and a departure date.'], $noDates->problems);
 
         $backwards = $this->manual->preview(
             $listing,
             Carbon::parse('2026-09-12'),
             Carbon::parse('2026-09-10'),
-            [['room_type_id' => $room->id, 'quantity' => 1]],
+            [['bookable_unit_id' => $room->id, 'quantity' => 1]],
         );
         $this->assertSame(['The departure date has to be after the arrival date.'], $backwards->problems);
 
@@ -220,7 +220,7 @@ class ManualBookingTest extends TestCase
             $listing,
             Carbon::parse('2026-09-10'),
             Carbon::parse('2026-09-12'),
-            [['room_type_id' => null, 'quantity' => 0]],
+            [['bookable_unit_id' => null, 'quantity' => 0]],
         );
         $this->assertSame(['Choose at least one room type.'], $noRooms->problems);
     }

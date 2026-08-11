@@ -144,6 +144,17 @@
                     </div>
                 @endif
 
+                {{--
+                    More people than the room sleeps, and what the desk said it
+                    was doing about it. Kept beside the booking rather than in
+                    the running log because whoever makes the room up has to
+                    see it without reading a conversation.
+                --}}
+                @if (filled($reservation->over_capacity_note))
+                    <div class="nw-subhead">Extra bed</div>
+                    <p class="nw-warn">{{ $reservation->over_capacity_note }}</p>
+                @endif
+
                 @if (filled($reservation->notes))
                     <div class="nw-subhead">Booking note</div>
                     <p class="nw-hint">{{ $reservation->notes }}</p>
@@ -195,7 +206,18 @@
                     <tbody>
                         @foreach ($reservation->units as $unit)
                             <tr>
-                                <td>{{ $unit->roomType?->name ?? '—' }}</td>
+                                <td>
+                                    {{ $unit->bookableUnit?->name ?? '—' }}
+                                    {{--
+                                        Which departure, frozen onto the stay
+                                        for the same reason the plan's name is:
+                                        renaming "Morning departure" in March
+                                        must not change what February sold.
+                                    --}}
+                                    @if (filled($unit->slot_label))
+                                        <div class="nw-hint">{{ $unit->slot_label }}</div>
+                                    @endif
+                                </td>
                                 {{--
                                     Read from the stay, not from the rate plan:
                                     what this room was sold as is a fact about
@@ -241,7 +263,7 @@
                             @foreach ($unit->nights->sortBy('date') as $night)
                                 <tr>
                                     <td class="nw-num">{{ $night->date->isoFormat('ddd D MMM') }}</td>
-                                    <td>{{ $unit->roomType?->name ?? '—' }}</td>
+                                    <td>{{ $unit->bookableUnit?->name ?? '—' }}</td>
                                     <td class="nw-num">{{ $night->units }}</td>
                                     <td class="nw-num">{{ Money::format($night->rate, $night->currency) }}</td>
                                 </tr>
@@ -261,7 +283,7 @@
 
                 <dl class="nw-facts">
                     <dt>Room type</dt>
-                    <dd>{{ $block->roomType?->name ?? '—' }}</dd>
+                    <dd>{{ $block->bookableUnit?->name ?? '—' }}</dd>
 
                     <dt>Units</dt>
                     <dd class="nw-num">{{ $block->units }}</dd>

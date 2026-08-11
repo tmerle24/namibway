@@ -5,10 +5,10 @@ namespace App\Filament\Partner\Support;
 use App\Filament\Partner\Pages\RatesAndAvailability;
 use App\Filament\Partner\Resources\ListingResource;
 use App\Filament\Partner\Resources\RatePlanResource;
+use App\Models\BookableUnit;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
-use App\Models\RoomType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 
@@ -41,7 +41,7 @@ class PropertySetup
      * the stay outright, so this turns a refusal at the counter into something
      * seen beforehand.
      *
-     * @return array<int, RoomType>
+     * @return array<int, BookableUnit>
      */
     public function unpricedRooms(Listing $property): array
     {
@@ -52,7 +52,7 @@ class PropertySetup
             ->whereNotExists(fn (QueryBuilder $query) => $query
                 ->selectRaw('1')
                 ->from((new RatePlanDay)->getTable())
-                ->whereColumn('rate_plan_days.room_type_id', 'room_types.id')
+                ->whereColumn('rate_plan_days.bookable_unit_id', 'bookable_units.id')
                 ->whereNotNull('rate_plan_days.rate'))
             ->get()
             ->all();
@@ -144,10 +144,10 @@ class PropertySetup
         ];
     }
 
-    /** @return Builder<RoomType> */
+    /** @return Builder<BookableUnit> */
     private function activeRooms(Listing $property): Builder
     {
-        return RoomType::query()
+        return BookableUnit::query()
             ->where('listing_id', $property->id)
             ->where('is_active', true);
     }

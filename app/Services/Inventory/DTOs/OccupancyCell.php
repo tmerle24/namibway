@@ -21,7 +21,24 @@ class OccupancyCell
         public readonly ?int $minStay,
         public readonly bool $closedToArrival,
         public readonly bool $closedToDeparture,
+        /**
+         * How many departures this unit runs on this date — zero for
+         * everything sold by the night, which is every property today.
+         *
+         * Where it is not zero the counters above are seats summed across the
+         * day's departures, and the rate is the cheapest of them. That is the
+         * only honest thing a month view can say about a timetable: the detail
+         * of which departure sold what is the day view's job, and drawing it
+         * here would be a row hundreds of lanes tall.
+         */
+        public readonly int $departures = 0,
     ) {}
+
+    /** Whether this cell counts seats on departures rather than units on a night. */
+    public function isDepartureDay(): bool
+    {
+        return $this->departures > 0;
+    }
 
     public function isSoldOut(): bool
     {

@@ -8,12 +8,12 @@ use App\Enums\ChargeKind;
 use App\Enums\DiscountType;
 use App\Enums\PricingStrategy;
 use App\Enums\ReservationSource;
+use App\Models\BookableUnit;
 use App\Models\Charge;
 use App\Models\Listing;
 use App\Models\Promotion;
 use App\Models\RatePlan;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\InventoryWriter;
@@ -37,7 +37,7 @@ class ChargeTest extends TestCase
 
     private Listing $listing;
 
-    private RoomType $room;
+    private BookableUnit $room;
 
     private RatePlan $plan;
 
@@ -49,7 +49,7 @@ class ChargeTest extends TestCase
 
         $this->writer = app(InventoryWriter::class);
         $this->listing = Listing::factory()->create();
-        $this->room = RoomType::factory()->create([
+        $this->room = BookableUnit::factory()->create([
             'listing_id' => $this->listing->id,
             'total_units' => 5,
             'rate_per_night' => 1000,

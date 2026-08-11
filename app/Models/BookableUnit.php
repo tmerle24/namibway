@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AmenityCategory;
-use Database\Factories\RoomTypeFactory;
+use Database\Factories\BookableUnitFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +16,7 @@ use InvalidArgumentException;
  * A bookable room/unit type for listings on the Native booking connector
  * (see App\Connectors\Native\NativeConnector). Availability is derived, not
  * stored: total_units minus overlapping active Inquiry rows for the same
- * listing_id + room_type_code (Inquiry::room_type_code matches `code` here).
+ * listing_id + bookable_unit_code (Inquiry::bookable_unit_code matches `code` here).
  *
  * @property int $id
  * @property int $listing_id
@@ -32,9 +32,9 @@ use InvalidArgumentException;
  * @property bool $is_active
  * @property-read Collection<int, Amenity> $amenities
  */
-class RoomType extends Model
+class BookableUnit extends Model
 {
-    /** @use HasFactory<RoomTypeFactory> */
+    /** @use HasFactory<BookableUnitFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -62,22 +62,22 @@ class RoomType extends Model
      */
     protected static function booted(): void
     {
-        static::saving(function (self $roomType): void {
-            if (blank($roomType->currency) || ! $roomType->isDirty('currency') && $roomType->exists) {
+        static::saving(function (self $bookableUnit): void {
+            if (blank($bookableUnit->currency) || ! $bookableUnit->isDirty('currency') && $bookableUnit->exists) {
                 return;
             }
 
             $sibling = self::query()
-                ->where('listing_id', $roomType->listing_id)
-                ->when($roomType->exists, fn ($query) => $query->whereKeyNot($roomType->getKey()))
+                ->where('listing_id', $bookableUnit->listing_id)
+                ->when($bookableUnit->exists, fn ($query) => $query->whereKeyNot($bookableUnit->getKey()))
                 ->whereNotNull('currency')
-                ->where('currency', '!=', $roomType->currency)
+                ->where('currency', '!=', $bookableUnit->currency)
                 ->first();
 
             if ($sibling !== null) {
                 throw new InvalidArgumentException(
                     "This property already sells in {$sibling->currency} ({$sibling->name}), "
-                    ."so {$roomType->name} cannot be in {$roomType->currency}. "
+                    ."so {$bookableUnit->name} cannot be in {$bookableUnit->currency}. "
                     .'A reservation carries one total in one currency.'
                 );
             }
@@ -165,10 +165,10 @@ class RoomType extends Model
      * gap to be filled in. Read it through
      * App\Services\Inventory\AvailabilityCalendar rather than by hand.
      *
-     * @return HasMany<RoomTypeCalendarDay, $this>
+     * @return HasMany<BookableUnitCalendarDay, $this>
      */
     public function calendarDays(): HasMany
     {
-        return $this->hasMany(RoomTypeCalendarDay::class);
+        return $this->hasMany(BookableUnitCalendarDay::class);
     }
 }

@@ -34,7 +34,7 @@ use Illuminate\Support\Carbon;
  * @property int $uses
  * @property bool $is_active
  * @property-read Collection<int, RatePlan> $ratePlans
- * @property-read Collection<int, RoomType> $roomTypes
+ * @property-read Collection<int, BookableUnit> $bookableUnits
  */
 class Promotion extends Model
 {
@@ -88,11 +88,11 @@ class Promotion extends Model
     }
 
     /**
-     * @return BelongsToMany<RoomType, $this>
+     * @return BelongsToMany<BookableUnit, $this>
      */
-    public function roomTypes(): BelongsToMany
+    public function bookableUnits(): BelongsToMany
     {
-        return $this->belongsToMany(RoomType::class);
+        return $this->belongsToMany(BookableUnit::class);
     }
 
     /** A code has to be typed; a public offer applies by itself. */
@@ -109,21 +109,21 @@ class Promotion extends Model
     /**
      * Whether this offer covers the stay in front of it.
      *
-     * `$ratePlanIds` and `$roomTypeIds` are what the booking actually holds. A
+     * `$ratePlanIds` and `$bookableUnitIds` are what the booking actually holds. A
      * promotion scoped to a rate plan applies when *any* line is on it, which
      * is the reading a lodge intends by "20% off the DBB rate" — the
      * alternative, refusing the whole booking because one line is on another
      * rate, would surprise everybody.
      *
      * @param  array<int, int>  $ratePlanIds
-     * @param  array<int, int>  $roomTypeIds
+     * @param  array<int, int>  $bookableUnitIds
      */
     public function appliesTo(
         CarbonInterface $checkIn,
         CarbonInterface $checkOut,
         int $nights,
         array $ratePlanIds,
-        array $roomTypeIds,
+        array $bookableUnitIds,
         ?CarbonInterface $bookedOn = null,
     ): bool {
         if (! $this->is_active || $this->isExhausted()) {
@@ -166,9 +166,9 @@ class Promotion extends Model
             return false;
         }
 
-        $rooms = $this->roomTypes->pluck('id')->all();
+        $rooms = $this->bookableUnits->pluck('id')->all();
 
-        return $rooms === [] || array_intersect($rooms, $roomTypeIds) !== [];
+        return $rooms === [] || array_intersect($rooms, $bookableUnitIds) !== [];
     }
 
     /**

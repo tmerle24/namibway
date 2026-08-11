@@ -6,11 +6,11 @@ use App\Enums\InquiryStatus;
 use App\Enums\ListingType;
 use App\Enums\StayStatus;
 use App\Jobs\ExpireNativeHoldJob;
+use App\Models\BookableUnit;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Services\Booking\InquiryDecisionService;
 use App\Services\Booking\RoomAvailability;
 use App\Services\Booking\StayPromoter;
@@ -35,7 +35,7 @@ class SoftHoldTest extends TestCase
 
     private Listing $listing;
 
-    private RoomType $room;
+    private BookableUnit $room;
 
     protected function setUp(): void
     {
@@ -49,7 +49,7 @@ class SoftHoldTest extends TestCase
             'partner_id' => $partner->id,
             'type' => ListingType::Accommodation,
         ]);
-        $this->room = RoomType::factory()->create([
+        $this->room = BookableUnit::factory()->create([
             'listing_id' => $this->listing->id,
             'code' => 'STD',
             'total_units' => 1,
@@ -172,7 +172,7 @@ class SoftHoldTest extends TestCase
             'adults' => 2,
             'children' => 0,
             'status' => InquiryStatus::OnRequest,
-            'room_type_code' => 'STD',
+            'bookable_unit_code' => 'STD',
             ...$attributes,
         ]);
     }

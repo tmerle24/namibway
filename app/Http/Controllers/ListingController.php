@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\Enums\ConnectorType;
 use App\Enums\PriceUnit;
 use App\Jobs\EnrichListingJob;
+use App\Models\BookableUnit;
 use App\Models\City;
 use App\Models\Listing;
 use App\Models\Review;
-use App\Models\RoomType;
 use App\Services\Booking\ActiveRequestGate;
 use App\Services\Booking\RoomOffer;
 use App\Services\Booking\RoomOffers;
@@ -196,7 +196,7 @@ class ListingController extends Controller
      * property's `price_from` — plausible-looking numbers sitting right next to
      * a Book button, which is the worst place in the product to be making
      * things up. This returns what actually exists: the listing's active
-     * `RoomType` rows, priced from the property's own calendar and rate plan
+     * `BookableUnit` rows, priced from the property's own calendar and rate plan
      * — season, occupancy, offers and tax included — their own photos, and how
      * many units are still free for these dates. A room the property has not
      * priced is left out rather than quoted at zero.
@@ -243,14 +243,14 @@ class ListingController extends Controller
         return response()->json([
             'nights' => $nights,
             'rooms' => collect($offers)->map(function (RoomOffer $offer) {
-                $roomType = $offer->roomType;
+                $bookableUnit = $offer->bookableUnit;
 
                 return [
-                    'code' => $roomType->code,
-                    'name' => $roomType->name,
-                    'description' => $roomType->description,
-                    'max_adults' => $roomType->max_adults,
-                    'max_children' => $roomType->max_children,
+                    'code' => $bookableUnit->code,
+                    'name' => $bookableUnit->name,
+                    'description' => $bookableUnit->description,
+                    'max_adults' => $bookableUnit->max_adults,
+                    'max_children' => $bookableUnit->max_children,
                     // An average where a stay crosses a season boundary, which
                     // is why the nights are here too rather than only a figure
                     // that cannot be checked.
@@ -273,7 +273,7 @@ class ListingController extends Controller
                     // falls back to the property gallery — that fallback is a
                     // stand-in and should read as one, so it isn't merged in
                     // here.
-                    'gallery' => collect($roomType->gallery ?? [])
+                    'gallery' => collect($bookableUnit->gallery ?? [])
                         ->map(fn (string $path) => self::resolveMediaUrl($path))
                         ->values(),
                 ];

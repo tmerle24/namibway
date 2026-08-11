@@ -6,11 +6,11 @@ use App\Enums\DiscountType;
 use App\Enums\PricingStrategy;
 use App\Enums\ReservationSource;
 use App\Exceptions\Pricing\PromotionUnavailableException;
+use App\Models\BookableUnit;
 use App\Models\Listing;
 use App\Models\Promotion;
 use App\Models\RatePlan;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\InventoryWriter;
@@ -36,7 +36,7 @@ class PromotionTest extends TestCase
 
     private Listing $listing;
 
-    private RoomType $room;
+    private BookableUnit $room;
 
     private RatePlan $plan;
 
@@ -48,7 +48,7 @@ class PromotionTest extends TestCase
 
         $this->writer = app(InventoryWriter::class);
         $this->listing = Listing::factory()->create();
-        $this->room = RoomType::factory()->create([
+        $this->room = BookableUnit::factory()->create([
             'listing_id' => $this->listing->id,
             'total_units' => 5,
             'rate_per_night' => 1000,
@@ -217,16 +217,16 @@ class PromotionTest extends TestCase
         $this->assertNull($reservation->promotion_id);
     }
 
-    public function test_an_offer_scoped_to_another_room_type_stays_out_of_it(): void
+    public function test_an_offer_scoped_to_another_bookable_unit_stays_out_of_it(): void
     {
-        $other = RoomType::factory()->create(['listing_id' => $this->listing->id, 'currency' => 'NAD']);
+        $other = BookableUnit::factory()->create(['listing_id' => $this->listing->id, 'currency' => 'NAD']);
 
         $offer = $this->promotion();
-        $offer->roomTypes()->attach($other);
+        $offer->bookableUnits()->attach($other);
 
         $this->assertNull($this->book()->promotion_id);
 
-        $offer->roomTypes()->sync([$this->room->id]);
+        $offer->bookableUnits()->sync([$this->room->id]);
 
         $this->assertSame($offer->id, $this->book('2026-10-10', '2026-10-13')->promotion_id);
     }
@@ -259,7 +259,7 @@ class PromotionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('already sells in NAD');
 
-        RoomType::factory()->create([
+        BookableUnit::factory()->create([
             'listing_id' => $this->listing->id,
             'currency' => 'USD',
         ]);

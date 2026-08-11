@@ -3,13 +3,13 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Support\WorkbookDownload;
+use App\Services\ImportExport\BookableUnitSheet;
 use App\Services\ImportExport\ImportPlan;
 use App\Services\ImportExport\ImportReportWriter;
 use App\Services\ImportExport\ListingExporter;
 use App\Services\ImportExport\ListingImporter;
 use App\Services\ImportExport\PlannedRoomRow;
 use App\Services\ImportExport\PlannedRow;
-use App\Services\ImportExport\RoomTypeSheet;
 use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -337,7 +337,7 @@ class ListingImport extends Page implements HasForms
             foreach ($row->errors as $message) {
                 $messages[] = [
                     'line' => $row->line,
-                    'name' => RoomTypeSheet::SHEET_NAME.': '.$row->label(),
+                    'name' => BookableUnitSheet::SHEET_NAME.': '.$row->label(),
                     'message' => $message,
                 ];
             }

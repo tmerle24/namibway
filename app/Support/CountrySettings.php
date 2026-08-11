@@ -2,8 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\BookableUnit;
 use App\Models\Listing;
-use App\Models\RoomType;
 use Carbon\CarbonInterface;
 use DateTimeZone;
 use Illuminate\Support\Carbon;
@@ -128,13 +128,13 @@ class CountrySettings
      * truth where it is set — a lodge quoting in USD is a real case, and the
      * country default must not silently overwrite it.
      */
-    public static function currencyForRoomType(RoomType $roomType): string
+    public static function currencyForBookableUnit(BookableUnit $bookableUnit): string
     {
-        if (filled($roomType->currency)) {
-            return $roomType->currency;
+        if (filled($bookableUnit->currency)) {
+            return $bookableUnit->currency;
         }
 
-        $listing = $roomType->listing;
+        $listing = $bookableUnit->listing;
 
         return $listing !== null
             ? self::for($listing)->currency()

@@ -10,13 +10,15 @@ use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Exceptions\Pricing\PromotionUnavailableException;
 use App\Exceptions\Pricing\UnpriceableStayException;
+use App\Models\BookableUnit;
+use App\Models\BookingSlot;
 use App\Models\GuestCategory;
 use App\Models\Listing;
 use App\Models\Note;
 use App\Models\RatePlan;
-use App\Models\RoomType;
 use App\Models\User;
 use App\Services\Booking\BookingMailbox;
+use App\Services\Booking\RoomCapacity;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\ManualBookingLinePreview;
 use App\Services\Inventory\DTOs\ManualBookingPreview;
@@ -63,9 +65,12 @@ trait EditsInventory
      * Set by a click on an empty calendar cell, so the booking form opens
      * already knowing which room type and which night the person meant.
      */
-    public ?int $prefillRoomTypeId = null;
+    public ?int $prefillBookableUnitId = null;
 
     public ?string $prefillDate = null;
+
+    /** Set by a click on a departure block, so the form opens on that one. */
+    public ?int $prefillSlotId = null;
 
     /** The property the page is showing — see SelectedProperty. */
     abstract protected function property(): ?Listing;
@@ -82,7 +87,7 @@ trait EditsInventory
      * anything is prefilled — an id from elsewhere prefills nothing rather
      * than quietly selecting another partner's room.
      */
-    public function startBooking(int $roomTypeId, string $date): void
+    public function startBooking(int $bookableUnitId, string $date): void
     {
         $property = $this->property();
 
@@ -90,10 +95,40 @@ trait EditsInventory
             return;
         }
 
-        $room = $property->roomTypes()->find($roomTypeId);
+        $room = $property->bookableUnits()->find($bookableUnitId);
 
-        $this->prefillRoomTypeId = $room?->id;
+        $this->prefillBookableUnitId = $room?->id;
         $this->prefillDate = $this->parseDate($date)?->toDateString();
+
+        $this->mountAction('createBooking');
+    }
+
+    /**
+     * Start a booking from a departure block on the day view.
+     *
+     * The same shape as startBooking() and resolved the same way, with one
+     * more question asked: the departure has to belong to the room type it was
+     * named with, or the form would open on the 09:00 quad tour with the game
+     * drive selected.
+     *
+     * The dates come from here rather than from the operator: a seat is sold
+     * on the day it departs, and making a desk type an arrival and a departure
+     * date to sell a morning ride is how a screen stops being used.
+     */
+    public function startDeparture(int $bookableUnitId, string $date, int $slotId): void
+    {
+        $property = $this->property();
+
+        if ($property === null) {
+            return;
+        }
+
+        $room = $property->bookableUnits()->find($bookableUnitId);
+        $slot = $room === null ? null : $room->slots()->where('is_active', true)->find($slotId);
+
+        $this->prefillBookableUnitId = $room?->id;
+        $this->prefillDate = $this->parseDate($date)?->toDateString();
+        $this->prefillSlotId = $slot?->id;
 
         $this->mountAction('createBooking');
     }
@@ -141,8 +176,9 @@ trait EditsInventory
         $plans = $this->sellableRatePlans();
 
         $room = [
-            'room_type_id' => $this->prefillRoomTypeId ?? array_key_first($this->bookableRoomTypes()),
+            'bookable_unit_id' => $this->prefillBookableUnitId ?? array_key_first($this->bookableBookableUnits()),
             'rate_plan_id' => array_key_first($plans),
+            'slot_id' => $this->prefillSlotId,
         ];
 
         // Two adults is the booking a desk takes all day. Prefilling it is the
@@ -228,8 +264,32 @@ trait EditsInventory
                         ->required(),
                     TextInput::make('guest_email')->label('Email')->email()->maxLength(180),
                     TextInput::make('guest_phone')->label('Phone')->tel()->maxLength(40),
-                    TextInput::make('adults')->label('Adults')->numeric()->minValue(1)->maxValue(99)->default(2)->required(),
-                    TextInput::make('children')->label('Children')->numeric()->minValue(0)->maxValue(99)->default(0)->required(),
+                    // Live, because the capacity warning below is about these
+                    // two numbers and a warning that only appears on save is a
+                    // warning nobody reads.
+                    TextInput::make('adults')->label('Adults')->numeric()->minValue(1)->maxValue(99)->default(2)->required()->live(onBlur: true),
+                    TextInput::make('children')->label('Children')->numeric()->minValue(0)->maxValue(99)->default(0)->required()->live(onBlur: true),
+
+                    /*
+                     * More people than the rooms sleep. Not a refusal: at a
+                     * desk a cot goes in the room, and a receptionist told
+                     * "no" by software they cannot argue with writes the
+                     * booking on paper — after which the property's own system
+                     * does not know about the guest at all.
+                     *
+                     * But it is not silent either, which is what it used to
+                     * be. The numbers are named once, in the price block above
+                     * where every other thing about this booking is reported,
+                     * and this is where the desk answers them.
+                     */
+                    TextInput::make('over_capacity_note')
+                        ->label('More people than the room sleeps — what is being done?')
+                        ->placeholder('Extra bed, cot, child shares …')
+                        ->maxLength(200)
+                        ->visible(fn (Get $get): bool => $this->overCapacity($get) !== null)
+                        ->required(fn (Get $get): bool => $this->overCapacity($get) !== null)
+                        ->helperText('Kept on the booking, so whoever makes the room up knows.')
+                        ->columnSpanFull(),
                 ]),
 
             // Folded away, because almost no booking needs it. A field that is
@@ -279,10 +339,23 @@ trait EditsInventory
         $plans = $this->sellableRatePlans();
 
         $fields = [
-            Select::make('room_type_id')
+            Select::make('bookable_unit_id')
                 ->label('Room type')
-                ->options(fn (): array => $this->bookableRoomTypes())
+                ->options(fn (): array => $this->bookableBookableUnits())
                 ->required()
+                ->live(),
+            // Only for a unit that runs departures, and required for one.
+            // Leaving it blank there would take the seat off the property's
+            // own counter instead of off the tour — a different pool, and the
+            // calendar would go on offering a departure that is full.
+            Select::make('slot_id')
+                // Not "Departure": that word is already the check-out date at
+                // the top of this same form, and two fields called the same
+                // thing on one screen is how a desk books the wrong one.
+                ->label('Which departure')
+                ->options(fn (Get $get): array => $this->departureOptions($get('bookable_unit_id')))
+                ->visible(fn (Get $get): bool => $this->departureOptions($get('bookable_unit_id')) !== [])
+                ->required(fn (Get $get): bool => $this->departureOptions($get('bookable_unit_id')) !== [])
                 ->live(),
         ];
 
@@ -298,7 +371,7 @@ trait EditsInventory
 
         if (! $this->pricesByGuests()) {
             $fields[] = TextInput::make('quantity')
-                ->label('Units')
+                ->label(fn (Get $get): string => $this->departureOptions($get('bookable_unit_id')) === [] ? 'Units' : 'Seats')
                 ->numeric()
                 ->minValue(1)
                 ->maxValue(99)
@@ -374,6 +447,7 @@ trait EditsInventory
                 totalOverride: filled($data['total_override'] ?? null) ? (float) $data['total_override'] : null,
                 overrideReason: $data['override_reason'] ?? null,
                 promotionCode: $data['promotion_code'] ?? null,
+                overCapacityNote: $data['over_capacity_note'] ?? null,
             );
         } catch (InventoryUnavailableException|StayRuleViolationException $refusal) {
             // The preview said yes a moment ago and the writer says no, which
@@ -403,8 +477,9 @@ trait EditsInventory
                 .($holding === null ? '' : '. '.$holding))
             ->send();
 
-        $this->prefillRoomTypeId = null;
+        $this->prefillBookableUnitId = null;
         $this->prefillDate = null;
+        $this->prefillSlotId = null;
         $this->showReservation($reservation->id);
     }
 
@@ -448,12 +523,14 @@ trait EditsInventory
         $lines = collect($preview->lines)
             ->map(function (ManualBookingLinePreview $line) use ($categories): string {
                 $who = $line->occupancyLabel($categories);
+                $departure = $line->departureLabel();
 
                 return '<li>'.e(
-                    $line->roomType->name.' ×'.$line->quantity
+                    $line->bookableUnit->name.' ×'.$line->quantity
+                    .($departure === null ? '' : ' — '.$departure)
                     .($who === null ? '' : ' ('.$who.')')
                     .' — '.Money::format($line->total, $line->currency)
-                    .' ('.$line->unitsFree.' free)'
+                    .' ('.$line->unitsFree.($departure === null ? ' free)' : ' seats free)')
                 ).'</li>';
             })
             ->implode('');
@@ -464,6 +541,14 @@ trait EditsInventory
         // An offer is shown as what it took off, not only as a smaller total:
         // a guest who read out a code wants to hear the discount, and a desk
         // explaining the bill needs both numbers.
+        // Amber and not red: a problem stops the booking, a warning asks a
+        // question this desk is allowed to answer.
+        $warnings = $preview->hasWarnings()
+            ? '<div style="margin-top: .35rem; color: rgb(180 83 9);">'
+                .implode('', array_map(fn (string $line): string => '<div>'.e($line).'</div>', $preview->warnings))
+                .'</div>'
+            : '';
+
         $offer = $preview->discount > 0.0
             ? '<div style="margin-top: .35rem; color: rgb(21 128 61);">'
                 .e($preview->offer ?? 'Offer')
@@ -478,9 +563,10 @@ trait EditsInventory
             .e(Money::format($preview->total, $preview->currency))
             .'</span>'
             .'<span style="opacity: .7;">'
-            .e($preview->nights.' '.str('night')->plural($preview->nights))
+            .e($preview->lengthLabel())
             .'</span>'
             .'</div>'
+            .$warnings
             .$offer
             .$this->chargeLinesHtml($preview)
             .'<ul style="list-style: disc; margin: .35rem 0 0 1.1rem;">'.$lines.'</ul>'
@@ -653,17 +739,17 @@ trait EditsInventory
             ->fillForm(fn (): array => [
                 'first_night' => $this->prefillDate ?? $this->propertyToday()->toDateString(),
                 'last_night' => $this->prefillDate ?? $this->propertyToday()->toDateString(),
-                'room_type_id' => $this->prefillRoomTypeId ?? array_key_first($this->bookableRoomTypes()),
+                'bookable_unit_id' => $this->prefillBookableUnitId ?? array_key_first($this->bookableBookableUnits()),
                 'units' => 1,
                 'reason' => BlockReason::Maintenance->value,
             ])
             ->form(fn (): array => $this->blockForm())
             ->action(function (array $data): void {
-                $room = $this->requireRoomType($data['room_type_id'] ?? null);
+                $room = $this->requireBookableUnit($data['bookable_unit_id'] ?? null);
 
                 try {
                     app(InventoryWriter::class)->block(new BlockRequest(
-                        roomType: $room,
+                        bookableUnit: $room,
                         units: (int) $data['units'],
                         firstNight: $this->requireDate($data['first_night'] ?? null, 'first night'),
                         lastNight: $this->requireDate($data['last_night'] ?? null, 'last night'),
@@ -690,7 +776,7 @@ trait EditsInventory
                 $block = $this->selectedBlock();
 
                 return $block === null ? [] : [
-                    'room_type_id' => $block->room_type_id,
+                    'bookable_unit_id' => $block->bookable_unit_id,
                     'units' => $block->units,
                     'first_night' => $block->first_night->toDateString(),
                     'last_night' => $block->last_night->toDateString(),
@@ -706,11 +792,11 @@ trait EditsInventory
                     return;
                 }
 
-                $room = $this->requireRoomType($data['room_type_id'] ?? null);
+                $room = $this->requireBookableUnit($data['bookable_unit_id'] ?? null);
 
                 try {
                     app(InventoryWriter::class)->updateBlock($block, new BlockRequest(
-                        roomType: $room,
+                        bookableUnit: $room,
                         units: (int) $data['units'],
                         firstNight: $this->requireDate($data['first_night'] ?? null, 'first night'),
                         lastNight: $this->requireDate($data['last_night'] ?? null, 'last night'),
@@ -756,9 +842,9 @@ trait EditsInventory
     {
         return [
             Grid::make(2)->schema([
-                Select::make('room_type_id')
+                Select::make('bookable_unit_id')
                     ->label('Room type')
-                    ->options(fn (): array => $this->bookableRoomTypes())
+                    ->options(fn (): array => $this->bookableBookableUnits())
                     ->required(),
                 TextInput::make('units')->label('Units')->numeric()->minValue(1)->maxValue(99)->default(1)->required(),
                 DatePicker::make('first_night')->label('First night')->native(false)->displayFormat('D, d M Y')->required(),
@@ -799,7 +885,7 @@ trait EditsInventory
      *
      * @return array<int, string>
      */
-    private function bookableRoomTypes(): array
+    private function bookableBookableUnits(): array
     {
         $property = $this->property();
 
@@ -807,11 +893,90 @@ trait EditsInventory
             return [];
         }
 
-        return $property->roomTypes()
+        return $property->bookableUnits()
             ->where('is_active', true)
             ->get()
-            ->sortBy(fn (RoomType $room) => $room->name, SORT_NATURAL | SORT_FLAG_CASE)
-            ->mapWithKeys(fn (RoomType $room) => [$room->id => $room->name.' ('.$room->code.')'])
+            ->sortBy(fn (BookableUnit $room) => $room->name, SORT_NATURAL | SORT_FLAG_CASE)
+            ->mapWithKeys(fn (BookableUnit $room) => [$room->id => $room->name.' ('.$room->code.')'])
+            ->all();
+    }
+
+    /**
+     * The sentence to show when the party does not fit what is being booked,
+     * or null when it does.
+     *
+     * Reads the form as it stands rather than running the whole preview: this
+     * runs on every keystroke that matters, and the question — do these people
+     * fit these rooms — needs no prices, no calendar and no queries beyond the
+     * room types themselves.
+     */
+    private function overCapacity(Get $get): ?string
+    {
+        // Under a plan that prices by guests, each room line carries its own
+        // people and the pricer refuses a line it cannot price. Saying it
+        // again here, from the header counts, would be a second voice on one
+        // question — see ManualBooking::capacityWarnings().
+        if ($this->pricesByGuests()) {
+            return null;
+        }
+
+        $property = $this->property();
+
+        if ($property === null) {
+            return null;
+        }
+
+        $lines = [];
+
+        foreach ($this->roomRows($get('rooms')) as $row) {
+            // A seat on a departure is not a room and sleeps nobody.
+            if (filled($row['slot_id'] ?? null)) {
+                continue;
+            }
+
+            $bookableUnit = $property->bookableUnits()->find((int) ($row['bookable_unit_id'] ?? 0));
+            $quantity = (int) ($row['quantity'] ?? 0);
+
+            if ($bookableUnit instanceof BookableUnit && $quantity > 0) {
+                $lines[] = [$bookableUnit, $quantity];
+            }
+        }
+
+        $adults = (int) ($get('adults') ?? 0);
+        $children = (int) ($get('children') ?? 0);
+
+        if ($lines === [] || $adults < 1 || RoomCapacity::fitsAcross($lines, $adults, $children)) {
+            return null;
+        }
+
+        return RoomCapacity::explain($lines, $adults, $children);
+    }
+
+    /**
+     * The departures of one of this property's units, for the room line.
+     *
+     * Empty for everything sold by the night, which is what hides the field:
+     * a lodge never learns that departures exist.
+     *
+     * @return array<int, string>
+     */
+    private function departureOptions(mixed $bookableUnitId): array
+    {
+        $property = $this->property();
+        $id = (int) $bookableUnitId;
+
+        if ($property === null || $id < 1) {
+            return [];
+        }
+
+        $room = $property->bookableUnits()->find($id);
+
+        if (! $room instanceof BookableUnit) {
+            return [];
+        }
+
+        return BookingSlot::forUnit($room)
+            ->mapWithKeys(fn (BookingSlot $slot) => [$slot->id => $slot->timeLabel().' — '.$slot->label()])
             ->all();
     }
 
@@ -905,10 +1070,10 @@ trait EditsInventory
         return $property;
     }
 
-    private function requireRoomType(mixed $id): RoomType
+    private function requireBookableUnit(mixed $id): BookableUnit
     {
         $property = $this->requireProperty();
-        $room = $property->roomTypes()->find((int) $id);
+        $room = $property->bookableUnits()->find((int) $id);
 
         if ($room === null) {
             $this->refuse('Unknown room type', ['That room type does not belong to this property.']);

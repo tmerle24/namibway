@@ -13,7 +13,7 @@ final class ImportPlan
      * @param  list<PlannedRow>  $rows
      * @param  list<string>  $fileErrors  Problems that stop the whole import (missing headers, unreadable file).
      * @param  list<string>  $ignoredHeaders  Columns in the file that the sheet doesn't know — skipped, not fatal.
-     * @param  list<PlannedRoomRow>  $roomRows  Rows of the RoomTypes sheet, if the workbook has one.
+     * @param  list<PlannedRoomRow>  $roomRows  Rows of the BookableUnits sheet, if the workbook has one.
      */
     public function __construct(
         public readonly array $rows = [],

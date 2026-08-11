@@ -39,6 +39,22 @@ class OccupancyGridData
         return count($this->columns);
     }
 
+    /**
+     * Whether anything on screen is counted in seats rather than in units.
+     * The footer sums both, and a total that mixes chalets and seats has to
+     * say so.
+     */
+    public function hasDepartureUnits(): bool
+    {
+        foreach ($this->rows as $row) {
+            if ($row->isDepartureUnit()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** Sold units over capacity across the whole visible range. */
     public function occupancyPercent(): int
     {

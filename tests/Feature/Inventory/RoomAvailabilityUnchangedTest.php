@@ -4,9 +4,9 @@ namespace Tests\Feature\Inventory;
 
 use App\Enums\InquiryStatus;
 use App\Enums\ReservationSource;
+use App\Models\BookableUnit;
 use App\Models\Inquiry;
 use App\Models\Listing;
-use App\Models\RoomType;
 use App\Services\Booking\RoomAvailability;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\DTOs\BookingLine;
@@ -37,7 +37,7 @@ class RoomAvailabilityUnchangedTest extends TestCase
     public function test_a_booking_the_lodge_took_is_no_longer_offered_to_a_traveller(): void
     {
         $listing = Listing::factory()->create();
-        $room = RoomType::factory()->create([
+        $room = BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'code' => 'standard',
             'total_units' => 2,
@@ -74,7 +74,7 @@ class RoomAvailabilityUnchangedTest extends TestCase
     public function test_a_request_in_flight_holds_no_calendar_inventory_but_is_still_counted(): void
     {
         $listing = Listing::factory()->create();
-        $room = RoomType::factory()->create([
+        $room = BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'code' => 'standard',
             'total_units' => 2,
@@ -84,7 +84,7 @@ class RoomAvailabilityUnchangedTest extends TestCase
             'listing_id' => $listing->id,
             'name' => 'Traveller',
             'email' => 'traveller@example.com',
-            'room_type_code' => 'standard',
+            'bookable_unit_code' => 'standard',
             'check_in' => '2026-09-01',
             'check_out' => '2026-09-03',
             'adults' => 2,
@@ -100,7 +100,7 @@ class RoomAvailabilityUnchangedTest extends TestCase
     public function test_the_smaller_of_the_two_counts_wins(): void
     {
         $listing = Listing::factory()->create();
-        $room = RoomType::factory()->create([
+        $room = BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'code' => 'standard',
             'total_units' => 3,
@@ -119,7 +119,7 @@ class RoomAvailabilityUnchangedTest extends TestCase
             'listing_id' => $listing->id,
             'name' => 'Traveller',
             'email' => 'traveller@example.com',
-            'room_type_code' => 'standard',
+            'bookable_unit_code' => 'standard',
             'check_in' => '2026-09-01',
             'check_out' => '2026-09-03',
             'adults' => 2,

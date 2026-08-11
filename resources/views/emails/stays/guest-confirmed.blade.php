@@ -23,7 +23,7 @@ it is what to quote when you arrive or if you need to change anything.
 | Room | Included | Dates |
 |---|---|---|
 @foreach ($reservation->units as $unit)
-| {{ $unit->roomType?->name ?? 'Room' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif | {{ $unit->soldAs() ?? '—' }} | {{ $unit->check_in->isoFormat('D MMM') }} – {{ $unit->check_out->isoFormat('D MMM') }} |
+| {{ $unit->bookableUnit?->name ?? 'Room' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif | {{ $unit->soldAs() ?? '—' }} | {{ $unit->check_in->isoFormat('D MMM') }} – {{ $unit->check_out->isoFormat('D MMM') }} |
 @endforeach
 </x-mail::table>
 

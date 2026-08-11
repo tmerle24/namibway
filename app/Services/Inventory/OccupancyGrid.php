@@ -4,11 +4,12 @@ namespace App\Services\Inventory;
 
 use App\Enums\BlockReason;
 use App\Enums\StayStatus;
+use App\Models\BookableUnit;
+use App\Models\BookingSlot;
 use App\Models\InventoryBlock;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\ReservationUnit;
-use App\Models\RoomType;
 use App\Services\Inventory\DTOs\CalendarSnapshot;
 use App\Services\Inventory\DTOs\OccupancyBar;
 use App\Services\Inventory\DTOs\OccupancyCell;
@@ -47,12 +48,17 @@ class OccupancyGrid
      * `$ratePlan` is which product's rates the cells show. Null means the
      * property's default plan, and a property with none shows its room types'
      * own rates — the behaviour before rate plans existed.
+     *
+     * `$omitDepartureUnits` leaves out the units that run departures, for the
+     * day view, where those are read on the hour axis instead. Everywhere else
+     * they stay in, summed per day — see cells().
      */
     public function build(
         Listing $listing,
         CarbonInterface $from,
         int $days = self::DEFAULT_DAYS,
         ?RatePlan $ratePlan = null,
+        bool $omitDepartureUnits = false,
     ): OccupancyGridData {
         $ratePlan ??= RatePlan::defaultFor($listing);
 
@@ -61,10 +67,11 @@ class OccupancyGrid
         $end = $start->copy()->addDays($days);
         $today = CountrySettings::for($listing)->today();
 
-        $roomTypes = $listing->roomTypes()->orderBy('name')->get();
-        $snapshot = $this->calendar->snapshot($roomTypes, $start, $end, $ratePlan);
+        $bookableUnits = $listing->bookableUnits()->orderBy('name')->get();
+        $snapshot = $this->calendar->snapshot($bookableUnits, $start, $end, $ratePlan);
+        $slots = $this->slots($bookableUnits->pluck('id')->all());
 
-        $bars = $this->bars($listing, $roomTypes->pluck('id')->all(), $start, $end, $days);
+        $bars = $this->bars($listing, $bookableUnits->pluck('id')->all(), $start, $end, $days);
 
         $dates = [];
 
@@ -74,21 +81,26 @@ class OccupancyGrid
 
         $rows = [];
 
-        foreach ($roomTypes as $roomType) {
-            $roomBars = $bars[$roomType->id] ?? [];
+        foreach ($bookableUnits as $bookableUnit) {
+            $roomBars = $bars[$bookableUnit->id] ?? [];
+            $unitSlots = $slots[$bookableUnit->id] ?? [];
+
+            if ($omitDepartureUnits && $unitSlots !== []) {
+                continue;
+            }
 
             // An inactive room type is normally noise, but one with a stay or
             // a block still on screen is not: hiding it would hide a booking.
-            if (! $roomType->is_active && $roomBars === [] && ! $snapshot->hasActivity($roomType->id)) {
+            if (! $bookableUnit->is_active && $roomBars === [] && ! $snapshot->hasActivity($bookableUnit->id)) {
                 continue;
             }
 
             $rows[] = new OccupancyRow(
-                roomType: $roomType,
+                bookableUnit: $bookableUnit,
                 lanes: $this->packLanes($roomBars),
-                cells: $this->cells($roomType, $snapshot, $dates),
-                currency: CountrySettings::currencyForRoomType($roomType),
-                isRetired: ! $roomType->is_active,
+                cells: $this->cells($bookableUnit, $snapshot, $dates, $unitSlots),
+                currency: CountrySettings::currencyForBookableUnit($bookableUnit),
+                isRetired: ! $bookableUnit->is_active,
             );
         }
 
@@ -105,28 +117,35 @@ class OccupancyGrid
 
     /**
      * @param  array<int, Carbon>  $dates
+     * @param  array<int, BookingSlot>  $slots  the unit's timetable, empty for anything sold by the night
      * @return array<int, OccupancyCell>
      */
-    private function cells(RoomType $roomType, CalendarSnapshot $snapshot, array $dates): array
+    private function cells(BookableUnit $bookableUnit, CalendarSnapshot $snapshot, array $dates, array $slots = []): array
     {
         $cells = [];
 
         foreach ($dates as $index => $date) {
             $key = $date->toDateString();
 
+            if ($slots !== []) {
+                $cells[$index] = $this->departureCell($bookableUnit, $snapshot, $date, $slots);
+
+                continue;
+            }
+
             // Counters come from the inventory row, restrictions from the rate
             // plan's — they are commercial, not physical, so a non-refundable
             // plan can want a three-night minimum on a night the flexible plan
             // sells singly.
-            $restrictions = $snapshot->rateDay($roomType->id, $key);
+            $restrictions = $snapshot->rateDay($bookableUnit->id, $key);
 
             $cells[$index] = new OccupancyCell(
                 date: $date,
-                capacity: $snapshot->capacity($roomType->id, $key),
-                unitsSold: $snapshot->sold($roomType->id, $key),
-                unitsBlocked: $snapshot->blocked($roomType->id, $key),
-                unitsFree: $snapshot->unitsFree($roomType->id, $key),
-                rate: $snapshot->rate($roomType->id, $key),
+                capacity: $snapshot->capacity($bookableUnit->id, $key),
+                unitsSold: $snapshot->sold($bookableUnit->id, $key),
+                unitsBlocked: $snapshot->blocked($bookableUnit->id, $key),
+                unitsFree: $snapshot->unitsFree($bookableUnit->id, $key),
+                rate: $snapshot->rate($bookableUnit->id, $key),
                 minStay: $restrictions?->min_stay,
                 closedToArrival: (bool) $restrictions?->closed_to_arrival,
                 closedToDeparture: (bool) $restrictions?->closed_to_departure,
@@ -134,6 +153,88 @@ class OccupancyGrid
         }
 
         return $cells;
+    }
+
+    /**
+     * A day of departures as one cell: seats summed across the timetable, and
+     * the cheapest seat as the price.
+     *
+     * Without this a tour operator's week would read "8 free" on every day
+     * forever, because its counters are on the departures' rows and the
+     * property's own row is the one nobody ever writes. Restrictions are left
+     * empty on purpose — a minimum stay is a rule about nights, and a
+     * departure is not one.
+     *
+     * @param  array<int, BookingSlot>  $slots
+     */
+    private function departureCell(BookableUnit $bookableUnit, CalendarSnapshot $snapshot, Carbon $date, array $slots): OccupancyCell
+    {
+        $key = $date->toDateString();
+        $capacity = 0;
+        $sold = 0;
+        $blocked = 0;
+        $rate = null;
+
+        foreach ($slots as $slot) {
+            $day = $snapshot->slotDay($bookableUnit->id, $key, $slot->id);
+
+            $capacity += CalendarSnapshot::capacityFor($bookableUnit, $day);
+            $sold += $day === null ? 0 : $day->units_sold;
+            $blocked += $day === null ? 0 : $day->units_blocked;
+
+            // The same three steps the booking path takes: the departure's own
+            // rate, else the day's, else the unit's.
+            $seat = CalendarSnapshot::rateFor(
+                $bookableUnit,
+                $snapshot->slotRateDay($bookableUnit->id, $key, $slot->id) ?? $snapshot->rateDay($bookableUnit->id, $key),
+            );
+
+            $rate = $rate === null ? $seat : min($rate, $seat);
+        }
+
+        return new OccupancyCell(
+            date: $date,
+            capacity: $capacity,
+            unitsSold: $sold,
+            unitsBlocked: $blocked,
+            unitsFree: $capacity - $sold - $blocked,
+            rate: $rate ?? $snapshot->rate($bookableUnit->id, $key),
+            minStay: null,
+            closedToArrival: false,
+            closedToDeparture: false,
+            departures: count($slots),
+        );
+    }
+
+    /**
+     * The active timetable of every unit that has one, grouped by unit.
+     *
+     * One query for the whole property, like everything else here: a lookup
+     * per room type is the shape this class exists to avoid.
+     *
+     * @param  array<int, int>  $bookableUnitIds
+     * @return array<int, array<int, BookingSlot>>
+     */
+    private function slots(array $bookableUnitIds): array
+    {
+        if ($bookableUnitIds === []) {
+            return [];
+        }
+
+        $slots = [];
+
+        $rows = BookingSlot::query()
+            ->whereIn('bookable_unit_id', $bookableUnitIds)
+            ->where('is_active', true)
+            ->orderBy('starts_at')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($rows as $slot) {
+            $slots[$slot->bookable_unit_id][] = $slot;
+        }
+
+        return $slots;
     }
 
     /**
@@ -189,19 +290,25 @@ class OccupancyGrid
      * That difference is the reason the two are converted here rather than in
      * the view.
      *
-     * @param  array<int, int>  $roomTypeIds
+     * @param  array<int, int>  $bookableUnitIds
      * @return array<int, array<int, OccupancyBar>>
      */
-    private function bars(Listing $listing, array $roomTypeIds, Carbon $start, Carbon $end, int $days): array
+    private function bars(Listing $listing, array $bookableUnitIds, Carbon $start, Carbon $end, int $days): array
     {
-        if ($roomTypeIds === []) {
+        if ($bookableUnitIds === []) {
             return [];
         }
 
         $bars = [];
 
         $units = ReservationUnit::query()
-            ->whereIn('room_type_id', $roomTypeIds)
+            ->whereIn('bookable_unit_id', $bookableUnitIds)
+            // Nights only. A seat sold on a departure is drawn on the day
+            // view, where it has a time; drawn here it would be a bar one
+            // column wide, and a tour with forty bookings in a month would
+            // stack forty lanes — lane packing is deliberately unbounded, so
+            // nothing would stop it.
+            ->whereNull('slot_id')
             ->whereDate('check_in', '<', $end->toDateString())
             ->whereDate('check_out', '>', $start->toDateString())
             ->whereHas('reservation', fn (Builder $query) => $query
@@ -233,12 +340,12 @@ class OccupancyGrid
             );
 
             if ($bar !== null) {
-                $bars[$unit->room_type_id][] = $bar;
+                $bars[$unit->bookable_unit_id][] = $bar;
             }
         }
 
         $blocks = InventoryBlock::query()
-            ->whereIn('room_type_id', $roomTypeIds)
+            ->whereIn('bookable_unit_id', $bookableUnitIds)
             ->whereNull('released_at')
             ->whereDate('first_night', '<', $end->toDateString())
             ->whereDate('last_night', '>=', $start->toDateString())
@@ -263,7 +370,7 @@ class OccupancyGrid
             );
 
             if ($bar !== null) {
-                $bars[$block->room_type_id][] = $bar;
+                $bars[$block->bookable_unit_id][] = $bar;
             }
         }
 

@@ -6,12 +6,12 @@ use App\Enums\GuestKind;
 use App\Enums\PricingStrategy;
 use App\Enums\ReservationSource;
 use App\Exceptions\Pricing\UnpriceableStayException;
+use App\Models\BookableUnit;
 use App\Models\GuestCategory;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\RatePlanGuestAmount;
 use App\Models\ReservationGuest;
-use App\Models\RoomType;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
@@ -50,9 +50,9 @@ class OccupancyPricingTest extends TestCase
         $this->calendar = app(AvailabilityCalendar::class);
     }
 
-    private function room(Listing $listing): RoomType
+    private function room(Listing $listing): BookableUnit
     {
-        return RoomType::factory()->create([
+        return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'name' => 'Standard Chalet',
             'max_adults' => 4,

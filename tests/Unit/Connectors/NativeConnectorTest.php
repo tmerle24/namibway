@@ -6,10 +6,10 @@ use App\Connectors\ResConnect\DTOs\ReservationRequest;
 use App\Enums\ConnectorType;
 use App\Enums\InquiryStatus;
 use App\Enums\ReservationStatus;
+use App\Models\BookableUnit;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Partner;
-use App\Models\RoomType;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -19,7 +19,7 @@ beforeEach(function () {
     $this->connector = new NativeConnector;
     $this->partner = Partner::create(['name' => 'Native Lodge', 'connector_type' => ConnectorType::Native->value]);
     $this->listing = Listing::factory()->create(['partner_id' => $this->partner->id]);
-    $this->roomType = RoomType::create([
+    $this->bookableUnit = BookableUnit::create([
         'listing_id' => $this->listing->id,
         'code' => 'standard',
         'name' => 'Standard Room',
@@ -54,7 +54,7 @@ it('excludes a room type that is fully booked for the requested dates', function
         'check_in' => '2026-12-02',
         'check_out' => '2026-12-05',
         'status' => InquiryStatus::Confirmed,
-        'room_type_code' => 'standard',
+        'bookable_unit_code' => 'standard',
     ]);
 
     $response = $this->connector->checkAvailability(new AvailabilityRequest(
@@ -108,7 +108,7 @@ it('fails to reserve a room type that is already sold out', function () {
         'check_in' => '2026-12-01',
         'check_out' => '2026-12-04',
         'status' => InquiryStatus::Confirmed,
-        'room_type_code' => 'standard',
+        'bookable_unit_code' => 'standard',
     ]);
 
     $inquiry = Inquiry::create([

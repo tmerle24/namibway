@@ -7,6 +7,7 @@ use App\Enums\PricingStrategy;
 use App\Enums\ReservationSource;
 use App\Filament\Partner\Pages\OccupancyCalendar;
 use App\Filament\Partner\Pages\RatesAndAvailability;
+use App\Models\BookableUnit;
 use App\Models\GuestCategory;
 use App\Models\Listing;
 use App\Models\Partner;
@@ -14,7 +15,6 @@ use App\Models\RatePlan;
 use App\Models\RatePlanGuestAmount;
 use App\Models\Reservation;
 use App\Models\ReservationGuest;
-use App\Models\RoomType;
 use App\Models\User;
 use App\Services\Inventory\InventoryWriter;
 use App\Services\Pricing\GuestCategoryDefaults;
@@ -53,7 +53,7 @@ class LodgeOccupancyBookingTest extends TestCase
     public function test_a_per_room_property_still_books_by_units(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Guesthouse');
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
         $plan = $this->plan($listing, PricingStrategy::PerUnit);
 
         app(InventoryWriter::class)->setRates($plan, $room, Carbon::parse('2026-09-14'), Carbon::parse('2026-09-15'), ['rate' => 1800]);
@@ -63,7 +63,7 @@ class LodgeOccupancyBookingTest extends TestCase
         $this->submitBooking([
             'check_in' => '2026-09-14',
             'check_out' => '2026-09-16',
-            'rooms' => [['room_type_id' => $room->id, 'quantity' => 2]],
+            'rooms' => [['bookable_unit_id' => $room->id, 'quantity' => 2]],
             'guest_name' => 'Two Rooms',
             'source' => ReservationSource::WalkIn->value,
         ]);
@@ -79,7 +79,7 @@ class LodgeOccupancyBookingTest extends TestCase
     public function test_a_lodge_pricing_by_guests_books_a_room_at_a_time(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Lodge');
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
         $plan = $this->plan($listing, PricingStrategy::PerOccupancy);
         $categories = $this->categories($listing);
 
@@ -97,10 +97,10 @@ class LodgeOccupancyBookingTest extends TestCase
             'check_in' => '2026-09-14',
             'check_out' => '2026-09-15',
             'rooms' => [
-                ['room_type_id' => $room->id, 'guests' => [
+                ['bookable_unit_id' => $room->id, 'guests' => [
                     ['guest_category_id' => $categories['AD']->id, 'count' => 2],
                 ]],
-                ['room_type_id' => $room->id, 'guests' => [
+                ['bookable_unit_id' => $room->id, 'guests' => [
                     ['guest_category_id' => $categories['AD']->id, 'count' => 2],
                     ['guest_category_id' => $categories['CH']->id, 'count' => 1],
                 ]],
@@ -124,7 +124,7 @@ class LodgeOccupancyBookingTest extends TestCase
     public function test_a_stay_nobody_priced_is_refused_with_the_reason(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Lodge');
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
         $plan = $this->plan($listing, PricingStrategy::PerOccupancy);
         $categories = $this->categories($listing);
 
@@ -142,7 +142,7 @@ class LodgeOccupancyBookingTest extends TestCase
             'check_in' => '2026-09-14',
             'check_out' => '2026-09-15',
             'rooms' => [
-                ['room_type_id' => $room->id, 'guests' => [
+                ['bookable_unit_id' => $room->id, 'guests' => [
                     ['guest_category_id' => $categories['AD']->id, 'count' => 4],
                 ]],
             ],
@@ -157,7 +157,7 @@ class LodgeOccupancyBookingTest extends TestCase
     public function test_the_rates_screen_writes_prices_by_guest_count(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Lodge');
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
         $plan = $this->plan($listing, PricingStrategy::PerOccupancy);
         $this->categories($listing);
 
@@ -166,7 +166,7 @@ class LodgeOccupancyBookingTest extends TestCase
         Livewire::test(RatesAndAvailability::class)
             ->fillForm([
                 'rate_plan_id' => $plan->id,
-                'room_type_ids' => [$room->id],
+                'bookable_unit_ids' => [$room->id],
                 'from' => '2026-09-14',
                 'to' => '2026-09-16',
                 'guest_amounts' => [
@@ -189,7 +189,7 @@ class LodgeOccupancyBookingTest extends TestCase
     public function test_the_rate_select_writes_to_the_plan_it_names(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Lodge');
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
         $standard = $this->plan($listing, PricingStrategy::PerOccupancy);
         $resident = RatePlan::create([
             'listing_id' => $listing->id,
@@ -203,7 +203,7 @@ class LodgeOccupancyBookingTest extends TestCase
         Livewire::test(RatesAndAvailability::class)
             ->fillForm([
                 'rate_plan_id' => $resident->id,
-                'room_type_ids' => [$room->id],
+                'bookable_unit_ids' => [$room->id],
                 'from' => '2026-09-14',
                 'to' => '2026-09-14',
                 'guest_amounts' => [['guests' => 2, 'amount' => 900, 'remove' => false]],
@@ -217,7 +217,7 @@ class LodgeOccupancyBookingTest extends TestCase
     public function test_another_partners_rate_plan_cannot_be_priced(): void
     {
         [$mine, $myListing] = $this->partnerWithProperty('Mine');
-        $myRoom = $this->roomType($myListing);
+        $myRoom = $this->bookableUnit($myListing);
         $this->plan($myListing, PricingStrategy::PerOccupancy);
 
         [, $theirListing] = $this->partnerWithProperty('Theirs');
@@ -228,7 +228,7 @@ class LodgeOccupancyBookingTest extends TestCase
         Livewire::test(RatesAndAvailability::class)
             ->fillForm([
                 'rate_plan_id' => $theirPlan->id,
-                'room_type_ids' => [$myRoom->id],
+                'bookable_unit_ids' => [$myRoom->id],
                 'from' => '2026-09-14',
                 'to' => '2026-09-14',
                 'guest_amounts' => [['guests' => 2, 'amount' => 99, 'remove' => false]],
@@ -243,7 +243,7 @@ class LodgeOccupancyBookingTest extends TestCase
     public function test_the_calendar_shows_the_rate_plan_it_is_asked_for(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Lodge');
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
 
         $resident = $this->plan($listing, PricingStrategy::PerUnit);
         $international = RatePlan::create([
@@ -254,8 +254,11 @@ class LodgeOccupancyBookingTest extends TestCase
         ]);
 
         $writer = app(InventoryWriter::class);
-        $from = Carbon::parse('2026-09-10');
-        $to = $from->copy()->addDays(5);
+        // The whole month the calendar opens on: the range snaps to the 1st,
+        // so a season starting on the 10th would leave the first cell showing
+        // the room's own rate and prove nothing about rate plans.
+        $from = Carbon::parse('2026-09-01');
+        $to = Carbon::parse('2026-09-30');
 
         $writer->setRates($resident, $room, $from, $to, ['rate' => 900]);
         $writer->setRates($international, $room, $from, $to, ['rate' => 2400]);
@@ -277,16 +280,19 @@ class LodgeOccupancyBookingTest extends TestCase
     public function test_another_partners_rate_plan_cannot_be_shown_on_the_calendar(): void
     {
         [$mine, $myListing] = $this->partnerWithProperty('Mine');
-        $myRoom = $this->roomType($myListing);
+        $myRoom = $this->bookableUnit($myListing);
         $myPlan = $this->plan($myListing, PricingStrategy::PerUnit);
 
         [, $theirListing] = $this->partnerWithProperty('Theirs');
-        $theirRoom = $this->roomType($theirListing);
+        $theirRoom = $this->bookableUnit($theirListing);
         $theirPlan = $this->plan($theirListing, PricingStrategy::PerUnit);
 
         $writer = app(InventoryWriter::class);
-        $from = Carbon::parse('2026-09-10');
-        $to = $from->copy()->addDays(5);
+        // The whole month the calendar opens on: the range snaps to the 1st,
+        // so a season starting on the 10th would leave the first cell showing
+        // the room's own rate and prove nothing about rate plans.
+        $from = Carbon::parse('2026-09-01');
+        $to = Carbon::parse('2026-09-30');
 
         $writer->setRates($myPlan, $myRoom, $from, $to, ['rate' => 900]);
         $writer->setRates($theirPlan, $theirRoom, $from, $to, ['rate' => 5555]);
@@ -299,6 +305,64 @@ class LodgeOccupancyBookingTest extends TestCase
         // lodge's prices.
         $this->assertSame(900.0, $page->instance()->grid()?->rows[0]->cells[0]->rate);
         $this->assertSame($myPlan->id, $page->instance()->shownRatePlan()?->id);
+    }
+
+    /**
+     * The desk half of the capacity rule: warned, and asked what it is doing
+     * about it, but never refused. A receptionist told "no" by software they
+     * cannot argue with writes the booking on paper, and then the property's
+     * own system does not know about the guest at all.
+     */
+    public function test_the_desk_may_overfill_a_room_once_it_says_what_it_is_doing(): void
+    {
+        [$user, $listing] = $this->partnerWithProperty('Lodge');
+        $room = $this->bookableUnit($listing);
+
+        $this->asPartner($user);
+
+        // The room sleeps 4 + 2. Seven people do not fit however they arrange
+        // themselves, and the form asks about it rather than shrugging.
+        $this->submitBooking([
+            'check_in' => '2026-09-14',
+            'check_out' => '2026-09-16',
+            'guest_name' => 'Familie Braun',
+            'source' => ReservationSource::WalkIn->value,
+            'adults' => 4,
+            'children' => 3,
+            'rooms' => [['bookable_unit_id' => $room->id, 'quantity' => 1]],
+            'over_capacity_note' => 'Cot in the chalet',
+        ]);
+
+        $reservation = Reservation::query()->latest('id')->firstOrFail();
+
+        $this->assertSame('Cot in the chalet', $reservation->over_capacity_note);
+        $this->assertSame(7, $reservation->adults + $reservation->children);
+
+        // And it is on the board somebody makes the room up from.
+        $this->actingAs($user)
+            ->get('/partner/arrivals?date=2026-09-14')
+            ->assertOk()
+            ->assertSee('Cot in the chalet');
+    }
+
+    public function test_a_booking_that_fits_is_never_asked_about_beds(): void
+    {
+        [$user, $listing] = $this->partnerWithProperty('Lodge');
+        $room = $this->bookableUnit($listing);
+
+        $this->asPartner($user);
+
+        $this->submitBooking([
+            'check_in' => '2026-09-14',
+            'check_out' => '2026-09-16',
+            'guest_name' => 'Fits Fine',
+            'source' => ReservationSource::WalkIn->value,
+            'adults' => 2,
+            'children' => 1,
+            'rooms' => [['bookable_unit_id' => $room->id, 'quantity' => 1]],
+        ]);
+
+        $this->assertNull(Reservation::query()->latest('id')->firstOrFail()->over_capacity_note);
     }
 
     /**
@@ -347,9 +411,9 @@ class LodgeOccupancyBookingTest extends TestCase
         return [$user, $listing];
     }
 
-    private function roomType(Listing $listing): RoomType
+    private function bookableUnit(Listing $listing): BookableUnit
     {
-        return RoomType::factory()->create([
+        return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'name' => 'Standard Chalet',
             'max_adults' => 4,

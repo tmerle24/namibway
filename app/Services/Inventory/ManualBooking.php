@@ -7,10 +7,12 @@ use App\Enums\StayStatus;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Exceptions\Pricing\PromotionUnavailableException;
 use App\Exceptions\Pricing\UnpriceableStayException;
+use App\Models\BookableUnit;
+use App\Models\BookingSlot;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\Reservation;
-use App\Models\RoomType;
+use App\Services\Booking\RoomCapacity;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\DTOs\ManualBookingLinePreview;
@@ -89,7 +91,8 @@ class ManualBooking
         $demand = [];
 
         foreach ($rooms as $room) {
-            $demand[$room->roomType->id] = ($demand[$room->roomType->id] ?? 0) + $room->quantity;
+            $key = $this->demandKey($room);
+            $demand[$key] = ($demand[$key] ?? 0) + $room->quantity;
         }
 
         $problems = [];
@@ -98,28 +101,41 @@ class ManualBooking
         $checked = [];
 
         foreach ($rooms as $room) {
-            $roomType = $room->roomType;
+            $bookableUnit = $room->bookableUnit;
             $quantity = $room->quantity;
             $plan = $room->ratePlan;
-            $free = $this->calendar->unitsFreeThroughout($roomType, $in, $out);
+            $slot = $room->slot;
 
-            if (! isset($checked[$roomType->id])) {
-                $checked[$roomType->id] = true;
-                $wanted = $demand[$roomType->id];
+            // A departure has its own counter, so it is its own question. The
+            // property's units are not what is short when the 09:00 tour is
+            // full, and saying so would send a desk looking for a room.
+            $free = $slot === null
+                ? $this->calendar->unitsFreeThroughout($bookableUnit, $in, $out)
+                : $this->calendar->seatsFreeThroughout($bookableUnit, $slot, $in, $out);
+
+            if (! isset($checked[$this->demandKey($room)])) {
+                $checked[$this->demandKey($room)] = true;
+                $wanted = $demand[$this->demandKey($room)];
 
                 if ($free < $wanted) {
-                    $problems[] = $this->shortfall($roomType, $in, $out, $wanted);
+                    $problems[] = $this->shortfall($bookableUnit, $slot, $in, $out, $wanted);
                 }
 
-                try {
-                    $this->calendar->assertStayRules($roomType, $in, $out, $plan);
-                } catch (StayRuleViolationException $violation) {
-                    $problems[] = $roomType->name.': '.$violation->getMessage();
+                // Stay restrictions are rules about selling a *night* — a
+                // minimum stay, a day nobody may arrive on. A seat on a tour
+                // has none of those, and checking the night's rules would let
+                // a lodge's three-night minimum refuse a morning ride.
+                if ($slot === null) {
+                    try {
+                        $this->calendar->assertStayRules($bookableUnit, $in, $out, $plan);
+                    } catch (StayRuleViolationException $violation) {
+                        $problems[] = $bookableUnit->name.': '.$violation->getMessage();
+                    }
                 }
             }
 
             try {
-                $quote = $this->calendar->quote($roomType, $in, $out, $quantity, $plan, $room->occupancy);
+                $quote = $this->calendar->quote($bookableUnit, $in, $out, $quantity, $plan, $room->occupancy, $slot);
             } catch (UnpriceableStayException $unpriceable) {
                 // A room that cannot be priced is not a room that can be
                 // booked, so this is a problem rather than a zero.
@@ -131,12 +147,14 @@ class ManualBooking
             $total += $quote->total();
 
             $previews[] = new ManualBookingLinePreview(
-                roomType: $roomType,
+                bookableUnit: $bookableUnit,
                 quantity: $quantity,
                 total: $quote->total(),
                 currency: $quote->currency,
                 unitsFree: $free,
                 occupancy: $room->occupancy,
+                slot: $slot,
+                dates: $nights,
             );
 
             $currency = $quote->currency;
@@ -159,7 +177,7 @@ class ManualBooking
                     total: $total,
                     nightlyAmounts: $this->nightlyAmounts($rooms, $in, $out),
                     ratePlanIds: $this->planIds($rooms, $listing),
-                    roomTypeIds: array_map(fn (ResolvedRoomLine $room) => $room->roomType->id, $rooms),
+                    bookableUnitIds: array_map(fn (ResolvedRoomLine $room) => $room->bookableUnit->id, $rooms),
                 ),
                 $promotionCode,
             );
@@ -194,7 +212,49 @@ class ManualBooking
             discount: $discount,
             offer: $offer,
             charges: $charges,
+            warnings: $this->capacityWarnings($rooms, $adults, $children),
         );
+    }
+
+    /**
+     * More people than the rooms sleep — a warning and not a refusal.
+     *
+     * At a desk this is legitimate: a cot goes in the room, a teenager takes
+     * the sofa. A receptionist told "no" by software they cannot argue with
+     * writes the booking on paper, and then the property's own system does not
+     * know about the guest at all. So the desk is told, and what it answers is
+     * kept on the stay. The website refuses the same case, because nobody is
+     * standing there to judge it — see BOOKING_SYSTEM.md.
+     *
+     * Only where the header counts are the booking's occupancy. Under a plan
+     * that prices by guests each room line carries its own people and
+     * AvailabilityCalendar::assertFits already refuses a line that cannot be
+     * priced — a hard refusal, since there is no price to compute — and saying
+     * it twice in two voices would be worse than saying it once.
+     *
+     * @param  array<int, ResolvedRoomLine>  $rooms
+     * @return array<int, string>
+     */
+    private function capacityWarnings(array $rooms, int $adults, int $children): array
+    {
+        $lines = [];
+
+        foreach ($rooms as $room) {
+            if ($room->occupancy !== null && ! $room->occupancy->isEmpty()) {
+                return [];
+            }
+
+            // A seat on a departure is not a room and sleeps nobody.
+            if ($room->slot === null) {
+                $lines[] = [$room->bookableUnit, $room->quantity];
+            }
+        }
+
+        if ($lines === [] || RoomCapacity::fitsAcross($lines, $adults, $children)) {
+            return [];
+        }
+
+        return [RoomCapacity::explain($lines, $adults, $children)];
     }
 
     /**
@@ -227,7 +287,7 @@ class ManualBooking
 
         foreach ($rooms as $room) {
             try {
-                $quote = $this->calendar->quote($room->roomType, $in, $out, $room->quantity, $room->ratePlan, $room->occupancy);
+                $quote = $this->calendar->quote($room->bookableUnit, $in, $out, $room->quantity, $room->ratePlan, $room->occupancy);
             } catch (UnpriceableStayException) {
                 continue;
             }
@@ -283,6 +343,7 @@ class ManualBooking
         ?float $totalOverride = null,
         ?string $overrideReason = null,
         ?string $promotionCode = null,
+        ?string $overCapacityNote = null,
     ): Reservation {
         $in = Carbon::parse($checkIn)->startOfDay();
         $out = Carbon::parse($checkOut)->startOfDay();
@@ -294,12 +355,13 @@ class ManualBooking
         // decides, and where it belongs.
         foreach ($this->resolveRooms($listing, $lines) as $room) {
             $bookingLines[] = new BookingLine(
-                $room->roomType,
+                $room->bookableUnit,
                 $room->quantity,
                 $in,
                 $out,
                 $room->ratePlan,
                 $room->occupancy,
+                $room->slot,
             );
         }
 
@@ -321,6 +383,7 @@ class ManualBooking
             totalOverride: $totalOverride,
             overrideReason: $overrideReason,
             promotionCode: $promotionCode,
+            overCapacityNote: $overCapacityNote,
         ));
     }
 
@@ -329,9 +392,11 @@ class ManualBooking
      * answer somebody can act on; "only one of two Standard Chalets is free on
      * 14 September" is — they can offer a different room or a different night.
      */
-    private function shortfall(RoomType $room, Carbon $in, Carbon $out, int $quantity): string
+    private function shortfall(BookableUnit $room, ?BookingSlot $slot, Carbon $in, Carbon $out, int $quantity): string
     {
-        $free = $this->calendar->unitsFreeAcross($room, $in, $out);
+        $free = $slot === null
+            ? $this->calendar->unitsFreeAcross($room, $in, $out)
+            : $this->calendar->seatsFreeAcross($room, $slot, $in, $out);
         $worstDate = null;
         $worstFree = null;
 
@@ -344,10 +409,12 @@ class ManualBooking
 
         $when = $worstDate === null ? '' : ' on '.Carbon::parse($worstDate)->isoFormat('D MMMM');
         $units = max(0, (int) $worstFree);
+        $what = $slot === null ? 'units' : 'seats';
+        $name = $slot === null ? $room->name : $room->name.', '.$slot->label();
 
         return $units === 0
-            ? "{$room->name} is fully booked{$when}."
-            : "{$room->name}: only {$units} of {$quantity} requested units are free{$when}.";
+            ? "{$name} is fully booked{$when}."
+            : "{$name}: only {$units} of {$quantity} requested {$what} are free{$when}.";
     }
 
     /**
@@ -367,28 +434,29 @@ class ManualBooking
      */
     private function resolveRooms(Listing $listing, array $lines): array
     {
-        $roomTypeIds = [];
+        $bookableUnitIds = [];
 
         foreach ($lines as $line) {
-            $roomTypeIds[] = (int) ($line['room_type_id'] ?? 0);
+            $bookableUnitIds[] = (int) ($line['bookable_unit_id'] ?? 0);
         }
 
-        $roomTypeIds = array_values(array_filter($roomTypeIds, fn (int $id) => $id > 0));
+        $bookableUnitIds = array_values(array_filter($bookableUnitIds, fn (int $id) => $id > 0));
 
-        if ($roomTypeIds === []) {
+        if ($bookableUnitIds === []) {
             return [];
         }
 
-        $rooms = $listing->roomTypes()->whereIn('id', $roomTypeIds)->get()->keyBy('id');
+        $rooms = $listing->bookableUnits()->whereIn('id', $bookableUnitIds)->get()->keyBy('id');
         $plans = RatePlan::forListing($listing)->keyBy('id');
+        $slots = $this->slotsFor($rooms->keys()->all());
 
         $resolved = [];
         $merged = [];
 
         foreach ($lines as $line) {
-            $room = $rooms->get((int) ($line['room_type_id'] ?? 0));
+            $room = $rooms->get((int) ($line['bookable_unit_id'] ?? 0));
 
-            if (! $room instanceof RoomType) {
+            if (! $room instanceof BookableUnit) {
                 continue;
             }
 
@@ -403,8 +471,17 @@ class ManualBooking
             $plan = $planId > 0 ? $plans->get($planId) : null;
             $plan = $plan instanceof RatePlan ? $plan : null;
 
+            // A departure id is resolved against the room it was named with,
+            // never against the property: the 09:00 quad tour is not a
+            // departure of the game drive, and a form can post anything.
+            $slotId = (int) ($line['slot_id'] ?? 0);
+            $slot = $slotId > 0 ? ($slots[$room->id][$slotId] ?? null) : null;
+
             if ($occupancy === null) {
-                $key = $room->id.':'.($plan->id ?? 0);
+                // Two rows of the same room on the same departure are one
+                // line; the same room on two departures is two, because they
+                // are two pools of seats.
+                $key = $room->id.':'.($plan->id ?? 0).':'.($slot->id ?? 0);
 
                 if (isset($merged[$key])) {
                     $resolved[$merged[$key]] = $resolved[$merged[$key]]->plus($quantity);
@@ -415,10 +492,42 @@ class ManualBooking
                 $merged[$key] = count($resolved);
             }
 
-            $resolved[] = new ResolvedRoomLine($room, $quantity, $plan, $occupancy);
+            $resolved[] = new ResolvedRoomLine($room, $quantity, $plan, $occupancy, $slot);
         }
 
         return $resolved;
+    }
+
+    /**
+     * How much of one pool a set of lines is asking for. A room and a
+     * departure of that room are different pools, so they cannot share a key —
+     * added together they would report a full tour as a full property.
+     */
+    private function demandKey(ResolvedRoomLine $room): string
+    {
+        return $room->bookableUnit->id.':'.($room->slot->id ?? 0);
+    }
+
+    /**
+     * The active timetable of these units, keyed by unit and then by slot, in
+     * one query.
+     *
+     * @param  array<int, int>  $bookableUnitIds
+     * @return array<int, array<int, BookingSlot>>
+     */
+    private function slotsFor(array $bookableUnitIds): array
+    {
+        if ($bookableUnitIds === []) {
+            return [];
+        }
+
+        $slots = [];
+
+        foreach (BookingSlot::query()->whereIn('bookable_unit_id', $bookableUnitIds)->where('is_active', true)->get() as $slot) {
+            $slots[$slot->bookable_unit_id][$slot->id] = $slot;
+        }
+
+        return $slots;
     }
 
     /**

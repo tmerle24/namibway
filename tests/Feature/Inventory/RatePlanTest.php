@@ -4,11 +4,11 @@ namespace Tests\Feature\Inventory;
 
 use App\Enums\ReservationSource;
 use App\Exceptions\Inventory\InventoryUnavailableException;
+use App\Models\BookableUnit;
+use App\Models\BookableUnitCalendarDay;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
-use App\Models\RoomType;
-use App\Models\RoomTypeCalendarDay;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
@@ -50,9 +50,9 @@ class RatePlanTest extends TestCase
     }
 
     /** @param array<string, mixed> $attributes */
-    private function room(Listing $listing, array $attributes = []): RoomType
+    private function room(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create([
+        return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 3,
             'rate_per_night' => 1000,
@@ -61,7 +61,7 @@ class RatePlanTest extends TestCase
         ]);
     }
 
-    public function test_a_property_with_no_rate_plan_charges_what_the_room_type_charges(): void
+    public function test_a_property_with_no_rate_plan_charges_what_the_bookable_unit_charges(): void
     {
         $room = $this->room($this->listing());
 
@@ -192,7 +192,7 @@ class RatePlanTest extends TestCase
         $this->assertSame(1500.0, $this->calendar->rateFor($room, $from, $plan));
 
         // Each landed in its own table, and neither reached into the other.
-        $this->assertSame(3, RoomTypeCalendarDay::where('room_type_id', $room->id)->count());
+        $this->assertSame(3, BookableUnitCalendarDay::where('bookable_unit_id', $room->id)->count());
         $this->assertSame(3, RatePlanDay::where('rate_plan_id', $plan->id)->count());
     }
 

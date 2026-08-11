@@ -78,7 +78,7 @@
                                     </td>
                                     <td>
                                         @foreach ($reservation->units as $unit)
-                                            {{ $unit->roomType?->name ?? '—' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif{{ ! $loop->last ? ', ' : '' }}
+                                            {{ $unit->bookableUnit?->name ?? '—' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif{{ ! $loop->last ? ', ' : '' }}
                                         @endforeach
                                     </td>
                                     <td class="nw-num">{{ $reservation->nights() }}</td>

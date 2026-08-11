@@ -22,7 +22,7 @@ class StayNotPromotableException extends RuntimeException
         );
     }
 
-    public static function withoutRoomType(Inquiry $inquiry): self
+    public static function withoutBookableUnit(Inquiry $inquiry): self
     {
         return new self(
             "Request #{$inquiry->id} does not say which room type it is for, and the property has more "

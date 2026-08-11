@@ -2,9 +2,9 @@
 
 namespace App\Services\ImportExport;
 
+use App\Models\BookableUnit;
 use App\Models\City;
 use App\Models\Listing;
-use App\Models\RoomType;
 use Illuminate\Database\Eloquent\Builder;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;
@@ -13,7 +13,7 @@ use OpenSpout\Writer\XLSX\Writer;
 
 /**
  * Writes the listings workbook: a "Listings" sheet with one row per listing, a
- * "RoomTypes" sheet with their bookable units, and an "Instructions" sheet that
+ * "BookableUnits" sheet with their bookable units, and an "Instructions" sheet that
  * explains every column and lists the valid cities and types. The `id` column it
  * writes is what makes a later re-import an update instead of a duplicate, so an
  * export is the intended starting point for bulk editing — see ListingImporter.
@@ -43,7 +43,7 @@ class ListingExporter
             $written++;
         });
 
-        $this->addRoomTypeSheet($writer, $ids);
+        $this->addBookableUnitSheet($writer, $ids);
         $this->addHelpSheet($writer);
         $writer->close();
 
@@ -65,7 +65,7 @@ class ListingExporter
             $columns,
         )));
 
-        $this->addRoomTypeSheet($writer, []);
+        $this->addBookableUnitSheet($writer, []);
         $this->addHelpSheet($writer);
         $writer->close();
     }
@@ -76,12 +76,12 @@ class ListingExporter
      *
      * @param  list<int>  $listingIds  empty for the template: headers only
      */
-    private function addRoomTypeSheet(Writer $writer, array $listingIds): void
+    private function addBookableUnitSheet(Writer $writer, array $listingIds): void
     {
-        $columns = RoomTypeSheet::columns();
+        $columns = BookableUnitSheet::columns();
 
         $sheet = $writer->addNewSheetAndMakeItCurrent();
-        $sheet->setName(RoomTypeSheet::SHEET_NAME);
+        $sheet->setName(BookableUnitSheet::SHEET_NAME);
         $sheet->setSheetView((new SheetView)->setFreezeRow(2));
 
         foreach ($columns as $index => $column) {
@@ -97,15 +97,15 @@ class ListingExporter
             return;
         }
 
-        RoomType::query()
+        BookableUnit::query()
             ->with('listing')
             ->whereIn('listing_id', $listingIds)
             ->orderBy('listing_id')
             ->orderBy('code')
             ->lazy()
-            ->each(static function (RoomType $roomType) use ($writer, $columns): void {
+            ->each(static function (BookableUnit $bookableUnit) use ($writer, $columns): void {
                 $writer->addRow(Row::fromValues(array_map(
-                    static fn (SheetColumn $column) => RoomTypeSheet::cellValue($column, $roomType),
+                    static fn (SheetColumn $column) => BookableUnitSheet::cellValue($column, $bookableUnit),
                     $columns,
                 )));
             });
@@ -164,9 +164,9 @@ class ListingExporter
         }
 
         $writer->addRow(Row::fromValues([]));
-        $writer->addRow(Row::fromValues(['The "'.RoomTypeSheet::SHEET_NAME.'" sheet', ''], $bold));
+        $writer->addRow(Row::fromValues(['The "'.BookableUnitSheet::SHEET_NAME.'" sheet', ''], $bold));
 
-        foreach (RoomTypeSheet::columns() as $column) {
+        foreach (BookableUnitSheet::columns() as $column) {
             $writer->addRow(Row::fromValues([$column->header, $column->help]));
         }
 
@@ -177,7 +177,7 @@ class ListingExporter
             'Put one folder per listing in a ZIP file and upload it together with this workbook.',
             'Write the folder name in the "photo_folder" column — nothing else is needed.',
             'A file whose name starts with "cover" becomes the main image; the rest become the gallery, in name order.',
-            'Room photos work the same way: a folder inside the listing\'s folder, named in "photo_folder" on the '.RoomTypeSheet::SHEET_NAME.' sheet. Write the path ("Okonjima Bush Camp/STD") when the folder name alone is not unique.',
+            'Room photos work the same way: a folder inside the listing\'s folder, named in "photo_folder" on the '.BookableUnitSheet::SHEET_NAME.' sheet. Write the path ("Okonjima Bush Camp/STD") when the folder name alone is not unique.',
             implode('/', PhotoArchive::EXTENSIONS).' only, at most '.PhotoArchive::MAX_FILES_PER_FOLDER.' images per folder and '.round(PhotoArchive::MAX_FILE_BYTES / 1024 / 1024).' MB per image.',
             'Filling in photo_folder REPLACES the photos that listing or room already has. Only upload photos we are allowed to publish.',
         ] as $line) {

@@ -2,11 +2,14 @@
 
 namespace App\Filament\Partner\Pages;
 
+use App\Enums\CalendarRange;
 use App\Filament\Partner\Pages\Concerns\EditsInventory;
 use App\Filament\Partner\Pages\Concerns\ShowsReservationDetail;
 use App\Filament\Partner\Support\SelectedProperty;
 use App\Models\Listing;
 use App\Models\RatePlan;
+use App\Services\Inventory\DayGrid;
+use App\Services\Inventory\DTOs\DayGridData;
 use App\Services\Inventory\DTOs\OccupancyGridData;
 use App\Services\Inventory\OccupancyGrid;
 use App\Support\CountrySettings;
@@ -29,6 +32,14 @@ use Livewire\Attributes\Url;
  * What the screen can now *do* lives in EditsInventory, and every one of those
  * writes goes through InventoryWriter. Nothing on this page touches an
  * inventory table.
+ *
+ * ## Two readings of one book
+ *
+ * The range is a day, a week or a month (CalendarRange), and in the day view a
+ * property that runs departures also gets the other reading of the same rows —
+ * the hour axis down the page, its departures across it (DayGrid). A property
+ * that sells only nights never sees it: DayGrid returns null where there is no
+ * timetable, so the screen is exactly the one it had before.
  */
 class OccupancyCalendar extends Page implements HasForms
 {
@@ -63,8 +74,20 @@ class OccupancyCalendar extends Page implements HasForms
     #[Url(as: 'rate')]
     public ?int $ratePlanId = null;
 
-    /** How far the arrows move: half a screen, so context is never lost. */
-    private const STEP_DAYS = 14;
+    /**
+     * How much is on screen. In the URL with the rest, because "September on
+     * the month view" is the whole address of what somebody is looking at.
+     */
+    #[Url(as: 'range')]
+    public ?string $range = null;
+
+    /**
+     * Minutes per row on the hour axis, for an operator who wants the day
+     * drawn finer or coarser than its timetable implies. Null is the normal
+     * state and means "work it out" — see DayGrid::resolution().
+     */
+    #[Url(as: 'res')]
+    public ?int $resolution = null;
 
     public static function canAccess(): bool
     {
@@ -93,10 +116,51 @@ class OccupancyCalendar extends Page implements HasForms
         $this->closeReservation();
     }
 
-    public function shift(int $days): void
+    /** One whole range at a time — see CalendarRange::shift(). */
+    public function shift(int $direction): void
     {
-        $this->from = $this->start()->addDays($days)->toDateString();
+        $this->from = $this->range()->shift($this->start(), $direction)->toDateString();
         $this->closeReservation();
+    }
+
+    /**
+     * Change how much is on screen, staying on what is being looked at.
+     *
+     * The anchor is today when today is on screen and the first day on screen
+     * otherwise. Both halves matter: narrowing the current month to a week has
+     * to give *this* week and not the one the 1st fell in, and narrowing March
+     * has to stay in March rather than dropping the operator back home.
+     */
+    public function showRange(string $range): void
+    {
+        $anchor = $this->anchor();
+        $this->range = CalendarRange::parse($range)->value;
+        $this->from = $this->range()->start($anchor)->toDateString();
+        $this->closeReservation();
+    }
+
+    /**
+     * Jump to a month. Both selects post both values, so picking a month keeps
+     * the year and picking a year keeps the month.
+     *
+     * Out-of-range input is clamped rather than refused — it arrives from a
+     * form on a page anyone can edit, and a calendar is not the place to argue
+     * about it.
+     */
+    public function jumpTo(mixed $month, mixed $year): void
+    {
+        $current = $this->start();
+        $month = max(1, min(12, (int) $month));
+        $year = max($current->year - 20, min($current->year + 20, (int) $year));
+
+        $this->from = $this->range()->start(Carbon::create($year, $month, 1)->startOfDay())->toDateString();
+        $this->closeReservation();
+    }
+
+    /** Draw the day finer or coarser. Only the hour axis reads this. */
+    public function showResolution(int $minutes): void
+    {
+        $this->resolution = in_array($minutes, DayGrid::RESOLUTIONS, true) ? $minutes : null;
     }
 
     /** Show another product's rates. Nothing else about the grid changes. */
@@ -104,6 +168,11 @@ class OccupancyCalendar extends Page implements HasForms
     {
         $this->ratePlanId = $this->ratePlan($ratePlanId)?->id;
         $this->closeReservation();
+    }
+
+    public function range(): CalendarRange
+    {
+        return CalendarRange::parse($this->range);
     }
 
     public function grid(): ?OccupancyGridData
@@ -114,11 +183,38 @@ class OccupancyCalendar extends Page implements HasForms
             return null;
         }
 
+        $start = $this->start();
+
         return app(OccupancyGrid::class)->build(
             $property,
-            $this->start(),
-            OccupancyGrid::DEFAULT_DAYS,
+            $start,
+            $this->range()->days($start),
             $this->ratePlan($this->ratePlanId),
+            // In the day view a unit that runs departures is read on the hour
+            // axis below, in full. Leaving it in the night grid as well would
+            // print the same day twice, once summed and once in detail.
+            omitDepartureUnits: $this->range()->isDay(),
+        );
+    }
+
+    /**
+     * The day read the other way round. Null for every property that sells by
+     * the night, and outside the day view — which is where an hour axis has
+     * nothing to be an axis of.
+     */
+    public function dayGrid(): ?DayGridData
+    {
+        $property = $this->property();
+
+        if ($property === null || ! $this->range()->isDay()) {
+            return null;
+        }
+
+        return app(DayGrid::class)->build(
+            $property,
+            $this->start(),
+            $this->ratePlan($this->ratePlanId),
+            $this->resolution,
         );
     }
 
@@ -170,8 +266,11 @@ class OccupancyCalendar extends Page implements HasForms
     }
 
     /**
-     * The first night on screen. A property's own date, not the server's — a
-     * lodge in Windhoek turning over at midnight is not doing it in UTC.
+     * The first night on screen, snapped to the range: the 1st of the month,
+     * the Monday of the week, or the day itself.
+     *
+     * A property's own date, not the server's — a lodge in Windhoek turning
+     * over at midnight is not doing it in UTC.
      *
      * A `from` that cannot be parsed falls back to today rather than throwing:
      * the query string is user input, and a mistyped URL should show the
@@ -185,14 +284,27 @@ class OccupancyCalendar extends Page implements HasForms
             : CountrySettings::for($property)->today();
 
         if (blank($this->from)) {
-            return $today;
+            return $this->range()->start($today);
         }
 
         try {
-            return Carbon::parse($this->from)->startOfDay();
+            return $this->range()->start(Carbon::parse($this->from)->startOfDay());
         } catch (InvalidFormatException) {
-            return $today;
+            return $this->range()->start($today);
         }
+    }
+
+    /**
+     * The day a range change should keep hold of: today where today is on
+     * screen, the first day on screen otherwise.
+     */
+    private function anchor(): Carbon
+    {
+        $start = $this->start();
+        $today = $this->propertyToday();
+        $end = $start->copy()->addDays($this->range()->days($start));
+
+        return $today->gte($start) && $today->lt($end) ? $today : $start;
     }
 
     protected function property(): ?Listing
@@ -205,12 +317,56 @@ class OccupancyCalendar extends Page implements HasForms
      */
     protected function getViewData(): array
     {
+        $start = $this->start();
+
         return [
             'grid' => $this->grid(),
+            'dayGrid' => $this->dayGrid(),
             'property' => $this->property(),
-            'stepDays' => self::STEP_DAYS,
+            // Not `range`: a Livewire component's public properties reach the
+            // view too, and `$range` there is already the raw string from the
+            // query string.
+            'ranges' => CalendarRange::cases(),
+            'activeRange' => $this->range(),
+            'rangeLabel' => $this->range()->describe($start),
+            'jumpMonth' => $start->month,
+            'jumpYear' => $start->year,
+            'months' => $this->months(),
+            'years' => $this->years($start),
+            'resolutions' => DayGrid::RESOLUTIONS,
             'ratePlans' => $this->ratePlans(),
             'shownRatePlan' => $this->shownRatePlan(),
         ];
+    }
+
+    /**
+     * Month names for the jump, in the panel's locale.
+     *
+     * @return array<int, string>
+     */
+    private function months(): array
+    {
+        $months = [];
+        $january = Carbon::create(2000, 1, 1)->startOfDay();
+
+        for ($month = 1; $month <= 12; $month++) {
+            $months[$month] = $january->copy()->addMonthsNoOverflow($month - 1)->isoFormat('MMMM');
+        }
+
+        return $months;
+    }
+
+    /**
+     * The years the jump offers: last year through the two after this one.
+     * Rates are entered a season ahead and looked back at for comparison, and
+     * a select that scrolls is a select nobody uses.
+     *
+     * @return array<int, int>
+     */
+    private function years(Carbon $start): array
+    {
+        $today = Carbon::now()->year;
+
+        return range(min($today, $start->year) - 1, max($today, $start->year) + 2);
     }
 }

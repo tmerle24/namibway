@@ -23,19 +23,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * conditional UPDATE — see the migration for why.
  *
  * @property int $id
- * @property int $room_type_id
+ * @property int $bookable_unit_id
+ * @property int|null $slot_id
  * @property CarbonImmutable $date
  * @property int|null $units_total
  * @property int $units_sold
  * @property int $units_blocked
- * @property-read RoomType|null $roomType
+ * @property-read BookableUnit|null $bookableUnit
  */
-class RoomTypeCalendarDay extends Model
+class BookableUnitCalendarDay extends Model
 {
     use GuardsInventoryWrites;
 
     protected $fillable = [
-        'room_type_id',
+        'bookable_unit_id',
         'slot_id',
         'date',
         'units_total',
@@ -51,10 +52,10 @@ class RoomTypeCalendarDay extends Model
     ];
 
     /**
-     * @return BelongsTo<RoomType, $this>
+     * @return BelongsTo<BookableUnit, $this>
      */
-    public function roomType(): BelongsTo
+    public function bookableUnit(): BelongsTo
     {
-        return $this->belongsTo(RoomType::class);
+        return $this->belongsTo(BookableUnit::class);
     }
 }

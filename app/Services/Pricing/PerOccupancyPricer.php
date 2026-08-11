@@ -30,7 +30,7 @@ final class PerOccupancyPricer implements NightPricer
 
         if ($guests < 1) {
             throw UnpriceableStayException::occupancyRequired(
-                $context->roomType->name,
+                $context->bookableUnit->name,
                 $context->planLabel(),
             );
         }
@@ -43,7 +43,7 @@ final class PerOccupancyPricer implements NightPricer
 
         if ($amount === null) {
             throw UnpriceableStayException::noAmountForGuestCount(
-                $context->roomType->name,
+                $context->bookableUnit->name,
                 $context->planLabel(),
                 $guests,
                 $context->dateLabel(),

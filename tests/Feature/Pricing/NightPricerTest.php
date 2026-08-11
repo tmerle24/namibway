@@ -5,9 +5,9 @@ namespace Tests\Feature\Pricing;
 use App\Enums\GuestKind;
 use App\Enums\PricingStrategy;
 use App\Exceptions\Pricing\UnpriceableStayException;
+use App\Models\BookableUnit;
 use App\Models\GuestCategory;
 use App\Models\RatePlan;
-use App\Models\RoomType;
 use App\Services\Pricing\NightPricingContext;
 use App\Services\Pricing\Occupancy;
 use App\Services\Pricing\PerPersonSharingPricer;
@@ -61,9 +61,9 @@ class NightPricerTest extends TestCase
         return $category;
     }
 
-    private function room(): RoomType
+    private function room(): BookableUnit
     {
-        $room = new RoomType(['name' => 'Standard Chalet', 'max_adults' => 4, 'max_children' => 2]);
+        $room = new BookableUnit(['name' => 'Standard Chalet', 'max_adults' => 4, 'max_children' => 2]);
         $room->id = 1;
 
         return $room;
@@ -92,7 +92,7 @@ class NightPricerTest extends TestCase
         ]);
 
         return new NightPricingContext(
-            roomType: $this->room(),
+            bookableUnit: $this->room(),
             date: Carbon::parse('2026-09-10'),
             ratePlan: $plan,
             baseRate: $baseRate,

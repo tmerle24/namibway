@@ -40,7 +40,7 @@ class NotifyAboutStay implements ShouldQueue
 
     public function handle(): void
     {
-        $reservation = $this->reservation->loadMissing(['listing.partner', 'units.roomType']);
+        $reservation = $this->reservation->loadMissing(['listing.partner', 'units.bookableUnit']);
         $mailbox = BookingMailbox::for($reservation);
 
         if ($this->event === self::CANCELLED) {

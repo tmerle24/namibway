@@ -18,7 +18,7 @@ final class StaySummary
     /**
      * @param  array<int, float>  $nightlyAmounts  every night of the booking as priced
      * @param  array<int, int>  $ratePlanIds
-     * @param  array<int, int>  $roomTypeIds
+     * @param  array<int, int>  $bookableUnitIds
      */
     public function __construct(
         public readonly Carbon $checkIn,
@@ -26,7 +26,7 @@ final class StaySummary
         public readonly float $total,
         public readonly array $nightlyAmounts = [],
         public readonly array $ratePlanIds = [],
-        public readonly array $roomTypeIds = [],
+        public readonly array $bookableUnitIds = [],
     ) {}
 
     /** Half-open, like everything else here: the departure day is not a night. */

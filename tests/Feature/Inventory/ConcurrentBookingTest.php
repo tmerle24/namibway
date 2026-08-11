@@ -4,11 +4,11 @@ namespace Tests\Feature\Inventory;
 
 use App\Enums\ReservationSource;
 use App\Exceptions\Inventory\InventoryUnavailableException;
+use App\Models\BookableUnit;
+use App\Models\BookableUnitCalendarDay;
 use App\Models\BookingSlot;
 use App\Models\Listing;
 use App\Models\Reservation;
-use App\Models\RoomType;
-use App\Models\RoomTypeCalendarDay;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\InventoryWriteGuard;
@@ -64,9 +64,9 @@ class ConcurrentBookingTest extends TestCase
         'reservation_units',
         'reservations',
         'inventory_blocks',
-        'room_type_calendar_days',
+        'bookable_unit_calendar_days',
         'booking_slots',
-        'room_types',
+        'bookable_units',
         'listings',
     ];
 
@@ -110,7 +110,7 @@ class ConcurrentBookingTest extends TestCase
     public function test_two_simultaneous_bookings_for_the_last_unit_do_not_both_succeed(): void
     {
         $listing = Listing::factory()->create(['is_published' => true]);
-        $room = RoomType::factory()->create([
+        $room = BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 1,
             'rate_per_night' => 1000,
@@ -131,16 +131,16 @@ class ConcurrentBookingTest extends TestCase
         // returned the right answers.
         $this->assertSame(1, Reservation::count());
 
-        $day = RoomTypeCalendarDay::where('room_type_id', $room->id)
+        $day = BookableUnitCalendarDay::where('bookable_unit_id', $room->id)
             ->whereDate('date', '2026-09-01')
             ->firstOrFail();
         $this->assertSame(1, $day->units_sold);
     }
 
-    public function test_simultaneous_bookings_fill_a_room_type_exactly_to_capacity(): void
+    public function test_simultaneous_bookings_fill_a_bookable_unit_exactly_to_capacity(): void
     {
         $listing = Listing::factory()->create(['is_published' => true]);
-        $room = RoomType::factory()->create([
+        $room = BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 2,
             'rate_per_night' => 1000,
@@ -152,7 +152,7 @@ class ConcurrentBookingTest extends TestCase
         $this->assertCount(2, array_keys($results, 'booked', true), 'Two units means exactly two winners.');
         $this->assertCount(self::CONTENDERS - 2, array_keys($results, 'sold_out', true));
 
-        $day = RoomTypeCalendarDay::where('room_type_id', $room->id)
+        $day = BookableUnitCalendarDay::where('bookable_unit_id', $room->id)
             ->whereDate('date', '2026-09-01')
             ->firstOrFail();
         $this->assertSame(2, $day->units_sold);
@@ -178,7 +178,7 @@ class ConcurrentBookingTest extends TestCase
     public function test_two_simultaneous_bookings_for_the_last_seat_on_a_departure_do_not_both_succeed(): void
     {
         $listing = Listing::factory()->create(['is_published' => true]);
-        $unit = RoomType::factory()->create([
+        $unit = BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'name' => 'Quad tour',
             'total_units' => 1,
@@ -187,7 +187,7 @@ class ConcurrentBookingTest extends TestCase
         ]);
 
         $morning = BookingSlot::create([
-            'room_type_id' => $unit->id,
+            'bookable_unit_id' => $unit->id,
             'label' => 'Morning departure',
             'starts_at' => '09:00',
             'duration_minutes' => 180,
@@ -204,7 +204,7 @@ class ConcurrentBookingTest extends TestCase
         $this->assertCount(self::CONTENDERS - 1, $soldOut);
         $this->assertSame(1, Reservation::count());
 
-        $departure = RoomTypeCalendarDay::where('room_type_id', $unit->id)
+        $departure = BookableUnitCalendarDay::where('bookable_unit_id', $unit->id)
             ->where('slot_id', $morning->id)
             ->whereDate('date', '2026-09-01')
             ->firstOrFail();
@@ -214,11 +214,11 @@ class ConcurrentBookingTest extends TestCase
         // the property's nights.
         $this->assertSame(
             0,
-            RoomTypeCalendarDay::where('room_type_id', $unit->id)->whereNull('slot_id')->count(),
+            BookableUnitCalendarDay::where('bookable_unit_id', $unit->id)->whereNull('slot_id')->count(),
         );
     }
 
-    private function race(Listing $listing, RoomType $room, string $checkIn, string $checkOut, ?BookingSlot $slot = null): array
+    private function race(Listing $listing, BookableUnit $room, string $checkIn, string $checkOut, ?BookingSlot $slot = null): array
     {
         $dir = storage_path('framework/testing/concurrency-'.getmypid());
         File::ensureDirectoryExists($dir);
@@ -241,8 +241,8 @@ class ConcurrentBookingTest extends TestCase
             // table because the bulk calendar editor speaks nights, not
             // departures — and giving it a slot here would be building the next
             // slice inside a test.
-            InventoryWriteGuard::allow(fn () => RoomTypeCalendarDay::create([
-                'room_type_id' => $room->id,
+            InventoryWriteGuard::allow(fn () => BookableUnitCalendarDay::create([
+                'bookable_unit_id' => $room->id,
                 'slot_id' => $slot->id,
                 'date' => $checkIn,
             ]));
@@ -283,7 +283,7 @@ class ConcurrentBookingTest extends TestCase
     /**
      * Runs inside a forked child and never returns.
      */
-    private function contend(int $index, string $dir, float $startAt, Listing $listing, RoomType $room, string $checkIn, string $checkOut, ?BookingSlot $slot = null): never
+    private function contend(int $index, string $dir, float $startAt, Listing $listing, BookableUnit $room, string $checkIn, string $checkOut, ?BookingSlot $slot = null): never
     {
         $result = 'error: never ran';
 

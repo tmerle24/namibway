@@ -6,9 +6,9 @@ use App\Enums\BoardBasis;
 use App\Enums\PricingStrategy;
 use App\Enums\RatePlanEligibility;
 use App\Enums\ReservationSource;
+use App\Models\BookableUnit;
 use App\Models\Listing;
 use App\Models\RatePlan;
-use App\Models\RoomType;
 use App\Services\Inventory\ArrivalsBoard;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
@@ -39,9 +39,9 @@ class BoardBasisTest extends TestCase
         $this->writer = app(InventoryWriter::class);
     }
 
-    private function room(Listing $listing): RoomType
+    private function room(Listing $listing): BookableUnit
     {
-        return RoomType::factory()->create([
+        return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'name' => 'Standard Chalet',
             'total_units' => 3,

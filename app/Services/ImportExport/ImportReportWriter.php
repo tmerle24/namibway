@@ -40,7 +40,7 @@ class ImportReportWriter
 
         foreach ($plan->invalidRoomRows() as $row) {
             foreach ($row->errors as $error) {
-                $writer->addRow(Row::fromValues([$row->line, RoomTypeSheet::SHEET_NAME.': '.$row->label(), $error]));
+                $writer->addRow(Row::fromValues([$row->line, BookableUnitSheet::SHEET_NAME.': '.$row->label(), $error]));
             }
         }
 
@@ -76,7 +76,7 @@ class ImportReportWriter
 
         foreach ($plan->applicableRoomRows() as $row) {
             if ($row->changes === []) {
-                $writer->addRow(Row::fromValues([$row->line, '', RoomTypeSheet::SHEET_NAME.': '.$row->label(), 'created', '', '']));
+                $writer->addRow(Row::fromValues([$row->line, '', BookableUnitSheet::SHEET_NAME.': '.$row->label(), 'created', '', '']));
 
                 continue;
             }
@@ -85,7 +85,7 @@ class ImportReportWriter
                 $writer->addRow(Row::fromValues([
                     $row->line,
                     $row->listingId,
-                    RoomTypeSheet::SHEET_NAME.': '.$row->label(),
+                    BookableUnitSheet::SHEET_NAME.': '.$row->label(),
                     $change->column,
                     $change->old,
                     $change->new,

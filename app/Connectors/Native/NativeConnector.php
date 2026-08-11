@@ -11,9 +11,9 @@ use App\Connectors\ResConnect\DTOs\RoomType as RoomTypeDTO;
 use App\Enums\InquiryStatus;
 use App\Enums\ReservationStatus;
 use App\Jobs\ExpireNativeHoldJob;
+use App\Models\BookableUnit;
 use App\Models\Inquiry;
 use App\Models\Listing;
-use App\Models\RoomType;
 use App\Services\Booking\RoomAvailability;
 use App\Services\Booking\StayPromoter;
 use Carbon\CarbonInterface;
@@ -21,9 +21,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * NamibWay's own booking engine for partners with no PMS — no HTTP client,
- * pure Eloquent against RoomType/Inquiry. Availability is derived (total_units
+ * pure Eloquent against BookableUnit/Inquiry. Availability is derived (total_units
  * minus overlapping active Inquiry rows), not stored in a calendar table.
- * See app/Models/RoomType.php for why room type identity is a plain `code`
+ * See app/Models/BookableUnit.php for why a unit's identity is a plain `code`
  * string rather than a foreign key on Inquiry.
  */
 class NativeConnector implements BookingConnector
@@ -45,24 +45,24 @@ class NativeConnector implements BookingConnector
 
         $nights = max(1, $request->checkIn->diffInDays($request->checkOut));
 
-        $roomTypes = $listing->roomTypes()
+        $roomTypes = $listing->bookableUnits()
             ->where('is_active', true)
             ->get()
-            ->map(function (RoomType $roomType) use ($request, $listing, $nights) {
-                $available = $this->availableUnits($listing->id, $roomType, $request->checkIn, $request->checkOut);
+            ->map(function (BookableUnit $bookableUnit) use ($request, $listing, $nights) {
+                $available = $this->availableUnits($listing->id, $bookableUnit, $request->checkIn, $request->checkOut);
 
                 if ($available < 1) {
                     return null;
                 }
 
                 return new RoomTypeDTO(
-                    code: $roomType->code,
-                    name: $roomType->name,
+                    code: $bookableUnit->code,
+                    name: $bookableUnit->name,
                     available: $available,
-                    ratePerNight: (float) $roomType->rate_per_night,
-                    currency: $roomType->currency,
-                    totalRate: (float) $roomType->rate_per_night * $nights,
-                    description: $roomType->description,
+                    ratePerNight: (float) $bookableUnit->rate_per_night,
+                    currency: $bookableUnit->currency,
+                    totalRate: (float) $bookableUnit->rate_per_night * $nights,
+                    description: $bookableUnit->description,
                 );
             })
             ->filter()
@@ -85,12 +85,12 @@ class NativeConnector implements BookingConnector
         }
 
         return DB::transaction(function () use ($request, $listing) {
-            $roomType = RoomType::where('listing_id', $listing->id)
+            $bookableUnit = BookableUnit::where('listing_id', $listing->id)
                 ->where('code', $request->roomTypeCode)
                 ->lockForUpdate()
                 ->first();
 
-            if (! $roomType) {
+            if (! $bookableUnit) {
                 return ReservationResponse::failed('Room type not found');
             }
 
@@ -98,14 +98,14 @@ class NativeConnector implements BookingConnector
             // checkAvailability() and createReservation() as two separate,
             // non-atomic steps, so a concurrent request could have consumed
             // the last unit in between.
-            $available = $this->availableUnits($listing->id, $roomType, $request->checkIn, $request->checkOut);
+            $available = $this->availableUnits($listing->id, $bookableUnit, $request->checkIn, $request->checkOut);
 
             if ($available < 1) {
                 return ReservationResponse::failed('Room type sold out for these dates');
             }
 
             $nights = max(1, $request->checkIn->diffInDays($request->checkOut));
-            $totalAmount = (float) $roomType->rate_per_night * $nights;
+            $totalAmount = (float) $bookableUnit->rate_per_night * $nights;
 
             if ($request->inquiryId) {
                 Inquiry::whereKey($request->inquiryId)->update([
@@ -130,7 +130,7 @@ class NativeConnector implements BookingConnector
                 status: ReservationStatus::OnRequest,
                 connectorReference: "NATIVE-{$request->inquiryId}",
                 totalAmount: $totalAmount,
-                currency: $roomType->currency,
+                currency: $bookableUnit->currency,
             );
         });
     }
@@ -174,10 +174,10 @@ class NativeConnector implements BookingConnector
      */
     private function availableUnits(
         int $listingId,
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         CarbonInterface $checkIn,
         CarbonInterface $checkOut,
     ): int {
-        return RoomAvailability::unitsLeft($listingId, $roomType, $checkIn, $checkOut);
+        return RoomAvailability::unitsLeft($listingId, $bookableUnit, $checkIn, $checkOut);
     }
 }

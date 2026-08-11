@@ -5,11 +5,11 @@ namespace Tests\Feature\Filament;
 use App\Enums\ListingType;
 use App\Enums\ReservationSource;
 use App\Filament\Partner\Pages\RatesAndAvailability;
+use App\Models\BookableUnit;
+use App\Models\BookableUnitCalendarDay;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\RatePlanDay;
-use App\Models\RoomType;
-use App\Models\RoomTypeCalendarDay;
 use App\Models\User;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\DTOs\BookingLine;
@@ -52,13 +52,13 @@ class LodgeRatesTest extends TestCase
     public function test_a_rate_is_written_to_exactly_the_range_asked_for(): void
     {
         [$user, $listing] = $this->partnerWithProperty();
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
 
         $this->asPartner($user);
 
         Livewire::test(RatesAndAvailability::class)
             ->fillForm([
-                'room_type_ids' => [$room->id],
+                'bookable_unit_ids' => [$room->id],
                 'from' => '2026-09-10',
                 'to' => '2026-09-14',
                 'rate' => 2200,
@@ -74,20 +74,20 @@ class LodgeRatesTest extends TestCase
 
         // Nothing outside the range gained a row at all — and a rate-only edit
         // writes no inventory row, because it changes nothing physical.
-        $this->assertSame(5, RatePlanDay::where('room_type_id', $room->id)->count());
-        $this->assertSame(0, RoomTypeCalendarDay::where('room_type_id', $room->id)->count());
+        $this->assertSame(5, RatePlanDay::where('bookable_unit_id', $room->id)->count());
+        $this->assertSame(0, BookableUnitCalendarDay::where('bookable_unit_id', $room->id)->count());
     }
 
     public function test_a_weekend_surcharge_touches_only_weekends(): void
     {
         [$user, $listing] = $this->partnerWithProperty();
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
 
         $this->asPartner($user);
 
         Livewire::test(RatesAndAvailability::class)
             ->fillForm([
-                'room_type_ids' => [$room->id],
+                'bookable_unit_ids' => [$room->id],
                 'from' => '2026-09-07',
                 'to' => '2026-09-20',
                 'weekdays' => [6, 7],
@@ -100,13 +100,13 @@ class LodgeRatesTest extends TestCase
         $this->assertSame(1900.0, $calendar->rateFor($room, Carbon::parse('2026-09-12'))); // Saturday
         $this->assertSame(1900.0, $calendar->rateFor($room, Carbon::parse('2026-09-13'))); // Sunday
         $this->assertSame(1500.0, $calendar->rateFor($room, Carbon::parse('2026-09-14'))); // Monday
-        $this->assertSame(4, RatePlanDay::where('room_type_id', $room->id)->count());
+        $this->assertSame(4, RatePlanDay::where('bookable_unit_id', $room->id)->count());
     }
 
     public function test_an_empty_field_leaves_what_is_already_there_alone(): void
     {
         [$user, $listing] = $this->partnerWithProperty();
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
 
         app(InventoryWriter::class)->setCalendar(
             $room,
@@ -120,14 +120,14 @@ class LodgeRatesTest extends TestCase
         // Only a rate is given, so the restrictions must survive untouched.
         Livewire::test(RatesAndAvailability::class)
             ->fillForm([
-                'room_type_ids' => [$room->id],
+                'bookable_unit_ids' => [$room->id],
                 'from' => '2026-09-10',
                 'to' => '2026-09-12',
                 'rate' => 2500,
             ])
             ->call('apply');
 
-        $day = RatePlanDay::where('room_type_id', $room->id)
+        $day = RatePlanDay::where('bookable_unit_id', $room->id)
             ->whereDate('date', '2026-09-10')
             ->firstOrFail();
 
@@ -139,7 +139,7 @@ class LodgeRatesTest extends TestCase
     public function test_a_restriction_can_be_cleared_but_only_when_that_is_chosen(): void
     {
         [$user, $listing] = $this->partnerWithProperty();
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
 
         app(InventoryWriter::class)->setCalendar(
             $room,
@@ -152,14 +152,14 @@ class LodgeRatesTest extends TestCase
 
         Livewire::test(RatesAndAvailability::class)
             ->fillForm([
-                'room_type_ids' => [$room->id],
+                'bookable_unit_ids' => [$room->id],
                 'from' => '2026-09-10',
                 'to' => '2026-09-12',
                 'min_stay_mode' => 'none',
             ])
             ->call('apply');
 
-        $day = RatePlanDay::where('room_type_id', $room->id)
+        $day = RatePlanDay::where('bookable_unit_id', $room->id)
             ->whereDate('date', '2026-09-10')
             ->firstOrFail();
 
@@ -169,7 +169,7 @@ class LodgeRatesTest extends TestCase
     public function test_capacity_cannot_be_lowered_under_what_is_already_sold(): void
     {
         [$user, $listing] = $this->partnerWithProperty();
-        $room = $this->roomType($listing, ['total_units' => 4]);
+        $room = $this->bookableUnit($listing, ['total_units' => 4]);
 
         app(InventoryWriter::class)->book(new BookingRequest(
             listing: $listing,
@@ -182,7 +182,7 @@ class LodgeRatesTest extends TestCase
 
         Livewire::test(RatesAndAvailability::class)
             ->fillForm([
-                'room_type_ids' => [$room->id],
+                'bookable_unit_ids' => [$room->id],
                 'from' => '2026-09-10',
                 'to' => '2026-09-14',
                 'units_mode' => 'set',
@@ -197,19 +197,19 @@ class LodgeRatesTest extends TestCase
         );
     }
 
-    public function test_another_partners_room_type_cannot_be_repriced(): void
+    public function test_another_partners_bookable_unit_cannot_be_repriced(): void
     {
         [$mine, $myListing] = $this->partnerWithProperty('Mine');
-        $this->roomType($myListing);
+        $this->bookableUnit($myListing);
 
         [, $theirListing] = $this->partnerWithProperty('Theirs');
-        $theirRoom = $this->roomType($theirListing);
+        $theirRoom = $this->bookableUnit($theirListing);
 
         $this->asPartner($mine);
 
         Livewire::test(RatesAndAvailability::class)
             ->fillForm([
-                'room_type_ids' => [$theirRoom->id],
+                'bookable_unit_ids' => [$theirRoom->id],
                 'from' => '2026-09-10',
                 'to' => '2026-09-14',
                 'rate' => 99,
@@ -220,8 +220,8 @@ class LodgeRatesTest extends TestCase
             1500.0,
             app(AvailabilityCalendar::class)->rateFor($theirRoom, Carbon::parse('2026-09-10')),
         );
-        $this->assertSame(0, RoomTypeCalendarDay::where('room_type_id', $theirRoom->id)->count());
-        $this->assertSame(0, RatePlanDay::where('room_type_id', $theirRoom->id)->count());
+        $this->assertSame(0, BookableUnitCalendarDay::where('bookable_unit_id', $theirRoom->id)->count());
+        $this->assertSame(0, RatePlanDay::where('bookable_unit_id', $theirRoom->id)->count());
     }
 
     private function asPartner(User $user): void
@@ -250,9 +250,9 @@ class LodgeRatesTest extends TestCase
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function roomType(Listing $listing, array $attributes = []): RoomType
+    private function bookableUnit(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create(array_merge([
+        return BookableUnit::factory()->create(array_merge([
             'listing_id' => $listing->id,
             'total_units' => 3,
             'rate_per_night' => 1500.00,

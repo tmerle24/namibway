@@ -3,8 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\InquiryStatus;
+use App\Models\BookableUnit;
+use App\Models\Inquiry;
 use App\Models\Listing;
-use App\Models\RoomType;
 use App\Models\SavedPlan;
 use App\Models\Trip;
 use App\Models\User;
@@ -18,7 +19,7 @@ use Tests\TestCase;
  * these the rules that matter: real rates, real remaining units, an empty
  * answer rather than a substitute, and the chosen room reaching the booking.
  */
-class RoomTypeAvailabilityTest extends TestCase
+class BookableUnitAvailabilityTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -31,9 +32,9 @@ class RoomTypeAvailabilityTest extends TestCase
     }
 
     /** @param array<string, mixed> $attributes */
-    private function room(Listing $listing, array $attributes = []): RoomType
+    private function room(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::create([
+        return BookableUnit::create([
             'listing_id' => $listing->id,
             'code' => 'standard',
             'name' => 'Standard Double',
@@ -68,7 +69,7 @@ class RoomTypeAvailabilityTest extends TestCase
             ->assertJsonCount(1, 'rooms.0.gallery');
     }
 
-    public function test_a_listing_with_no_room_types_returns_nothing_rather_than_a_substitute(): void
+    public function test_a_listing_with_no_bookable_units_returns_nothing_rather_than_a_substitute(): void
     {
         // The ordinary case today, and the whole point: no invented tiers.
         $this->getJson($this->url($this->listing()))
@@ -84,7 +85,7 @@ class RoomTypeAvailabilityTest extends TestCase
         $listing->inquiries()->create([
             'name' => 'Someone else',
             'email' => 'other@example.com',
-            'room_type_code' => 'standard',
+            'bookable_unit_code' => 'standard',
             'check_in' => '2026-09-02',
             'check_out' => '2026-09-03',
             'status' => InquiryStatus::Confirmed,
@@ -104,7 +105,7 @@ class RoomTypeAvailabilityTest extends TestCase
         $listing->inquiries()->create([
             'name' => 'Someone else',
             'email' => 'other@example.com',
-            'room_type_code' => 'standard',
+            'bookable_unit_code' => 'standard',
             'check_in' => '2026-08-29',
             'check_out' => '2026-09-01',
             'status' => InquiryStatus::Confirmed,
@@ -123,7 +124,7 @@ class RoomTypeAvailabilityTest extends TestCase
         $listing->inquiries()->create([
             'name' => 'Someone else',
             'email' => 'other@example.com',
-            'room_type_code' => 'standard',
+            'bookable_unit_code' => 'standard',
             'check_in' => '2026-09-02',
             'check_out' => '2026-09-03',
             'status' => InquiryStatus::OnRequest,
@@ -142,7 +143,7 @@ class RoomTypeAvailabilityTest extends TestCase
         $listing->inquiries()->create([
             'name' => 'Someone else',
             'email' => 'other@example.com',
-            'room_type_code' => 'standard',
+            'bookable_unit_code' => 'standard',
             'check_in' => '2026-09-02',
             'check_out' => '2026-09-03',
             'status' => InquiryStatus::Cancelled,
@@ -251,7 +252,89 @@ class RoomTypeAvailabilityTest extends TestCase
             ->assertJsonPath('inquiry_count', 1);
 
         $inquiry = Trip::firstOrFail()->inquiries()->firstOrFail();
-        $this->assertSame('standard', $inquiry->room_type_code);
+        $this->assertSame('standard', $inquiry->bookable_unit_code);
+    }
+
+    /**
+     * Capacity is a rule on this path and not a filter.
+     *
+     * The picker only ever declined to *offer* a room the party does not fit,
+     * which a party that grows after the room was chosen walks straight past —
+     * and a request posted directly never met the picker at all. Nobody is
+     * standing here to judge whether the room can take a fourth child, which is
+     * exactly what makes this different from the desk. See BOOKING_SYSTEM.md.
+     */
+    public function test_a_room_too_small_for_the_party_is_refused_with_the_numbers(): void
+    {
+        $user = User::factory()->create();
+        $listing = $this->listing();
+        $this->room($listing, ['max_adults' => 2, 'max_children' => 2]);
+
+        $plan = SavedPlan::create([
+            'title' => 'Trip',
+            'plan_json' => ['trip_summary' => 'Trip', 'variants' => []],
+            'user_id' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('trips.store'), [
+                'name' => 'Traveler',
+                'email' => 'traveler@example.com',
+                'check_in' => now()->addWeek()->toDateString(),
+                'check_out' => now()->addWeeks(2)->toDateString(),
+                'adults' => 2,
+                'children' => 3,
+                'variant_name' => 'Classic',
+                'plan' => ['trip_summary' => 'Trip', 'variants' => []],
+                'variant_days' => [[
+                    'accommodation' => ['id' => $listing->id],
+                    'room_selection' => ['code' => 'standard', 'name' => 'Standard Double'],
+                ]],
+                'plan_token' => $plan->token,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('rooms.0', 'Standard Double sleeps 2 + 2, and this booking is 2 + 3.');
+
+        // Nothing was written: no trip, and no request sent to the property.
+        $this->assertSame(0, Trip::query()->count());
+        $this->assertSame(0, Inquiry::query()->count());
+    }
+
+    /**
+     * A plan whose room type has been retired since goes to the property
+     * without a room on it — which is what a plan with no picker does anyway,
+     * and is a question the partner can answer.
+     */
+    public function test_a_room_code_that_names_nothing_is_not_a_capacity_refusal(): void
+    {
+        $user = User::factory()->create();
+        $listing = $this->listing();
+        $this->room($listing, ['max_adults' => 2, 'max_children' => 0]);
+
+        $plan = SavedPlan::create([
+            'title' => 'Trip',
+            'plan_json' => ['trip_summary' => 'Trip', 'variants' => []],
+            'user_id' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('trips.store'), [
+                'name' => 'Traveler',
+                'email' => 'traveler@example.com',
+                'check_in' => now()->addWeek()->toDateString(),
+                'check_out' => now()->addWeeks(2)->toDateString(),
+                'adults' => 4,
+                'variant_name' => 'Classic',
+                'plan' => ['trip_summary' => 'Trip', 'variants' => []],
+                'variant_days' => [[
+                    'accommodation' => ['id' => $listing->id],
+                    'room_selection' => ['code' => 'gone-since', 'name' => 'Retired'],
+                ]],
+                'plan_token' => $plan->token,
+            ])
+            ->assertOk();
+
+        $this->assertSame('gone-since', Trip::firstOrFail()->inquiries()->firstOrFail()->bookable_unit_code);
     }
 
     public function test_a_stay_with_no_room_chosen_still_books_without_one(): void
@@ -279,6 +362,6 @@ class RoomTypeAvailabilityTest extends TestCase
             ])
             ->assertOk();
 
-        $this->assertNull(Trip::firstOrFail()->inquiries()->firstOrFail()->room_type_code);
+        $this->assertNull(Trip::firstOrFail()->inquiries()->firstOrFail()->bookable_unit_code);
     }
 }

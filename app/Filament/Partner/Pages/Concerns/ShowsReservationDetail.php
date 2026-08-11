@@ -65,8 +65,8 @@ trait ShowsReservationDetail
         }
 
         return InventoryBlock::query()
-            ->whereHas('roomType', fn (Builder $query) => $query->where('listing_id', $property->id))
-            ->with('roomType')
+            ->whereHas('bookableUnit', fn (Builder $query) => $query->where('listing_id', $property->id))
+            ->with('bookableUnit')
             ->find($blockId);
     }
 
@@ -80,7 +80,7 @@ trait ShowsReservationDetail
 
         return Reservation::query()
             ->where('listing_id', $property->id)
-            ->with(['units.roomType', 'units.nights', 'units.guests.category', 'charges'])
+            ->with(['units.bookableUnit', 'units.nights', 'units.guests.category', 'charges'])
             ->find($reservationId);
     }
 

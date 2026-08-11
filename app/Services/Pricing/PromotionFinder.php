@@ -42,7 +42,7 @@ class PromotionFinder
         $promotion = Promotion::query()
             ->where('listing_id', $listing->id)
             ->whereRaw('lower(code) = ?', [mb_strtolower($code)])
-            ->with(['ratePlans', 'roomTypes'])
+            ->with(['ratePlans', 'bookableUnits'])
             ->first();
 
         if ($promotion === null) {
@@ -77,7 +77,7 @@ class PromotionFinder
             ->where('listing_id', $listing->id)
             ->where('is_active', true)
             ->whereNull('code')
-            ->with(['ratePlans', 'roomTypes'])
+            ->with(['ratePlans', 'bookableUnits'])
             ->get();
 
         $best = null;
@@ -108,7 +108,7 @@ class PromotionFinder
             $stay->checkOut,
             $stay->nights(),
             $stay->ratePlanIds,
-            $stay->roomTypeIds,
+            $stay->bookableUnitIds,
         );
     }
 }

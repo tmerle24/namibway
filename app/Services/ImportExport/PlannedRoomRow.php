@@ -3,7 +3,7 @@
 namespace App\Services\ImportExport;
 
 /**
- * One row of the RoomTypes sheet after validation. `listingRow` is set when the
+ * One row of the BookableUnits sheet after validation. `listingRow` is set when the
  * row belongs to a listing this same import is about to create — the listing id
  * doesn't exist yet at planning time, so apply() reads it back from that row
  * once the listing has been saved.
@@ -27,7 +27,7 @@ final class PlannedRoomRow
 
     public string $code = '';
 
-    public ?int $roomTypeId = null;
+    public ?int $bookableUnitId = null;
 
     /** Folder in the photo ZIP whose images replace this room's gallery. */
     public ?string $photoFolder = null;

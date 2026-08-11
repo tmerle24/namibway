@@ -2,7 +2,7 @@
 
 namespace App\Services\Booking;
 
-use App\Models\RoomType;
+use App\Models\BookableUnit;
 use App\Services\Pricing\ComputedCharge;
 
 /**
@@ -22,7 +22,7 @@ final class RoomOffer
      * @param  array<int, ComputedCharge>  $charges
      */
     public function __construct(
-        public readonly RoomType $roomType,
+        public readonly BookableUnit $bookableUnit,
         public readonly int $unitsLeft,
         public readonly int $nights,
         public readonly string $currency,

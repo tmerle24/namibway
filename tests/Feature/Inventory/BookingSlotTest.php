@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\Inventory;
 
+use App\Models\BookableUnit;
+use App\Models\BookableUnitCalendarDay;
 use App\Models\BookingSlot;
 use App\Models\Listing;
-use App\Models\RoomType;
-use App\Models\RoomTypeCalendarDay;
 use App\Services\Inventory\InventoryWriteGuard;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,14 +24,14 @@ class BookingSlotTest extends TestCase
 {
     use RefreshDatabase;
 
-    private RoomType $unit;
+    private BookableUnit $unit;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $listing = Listing::factory()->create();
-        $this->unit = RoomType::factory()->create([
+        $this->unit = BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 8,
             'currency' => 'NAD',
@@ -99,7 +99,7 @@ class BookingSlotTest extends TestCase
     private function slot(string $time, ?string $label = null, int $minutes = 180): BookingSlot
     {
         return BookingSlot::create([
-            'room_type_id' => $this->unit->id,
+            'bookable_unit_id' => $this->unit->id,
             'label' => $label,
             'starts_at' => $time,
             'duration_minutes' => $minutes,
@@ -111,10 +111,10 @@ class BookingSlotTest extends TestCase
      * constraint the database enforces, not about the writer — and the writer
      * cannot express a departure yet, which is the next slice.
      */
-    private function day(?BookingSlot $slot, int $sold = 0): RoomTypeCalendarDay
+    private function day(?BookingSlot $slot, int $sold = 0): BookableUnitCalendarDay
     {
-        return InventoryWriteGuard::allow(fn () => RoomTypeCalendarDay::create([
-            'room_type_id' => $this->unit->id,
+        return InventoryWriteGuard::allow(fn () => BookableUnitCalendarDay::create([
+            'bookable_unit_id' => $this->unit->id,
             'slot_id' => $slot?->id,
             'date' => '2026-09-10',
             'units_sold' => $sold,
@@ -123,8 +123,8 @@ class BookingSlotTest extends TestCase
 
     private function soldOn(string $date, BookingSlot $slot): int
     {
-        return (int) RoomTypeCalendarDay::query()
-            ->where('room_type_id', $this->unit->id)
+        return (int) BookableUnitCalendarDay::query()
+            ->where('bookable_unit_id', $this->unit->id)
             ->where('slot_id', $slot->id)
             ->whereDate('date', $date)
             ->value('units_sold');

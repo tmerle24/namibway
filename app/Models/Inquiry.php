@@ -24,7 +24,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $message
  * @property InquiryStatus $status
  * @property string|null $connector_reference
- * @property string|null $room_type_code
+ * @property string|null $bookable_unit_code
  * @property float|null $total_amount
  * @property string|null $currency
  * @property Carbon|null $hold_expires_at
@@ -49,7 +49,7 @@ class Inquiry extends Model
         'message',
         'status',
         'connector_reference',
-        'room_type_code',
+        'bookable_unit_code',
         'total_amount',
         'currency',
         'hold_expires_at',

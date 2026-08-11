@@ -98,9 +98,9 @@ class AmenityResource extends Resource
                     ->label('Properties')
                     ->counts('listings')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('room_types_count')
+                Tables\Columns\TextColumn::make('bookable_units_count')
                     ->label('Rooms')
-                    ->counts('roomTypes')
+                    ->counts('bookableUnits')
                     ->sortable(),
                 Tables\Columns\IconColumn::make('is_active')->label('In use')->boolean(),
             ])

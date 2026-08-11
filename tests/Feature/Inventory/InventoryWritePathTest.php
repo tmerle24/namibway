@@ -6,6 +6,8 @@ use App\Enums\BlockReason;
 use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\DirectInventoryWriteException;
+use App\Models\BookableUnit;
+use App\Models\BookableUnitCalendarDay;
 use App\Models\Concerns\GuardsInventoryWrites;
 use App\Models\InventoryBlock;
 use App\Models\Listing;
@@ -16,8 +18,6 @@ use App\Models\Reservation;
 use App\Models\ReservationGuest;
 use App\Models\ReservationNight;
 use App\Models\ReservationUnit;
-use App\Models\RoomType;
-use App\Models\RoomTypeCalendarDay;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
@@ -41,7 +41,7 @@ class InventoryWritePathTest extends TestCase
      * @var array<int, string>
      */
     private const INVENTORY_TABLES = [
-        'room_type_calendar_days',
+        'bookable_unit_calendar_days',
         'rate_plan_days',
         'rate_plan_guest_amounts',
         'reservations',
@@ -57,7 +57,7 @@ class InventoryWritePathTest extends TestCase
      * @var array<int, class-string>
      */
     private const INVENTORY_MODELS = [
-        RoomTypeCalendarDay::class,
+        BookableUnitCalendarDay::class,
         RatePlanDay::class,
         RatePlanGuestAmount::class,
         Reservation::class,
@@ -98,12 +98,12 @@ class InventoryWritePathTest extends TestCase
 
     public function test_writing_a_calendar_day_outside_the_writer_is_refused(): void
     {
-        $room = RoomType::factory()->create(['listing_id' => Listing::factory()]);
+        $room = BookableUnit::factory()->create(['listing_id' => Listing::factory()]);
 
         $this->expectException(DirectInventoryWriteException::class);
 
-        RoomTypeCalendarDay::create([
-            'room_type_id' => $room->id,
+        BookableUnitCalendarDay::create([
+            'bookable_unit_id' => $room->id,
             'date' => '2026-09-01',
             'units_sold' => 99,
         ]);
@@ -116,14 +116,14 @@ class InventoryWritePathTest extends TestCase
     public function test_writing_a_rate_outside_the_writer_is_refused(): void
     {
         $listing = Listing::factory()->create();
-        $room = RoomType::factory()->create(['listing_id' => $listing->id]);
+        $room = BookableUnit::factory()->create(['listing_id' => $listing->id]);
         $plan = RatePlan::ensureDefaultFor($listing);
 
         $this->expectException(DirectInventoryWriteException::class);
 
         RatePlanDay::create([
             'rate_plan_id' => $plan->id,
-            'room_type_id' => $room->id,
+            'bookable_unit_id' => $room->id,
             'date' => '2026-09-01',
             'rate' => 1,
         ]);
@@ -133,14 +133,14 @@ class InventoryWritePathTest extends TestCase
     public function test_writing_a_guest_amount_outside_the_writer_is_refused(): void
     {
         $listing = Listing::factory()->create();
-        $room = RoomType::factory()->create(['listing_id' => $listing->id]);
+        $room = BookableUnit::factory()->create(['listing_id' => $listing->id]);
         $plan = RatePlan::ensureDefaultFor($listing);
 
         $this->expectException(DirectInventoryWriteException::class);
 
         RatePlanGuestAmount::create([
             'rate_plan_id' => $plan->id,
-            'room_type_id' => $room->id,
+            'bookable_unit_id' => $room->id,
             'date' => '2026-09-01',
             'guests' => 2,
             'amount' => 1,
@@ -149,12 +149,12 @@ class InventoryWritePathTest extends TestCase
 
     public function test_creating_a_block_outside_the_writer_is_refused(): void
     {
-        $room = RoomType::factory()->create(['listing_id' => Listing::factory()]);
+        $room = BookableUnit::factory()->create(['listing_id' => Listing::factory()]);
 
         $this->expectException(DirectInventoryWriteException::class);
 
         InventoryBlock::create([
-            'room_type_id' => $room->id,
+            'bookable_unit_id' => $room->id,
             'reason' => BlockReason::Maintenance,
             'units' => 1,
             'first_night' => '2026-09-01',

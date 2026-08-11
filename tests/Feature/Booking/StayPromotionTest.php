@@ -8,11 +8,11 @@ use App\Enums\ReservationSource;
 use App\Exceptions\Booking\StayNotPromotableException;
 use App\Mail\GuestStayConfirmed;
 use App\Mail\StayPromotionFailed;
+use App\Models\BookableUnit;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Models\User;
 use App\Services\Booking\InquiryDecisionService;
 use App\Services\Booking\StayPromoter;
@@ -37,7 +37,7 @@ class StayPromotionTest extends TestCase
 
     private Listing $listing;
 
-    private RoomType $room;
+    private BookableUnit $room;
 
     protected function setUp(): void
     {
@@ -51,7 +51,7 @@ class StayPromotionTest extends TestCase
             'partner_id' => $partner->id,
             'type' => ListingType::Accommodation,
         ]);
-        $this->room = RoomType::factory()->create([
+        $this->room = BookableUnit::factory()->create([
             'listing_id' => $this->listing->id,
             'code' => 'STD',
             'total_units' => 2,
@@ -135,7 +135,7 @@ class StayPromotionTest extends TestCase
 
     public function test_the_room_is_the_one_the_traveller_picked(): void
     {
-        $suite = RoomType::factory()->create([
+        $suite = BookableUnit::factory()->create([
             'listing_id' => $this->listing->id,
             'code' => 'SUITE',
             'total_units' => 1,
@@ -143,23 +143,23 @@ class StayPromotionTest extends TestCase
             'currency' => 'NAD',
         ]);
 
-        $stay = app(StayPromoter::class)->promote($this->inquiry(['room_type_code' => 'SUITE']));
+        $stay = app(StayPromoter::class)->promote($this->inquiry(['bookable_unit_code' => 'SUITE']));
 
-        $this->assertSame($suite->id, $stay->units->first()?->room_type_id);
+        $this->assertSame($suite->id, $stay->units->first()?->bookable_unit_id);
     }
 
-    public function test_a_property_with_one_room_type_needs_no_choice(): void
+    public function test_a_property_with_one_bookable_unit_needs_no_choice(): void
     {
         // Most requests carry no room type code at all — the picker only
         // appears once a property has entered its rooms.
-        $stay = app(StayPromoter::class)->promote($this->inquiry(['room_type_code' => null]));
+        $stay = app(StayPromoter::class)->promote($this->inquiry(['bookable_unit_code' => null]));
 
-        $this->assertSame($this->room->id, $stay->units->first()?->room_type_id);
+        $this->assertSame($this->room->id, $stay->units->first()?->bookable_unit_id);
     }
 
     public function test_a_property_with_several_rooms_is_not_guessed_at(): void
     {
-        RoomType::factory()->create([
+        BookableUnit::factory()->create([
             'listing_id' => $this->listing->id,
             'code' => 'SUITE',
             'total_units' => 1,
@@ -170,7 +170,7 @@ class StayPromotionTest extends TestCase
         $this->expectException(StayNotPromotableException::class);
         $this->expectExceptionMessage('does not say which room type');
 
-        app(StayPromoter::class)->promote($this->inquiry(['room_type_code' => null]));
+        app(StayPromoter::class)->promote($this->inquiry(['bookable_unit_code' => null]));
     }
 
     public function test_the_traveller_is_charged_what_they_were_quoted(): void
@@ -214,7 +214,7 @@ class StayPromotionTest extends TestCase
             'adults' => 2,
             'children' => 0,
             'status' => InquiryStatus::OnRequest,
-            'room_type_code' => 'STD',
+            'bookable_unit_code' => 'STD',
             ...$attributes,
         ]);
     }
