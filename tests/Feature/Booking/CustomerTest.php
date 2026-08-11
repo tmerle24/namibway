@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Listing;
 use App\Models\Note;
 use App\Models\Partner;
+use App\Models\Reservation;
 use App\Models\RoomType;
 use App\Models\User;
 use App\Services\Booking\CustomerDirectory;
@@ -257,7 +258,7 @@ class CustomerTest extends TestCase
         string $out = '2026-09-12',
         ?string $phone = null,
         ?int $userId = null,
-    ): \App\Models\Reservation {
+    ): Reservation {
         return app(InventoryWriter::class)->book(new BookingRequest(
             listing: $this->listing,
             lines: [new BookingLine($this->room, 1, Carbon::parse($in), Carbon::parse($out))],
