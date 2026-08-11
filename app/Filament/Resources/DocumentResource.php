@@ -34,8 +34,6 @@ class DocumentResource extends Resource
 
     protected static ?string $navigationGroup = 'Documents';
 
-    protected static ?int $navigationSort = 1;
-
     protected static ?string $recordTitleAttribute = 'title';
 
     /** @return array<int, string> */
