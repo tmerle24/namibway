@@ -54,6 +54,32 @@ class CreateWebsiteAction
             ->tooltip('Included once your website subscription starts — talk to us and we switch it on.');
     }
 
+    /**
+     * The link to the site itself, once there is one.
+     *
+     * Only appears where a website exists, so it is also the honest answer to
+     * "has this listing got one?" — a greyed-out link would say the same thing
+     * less clearly.
+     *
+     * The address comes from `Site::publicUrl()`, which carries the preview
+     * token while the site is a draft. That token is what makes the link work
+     * at all, and it is also the reason the tooltip says out loud that a draft
+     * is private: anyone holding this URL can see it.
+     */
+    public static function visit(string $name = 'visit_website'): Action
+    {
+        return Action::make($name)
+            ->label('')
+            ->icon('heroicon-o-arrow-top-right-on-square')
+            ->color('gray')
+            ->visible(fn (Listing $record): bool => self::siteFor($record) !== null)
+            ->tooltip(fn (Listing $record): string => self::siteFor($record)?->isPublished() === true
+                ? 'Open the website'
+                : 'Open the private draft — this link works without a password, so treat it like one')
+            ->url(fn (Listing $record): ?string => self::siteFor($record)?->publicUrl())
+            ->openUrlInNewTab();
+    }
+
     public static function make(string $name = 'create_website'): Action
     {
         return Action::make($name)

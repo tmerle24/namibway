@@ -543,6 +543,7 @@ class ListingResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 CreateWebsiteAction::make(),
+                CreateWebsiteAction::visit(),
                 Tables\Actions\Action::make('view_frontend')
                     ->label('')
                     ->icon('heroicon-o-arrow-top-right-on-square')
