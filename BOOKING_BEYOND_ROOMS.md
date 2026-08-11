@@ -83,6 +83,36 @@ and the cost will never be lower than it is now.
 following. Do it before the first real partner, or accept living with the word
 forever. Say which you chose and why, either way.
 
+> **Done 2026-08-12: `bookable_units`.** `room_types` → `bookable_units`,
+> `RoomType` → `BookableUnit`, every `room_type_id` → `bookable_unit_id`,
+> `room_type_calendar_days` → `bookable_unit_calendar_days`, both pivots, and
+> `inquiries.room_type_code` → `bookable_unit_code`. One migration, reversible
+> both ways including the twenty-five index and constraint names Postgres would
+> otherwise have left pointing at a table that no longer exists.
+>
+> **Why `bookable_units` and not `inventory_types`.** It reads as English in the
+> sentences this code actually writes, and it is the word the codebase had already
+> drifted to on its own — `BookingSlot::forUnit()`, `DayGrid`'s `$unit`, the
+> exporter's own docblock — while the table still said "room type". The wart it
+> carries is named rather than hidden: `bookable_units.total_units` is now "how
+> many units of this unit", and `reservation_units` is a third use of the word.
+> Chasing that would mean renaming two more tables for a word that is repeated
+> rather than wrong.
+>
+> **What kept the old word, and why.** The rename stopped at every boundary where
+> "room type" is somebody else's word or the correct one: the connector DTOs and
+> the `room_types` key in the documented `/api/v1` response (the partner's
+> vocabulary, in a mapping layer — ResRequest, NightsBridge and hopeCloud all say
+> it); the `/listings/{slug}/room-types` endpoint and its picker (traveller-facing,
+> about a lodge); the `RoomTypes` sheet in the bulk-capture workbook and its column
+> headers (an interface with a person, who has those files already); the
+> `room-types/` prefix on R2, which addresses objects that exist; and "Room type"
+> as a label in both panels. What a tour operator should read there instead is
+> §3.5's question, not this one.
+>
+> The cost was one afternoon and 126 files. The brief was right that it would
+> never be cheaper: production had no rows in the table at all.
+
 ### 3.3 Half-open intervals — do they survive car rental?
 
 Accommodation's rule is that a stay ending on the day another begins does not

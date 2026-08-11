@@ -4,11 +4,11 @@ namespace Tests\Feature\Inventory;
 
 use App\Enums\PricingStrategy;
 use App\Enums\ReservationSource;
+use App\Models\BookableUnit;
 use App\Models\BookingSlot;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
-use App\Models\RoomType;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\DayGrid;
 use App\Services\Inventory\DTOs\BookingLine;
@@ -64,7 +64,7 @@ class AccommodationUnchangedByTimeTest extends TestCase
     public function test_a_lodge_has_no_hour_axis_at_all(): void
     {
         $listing = Listing::factory()->create();
-        $room = $this->roomType($listing, ['name' => 'Standard Chalet', 'total_units' => 4]);
+        $room = $this->bookableUnit($listing, ['name' => 'Standard Chalet', 'total_units' => 4]);
 
         $this->book($listing, $room, '2026-09-03', '2026-09-06', quantity: 2, guest: 'Anna Shipanga');
 
@@ -83,7 +83,7 @@ class AccommodationUnchangedByTimeTest extends TestCase
     public function test_a_lodges_grid_reads_exactly_what_the_calendar_says(): void
     {
         $listing = Listing::factory()->create();
-        $room = $this->roomType($listing, ['total_units' => 3, 'rate_per_night' => 1800]);
+        $room = $this->bookableUnit($listing, ['total_units' => 3, 'rate_per_night' => 1800]);
 
         $this->book($listing, $room, '2026-09-04', '2026-09-06', quantity: 2, guest: 'Guest');
 
@@ -113,8 +113,8 @@ class AccommodationUnchangedByTimeTest extends TestCase
     public function test_a_departures_row_never_becomes_the_days_row_in_a_bulk_read(): void
     {
         $listing = Listing::factory()->create();
-        $chalet = $this->roomType($listing, ['name' => 'Chalet', 'total_units' => 3, 'rate_per_night' => 1800]);
-        $tour = $this->roomType($listing, ['name' => 'Quad tour', 'total_units' => 8, 'rate_per_night' => 950]);
+        $chalet = $this->bookableUnit($listing, ['name' => 'Chalet', 'total_units' => 3, 'rate_per_night' => 1800]);
+        $tour = $this->bookableUnit($listing, ['name' => 'Quad tour', 'total_units' => 8, 'rate_per_night' => 950]);
 
         $plan = $this->ratePlan($listing);
         $morning = $this->slot($tour, '09:00', 'Morning departure');
@@ -123,7 +123,7 @@ class AccommodationUnchangedByTimeTest extends TestCase
         // own counter knows nothing about.
         InventoryWriteGuard::allow(fn () => RatePlanDay::create([
             'rate_plan_id' => $plan->id,
-            'room_type_id' => $tour->id,
+            'bookable_unit_id' => $tour->id,
             'slot_id' => $morning->id,
             'date' => '2026-09-04',
             'rate' => 1400,
@@ -131,7 +131,7 @@ class AccommodationUnchangedByTimeTest extends TestCase
 
         $this->book($listing, $tour, '2026-09-04', '2026-09-05', quantity: 3, guest: 'Seat Guest', slot: $morning);
 
-        $rows = collect($this->grid($listing, plan: $plan)->rows)->keyBy(fn ($row) => $row->roomType->name);
+        $rows = collect($this->grid($listing, plan: $plan)->rows)->keyBy(fn ($row) => $row->bookableUnit->name);
 
         // The chalet is a lodge in every sense that matters here.
         $chaletCell = $rows['Chalet']->cells[3];
@@ -170,13 +170,13 @@ class AccommodationUnchangedByTimeTest extends TestCase
     public function test_a_retired_departure_does_not_start_answering_for_the_night(): void
     {
         $listing = Listing::factory()->create();
-        $unit = $this->roomType($listing, ['name' => 'Quad', 'total_units' => 8, 'rate_per_night' => 950]);
+        $unit = $this->bookableUnit($listing, ['name' => 'Quad', 'total_units' => 8, 'rate_per_night' => 950]);
         $plan = $this->ratePlan($listing);
         $morning = $this->slot($unit, '09:00', 'Morning departure');
 
         InventoryWriteGuard::allow(fn () => RatePlanDay::create([
             'rate_plan_id' => $plan->id,
-            'room_type_id' => $unit->id,
+            'bookable_unit_id' => $unit->id,
             'slot_id' => $morning->id,
             'date' => '2026-09-04',
             'rate' => 1400,
@@ -199,11 +199,11 @@ class AccommodationUnchangedByTimeTest extends TestCase
     public function test_a_lodge_that_shares_a_property_with_a_tour_keeps_its_own_screen(): void
     {
         $listing = Listing::factory()->create();
-        $chalet = $this->roomType($listing, ['name' => 'Chalet', 'total_units' => 2]);
-        $tour = $this->roomType($listing, ['name' => 'Sunset drive', 'total_units' => 6]);
+        $chalet = $this->bookableUnit($listing, ['name' => 'Chalet', 'total_units' => 2]);
+        $tour = $this->bookableUnit($listing, ['name' => 'Sunset drive', 'total_units' => 6]);
         $this->slot($tour, '17:00', 'Sunset drive');
 
-        $names = array_map(fn ($row) => $row->roomType->name, $this->grid($listing)->rows);
+        $names = array_map(fn ($row) => $row->bookableUnit->name, $this->grid($listing)->rows);
 
         // One calendar, both products — the thing BOOKING_SYSTEM.md insists on.
         $this->assertSame(['Chalet', 'Sunset drive'], $names);
@@ -212,9 +212,9 @@ class AccommodationUnchangedByTimeTest extends TestCase
         // row, so the same day is never printed twice.
         $day = app(OccupancyGrid::class)->build($listing, $this->start, 1, null, omitDepartureUnits: true);
 
-        $this->assertSame(['Chalet'], array_map(fn ($row) => $row->roomType->name, $day->rows));
+        $this->assertSame(['Chalet'], array_map(fn ($row) => $row->bookableUnit->name, $day->rows));
         $this->assertNotNull(app(DayGrid::class)->build($listing, $this->start));
-        $this->assertSame($chalet->id, $day->rows[0]->roomType->id);
+        $this->assertSame($chalet->id, $day->rows[0]->bookableUnit->id);
     }
 
     private function grid(Listing $listing, ?RatePlan $plan = null): OccupancyGridData
@@ -226,7 +226,7 @@ class AccommodationUnchangedByTimeTest extends TestCase
     private function tourOperator(): Listing
     {
         $listing = Listing::factory()->create();
-        $unit = $this->roomType($listing, ['name' => 'Quad tour', 'total_units' => 8]);
+        $unit = $this->bookableUnit($listing, ['name' => 'Quad tour', 'total_units' => 8]);
         $slot = $this->slot($unit, '09:00', 'Morning departure');
 
         $this->book($listing, $unit, '2026-09-04', '2026-09-05', quantity: 6, guest: 'Seat Guest', slot: $slot);
@@ -234,10 +234,10 @@ class AccommodationUnchangedByTimeTest extends TestCase
         return $listing;
     }
 
-    private function slot(RoomType $unit, string $time, string $label, int $minutes = 180): BookingSlot
+    private function slot(BookableUnit $unit, string $time, string $label, int $minutes = 180): BookingSlot
     {
         return BookingSlot::create([
-            'room_type_id' => $unit->id,
+            'bookable_unit_id' => $unit->id,
             'label' => $label,
             'starts_at' => $time,
             'duration_minutes' => $minutes,
@@ -258,9 +258,9 @@ class AccommodationUnchangedByTimeTest extends TestCase
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function roomType(Listing $listing, array $attributes = []): RoomType
+    private function bookableUnit(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create(array_merge([
+        return BookableUnit::factory()->create(array_merge([
             'listing_id' => $listing->id,
             'total_units' => 2,
             'rate_per_night' => 1200,
@@ -270,7 +270,7 @@ class AccommodationUnchangedByTimeTest extends TestCase
 
     private function book(
         Listing $listing,
-        RoomType $room,
+        BookableUnit $room,
         string $checkIn,
         string $checkOut,
         int $quantity = 1,

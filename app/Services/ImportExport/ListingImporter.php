@@ -3,15 +3,15 @@
 namespace App\Services\ImportExport;
 
 use App\Enums\ContentSource;
+use App\Models\BookableUnit;
 use App\Models\Listing;
-use App\Models\RoomType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Reads a listings workbook — the Listings sheet, the RoomTypes sheet, and the
+ * Reads a listings workbook — the Listings sheet, the BookableUnits sheet, and the
  * photo ZIP that goes with them — and turns it into an ImportPlan first, never
  * straight into writes. plan() validates and diffs every row, apply() executes
  * that same plan in one transaction.
@@ -188,21 +188,21 @@ class ListingImporter
                         continue;
                     }
 
-                    $roomType = RoomType::firstOrNew(['listing_id' => $listingId, 'code' => $room->code]);
+                    $bookableUnit = BookableUnit::firstOrNew(['listing_id' => $listingId, 'code' => $room->code]);
 
                     foreach ($room->attributes as $attribute => $value) {
-                        $roomType->setAttribute($attribute, $value);
+                        $bookableUnit->setAttribute($attribute, $value);
                     }
 
                     if ($room->photoFolder !== null && $archive !== null) {
-                        $roomType->gallery = $this->uploadPhotos(
+                        $bookableUnit->gallery = $this->uploadPhotos(
                             $archive,
                             $room->photoFolder,
-                            'room-types/'.((string) ($roomType->listing()->value('slug') ?? $listingId))."/{$roomType->code}",
+                            'room-types/'.((string) ($bookableUnit->listing()->value('slug') ?? $listingId))."/{$bookableUnit->code}",
                         );
                     }
 
-                    $roomType->save();
+                    $bookableUnit->save();
                     $written++;
                 }
 
@@ -304,9 +304,9 @@ class ListingImporter
     }
 
     /** Same all-or-nothing swap as a listing's photos, into the room's gallery. */
-    private function planRoomPhotos(PlannedRoomRow $row, ?RoomType $roomType, string $raw, ?PhotoArchive $archive): void
+    private function planRoomPhotos(PlannedRoomRow $row, ?BookableUnit $bookableUnit, string $raw, ?PhotoArchive $archive): void
     {
-        $had = $roomType !== null && $roomType->gallery ? count($roomType->gallery).' photo(s)' : null;
+        $had = $bookableUnit !== null && $bookableUnit->gallery ? count($bookableUnit->gallery).' photo(s)' : null;
 
         if (ListingSheet::isClearMarker($raw)) {
             if ($had === null) {
@@ -531,14 +531,14 @@ class ListingImporter
     }
 
     /**
-     * The RoomTypes sheet. A CSV has no second sheet, so this is simply empty for one.
+     * The BookableUnits sheet. A CSV has no second sheet, so this is simply empty for one.
      *
      * @param  list<PlannedRow>  $listingRows
      * @return list<PlannedRoomRow>
      */
     private function planRoomRows(string $path, array $listingRows, ?PhotoArchive $archive): array
     {
-        $file = $this->reader->read($path, RoomTypeSheet::SHEET_NAME);
+        $file = $this->reader->read($path, BookableUnitSheet::SHEET_NAME);
 
         if ($file['rows'] === []) {
             return [];
@@ -548,7 +548,7 @@ class ListingImporter
         $map = [];
 
         foreach ($file['headers'] as $index => $header) {
-            $column = $header === '' ? null : RoomTypeSheet::findColumn($header);
+            $column = $header === '' ? null : BookableUnitSheet::findColumn($header);
 
             if ($column !== null) {
                 $map[$index] = $column;
@@ -604,11 +604,11 @@ class ListingImporter
 
         $seen[$key] = $line;
 
-        $roomType = $existing;
-        $row->isNew = $roomType === null;
-        $row->roomTypeId = $roomType?->id;
+        $bookableUnit = $existing;
+        $row->isNew = $bookableUnit === null;
+        $row->bookableUnitId = $bookableUnit?->id;
 
-        foreach (RoomTypeSheet::columns() as $column) {
+        foreach (BookableUnitSheet::columns() as $column) {
             if ($column->type === SheetColumnType::Id || $column->attribute === '' || ! array_key_exists($column->header, $values)) {
                 continue;
             }
@@ -624,7 +624,7 @@ class ListingImporter
             }
 
             if ($column->type === SheetColumnType::PhotoFolder) {
-                $this->planRoomPhotos($row, $roomType, $raw, $archive);
+                $this->planRoomPhotos($row, $bookableUnit, $raw, $archive);
 
                 continue;
             }
@@ -646,10 +646,10 @@ class ListingImporter
             }
 
             $value = $parsed[$column->attribute] ?? null;
-            $old = $roomType !== null ? $this->parser->asString(RoomTypeSheet::cellValue($column, $roomType)) : null;
+            $old = $bookableUnit !== null ? $this->parser->asString(BookableUnitSheet::cellValue($column, $bookableUnit)) : null;
             $new = $clear ? null : $this->parser->display($column, $parsed);
 
-            if ($roomType !== null && $old === $new) {
+            if ($bookableUnit !== null && $old === $new) {
                 continue;
             }
 
@@ -664,7 +664,7 @@ class ListingImporter
      * @param  array<string, string>  $values
      * @param  list<PlannedRow>  $listingRows
      */
-    private function resolveRoomListing(PlannedRoomRow $row, array $values, array $listingRows): ?RoomType
+    private function resolveRoomListing(PlannedRoomRow $row, array $values, array $listingRows): ?BookableUnit
     {
         $id = trim($values['listing_id'] ?? '');
 
@@ -689,7 +689,7 @@ class ListingImporter
                 $row->listingName = (string) $listing->getTranslation('name', ListingSheet::locale(), false);
             }
 
-            return RoomType::where('listing_id', $listing->id)->where('code', $row->code)->first();
+            return BookableUnit::where('listing_id', $listing->id)->where('code', $row->code)->first();
         }
 
         if ($row->listingName === '') {
@@ -710,7 +710,7 @@ class ListingImporter
         if ($ids !== []) {
             $row->listingId = $ids[0];
 
-            return RoomType::where('listing_id', $ids[0])->where('code', $row->code)->first();
+            return BookableUnit::where('listing_id', $ids[0])->where('code', $row->code)->first();
         }
 
         // Not in the database yet — but it may be a listing this very import creates,

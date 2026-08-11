@@ -750,7 +750,7 @@ class ListingResource extends Resource
     public static function getRelations(): array
     {
         return [
-            RelationManagers\RoomTypesRelationManager::class,
+            RelationManagers\BookableUnitsRelationManager::class,
         ];
     }
 

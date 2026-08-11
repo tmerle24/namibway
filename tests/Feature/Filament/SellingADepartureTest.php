@@ -7,14 +7,14 @@ use App\Enums\PricingStrategy;
 use App\Enums\ReservationSource;
 use App\Exceptions\Inventory\DepartureInUseException;
 use App\Filament\Partner\Pages\OccupancyCalendar;
+use App\Models\BookableUnit;
+use App\Models\BookableUnitCalendarDay;
 use App\Models\BookingSlot;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
 use App\Models\Reservation;
-use App\Models\RoomType;
-use App\Models\RoomTypeCalendarDay;
 use App\Models\User;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\DTOs\BookingLine;
@@ -46,9 +46,9 @@ class SellingADepartureTest extends TestCase
 
     private Listing $listing;
 
-    private RoomType $tour;
+    private BookableUnit $tour;
 
-    private RoomType $chalet;
+    private BookableUnit $chalet;
 
     private BookingSlot $morning;
 
@@ -93,7 +93,7 @@ class SellingADepartureTest extends TestCase
     {
         $page = $this->page()->call('startDeparture', $this->tour->id, '2026-09-12', $this->morning->id);
 
-        $page->assertSet('prefillRoomTypeId', $this->tour->id)
+        $page->assertSet('prefillBookableUnitId', $this->tour->id)
             ->assertSet('prefillSlotId', $this->morning->id)
             ->assertSet('prefillDate', '2026-09-12');
     }
@@ -105,7 +105,7 @@ class SellingADepartureTest extends TestCase
     public function test_a_departure_belonging_to_another_unit_prefills_nothing(): void
     {
         $elsewhere = Listing::factory()->create();
-        $theirTour = RoomType::factory()->create(['listing_id' => $elsewhere->id, 'total_units' => 4]);
+        $theirTour = BookableUnit::factory()->create(['listing_id' => $elsewhere->id, 'total_units' => 4]);
         $theirSlot = $this->slot($theirTour, '09:00', 'Theirs');
 
         $this->page()
@@ -128,7 +128,7 @@ class SellingADepartureTest extends TestCase
             'adults' => 2,
             'children' => 0,
             'rooms' => [[
-                'room_type_id' => $this->tour->id,
+                'bookable_unit_id' => $this->tour->id,
                 'slot_id' => $this->morning->id,
                 'quantity' => 3,
             ]],
@@ -166,8 +166,8 @@ class SellingADepartureTest extends TestCase
             'adults' => 2,
             'children' => 0,
             'rooms' => [
-                ['room_type_id' => $this->tour->id, 'slot_id' => $this->morning->id, 'quantity' => 2],
-                ['room_type_id' => $this->tour->id, 'slot_id' => $this->afternoon->id, 'quantity' => 2],
+                ['bookable_unit_id' => $this->tour->id, 'slot_id' => $this->morning->id, 'quantity' => 2],
+                ['bookable_unit_id' => $this->tour->id, 'slot_id' => $this->afternoon->id, 'quantity' => 2],
             ],
         ]);
 
@@ -189,7 +189,7 @@ class SellingADepartureTest extends TestCase
             'adults' => 2,
             'children' => 0,
             'rooms' => [[
-                'room_type_id' => $this->tour->id,
+                'bookable_unit_id' => $this->tour->id,
                 'quantity' => 1,
             ]],
         ]);
@@ -208,7 +208,7 @@ class SellingADepartureTest extends TestCase
             'adults' => 2,
             'children' => 0,
             'rooms' => [[
-                'room_type_id' => $this->chalet->id,
+                'bookable_unit_id' => $this->chalet->id,
                 'quantity' => 1,
             ]],
         ]);
@@ -231,7 +231,7 @@ class SellingADepartureTest extends TestCase
             'adults' => 1,
             'children' => 0,
             'rooms' => [[
-                'room_type_id' => $this->tour->id,
+                'bookable_unit_id' => $this->tour->id,
                 'slot_id' => $this->morning->id,
                 'quantity' => 1,
             ]],
@@ -251,7 +251,7 @@ class SellingADepartureTest extends TestCase
 
         InventoryWriteGuard::allow(fn () => RatePlanDay::create([
             'rate_plan_id' => $plan?->id,
-            'room_type_id' => $this->tour->id,
+            'bookable_unit_id' => $this->tour->id,
             'slot_id' => $this->afternoon->id,
             'date' => '2026-09-12',
             'rate' => 1400,
@@ -283,7 +283,7 @@ class SellingADepartureTest extends TestCase
             'adults' => 1,
             'children' => 0,
             'rooms' => [[
-                'room_type_id' => $this->tour->id,
+                'bookable_unit_id' => $this->tour->id,
                 'slot_id' => $this->morning->id,
                 'quantity' => 1,
             ]],
@@ -311,7 +311,7 @@ class SellingADepartureTest extends TestCase
         $this->assertTrue($this->morning->exists());
         $this->assertSame(
             1,
-            RoomTypeCalendarDay::query()->where('slot_id', $this->morning->id)->where('units_sold', '>', 0)->count(),
+            BookableUnitCalendarDay::query()->where('slot_id', $this->morning->id)->where('units_sold', '>', 0)->count(),
         );
 
         // An empty one is ordinary housekeeping and goes.
@@ -361,9 +361,9 @@ class SellingADepartureTest extends TestCase
         ));
     }
 
-    private function unit(string $name, string $code, int $units, float $rate): RoomType
+    private function unit(string $name, string $code, int $units, float $rate): BookableUnit
     {
-        return RoomType::factory()->create([
+        return BookableUnit::factory()->create([
             'listing_id' => $this->listing->id,
             'name' => $name,
             'code' => $code,
@@ -373,10 +373,10 @@ class SellingADepartureTest extends TestCase
         ]);
     }
 
-    private function slot(RoomType $unit, string $time, string $label): BookingSlot
+    private function slot(BookableUnit $unit, string $time, string $label): BookingSlot
     {
         return BookingSlot::create([
-            'room_type_id' => $unit->id,
+            'bookable_unit_id' => $unit->id,
             'label' => $label,
             'starts_at' => $time,
             'duration_minutes' => 180,

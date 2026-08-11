@@ -66,12 +66,14 @@ class ProcessInquiry implements ShouldQueue
             return;
         }
 
-        $roomTypes = $availResponse->roomTypes;
-        $roomType = $inquiry->room_type_code
-            ? collect($roomTypes)->firstWhere('code', $inquiry->room_type_code)
-            : ($roomTypes[0] ?? null);
+        // The connector's own vocabulary, not ours: every PMS in this market
+        // says "room type", and AvailabilityResponse is the mapping layer.
+        $bookableUnits = $availResponse->roomTypes;
+        $bookableUnit = $inquiry->bookable_unit_code
+            ? collect($bookableUnits)->firstWhere('code', $inquiry->bookable_unit_code)
+            : ($bookableUnits[0] ?? null);
 
-        if (! $roomType) {
+        if (! $bookableUnit) {
             $inquiry->update(['status' => InquiryStatus::Failed, 'notes' => 'No matching room type']);
 
             return;
@@ -79,7 +81,8 @@ class ProcessInquiry implements ShouldQueue
 
         $resResponse = $connector->createReservation(new ReservationRequest(
             propertyCode: $propertyCode,
-            roomTypeCode: $roomType->code,
+            // The connector DTO keeps the partner's word; the value is ours.
+            roomTypeCode: $bookableUnit->code,
             checkIn: $inquiry->check_in ?? now()->addDays(30),
             checkOut: $inquiry->check_out ?? now()->addDays(33),
             adults: $inquiry->adults,
@@ -103,7 +106,7 @@ class ProcessInquiry implements ShouldQueue
 
         $inquiry->update([
             'connector_reference' => $resResponse->connectorReference,
-            'room_type_code' => $roomType->code,
+            'bookable_unit_code' => $bookableUnit->code,
             'total_amount' => $resResponse->totalAmount,
             'currency' => $resResponse->currency ?? 'NAD',
         ]);

@@ -2,9 +2,9 @@
 
 namespace App\Services\Pricing;
 
+use App\Models\BookableUnit;
 use App\Models\GuestCategory;
 use App\Models\RatePlan;
-use App\Models\RoomType;
 use Illuminate\Support\Carbon;
 
 /**
@@ -35,7 +35,7 @@ final class NightPricingContext
      *                                 never has to know what a strategy needs.
      */
     public function __construct(
-        public readonly RoomType $roomType,
+        public readonly BookableUnit $bookableUnit,
         public readonly Carbon $date,
         public readonly ?RatePlan $ratePlan,
         public readonly float $baseRate,

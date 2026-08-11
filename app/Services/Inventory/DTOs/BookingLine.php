@@ -2,9 +2,9 @@
 
 namespace App\Services\Inventory\DTOs;
 
+use App\Models\BookableUnit;
 use App\Models\BookingSlot;
 use App\Models\RatePlan;
-use App\Models\RoomType;
 use App\Services\Pricing\Occupancy;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -39,7 +39,7 @@ class BookingLine
      *                                  consumes is then the day's, exactly as before.
      */
     public function __construct(
-        public readonly RoomType $roomType,
+        public readonly BookableUnit $bookableUnit,
         public readonly int $quantity,
         CarbonInterface $checkIn,
         CarbonInterface $checkOut,

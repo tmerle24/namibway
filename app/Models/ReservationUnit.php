@@ -16,14 +16,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * @property int $id
  * @property int $reservation_id
- * @property int $room_type_id
+ * @property int $bookable_unit_id
  * @property int $quantity
  * @property CarbonImmutable $check_in
  * @property CarbonImmutable $check_out
  * @property float $total_amount
  * @property string $currency
  * @property-read Reservation|null $reservation
- * @property-read RoomType|null $roomType
+ * @property-read BookableUnit|null $bookableUnit
  * @property int|null $rate_plan_id
  * @property BoardBasis|null $board_basis
  * @property string|null $rate_plan_name
@@ -36,7 +36,7 @@ class ReservationUnit extends Model
 
     protected $fillable = [
         'reservation_id',
-        'room_type_id',
+        'bookable_unit_id',
         'slot_id',
         'slot_label',
         'rate_plan_id',
@@ -78,11 +78,11 @@ class ReservationUnit extends Model
     }
 
     /**
-     * @return BelongsTo<RoomType, $this>
+     * @return BelongsTo<BookableUnit, $this>
      */
-    public function roomType(): BelongsTo
+    public function bookableUnit(): BelongsTo
     {
-        return $this->belongsTo(RoomType::class);
+        return $this->belongsTo(BookableUnit::class);
     }
 
     /**

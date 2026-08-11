@@ -282,7 +282,7 @@ class Listing extends Model
      */
     public function sellingCurrency(): string
     {
-        $room = $this->roomTypes()
+        $room = $this->bookableUnits()
             ->where('is_active', true)
             ->whereNotNull('currency')
             ->orderBy('id')
@@ -290,7 +290,7 @@ class Listing extends Model
 
         return $room === null
             ? CountrySettings::for($this)->currency()
-            : CountrySettings::currencyForRoomType($room);
+            : CountrySettings::currencyForBookableUnit($room);
     }
 
     /**
@@ -354,11 +354,11 @@ class Listing extends Model
     }
 
     /**
-     * @return HasMany<RoomType, $this>
+     * @return HasMany<BookableUnit, $this>
      */
-    public function roomTypes(): HasMany
+    public function bookableUnits(): HasMany
     {
-        return $this->hasMany(RoomType::class);
+        return $this->hasMany(BookableUnit::class);
     }
 
     /**

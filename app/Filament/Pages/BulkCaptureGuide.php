@@ -2,9 +2,9 @@
 
 namespace App\Filament\Pages;
 
+use App\Services\ImportExport\BookableUnitSheet;
 use App\Services\ImportExport\ListingSheet;
 use App\Services\ImportExport\PhotoArchive;
-use App\Services\ImportExport\RoomTypeSheet;
 use App\Services\ImportExport\SheetColumn;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
@@ -12,7 +12,7 @@ use Illuminate\Contracts\Support\Htmlable;
 /**
  * The handbook for the Excel capture workflow, for the people who actually do
  * the capturing. It reads the column definitions out of ListingSheet and
- * RoomTypeSheet rather than repeating them, so the guide cannot drift from the
+ * BookableUnitSheet rather than repeating them, so the guide cannot drift from the
  * workbook the export hands out.
  */
 class BulkCaptureGuide extends Page
@@ -47,7 +47,7 @@ class BulkCaptureGuide extends Page
      */
     public function roomColumns(): array
     {
-        return $this->describe(RoomTypeSheet::columns());
+        return $this->describe(BookableUnitSheet::columns());
     }
 
     /**

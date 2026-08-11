@@ -2,9 +2,9 @@
 
 namespace App\Services\Inventory\DTOs;
 
+use App\Models\BookableUnit;
 use App\Models\BookingSlot;
 use App\Models\GuestCategory;
-use App\Models\RoomType;
 use App\Services\Pricing\Occupancy;
 use Illuminate\Support\Str;
 
@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 class ManualBookingLinePreview
 {
     public function __construct(
-        public readonly RoomType $roomType,
+        public readonly BookableUnit $bookableUnit,
         public readonly int $quantity,
         public readonly float $total,
         public readonly string $currency,

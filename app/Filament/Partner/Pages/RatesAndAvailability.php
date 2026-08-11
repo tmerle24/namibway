@@ -4,9 +4,9 @@ namespace App\Filament\Partner\Pages;
 
 use App\Enums\PricingStrategy;
 use App\Filament\Partner\Support\SelectedProperty;
+use App\Models\BookableUnit;
 use App\Models\Listing;
 use App\Models\RatePlan;
-use App\Models\RoomType;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\InventoryWriter;
 use App\Support\CountrySettings;
@@ -78,7 +78,7 @@ class RatesAndAvailability extends Page implements HasForms
 
         $this->getForm('form')?->fill([
             'rate_plan_id' => $this->defaultRatePlanId(),
-            'room_type_ids' => array_keys($this->roomTypes()),
+            'bookable_unit_ids' => array_keys($this->bookableUnits()),
             'from' => $today->toDateString(),
             'to' => $today->copy()->addDays(30)->toDateString(),
             'weekdays' => [],
@@ -112,9 +112,9 @@ class RatesAndAvailability extends Page implements HasForms
                             ->visible(fn (): bool => count($this->ratePlanOptions()) > 1)
                             ->helperText('Rates and restrictions are per product. Units on sale are not — a room is sold once.'),
 
-                        CheckboxList::make('room_type_ids')
+                        CheckboxList::make('bookable_unit_ids')
                             ->label('Room types')
-                            ->options(fn (): array => $this->roomTypes())
+                            ->options(fn (): array => $this->bookableUnits())
                             ->columns(2)
                             ->bulkToggleable()
                             ->required(),
@@ -282,8 +282,8 @@ class RatesAndAvailability extends Page implements HasForms
 
         $weekdays = $this->intList($data['weekdays'] ?? null);
 
-        $rooms = $property->roomTypes()
-            ->whereIn('id', $this->intList($data['room_type_ids'] ?? null))
+        $rooms = $property->bookableUnits()
+            ->whereIn('id', $this->intList($data['bookable_unit_ids'] ?? null))
             ->get();
 
         if ($rooms->isEmpty()) {
@@ -480,7 +480,7 @@ class RatesAndAvailability extends Page implements HasForms
         $largest = 0;
 
         if ($property !== null) {
-            foreach ($property->roomTypes()->where('is_active', true)->get() as $room) {
+            foreach ($property->bookableUnits()->where('is_active', true)->get() as $room) {
                 $largest = max($largest, $room->max_adults + $room->max_children);
             }
         }
@@ -568,7 +568,7 @@ class RatesAndAvailability extends Page implements HasForms
      * or blocked on it. The database refuses this as well, but a constraint
      * violation is not an answer — this one names the room type and the night.
      *
-     * @param  Collection<int, RoomType>  $rooms
+     * @param  Collection<int, BookableUnit>  $rooms
      */
     private function capacityConflict(Collection $rooms, int $units, Carbon $from, Carbon $to): ?string
     {
@@ -598,7 +598,7 @@ class RatesAndAvailability extends Page implements HasForms
      *
      * @return array<int, string>
      */
-    private function roomTypes(): array
+    private function bookableUnits(): array
     {
         $property = $this->property();
 
@@ -606,11 +606,11 @@ class RatesAndAvailability extends Page implements HasForms
             return [];
         }
 
-        return $property->roomTypes()
+        return $property->bookableUnits()
             ->where('is_active', true)
             ->get()
-            ->sortBy(fn (RoomType $room) => $room->name, SORT_NATURAL | SORT_FLAG_CASE)
-            ->mapWithKeys(fn (RoomType $room) => [$room->id => $room->name.' ('.$room->code.')'])
+            ->sortBy(fn (BookableUnit $room) => $room->name, SORT_NATURAL | SORT_FLAG_CASE)
+            ->mapWithKeys(fn (BookableUnit $room) => [$room->id => $room->name.' ('.$room->code.')'])
             ->all();
     }
 
@@ -644,7 +644,7 @@ class RatesAndAvailability extends Page implements HasForms
     {
         return [
             'property' => $this->property(),
-            'hasRoomTypes' => $this->roomTypes() !== [],
+            'hasBookableUnits' => $this->bookableUnits() !== [],
         ];
     }
 }

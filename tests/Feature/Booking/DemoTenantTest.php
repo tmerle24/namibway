@@ -4,11 +4,11 @@ namespace Tests\Feature\Booking;
 
 use App\Enums\ListingType;
 use App\Enums\ReservationSource;
+use App\Models\BookableUnit;
 use App\Models\Customer;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Models\User;
 use App\Services\Demo\DemoTenantBuilder;
 use App\Services\Inventory\DTOs\BookingLine;
@@ -50,7 +50,7 @@ class DemoTenantTest extends TestCase
         ]);
 
         foreach ([['STD', 6, 1850.0], ['LUX', 3, 4200.0]] as [$code, $units, $rate]) {
-            RoomType::factory()->create([
+            BookableUnit::factory()->create([
                 'listing_id' => $listing->id,
                 'code' => $code,
                 'name' => $code === 'STD' ? 'Standard Chalet' : 'Luxury Suite',
@@ -74,8 +74,8 @@ class DemoTenantTest extends TestCase
         $source = $this->source();
 
         $before = $source->getAttributes();
-        $roomsBefore = $source->roomTypes()->orderBy('code')->get()
-            ->map(fn (RoomType $room) => $room->getAttributes())->all();
+        $roomsBefore = $source->bookableUnits()->orderBy('code')->get()
+            ->map(fn (BookableUnit $room) => $room->getAttributes())->all();
 
         $this->builder()->build($source, weeks: 4);
 
@@ -84,13 +84,13 @@ class DemoTenantTest extends TestCase
         $this->assertSame($before, $source->getAttributes(), 'The source listing was written to.');
         $this->assertSame(
             $roomsBefore,
-            $source->roomTypes()->orderBy('code')->get()->map(fn (RoomType $room) => $room->getAttributes())->all(),
+            $source->bookableUnits()->orderBy('code')->get()->map(fn (BookableUnit $room) => $room->getAttributes())->all(),
             'The source listing’s room types were written to.',
         );
 
         // And nothing was hung off the real listing either.
         $this->assertSame(0, Reservation::where('listing_id', $source->id)->count());
-        $this->assertSame(2, $source->roomTypes()->count());
+        $this->assertSame(2, $source->bookableUnits()->count());
     }
 
     public function test_the_demo_inherits_no_way_of_reaching_the_real_business(): void
@@ -136,13 +136,13 @@ class DemoTenantTest extends TestCase
 
         $tenant = $this->builder()->build($source, weeks: 6);
 
-        $this->assertSame(2, $tenant->roomTypes);
+        $this->assertSame(2, $tenant->bookableUnits);
         $this->assertGreaterThan(10, $tenant->stays);
         $this->assertGreaterThan(0, $tenant->blocks);
 
         // Copied, not referenced: the demo's rooms belong to the demo's own
         // listing, so editing them cannot reach real content.
-        foreach ($tenant->listing->roomTypes as $room) {
+        foreach ($tenant->listing->bookableUnits as $room) {
             $this->assertSame($tenant->listing->id, $room->listing_id);
             $this->assertNotSame($source->id, $room->listing_id);
         }
@@ -158,7 +158,7 @@ class DemoTenantTest extends TestCase
         app(InventoryWriter::class)->book(new BookingRequest(
             listing: $first->listing,
             lines: [new BookingLine(
-                $first->listing->roomTypes()->first(),
+                $first->listing->bookableUnits()->first(),
                 1,
                 now()->addDays(60),
                 now()->addDays(62),
@@ -200,7 +200,7 @@ class DemoTenantTest extends TestCase
         app(InventoryWriter::class)->book(new BookingRequest(
             listing: $first->listing,
             lines: [new BookingLine(
-                $first->listing->roomTypes()->first(),
+                $first->listing->bookableUnits()->first(),
                 1,
                 now()->addDays(60),
                 now()->addDays(62),
@@ -241,7 +241,7 @@ class DemoTenantTest extends TestCase
             $second->stays,
             Reservation::where('listing_id', $second->listing->id)->count(),
         );
-        $this->assertSame(2, $second->listing->roomTypes()->count());
+        $this->assertSame(2, $second->listing->bookableUnits()->count());
 
         // A password from the previous meeting stops working.
         $this->assertNotSame($first->password, $second->password);
@@ -260,7 +260,7 @@ class DemoTenantTest extends TestCase
 
         // And the real business is still there.
         $this->assertSame(1, Listing::where('id', $source->id)->count());
-        $this->assertSame(2, $source->roomTypes()->count());
+        $this->assertSame(2, $source->bookableUnits()->count());
     }
 
     public function test_the_sign_in_link_opens_the_demo_and_refuses_a_real_account(): void
@@ -310,7 +310,7 @@ class DemoTenantTest extends TestCase
      * at all. Refusing was the original mistake, and this is the test that
      * would have caught it.
      */
-    public function test_a_lodge_with_no_room_types_still_gets_a_working_demo(): void
+    public function test_a_lodge_with_no_bookable_units_still_gets_a_working_demo(): void
     {
         $partner = Partner::create(['name' => 'Bare Lodge']);
         $listing = Listing::factory()->create([
@@ -321,33 +321,33 @@ class DemoTenantTest extends TestCase
             'price_currency' => 'NAD',
         ]);
 
-        $this->assertSame(0, $listing->roomTypes()->count());
+        $this->assertSame(0, $listing->bookableUnits()->count());
 
         $tenant = $this->builder()->build($listing, weeks: 4);
 
-        $this->assertTrue($tenant->roomTypesAreInvented);
-        $this->assertSame(3, $tenant->roomTypes);
+        $this->assertTrue($tenant->bookableUnitsAreInvented);
+        $this->assertSame(3, $tenant->bookableUnits);
         $this->assertGreaterThan(0, $tenant->stays);
 
         // Anchored to the listing's own "from" price, so the numbers on screen
         // are in the right neighbourhood for that property.
-        $cheapest = $tenant->listing->roomTypes()->orderBy('rate_per_night')->first();
+        $cheapest = $tenant->listing->bookableUnits()->orderBy('rate_per_night')->first();
         $this->assertSame(2000.0, (float) $cheapest->rate_per_night);
 
         // And the real listing still has none — the demo made them on its copy.
-        $this->assertSame(0, $listing->roomTypes()->count());
+        $this->assertSame(0, $listing->bookableUnits()->count());
     }
 
-    public function test_a_lodge_that_has_room_types_gets_its_own(): void
+    public function test_a_lodge_that_has_bookable_units_gets_its_own(): void
     {
         $source = $this->source();
 
         $tenant = $this->builder()->build($source, weeks: 4);
 
-        $this->assertFalse($tenant->roomTypesAreInvented);
+        $this->assertFalse($tenant->bookableUnitsAreInvented);
         $this->assertEqualsCanonicalizing(
             ['STD', 'LUX'],
-            $tenant->listing->roomTypes()->pluck('code')->all(),
+            $tenant->listing->bookableUnits()->pluck('code')->all(),
         );
     }
 

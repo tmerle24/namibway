@@ -6,10 +6,10 @@ use App\Enums\ListingType;
 use App\Enums\ReservationSource;
 use App\Filament\Partner\Widgets\ArrivalsTodayWidget;
 use App\Filament\Partner\Widgets\CalendarWidget;
+use App\Models\BookableUnit;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Models\User;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
@@ -50,7 +50,7 @@ class PartnerDashboardTest extends TestCase
     public function test_the_dashboard_shows_todays_arrivals_and_the_fortnight_ahead(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Etosha Camp');
-        $room = $this->roomType($listing, ['name' => 'Standard Double']);
+        $room = $this->bookableUnit($listing, ['name' => 'Standard Double']);
 
         $this->book($listing, $room, '2026-09-10', '2026-09-13', 'Anna Shipanga');
 
@@ -66,7 +66,7 @@ class PartnerDashboardTest extends TestCase
     public function test_the_arrivals_widget_steps_a_day_at_a_time(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Camp');
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
 
         $this->book($listing, $room, '2026-09-11', '2026-09-13', 'Tomorrow Guest');
 
@@ -83,10 +83,10 @@ class PartnerDashboardTest extends TestCase
     public function test_neither_widget_shows_another_partners_business(): void
     {
         [$mine, $myListing] = $this->partnerWithProperty('Mine');
-        $this->roomType($myListing, ['name' => 'My Room']);
+        $this->bookableUnit($myListing, ['name' => 'My Room']);
 
         [, $theirListing] = $this->partnerWithProperty('Theirs');
-        $theirRoom = $this->roomType($theirListing, ['name' => 'Their Room']);
+        $theirRoom = $this->bookableUnit($theirListing, ['name' => 'Their Room']);
         $this->book($theirListing, $theirRoom, '2026-09-10', '2026-09-12', 'Their Guest');
 
         $this->actingAs($mine)
@@ -105,7 +105,7 @@ class PartnerDashboardTest extends TestCase
     public function test_the_calendar_widget_offers_nothing_that_writes(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Camp');
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
         $this->book($listing, $room, '2026-09-11', '2026-09-13', 'Somebody');
 
         $this->asPartner($user);
@@ -120,13 +120,13 @@ class PartnerDashboardTest extends TestCase
     public function test_rendering_the_dashboard_writes_nothing(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Camp');
-        $room = $this->roomType($listing);
+        $room = $this->bookableUnit($listing);
         $this->book($listing, $room, '2026-09-10', '2026-09-12', 'Anna Shipanga');
 
         $writes = [];
         DB::listen(function ($query) use (&$writes) {
             if (preg_match('/^\s*(insert|update|delete)/i', $query->sql) === 1
-                && (str_contains($query->sql, 'room_type_calendar_days')
+                && (str_contains($query->sql, 'bookable_unit_calendar_days')
                     || str_contains($query->sql, 'reservation')
                     || str_contains($query->sql, 'inventory_blocks'))) {
                 $writes[] = $query->sql;
@@ -172,9 +172,9 @@ class PartnerDashboardTest extends TestCase
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function roomType(Listing $listing, array $attributes = []): RoomType
+    private function bookableUnit(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create(array_merge([
+        return BookableUnit::factory()->create(array_merge([
             'listing_id' => $listing->id,
             'total_units' => 3,
             'rate_per_night' => 1500.00,
@@ -183,11 +183,11 @@ class PartnerDashboardTest extends TestCase
         ], $attributes));
     }
 
-    private function book(Listing $listing, RoomType $roomType, string $checkIn, string $checkOut, string $guest): Reservation
+    private function book(Listing $listing, BookableUnit $bookableUnit, string $checkIn, string $checkOut, string $guest): Reservation
     {
         return app(InventoryWriter::class)->book(new BookingRequest(
             listing: $listing,
-            lines: [new BookingLine($roomType, 1, Carbon::parse($checkIn), Carbon::parse($checkOut))],
+            lines: [new BookingLine($bookableUnit, 1, Carbon::parse($checkIn), Carbon::parse($checkOut))],
             guestName: $guest,
             source: ReservationSource::PartnerEntered,
         ));

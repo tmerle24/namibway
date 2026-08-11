@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property AmenityScope $scope
  * @property int $sort
  * @property bool $is_active
- * @property-read Collection<int, RoomType> $roomTypes
+ * @property-read Collection<int, BookableUnit> $bookableUnits
  */
 class Amenity extends Model
 {
@@ -48,11 +48,11 @@ class Amenity extends Model
     }
 
     /**
-     * @return BelongsToMany<RoomType, $this>
+     * @return BelongsToMany<BookableUnit, $this>
      */
-    public function roomTypes(): BelongsToMany
+    public function bookableUnits(): BelongsToMany
     {
-        return $this->belongsToMany(RoomType::class)->withTimestamps();
+        return $this->belongsToMany(BookableUnit::class)->withTimestamps();
     }
 
     /**

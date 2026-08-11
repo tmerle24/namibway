@@ -30,7 +30,7 @@ nothing gets lost between sessions.
 - `app/Services/Kaia/ItineraryService.php` — builds/resolves the plan
   server-side: Claude tool-use schema, listing resolution, alternatives,
   routing/driving-distance guidance, availability pre-checks.
-- `app/Models/Listing.php`, `RoomType.php`, `SavedPlan.php` — the backing
+- `app/Models/Listing.php`, `BookableUnit.php` (was `RoomType.php`), `SavedPlan.php` — the backing
   data. `RoomType` holds per-listing room/unit types; availability is derived
   by `app/Services/Booking/RoomAvailability.php`, which both the Native
   connector and the plan's room picker go through. Edited via the

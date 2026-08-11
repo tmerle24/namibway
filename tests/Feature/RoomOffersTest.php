@@ -7,12 +7,12 @@ use App\Enums\ChargeKind;
 use App\Enums\DiscountType;
 use App\Enums\PricingStrategy;
 use App\Enums\ReservationSource;
+use App\Models\BookableUnit;
 use App\Models\Charge;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\Promotion;
 use App\Models\RatePlan;
-use App\Models\RoomType;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\InventoryWriter;
@@ -36,7 +36,7 @@ class RoomOffersTest extends TestCase
 
     private Listing $listing;
 
-    private RoomType $room;
+    private BookableUnit $room;
 
     private RatePlan $plan;
 
@@ -52,7 +52,7 @@ class RoomOffersTest extends TestCase
             'is_published' => true,
             'accepts_inquiries' => true,
         ]);
-        $this->room = RoomType::create([
+        $this->room = BookableUnit::create([
             'listing_id' => $this->listing->id,
             'code' => 'standard',
             'name' => 'Standard Double',
@@ -189,7 +189,7 @@ class RoomOffersTest extends TestCase
      */
     public function test_a_room_nobody_priced_is_left_out_rather_than_offered_at_nothing(): void
     {
-        RoomType::create([
+        BookableUnit::create([
             'listing_id' => $this->listing->id,
             'code' => 'unpriced',
             'name' => 'Riverside Chalet',

@@ -8,7 +8,7 @@
                 here, and in the property switcher at the top of the page.
             </p>
         </x-filament::section>
-    @elseif (! $hasRoomTypes)
+    @elseif (! $hasBookableUnits)
         <x-filament::section>
             <x-slot name="heading">No room types yet</x-slot>
 

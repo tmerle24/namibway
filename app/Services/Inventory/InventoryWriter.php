@@ -7,6 +7,8 @@ use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Exceptions\Pricing\PromotionUnavailableException;
 use App\Jobs\NotifyAboutStay;
+use App\Models\BookableUnit;
+use App\Models\BookableUnitCalendarDay;
 use App\Models\BookingSlot;
 use App\Models\Customer;
 use App\Models\InventoryBlock;
@@ -20,8 +22,6 @@ use App\Models\ReservationCharge;
 use App\Models\ReservationGuest;
 use App\Models\ReservationNight;
 use App\Models\ReservationUnit;
-use App\Models\RoomType;
-use App\Models\RoomTypeCalendarDay;
 use App\Services\Booking\CustomerDirectory;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
@@ -55,9 +55,9 @@ use InvalidArgumentException;
  * Availability is a counter on the calendar row, and it moves by conditional
  * UPDATE:
  *
- *     UPDATE room_type_calendar_days
+ *     UPDATE bookable_unit_calendar_days
  *        SET units_sold = units_sold + :n
- *      WHERE room_type_id = :rt AND date = :d
+ *      WHERE bookable_unit_id = :rt AND date = :d
  *        AND units_sold + units_blocked + :n <= COALESCE(units_total, :default)
  *
  * A single UPDATE is atomic, and Postgres re-evaluates the WHERE clause
@@ -124,7 +124,7 @@ class InventoryWriter
                         continue;
                     }
 
-                    $this->calendar->assertStayRules($line->roomType, $line->checkIn, $line->checkOut, $plans[$index]);
+                    $this->calendar->assertStayRules($line->bookableUnit, $line->checkIn, $line->checkOut, $plans[$index]);
                 }
             }
 
@@ -133,7 +133,7 @@ class InventoryWriter
 
             foreach ($lines as $index => $line) {
                 $quote = $this->calendar->quote(
-                    $line->roomType,
+                    $line->bookableUnit,
                     $line->checkIn,
                     $line->checkOut,
                     $line->quantity,
@@ -159,7 +159,7 @@ class InventoryWriter
             // written, even though the transaction would roll them back anyway.
             foreach ($lines as $line) {
                 foreach ($this->calendar->nights($line->checkIn, $line->checkOut) as $night) {
-                    $this->consume($line->roomType, $night, $line->quantity, self::COUNTER_SOLD, $line->slot);
+                    $this->consume($line->bookableUnit, $night, $line->quantity, self::COUNTER_SOLD, $line->slot);
                 }
             }
 
@@ -267,7 +267,7 @@ class InventoryWriter
                 // actually happened.
                 $unit = new ReservationUnit([
                     'reservation_id' => $reservation->id,
-                    'room_type_id' => $line->roomType->id,
+                    'bookable_unit_id' => $line->bookableUnit->id,
                     'slot_id' => $line->slot?->id,
                     // Frozen beside the link, like the rate plan's name: an
                     // operator renaming a departure in March must not change
@@ -390,7 +390,7 @@ class InventoryWriter
             total: $quoted,
             nightlyAmounts: $nightly,
             ratePlanIds: array_values(array_filter(array_map(fn (?RatePlan $plan) => $plan?->id, $plans))),
-            roomTypeIds: array_values(array_map(fn (BookingLine $line) => $line->roomType->id, $lines)),
+            bookableUnitIds: array_values(array_map(fn (BookingLine $line) => $line->bookableUnit->id, $lines)),
         );
 
         return $this->promotions->find($request->listing, $summary, $request->promotionCode);
@@ -439,12 +439,12 @@ class InventoryWriter
         }
 
         $cancelled = InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($reservation, $reason, $late) {
-            $reservation->loadMissing('units.roomType', 'units.slot', 'listing');
+            $reservation->loadMissing('units.bookableUnit', 'units.slot', 'listing');
 
             foreach ($this->orderedUnits($reservation) as $unit) {
-                $roomType = $unit->roomType;
+                $bookableUnit = $unit->bookableUnit;
 
-                if ($roomType === null) {
+                if ($bookableUnit === null) {
                     continue;
                 }
 
@@ -452,7 +452,7 @@ class InventoryWriter
                     // Back to the departure that holds them. Releasing the day
                     // row instead would leave the 09:00 tour full forever and
                     // credit seats to a pool nobody bought from.
-                    $this->release($roomType, $night, $unit->quantity, self::COUNTER_SOLD, $unit->slot);
+                    $this->release($bookableUnit, $night, $unit->quantity, self::COUNTER_SOLD, $unit->slot);
                 }
             }
 
@@ -520,11 +520,11 @@ class InventoryWriter
 
         return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($request) {
             foreach ($this->blockNights($request->firstNight, $request->lastNight) as $night) {
-                $this->consume($request->roomType, $night, $request->units, self::COUNTER_BLOCKED);
+                $this->consume($request->bookableUnit, $night, $request->units, self::COUNTER_BLOCKED);
             }
 
             $block = new InventoryBlock([
-                'room_type_id' => $request->roomType->id,
+                'bookable_unit_id' => $request->bookableUnit->id,
                 'reason' => $request->reason,
                 'units' => $request->units,
                 'first_night' => $request->firstNight,
@@ -566,8 +566,8 @@ class InventoryWriter
         }
 
         return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($block, $request) {
-            $block->loadMissing('roomType');
-            $previous = $block->roomType;
+            $block->loadMissing('bookableUnit');
+            $previous = $block->bookableUnit;
 
             if ($previous !== null) {
                 foreach ($this->blockNights($block->first_night, $block->last_night) as $night) {
@@ -576,11 +576,11 @@ class InventoryWriter
             }
 
             foreach ($this->blockNights($request->firstNight, $request->lastNight) as $night) {
-                $this->consume($request->roomType, $night, $request->units, self::COUNTER_BLOCKED);
+                $this->consume($request->bookableUnit, $night, $request->units, self::COUNTER_BLOCKED);
             }
 
             $block->fill([
-                'room_type_id' => $request->roomType->id,
+                'bookable_unit_id' => $request->bookableUnit->id,
                 'reason' => $request->reason,
                 'units' => $request->units,
                 'first_night' => $request->firstNight,
@@ -601,12 +601,12 @@ class InventoryWriter
         }
 
         return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($block) {
-            $block->loadMissing('roomType');
-            $roomType = $block->roomType;
+            $block->loadMissing('bookableUnit');
+            $bookableUnit = $block->bookableUnit;
 
-            if ($roomType !== null) {
+            if ($bookableUnit !== null) {
                 foreach ($this->blockNights($block->first_night, $block->last_night) as $night) {
-                    $this->release($roomType, $night, $block->units, self::COUNTER_BLOCKED);
+                    $this->release($bookableUnit, $night, $block->units, self::COUNTER_BLOCKED);
                 }
             }
 
@@ -636,7 +636,7 @@ class InventoryWriter
      * @return int number of nights written
      */
     public function setCalendar(
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         CarbonInterface $from,
         CarbonInterface $to,
         array $attributes,
@@ -647,21 +647,21 @@ class InventoryWriter
         $written = 0;
 
         if ($inventory !== []) {
-            $written = $this->setInventory($roomType, $from, $to, $inventory, $weekdays);
+            $written = $this->setInventory($bookableUnit, $from, $to, $inventory, $weekdays);
         }
 
         if ($rates !== []) {
-            $listing = $roomType->listing;
+            $listing = $bookableUnit->listing;
 
             if ($listing === null) {
                 throw new InvalidArgumentException(
-                    "Room type [{$roomType->id}] has no listing, so there is no rate plan to write to."
+                    "Bookable unit [{$bookableUnit->id}] has no listing, so there is no rate plan to write to."
                 );
             }
 
             $written = max($written, $this->setRates(
                 RatePlan::ensureDefaultFor($listing),
-                $roomType,
+                $bookableUnit,
                 $from,
                 $to,
                 $rates,
@@ -699,7 +699,7 @@ class InventoryWriter
      */
     public function setRates(
         RatePlan $ratePlan,
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         CarbonInterface $from,
         CarbonInterface $to,
         array $attributes,
@@ -707,9 +707,9 @@ class InventoryWriter
     ): int {
         $this->assertOnly($attributes, ['rate', 'min_stay', 'closed_to_arrival', 'closed_to_departure'], 'setRates()');
 
-        if ($roomType->listing_id !== $ratePlan->listing_id) {
+        if ($bookableUnit->listing_id !== $ratePlan->listing_id) {
             throw new InvalidArgumentException(
-                "Rate plan [{$ratePlan->id}] and room type [{$roomType->id}] belong to different properties."
+                "Rate plan [{$ratePlan->id}] and room type [{$bookableUnit->id}] belong to different properties."
             );
         }
 
@@ -719,13 +719,13 @@ class InventoryWriter
             return 0;
         }
 
-        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($ratePlan, $roomType, $dates, $attributes) {
+        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($ratePlan, $bookableUnit, $dates, $attributes) {
             foreach (array_chunk($dates, 500) as $chunk) {
-                $this->ensureRateDays($ratePlan, $roomType, $chunk);
+                $this->ensureRateDays($ratePlan, $bookableUnit, $chunk);
 
                 RatePlanDay::query()
                     ->where('rate_plan_id', $ratePlan->id)
-                    ->where('room_type_id', $roomType->id)
+                    ->where('bookable_unit_id', $bookableUnit->id)
                     // The day's rates, never a departure's. A lodge editing a
                     // season must not reach into a tour's 14:00 price, and a
                     // property that has no departures has nothing to exclude.
@@ -752,7 +752,7 @@ class InventoryWriter
      * @return int number of nights written
      */
     public function setInventory(
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         CarbonInterface $from,
         CarbonInterface $to,
         array $attributes,
@@ -766,12 +766,12 @@ class InventoryWriter
             return 0;
         }
 
-        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($roomType, $dates, $attributes) {
+        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($bookableUnit, $dates, $attributes) {
             foreach (array_chunk($dates, 500) as $chunk) {
-                $this->ensureDays($roomType, $chunk);
+                $this->ensureDays($bookableUnit, $chunk);
 
-                RoomTypeCalendarDay::query()
-                    ->where('room_type_id', $roomType->id)
+                BookableUnitCalendarDay::query()
+                    ->where('bookable_unit_id', $bookableUnit->id)
                     ->whereNull('slot_id')
                     ->whereIn('date', $chunk)
                     ->update($attributes);
@@ -800,15 +800,15 @@ class InventoryWriter
      */
     public function setGuestAmounts(
         RatePlan $ratePlan,
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         CarbonInterface $from,
         CarbonInterface $to,
         array $amounts,
         ?array $weekdays = null,
     ): int {
-        if ($roomType->listing_id !== $ratePlan->listing_id) {
+        if ($bookableUnit->listing_id !== $ratePlan->listing_id) {
             throw new InvalidArgumentException(
-                "Rate plan [{$ratePlan->id}] and room type [{$roomType->id}] belong to different properties."
+                "Rate plan [{$ratePlan->id}] and room type [{$bookableUnit->id}] belong to different properties."
             );
         }
 
@@ -824,13 +824,13 @@ class InventoryWriter
             return 0;
         }
 
-        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($ratePlan, $roomType, $dates, $amounts) {
+        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($ratePlan, $bookableUnit, $dates, $amounts) {
             foreach (array_chunk($dates, 500) as $chunk) {
                 foreach ($amounts as $guests => $amount) {
                     if ($amount === null) {
                         RatePlanGuestAmount::query()
                             ->where('rate_plan_id', $ratePlan->id)
-                            ->where('room_type_id', $roomType->id)
+                            ->where('bookable_unit_id', $bookableUnit->id)
                             ->where('guests', $guests)
                             ->whereIn('date', $chunk)
                             ->delete();
@@ -844,7 +844,7 @@ class InventoryWriter
                     foreach ($chunk as $date) {
                         $rows[] = [
                             'rate_plan_id' => $ratePlan->id,
-                            'room_type_id' => $roomType->id,
+                            'bookable_unit_id' => $bookableUnit->id,
                             'date' => $date,
                             'guests' => $guests,
                             'amount' => round($amount, 2),
@@ -855,7 +855,7 @@ class InventoryWriter
 
                     RatePlanGuestAmount::query()->upsert(
                         $rows,
-                        ['rate_plan_id', 'room_type_id', 'date', 'guests'],
+                        ['rate_plan_id', 'bookable_unit_id', 'date', 'guests'],
                         ['amount', 'updated_at'],
                     );
                 }
@@ -921,7 +921,7 @@ class InventoryWriter
         }
 
         return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($listing) {
-            $roomTypeIds = $listing->roomTypes()->pluck('id')->all();
+            $bookableUnitIds = $listing->bookableUnits()->pluck('id')->all();
 
             $reservationIds = Reservation::query()->where('listing_id', $listing->id)->pluck('id')->all();
             $unitIds = $reservationIds === []
@@ -939,15 +939,15 @@ class InventoryWriter
             $units = $unitIds === [] ? 0 : ReservationUnit::query()->whereIn('id', $unitIds)->delete();
             $reservations = $reservationIds === [] ? 0 : Reservation::query()->whereIn('id', $reservationIds)->delete();
 
-            $blocks = $roomTypeIds === [] ? 0 : InventoryBlock::query()->whereIn('room_type_id', $roomTypeIds)->delete();
-            $days = $roomTypeIds === [] ? 0 : RoomTypeCalendarDay::query()->whereIn('room_type_id', $roomTypeIds)->delete();
+            $blocks = $bookableUnitIds === [] ? 0 : InventoryBlock::query()->whereIn('bookable_unit_id', $bookableUnitIds)->delete();
+            $days = $bookableUnitIds === [] ? 0 : BookableUnitCalendarDay::query()->whereIn('bookable_unit_id', $bookableUnitIds)->delete();
 
             // Rates too: a room type survives a purge, so leaving its priced
             // nights behind would show a rebuilt demo last month's rates.
-            $rateDays = $roomTypeIds === [] ? 0 : RatePlanDay::query()->whereIn('room_type_id', $roomTypeIds)->delete();
+            $rateDays = $bookableUnitIds === [] ? 0 : RatePlanDay::query()->whereIn('bookable_unit_id', $bookableUnitIds)->delete();
 
-            if ($roomTypeIds !== []) {
-                RatePlanGuestAmount::query()->whereIn('room_type_id', $roomTypeIds)->delete();
+            if ($bookableUnitIds !== []) {
+                RatePlanGuestAmount::query()->whereIn('bookable_unit_id', $bookableUnitIds)->delete();
             }
 
             return [
@@ -996,13 +996,13 @@ class InventoryWriter
      *
      * @throws InventoryUnavailableException
      */
-    private function consume(RoomType $roomType, Carbon $night, int $units, string $counter, ?BookingSlot $slot = null): void
+    private function consume(BookableUnit $bookableUnit, Carbon $night, int $units, string $counter, ?BookingSlot $slot = null): void
     {
         $counter = $this->counterColumn($counter);
-        $this->ensureDay($roomType, $night, $slot);
+        $this->ensureDay($bookableUnit, $night, $slot);
 
-        $affected = DB::table('room_type_calendar_days')
-            ->where('room_type_id', $roomType->id)
+        $affected = DB::table('bookable_unit_calendar_days')
+            ->where('bookable_unit_id', $bookableUnit->id)
             ->whereDate('date', $night->toDateString())
             // The departure, where there is one. A row keyed to a slot and the
             // day row beside it are separate counters on purpose: the 09:00
@@ -1010,12 +1010,12 @@ class InventoryWriter
             ->where(fn ($query) => $slot === null ? $query->whereNull('slot_id') : $query->where('slot_id', $slot->id))
             ->whereRaw(
                 'units_sold + units_blocked + ? <= COALESCE(units_total, ?)',
-                [$units, (int) $roomType->total_units]
+                [$units, (int) $bookableUnit->total_units]
             )
             ->increment($counter, $units, ['updated_at' => now()]);
 
         if ($affected === 0) {
-            throw new InventoryUnavailableException($roomType->id, $night, $units);
+            throw new InventoryUnavailableException($bookableUnit->id, $night, $units);
         }
     }
 
@@ -1025,12 +1025,12 @@ class InventoryWriter
      * cancel a guest's stay because a counter is already wrong would make a
      * bookkeeping problem into an operational one.
      */
-    private function release(RoomType $roomType, Carbon $night, int $units, string $counter, ?BookingSlot $slot = null): void
+    private function release(BookableUnit $bookableUnit, Carbon $night, int $units, string $counter, ?BookingSlot $slot = null): void
     {
         $counter = $this->counterColumn($counter);
 
-        $affected = DB::table('room_type_calendar_days')
-            ->where('room_type_id', $roomType->id)
+        $affected = DB::table('bookable_unit_calendar_days')
+            ->where('bookable_unit_id', $bookableUnit->id)
             ->whereDate('date', $night->toDateString())
             ->where(fn ($query) => $slot === null ? $query->whereNull('slot_id') : $query->where('slot_id', $slot->id))
             ->where($counter, '>=', $units)
@@ -1038,7 +1038,7 @@ class InventoryWriter
 
         if ($affected === 0) {
             Log::warning('InventoryWriter: nothing to release', [
-                'room_type_id' => $roomType->id,
+                'bookable_unit_id' => $bookableUnit->id,
                 'date' => $night->toDateString(),
                 'counter' => $counter,
                 'units' => $units,
@@ -1052,10 +1052,10 @@ class InventoryWriter
      * overrides still mean "follow the room type" — but gives the conditional
      * UPDATE a row to lock, which is what serialises two concurrent bookings.
      */
-    private function ensureDay(RoomType $roomType, Carbon $night, ?BookingSlot $slot = null): void
+    private function ensureDay(BookableUnit $bookableUnit, Carbon $night, ?BookingSlot $slot = null): void
     {
-        DB::table('room_type_calendar_days')->insertOrIgnore([
-            'room_type_id' => $roomType->id,
+        DB::table('bookable_unit_calendar_days')->insertOrIgnore([
+            'bookable_unit_id' => $bookableUnit->id,
             'slot_id' => $slot?->id,
             'date' => $night->toDateString(),
             'units_total' => null,
@@ -1068,20 +1068,20 @@ class InventoryWriter
 
     /**
      * ensureDay() for many nights at once, for the bulk calendar write.
-     * insertOrIgnore against the (room_type_id, date) unique index, so nights
+     * insertOrIgnore against the (bookable_unit_id, date) unique index, so nights
      * that already exist keep their counters — this may never reset what a
      * booking has consumed.
      *
      * @param  array<int, string>  $dates
      */
-    private function ensureDays(RoomType $roomType, array $dates): void
+    private function ensureDays(BookableUnit $bookableUnit, array $dates): void
     {
         $now = now();
         $rows = [];
 
         foreach ($dates as $date) {
             $rows[] = [
-                'room_type_id' => $roomType->id,
+                'bookable_unit_id' => $bookableUnit->id,
                 'date' => $date,
                 'units_total' => null,
                 'units_sold' => 0,
@@ -1091,7 +1091,7 @@ class InventoryWriter
             ];
         }
 
-        DB::table('room_type_calendar_days')->insertOrIgnore($rows);
+        DB::table('bookable_unit_calendar_days')->insertOrIgnore($rows);
     }
 
     /**
@@ -1101,7 +1101,7 @@ class InventoryWriter
      *
      * @param  array<int, string>  $dates
      */
-    private function ensureRateDays(RatePlan $ratePlan, RoomType $roomType, array $dates): void
+    private function ensureRateDays(RatePlan $ratePlan, BookableUnit $bookableUnit, array $dates): void
     {
         $now = now();
         $rows = [];
@@ -1109,7 +1109,7 @@ class InventoryWriter
         foreach ($dates as $date) {
             $rows[] = [
                 'rate_plan_id' => $ratePlan->id,
-                'room_type_id' => $roomType->id,
+                'bookable_unit_id' => $bookableUnit->id,
                 'date' => $date,
                 'rate' => null,
                 'min_stay' => null,
@@ -1166,16 +1166,16 @@ class InventoryWriter
                 throw new InvalidArgumentException('A reservation must cover at least one night.');
             }
 
-            if ($line->roomType->listing_id !== $request->listing->id) {
+            if ($line->bookableUnit->listing_id !== $request->listing->id) {
                 throw new InvalidArgumentException(
-                    "Room type [{$line->roomType->id}] does not belong to listing [{$request->listing->id}]."
+                    "Bookable unit [{$line->bookableUnit->id}] does not belong to listing [{$request->listing->id}]."
                 );
             }
         }
 
         $lines = $request->lines;
-        usort($lines, fn (BookingLine $a, BookingLine $b) => [$a->roomType->id, $a->checkIn->getTimestamp()]
-            <=> [$b->roomType->id, $b->checkIn->getTimestamp()]);
+        usort($lines, fn (BookingLine $a, BookingLine $b) => [$a->bookableUnit->id, $a->checkIn->getTimestamp()]
+            <=> [$b->bookableUnit->id, $b->checkIn->getTimestamp()]);
 
         return $lines;
     }
@@ -1189,7 +1189,7 @@ class InventoryWriter
     private function orderedUnits(Reservation $reservation): array
     {
         return $reservation->units
-            ->sortBy([['room_type_id', 'asc'], ['check_in', 'asc']])
+            ->sortBy([['bookable_unit_id', 'asc'], ['check_in', 'asc']])
             ->values()
             ->all();
     }

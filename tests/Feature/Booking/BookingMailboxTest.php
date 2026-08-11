@@ -8,10 +8,10 @@ use App\Jobs\NotifyAboutStay;
 use App\Mail\GuestStayCancelled;
 use App\Mail\GuestStayConfirmed;
 use App\Mail\PartnerStayRecorded;
+use App\Models\BookableUnit;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Services\Booking\BookingMailbox;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
@@ -54,7 +54,7 @@ class BookingMailboxTest extends TestCase
 
     private function book(Listing $listing, ?string $guestEmail = 'guest@example.test'): Reservation
     {
-        $room = RoomType::factory()->create([
+        $room = BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 2,
             'rate_per_night' => 1500,
@@ -163,7 +163,7 @@ class BookingMailboxTest extends TestCase
         Mail::fake();
 
         $listing = $this->property(['booking_enabled' => true]);
-        $room = RoomType::factory()->create(['listing_id' => $listing->id, 'total_units' => 2, 'currency' => 'NAD']);
+        $room = BookableUnit::factory()->create(['listing_id' => $listing->id, 'total_units' => 2, 'currency' => 'NAD']);
 
         // How a demo property seeds twelve weeks of history without posting
         // several hundred confirmations about guests who do not exist.

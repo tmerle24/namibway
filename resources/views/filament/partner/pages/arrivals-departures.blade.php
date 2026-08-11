@@ -202,7 +202,7 @@
                                         </td>
                                         <td>
                                             @foreach ($reservation->units as $unit)
-                                                <div>{{ $unit->roomType?->name ?? '—' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif</div>
+                                                <div>{{ $unit->bookableUnit?->name ?? '—' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif</div>
                                             @endforeach
                                         </td>
                                         <td>

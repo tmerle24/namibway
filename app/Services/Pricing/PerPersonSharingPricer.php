@@ -34,7 +34,7 @@ final class PerPersonSharingPricer implements NightPricer
 
         if ($occupancy->isEmpty()) {
             throw UnpriceableStayException::occupancyRequired(
-                $context->roomType->name,
+                $context->bookableUnit->name,
                 $context->planLabel(),
             );
         }

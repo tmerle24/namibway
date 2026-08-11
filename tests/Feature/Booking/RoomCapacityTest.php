@@ -4,9 +4,9 @@ namespace Tests\Feature\Booking;
 
 use App\Enums\PricingStrategy;
 use App\Enums\ReservationSource;
+use App\Models\BookableUnit;
 use App\Models\Listing;
 use App\Models\RatePlan;
-use App\Models\RoomType;
 use App\Services\Booking\RoomAvailability;
 use App\Services\Booking\RoomCapacity;
 use App\Services\Inventory\DTOs\BookingLine;
@@ -143,7 +143,7 @@ class RoomCapacityTest extends TestCase
         ]);
 
         $manual = app(ManualBooking::class);
-        $lines = [['room_type_id' => $room->id, 'quantity' => 1]];
+        $lines = [['bookable_unit_id' => $room->id, 'quantity' => 1]];
 
         $fits = $manual->preview($listing, $this->checkIn, $this->checkOut, $lines, adults: 2, children: 2);
 
@@ -219,7 +219,7 @@ class RoomCapacityTest extends TestCase
             $this->checkIn,
             $this->checkOut,
             [[
-                'room_type_id' => $room->id,
+                'bookable_unit_id' => $room->id,
                 'guests' => [['guest_category_id' => $adult?->id, 'count' => 4]],
             ]],
             adults: 4,
@@ -233,9 +233,9 @@ class RoomCapacityTest extends TestCase
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function room(array $attributes = []): RoomType
+    private function room(array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create(array_merge([
+        return BookableUnit::factory()->create(array_merge([
             'total_units' => 2,
             'rate_per_night' => 1200,
             'currency' => 'NAD',

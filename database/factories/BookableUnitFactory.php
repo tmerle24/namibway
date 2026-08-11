@@ -2,16 +2,16 @@
 
 namespace Database\Factories;
 
+use App\Models\BookableUnit;
 use App\Models\Listing;
-use App\Models\RoomType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<RoomType>
+ * @extends Factory<BookableUnit>
  */
-class RoomTypeFactory extends Factory
+class BookableUnitFactory extends Factory
 {
-    protected $model = RoomType::class;
+    protected $model = BookableUnit::class;
 
     /**
      * @return array<string, mixed>

@@ -72,7 +72,7 @@
                                 <tr>
                                     <td class="nw-customer__mono">{{ $stay->reference }}</td>
                                     <td>{{ $stay->listing?->name ?? '—' }}</td>
-                                    <td>{{ $stay->units->map(fn ($unit) => $unit->roomType?->name)->filter()->implode(', ') ?: '—' }}</td>
+                                    <td>{{ $stay->units->map(fn ($unit) => $unit->bookableUnit?->name)->filter()->implode(', ') ?: '—' }}</td>
                                     <td>{{ $stay->check_in->isoFormat('D MMM YYYY') }}</td>
                                     <td>{{ $stay->nights() }}</td>
                                     <td>{{ $stay->status->label() }}</td>

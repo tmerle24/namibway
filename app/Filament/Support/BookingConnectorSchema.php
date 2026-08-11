@@ -212,7 +212,7 @@ class BookingConnectorSchema
                     ->maxLength(100),
             ],
             ConnectorType::Native->value => [
-                Forms\Components\Repeater::make('roomTypes')
+                Forms\Components\Repeater::make('bookableUnits')
                     ->relationship()
                     ->label('Room types')
                     ->schema([

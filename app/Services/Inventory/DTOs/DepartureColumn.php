@@ -2,8 +2,8 @@
 
 namespace App\Services\Inventory\DTOs;
 
+use App\Models\BookableUnit;
 use App\Models\BookingSlot;
-use App\Models\RoomType;
 use Illuminate\Support\Carbon;
 
 /**
@@ -24,7 +24,7 @@ class DepartureColumn
      * @param  array<int, DepartureStay>  $stays
      */
     public function __construct(
-        public readonly RoomType $unit,
+        public readonly BookableUnit $unit,
         public readonly BookingSlot $slot,
         public readonly Carbon $startsAt,
         public readonly Carbon $endsAt,

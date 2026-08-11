@@ -74,7 +74,7 @@ build rather than a UI on top of what exists.
   column. A `Reservation` can hold several room types with quantities; an `Inquiry`
   cannot. **Still true 2026-08-12** — and now the clearest remaining asymmetry between
   the two models.
-- **`RoomType` still carries a single flat `rate_per_night`** plus `total_units`,
+- **`BookableUnit` (`RoomType` until 2026-08-12) still carries a single flat `rate_per_night`** plus `total_units`,
   `max_adults`, `max_children` and a string `code` — but those are *defaults*, and the
   calendar overrides them per night, which is where seasons live. **Since 2026-08-11** a
   rate plan sits between: what a night costs is (room type, date, plan), and what the
@@ -123,7 +123,7 @@ season, running alongside what they use today** — that promise should shape th
 
 Ordered so that each item depends only on the ones above it:
 
-1. ✅ **A calendar table.** `room_type_calendar_days` — per room type, per night: units,
+1. ✅ **A calendar table.** `bookable_unit_calendar_days` — per unit, per night: units,
    rate, minimum stay, closed-to-arrival, closed-to-departure. Sparse, with null meaning
    "follow the room type's default". Done 2026-08-11.
 2. ✅ **Quantity per booking** — `reservations` + `reservation_units`: several room types
@@ -161,7 +161,7 @@ from is now written down in `CLAUDE.md` → "Standards".
 
 What landed:
 
-- `room_type_calendar_days`, `reservations`, `reservation_units`, `reservation_nights`,
+- `bookable_unit_calendar_days` (created as `room_type_calendar_days`), `reservations`, `reservation_units`, `reservation_nights`,
   `inventory_blocks`, and `regions.country_code`. All additive; no existing table changed
   destructively and nothing was backfilled over existing data.
 - `App\Services\Inventory\InventoryWriter` — **the single write path.** Enforced twice: a
@@ -501,8 +501,8 @@ What stands between here and that is no longer software of this kind:
    Deliberately not modelled, and the first thing a real desk is likely to ask for.
 
 Two smaller things are named rather than left implicit, both from
-`BOOKING_BEYOND_ROOMS.md`: renaming the sellable unit away from `room_type` (§3.2 —
-mechanical, entirely reversible, and cheapest while nothing is live), and deciding whether
+`BOOKING_BEYOND_ROOMS.md`: ~~renaming the sellable unit away from `room_type`~~ (§3.2 —
+**done 2026-08-12**, it is `bookable_units` now), and deciding whether
 the pricing strategies mean anything for a seat on a departure or whether the seat *is*
 the unit (§3.4).
 

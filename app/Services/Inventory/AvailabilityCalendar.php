@@ -5,13 +5,13 @@ namespace App\Services\Inventory;
 use App\Enums\PricingStrategy;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Exceptions\Pricing\UnpriceableStayException;
+use App\Models\BookableUnit;
+use App\Models\BookableUnitCalendarDay;
 use App\Models\BookingSlot;
 use App\Models\GuestCategory;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
 use App\Models\RatePlanGuestAmount;
-use App\Models\RoomType;
-use App\Models\RoomTypeCalendarDay;
 use App\Services\Inventory\DTOs\CalendarSnapshot;
 use App\Services\Inventory\DTOs\NightlyRate;
 use App\Services\Inventory\DTOs\Quote;
@@ -57,11 +57,11 @@ class AvailabilityCalendar
      * Units of this room type free on one night: capacity, minus what is
      * sold, minus what is blocked.
      */
-    public function unitsFree(RoomType $roomType, CarbonInterface $date): int
+    public function unitsFree(BookableUnit $bookableUnit, CarbonInterface $date): int
     {
-        $day = $this->day($roomType, $date);
+        $day = $this->day($bookableUnit, $date);
 
-        return $this->capacityFrom($roomType, $day) - $this->occupiedFrom($day);
+        return $this->capacityFrom($bookableUnit, $day) - $this->occupiedFrom($day);
     }
 
     /**
@@ -81,14 +81,14 @@ class AvailabilityCalendar
      * unit's own rate where neither does. A property that has never heard of
      * departures reads step two, which is exactly what it read before.
      */
-    public function rateForSlot(RoomType $roomType, CarbonInterface $date, BookingSlot $slot, ?RatePlan $ratePlan = null): float
+    public function rateForSlot(BookableUnit $bookableUnit, CarbonInterface $date, BookingSlot $slot, ?RatePlan $ratePlan = null): float
     {
-        $plan = $this->planFor($roomType, $ratePlan);
+        $plan = $this->planFor($bookableUnit, $ratePlan);
 
         if ($plan !== null) {
             $forDeparture = RatePlanDay::query()
                 ->where('rate_plan_id', $plan->id)
-                ->where('room_type_id', $roomType->id)
+                ->where('bookable_unit_id', $bookableUnit->id)
                 ->where('slot_id', $slot->id)
                 ->whereDate('date', $date->toDateString())
                 ->whereNotNull('rate')
@@ -99,18 +99,18 @@ class AvailabilityCalendar
             }
         }
 
-        return $this->rateFor($roomType, $date, $ratePlan);
+        return $this->rateFor($bookableUnit, $date, $ratePlan);
     }
 
-    public function seatsFree(RoomType $roomType, CarbonInterface $date, BookingSlot $slot): int
+    public function seatsFree(BookableUnit $bookableUnit, CarbonInterface $date, BookingSlot $slot): int
     {
-        $day = RoomTypeCalendarDay::query()
-            ->where('room_type_id', $roomType->id)
+        $day = BookableUnitCalendarDay::query()
+            ->where('bookable_unit_id', $bookableUnit->id)
             ->where('slot_id', $slot->id)
             ->whereDate('date', $date->toDateString())
             ->first();
 
-        return $this->capacityFrom($roomType, $day) - $this->occupiedFrom($day);
+        return $this->capacityFrom($bookableUnit, $day) - $this->occupiedFrom($day);
     }
 
     /**
@@ -123,17 +123,17 @@ class AvailabilityCalendar
      *
      * @return array<string, int>
      */
-    public function seatsFreeAcross(RoomType $roomType, BookingSlot $slot, CarbonInterface $checkIn, CarbonInterface $checkOut): array
+    public function seatsFreeAcross(BookableUnit $bookableUnit, BookingSlot $slot, CarbonInterface $checkIn, CarbonInterface $checkOut): array
     {
-        $rows = RoomTypeCalendarDay::query()
-            ->where('room_type_id', $roomType->id)
+        $rows = BookableUnitCalendarDay::query()
+            ->where('bookable_unit_id', $bookableUnit->id)
             ->where('slot_id', $slot->id)
             ->whereBetween('date', [
                 Carbon::parse($checkIn)->toDateString(),
                 Carbon::parse($checkOut)->toDateString(),
             ])
             ->get()
-            ->keyBy(fn (RoomTypeCalendarDay $day) => $day->date->toDateString());
+            ->keyBy(fn (BookableUnitCalendarDay $day) => $day->date->toDateString());
 
         $free = [];
 
@@ -141,16 +141,16 @@ class AvailabilityCalendar
             $key = $date->toDateString();
             $day = $rows->get($key);
 
-            $free[$key] = $this->capacityFrom($roomType, $day) - $this->occupiedFrom($day);
+            $free[$key] = $this->capacityFrom($bookableUnit, $day) - $this->occupiedFrom($day);
         }
 
         return $free;
     }
 
     /** The fullest departure of the ones a line covers — what it is limited by. */
-    public function seatsFreeThroughout(RoomType $roomType, BookingSlot $slot, CarbonInterface $checkIn, CarbonInterface $checkOut): int
+    public function seatsFreeThroughout(BookableUnit $bookableUnit, BookingSlot $slot, CarbonInterface $checkIn, CarbonInterface $checkOut): int
     {
-        $free = $this->seatsFreeAcross($roomType, $slot, $checkIn, $checkOut);
+        $free = $this->seatsFreeAcross($bookableUnit, $slot, $checkIn, $checkOut);
 
         return $free === [] ? 0 : (int) min($free);
     }
@@ -161,14 +161,14 @@ class AvailabilityCalendar
      *
      * @return array<string, int>
      */
-    public function unitsFreeAcross(RoomType $roomType, CarbonInterface $checkIn, CarbonInterface $checkOut): array
+    public function unitsFreeAcross(BookableUnit $bookableUnit, CarbonInterface $checkIn, CarbonInterface $checkOut): array
     {
-        $days = $this->daysKeyedByDate($roomType, $checkIn, $checkOut);
+        $days = $this->daysKeyedByDate($bookableUnit, $checkIn, $checkOut);
         $free = [];
 
         foreach ($this->nights($checkIn, $checkOut) as $night) {
             $day = $days[$night->toDateString()] ?? null;
-            $free[$night->toDateString()] = $this->capacityFrom($roomType, $day) - $this->occupiedFrom($day);
+            $free[$night->toDateString()] = $this->capacityFrom($bookableUnit, $day) - $this->occupiedFrom($day);
         }
 
         return $free;
@@ -178,9 +178,9 @@ class AvailabilityCalendar
      * The fewest units free on any night of the stay — what a booking of that
      * whole range is actually limited by.
      */
-    public function unitsFreeThroughout(RoomType $roomType, CarbonInterface $checkIn, CarbonInterface $checkOut): int
+    public function unitsFreeThroughout(BookableUnit $bookableUnit, CarbonInterface $checkIn, CarbonInterface $checkOut): int
     {
-        $free = $this->unitsFreeAcross($roomType, $checkIn, $checkOut);
+        $free = $this->unitsFreeAcross($bookableUnit, $checkIn, $checkOut);
 
         return $free === [] ? 0 : (int) min($free);
     }
@@ -196,14 +196,14 @@ class AvailabilityCalendar
      * sharing, not of the room — what a stay actually costs comes out of
      * quote(), where the strategy has the occupancy to work with.
      */
-    public function rateFor(RoomType $roomType, CarbonInterface $date, ?RatePlan $ratePlan = null): float
+    public function rateFor(BookableUnit $bookableUnit, CarbonInterface $date, ?RatePlan $ratePlan = null): float
     {
-        return $this->rateFrom($roomType, $this->rateDay($roomType, $date, $ratePlan));
+        return $this->rateFrom($bookableUnit, $this->rateDay($bookableUnit, $date, $ratePlan));
     }
 
-    public function capacityFor(RoomType $roomType, CarbonInterface $date): int
+    public function capacityFor(BookableUnit $bookableUnit, CarbonInterface $date): int
     {
-        return $this->capacityFrom($roomType, $this->day($roomType, $date));
+        return $this->capacityFrom($bookableUnit, $this->day($bookableUnit, $date));
     }
 
     /**
@@ -218,7 +218,7 @@ class AvailabilityCalendar
      * @throws UnpriceableStayException when the strategy cannot price a night
      */
     public function quote(
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         CarbonInterface $checkIn,
         CarbonInterface $checkOut,
         int $units = 1,
@@ -226,19 +226,19 @@ class AvailabilityCalendar
         ?Occupancy $occupancy = null,
         ?BookingSlot $slot = null,
     ): Quote {
-        $ratePlan = $this->planFor($roomType, $ratePlan);
+        $ratePlan = $this->planFor($bookableUnit, $ratePlan);
         $strategy = $ratePlan->pricing_strategy ?? PricingStrategy::PerUnit;
         $pricer = Pricers::for($strategy);
 
         $occupancy ??= Occupancy::empty();
         $config = $ratePlan?->pricingConfig() ?? PricingConfig::empty();
-        $days = $this->rateDaysKeyedByDate($roomType, $checkIn, $checkOut, $ratePlan);
-        $categories = $strategy->needsOccupancy() ? $this->guestCategories($roomType) : [];
+        $days = $this->rateDaysKeyedByDate($bookableUnit, $checkIn, $checkOut, $ratePlan);
+        $categories = $strategy->needsOccupancy() ? $this->guestCategories($bookableUnit) : [];
         $amounts = $strategy === PricingStrategy::PerOccupancy
-            ? $this->guestAmounts($roomType, $checkIn, $checkOut, $ratePlan)
+            ? $this->guestAmounts($bookableUnit, $checkIn, $checkOut, $ratePlan)
             : [];
 
-        $this->assertFits($roomType, $occupancy, $categories);
+        $this->assertFits($bookableUnit, $occupancy, $categories);
 
         $nights = [];
 
@@ -248,15 +248,15 @@ class AvailabilityCalendar
             $nights[] = new NightlyRate(
                 date: $night,
                 rate: $pricer->price(new NightPricingContext(
-                    roomType: $roomType,
+                    bookableUnit: $bookableUnit,
                     date: $night,
                     ratePlan: $ratePlan,
                     // A departure's own rate where the plan sets one, and the
                     // day's rate where it does not — which is every rate a
                     // lodge has ever entered, read exactly as before.
                     baseRate: $slot === null
-                        ? $this->rateFrom($roomType, $days[$key] ?? null)
-                        : $this->rateForSlot($roomType, $night, $slot, $ratePlan),
+                        ? $this->rateFrom($bookableUnit, $days[$key] ?? null)
+                        : $this->rateForSlot($bookableUnit, $night, $slot, $ratePlan),
                     occupancy: $occupancy,
                     categories: $categories,
                     guestAmounts: $amounts[$key] ?? [],
@@ -266,7 +266,7 @@ class AvailabilityCalendar
             );
         }
 
-        return new Quote($nights, CountrySettings::currencyForRoomType($roomType));
+        return new Quote($nights, CountrySettings::currencyForBookableUnit($bookableUnit));
     }
 
     /**
@@ -280,13 +280,13 @@ class AvailabilityCalendar
      *
      * @throws UnpriceableStayException
      */
-    private function assertFits(RoomType $roomType, Occupancy $occupancy, array $categories): void
+    private function assertFits(BookableUnit $bookableUnit, Occupancy $occupancy, array $categories): void
     {
         if ($categories === [] || $occupancy->isEmpty()) {
             return;
         }
 
-        $capacity = $roomType->max_adults + $roomType->max_children;
+        $capacity = $bookableUnit->max_adults + $bookableUnit->max_children;
 
         // A room type that has never had its capacity filled in says nothing,
         // and refusing every booking of it would be worse than not checking.
@@ -297,7 +297,7 @@ class AvailabilityCalendar
         $guests = $occupancy->occupancyCount($categories);
 
         if ($guests > $capacity) {
-            throw UnpriceableStayException::tooManyGuests($roomType->name, $guests, $capacity);
+            throw UnpriceableStayException::tooManyGuests($bookableUnit->name, $guests, $capacity);
         }
     }
 
@@ -306,9 +306,9 @@ class AvailabilityCalendar
      *
      * @return array<int, GuestCategory>
      */
-    private function guestCategories(RoomType $roomType): array
+    private function guestCategories(BookableUnit $bookableUnit): array
     {
-        $listing = $roomType->listing;
+        $listing = $bookableUnit->listing;
 
         if ($listing === null) {
             return [];
@@ -329,7 +329,7 @@ class AvailabilityCalendar
      * @return array<string, array<int, float>> Y-m-d => guests => amount
      */
     private function guestAmounts(
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         CarbonInterface $checkIn,
         CarbonInterface $checkOut,
         ?RatePlan $ratePlan,
@@ -340,7 +340,7 @@ class AvailabilityCalendar
 
         $rows = RatePlanGuestAmount::query()
             ->where('rate_plan_id', $ratePlan->id)
-            ->where('room_type_id', $roomType->id)
+            ->where('bookable_unit_id', $bookableUnit->id)
             ->whereBetween('date', [
                 Carbon::parse($checkIn)->toDateString(),
                 Carbon::parse($checkOut)->toDateString(),
@@ -366,7 +366,7 @@ class AvailabilityCalendar
      * @throws StayRuleViolationException
      */
     public function assertStayRules(
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         CarbonInterface $checkIn,
         CarbonInterface $checkOut,
         ?RatePlan $ratePlan = null,
@@ -375,7 +375,7 @@ class AvailabilityCalendar
         $checkOutDate = Carbon::parse($checkOut)->startOfDay();
         $nights = (int) $checkInDate->diffInDays($checkOutDate);
 
-        $arrival = $this->rateDay($roomType, $checkInDate, $ratePlan);
+        $arrival = $this->rateDay($bookableUnit, $checkInDate, $ratePlan);
 
         if ($arrival?->closed_to_arrival === true) {
             throw StayRuleViolationException::closedToArrival($checkInDate->toDateString());
@@ -383,7 +383,7 @@ class AvailabilityCalendar
 
         // Closed-to-departure is a rule about the day the guest leaves, which
         // is the check-out date itself and not one of the booked nights.
-        $departure = $this->rateDay($roomType, $checkOutDate, $ratePlan);
+        $departure = $this->rateDay($bookableUnit, $checkOutDate, $ratePlan);
 
         if ($departure?->closed_to_departure === true) {
             throw StayRuleViolationException::closedToDeparture($checkOutDate->toDateString());
@@ -397,13 +397,13 @@ class AvailabilityCalendar
     }
 
     public function passesStayRules(
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         CarbonInterface $checkIn,
         CarbonInterface $checkOut,
         ?RatePlan $ratePlan = null,
     ): bool {
         try {
-            $this->assertStayRules($roomType, $checkIn, $checkOut, $ratePlan);
+            $this->assertStayRules($bookableUnit, $checkIn, $checkOut, $ratePlan);
         } catch (StayRuleViolationException) {
             return false;
         }
@@ -444,26 +444,26 @@ class AvailabilityCalendar
      *
      * `$to` is exclusive, matching nights() and the half-open stay convention.
      *
-     * @param  iterable<int, RoomType>  $roomTypes
+     * @param  iterable<int, BookableUnit>  $bookableUnits
      */
     public function snapshot(
-        iterable $roomTypes,
+        iterable $bookableUnits,
         CarbonInterface $from,
         CarbonInterface $to,
         ?RatePlan $ratePlan = null,
     ): CalendarSnapshot {
         $keyed = [];
 
-        foreach ($roomTypes as $roomType) {
-            $keyed[$roomType->id] = $roomType;
+        foreach ($bookableUnits as $bookableUnit) {
+            $keyed[$bookableUnit->id] = $bookableUnit;
         }
 
         $days = [];
         $slotDays = [];
 
         if ($keyed !== []) {
-            $rows = RoomTypeCalendarDay::query()
-                ->whereIn('room_type_id', array_keys($keyed))
+            $rows = BookableUnitCalendarDay::query()
+                ->whereIn('bookable_unit_id', array_keys($keyed))
                 ->whereDate('date', '>=', Carbon::parse($from)->toDateString())
                 ->whereDate('date', '<', Carbon::parse($to)->toDateString())
                 ->get();
@@ -475,9 +475,9 @@ class AvailabilityCalendar
             // would report the last departure's counters as the property's.
             foreach ($rows as $row) {
                 if ($row->slot_id === null) {
-                    $days[$row->room_type_id][$row->date->toDateString()] = $row;
+                    $days[$row->bookable_unit_id][$row->date->toDateString()] = $row;
                 } else {
-                    $slotDays[$row->room_type_id][$row->date->toDateString()][$row->slot_id] = $row;
+                    $slotDays[$row->bookable_unit_id][$row->date->toDateString()][$row->slot_id] = $row;
                 }
             }
         }
@@ -488,16 +488,16 @@ class AvailabilityCalendar
         if ($keyed !== [] && $ratePlan !== null) {
             $rows = RatePlanDay::query()
                 ->where('rate_plan_id', $ratePlan->id)
-                ->whereIn('room_type_id', array_keys($keyed))
+                ->whereIn('bookable_unit_id', array_keys($keyed))
                 ->whereDate('date', '>=', Carbon::parse($from)->toDateString())
                 ->whereDate('date', '<', Carbon::parse($to)->toDateString())
                 ->get();
 
             foreach ($rows as $row) {
                 if ($row->slot_id === null) {
-                    $rateDays[$row->room_type_id][$row->date->toDateString()] = $row;
+                    $rateDays[$row->bookable_unit_id][$row->date->toDateString()] = $row;
                 } else {
-                    $slotRateDays[$row->room_type_id][$row->date->toDateString()][$row->slot_id] = $row;
+                    $slotRateDays[$row->bookable_unit_id][$row->date->toDateString()][$row->slot_id] = $row;
                 }
             }
         }
@@ -510,21 +510,21 @@ class AvailabilityCalendar
      * Null comes back only where a property has no plan at all, and that reads
      * as the room type's own rate.
      */
-    private function planFor(RoomType $roomType, ?RatePlan $ratePlan): ?RatePlan
+    private function planFor(BookableUnit $bookableUnit, ?RatePlan $ratePlan): ?RatePlan
     {
         if ($ratePlan !== null) {
             return $ratePlan;
         }
 
-        $listing = $roomType->listing;
+        $listing = $bookableUnit->listing;
 
         return $listing === null ? null : RatePlan::defaultFor($listing);
     }
 
     /** One night's rate row, or null when the plan — or the property — has none. */
-    private function rateDay(RoomType $roomType, CarbonInterface $date, ?RatePlan $ratePlan): ?RatePlanDay
+    private function rateDay(BookableUnit $bookableUnit, CarbonInterface $date, ?RatePlan $ratePlan): ?RatePlanDay
     {
-        $ratePlan = $this->planFor($roomType, $ratePlan);
+        $ratePlan = $this->planFor($bookableUnit, $ratePlan);
 
         if ($ratePlan === null) {
             return null;
@@ -532,7 +532,7 @@ class AvailabilityCalendar
 
         return RatePlanDay::query()
             ->where('rate_plan_id', $ratePlan->id)
-            ->where('room_type_id', $roomType->id)
+            ->where('bookable_unit_id', $bookableUnit->id)
             // The day's own rate, never a departure's. Without this a tour
             // operator's 14:00 price would answer the question "what does this
             // day cost" — and, worse, would answer it for the 09:00 departure
@@ -546,12 +546,12 @@ class AvailabilityCalendar
      * @return array<string, RatePlanDay>
      */
     private function rateDaysKeyedByDate(
-        RoomType $roomType,
+        BookableUnit $bookableUnit,
         CarbonInterface $checkIn,
         CarbonInterface $checkOut,
         ?RatePlan $ratePlan,
     ): array {
-        $ratePlan = $this->planFor($roomType, $ratePlan);
+        $ratePlan = $this->planFor($bookableUnit, $ratePlan);
 
         if ($ratePlan === null) {
             return [];
@@ -559,7 +559,7 @@ class AvailabilityCalendar
 
         return RatePlanDay::query()
             ->where('rate_plan_id', $ratePlan->id)
-            ->where('room_type_id', $roomType->id)
+            ->where('bookable_unit_id', $bookableUnit->id)
             // Nights, so the day's rows. A stay priced by the night on a unit
             // that also runs departures must not pick up a departure's price
             // — and keyBy() would have let the last one written win.
@@ -586,10 +586,10 @@ class AvailabilityCalendar
      *
      * @return array{units: int, date: Carbon|null}
      */
-    public function busiestNight(RoomType $roomType, CarbonInterface $from, CarbonInterface $to): array
+    public function busiestNight(BookableUnit $bookableUnit, CarbonInterface $from, CarbonInterface $to): array
     {
-        $rows = RoomTypeCalendarDay::query()
-            ->where('room_type_id', $roomType->id)
+        $rows = BookableUnitCalendarDay::query()
+            ->where('bookable_unit_id', $bookableUnit->id)
             ->whereDate('date', '>=', Carbon::parse($from)->toDateString())
             ->whereDate('date', '<=', Carbon::parse($to)->toDateString())
             ->get();
@@ -609,10 +609,10 @@ class AvailabilityCalendar
         return ['units' => $busiest, 'date' => $when];
     }
 
-    private function day(RoomType $roomType, CarbonInterface $date): ?RoomTypeCalendarDay
+    private function day(BookableUnit $bookableUnit, CarbonInterface $date): ?BookableUnitCalendarDay
     {
-        return RoomTypeCalendarDay::query()
-            ->where('room_type_id', $roomType->id)
+        return BookableUnitCalendarDay::query()
+            ->where('bookable_unit_id', $bookableUnit->id)
             // The day's own row. A departure keeps its own counter beside it,
             // and reading one as the other would make a full 09:00 tour look
             // like a full property.
@@ -622,19 +622,19 @@ class AvailabilityCalendar
     }
 
     /**
-     * @return array<string, RoomTypeCalendarDay>
+     * @return array<string, BookableUnitCalendarDay>
      */
-    private function daysKeyedByDate(RoomType $roomType, CarbonInterface $checkIn, CarbonInterface $checkOut): array
+    private function daysKeyedByDate(BookableUnit $bookableUnit, CarbonInterface $checkIn, CarbonInterface $checkOut): array
     {
-        return RoomTypeCalendarDay::query()
-            ->where('room_type_id', $roomType->id)
+        return BookableUnitCalendarDay::query()
+            ->where('bookable_unit_id', $bookableUnit->id)
             ->whereNull('slot_id')
             ->whereBetween('date', [
                 Carbon::parse($checkIn)->toDateString(),
                 Carbon::parse($checkOut)->toDateString(),
             ])
             ->get()
-            ->keyBy(fn (RoomTypeCalendarDay $day) => $day->date->toDateString())
+            ->keyBy(fn (BookableUnitCalendarDay $day) => $day->date->toDateString())
             ->all();
     }
 
@@ -643,17 +643,17 @@ class AvailabilityCalendar
      * "follow the room type" — live on CalendarSnapshot, so the night-by-night
      * reads here and the bulk read a grid uses cannot drift apart.
      */
-    private function capacityFrom(RoomType $roomType, ?RoomTypeCalendarDay $day): int
+    private function capacityFrom(BookableUnit $bookableUnit, ?BookableUnitCalendarDay $day): int
     {
-        return CalendarSnapshot::capacityFor($roomType, $day);
+        return CalendarSnapshot::capacityFor($bookableUnit, $day);
     }
 
-    private function rateFrom(RoomType $roomType, ?RatePlanDay $day): float
+    private function rateFrom(BookableUnit $bookableUnit, ?RatePlanDay $day): float
     {
-        return CalendarSnapshot::rateFor($roomType, $day);
+        return CalendarSnapshot::rateFor($bookableUnit, $day);
     }
 
-    private function occupiedFrom(?RoomTypeCalendarDay $day): int
+    private function occupiedFrom(?BookableUnitCalendarDay $day): int
     {
         return CalendarSnapshot::occupiedOn($day);
     }

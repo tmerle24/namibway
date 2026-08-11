@@ -106,7 +106,7 @@
                 <li>
                     <span class="n">2</span>
                     <span>
-                        <strong>Fill it in.</strong> Three sheets: <em>Listings</em>, <em>RoomTypes</em>,
+                        <strong>Fill it in.</strong> Three sheets: <em>Listings</em>, <em>BookableUnits</em>,
                         and <em>Instructions</em> with the same explanations you're reading here.
                     </span>
                 </li>
@@ -196,7 +196,7 @@
         </section>
 
         <section>
-            <h2>RoomTypes sheet</h2>
+            <h2>BookableUnits sheet</h2>
             <p class="section-note">
                 One row per room type of an accommodation — a lodge with three kinds of chalet gets three
                 rows. This is what lets a traveller pick a room when they book; without room types the
@@ -246,7 +246,7 @@
 │   ├── cover.jpg          <span class="note">← becomes the main image</span>
 │   ├── 01-pool.jpg
 │   ├── 02-dining.jpg
-│   └── STD/               <span class="note">← a room folder: photo_folder on the RoomTypes sheet</span>
+│   └── STD/               <span class="note">← a room folder: photo_folder on the BookableUnits sheet</span>
 │       ├── 01-bed.jpg
 │       └── 02-bath.jpg
 └── Desert Whisper/
@@ -256,7 +256,7 @@
             <p>
                 Write the folder name in the <code>photo_folder</code> column of the listing's row — that
                 is the whole connection. For a room, write it in <code>photo_folder</code> on the
-                RoomTypes sheet. Because every lodge has an “STD”, write enough of the path to be
+                BookableUnits sheet. Because every lodge has an “STD”, write enough of the path to be
                 unambiguous there: <code>Okonjima Bush Camp/STD</code>. If a name matches more than one
                 folder, the check says so and names the candidates.
             </p>

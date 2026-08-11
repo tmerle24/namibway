@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * reservation counts an arrival and a departure.
  *
  * @property int $id
- * @property int $room_type_id
+ * @property int $bookable_unit_id
  * @property BlockReason $reason
  * @property int $units
  * @property CarbonImmutable $first_night
@@ -22,14 +22,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $note
  * @property int|null $created_by
  * @property CarbonImmutable|null $released_at
- * @property-read RoomType|null $roomType
+ * @property-read BookableUnit|null $bookableUnit
  */
 class InventoryBlock extends Model
 {
     use GuardsInventoryWrites;
 
     protected $fillable = [
-        'room_type_id',
+        'bookable_unit_id',
         'reason',
         'units',
         'first_night',
@@ -48,11 +48,11 @@ class InventoryBlock extends Model
     ];
 
     /**
-     * @return BelongsTo<RoomType, $this>
+     * @return BelongsTo<BookableUnit, $this>
      */
-    public function roomType(): BelongsTo
+    public function bookableUnit(): BelongsTo
     {
-        return $this->belongsTo(RoomType::class);
+        return $this->belongsTo(BookableUnit::class);
     }
 
     /**

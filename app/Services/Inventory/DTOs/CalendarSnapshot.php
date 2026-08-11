@@ -2,9 +2,9 @@
 
 namespace App\Services\Inventory\DTOs;
 
+use App\Models\BookableUnit;
+use App\Models\BookableUnitCalendarDay;
 use App\Models\RatePlanDay;
-use App\Models\RoomType;
-use App\Models\RoomTypeCalendarDay;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
@@ -41,29 +41,29 @@ class CalendarSnapshot
      * point of a slot being a row is that the 09:00 departure selling out says
      * nothing about the 14:00 one.
      *
-     * @param  array<int, array<string, RoomTypeCalendarDay>>  $days  room type id => Y-m-d => inventory row
-     * @param  array<int, RoomType>  $roomTypes  keyed by id
+     * @param  array<int, array<string, BookableUnitCalendarDay>>  $days  room type id => Y-m-d => inventory row
+     * @param  array<int, BookableUnit>  $bookableUnits  keyed by id
      * @param  array<int, array<string, RatePlanDay>>  $rateDays  room type id => Y-m-d => rate row
-     * @param  array<int, array<string, array<int, RoomTypeCalendarDay>>>  $slotDays  room type id => Y-m-d => slot id => inventory row
+     * @param  array<int, array<string, array<int, BookableUnitCalendarDay>>>  $slotDays  room type id => Y-m-d => slot id => inventory row
      * @param  array<int, array<string, array<int, RatePlanDay>>>  $slotRateDays  room type id => Y-m-d => slot id => rate row
      */
     public function __construct(
         private readonly array $days,
-        private readonly array $roomTypes,
+        private readonly array $bookableUnits,
         private readonly array $rateDays = [],
         private readonly array $slotDays = [],
         private readonly array $slotRateDays = [],
     ) {}
 
-    public function day(int $roomTypeId, CarbonInterface|string $date): ?RoomTypeCalendarDay
+    public function day(int $bookableUnitId, CarbonInterface|string $date): ?BookableUnitCalendarDay
     {
-        return $this->days[$roomTypeId][$this->key($date)] ?? null;
+        return $this->days[$bookableUnitId][$this->key($date)] ?? null;
     }
 
     /** The rate plan's row for a night, if the plan said anything about it. */
-    public function rateDay(int $roomTypeId, CarbonInterface|string $date): ?RatePlanDay
+    public function rateDay(int $bookableUnitId, CarbonInterface|string $date): ?RatePlanDay
     {
-        return $this->rateDays[$roomTypeId][$this->key($date)] ?? null;
+        return $this->rateDays[$bookableUnitId][$this->key($date)] ?? null;
     }
 
     /**
@@ -72,41 +72,41 @@ class CalendarSnapshot
      * A sparse calendar means the same thing here as it does for a night: no
      * row is "as many seats as the unit has", not "none".
      */
-    public function slotDay(int $roomTypeId, CarbonInterface|string $date, int $slotId): ?RoomTypeCalendarDay
+    public function slotDay(int $bookableUnitId, CarbonInterface|string $date, int $slotId): ?BookableUnitCalendarDay
     {
-        return $this->slotDays[$roomTypeId][$this->key($date)][$slotId] ?? null;
+        return $this->slotDays[$bookableUnitId][$this->key($date)][$slotId] ?? null;
     }
 
     /** One departure's own rate row, where the plan set a price for it. */
-    public function slotRateDay(int $roomTypeId, CarbonInterface|string $date, int $slotId): ?RatePlanDay
+    public function slotRateDay(int $bookableUnitId, CarbonInterface|string $date, int $slotId): ?RatePlanDay
     {
-        return $this->slotRateDays[$roomTypeId][$this->key($date)][$slotId] ?? null;
+        return $this->slotRateDays[$bookableUnitId][$this->key($date)][$slotId] ?? null;
     }
 
-    public function capacity(int $roomTypeId, CarbonInterface|string $date): int
+    public function capacity(int $bookableUnitId, CarbonInterface|string $date): int
     {
-        $roomType = $this->roomTypes[$roomTypeId] ?? null;
+        $bookableUnit = $this->bookableUnits[$bookableUnitId] ?? null;
 
-        return $roomType === null ? 0 : self::capacityFor($roomType, $this->day($roomTypeId, $date));
+        return $bookableUnit === null ? 0 : self::capacityFor($bookableUnit, $this->day($bookableUnitId, $date));
     }
 
-    public function rate(int $roomTypeId, CarbonInterface|string $date): float
+    public function rate(int $bookableUnitId, CarbonInterface|string $date): float
     {
-        $roomType = $this->roomTypes[$roomTypeId] ?? null;
+        $bookableUnit = $this->bookableUnits[$bookableUnitId] ?? null;
 
-        return $roomType === null ? 0.0 : self::rateFor($roomType, $this->rateDay($roomTypeId, $date));
+        return $bookableUnit === null ? 0.0 : self::rateFor($bookableUnit, $this->rateDay($bookableUnitId, $date));
     }
 
-    public function sold(int $roomTypeId, CarbonInterface|string $date): int
+    public function sold(int $bookableUnitId, CarbonInterface|string $date): int
     {
-        $day = $this->day($roomTypeId, $date);
+        $day = $this->day($bookableUnitId, $date);
 
         return $day === null ? 0 : $day->units_sold;
     }
 
-    public function blocked(int $roomTypeId, CarbonInterface|string $date): int
+    public function blocked(int $bookableUnitId, CarbonInterface|string $date): int
     {
-        $day = $this->day($roomTypeId, $date);
+        $day = $this->day($bookableUnitId, $date);
 
         return $day === null ? 0 : $day->units_blocked;
     }
@@ -116,17 +116,17 @@ class CalendarSnapshot
      * a lodge that lowered total_units below what is already sold has an
      * overbooking, and a screen that quietly showed zero would hide it.
      */
-    public function unitsFree(int $roomTypeId, CarbonInterface|string $date): int
+    public function unitsFree(int $bookableUnitId, CarbonInterface|string $date): int
     {
-        return $this->capacity($roomTypeId, $date)
-            - $this->sold($roomTypeId, $date)
-            - $this->blocked($roomTypeId, $date);
+        return $this->capacity($bookableUnitId, $date)
+            - $this->sold($bookableUnitId, $date)
+            - $this->blocked($bookableUnitId, $date);
     }
 
     /** Whether this room type has any calendar row at all inside the range. */
-    public function hasRows(int $roomTypeId): bool
+    public function hasRows(int $bookableUnitId): bool
     {
-        return ($this->days[$roomTypeId] ?? []) !== [];
+        return ($this->days[$bookableUnitId] ?? []) !== [];
     }
 
     /**
@@ -134,15 +134,15 @@ class CalendarSnapshot
      * defaults — a rate, a capacity override, a restriction, or units taken.
      * A row written by ensureDay() with nothing on it does not count.
      */
-    public function hasActivity(int $roomTypeId): bool
+    public function hasActivity(int $bookableUnitId): bool
     {
-        foreach ($this->days[$roomTypeId] ?? [] as $day) {
+        foreach ($this->days[$bookableUnitId] ?? [] as $day) {
             if ($day->units_total !== null || $day->units_sold > 0 || $day->units_blocked > 0) {
                 return true;
             }
         }
 
-        foreach ($this->rateDays[$roomTypeId] ?? [] as $day) {
+        foreach ($this->rateDays[$bookableUnitId] ?? [] as $day) {
             if ($day->rate !== null || $day->min_stay !== null) {
                 return true;
             }
@@ -154,7 +154,7 @@ class CalendarSnapshot
 
         // Seats sold on a departure count too: a retired unit is hidden as
         // noise, and hiding a booking is not what that is for.
-        foreach ($this->slotDays[$roomTypeId] ?? [] as $slots) {
+        foreach ($this->slotDays[$bookableUnitId] ?? [] as $slots) {
             foreach ($slots as $day) {
                 if ($day->units_total !== null || $day->units_sold > 0 || $day->units_blocked > 0) {
                     return true;
@@ -171,13 +171,13 @@ class CalendarSnapshot
      * raises total_units must see the new number on every night it never
      * explicitly overrode.
      */
-    public static function capacityFor(RoomType $roomType, ?RoomTypeCalendarDay $day): int
+    public static function capacityFor(BookableUnit $bookableUnit, ?BookableUnitCalendarDay $day): int
     {
         if ($day !== null && $day->units_total !== null) {
             return $day->units_total;
         }
 
-        return (int) $roomType->total_units;
+        return (int) $bookableUnit->total_units;
     }
 
     /**
@@ -185,17 +185,17 @@ class CalendarSnapshot
      * the rate plan's calendar. A property with no rate plan, or a plan that
      * has said nothing about this night, charges what the room type charges.
      */
-    public static function rateFor(RoomType $roomType, ?RatePlanDay $day): float
+    public static function rateFor(BookableUnit $bookableUnit, ?RatePlanDay $day): float
     {
         if ($day !== null && $day->rate !== null) {
             return $day->rate;
         }
 
-        return (float) $roomType->rate_per_night;
+        return (float) $bookableUnit->rate_per_night;
     }
 
     /** Units a night is holding, sold and blocked together. */
-    public static function occupiedOn(?RoomTypeCalendarDay $day): int
+    public static function occupiedOn(?BookableUnitCalendarDay $day): int
     {
         if ($day === null) {
             return 0;

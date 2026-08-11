@@ -207,7 +207,7 @@
                         @foreach ($reservation->units as $unit)
                             <tr>
                                 <td>
-                                    {{ $unit->roomType?->name ?? '—' }}
+                                    {{ $unit->bookableUnit?->name ?? '—' }}
                                     {{--
                                         Which departure, frozen onto the stay
                                         for the same reason the plan's name is:
@@ -263,7 +263,7 @@
                             @foreach ($unit->nights->sortBy('date') as $night)
                                 <tr>
                                     <td class="nw-num">{{ $night->date->isoFormat('ddd D MMM') }}</td>
-                                    <td>{{ $unit->roomType?->name ?? '—' }}</td>
+                                    <td>{{ $unit->bookableUnit?->name ?? '—' }}</td>
                                     <td class="nw-num">{{ $night->units }}</td>
                                     <td class="nw-num">{{ Money::format($night->rate, $night->currency) }}</td>
                                 </tr>
@@ -283,7 +283,7 @@
 
                 <dl class="nw-facts">
                     <dt>Room type</dt>
-                    <dd>{{ $block->roomType?->name ?? '—' }}</dd>
+                    <dd>{{ $block->bookableUnit?->name ?? '—' }}</dd>
 
                     <dt>Units</dt>
                     <dd class="nw-num">{{ $block->units }}</dd>

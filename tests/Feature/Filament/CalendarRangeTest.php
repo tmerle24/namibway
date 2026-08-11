@@ -6,10 +6,10 @@ use App\Enums\CalendarRange;
 use App\Enums\ListingType;
 use App\Enums\ReservationSource;
 use App\Filament\Partner\Pages\OccupancyCalendar;
+use App\Models\BookableUnit;
 use App\Models\BookingSlot;
 use App\Models\Listing;
 use App\Models\Partner;
-use App\Models\RoomType;
 use App\Models\User;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
@@ -48,7 +48,7 @@ class CalendarRangeTest extends TestCase
     public function test_the_month_view_is_a_month_and_the_week_view_starts_on_monday(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Etosha Camp');
-        $this->roomType($listing);
+        $this->bookableUnit($listing);
 
         $this->actingAs($user);
         Filament::setCurrentPanel(Filament::getPanel('partner'));
@@ -72,7 +72,7 @@ class CalendarRangeTest extends TestCase
     public function test_the_arrows_move_one_whole_range(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Etosha Camp');
-        $this->roomType($listing);
+        $this->bookableUnit($listing);
 
         $this->actingAs($user);
         Filament::setCurrentPanel(Filament::getPanel('partner'));
@@ -94,7 +94,7 @@ class CalendarRangeTest extends TestCase
     public function test_a_jump_lands_on_the_month_and_the_range_survives_it(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Etosha Camp');
-        $this->roomType($listing);
+        $this->bookableUnit($listing);
 
         $this->actingAs($user);
         Filament::setCurrentPanel(Filament::getPanel('partner'));
@@ -114,7 +114,7 @@ class CalendarRangeTest extends TestCase
     public function test_nonsense_in_the_query_string_shows_a_calendar_rather_than_an_error(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Etosha Camp');
-        $this->roomType($listing);
+        $this->bookableUnit($listing);
 
         $this->actingAs($user)->get('/partner/calendar?range=fortnight&from=whenever&res=7')->assertOk();
 
@@ -130,7 +130,7 @@ class CalendarRangeTest extends TestCase
     public function test_the_day_view_shows_the_hour_axis_only_where_there_is_a_timetable(): void
     {
         [$user, $listing] = $this->partnerWithProperty('Etosha Camp');
-        $chalet = $this->roomType($listing, ['name' => 'Standard Chalet']);
+        $chalet = $this->bookableUnit($listing, ['name' => 'Standard Chalet']);
 
         $this->actingAs($user)
             ->get('/partner/calendar?range=day')
@@ -138,9 +138,9 @@ class CalendarRangeTest extends TestCase
             ->assertSee('Standard Chalet')
             ->assertDontSee('min per row');
 
-        $tour = $this->roomType($listing, ['name' => 'Quad tour', 'total_units' => 8]);
+        $tour = $this->bookableUnit($listing, ['name' => 'Quad tour', 'total_units' => 8]);
         $morning = BookingSlot::create([
-            'room_type_id' => $tour->id,
+            'bookable_unit_id' => $tour->id,
             'label' => 'Morning departure',
             'starts_at' => '09:00',
             'duration_minutes' => 180,
@@ -193,9 +193,9 @@ class CalendarRangeTest extends TestCase
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function roomType(Listing $listing, array $attributes = []): RoomType
+    private function bookableUnit(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create(array_merge([
+        return BookableUnit::factory()->create(array_merge([
             'listing_id' => $listing->id,
             'total_units' => 3,
             'rate_per_night' => 1500.00,

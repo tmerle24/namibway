@@ -16,12 +16,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property int $id
  * @property int $rate_plan_id
- * @property int $room_type_id
+ * @property int $bookable_unit_id
  * @property CarbonImmutable $date
  * @property int $guests
  * @property float $amount
  * @property-read RatePlan|null $ratePlan
- * @property-read RoomType|null $roomType
+ * @property-read BookableUnit|null $bookableUnit
  */
 class RatePlanGuestAmount extends Model
 {
@@ -29,7 +29,7 @@ class RatePlanGuestAmount extends Model
 
     protected $fillable = [
         'rate_plan_id',
-        'room_type_id',
+        'bookable_unit_id',
         'date',
         'guests',
         'amount',
@@ -50,10 +50,10 @@ class RatePlanGuestAmount extends Model
     }
 
     /**
-     * @return BelongsTo<RoomType, $this>
+     * @return BelongsTo<BookableUnit, $this>
      */
-    public function roomType(): BelongsTo
+    public function bookableUnit(): BelongsTo
     {
-        return $this->belongsTo(RoomType::class);
+        return $this->belongsTo(BookableUnit::class);
     }
 }

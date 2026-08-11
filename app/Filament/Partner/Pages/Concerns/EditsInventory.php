@@ -10,12 +10,12 @@ use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Exceptions\Pricing\PromotionUnavailableException;
 use App\Exceptions\Pricing\UnpriceableStayException;
+use App\Models\BookableUnit;
 use App\Models\BookingSlot;
 use App\Models\GuestCategory;
 use App\Models\Listing;
 use App\Models\Note;
 use App\Models\RatePlan;
-use App\Models\RoomType;
 use App\Models\User;
 use App\Services\Booking\BookingMailbox;
 use App\Services\Booking\RoomCapacity;
@@ -65,7 +65,7 @@ trait EditsInventory
      * Set by a click on an empty calendar cell, so the booking form opens
      * already knowing which room type and which night the person meant.
      */
-    public ?int $prefillRoomTypeId = null;
+    public ?int $prefillBookableUnitId = null;
 
     public ?string $prefillDate = null;
 
@@ -87,7 +87,7 @@ trait EditsInventory
      * anything is prefilled — an id from elsewhere prefills nothing rather
      * than quietly selecting another partner's room.
      */
-    public function startBooking(int $roomTypeId, string $date): void
+    public function startBooking(int $bookableUnitId, string $date): void
     {
         $property = $this->property();
 
@@ -95,9 +95,9 @@ trait EditsInventory
             return;
         }
 
-        $room = $property->roomTypes()->find($roomTypeId);
+        $room = $property->bookableUnits()->find($bookableUnitId);
 
-        $this->prefillRoomTypeId = $room?->id;
+        $this->prefillBookableUnitId = $room?->id;
         $this->prefillDate = $this->parseDate($date)?->toDateString();
 
         $this->mountAction('createBooking');
@@ -115,7 +115,7 @@ trait EditsInventory
      * on the day it departs, and making a desk type an arrival and a departure
      * date to sell a morning ride is how a screen stops being used.
      */
-    public function startDeparture(int $roomTypeId, string $date, int $slotId): void
+    public function startDeparture(int $bookableUnitId, string $date, int $slotId): void
     {
         $property = $this->property();
 
@@ -123,10 +123,10 @@ trait EditsInventory
             return;
         }
 
-        $room = $property->roomTypes()->find($roomTypeId);
+        $room = $property->bookableUnits()->find($bookableUnitId);
         $slot = $room === null ? null : $room->slots()->where('is_active', true)->find($slotId);
 
-        $this->prefillRoomTypeId = $room?->id;
+        $this->prefillBookableUnitId = $room?->id;
         $this->prefillDate = $this->parseDate($date)?->toDateString();
         $this->prefillSlotId = $slot?->id;
 
@@ -176,7 +176,7 @@ trait EditsInventory
         $plans = $this->sellableRatePlans();
 
         $room = [
-            'room_type_id' => $this->prefillRoomTypeId ?? array_key_first($this->bookableRoomTypes()),
+            'bookable_unit_id' => $this->prefillBookableUnitId ?? array_key_first($this->bookableBookableUnits()),
             'rate_plan_id' => array_key_first($plans),
             'slot_id' => $this->prefillSlotId,
         ];
@@ -339,9 +339,9 @@ trait EditsInventory
         $plans = $this->sellableRatePlans();
 
         $fields = [
-            Select::make('room_type_id')
+            Select::make('bookable_unit_id')
                 ->label('Room type')
-                ->options(fn (): array => $this->bookableRoomTypes())
+                ->options(fn (): array => $this->bookableBookableUnits())
                 ->required()
                 ->live(),
             // Only for a unit that runs departures, and required for one.
@@ -353,9 +353,9 @@ trait EditsInventory
                 // the top of this same form, and two fields called the same
                 // thing on one screen is how a desk books the wrong one.
                 ->label('Which departure')
-                ->options(fn (Get $get): array => $this->departureOptions($get('room_type_id')))
-                ->visible(fn (Get $get): bool => $this->departureOptions($get('room_type_id')) !== [])
-                ->required(fn (Get $get): bool => $this->departureOptions($get('room_type_id')) !== [])
+                ->options(fn (Get $get): array => $this->departureOptions($get('bookable_unit_id')))
+                ->visible(fn (Get $get): bool => $this->departureOptions($get('bookable_unit_id')) !== [])
+                ->required(fn (Get $get): bool => $this->departureOptions($get('bookable_unit_id')) !== [])
                 ->live(),
         ];
 
@@ -371,7 +371,7 @@ trait EditsInventory
 
         if (! $this->pricesByGuests()) {
             $fields[] = TextInput::make('quantity')
-                ->label(fn (Get $get): string => $this->departureOptions($get('room_type_id')) === [] ? 'Units' : 'Seats')
+                ->label(fn (Get $get): string => $this->departureOptions($get('bookable_unit_id')) === [] ? 'Units' : 'Seats')
                 ->numeric()
                 ->minValue(1)
                 ->maxValue(99)
@@ -477,7 +477,7 @@ trait EditsInventory
                 .($holding === null ? '' : '. '.$holding))
             ->send();
 
-        $this->prefillRoomTypeId = null;
+        $this->prefillBookableUnitId = null;
         $this->prefillDate = null;
         $this->prefillSlotId = null;
         $this->showReservation($reservation->id);
@@ -526,7 +526,7 @@ trait EditsInventory
                 $departure = $line->departureLabel();
 
                 return '<li>'.e(
-                    $line->roomType->name.' ×'.$line->quantity
+                    $line->bookableUnit->name.' ×'.$line->quantity
                     .($departure === null ? '' : ' — '.$departure)
                     .($who === null ? '' : ' ('.$who.')')
                     .' — '.Money::format($line->total, $line->currency)
@@ -739,17 +739,17 @@ trait EditsInventory
             ->fillForm(fn (): array => [
                 'first_night' => $this->prefillDate ?? $this->propertyToday()->toDateString(),
                 'last_night' => $this->prefillDate ?? $this->propertyToday()->toDateString(),
-                'room_type_id' => $this->prefillRoomTypeId ?? array_key_first($this->bookableRoomTypes()),
+                'bookable_unit_id' => $this->prefillBookableUnitId ?? array_key_first($this->bookableBookableUnits()),
                 'units' => 1,
                 'reason' => BlockReason::Maintenance->value,
             ])
             ->form(fn (): array => $this->blockForm())
             ->action(function (array $data): void {
-                $room = $this->requireRoomType($data['room_type_id'] ?? null);
+                $room = $this->requireBookableUnit($data['bookable_unit_id'] ?? null);
 
                 try {
                     app(InventoryWriter::class)->block(new BlockRequest(
-                        roomType: $room,
+                        bookableUnit: $room,
                         units: (int) $data['units'],
                         firstNight: $this->requireDate($data['first_night'] ?? null, 'first night'),
                         lastNight: $this->requireDate($data['last_night'] ?? null, 'last night'),
@@ -776,7 +776,7 @@ trait EditsInventory
                 $block = $this->selectedBlock();
 
                 return $block === null ? [] : [
-                    'room_type_id' => $block->room_type_id,
+                    'bookable_unit_id' => $block->bookable_unit_id,
                     'units' => $block->units,
                     'first_night' => $block->first_night->toDateString(),
                     'last_night' => $block->last_night->toDateString(),
@@ -792,11 +792,11 @@ trait EditsInventory
                     return;
                 }
 
-                $room = $this->requireRoomType($data['room_type_id'] ?? null);
+                $room = $this->requireBookableUnit($data['bookable_unit_id'] ?? null);
 
                 try {
                     app(InventoryWriter::class)->updateBlock($block, new BlockRequest(
-                        roomType: $room,
+                        bookableUnit: $room,
                         units: (int) $data['units'],
                         firstNight: $this->requireDate($data['first_night'] ?? null, 'first night'),
                         lastNight: $this->requireDate($data['last_night'] ?? null, 'last night'),
@@ -842,9 +842,9 @@ trait EditsInventory
     {
         return [
             Grid::make(2)->schema([
-                Select::make('room_type_id')
+                Select::make('bookable_unit_id')
                     ->label('Room type')
-                    ->options(fn (): array => $this->bookableRoomTypes())
+                    ->options(fn (): array => $this->bookableBookableUnits())
                     ->required(),
                 TextInput::make('units')->label('Units')->numeric()->minValue(1)->maxValue(99)->default(1)->required(),
                 DatePicker::make('first_night')->label('First night')->native(false)->displayFormat('D, d M Y')->required(),
@@ -885,7 +885,7 @@ trait EditsInventory
      *
      * @return array<int, string>
      */
-    private function bookableRoomTypes(): array
+    private function bookableBookableUnits(): array
     {
         $property = $this->property();
 
@@ -893,11 +893,11 @@ trait EditsInventory
             return [];
         }
 
-        return $property->roomTypes()
+        return $property->bookableUnits()
             ->where('is_active', true)
             ->get()
-            ->sortBy(fn (RoomType $room) => $room->name, SORT_NATURAL | SORT_FLAG_CASE)
-            ->mapWithKeys(fn (RoomType $room) => [$room->id => $room->name.' ('.$room->code.')'])
+            ->sortBy(fn (BookableUnit $room) => $room->name, SORT_NATURAL | SORT_FLAG_CASE)
+            ->mapWithKeys(fn (BookableUnit $room) => [$room->id => $room->name.' ('.$room->code.')'])
             ->all();
     }
 
@@ -934,11 +934,11 @@ trait EditsInventory
                 continue;
             }
 
-            $roomType = $property->roomTypes()->find((int) ($row['room_type_id'] ?? 0));
+            $bookableUnit = $property->bookableUnits()->find((int) ($row['bookable_unit_id'] ?? 0));
             $quantity = (int) ($row['quantity'] ?? 0);
 
-            if ($roomType instanceof RoomType && $quantity > 0) {
-                $lines[] = [$roomType, $quantity];
+            if ($bookableUnit instanceof BookableUnit && $quantity > 0) {
+                $lines[] = [$bookableUnit, $quantity];
             }
         }
 
@@ -960,18 +960,18 @@ trait EditsInventory
      *
      * @return array<int, string>
      */
-    private function departureOptions(mixed $roomTypeId): array
+    private function departureOptions(mixed $bookableUnitId): array
     {
         $property = $this->property();
-        $id = (int) $roomTypeId;
+        $id = (int) $bookableUnitId;
 
         if ($property === null || $id < 1) {
             return [];
         }
 
-        $room = $property->roomTypes()->find($id);
+        $room = $property->bookableUnits()->find($id);
 
-        if (! $room instanceof RoomType) {
+        if (! $room instanceof BookableUnit) {
             return [];
         }
 
@@ -1070,10 +1070,10 @@ trait EditsInventory
         return $property;
     }
 
-    private function requireRoomType(mixed $id): RoomType
+    private function requireBookableUnit(mixed $id): BookableUnit
     {
         $property = $this->requireProperty();
-        $room = $property->roomTypes()->find((int) $id);
+        $room = $property->bookableUnits()->find((int) $id);
 
         if ($room === null) {
             $this->refuse('Unknown room type', ['That room type does not belong to this property.']);

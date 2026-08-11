@@ -2,7 +2,7 @@
 
 namespace App\Services\Inventory\DTOs;
 
-use App\Models\RoomType;
+use App\Models\BookableUnit;
 
 /**
  * One room type's row: the bars across the top, packed into as few lanes as
@@ -18,7 +18,7 @@ class OccupancyRow
      * @param  array<int, OccupancyCell>  $cells  indexed by column position
      */
     public function __construct(
-        public readonly RoomType $roomType,
+        public readonly BookableUnit $bookableUnit,
         public readonly array $lanes,
         public readonly array $cells,
         public readonly string $currency,

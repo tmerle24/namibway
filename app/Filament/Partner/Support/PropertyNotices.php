@@ -6,8 +6,8 @@ use App\Enums\NoticeLevel;
 use App\Filament\Partner\Pages\GettingStarted;
 use App\Filament\Partner\Pages\RatesAndAvailability;
 use App\Filament\Partner\Resources\ListingResource;
+use App\Models\BookableUnit;
 use App\Models\Listing;
-use App\Models\RoomType;
 use App\Services\Booking\BookingMailbox;
 
 /**
@@ -116,7 +116,7 @@ class PropertyNotices
             return null;
         }
 
-        $names = implode(', ', array_map(fn (RoomType $room) => $room->name, $unpriced));
+        $names = implode(', ', array_map(fn (BookableUnit $room) => $room->name, $unpriced));
 
         return new Notice(
             key: 'no-prices',

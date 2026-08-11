@@ -4,7 +4,7 @@ namespace App\Filament\Resources\ListingResource\RelationManagers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Amenity;
-use App\Models\RoomType;
+use App\Models\BookableUnit;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -16,15 +16,15 @@ use Illuminate\Support\HtmlString;
  * Room/unit types for a listing — the real bookable inventory behind the trip
  * plan's room picker and the Native connector's availability logic.
  *
- * There was no admin UI for these at all until now: `room_types` could only be
+ * There was no admin UI for these at all until now: `bookable_units` could only be
  * populated by seeder or tinker, which is why every listing in production has
  * none, and why the picker was showing invented tiers instead. Availability is
  * derived rather than stored (see App\Services\Booking\RoomAvailability), so
  * what's edited here is capacity and rate — never a calendar.
  */
-class RoomTypesRelationManager extends RelationManager
+class BookableUnitsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'roomTypes';
+    protected static string $relationship = 'bookableUnits';
 
     protected static ?string $title = 'Room types';
 
@@ -90,7 +90,7 @@ class RoomTypesRelationManager extends RelationManager
                     ->columnSpanFull(),
                 Forms\Components\Placeholder::make('gallery_preview')
                     ->label('Current photos')
-                    ->content(function (?RoomType $record): HtmlString {
+                    ->content(function (?BookableUnit $record): HtmlString {
                         $images = $record->gallery ?? [];
 
                         if (empty($images)) {
@@ -216,7 +216,7 @@ class RoomTypesRelationManager extends RelationManager
                 Tables\Columns\ImageColumn::make('gallery.0')
                     ->label('')
                     ->height(40)
-                    ->getStateUsing(fn (RoomType $record) => filled($record->gallery[0] ?? null)
+                    ->getStateUsing(fn (BookableUnit $record) => filled($record->gallery[0] ?? null)
                         ? Controller::resolveMediaUrl($record->gallery[0])
                         : null),
                 Tables\Columns\TextColumn::make('name')
@@ -226,14 +226,14 @@ class RoomTypesRelationManager extends RelationManager
                     ->color('gray'),
                 Tables\Columns\TextColumn::make('occupancy')
                     ->label('Sleeps')
-                    ->getStateUsing(fn (RoomType $record) => $record->max_children > 0
+                    ->getStateUsing(fn (BookableUnit $record) => $record->max_children > 0
                         ? "{$record->max_adults} + {$record->max_children}"
                         : (string) $record->max_adults),
                 Tables\Columns\TextColumn::make('total_units')
                     ->label('Units'),
                 Tables\Columns\TextColumn::make('rate_per_night')
                     ->label('Per night')
-                    ->formatStateUsing(fn (RoomType $record) => "{$record->currency} ".number_format((float) $record->rate_per_night, 2)),
+                    ->formatStateUsing(fn (BookableUnit $record) => "{$record->currency} ".number_format((float) $record->rate_per_night, 2)),
                 Tables\Columns\TextColumn::make('amenities_count')
                     ->label('Amenities')
                     ->counts('amenities')

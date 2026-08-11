@@ -5,9 +5,9 @@ namespace App\Filament\Partner\Resources;
 use App\Enums\DiscountType;
 use App\Filament\Partner\Resources\PromotionResource\Pages;
 use App\Filament\Partner\Support\SelectedProperty;
+use App\Models\BookableUnit;
 use App\Models\Promotion;
 use App\Models\RatePlan;
-use App\Models\RoomType;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Radio;
@@ -138,10 +138,10 @@ class PromotionResource extends Resource
                         ->getOptionLabelFromRecordUsing(fn (RatePlan $record): string => $record->label())
                         ->multiple()
                         ->preload(),
-                    Select::make('roomTypes')
+                    Select::make('bookableUnits')
                         ->label('Only these room types')
-                        ->relationship('roomTypes', 'name')
-                        ->getOptionLabelFromRecordUsing(fn (RoomType $record): string => $record->name.' ('.$record->code.')')
+                        ->relationship('bookableUnits', 'name')
+                        ->getOptionLabelFromRecordUsing(fn (BookableUnit $record): string => $record->name.' ('.$record->code.')')
                         ->multiple()
                         ->preload(),
                     Toggle::make('is_active')->label('Running')->default(true),

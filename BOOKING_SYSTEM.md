@@ -54,7 +54,7 @@ exist and are live.
 
 | | What it is | Where it lives today |
 |---|---|---|
-| **Inventory** | How many units of a room type are free on a night | `room_type_calendar_days` counters, moved by a conditional `UPDATE` |
+| **Inventory** | How many units of a bookable unit are free on a night | `bookable_unit_calendar_days` counters, moved by a conditional `UPDATE` |
 | **Restrictions** | Minimum stay, closed to arrival, closed to departure | same table |
 | **The price of a stay, as a result** | An amount per night, recorded | `reservation_nights` |
 
@@ -233,10 +233,10 @@ We do not need a more general model than the standard. We need the standard.
 Today one table carries both inventory and rate. With rate plans those separate,
 because **a room is sold once no matter how many rate plans it is offered under**:
 
-- `room_type_calendar_days` **keeps the counters** — `units_total`, `units_sold`,
+- `bookable_unit_calendar_days` **keeps the counters** — `units_total`, `units_sold`,
   `units_blocked` — per room type per night. Inventory is shared across rate plans.
   The concurrency mechanism and its process-forking test stay untouched.
-- `rate_plan_days` is new — `rate_plan_id`, `room_type_id`, `date`, `rate`,
+- `rate_plan_days` is new — `rate_plan_id`, `bookable_unit_id`, `date`, `rate`,
   `min_stay`, `closed_to_arrival`, `closed_to_departure`. Rates and restrictions
   differ per rate plan; availability does not.
 
@@ -253,7 +253,7 @@ pointless.
 | `rate_plan_guest_amounts` | Base amount by guest count, per rate plan × room type × **night** |
 | `guest_categories` | Per property: adult, child 3–11, infant 0–2 … name, age range, share of the adult price, whether it counts as an occupant |
 | `promotions` | Discount, optional code, stay window, booking window, which rate plans and room types, minimum nights, usage cap |
-| `amenities` + `room_type_amenity` | Amenity catalogue with categories, and what each room type has |
+| `amenities` + `amenity_bookable_unit` | Amenity catalogue with categories, and what each room type has |
 
 Two departures from the first draft of this table, both made while building step 2
 and both worth stating rather than leaving to be discovered:
@@ -425,7 +425,7 @@ property that sells a chalet and a sunset drive sees one calendar twice on one
 screen, not two calendars.
 
 **Where it stands.** The data model is built (2026-08-12): `booking_slots` is the
-timetable a unit runs, `room_type_calendar_days.slot_id` keys a row to a
+timetable a unit runs, `bookable_unit_calendar_days.slot_id` keys a row to a
 departure, and the uniqueness rule is two partial indexes — one row per unit per
 night where there is no slot, one per unit per date per departure where there is.
 Two indexes rather than one over three columns because SQL treats NULLs as
@@ -512,7 +512,7 @@ Three decisions the build made that are worth stating:
   four rooms. Two departures are two pools of seats, so the merge key gained
   the departure — merged, a booking for two on each tour would hold four on one.
 - **Deleting a departure that has been sold is refused, on the model.**
-  `room_type_calendar_days.slot_id` and `rate_plan_days.slot_id` both cascade,
+  `bookable_unit_calendar_days.slot_id` and `rate_plan_days.slot_id` both cascade,
   so a delete reaches the counters through the database — below Eloquent, past
   `InventoryWriteGuard`, and with nothing to restore from. The rule lives on
   `BookingSlot` rather than on a screen because the timetable is editable from
@@ -820,7 +820,7 @@ gets the arithmetic right, including letting a child take a spare adult slot. Bu
 
 - **`ListingController::storeInquiry` validates nothing about it.** `adults` and
   `children` are checked as integers 1–20 and 0–20, and the chosen
-  `room_type_code` is never compared against the room it names. A party that
+  `bookable_unit_code` (then `room_type_code`) is never compared against the room it names. A party that
   grows after the room was picked, or a request posted directly, goes through.
 - **`InventoryWriter::book()` never compares them at all.** `assertFits()` looks
   at the `Occupancy` object, so it only runs where a rate plan prices by guests;

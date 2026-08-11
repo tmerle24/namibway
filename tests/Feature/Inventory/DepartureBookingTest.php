@@ -5,12 +5,12 @@ namespace Tests\Feature\Inventory;
 use App\Enums\PricingStrategy;
 use App\Enums\ReservationSource;
 use App\Exceptions\Inventory\InventoryUnavailableException;
+use App\Models\BookableUnit;
 use App\Models\BookingSlot;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
@@ -34,7 +34,7 @@ class DepartureBookingTest extends TestCase
 
     private Listing $listing;
 
-    private RoomType $unit;
+    private BookableUnit $unit;
 
     private BookingSlot $morning;
 
@@ -47,7 +47,7 @@ class DepartureBookingTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-08-11 09:00:00'));
 
         $this->listing = Listing::factory()->create();
-        $this->unit = RoomType::factory()->create([
+        $this->unit = BookableUnit::factory()->create([
             'listing_id' => $this->listing->id,
             'name' => 'Quad tour',
             'total_units' => 8,
@@ -138,7 +138,7 @@ class DepartureBookingTest extends TestCase
         // ordinary case a rate keyed by date alone could not express.
         InventoryWriteGuard::allow(fn () => RatePlanDay::create([
             'rate_plan_id' => $plan->id,
-            'room_type_id' => $this->unit->id,
+            'bookable_unit_id' => $this->unit->id,
             'slot_id' => $this->afternoon->id,
             'date' => '2026-09-10',
             'rate' => 1400,
@@ -178,7 +178,7 @@ class DepartureBookingTest extends TestCase
 
         InventoryWriteGuard::allow(fn () => RatePlanDay::create([
             'rate_plan_id' => $plan->id,
-            'room_type_id' => $this->unit->id,
+            'bookable_unit_id' => $this->unit->id,
             'slot_id' => $this->afternoon->id,
             'date' => '2026-09-10',
             'rate' => 1400,
@@ -222,7 +222,7 @@ class DepartureBookingTest extends TestCase
     private function slot(string $time, string $label): BookingSlot
     {
         return BookingSlot::create([
-            'room_type_id' => $this->unit->id,
+            'bookable_unit_id' => $this->unit->id,
             'label' => $label,
             'starts_at' => $time,
             'duration_minutes' => 180,

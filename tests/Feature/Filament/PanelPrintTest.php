@@ -3,10 +3,10 @@
 namespace Tests\Feature\Filament;
 
 use App\Enums\ListingType;
+use App\Models\BookableUnit;
 use App\Models\BookingSlot;
 use App\Models\Listing;
 use App\Models\Partner;
-use App\Models\RoomType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -67,7 +67,7 @@ class PanelPrintTest extends TestCase
     {
         [$user, $listing] = $this->partnerWithProperty();
 
-        RoomType::factory()->create([
+        BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'name' => 'Bush Chalet',
             'total_units' => 4,
@@ -86,7 +86,7 @@ class PanelPrintTest extends TestCase
     {
         [$user, $listing] = $this->partnerWithProperty();
 
-        $tour = RoomType::factory()->create([
+        $tour = BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'name' => 'Quad tour',
             'total_units' => 8,
@@ -95,7 +95,7 @@ class PanelPrintTest extends TestCase
         ]);
 
         BookingSlot::create([
-            'room_type_id' => $tour->id,
+            'bookable_unit_id' => $tour->id,
             'label' => 'Morning ride',
             'starts_at' => '09:00',
             'duration_minutes' => 180,

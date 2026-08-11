@@ -3,9 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\InquiryStatus;
+use App\Models\BookableUnit;
 use App\Models\Inquiry;
 use App\Models\Listing;
-use App\Models\RoomType;
 use App\Models\SavedPlan;
 use App\Models\Trip;
 use App\Models\User;
@@ -19,7 +19,7 @@ use Tests\TestCase;
  * these the rules that matter: real rates, real remaining units, an empty
  * answer rather than a substitute, and the chosen room reaching the booking.
  */
-class RoomTypeAvailabilityTest extends TestCase
+class BookableUnitAvailabilityTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -32,9 +32,9 @@ class RoomTypeAvailabilityTest extends TestCase
     }
 
     /** @param array<string, mixed> $attributes */
-    private function room(Listing $listing, array $attributes = []): RoomType
+    private function room(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::create([
+        return BookableUnit::create([
             'listing_id' => $listing->id,
             'code' => 'standard',
             'name' => 'Standard Double',
@@ -69,7 +69,7 @@ class RoomTypeAvailabilityTest extends TestCase
             ->assertJsonCount(1, 'rooms.0.gallery');
     }
 
-    public function test_a_listing_with_no_room_types_returns_nothing_rather_than_a_substitute(): void
+    public function test_a_listing_with_no_bookable_units_returns_nothing_rather_than_a_substitute(): void
     {
         // The ordinary case today, and the whole point: no invented tiers.
         $this->getJson($this->url($this->listing()))
@@ -85,7 +85,7 @@ class RoomTypeAvailabilityTest extends TestCase
         $listing->inquiries()->create([
             'name' => 'Someone else',
             'email' => 'other@example.com',
-            'room_type_code' => 'standard',
+            'bookable_unit_code' => 'standard',
             'check_in' => '2026-09-02',
             'check_out' => '2026-09-03',
             'status' => InquiryStatus::Confirmed,
@@ -105,7 +105,7 @@ class RoomTypeAvailabilityTest extends TestCase
         $listing->inquiries()->create([
             'name' => 'Someone else',
             'email' => 'other@example.com',
-            'room_type_code' => 'standard',
+            'bookable_unit_code' => 'standard',
             'check_in' => '2026-08-29',
             'check_out' => '2026-09-01',
             'status' => InquiryStatus::Confirmed,
@@ -124,7 +124,7 @@ class RoomTypeAvailabilityTest extends TestCase
         $listing->inquiries()->create([
             'name' => 'Someone else',
             'email' => 'other@example.com',
-            'room_type_code' => 'standard',
+            'bookable_unit_code' => 'standard',
             'check_in' => '2026-09-02',
             'check_out' => '2026-09-03',
             'status' => InquiryStatus::OnRequest,
@@ -143,7 +143,7 @@ class RoomTypeAvailabilityTest extends TestCase
         $listing->inquiries()->create([
             'name' => 'Someone else',
             'email' => 'other@example.com',
-            'room_type_code' => 'standard',
+            'bookable_unit_code' => 'standard',
             'check_in' => '2026-09-02',
             'check_out' => '2026-09-03',
             'status' => InquiryStatus::Cancelled,
@@ -252,7 +252,7 @@ class RoomTypeAvailabilityTest extends TestCase
             ->assertJsonPath('inquiry_count', 1);
 
         $inquiry = Trip::firstOrFail()->inquiries()->firstOrFail();
-        $this->assertSame('standard', $inquiry->room_type_code);
+        $this->assertSame('standard', $inquiry->bookable_unit_code);
     }
 
     /**
@@ -334,7 +334,7 @@ class RoomTypeAvailabilityTest extends TestCase
             ])
             ->assertOk();
 
-        $this->assertSame('gone-since', Trip::firstOrFail()->inquiries()->firstOrFail()->room_type_code);
+        $this->assertSame('gone-since', Trip::firstOrFail()->inquiries()->firstOrFail()->bookable_unit_code);
     }
 
     public function test_a_stay_with_no_room_chosen_still_books_without_one(): void
@@ -362,6 +362,6 @@ class RoomTypeAvailabilityTest extends TestCase
             ])
             ->assertOk();
 
-        $this->assertNull(Trip::firstOrFail()->inquiries()->firstOrFail()->room_type_code);
+        $this->assertNull(Trip::firstOrFail()->inquiries()->firstOrFail()->bookable_unit_code);
     }
 }

@@ -7,9 +7,9 @@ use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
+use App\Models\BookableUnit;
 use App\Models\Listing;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
@@ -63,7 +63,7 @@ class InventoryDemoSeeder extends Seeder
 
         mt_srand(self::RANDOM_SEED);
 
-        $rooms = $this->roomTypes($listing);
+        $rooms = $this->bookableUnits($listing);
         $start = Carbon::now()->startOfDay()->subDays(14);
         $end = $start->copy()->addDays(70);
 
@@ -75,9 +75,9 @@ class InventoryDemoSeeder extends Seeder
     }
 
     /**
-     * @return array<int, RoomType>
+     * @return array<int, BookableUnit>
      */
-    private function roomTypes(Listing $listing): array
+    private function bookableUnits(Listing $listing): array
     {
         $definitions = [
             ['code' => 'STD', 'name' => 'Standard Double', 'units' => 8, 'rate' => 1850.00, 'adults' => 2, 'children' => 1],
@@ -88,7 +88,7 @@ class InventoryDemoSeeder extends Seeder
         $rooms = [];
 
         foreach ($definitions as $definition) {
-            $rooms[] = RoomType::updateOrCreate(
+            $rooms[] = BookableUnit::updateOrCreate(
                 ['listing_id' => $listing->id, 'code' => $definition['code']],
                 [
                     'name' => $definition['name'],
@@ -111,7 +111,7 @@ class InventoryDemoSeeder extends Seeder
      * out, which puts the boundary inside the window a stay can straddle —
      * the case that has to price per night rather than per stay.
      *
-     * @param  array<int, RoomType>  $rooms
+     * @param  array<int, BookableUnit>  $rooms
      */
     private function seasons(InventoryWriter $writer, array $rooms, Carbon $start, Carbon $end): void
     {
@@ -139,7 +139,7 @@ class InventoryDemoSeeder extends Seeder
     }
 
     /**
-     * @param  array<int, RoomType>  $rooms
+     * @param  array<int, BookableUnit>  $rooms
      */
     private function blocks(InventoryWriter $writer, array $rooms, Carbon $start): void
     {
@@ -147,7 +147,7 @@ class InventoryDemoSeeder extends Seeder
         $luxury = $rooms[2];
 
         $writer->block(new BlockRequest(
-            roomType: $standard,
+            bookableUnit: $standard,
             units: 2,
             firstNight: $start->copy()->addDays(20),
             lastNight: $start->copy()->addDays(24),
@@ -156,7 +156,7 @@ class InventoryDemoSeeder extends Seeder
         ));
 
         $writer->block(new BlockRequest(
-            roomType: $luxury,
+            bookableUnit: $luxury,
             units: 1,
             firstNight: $start->copy()->addDays(30),
             lastNight: $start->copy()->addDays(32),
@@ -170,7 +170,7 @@ class InventoryDemoSeeder extends Seeder
      * really be in by now: departed in the past, in house today, expected
      * later.
      *
-     * @param  array<int, RoomType>  $rooms
+     * @param  array<int, BookableUnit>  $rooms
      */
     private function stays(InventoryWriter $writer, Listing $listing, array $rooms, Carbon $start, Carbon $end): int
     {

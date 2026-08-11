@@ -6,10 +6,10 @@ use App\Enums\BoardBasis;
 use App\Enums\ListingType;
 use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
+use App\Models\BookableUnit;
 use App\Models\BookingSlot;
 use App\Models\Listing;
 use App\Models\Reservation;
-use App\Models\RoomType;
 use App\Services\Inventory\ArrivalsBoard;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
@@ -247,9 +247,9 @@ class DepartureManifestTest extends TestCase
         return Listing::factory()->create(['type' => ListingType::Accommodation]);
     }
 
-    private function unit(Listing $listing, string $name, int $units): RoomType
+    private function unit(Listing $listing, string $name, int $units): BookableUnit
     {
-        return RoomType::factory()->create([
+        return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'name' => $name,
             'total_units' => $units,
@@ -258,10 +258,10 @@ class DepartureManifestTest extends TestCase
         ]);
     }
 
-    private function slot(RoomType $unit, string $time, string $label): BookingSlot
+    private function slot(BookableUnit $unit, string $time, string $label): BookingSlot
     {
         return BookingSlot::create([
-            'room_type_id' => $unit->id,
+            'bookable_unit_id' => $unit->id,
             'label' => $label,
             'starts_at' => $time,
             'duration_minutes' => 180,
@@ -270,7 +270,7 @@ class DepartureManifestTest extends TestCase
 
     private function book(
         Listing $listing,
-        RoomType $unit,
+        BookableUnit $unit,
         int $quantity,
         string $guest,
         ?BookingSlot $slot = null,

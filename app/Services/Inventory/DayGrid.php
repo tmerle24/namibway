@@ -3,13 +3,13 @@
 namespace App\Services\Inventory;
 
 use App\Enums\StayStatus;
+use App\Models\BookableUnit;
+use App\Models\BookableUnitCalendarDay;
 use App\Models\BookingSlot;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
 use App\Models\ReservationUnit;
-use App\Models\RoomType;
-use App\Models\RoomTypeCalendarDay;
 use App\Services\Inventory\DTOs\CalendarSnapshot;
 use App\Services\Inventory\DTOs\DayGridData;
 use App\Services\Inventory\DTOs\DepartureColumn;
@@ -24,7 +24,7 @@ use Illuminate\Support\Carbon;
  * property's departures across it.
  *
  * **Read only**, like OccupancyGrid, and off the same rows — the counters here
- * are `room_type_calendar_days`, the same table and the same conditional
+ * are `bookable_unit_calendar_days`, the same table and the same conditional
  * UPDATE that resolves two people racing for the last room. What differs is
  * only which of those rows are asked for: the ones keyed to a departure.
  *
@@ -77,14 +77,14 @@ class DayGrid
         $ratePlan ??= RatePlan::defaultFor($listing);
         $day = Carbon::parse($date)->startOfDay();
 
-        $units = $listing->roomTypes()->orderBy('name')->get()->keyBy('id');
+        $units = $listing->bookableUnits()->orderBy('name')->get()->keyBy('id');
 
         if ($units->isEmpty()) {
             return null;
         }
 
         $slots = BookingSlot::query()
-            ->whereIn('room_type_id', $units->keys()->all())
+            ->whereIn('bookable_unit_id', $units->keys()->all())
             ->where('is_active', true)
             ->orderBy('starts_at')
             ->orderBy('id')
@@ -108,9 +108,9 @@ class DayGrid
         $columns = [];
 
         foreach ($slots as $slot) {
-            $unit = $units->get($slot->room_type_id);
+            $unit = $units->get($slot->bookable_unit_id);
 
-            if (! $unit instanceof RoomType) {
+            if (! $unit instanceof BookableUnit) {
                 continue;
             }
 
@@ -147,7 +147,7 @@ class DayGrid
                     $unit,
                     $slotRates[$slot->id] ?? $dayRates[$unit->id] ?? null,
                 ),
-                currency: CountrySettings::currencyForRoomType($unit),
+                currency: CountrySettings::currencyForBookableUnit($unit),
                 stays: $stays[$slot->id] ?? [],
             );
         }
@@ -241,13 +241,13 @@ class DayGrid
      * Every departure's inventory row for the date, keyed by slot.
      *
      * @param  array<int, int>  $slotIds
-     * @return array<int, RoomTypeCalendarDay>
+     * @return array<int, BookableUnitCalendarDay>
      */
     private function inventory(array $slotIds, Carbon $day): array
     {
         $rows = [];
 
-        foreach (RoomTypeCalendarDay::query()->whereIn('slot_id', $slotIds)->whereDate('date', $day->toDateString())->get() as $row) {
+        foreach (BookableUnitCalendarDay::query()->whereIn('slot_id', $slotIds)->whereDate('date', $day->toDateString())->get() as $row) {
             if ($row->slot_id !== null) {
                 $rows[$row->slot_id] = $row;
             }
@@ -307,19 +307,19 @@ class DayGrid
      * departure's own price where the plan set one, the day's price where it
      * did not.
      *
-     * @param  array<int, int>  $roomTypeIds
+     * @param  array<int, int>  $bookableUnitIds
      * @param  array<int, int>  $slotIds
      * @return array{array<int, RatePlanDay>, array<int, RatePlanDay>}
      */
-    private function rates(?RatePlan $ratePlan, array $roomTypeIds, array $slotIds, Carbon $day): array
+    private function rates(?RatePlan $ratePlan, array $bookableUnitIds, array $slotIds, Carbon $day): array
     {
-        if ($ratePlan === null || $roomTypeIds === []) {
+        if ($ratePlan === null || $bookableUnitIds === []) {
             return [[], []];
         }
 
         $rows = RatePlanDay::query()
             ->where('rate_plan_id', $ratePlan->id)
-            ->whereIn('room_type_id', $roomTypeIds)
+            ->whereIn('bookable_unit_id', $bookableUnitIds)
             ->whereDate('date', $day->toDateString())
             ->where(fn (Builder $query) => $query->whereNull('slot_id')->orWhereIn('slot_id', $slotIds))
             ->get();
@@ -329,7 +329,7 @@ class DayGrid
 
         foreach ($rows as $row) {
             if ($row->slot_id === null) {
-                $dayRates[$row->room_type_id] = $row;
+                $dayRates[$row->bookable_unit_id] = $row;
             } else {
                 $slotRates[$row->slot_id] = $row;
             }

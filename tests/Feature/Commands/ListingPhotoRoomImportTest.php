@@ -4,12 +4,12 @@ namespace Tests\Feature\Commands;
 
 use App\Enums\ContentSource;
 use App\Enums\ListingType;
+use App\Models\BookableUnit;
 use App\Models\Listing;
 use App\Models\Partner;
-use App\Models\RoomType;
+use App\Services\ImportExport\BookableUnitSheet;
 use App\Services\ImportExport\ListingExporter;
 use App\Services\ImportExport\ListingImporter;
-use App\Services\ImportExport\RoomTypeSheet;
 use App\Services\ImportExport\SpreadsheetReader;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -203,7 +203,7 @@ class ListingPhotoRoomImportTest extends TestCase
         $this->assertStringContainsString('no photo ZIP', $plan->invalidRows()[0]->errors[0]);
     }
 
-    public function test_room_types_are_created_and_then_updated_by_listing_and_code(): void
+    public function test_bookable_units_are_created_and_then_updated_by_listing_and_code(): void
     {
         $listing = $this->listing();
 
@@ -221,7 +221,7 @@ class ListingPhotoRoomImportTest extends TestCase
         $this->assertSame(1, $plan->roomNewCount());
         $this->assertSame(1, $this->importer()->apply($plan));
 
-        $room = RoomType::where('listing_id', $listing->id)->where('code', 'STD')->firstOrFail();
+        $room = BookableUnit::where('listing_id', $listing->id)->where('code', 'STD')->firstOrFail();
         $this->assertSame('Standard Chalet', $room->name);
         $this->assertSame(6, $room->total_units);
         $this->assertSame('1450.00', $room->rate_per_night);
@@ -240,7 +240,7 @@ class ListingPhotoRoomImportTest extends TestCase
         $this->assertSame(1, $plan->roomUpdateCount());
         $this->importer()->apply($plan);
 
-        $this->assertSame(1, RoomType::where('listing_id', $listing->id)->count());
+        $this->assertSame(1, BookableUnit::where('listing_id', $listing->id)->count());
         $this->assertSame('1600.00', $room->refresh()->rate_per_night);
     }
 
@@ -262,7 +262,7 @@ class ListingPhotoRoomImportTest extends TestCase
         $this->assertSame(2, $this->importer()->apply($plan));
 
         $listing = Listing::where('slug', 'desert-whisper-lodge')->firstOrFail();
-        $room = RoomType::where('listing_id', $listing->id)->firstOrFail();
+        $room = BookableUnit::where('listing_id', $listing->id)->firstOrFail();
         $this->assertSame('SUITE', $room->code);
         $this->assertSame(3, $room->total_units);
     }
@@ -283,7 +283,7 @@ class ListingPhotoRoomImportTest extends TestCase
 
         $this->assertTrue($plan->hasErrors());
         $this->assertStringContainsString('Lodge That Does Not Exist', $plan->invalidRoomRows()[0]->errors[0]);
-        $this->assertSame(0, RoomType::count());
+        $this->assertSame(0, BookableUnit::count());
     }
 
     public function test_room_photos_come_from_a_folder_inside_the_listing_folder(): void
@@ -310,7 +310,7 @@ class ListingPhotoRoomImportTest extends TestCase
         $this->assertSame(2, $plan->photoCount());
         $this->importer()->apply($plan, $zip);
 
-        $room = RoomType::where('listing_id', $listing->id)->where('code', 'STD')->firstOrFail();
+        $room = BookableUnit::where('listing_id', $listing->id)->where('code', 'STD')->firstOrFail();
         $this->assertCount(2, $room->gallery ?? []);
         $this->assertStringStartsWith('room-types/okonjima-bush-camp/STD/', $room->gallery[0]);
         Storage::disk('r2')->assertExists($room->gallery[0]);
@@ -343,14 +343,14 @@ class ListingPhotoRoomImportTest extends TestCase
 
         $this->assertTrue($plan->hasErrors());
         $this->assertStringContainsString('matches several folders', $plan->invalidRoomRows()[0]->errors[0]);
-        $this->assertSame(0, RoomType::count());
+        $this->assertSame(0, BookableUnit::count());
         $this->assertNotNull($other->id);
     }
 
-    public function test_the_export_carries_room_types_and_reimports_as_a_no_op(): void
+    public function test_the_export_carries_bookable_units_and_reimports_as_a_no_op(): void
     {
         $listing = $this->listing();
-        RoomType::create([
+        BookableUnit::create([
             'listing_id' => $listing->id,
             'code' => 'FAM',
             'name' => 'Family Chalet',
@@ -364,7 +364,7 @@ class ListingPhotoRoomImportTest extends TestCase
 
         app(ListingExporter::class)->export(Listing::query(), $this->workbook);
 
-        $rooms = app(SpreadsheetReader::class)->read($this->workbook, RoomTypeSheet::SHEET_NAME);
+        $rooms = app(SpreadsheetReader::class)->read($this->workbook, BookableUnitSheet::SHEET_NAME);
         $this->assertCount(1, $rooms['rows']);
         $this->assertContains('FAM', $rooms['rows'][0]['cells']);
 

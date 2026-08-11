@@ -988,9 +988,9 @@ class ItineraryService
 
     /**
      * Shared by every place that turns a Listing into the ItineraryListingRef
-     * shape the frontend consumes — e.g. so RoomTypePicker's "choose a room"
+     * shape the frontend consumes — e.g. so BookableUnitPicker's "choose a room"
      * flow has real property photos to show (there's no per-room-type photo
-     * yet, see RoomType model) instead of just the single hero `image`.
+     * yet, see BookableUnit model) instead of just the single hero `image`.
      *
      * @return array<int, string>
      */

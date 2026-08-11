@@ -5,8 +5,8 @@ namespace Tests\Feature\Content;
 use App\Enums\AmenityCategory;
 use App\Enums\AmenityScope;
 use App\Models\Amenity;
+use App\Models\BookableUnit;
 use App\Models\Listing;
-use App\Models\RoomType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -21,9 +21,9 @@ class RoomAmenityTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function room(): RoomType
+    private function room(): BookableUnit
     {
-        return RoomType::factory()->create(['listing_id' => Listing::factory()]);
+        return BookableUnit::factory()->create(['listing_id' => Listing::factory()]);
     }
 
     public function test_the_catalogue_ships_with_the_migration(): void

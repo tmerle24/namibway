@@ -18,24 +18,24 @@ use RuntimeException;
  */
 class UnpriceableStayException extends RuntimeException
 {
-    public static function occupancyRequired(string $roomType, string $ratePlan): self
+    public static function occupancyRequired(string $bookableUnit, string $ratePlan): self
     {
         return new self(
-            "{$ratePlan} prices by the number of guests, so the booking has to say who is in the {$roomType}."
+            "{$ratePlan} prices by the number of guests, so the booking has to say who is in the {$bookableUnit}."
         );
     }
 
-    public static function noAmountForGuestCount(string $roomType, string $ratePlan, int $guests, string $date): self
+    public static function noAmountForGuestCount(string $bookableUnit, string $ratePlan, int $guests, string $date): self
     {
         return new self(
-            "{$roomType} has no price for {$guests} guests on {$date} under {$ratePlan}."
+            "{$bookableUnit} has no price for {$guests} guests on {$date} under {$ratePlan}."
         );
     }
 
-    public static function tooManyGuests(string $roomType, int $guests, int $capacity): self
+    public static function tooManyGuests(string $bookableUnit, int $guests, int $capacity): self
     {
         return new self(
-            "{$roomType} sleeps {$capacity}; {$guests} guests were entered."
+            "{$bookableUnit} sleeps {$capacity}; {$guests} guests were entered."
         );
     }
 }

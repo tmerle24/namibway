@@ -56,13 +56,13 @@
             @foreach ($grid->rows as $row)
                 <div @class(['nw-cal__row', 'nw-cal__retired' => $row->isRetired])>
                     <div class="nw-cal__label">
-                        <div class="nw-cal__name">{{ $row->roomType->name }}</div>
+                        <div class="nw-cal__name">{{ $row->bookableUnit->name }}</div>
                         <div class="nw-cal__meta">
-                            {{ $row->roomType->code }} ·
+                            {{ $row->bookableUnit->code }} ·
                             @if ($row->isDepartureUnit())
-                                {{ $row->roomType->total_units }} seats per departure ·
+                                {{ $row->bookableUnit->total_units }} seats per departure ·
                             @else
-                                {{ $row->roomType->total_units }} {{ Str::plural('unit', $row->roomType->total_units) }} ·
+                                {{ $row->bookableUnit->total_units }} {{ Str::plural('unit', $row->bookableUnit->total_units) }} ·
                             @endif
                             {{ Money::symbol($row->currency) }}
                             @if ($row->isRetired)
@@ -187,8 +187,8 @@
                                     type="button"
                                     @disabled(! $cellBookable)
                                     @if ($cellBookable)
-                                        wire:click="startBooking({{ $row->roomType->id }}, '{{ $cell->date->toDateString() }}')"
-                                        aria-label="Book {{ $row->roomType->name }}, arriving {{ $cell->date->isoFormat('D MMMM YYYY') }}"
+                                        wire:click="startBooking({{ $row->bookableUnit->id }}, '{{ $cell->date->toDateString() }}')"
+                                        aria-label="Book {{ $row->bookableUnit->name }}, arriving {{ $cell->date->isoFormat('D MMMM YYYY') }}"
                                     @endif
                                     @class([
                                         'nw-cell',

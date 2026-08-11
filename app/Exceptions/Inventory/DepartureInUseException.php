@@ -7,7 +7,7 @@ use RuntimeException;
 /**
  * A departure with seats on it cannot be deleted.
  *
- * The reason is a foreign key rather than a policy. `room_type_calendar_days.slot_id`
+ * The reason is a foreign key rather than a policy. `bookable_unit_calendar_days.slot_id`
  * and `rate_plan_days.slot_id` both cascade on delete, so removing a departure
  * takes its counters with it — silently, below Eloquent, past the write guard,
  * and without anything to restore them from. A property that has stopped

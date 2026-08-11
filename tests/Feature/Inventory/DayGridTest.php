@@ -4,11 +4,11 @@ namespace Tests\Feature\Inventory;
 
 use App\Enums\PricingStrategy;
 use App\Enums\ReservationSource;
+use App\Models\BookableUnit;
 use App\Models\BookingSlot;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
-use App\Models\RoomType;
 use App\Services\Inventory\DayGrid;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
@@ -129,7 +129,7 @@ class DayGridTest extends TestCase
 
         InventoryWriteGuard::allow(fn () => RatePlanDay::create([
             'rate_plan_id' => $plan->id,
-            'room_type_id' => $unit->id,
+            'bookable_unit_id' => $unit->id,
             'slot_id' => $sunset->id,
             'date' => '2026-09-10',
             'rate' => 1400,
@@ -188,7 +188,7 @@ class DayGridTest extends TestCase
 
         InventoryWriteGuard::allow(fn () => RatePlanDay::create([
             'rate_plan_id' => $plan->id,
-            'room_type_id' => $unit->id,
+            'bookable_unit_id' => $unit->id,
             'slot_id' => $sunset->id,
             'date' => '2026-09-10',
             'rate' => 1400,
@@ -224,7 +224,7 @@ class DayGridTest extends TestCase
         for ($hour = 6; $hour < 18; $hour++) {
             $each = $this->unit($large, ['name' => 'Tour '.$hour]);
             $this->slot($each, str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':00', 'Departure '.$hour, 60);
-            $this->book($large, $each, BookingSlot::query()->where('room_type_id', $each->id)->firstOrFail(), seats: 1);
+            $this->book($large, $each, BookingSlot::query()->where('bookable_unit_id', $each->id)->firstOrFail(), seats: 1);
         }
 
         $forOne = $this->countQueries(fn () => $this->day($small));
@@ -256,10 +256,10 @@ class DayGridTest extends TestCase
         return $count;
     }
 
-    private function slot(RoomType $unit, string $time, string $label, int $minutes): BookingSlot
+    private function slot(BookableUnit $unit, string $time, string $label, int $minutes): BookingSlot
     {
         return BookingSlot::create([
-            'room_type_id' => $unit->id,
+            'bookable_unit_id' => $unit->id,
             'label' => $label,
             'starts_at' => $time,
             'duration_minutes' => $minutes,
@@ -280,9 +280,9 @@ class DayGridTest extends TestCase
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function unit(Listing $listing, array $attributes = []): RoomType
+    private function unit(Listing $listing, array $attributes = []): BookableUnit
     {
-        return RoomType::factory()->create(array_merge([
+        return BookableUnit::factory()->create(array_merge([
             'listing_id' => $listing->id,
             'name' => 'Quad tour',
             'total_units' => 8,
@@ -291,7 +291,7 @@ class DayGridTest extends TestCase
         ], $attributes));
     }
 
-    private function book(Listing $listing, RoomType $unit, BookingSlot $slot, int $seats, string $guest = 'Guest'): void
+    private function book(Listing $listing, BookableUnit $unit, BookingSlot $slot, int $seats, string $guest = 'Guest'): void
     {
         app(InventoryWriter::class)->book(new BookingRequest(
             listing: $listing,

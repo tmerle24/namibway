@@ -12,12 +12,12 @@ use RuntimeException;
 class InventoryUnavailableException extends RuntimeException
 {
     public function __construct(
-        public readonly int $roomTypeId,
+        public readonly int $bookableUnitId,
         public readonly ?Carbon $date = null,
         public readonly int $requested = 0,
     ) {
         $on = $date !== null ? ' on '.$date->toDateString() : '';
 
-        parent::__construct("Room type [{$roomTypeId}] has fewer than {$requested} unit(s) free{$on}.");
+        parent::__construct("Bookable unit [{$bookableUnitId}] has fewer than {$requested} unit(s) free{$on}.");
     }
 }

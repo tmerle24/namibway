@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Enums\InquiryStatus;
+use App\Models\BookableUnit;
 use App\Models\Inquiry;
-use App\Models\RoomType;
 use App\Models\SavedPlan;
 use App\Models\Trip;
 use App\Services\Booking\ActiveRequestGate;
@@ -84,7 +84,7 @@ class TripController extends Controller
         $variantDays = $validated['variant_days'];
 
         // One inquiry per accommodation, carrying the room the traveler picked
-        // for it. Without `room_type_code` the choice was decorative — the
+        // for it. Without `bookable_unit_code` the choice was decorative — the
         // connector received a request with no room on it and every option
         // ended up the same booking. First pick wins for a multi-night stay:
         // the picker sets the same selection across the run, and a plan edited
@@ -148,7 +148,7 @@ class TripController extends Controller
             'plan' => $validated['plan'],
         ]);
 
-        foreach ($roomByListing as $listingId => $roomTypeCode) {
+        foreach ($roomByListing as $listingId => $bookableUnitCode) {
             Inquiry::create([
                 'listing_id' => $listingId,
                 'trip_id' => $trip->id,
@@ -160,7 +160,7 @@ class TripController extends Controller
                 'check_out' => $validated['check_out'],
                 'adults' => $validated['adults'],
                 'children' => $validated['children'] ?? 0,
-                'room_type_code' => $roomTypeCode,
+                'bookable_unit_code' => $bookableUnitCode,
                 'status' => InquiryStatus::Pending,
             ]);
         }
@@ -193,16 +193,16 @@ class TripController extends Controller
                 continue;
             }
 
-            $roomType = RoomType::query()
+            $bookableUnit = BookableUnit::query()
                 ->where('listing_id', $listingId)
                 ->where('code', $code)
                 ->first();
 
-            if (! $roomType instanceof RoomType || RoomCapacity::fits($roomType, $adults, $children)) {
+            if (! $bookableUnit instanceof BookableUnit || RoomCapacity::fits($bookableUnit, $adults, $children)) {
                 continue;
             }
 
-            $problems[] = RoomCapacity::explain([[$roomType, 1]], $adults, $children);
+            $problems[] = RoomCapacity::explain([[$bookableUnit, 1]], $adults, $children);
         }
 
         return $problems;

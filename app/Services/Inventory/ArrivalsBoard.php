@@ -73,7 +73,7 @@ class ArrivalsBoard
      */
     private function sellsNights(Listing $listing): bool
     {
-        return $listing->roomTypes()
+        return $listing->bookableUnits()
             ->where('is_active', true)
             ->whereDoesntHave('slots', fn (Builder $slots) => $slots->where('is_active', true))
             ->exists();
@@ -99,7 +99,7 @@ class ArrivalsBoard
             ->where(fn (Builder $query) => $query
                 ->whereHas('units', fn (Builder $units) => $units->whereNull('slot_id'))
                 ->orWhereDoesntHave('units'))
-            ->with(['units.roomType'])
+            ->with(['units.bookableUnit'])
             ->orderBy('guest_name')
             ->orderBy('id');
     }

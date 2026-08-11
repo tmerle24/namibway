@@ -2,7 +2,7 @@
 
 namespace App\Services\Booking;
 
-use App\Models\RoomType;
+use App\Models\BookableUnit;
 
 /**
  * How many people a room sleeps, and whether a party fits in it.
@@ -31,9 +31,9 @@ class RoomCapacity
      * three adults. The reverse is not true: an adult never occupies a child
      * slot, since a child slot is often a bunk or a fold-out.
      */
-    public static function fits(RoomType $roomType, int $adults, int $children): bool
+    public static function fits(BookableUnit $bookableUnit, int $adults, int $children): bool
     {
-        return self::fitsAcross([[$roomType, 1]], $adults, $children);
+        return self::fitsAcross([[$bookableUnit, 1]], $adults, $children);
     }
 
     /**
@@ -46,7 +46,7 @@ class RoomCapacity
      * was booked at all. Seven people in two doubles is over capacity however
      * they arrange themselves.
      *
-     * @param  array<int, array{0: RoomType, 1: int}>  $lines  room type and quantity
+     * @param  array<int, array{0: BookableUnit, 1: int}>  $lines  room type and quantity
      */
     public static function fitsAcross(array $lines, int $adults, int $children): bool
     {
@@ -75,7 +75,7 @@ class RoomCapacity
      * exceeded", which tells a receptionist nothing they did not already know
      * and nothing about what to do next.
      *
-     * @param  array<int, array{0: RoomType, 1: int}>  $lines
+     * @param  array<int, array{0: BookableUnit, 1: int}>  $lines
      */
     public static function explain(array $lines, int $adults, int $children): string
     {
@@ -83,8 +83,8 @@ class RoomCapacity
 
         $names = [];
 
-        foreach ($lines as [$roomType, $quantity]) {
-            $names[] = $quantity > 1 ? $roomType->name.' ×'.$quantity : $roomType->name;
+        foreach ($lines as [$bookableUnit, $quantity]) {
+            $names[] = $quantity > 1 ? $bookableUnit->name.' ×'.$quantity : $bookableUnit->name;
         }
 
         $what = implode(' + ', array_unique($names));
@@ -95,7 +95,7 @@ class RoomCapacity
     /**
      * Adult and child slots across the lines, quantity included.
      *
-     * @param  array<int, array{0: RoomType, 1: int}>  $lines
+     * @param  array<int, array{0: BookableUnit, 1: int}>  $lines
      * @return array{int, int}
      */
     private static function slots(array $lines): array
@@ -103,9 +103,9 @@ class RoomCapacity
         $adults = 0;
         $children = 0;
 
-        foreach ($lines as [$roomType, $quantity]) {
-            $adults += $roomType->max_adults * max(1, $quantity);
-            $children += $roomType->max_children * max(1, $quantity);
+        foreach ($lines as [$bookableUnit, $quantity]) {
+            $adults += $bookableUnit->max_adults * max(1, $quantity);
+            $children += $bookableUnit->max_children * max(1, $quantity);
         }
 
         return [$adults, $children];

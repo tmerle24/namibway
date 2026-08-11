@@ -3,10 +3,10 @@
 namespace Tests\Feature\Filament;
 
 use App\Filament\Resources\ListingResource\Pages\EditListing;
-use App\Filament\Resources\ListingResource\RelationManagers\RoomTypesRelationManager;
+use App\Filament\Resources\ListingResource\RelationManagers\BookableUnitsRelationManager;
+use App\Models\BookableUnit;
 use App\Models\BookingSlot;
 use App\Models\Listing;
-use App\Models\RoomType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -33,7 +33,7 @@ class DepartureTimetableTest extends TestCase
 
         $this->actingAs($user);
 
-        Livewire::test(RoomTypesRelationManager::class, [
+        Livewire::test(BookableUnitsRelationManager::class, [
             'ownerRecord' => $listing,
             'pageClass' => EditListing::class,
         ])
@@ -68,7 +68,7 @@ class DepartureTimetableTest extends TestCase
 
         $this->actingAs($user);
 
-        Livewire::test(RoomTypesRelationManager::class, [
+        Livewire::test(BookableUnitsRelationManager::class, [
             'ownerRecord' => $listing,
             'pageClass' => EditListing::class,
         ])
@@ -82,7 +82,7 @@ class DepartureTimetableTest extends TestCase
             ->callMountedTableAction()
             ->assertHasTableActionErrors();
 
-        $this->assertSame(0, BookingSlot::query()->where('room_type_id', $tour->id)->count());
+        $this->assertSame(0, BookingSlot::query()->where('bookable_unit_id', $tour->id)->count());
     }
 
     /** A property that sells nights never has to know any of this exists. */
@@ -93,7 +93,7 @@ class DepartureTimetableTest extends TestCase
 
         $this->actingAs($user);
 
-        Livewire::test(RoomTypesRelationManager::class, [
+        Livewire::test(BookableUnitsRelationManager::class, [
             'ownerRecord' => $listing,
             'pageClass' => EditListing::class,
         ])
@@ -114,9 +114,9 @@ class DepartureTimetableTest extends TestCase
         return [User::factory()->create(['is_admin' => true]), Listing::factory()->create()];
     }
 
-    private function unit(Listing $listing, string $name): RoomType
+    private function unit(Listing $listing, string $name): BookableUnit
     {
-        return RoomType::factory()->create([
+        return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'name' => $name,
             'total_units' => 8,
