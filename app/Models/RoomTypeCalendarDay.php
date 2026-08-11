@@ -36,6 +36,7 @@ class RoomTypeCalendarDay extends Model
 
     protected $fillable = [
         'room_type_id',
+        'slot_id',
         'date',
         'units_total',
         'units_sold',

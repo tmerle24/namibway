@@ -354,6 +354,71 @@ saved — the point in the day when it matters, and nowhere else.
 
 ---
 
+### Time inside a day — decided 2026-08-12, before any code
+
+The brief in `BOOKING_BEYOND_ROOMS.md` §3.1 proposed a **slot** beside the date,
+null for anything sold by the day. Reviewing it against what an activity
+operator actually needs turned it from a flag into a small entity, and produced
+two decisions that are expensive to get wrong.
+
+**1. The grid is drawing; the slot is inventory.**
+
+A quad tour at 09:00 with eight seats is *one* row with *one* counter, moved by
+the same conditional `UPDATE` that resolves two people racing for the last room.
+A 15-minute grid is how that row is *drawn* on an hour axis — it is not 96 rows
+a day.
+
+This is the decision the whole thing rests on. Putting the grid into the
+inventory would give every unit hundreds of counters per day, and the atomic
+counter — the single most valuable piece of this system, and the one
+`BOOKING_BEYOND_ROOMS.md` §4 forbids replacing — would become an overlap query
+under concurrency that nobody can reason about. The resolution a property draws
+its day at is a **property of the screen**, configurable per operator (15, 30,
+60 minutes), and it touches no table that counts anything.
+
+**2. A slot carries a start and a duration, not a number.**
+
+`slot_1`, `slot_2` would be enough to key a counter and useless for everything
+else: a column has to know where on the axis it sits and how tall it is, and
+"09:00 for three hours" beside "12:00 for three hours" has to be expressible
+without anything guessing. So a slot is a start time and a length, and a
+departure is `(unit, date, slot)` with `slot` null for everything sold by the
+day. Accommodation rows are unchanged, and so is every query that reads them.
+
+**3. Views are a reading of the same rows, not a second calendar.**
+
+The calendar today is one fixed fortnight. It becomes day, week and month, with
+a month and year to jump to. Underneath, the two verticals read the same table
+from different directions:
+
+| | Down the page | Across |
+|---|---|---|
+| A lodge, month view | room types | nights |
+| A tour operator, day view | the hour axis at the property's own resolution | departures |
+
+Whether that is one component transposed or two components is a question to
+answer *while building it*, against a real grid — not to guess at now. What must
+be true either way is that the rows underneath are the same rows, because the
+moment they are not, a property that sells both a chalet and a sunset drive has
+two calendars and no way to see its day.
+
+**Where it stands.** The data model is built (2026-08-12): `booking_slots` is the
+timetable a unit runs, `room_type_calendar_days.slot_id` keys a row to a
+departure, and the uniqueness rule is two partial indexes — one row per unit per
+night where there is no slot, one per unit per date per departure where there is.
+Two indexes rather than one over three columns because SQL treats NULLs as
+distinct, and a single index would have let a lodge keep two counters for the
+same night: the exact failure the counter exists to prevent, arriving silently.
+The writer and the calendar cannot yet *sell* a departure — that is the next
+slice, and it is where the concurrency test on the last seat belongs.
+
+**What this does not change.** Inventory stays a counter per unit per period.
+Restrictions stay where they are. The price stays frozen. A stay crossing
+midnight is still one row per period, not a range with overlap arithmetic —
+minutes are a scheduling problem, and this is an inventory system.
+
+---
+
 ## 6. Order of work
 
 Each step leaves the system working and shippable.

@@ -142,6 +142,24 @@ class RoomType extends Model
     }
 
     /**
+     * The departures this unit runs, where it runs any. Empty for everything
+     * sold by the night, which is every property today — see the booking_slots
+     * migration.
+     *
+     * @return HasMany<BookingSlot, $this>
+     */
+    public function slots(): HasMany
+    {
+        return $this->hasMany(BookingSlot::class)->orderBy('starts_at')->orderBy('id');
+    }
+
+    /** Whether this unit is sold by departure rather than by the period. */
+    public function hasSlots(): bool
+    {
+        return $this->slots()->where('is_active', true)->exists();
+    }
+
+    /**
      * The ARI calendar for this room type. Sparse — a night with no row uses
      * the defaults on this model, so absence of rows is normal and never a
      * gap to be filled in. Read it through
