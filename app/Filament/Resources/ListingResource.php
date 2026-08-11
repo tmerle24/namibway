@@ -14,6 +14,7 @@ use App\Filament\Pages\ListingImport;
 use App\Filament\Resources\ListingResource\Pages;
 use App\Filament\Resources\ListingResource\RelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
+use App\Filament\Support\CreateWebsiteAction;
 use App\Filament\Support\MessagesColumn;
 use App\Filament\Support\PipelineImageResolver;
 use App\Filament\Support\WorkbookDownload;
@@ -541,6 +542,7 @@ class ListingResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                CreateWebsiteAction::make(),
                 Tables\Actions\Action::make('view_frontend')
                     ->label('')
                     ->icon('heroicon-o-arrow-top-right-on-square')

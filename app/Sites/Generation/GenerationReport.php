@@ -26,6 +26,9 @@ class GenerationReport
     /** @var array<int, string> */
     public array $disabledBlocks = [];
 
+    /** @var array<int, string> */
+    public array $shortened = [];
+
     public int $imagesCopied = 0;
 
     public function wrote(string $field): void
@@ -52,5 +55,17 @@ class GenerationReport
     public function disabled(string $type): void
     {
         $this->disabledBlocks[] = $type;
+    }
+
+    /**
+     * A listing field that did not fit the block it was written into.
+     *
+     * Reported rather than silent, because the shortened text is now the
+     * website's text: somebody should read it once and decide whether the cut
+     * landed somewhere sensible.
+     */
+    public function shortened(string $field, int $max): void
+    {
+        $this->shortened[] = "{$field} — shortened to {$max} characters to fit";
     }
 }

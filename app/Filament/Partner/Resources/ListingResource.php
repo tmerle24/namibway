@@ -10,6 +10,7 @@ use App\Enums\VehicleClass;
 use App\Filament\Partner\Resources\ListingResource\Pages;
 use App\Filament\Resources\ListingResource\RelationManagers as AdminRelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
+use App\Filament\Support\CreateWebsiteAction;
 use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
 use App\Models\Amenity;
@@ -281,6 +282,11 @@ class ListingResource extends Resource
             ->filters([])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                // The same button the team has, doing the same thing. The
+                // offer is that the owner can do it themselves and that we
+                // will also do it for them — two buttons that drifted apart
+                // would quietly turn that into two products.
+                CreateWebsiteAction::make(),
             ])
             ->paginated(false);
     }
