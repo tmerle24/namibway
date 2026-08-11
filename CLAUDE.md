@@ -79,7 +79,7 @@ When a production outage traces back to a flaw in the deploy process (not just a
 ## Current state — what's actually built
 The MVP foundation is live in production; work now is depth and polish, not scaffolding.
 
-**Domain model** (`app/Models`): `Listing` (accommodation/activity/restaurant/vehicle, with `vehicle_category` splitting self-drive vs guided tour), `RoomType`, `Partner`, `Inquiry`, `Trip`, `SavedPlan`, `Review`, `Region` (Namibia's 14 political regions) → `City` (incl. villages/settlements, see `SettlementType`) → listings, `Destination` (curated destination cards), `RouteTemplate` + `RouteTemplateStop` (curated classic routes Kaia adapts instead of inventing routes freeform), `EnrichmentJob`, `ApiClient`, `PartnerMessage`, `SupportMessage`, `TripFeedback`, `ReleaseNote`.
+**Domain model** (`app/Models`): `Listing` (accommodation/activity/restaurant/vehicle, with `vehicle_category` splitting self-drive vs guided tour), `RoomType`, `Partner`, `Customer` (who a property sells to — see below), `Note` (polymorphic comments), `Inquiry`, `Trip`, `SavedPlan`, `Review`, `Region` (Namibia's 14 political regions) → `City` (incl. villages/settlements, see `SettlementType`) → listings, `Destination` (curated destination cards), `RouteTemplate` + `RouteTemplateStop` (curated classic routes Kaia adapts instead of inventing routes freeform), `EnrichmentJob`, `ApiClient`, `PartnerMessage`, `SupportMessage`, `TripFeedback`, `ReleaseNote`.
 
 **Kaia** (`app/Services/Kaia`, `routes/kaia.php`, `config/kaia.php`): interview + itinerary generation. Both phases now run on **Haiku** — the itinerary call used to be Sonnet with a multi-round `search_listings` tool loop; the catalog is now fetched deterministically in PHP and handed to Claude in one single-shot forced-tool-call request, so round-trips are fixed at 1 and a fast model suffices. Driving times come from `OsrmDrivingTimeService` + the `city_driving_hours` table, not from model memory.
 
@@ -141,7 +141,7 @@ Status of the governance rules:
 - ✅ **Low-effort partner response** — signed one-click confirm/cancel URLs (`routes/partner.php`) plus the same transition from the logged-in dashboard, both through `InquiryDecisionService`.
 - ⬜ **Staged confirmations** — lock accommodation first, then layer in activities/restaurants once the route is fixed. Still not implemented; today's flow treats each inquiry independently.
 
-### How a confirmed `Inquiry` becomes a `Reservation` — designed, deliberately not built
+### How a confirmed `Inquiry` becomes a `Reservation` — built 2026-08-11 (`App\Services\Booking\StayPromoter`)
 `Inquiry` and `Reservation` are not two names for the same thing and must not be merged. An `Inquiry` is the traveller's *request*: it may be declined, it may expire with its soft hold, and it is what the one-active-request gate counts. A `Reservation` is the lodge's *stay*: it holds inventory, has a lifecycle at a front desk, and exists for walk-ins and telephone bookings that never had a request at all.
 
 So the bridge is a one-way promotion, not a sync:
@@ -152,7 +152,17 @@ So the bridge is a one-way promotion, not a sync:
 - **The failure that has to be handled.** Promotion can fail where the request could not: the calendar may have no units left, because the inquiry-based availability the traveller saw and the ARI calendar are separate readers today. A failed promotion must not silently un-confirm the guest's booking — it is an operational alert, and the honest fix is the later step of making the traveller-facing picker read the calendar.
 - **Missing dates.** `Inquiry.check_in` / `check_out` are nullable (there is a free-text `travel_dates` field), and a stay without dates cannot be allocated. An inquiry without both dates is not promotable, and that is a validation rule at confirmation time, not a guess.
 
-Nothing above is implemented. When it is, it belongs behind `InventoryWriter` like every other inventory mutation.
+All of the above is now implemented in `StayPromoter`, and it writes through `InventoryWriter` like every other inventory mutation. Two things the design did not say, decided while building it:
+
+- **Stay restrictions are not enforced on a promotion** (`BookingRequest::$ignoreStayRules`). A minimum stay or a closed-to-arrival day is a rule about *selling* a night; this stay has already been sold and confirmed, and refusing to write it down would leave the calendar lying about how full the property is. Availability is still enforced — an overbooking is a real conflict and becomes the alert above.
+- **A request with no `room_type_code`** — most of them, because the picker only appears once a property has entered its rooms — takes the property's single active room type when there is exactly one, and is refused as a guess when there is more than one.
+
+### The customer — one of the few main entities, added 2026-08-11
+A booking system has a small number of nouns that everything else hangs off, and the customer is one of them. `customers` is scoped to the **partner** (NWR's twenty camps share their guests; another lodge keeps its own record of the same person), and somebody is recognised by **`user_id` first, then email** — an account survives a change of address and an email does not. The phone is stored normalised and searchable but is deliberately *not* a match key: a couple's single mobile merging two people is much harder to undo than two records.
+
+Rules that are load-bearing: **every booking resolves a customer** inside `InventoryWriter::book()`, so the customer view has no holes; **an existing customer is used, not overwritten**, so a typo in one booking cannot rewrite what the property learned over three seasons; and the frozen `guest_name`/`guest_email`/`guest_phone` on the reservation stay exactly as typed — the link says whose stay it is, the strings say what the booking said. Email is required on the website and optional at the desk, because a mandatory field that cannot always be satisfied produces `x@x.com`.
+
+Comments live in a polymorphic `notes` table with the author's name frozen beside the account id, for customers and stays alike. `reservations.notes` is a different thing and stays: that column is what the booking was taken with, this table is the running log that starts afterwards.
 
 ## AI engine notes
 - Claude is NOT the source of truth for hard logistics facts (driving distances, night-driving rules, fuel stops). These come from the maintained `city_driving_hours` data + OSRM, and route shape comes from `RouteTemplate` — don't trust model memory for specific Namibian geography.

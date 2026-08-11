@@ -7,6 +7,7 @@ use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Exceptions\Pricing\PromotionUnavailableException;
 use App\Jobs\NotifyAboutStay;
+use App\Models\Customer;
 use App\Models\InventoryBlock;
 use App\Models\Listing;
 use App\Models\Promotion;
@@ -22,6 +23,7 @@ use App\Models\RoomTypeCalendarDay;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
+use App\Services\Booking\CustomerDirectory;
 use App\Services\Inventory\DTOs\Quote;
 use App\Services\Pricing\PromotionFinder;
 use App\Services\Pricing\PromotionMatch;
@@ -74,6 +76,7 @@ class InventoryWriter
     public function __construct(
         private readonly AvailabilityCalendar $calendar,
         private readonly PromotionFinder $promotions = new PromotionFinder,
+        private readonly CustomerDirectory $customers = new CustomerDirectory,
     ) {}
 
     /**
@@ -86,7 +89,15 @@ class InventoryWriter
     {
         $lines = $this->validatedLines($request);
 
-        $reservation = InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($request, $lines) {
+        // Before the transaction, not inside it. The unique keys on `customers`
+        // are the referee when two bookings for one person land at once, and a
+        // constraint violation inside a Postgres transaction aborts the whole
+        // thing — the re-read that resolves the race could not run. The cost is
+        // that a booking which then fails leaves a customer with no stay, which
+        // is harmless and, arguably, true.
+        $customer = $this->customerFor($request);
+
+        $reservation = InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($request, $lines, $customer) {
             // Resolved once per line and reused for rules, pricing and the
             // recorded line, so a stay cannot be checked against one plan and
             // priced under another.
@@ -97,8 +108,10 @@ class InventoryWriter
                 $plans[$index] = $line->ratePlan ?? $fallback;
             }
 
-            foreach ($lines as $index => $line) {
-                $this->calendar->assertStayRules($line->roomType, $line->checkIn, $line->checkOut, $plans[$index]);
+            if (! $request->ignoreStayRules) {
+                foreach ($lines as $index => $line) {
+                    $this->calendar->assertStayRules($line->roomType, $line->checkIn, $line->checkOut, $plans[$index]);
+                }
             }
 
             $quotes = [];
@@ -160,6 +173,12 @@ class InventoryWriter
             $reservation = new Reservation([
                 'reference' => $this->generateReference(),
                 'listing_id' => $request->listing->id,
+                // Resolved by this class rather than by each caller, so that
+                // "every booking belongs to somebody" is a property of the one
+                // write path instead of a thing four screens have to remember.
+                // The typed strings below stay as the record of this booking;
+                // the link is whose stay it is.
+                'customer_id' => $customer?->id,
                 'inquiry_id' => $request->inquiryId,
                 'status' => $request->status,
                 'source' => $request->source,
@@ -249,6 +268,30 @@ class InventoryWriter
         }
 
         return $reservation;
+    }
+
+    /**
+     * Who this stay belongs to.
+     *
+     * Null only where there is nobody to own the record: a listing with no
+     * partner is a scraped property nobody has claimed, and a customer is
+     * scoped to a partner's business. Every booking taken in the panel has one.
+     */
+    private function customerFor(BookingRequest $request): ?Customer
+    {
+        $partner = $request->listing->partner;
+
+        if ($partner === null) {
+            return null;
+        }
+
+        return $this->customers->resolve(
+            $partner,
+            $request->guestName,
+            $request->guestEmail,
+            $request->guestPhone,
+            $request->guestUserId,
+        );
     }
 
     /**

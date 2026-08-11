@@ -10,6 +10,7 @@ use App\Enums\ReservationStatus;
 use App\Mail\GuestBookingConfirmed;
 use App\Mail\PartnerConfirmationRequest;
 use App\Models\Inquiry;
+use App\Services\Booking\StayPromoter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -110,6 +111,11 @@ class ProcessInquiry implements ShouldQueue
         if ($resResponse->status === ReservationStatus::Confirmed) {
             $inquiry->update(['status' => InquiryStatus::Confirmed]);
             Mail::to($inquiry->email)->send(new GuestBookingConfirmed($inquiry));
+
+            // Confirmed without a partner ever deciding, so the stay is written
+            // here rather than in InquiryDecisionService. Same rule: a calendar
+            // that cannot take it is an alert, never a cancellation.
+            app(StayPromoter::class)->promoteQuietly($inquiry->refresh());
         } elseif ($resResponse->status === ReservationStatus::OnRequest) {
             $inquiry->update(['status' => InquiryStatus::OnRequest]);
 
