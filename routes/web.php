@@ -18,6 +18,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// The booking subdomain is the lodge-facing product's own front door, so its
+// root is the panel and not the travel site. Registered before everything
+// else because Laravel matches routes in order, and '/' below would otherwise
+// answer first — a host constraint does not make a route more specific, only
+// narrower. Does nothing at all until config('booking.panel_domain') is set,
+// which is why local development and CI never notice it.
+if (filled(config('booking.panel_domain'))) {
+    Route::domain((string) config('booking.panel_domain'))
+        ->get('/', fn () => redirect('/partner'))
+        ->name('booking.home');
+}
+
 Route::get('/', HomeController::class)->name('home');
 
 // Placeholder — needs real content from NamibWay's own legal review before this

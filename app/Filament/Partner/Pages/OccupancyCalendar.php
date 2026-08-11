@@ -2,6 +2,7 @@
 
 namespace App\Filament\Partner\Pages;
 
+use App\Filament\Partner\Pages\Concerns\EditsInventory;
 use App\Filament\Partner\Pages\Concerns\ShowsReservationDetail;
 use App\Filament\Partner\Support\SelectedProperty;
 use App\Models\Listing;
@@ -9,6 +10,8 @@ use App\Services\Inventory\DTOs\OccupancyGridData;
 use App\Services\Inventory\OccupancyGrid;
 use App\Support\CountrySettings;
 use Carbon\Exceptions\InvalidFormatException;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Url;
@@ -17,15 +20,18 @@ use Livewire\Attributes\Url;
  * Room types down, nights across, stays and blocks as bars — the shape a lodge
  * already has on the wall.
  *
- * Read only in this slice: no creating a booking, no moving a bar, no editing
- * a rate. Everything the screen can do, it can do to the book without changing
- * it, which is why nothing here touches InventoryWriter.
+ * The grid itself is still a pure read: OccupancyGrid returns plain objects,
+ * already clipped and lane-packed, so the view does no date arithmetic and
+ * issues no queries no matter how many room types the property has.
  *
- * The data comes out of OccupancyGrid as plain objects, already clipped and
- * lane-packed, so the view does no date arithmetic and issues no queries.
+ * What the screen can now *do* lives in EditsInventory, and every one of those
+ * writes goes through InventoryWriter. Nothing on this page touches an
+ * inventory table.
  */
-class OccupancyCalendar extends Page
+class OccupancyCalendar extends Page implements HasForms
 {
+    use EditsInventory;
+    use InteractsWithForms;
     use ShowsReservationDetail;
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';

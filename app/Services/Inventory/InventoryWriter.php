@@ -6,6 +6,7 @@ use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Models\InventoryBlock;
+use App\Models\Listing;
 use App\Models\Reservation;
 use App\Models\ReservationNight;
 use App\Models\ReservationUnit;
@@ -103,6 +104,12 @@ class InventoryWriter
                 }
             }
 
+            // What the calendar says, priced night by night, so a stay crossing
+            // a season boundary needs no special case.
+            $quoted = round(array_sum(array_map(fn ($quote) => $quote->total(), $quotes)), 2);
+            $charged = $request->totalOverride === null ? $quoted : round($request->totalOverride, 2);
+            $overridden = abs($charged - $quoted) >= 0.01;
+
             $reservation = new Reservation([
                 'reference' => $this->generateReference(),
                 'listing_id' => $request->listing->id,
@@ -116,7 +123,14 @@ class InventoryWriter
                 'check_out' => $this->latest($lines),
                 'adults' => $request->adults,
                 'children' => $request->children,
-                'total_amount' => round(array_sum(array_map(fn ($quote) => $quote->total(), $quotes)), 2),
+                'total_amount' => $charged,
+                'quoted_amount' => $quoted,
+                // Only recorded when the two actually differ: stamping a
+                // reason and a user onto every booking would make the column
+                // useless for finding the ones somebody changed.
+                'price_override_reason' => $overridden ? $request->overrideReason : null,
+                'price_overridden_by' => $overridden ? $request->createdBy : null,
+                'price_overridden_at' => $overridden ? now() : null,
                 'currency' => $currencies[0],
                 'notes' => $request->notes,
                 'created_by' => $request->createdBy,
@@ -126,6 +140,11 @@ class InventoryWriter
             foreach ($lines as $index => $line) {
                 $quote = $quotes[$index];
 
+                // Lines and nights stay at the calendar's price even when the
+                // header was overridden. Spreading an override across them
+                // would invent a per-night rate nobody chose, and the
+                // difference between the two totals is the record of what
+                // actually happened.
                 $unit = new ReservationUnit([
                     'reservation_id' => $reservation->id,
                     'room_type_id' => $line->roomType->id,
@@ -259,6 +278,61 @@ class InventoryWriter
         }));
     }
 
+    /**
+     * Change a block's dates, size or reason.
+     *
+     * Implemented as release-then-consume inside one transaction rather than
+     * as an UPDATE, because a block's shape lives in two places at once: the
+     * row, and the `units_blocked` counters on every night it covers. Editing
+     * the row alone would leave the counters describing the old block for
+     * ever. Doing it in this order also means a widened block that no longer
+     * fits rolls back to exactly the block that was there before, rather than
+     * leaving the property with no block at all.
+     *
+     * @throws InventoryUnavailableException when the new shape does not fit
+     */
+    public function updateBlock(InventoryBlock $block, BlockRequest $request): InventoryBlock
+    {
+        if ($block->released_at !== null) {
+            throw new InvalidArgumentException('A released block cannot be edited; create a new one.');
+        }
+
+        if ($request->units < 1) {
+            throw new InvalidArgumentException('A block must cover at least one unit.');
+        }
+
+        if ($request->lastNight->lt($request->firstNight)) {
+            throw new InvalidArgumentException('A block cannot end before it starts.');
+        }
+
+        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($block, $request) {
+            $block->loadMissing('roomType');
+            $previous = $block->roomType;
+
+            if ($previous !== null) {
+                foreach ($this->blockNights($block->first_night, $block->last_night) as $night) {
+                    $this->release($previous, $night, $block->units, self::COUNTER_BLOCKED);
+                }
+            }
+
+            foreach ($this->blockNights($request->firstNight, $request->lastNight) as $night) {
+                $this->consume($request->roomType, $night, $request->units, self::COUNTER_BLOCKED);
+            }
+
+            $block->fill([
+                'room_type_id' => $request->roomType->id,
+                'reason' => $request->reason,
+                'units' => $request->units,
+                'first_night' => $request->firstNight,
+                'last_night' => $request->lastNight,
+                'note' => $request->note,
+            ]);
+            $block->save();
+
+            return $block->refresh();
+        }));
+    }
+
     /** Idempotent, for the same reason cancel() is. */
     public function releaseBlock(InventoryBlock $block): InventoryBlock
     {
@@ -292,13 +366,29 @@ class InventoryWriter
      * and letting a rate update reset them is precisely the class of bug the
      * single write path exists to prevent.
      *
+     * `$weekdays` restricts the write to certain days of the week, as ISO-8601
+     * numbers (1 = Monday … 7 = Sunday). Null or empty means every night. This
+     * is not a convenience: "weekends cost more" is how rates are actually
+     * maintained, and every channel manager's bulk update carries it, so
+     * leaving it out would push a lodge into editing cells one at a time.
+     *
+     * Written in bulk rather than night by night. A season is easily half a
+     * year, and a per-night round trip is hundreds of queries over the kind of
+     * connection these properties have.
+     *
      * @param  array<string, mixed>  $attributes  units_total, rate, min_stay,
      *                                            closed_to_arrival, closed_to_departure.
      *                                            A null value clears the override.
+     * @param  array<int, int>|null  $weekdays  ISO-8601 day numbers, or null for every night
      * @return int number of nights written
      */
-    public function setCalendar(RoomType $roomType, CarbonInterface $from, CarbonInterface $to, array $attributes): int
-    {
+    public function setCalendar(
+        RoomType $roomType,
+        CarbonInterface $from,
+        CarbonInterface $to,
+        array $attributes,
+        ?array $weekdays = null,
+    ): int {
         $allowed = ['units_total', 'rate', 'min_stay', 'closed_to_arrival', 'closed_to_departure'];
         $unknown = array_diff(array_keys($attributes), $allowed);
 
@@ -315,22 +405,102 @@ class InventoryWriter
             throw new InvalidArgumentException('The calendar range cannot end before it starts.');
         }
 
-        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($roomType, $first, $last, $attributes) {
-            $written = 0;
+        $dates = $this->datesToWrite($first, $last, $weekdays);
 
-            foreach ($this->blockNights($first, $last) as $night) {
-                $this->ensureDay($roomType, $night);
+        if ($dates === [] || $attributes === []) {
+            return 0;
+        }
+
+        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($roomType, $dates, $attributes) {
+            foreach (array_chunk($dates, 500) as $chunk) {
+                $this->ensureDays($roomType, $chunk);
 
                 RoomTypeCalendarDay::query()
                     ->where('room_type_id', $roomType->id)
-                    ->whereDate('date', $night->toDateString())
+                    ->whereIn('date', $chunk)
                     ->update($attributes);
-
-                $written++;
             }
 
-            return $written;
+            return count($dates);
         }));
+    }
+
+    /**
+     * Erase a demo property's whole book — every stay, block and calendar
+     * night under it.
+     *
+     * This exists for one caller: `booking:demo-tenant` rebuilding a sandbox a
+     * prospect has played with. It is the only destructive operation in the
+     * inventory domain, so it refuses to run against anything but a demo
+     * tenant, and the check is on the partner rather than on an argument the
+     * caller passes — a flag a caller sets is a flag a caller can get wrong.
+     *
+     * @return array<string, int> rows removed, per kind
+     */
+    public function purgeProperty(Listing $listing): array
+    {
+        $listing->loadMissing('partner');
+
+        if ($listing->partner?->is_demo !== true) {
+            throw new InvalidArgumentException(
+                "Refusing to purge inventory for listing [{$listing->id}]: it does not belong to a demo tenant."
+            );
+        }
+
+        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($listing) {
+            $roomTypeIds = $listing->roomTypes()->pluck('id')->all();
+
+            $reservationIds = Reservation::query()->where('listing_id', $listing->id)->pluck('id')->all();
+            $unitIds = $reservationIds === []
+                ? []
+                : ReservationUnit::query()->whereIn('reservation_id', $reservationIds)->pluck('id')->all();
+
+            // Children first: reservation_units restricts deletion of the room
+            // types the demo rebuild is about to replace.
+            $nights = $unitIds === [] ? 0 : ReservationNight::query()->whereIn('reservation_unit_id', $unitIds)->delete();
+            $units = $unitIds === [] ? 0 : ReservationUnit::query()->whereIn('id', $unitIds)->delete();
+            $reservations = $reservationIds === [] ? 0 : Reservation::query()->whereIn('id', $reservationIds)->delete();
+
+            $blocks = $roomTypeIds === [] ? 0 : InventoryBlock::query()->whereIn('room_type_id', $roomTypeIds)->delete();
+            $days = $roomTypeIds === [] ? 0 : RoomTypeCalendarDay::query()->whereIn('room_type_id', $roomTypeIds)->delete();
+
+            return [
+                'reservations' => $reservations,
+                'reservation_units' => $units,
+                'reservation_nights' => $nights,
+                'blocks' => $blocks,
+                'calendar_days' => $days,
+            ];
+        }));
+    }
+
+    /**
+     * The nights a bulk calendar write covers, as Y-m-d strings.
+     *
+     * @param  array<int, int>|null  $weekdays
+     * @return array<int, string>
+     */
+    private function datesToWrite(Carbon $first, Carbon $last, ?array $weekdays): array
+    {
+        $wanted = array_values(array_unique(array_map('intval', $weekdays ?? [])));
+
+        foreach ($wanted as $day) {
+            if ($day < 1 || $day > 7) {
+                throw new InvalidArgumentException("[{$day}] is not an ISO-8601 weekday; use 1 (Monday) to 7 (Sunday).");
+            }
+        }
+
+        $dates = [];
+
+        foreach ($this->blockNights($first, $last) as $night) {
+            if ($wanted !== [] && ! in_array((int) $night->isoWeekday(), $wanted, true)) {
+                continue;
+            }
+
+            $dates[] = $night->toDateString();
+        }
+
+        return $dates;
     }
 
     /**
@@ -405,6 +575,38 @@ class InventoryWriter
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    /**
+     * ensureDay() for many nights at once, for the bulk calendar write.
+     * insertOrIgnore against the (room_type_id, date) unique index, so nights
+     * that already exist keep their counters — this may never reset what a
+     * booking has consumed.
+     *
+     * @param  array<int, string>  $dates
+     */
+    private function ensureDays(RoomType $roomType, array $dates): void
+    {
+        $now = now();
+        $rows = [];
+
+        foreach ($dates as $date) {
+            $rows[] = [
+                'room_type_id' => $roomType->id,
+                'date' => $date,
+                'units_total' => null,
+                'units_sold' => 0,
+                'units_blocked' => 0,
+                'rate' => null,
+                'min_stay' => null,
+                'closed_to_arrival' => false,
+                'closed_to_departure' => false,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        DB::table('room_type_calendar_days')->insertOrIgnore($rows);
     }
 
     /** Allowlist, so no caller can ever aim these UPDATEs at another column. */

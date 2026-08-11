@@ -216,6 +216,42 @@ class AvailabilityCalendar
         return new CalendarSnapshot($days, $keyed);
     }
 
+    /**
+     * The busiest night in a range: the most units already sold or blocked on
+     * any one of them.
+     *
+     * This is what capacity may not be lowered below. The database refuses it
+     * too — there is a CHECK constraint — but a Postgres constraint violation
+     * is not something to show a lodge manager who was setting rates for a
+     * season, so the screen asks first and can name the night.
+     *
+     * `$to` is inclusive here, because a bulk calendar edit counts nights.
+     *
+     * @return array{units: int, date: Carbon|null}
+     */
+    public function busiestNight(RoomType $roomType, CarbonInterface $from, CarbonInterface $to): array
+    {
+        $rows = RoomTypeCalendarDay::query()
+            ->where('room_type_id', $roomType->id)
+            ->whereDate('date', '>=', Carbon::parse($from)->toDateString())
+            ->whereDate('date', '<=', Carbon::parse($to)->toDateString())
+            ->get();
+
+        $busiest = 0;
+        $when = null;
+
+        foreach ($rows as $row) {
+            $occupied = CalendarSnapshot::occupiedOn($row);
+
+            if ($occupied > $busiest) {
+                $busiest = $occupied;
+                $when = Carbon::parse($row->date)->startOfDay();
+            }
+        }
+
+        return ['units' => $busiest, 'date' => $when];
+    }
+
     private function day(RoomType $roomType, CarbonInterface $date): ?RoomTypeCalendarDay
     {
         return RoomTypeCalendarDay::query()

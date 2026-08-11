@@ -99,12 +99,12 @@ Ordered so that each item depends only on the ones above it:
 4. ✅ **A stay lifecycle** — `App\Enums\StayStatus`: provisional, confirmed, due-in,
    in-house, checked-out, no-show, cancelled, cancelled-late, with the legal transitions
    enforced in `InventoryWriter`. Done 2026-08-11.
-5. 🟡 **Front-desk surfaces**: the two screens a lodge *reads* are built — an occupancy
-   calendar and an arrivals/departures board, both in the partner panel and both
-   read-only (2026-08-11, below). What a lodge would *do* is not: capturing a walk-in or
-   telephone booking, and room-level assignment if they assign real rooms rather than
-   room types. Note that room-level assignment is deliberately *not* modelled yet: a
-   reservation holds room types and quantities, never a named room.
+5. 🟡 **Front-desk surfaces**: reading and doing are both built now — an occupancy
+   calendar, an arrivals/departures board, manual booking entry, the stay lifecycle,
+   block editing and a bulk rate editor (2026-08-11, below). What is still missing is
+   room-level assignment, for a lodge that assigns real rooms rather than room types.
+   That is deliberately *not* modelled yet: a reservation holds room types and
+   quantities, never a named room.
 6. ✅ **Multi-property under one partner.** NWR is one partner with many camps. The
    partner panel now has a property switcher in its topbar, scoping the lodge-facing
    screens; the existing Listing and Inquiry resources are unchanged and still show
@@ -198,6 +198,82 @@ Deliberately not built here: entering or editing a booking, editing rates or res
 room-level assignment, a phone layout (laptop first, tablet usable — that was the brief),
 and any control for something that does not exist yet (no sync, no iCal, no payments, no
 housekeeping, no invoicing — a disabled button is a claim).
+
+### 2026-08-11 — entering bookings, a demo tenant, and the panel's own host (slice 3 of 3)
+
+The half a lodge *does*, plus the two things that make the system showable and sellable
+rather than only usable.
+
+**Manual booking entry.** A walk-in or telephone booking, entered in the partner panel.
+Clicking a free cell on the calendar opens the form with that room type and that night
+already filled in; a night with nothing left is inert, because a form that could only
+refuse is a dead end. One date range for the whole booking rather than one per room type
+— the writer supports the latter, but a front desk booking two rooms is booking them for
+the same nights, and two rows naming the same room type are merged so "2 standard" typed
+twice means three rooms and not two bookings.
+
+`App\Services\Inventory\ManualBooking` checks availability and restrictions *before* the
+writer does, and that is its whole reason to exist: the writer's refusal arrives after the
+save, and a guest is standing at the counter. It answers with the room type and the night
+— "only one of two Standard Chalets is free on 14 September" — rather than "sold out". The
+writer still refuses independently, because two people can be typing at once, and that
+refusal is reported as a fact rather than an error.
+
+**Editing what slice 2 displayed.** Stay lifecycle from the drawer, on both the calendar
+and the arrivals board — the board is where a guest is actually checked in, and sending
+somebody to the calendar to change a status would be sending them to the wrong screen. The
+buttons are generated from `InventoryWriter::allowedTransitions()`, so a screen cannot
+offer a move the domain would reject. Cancelling is deliberately not among them: it gives
+rooms back, so it goes through `cancel()` and asks why. Blocks can be created, edited and
+released; editing is release-then-consume in one transaction, so a widened block that no
+longer fits rolls back to exactly the block that was there before.
+
+**Bulk rates** (`/partner/rates`). A range of nights, optionally narrowed to certain
+weekdays. **An empty field means "leave this alone"** — the same rule the Excel import runs
+on — so setting a weekend surcharge cannot silently clear a minimum stay; clearing exists
+but has to be chosen. Lowering capacity under what a night has already sold is refused
+before the write, naming the room type and the night, rather than surfacing a Postgres
+CHECK violation.
+
+**`booking:demo-tenant`.** A sandbox partner built from a real listing, so a meeting opens
+with the prospect's own lodge running rather than an empty grid. It gets its **own
+unpublished copy** of the listing: room types belong to a listing, so copied rooms would
+otherwise hang off a published listing and appear on namibway.com, and every edit a
+prospect made would be an edit to real content. Re-running wipes and rebuilds that tenant
+through `InventoryWriter::purgeProperty()`, which refuses anything but a demo tenant.
+`--all`, `--destroy` and `--list` do the obvious things. The command prints a signed
+sign-in link plus an address and password, so a laptop can be handed across a table; the
+controller refuses any account that is not a demo account, which is the check that matters
+— a signature says who made a link, not which accounts may be opened with one.
+
+> **Deviation from the brief, decided with the author.** The brief required a central
+> outbound-suppression mechanism: a demo tenant was to emit nothing at all. The decision
+> was that the demo should simply work, SMTP included, because a demo that cannot show a
+> confirmation email is a worse demo. The failure mode the brief actually named — a demo
+> booking mailing a real lodge owner — is closed by what the copy *contains* instead of by
+> a layer somebody can forget to switch on: the tenant inherits no contact email, no
+> phone, no website and no connector credentials, so there is no third party's address
+> inside it at all. Every address it does hold is under `config('booking.demo.email_domain')`,
+> and a test walks the tenant asserting exactly that.
+
+**The panel on `booking.namibway.com`**, via `config('booking.panel_domain')`. Unset — local
+development, CI, and production until the DNS record exists — nothing changes. Set, the
+panel binds to that host, `booking.namibway.com/` redirects to `/partner`, and
+`namibway.com/partner/...` forwards to the same path on the new host so bookmarks and
+already-sent links keep working. **The signed confirm/decline links stay on the main site**:
+a URL signature covers the host, so forwarding one would invalidate the thing that
+authorises it — the exclusion is a pattern in `routes/partner.php`, not a matter of route
+ordering, because ordering would be a trap for whoever adds the third signed route.
+
+The server-side prerequisites are written up in DEPLOYMENT.md → "Buchungs-Subdomain": a DNS
+record **at OVH** (namibway.com's DNS is not on Cloudflare — that is what broke
+cdn.namibway.com), a certificate, an nginx server block, and `SESSION_DOMAIN=.namibway.com`
+so a login is shared across both hosts.
+
+Deliberately not built, still: room-level assignment, the `Inquiry` → `Reservation` bridge,
+staged confirmations, ledger, allotments, channel sync, iCal, offline operation, payments,
+folio, housekeeping, tax reporting. No control exists for any of them — a disabled button
+is a claim.
 
 ### Constraints that are specific to this market
 
