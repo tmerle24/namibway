@@ -5,9 +5,11 @@ namespace App\Services\Inventory;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
+use App\Exceptions\Pricing\PromotionUnavailableException;
 use App\Jobs\NotifyAboutStay;
 use App\Models\InventoryBlock;
 use App\Models\Listing;
+use App\Models\Promotion;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
 use App\Models\RatePlanGuestAmount;
@@ -20,6 +22,10 @@ use App\Models\RoomTypeCalendarDay;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
+use App\Services\Inventory\DTOs\Quote;
+use App\Services\Pricing\PromotionFinder;
+use App\Services\Pricing\PromotionMatch;
+use App\Services\Pricing\StaySummary;
 use App\Support\CountrySettings;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -65,7 +71,10 @@ class InventoryWriter
 
     private const COUNTER_BLOCKED = 'units_blocked';
 
-    public function __construct(private readonly AvailabilityCalendar $calendar) {}
+    public function __construct(
+        private readonly AvailabilityCalendar $calendar,
+        private readonly PromotionFinder $promotions = new PromotionFinder,
+    ) {}
 
     /**
      * Create a stay and consume the inventory it needs.
@@ -129,8 +138,24 @@ class InventoryWriter
             // What the calendar says, priced night by night, so a stay crossing
             // a season boundary needs no special case.
             $quoted = round(array_sum(array_map(fn ($quote) => $quote->total(), $quotes)), 2);
-            $charged = $request->totalOverride === null ? $quoted : round($request->totalOverride, 2);
-            $overridden = abs($charged - $quoted) >= 0.01;
+
+            // The offer applies to that finished number and never reaches back
+            // into how it was reached. Claimed inside this transaction by a
+            // conditional UPDATE, because two people typing the last available
+            // code at once is the same race as two people booking the last
+            // room, and PHP cannot referee it.
+            $promotion = $this->promotionFor($request, $lines, $plans, $quotes, $quoted);
+            $discount = $promotion->amount ?? 0.0;
+
+            if ($promotion !== null && ! $this->claimPromotion($promotion->promotion)) {
+                throw PromotionUnavailableException::exhausted(
+                    $promotion->promotion->code ?? $promotion->promotion->name
+                );
+            }
+
+            $afterDiscount = round($quoted - $discount, 2);
+            $charged = $request->totalOverride === null ? $afterDiscount : round($request->totalOverride, 2);
+            $overridden = abs($charged - $afterDiscount) >= 0.01;
 
             $reservation = new Reservation([
                 'reference' => $this->generateReference(),
@@ -147,6 +172,12 @@ class InventoryWriter
                 'children' => $request->children,
                 'total_amount' => $charged,
                 'quoted_amount' => $quoted,
+                // Frozen beside the price it came off. Deleting a finished
+                // offer must not make last month's bookings look mispriced —
+                // rule 4 covers a discount as much as a rate.
+                'promotion_id' => $promotion?->promotion->id,
+                'promotion_code' => $promotion?->promotion->code,
+                'discount_amount' => $promotion === null ? null : $discount,
                 // Only recorded when the two actually differ: stamping a
                 // reason and a user onto every booking would make the column
                 // useless for finding the ones somebody changed.
@@ -218,6 +249,66 @@ class InventoryWriter
         }
 
         return $reservation;
+    }
+
+    /**
+     * The offer that applies to this booking, if any.
+     *
+     * Everything a promotion is allowed to see is gathered into a StaySummary
+     * first — the finished total, the nights as priced, and which products the
+     * booking holds. Handing it the quotes themselves would let it reach into
+     * the pricing, which is the one thing it must not do.
+     *
+     * @param  array<int, BookingLine>  $lines
+     * @param  array<int, RatePlan|null>  $plans
+     * @param  array<int, Quote>  $quotes
+     *
+     * @throws PromotionUnavailableException when a typed code does not work
+     */
+    private function promotionFor(
+        BookingRequest $request,
+        array $lines,
+        array $plans,
+        array $quotes,
+        float $quoted,
+    ): ?PromotionMatch {
+        $nightly = [];
+
+        foreach ($quotes as $quote) {
+            foreach ($quote->nights as $night) {
+                $nightly[] = round($night->subtotal(), 2);
+            }
+        }
+
+        $summary = new StaySummary(
+            checkIn: $this->earliest($lines),
+            checkOut: $this->latest($lines),
+            total: $quoted,
+            nightlyAmounts: $nightly,
+            ratePlanIds: array_values(array_filter(array_map(fn (?RatePlan $plan) => $plan?->id, $plans))),
+            roomTypeIds: array_values(array_map(fn (BookingLine $line) => $line->roomType->id, $lines)),
+        );
+
+        return $this->promotions->find($request->listing, $summary, $request->promotionCode);
+    }
+
+    /**
+     * Take one use of the offer, or refuse.
+     *
+     * A conditional UPDATE, exactly like an inventory counter and for exactly
+     * the same reason: "affected 0 rows" is the database saying somebody else
+     * got the last one, and that decision is not PHP's to make.
+     */
+    private function claimPromotion(Promotion $promotion): bool
+    {
+        $claimed = Promotion::query()
+            ->whereKey($promotion->id)
+            ->where(function ($query) {
+                $query->whereNull('max_uses')->orWhereColumn('uses', '<', 'max_uses');
+            })
+            ->update(['uses' => DB::raw('uses + 1')]);
+
+        return $claimed > 0;
     }
 
     /**

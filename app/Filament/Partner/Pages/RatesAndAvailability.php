@@ -625,9 +625,11 @@ class RatesAndAvailability extends Page implements HasForms
     {
         $property = $this->property();
 
+        // The room type's own currency, not the country's — that is what the
+        // rate beside this symbol is stored against.
         return $property === null
             ? CountrySettings::forCountry(null)->currency()
-            : CountrySettings::for($property)->currency();
+            : $property->sellingCurrency();
     }
 
     protected function property(): ?Listing

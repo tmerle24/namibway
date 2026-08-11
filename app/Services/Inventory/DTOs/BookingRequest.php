@@ -19,6 +19,10 @@ class BookingRequest
      *                                     is not what the calendar priced. The calendar's
      *                                     own figure is kept either way — see the
      *                                     reservations price-override migration.
+     * @param  string|null  $promotionCode  A code somebody typed in. Null still lets a
+     *                                       public offer apply by itself; a code that does
+     *                                       not work refuses the booking rather than
+     *                                       quietly charging full price.
      * @param  bool  $notify  Whether this booking should tell anybody about itself.
      *                        True for every real one. False exists for seeding a demo
      *                        property with months of history, which would otherwise
@@ -40,6 +44,7 @@ class BookingRequest
         public readonly ?int $inquiryId = null,
         public readonly ?float $totalOverride = null,
         public readonly ?string $overrideReason = null,
+        public readonly ?string $promotionCode = null,
         public readonly bool $notify = true,
     ) {}
 }

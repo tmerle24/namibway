@@ -16,6 +16,8 @@ class ManualBookingPreview
     /**
      * @param  array<int, string>  $problems  Plain sentences a front desk can act on
      * @param  array<int, ManualBookingLinePreview>  $lines
+     * @param  float  $discount  What an offer took off, already subtracted from the total
+     * @param  string|null  $offer  What to call it on screen
      */
     public function __construct(
         public readonly float $total,
@@ -23,7 +25,19 @@ class ManualBookingPreview
         public readonly int $nights,
         public readonly array $problems = [],
         public readonly array $lines = [],
+        public readonly float $discount = 0.0,
+        public readonly ?string $offer = null,
     ) {}
+
+    /**
+     * What the stay costs before an offer came off it. Shown beside the total
+     * rather than instead of it: a guest handed a code wants to see the
+     * discount, and a desk explaining the bill needs both numbers.
+     */
+    public function beforeDiscount(): float
+    {
+        return round($this->total + $this->discount, 2);
+    }
 
     public function isBookable(): bool
     {

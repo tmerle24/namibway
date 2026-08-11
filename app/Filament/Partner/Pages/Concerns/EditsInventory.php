@@ -8,6 +8,7 @@ use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
+use App\Exceptions\Pricing\PromotionUnavailableException;
 use App\Exceptions\Pricing\UnpriceableStayException;
 use App\Models\GuestCategory;
 use App\Models\Listing;
@@ -187,6 +188,16 @@ trait EditsInventory
                         ->minItems(1)
                         ->defaultItems(1),
 
+                    // Beside the rooms rather than in the folded price
+                    // section: a code is something a guest reads out at the
+                    // start of the conversation, and the total below has to
+                    // react to it while they are still on the phone.
+                    TextInput::make('promotion_code')
+                        ->label('Offer code')
+                        ->maxLength(40)
+                        ->placeholder('Only if the guest has one')
+                        ->live(onBlur: true),
+
                     Placeholder::make('availability')
                         ->label('Availability and price')
                         ->content(fn (Get $get): HtmlString => $this->bookingPreviewHtml($get)),
@@ -332,7 +343,7 @@ trait EditsInventory
         $checkIn = $this->parseDate($data['check_in'] ?? null);
         $checkOut = $this->parseDate($data['check_out'] ?? null);
 
-        $preview = $manual->preview($property, $checkIn, $checkOut, $rooms);
+        $preview = $manual->preview($property, $checkIn, $checkOut, $rooms, $data['promotion_code'] ?? null);
 
         if ($checkIn === null || $checkOut === null || ! $preview->isBookable()) {
             $this->refuse(
@@ -357,12 +368,17 @@ trait EditsInventory
                 createdBy: $this->currentUserId(),
                 totalOverride: filled($data['total_override'] ?? null) ? (float) $data['total_override'] : null,
                 overrideReason: $data['override_reason'] ?? null,
+                promotionCode: $data['promotion_code'] ?? null,
             );
         } catch (InventoryUnavailableException|StayRuleViolationException $refusal) {
             // The preview said yes a moment ago and the writer says no, which
             // means somebody else booked it in between. That is the system
             // working, so it is reported as a fact rather than as an error.
             $this->refuse('That room went while the form was open', [$refusal->getMessage()]);
+        } catch (PromotionUnavailableException $refusal) {
+            // The code stopped working between the preview and the save, which
+            // means somebody else took the last use of it.
+            $this->refuse('That offer is no longer available', [$refusal->getMessage()]);
         } catch (UnpriceableStayException $unpriceable) {
             // A different sentence, and a different fix: the room is free and
             // nobody has said what it costs.
@@ -393,6 +409,7 @@ trait EditsInventory
             $this->parseDate($get('check_in')),
             $this->parseDate($get('check_out')),
             $this->roomRows($get('rooms')),
+            is_string($get('promotion_code')) ? $get('promotion_code') : null,
         );
 
         if ($preview->problems !== []) {
@@ -427,6 +444,17 @@ trait EditsInventory
         // The total is the number somebody reads out loud to the guest on the
         // phone, so it is the largest thing in the block rather than the last
         // line of a list.
+        // An offer is shown as what it took off, not only as a smaller total:
+        // a guest who read out a code wants to hear the discount, and a desk
+        // explaining the bill needs both numbers.
+        $offer = $preview->discount > 0.0
+            ? '<div style="margin-top: .35rem; color: rgb(21 128 61);">'
+                .e($preview->offer ?? 'Offer')
+                .' — '.e(Money::format($preview->discount, $preview->currency)).' off '
+                .e(Money::format($preview->beforeDiscount(), $preview->currency))
+                .'</div>'
+            : '';
+
         return new HtmlString(
             '<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;">'
             .'<span style="font-size: 1.5rem; font-weight: 600;">'
@@ -436,6 +464,7 @@ trait EditsInventory
             .e($preview->nights.' '.str('night')->plural($preview->nights))
             .'</span>'
             .'</div>'
+            .$offer
             .'<ul style="list-style: disc; margin: .35rem 0 0 1.1rem;">'.$lines.'</ul>'
         );
     }
@@ -842,7 +871,7 @@ trait EditsInventory
 
         return $property === null
             ? CountrySettings::forCountry(null)->currency()
-            : CountrySettings::for($property)->currency();
+            : $property->sellingCurrency();
     }
 
     /**

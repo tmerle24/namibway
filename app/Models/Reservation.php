@@ -63,6 +63,9 @@ class Reservation extends Model
         'children',
         'total_amount',
         'quoted_amount',
+        'promotion_id',
+        'promotion_code',
+        'discount_amount',
         'price_override_reason',
         'price_overridden_by',
         'price_overridden_at',
@@ -82,9 +85,22 @@ class Reservation extends Model
         'children' => 'integer',
         'total_amount' => 'float',
         'quoted_amount' => 'float',
+        'discount_amount' => 'float',
         'price_overridden_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
+
+    /**
+     * The offer that came off this stay, where one did. Nulled if the offer is
+     * ever deleted — the amount and the code stay, because they are what the
+     * guest was charged.
+     *
+     * @return BelongsTo<Promotion, $this>
+     */
+    public function promotion(): BelongsTo
+    {
+        return $this->belongsTo(Promotion::class);
+    }
 
     /**
      * @return BelongsTo<Listing, $this>
