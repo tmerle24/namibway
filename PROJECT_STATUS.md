@@ -499,6 +499,14 @@ What stands between here and that is no longer software of this kind:
 3. **Money owed.** Costing is thorough; there is no folio and no payment collection.
 4. **Room-level assignment**, for a lodge that assigns real rooms rather than room types.
    Deliberately not modelled, and the first thing a real desk is likely to ask for.
+5. **The API as the system's second front door** — decided 2026-08-12, written up as
+   `BOOKING_SYSTEM.md` §8. The booking system has to be fully operable over
+   `api.namibway.com` so an external seller (Expedia and its kind, a DMC mid-office, a
+   partner site built on something else) can book a property that runs on us. Today's
+   `/api/v1` is three read-only endpoints, and its availability endpoint proxies the
+   *partner's* connector rather than reading our own calendar — so for exactly the
+   properties whose inventory we hold, the public API is the least informed reader we
+   have. Nothing about it is built.
 
 Two smaller things are named rather than left implicit, both from
 `BOOKING_BEYOND_ROOMS.md`: ~~renaming the sellable unit away from `room_type`~~ (§3.2 —

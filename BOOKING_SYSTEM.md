@@ -884,6 +884,12 @@ Channel synchronisation, iCal, room-level assignment (a reservation holds room
 types and quantities, never a named room), folio and payments, housekeeping, and
 tax reporting.
 
+Channel synchronisation deserves one word of precision, because §8 looks like it
+contradicts this line and does not: what is out of scope is *us* pushing rates
+and availability into each channel's system. An API that lets an authorised
+outside system read our calendar and book against it points the other way, and
+is very much in the plan.
+
 One thing is now *half* here and should be named rather than assumed. Since
 2026-08-12 the trip plan prices from the property's own calendar and rate plan,
 taxes included (`App\Services\Booking\RoomOffers`), and availability is the
@@ -905,3 +911,123 @@ The market conventions this design follows are well established, but the data
 models of ResRequest, NightsBridge and hopeCloud have not been seen from the
 inside. The first real integration will produce surprises, and the pluggable
 strategy is what makes absorbing them cheap.
+
+---
+
+## 8. The API is not a side door — it is the second front door
+
+**Decision:** the booking system has to be fully operable over the API, at
+`api.namibway.com`. Everything a lodge can do at its own desk, and everything a
+traveller can do on namibway.com, an authorised external system must be able to
+do too: read the calendar, read rates, take a booking, hold it, change it,
+cancel it. The point is that an OTA — Expedia, Booking.com, a DMC's own
+mid-office, a partner's website built on something else entirely — can sell a
+property that runs on our system without us writing a bespoke integration each
+time.
+
+This is the same discipline the panel already follows and should be read that
+way: **one definition, read more than once.** The night grid and the hour grid
+are two components over one read model, not two systems; the API is a third
+reader over the same one. It is emphatically *not* a parallel booking path with
+its own availability rules — if the API can create a stay the desk could not, or
+prices a night differently, then the calendar has stopped being the truth and
+the whole point of §2 is gone.
+
+### Not the same thing as channel synchronisation
+
+§7 lists channel synchronisation as deliberately out of scope, and that stays
+true — the two point in opposite directions and are easy to confuse:
+
+- **Channel sync (out):** *we* push our availability and rates into somebody
+  else's system, and consume their bookings. That means one connector per
+  channel, each with its own mapping, retry semantics and reconciliation.
+- **This (in):** *they* call us. One documented interface, versioned, that we
+  own. A new channel costs us a client record and a token, not a codebase.
+
+The second is a product feature of the booking system; the first is an
+integration project per counterparty. Doing the second well makes the first
+merely optional.
+
+### What exists today — the honest inventory
+
+`/api/v1` (`routes/api.php`) is **three read-only endpoints** behind Sanctum +
+`EnsureApiClientActive` + `throttle:api`, documented with Scribe:
+
+- `GET listings` — published listings, filtered like Explore.
+- `GET listings/{slug}` — one listing.
+- `GET listings/{slug}/availability` — and this one is the important
+  disappointment. It does **not** read our ARI calendar. It resolves the
+  listing's partner, proxies the *partner's own connector* (ResConnect,
+  NightsBridge, hopeCloud, NWR-concierge, Native), and where there is no booking
+  connector it answers `{"live_availability": false, "booking_mode": "inquiry"}`.
+  So for exactly the properties whose inventory we hold and price ourselves, the
+  public API is the least informed reader in the building — the trip plan
+  (`RoomOffers`) and the partner panel both see the real calendar, and the API
+  sees whatever a third-party PMS says, or nothing.
+
+Everything else is missing. There is no endpoint that returns rates, takes a
+booking, holds inventory, amends or cancels a stay, or reads a reservation back.
+`api.namibway.com` does not exist as a host — the only host split configured is
+the partner panel's (`config('booking.panel_domain')`, still unset in
+production). And `ApiClient` carries `name`, `contact_email`, `is_active` and
+nothing else: no partner scope, no abilities. A token is all-or-nothing over
+every published listing, which is adequate for reading a public catalogue and
+nowhere near adequate for writing bookings.
+
+### What it implies, so nothing gets built that has to be torn up
+
+None of this is new architecture. It is the existing rules, restated for a caller
+who is not a browser:
+
+- **The write path does not fork.** An API booking goes through
+  `InventoryWriter` like every other write — `InventoryWriteGuard` and the
+  architecture test already make any other route a test failure, and that must
+  stay true when the caller is Expedia.
+- **Creation must be idempotent.** A network timeout on somebody else's side
+  must not produce two stays. `reservations.inquiry_id` is unique for exactly
+  this reason on the inquiry path; the API needs its own key — a client-supplied
+  reference, unique per client — and a repeat of the same call must return the
+  same reservation rather than a second one.
+- **Availability is a conditional `UPDATE`, not a read-then-write.** An OTA is a
+  concurrent seller by definition; the atomic decrement in §2 is what makes that
+  safe, and a "check then book" API shape would quietly undo it.
+- **The price is a stored result, not a promise to recompute.** A quote returned
+  to a channel and the booking that follows have to agree, so a quote needs an
+  identity and a lifetime, and the booking references it. This is the same reason
+  `total_amount` is frozen on the reservation.
+- **Half-open intervals and ISO codes at the boundary too** — dates as
+  `YYYY-MM-DD` with checkout exclusive, ISO 4217 currency, ISO 3166-1 alpha-2
+  countries. Every counterparty already speaks these; inventing anything here
+  buys nothing and costs every integration a paragraph of explanation.
+- **A departure is a first-class thing.** `(unit, date, slot)` with a null slot
+  meaning "sold by the night" is our model since 2026-08-12, and a seat-selling
+  operator is precisely the kind of supplier an activity marketplace wants. The
+  API must express it, not flatten it back into nights.
+- **Scoping is per partner, and writing is a separate ability from reading.** A
+  channel selling one lodge must not be able to read another's calendar, let
+  alone book it. That is a real change to `ApiClient` (a partner relationship and
+  token abilities), not a middleware tweak.
+
+### Open, and deliberately not decided here
+
+- **Push or pull.** Large OTAs prefer to hold a cached copy and be notified when
+  it goes stale (ARI push / webhooks) over polling us per search. Pull is where
+  this starts because it is what a documented read API already almost is; a
+  webhook side needs its own delivery, retry and replay story and should be
+  designed when a counterparty exists, not before.
+- **Our own dialect or an established one.** §"Standards" in `CLAUDE.md` says use
+  the industry standard where a partner system already speaks it. For hotel
+  distribution that means OTA/OpenTravel (verbose XML, but what the big channels
+  actually consume) versus a clean JSON API that fits our model and needs a
+  mapping layer per big channel. This is the biggest single decision in the
+  section and it is genuinely open — worth deciding against a real counterparty's
+  documentation rather than in the abstract.
+- **How commission and payment ride along.** A booking taken through a channel
+  has a different money path than one taken on namibway.com, and there is no
+  payments model in the codebase at all today. Named here only so it is not
+  discovered late.
+
+`api.namibway.com` itself is server-side and outside the application — a DNS
+record at OVH (namibway.com's DNS is not at Cloudflare), a certificate, an nginx
+server block — the same prerequisite list as the partner panel's host in
+`config/booking.php`.
