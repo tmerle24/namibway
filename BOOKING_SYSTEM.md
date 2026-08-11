@@ -624,6 +624,42 @@ here at all.
 
 ---
 
+### Open bug: capacity is a filter, not a rule — found 2026-08-12
+
+Reported from the panel: a room for 2 adults and 2 children took a booking for
+2 adults and **3 children** without an error or a warning.
+
+The diagnosis, because it is not what it looks like. Capacity is enforced in
+exactly one place and it is not a rule there either — it is a *filter*:
+`RoomAvailability::seats()` decides which rooms the trip plan **offers**, and it
+gets the arithmetic right, including letting a child take a spare adult slot. But:
+
+- **`ListingController::storeInquiry` validates nothing about it.** `adults` and
+  `children` are checked as integers 1–20 and 0–20, and the chosen
+  `room_type_code` is never compared against the room it names. A party that
+  grows after the room was picked, or a request posted directly, goes through.
+- **`InventoryWriter::book()` never compares them at all.** `assertFits()` looks
+  at the `Occupancy` object, so it only runs where a rate plan prices by guests;
+  under a per-room tariff the header counts are recorded and never questioned.
+  This is the path the desk uses, which is where it was found.
+
+So nothing *accepts* a capacity rule; one screen merely declines to show you the
+room.
+
+The fix is not "refuse everywhere", and this is the part worth deciding before
+building it. **At a desk, exceeding capacity is legitimate** — a cot goes in the
+room, and a receptionist who is told "no" by software they cannot argue with
+writes the booking on paper instead. **On the traveller-facing path it is not**,
+because nobody is there to judge whether the room can take a fourth child.
+
+So: refuse on the website (a validation rule against the named room type), and
+at the desk warn with a reason the operator confirms — "sleeps 2 + 2, this is 2 +
+3, extra bed?" — recorded on the stay like a price override is, so the
+housekeeping list and the arrivals board know a cot is needed. That last part is
+the reason to record it rather than merely allow it.
+
+---
+
 ## 7. Deliberately not in this plan
 
 Naming these matters as much as the plan, because a disabled button is a claim:
