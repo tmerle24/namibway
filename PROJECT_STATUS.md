@@ -1,12 +1,24 @@
 # Project status and what's next
 
-**Written 2026-08-10.** This is a snapshot plus direction, meant to brief a fresh
-session that will pick up one of the two new workstreams. `CLAUDE.md` holds the
-standing rules and the architecture — read that first; this file says where things
-actually stand and what has to be decided before the next thing gets built.
+**Written 2026-08-10. Last brought up to date 2026-08-12.** This is a snapshot plus
+direction, meant to brief a fresh session that will pick up one of the two new
+workstreams. `CLAUDE.md` holds the standing rules and the architecture — read that
+first; this file says where things actually stand and what has to be decided before
+the next thing gets built.
 
 Add a dated line when something here changes state. A status file that quietly goes
 stale is worse than none, because the next session will trust it.
+
+> **What changed since this file was written, in one paragraph.** Workstream A is no
+> longer "substrate exists, product does not". All eight steps of `BOOKING_SYSTEM.md`
+> §6 are built — rate plans, per-person pricing with guest categories, board basis,
+> promotions, a per-partner live switch, amenities, the customer entity and the
+> `Inquiry` → `Reservation` bridge, and taxes and fees. Two things this file recorded
+> as unbuilt are built: the pricing model it said blocked everything, and the
+> traveller-facing picker now reads the lodge's own calendar. On top of that sits the
+> work of 2026-08-12: time inside a day (departures), and both of the open bugs
+> `BOOKING_SYSTEM.md` had recorded. Sections 2 and 3 below carry the detail and the
+> dated corrections.
 
 ---
 
@@ -21,7 +33,7 @@ Three business lines now exist, and only the first has software behind it:
 |---|---|
 | **Travel platform** (namibway.com) | In production. Kaia interview → trip plan → booking requests. The flagship is the trip plan — see `TRAVEL_PLAN.md`. |
 | **Websites for Namibian businesses** | Sold, not built. Flyer exists (N$ 399/month, all inclusive). No product, no tenancy, no builder. Workstream B below. |
-| **Custom software / booking system** | Sold as a proposal to NWR. Substrate exists, the lodge-facing product does not. Workstream A below. |
+| **Custom software / booking system** | Sold as a proposal to NWR. **Since 2026-08-12 the lodge-facing product exists** — a lodge can price, sell, block, check a guest in and read its morning board, and a tour operator can sell a seat on a departure. No partner is connected. Workstream A below. |
 
 Marketing material for all three lives in `marketing/` and is downloadable from the
 admin panel under **Documentation → Marketing material**. `marketing/README.md`
@@ -36,46 +48,68 @@ booking-system flyer is addressed to a named organisation.
 code, not from memory, and several of them are the reason the lodge system is a real
 build rather than a UI on top of what exists.
 
-> **Updated 2026-08-11.** The four bullets below marked ✅ describe what the
-> *traveller-facing* flow still does, and that has not changed. What changed is that a
-> lodge-facing ARI substrate now exists beside it (`App\Services\Inventory`) — see the
-> 2026-08-11 entry in section 3. Read both: the two are deliberately separate, and
-> confusing them is the mistake this note exists to prevent.
+> **Updated 2026-08-12.** Two of the bullets below said the traveller-facing flow and
+> the lodge-facing calendar were separate. **They are no longer**, and that was a
+> deliberate step with a guard test behind it. Corrected in place below rather than
+> deleted, because the separation is what the rest of this file was written against and
+> a reader needs to know it moved.
 
 - **`Inquiry` is the booking record for the traveller-facing flow.** Its statuses are
   request-shaped, not stay-shaped: `pending`, `processing`, `on_request`, `nwr_pending`,
-  `confirmed`, `cancelled`, `failed` (`App\Enums\InquiryStatus`). Stay-shaped states now
-  exist separately as `App\Enums\StayStatus` on `Reservation`; nothing bridges the two yet
-  (the design for that bridge is written down in `CLAUDE.md`).
-- **Traveller-facing availability is still derived, never stored.**
-  `App\Services\Booking\RoomAvailability` answers "how many units are free" as
-  `total_units` minus the overlapping inquiries in `on_request` or `confirmed`, and it
-  still drives the trip plan's room picker. A calendar table now exists
-  (`room_type_calendar_days`) but **is not wired into this path** — pointing the picker at
-  it is a later, deliberate step, guarded by a test.
+  `confirmed`, `cancelled`, `failed` (`App\Enums\InquiryStatus`). Stay-shaped states
+  exist separately as `App\Enums\StayStatus` on `Reservation`. **Corrected 2026-08-12:**
+  the bridge between them is built — `App\Services\Booking\StayPromoter` turns a
+  confirmed inquiry into a real stay, once, idempotently, keyed by a unique
+  `reservations.inquiry_id`. An `Inquiry` is still the *request* and a `Reservation` the
+  *stay*; the promotion is one-way and they are not two names for one thing.
+- ~~**Traveller-facing availability is still derived, never stored.**~~ **Corrected
+  2026-08-12.** `App\Services\Booking\RoomAvailability` now returns the **smaller of two
+  counts**: what the lodge's own ARI calendar has free, and what is left after the
+  requests already asking for the same nights. So a stay taken at the desk stops being
+  offered online. Prices follow the same route — `App\Services\Booking\RoomOffers` quotes
+  the trip plan from the property's own rate plan, taxes included. Requests on a property
+  whose inventory we hold now also take a provisional stay on the calendar, so the second
+  count shrinks toward zero on its own as coverage grows.
 - **One inquiry is still implicitly one unit.** The `inquiries` table has no quantity
   column. A `Reservation` can hold several room types with quantities; an `Inquiry`
-  cannot.
+  cannot. **Still true 2026-08-12** — and now the clearest remaining asymmetry between
+  the two models.
 - **`RoomType` still carries a single flat `rate_per_night`** plus `total_units`,
-  `max_adults`, `max_children` and a string `code` — but those are now *defaults*, and the
-  calendar overrides them per night, which is where seasons live.
+  `max_adults`, `max_children` and a string `code` — but those are *defaults*, and the
+  calendar overrides them per night, which is where seasons live. **Since 2026-08-11** a
+  rate plan sits between: what a night costs is (room type, date, plan), and what the
+  plan's number is *per* — a unit, a person sharing, an occupancy — is the plan's
+  strategy. **Since 2026-08-12** a unit may also carry a timetable (`booking_slots`), and
+  then the counter and the rate are keyed to a departure rather than to the night.
+- **`max_adults` / `max_children` are now enforced**, which they were not.
+  `App\Services\Booking\RoomCapacity` owns the arithmetic; the website refuses a party
+  that does not fit and the desk is warned and asked what it is doing about it. Fixed
+  2026-08-12 — see `BOOKING_SYSTEM.md`, "capacity was a filter, not a rule".
 - **Soft holds exist**: `inquiries.hold_expires_at` with `ExpireNativeHoldJob` releasing
-  the hold and mailing the guest, idempotent and status-guarded.
+  the hold and mailing the guest, idempotent and status-guarded. **Since 2026-08-12** the
+  hold also takes a provisional stay on the ARI calendar, so the room genuinely comes off
+  sale everywhere rather than only being subtracted by one reader.
 - **Partner response is one click**: signed confirm/decline URLs (`routes/partner.php`)
   and the same transition from the partner panel, both through `InquiryDecisionService`.
-- **The partner panel is thin**: `app/Filament/Partner/Resources` has exactly two
-  resources, Inquiry and Listing. No calendar, no arrivals list, no way to enter a
-  booking that did not come from the website.
+- ~~**The partner panel is thin.**~~ **Corrected 2026-08-12.** It has seven resources
+  (Inquiry, Listing, RatePlan, GuestCategory, Promotion, Charge, Customer) and four
+  pages (occupancy calendar, arrivals board, rates and availability, getting started).
+  A lodge can price, block, take a walk-in, move a guest through the day, look a customer
+  up by name or phone, and read its own morning board.
 - **Connectors exist and none are validated.** `ResConnect`, `NightsBridge`, `HopeCloud`,
   `Nwr`, `Native`, `Wetu`, plus manual. Not one has run against a real partner account.
   `NwrConnector` is deliberately a concierge stub: NWR has no API, so availability always
-  returns "on request" and the team checks manually.
+  returns "on request" and the team checks manually. **Still true 2026-08-12, and now the
+  single largest unknown in this workstream** — everything else has been exercised at
+  least by a test.
 
-The consequence, as of 2026-08-10: the traveller-facing model can express *"a traveller
-asked for a room and a partner said yes"* and nothing more. Everything it could not
-express — a seasonal rate, a maintenance block, a booking of three rooms, a walk-in, a
-guest standing at a desk — is what the inventory substrate added on 2026-08-11. What is
-still missing is every screen that would let a human use it.
+The consequence, as of 2026-08-10, was that the traveller-facing model could express *"a
+traveller asked for a room and a partner said yes"* and nothing more. **As of 2026-08-12
+that sentence is out of date in both halves**: the lodge-facing model expresses a
+seasonal rate, a per-person tariff, a maintenance block, a booking of three rooms, a
+walk-in, a guest standing at a desk, a seat on a tour, a levy and a customer's history —
+and the traveller-facing flow now reads that model rather than a parallel one. What is
+missing is not screens; it is a real partner on the other end.
 
 ---
 
@@ -99,20 +133,24 @@ Ordered so that each item depends only on the ones above it:
 4. ✅ **A stay lifecycle** — `App\Enums\StayStatus`: provisional, confirmed, due-in,
    in-house, checked-out, no-show, cancelled, cancelled-late, with the legal transitions
    enforced in `InventoryWriter`. Done 2026-08-11.
-5. 🟡 **Front-desk surfaces**: reading and doing are both built now — an occupancy
+5. 🟡 **Front-desk surfaces**: reading and doing are both built — an occupancy
    calendar, an arrivals/departures board, manual booking entry, the stay lifecycle,
-   block editing and a bulk rate editor (2026-08-11, below). What is still missing is
-   room-level assignment, for a lodge that assigns real rooms rather than room types.
-   That is deliberately *not* modelled yet: a reservation holds room types and
-   quantities, never a named room.
+   block editing and a bulk rate editor (2026-08-11, below), plus day/week/month ranges,
+   an hour axis for departures and passenger lists (2026-08-12, below). What is still
+   missing is room-level assignment, for a lodge that assigns real rooms rather than
+   room types. That is deliberately *not* modelled yet: a reservation holds room types
+   and quantities, never a named room.
 6. ✅ **Multi-property under one partner.** NWR is one partner with many camps. The
    partner panel now has a property switcher in its topbar, scoping the lodge-facing
    screens; the existing Listing and Inquiry resources are unchanged and still show
    everything the partner owns. Done 2026-08-11.
-7. ⬜ **Money**: what a stay costs, what was paid, what is owed. A `Reservation` now
-   carries a `total_amount` and a per-night breakdown (`reservation_nights`), so what a
-   stay *costs* is answered. What was paid and what is owed is not — there is no folio
-   and no payment collection, and Stripe remains Phase 2.
+7. 🟡 **Money**: what a stay costs, what was paid, what is owed. What a stay *costs* is
+   answered thoroughly as of 2026-08-12: a per-night breakdown (`reservation_nights`),
+   rate plans with three pricing strategies, guest categories and age bands, promotions
+   with a claimed cap, price overrides recorded as a discrepancy rather than a flag, and
+   taxes, levies and fees frozen onto the stay. **What was paid and what is owed is still
+   not** — there is no folio and no payment collection, and Stripe remains Phase 2. That
+   gap is now the whole of the remaining "money" question rather than half of it.
 
 ### 2026-08-11 — inventory substrate (slice 1 of 3)
 
@@ -286,12 +324,91 @@ staged confirmations, ledger, allotments, channel sync, iCal, offline operation,
 folio, housekeeping, tax reporting. No control exists for any of them — a disabled button
 is a claim.
 
-### Noted, not built — decided 2026-08-11, deliberately parked
+### 2026-08-11 / 12 — the five slices after the three, in one paragraph each
 
-Two things are agreed and written down here so they are not lost, and are **not** being
-built yet, because the pricing question below changes what they sit on top of.
+`BOOKING_SYSTEM.md` §6 is the record; this is the index, so a fresh session knows what
+exists without reading it.
 
-**A switch per partner, and a demo mode per partner.** `partners.booking_enabled` decides
+**Rate plans** (step 1). Every listing got one default plan carrying its existing rates,
+so nothing changed on screen. This was the migration that had to happen once and early:
+retrofitting a dimension into the table the whole availability logic hangs on is the
+excavation the single write path exists to prevent.
+
+**Occupancy and guest categories** (step 2). Three pricing strategies, pure classes
+checked against a table of examples; guest categories with age bands per property; the
+booking form's occupancy rows. A property that prices per room sees none of it — no rate
+switcher, no guest rows, no guest types — which is the rule the whole design is judged by.
+
+**Board basis** (step 3), which is a rate plan, so the work was everything *around* it:
+the board and the plan's name frozen onto `reservation_units` at booking, "sold as" on the
+stay detail and the arrivals board, rooms-by-board for tonight (the kitchen's question),
+and three setup profiles.
+
+**Promotions** (step 4). A percentage, an amount, and free nights, because "stay 4, pay 3"
+is what lodges here advertise. They never stack; a typed code beats a larger public offer;
+a code that does not work refuses the booking rather than quietly charging full price. The
+cap is claimed by a conditional `UPDATE` inside the booking transaction — two people typing
+the last code at once is the same race as two people booking the last room.
+
+**`partners.booking_enabled`, amenities, the customer, and taxes** (steps 5–8). The switch
+and its per-partner demo mode; one shared amenity catalogue written from Namibian rate
+sheets rather than a generic hotel list; `customers`, scoped to the partner and matched by
+account first then email, because a booking system has a small number of main entities and
+this one went six slices without it; and charges that apply to a finished price and are
+frozen onto the stay.
+
+### 2026-08-12 — time inside a day, and the two open bugs
+
+**Departures.** A unit may now run a timetable (`booking_slots`), and a departure is
+`(unit, date, slot)` with the slot null for everything sold by the night — which is every
+row a lodge has ever written. The grid a day is *drawn* at is a property of the screen and
+touches no table that counts anything; the counter stays one row per departure, moved by
+the same conditional `UPDATE` as a night. Uniqueness is two partial indexes rather than one
+over three columns, because SQL treats NULLs as distinct and a single index would have let
+a lodge keep two counters for the same night.
+
+**The screens for it.** The calendar became day / week / month with a month and year to
+jump to, ranges that snap; the day view gained an hour axis with departures as columns, at
+a resolution derived from the property's own timetable. The open question the design left —
+one component transposed or two — was answered against a real grid, and it is **two**: a
+night grid's second axis is a series of counters, an hour axis carries none and is a ruler.
+Both readings go through the same `CalendarSnapshot` rules, which is what the decision
+actually required.
+
+**Selling one, and the morning board.** A collapsed "Departures" section on the room type
+(a departure has no meaning apart from the thing it departs), a "+ Seat" on the day view
+that opens the booking form knowing the unit, the date and the departure, and a passenger
+list per departure on the arrivals board with the phone number — which is why the sheet
+leaves the office.
+
+**Both recorded bugs, closed.** Printing the arrivals board printed the menu: fixed with
+one print stylesheet on the panel, which also turned up that this panel's page header is
+*sticky* and therefore printed on top of the date. And capacity was a filter and not a
+rule: the arithmetic moved into `App\Services\Booking\RoomCapacity`, the website now
+refuses a party that does not fit, and the desk is warned and asked what it is doing about
+it — recorded on the stay, because a receptionist told "no" by software they cannot argue
+with writes the booking on paper.
+
+**The guard test worth knowing about.** `AccommodationUnchangedByTimeTest` asserts that a
+property selling nights does not notice departures exist. It started red: the bulk read the
+whole occupancy grid is built on fetched both kinds of row and keyed them by date alone, so
+whichever the database returned last silently became the day. That class of bug — a
+*plausible* wrong number on a screen nobody looks at twice — is the reason these guards get
+written.
+
+### Parked on 2026-08-11 — and built on 2026-08-11 and 2026-08-12
+
+> **Superseded, kept for the reasoning.** Everything in this section was written as
+> *not being built yet*. All of it is now built, and the detail lives in
+> `BOOKING_SYSTEM.md` §6 steps 1–8 rather than here. The analysis below is left in
+> place because it is why the pricing model has the shape it has, and because a reader
+> who finds only the answer cannot tell which constraints it was answering.
+
+Two things were agreed and written down here so they would not be lost, and were **not**
+being built yet, because the pricing question below changed what they sit on top of.
+
+**A switch per partner, and a demo mode per partner. — Built 2026-08-11.**
+`partners.booking_enabled` decides
 whether a lodge is live on the booking system. While it is off, booking mail for that
 partner goes to the team mailbox as a plus-address (`team+okonjima-bush-camp@namibway.com`)
 instead of to the lodge — one resolver answering "where does post for this partner go?",
@@ -299,10 +416,14 @@ called by the five places that currently write `Mail::to($partner->email)`. Sepa
 each partner gets a **demo mode with an address of their own**, so an operator can put
 test bookings through their real inventory and receive the mail themselves before being
 switched on. Both together replace the `booking:demo-tenant` construct, which exists today
-only because there was no other way to show the system working.
+only because there was no other way to show the system working. Built as described:
+three states, and the only difference between them is who receives the mail.
+`BookingMailbox` is the single place that decides. `booking:demo-tenant` still works and
+is now the lesser tool — a partner evaluating the system against their own real
+inventory needs no invented sandbox.
 
-**What the pricing model cannot express, and has to.** This is the larger one, and it
-blocks the above from being finalised:
+**What the pricing model cannot express, and has to. — Built 2026-08-11 and 2026-08-12.**
+This was the larger one, and it blocked the above from being finalised:
 
 - **Namibian lodges price per person, not per room.** "Per person per night sharing" plus
   a single supplement is the norm; per-unit pricing is the exception, for self-catering
@@ -323,6 +444,20 @@ The shape this points to leaves the ARI calendar as it is — one rate per room 
 night — and changes only what that rate is *per*: a mode on the room type, a single
 supplement, child bands with percentages, and guest ages captured at booking. That is the
 same shape channel managers use, so it stays a mapping rather than a translation.
+
+**What was actually built, against that list.** The shape held, with one correction: the
+mode belongs on a **rate plan** and not on the room type, because a property sells the
+same chalet as B&B and as DBB, and to a resident and to an international guest, at
+different numbers. So `rate_plans` sit between the calendar and the price, each carrying
+a pricing strategy (`App\Services\Pricing` — per unit, per person sharing, per
+occupancy), and the calendar is keyed by plan as well as by room type. Guest categories
+carry the age bands per property rather than as constants; board basis is a property of a
+plan and is frozen onto the stay at booking, because a plan renamed in March must not
+change what February sold; and resident / SADC / international is three plans side by
+side, which is one of the three setup profiles a property can start from. Every point on
+the list above is answered except one — **guest *ages* are not captured at booking**, only
+the category somebody chose, which is enough to price and not enough to audit. That is the
+one item from this analysis still open.
 
 ### Constraints that are specific to this market
 
@@ -348,13 +483,28 @@ These change the shape of the system, so they are worth asking the user directly
   arrive from theirs?
 - For the pilot, does our system take **all** bookings for that camp, or only ours?
 
-### Suggested first slice — done, and what follows
+### What is actually next — rewritten 2026-08-12
 
-The calendar table plus per-date rates and quantity landed on 2026-08-11 (above). What
-that slice deliberately left is the half a human touches: a partner-panel property
-switcher and an arrivals/departures view, with NWR modelled as one `Partner` and its camps
-as `Listing` rows. Together with the substrate that is enough to run one camp for one
-season without touching the traveller-facing flow, which is what the flyer promises.
+The suggested first slice, and the seven after it, are done. The pilot the flyer proposes
+— one camp, one season, alongside what they use today — is buildable with what exists.
+What stands between here and that is no longer software of this kind:
+
+1. **A real partner on the other end.** Every connector is written against documented
+   behaviour and not one has run against an account. The first real integration will turn
+   up surprises, and nothing else in this workstream can be de-risked without it.
+2. **The reconciliation question, which is a design problem and not a feature.** Their
+   current system keeps running during the pilot, so two systems hold inventory for the
+   same rooms. That has to be answered *before* the pilot, and it is still unanswered —
+   see "Questions to answer before building" above.
+3. **Money owed.** Costing is thorough; there is no folio and no payment collection.
+4. **Room-level assignment**, for a lodge that assigns real rooms rather than room types.
+   Deliberately not modelled, and the first thing a real desk is likely to ask for.
+
+Two smaller things are named rather than left implicit, both from
+`BOOKING_BEYOND_ROOMS.md`: renaming the sellable unit away from `room_type` (§3.2 —
+mechanical, entirely reversible, and cheapest while nothing is live), and deciding whether
+the pricing strategies mean anything for a seat on a departure or whether the seat *is*
+the unit (§3.4).
 
 ---
 
@@ -425,6 +575,11 @@ These are already paid for in scars; `CLAUDE.md` has the detail.
   country-specific data in config or the database.
 - **The one-active-request rule assumes exactly one responsible person per pipeline.**
   Anything that gives more people booking power has to reckon with that gate first.
+- **The dangerous bug in this domain is the plausible one.** Added 2026-08-12, after a
+  bulk read keyed two different kinds of calendar row by date alone and let whichever the
+  database returned last become the day. Nobody looks twice at a calendar that reads eight
+  free. Where two things share a table, a date and a key, file them apart rather than
+  merely reading them apart — and write the guard test before the reader that needs it.
 
 ---
 
