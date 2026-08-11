@@ -5,6 +5,7 @@ use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\DashboardBookingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\ListingsPartnerHandbookPdfController;
@@ -54,6 +55,12 @@ Route::get('admin/marketing-material/{item}/{variant}', MarketingMaterialDownloa
 Route::get('admin/workbooks/{token}', WorkbookDownloadController::class)
     ->middleware(['auth', 'signed'])
     ->name('workbooks.download');
+
+// Files filed under Documents in the admin panel. They sit on the private disk,
+// so this route is the only way to them and its admin check is the access rule.
+Route::get('admin/documents/{document}/file', DocumentDownloadController::class)
+    ->middleware('auth')
+    ->name('documents.download');
 
 Route::post('currency', [CurrencyController::class, 'update'])
     ->middleware('throttle:30,1')

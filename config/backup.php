@@ -33,10 +33,16 @@ return [
                  *   wrote to local 'public' storage before 2026-08-02 (see
                  *   Controller::resolveMediaUrl) — this is a safety net for whatever's
                  *   still there, not the primary place new uploads land.
+                 * - storage/app/private/documents — the admin panel's document store
+                 *   (App\Models\Document). Unlike catalogue photos these are NOT on
+                 *   R2: they are contracts and internal material, and R2 has no
+                 *   per-object visibility while our media bucket is public. So the
+                 *   app server is the only copy, and this is what makes it durable.
                  */
                 'include' => [
                     base_path('.env'),
                     storage_path('app/public'),
+                    storage_path('app/private/documents'),
                 ],
 
                 /*

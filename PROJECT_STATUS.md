@@ -40,6 +40,15 @@ admin panel under **Documentation → Marketing material**. `marketing/README.md
 records what we may and may not claim — that list is load-bearing, because the
 booking-system flyer is addressed to a named organisation.
 
+**Added 2026-08-12 — Documents.** That page stays what it is: flyers built from source
+in `marketing/` and committed, so they can be rebuilt. Everything else the team needs to
+keep — signed documents, logos, drafts, notes written down so they stop living in chat —
+now has a home at `/admin` → **Documents**: folders holding uploaded files or pages
+written in the panel, each with a comment log. Project-management tooling, not a
+partner-facing store; the files sit on the private disk and are backed up nightly. See
+`CLAUDE.md` → "Documents — the team's own filing cabinet" for the two constraints that
+must survive changes there.
+
 ---
 
 ## 2. What the booking substrate actually is
