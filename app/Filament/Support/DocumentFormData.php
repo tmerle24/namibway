@@ -53,7 +53,7 @@ class DocumentFormData
                 $data['original_name'] = Arr::first($data['original_name']);
             }
 
-            $data = [...$data, ...static::describe($data['path'] ?? null)];
+            $data = [...$data, ...self::describe($data['path'] ?? null)];
         }
 
         if ($creating) {

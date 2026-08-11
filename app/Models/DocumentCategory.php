@@ -46,7 +46,7 @@ class DocumentCategory extends Model
         // about URL segments.
         static::saving(function (self $category): void {
             if (blank($category->slug)) {
-                $category->slug = static::uniqueSlug($category->name, $category->id);
+                $category->slug = self::uniqueSlug($category->name, $category->id);
             }
         });
     }

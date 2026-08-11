@@ -118,11 +118,11 @@ class DocumentResource extends Resource
                     ->columns(2),
 
                 Forms\Components\Section::make('File')
-                    ->visible(fn (Get $get): bool => static::kindIs($get, DocumentKind::File))
+                    ->visible(fn (Get $get): bool => self::kindIs($get, DocumentKind::File))
                     ->schema([
                         Forms\Components\FileUpload::make('path')
                             ->label('Document')
-                            ->required(fn (Get $get): bool => static::kindIs($get, DocumentKind::File))
+                            ->required(fn (Get $get): bool => self::kindIs($get, DocumentKind::File))
                             // Private disk, not the public media bucket — see the
                             // documents migration for why this one is different.
                             ->disk(Document::DISK)
@@ -138,11 +138,11 @@ class DocumentResource extends Resource
                     ]),
 
                 Forms\Components\Section::make('Page')
-                    ->visible(fn (Get $get): bool => static::kindIs($get, DocumentKind::Page))
+                    ->visible(fn (Get $get): bool => self::kindIs($get, DocumentKind::Page))
                     ->schema([
                         Forms\Components\RichEditor::make('body')
                             ->label('Content')
-                            ->required(fn (Get $get): bool => static::kindIs($get, DocumentKind::Page))
+                            ->required(fn (Get $get): bool => self::kindIs($get, DocumentKind::Page))
                             // No attachment button on purpose: attachments would
                             // land on the public disk, which is exactly what
                             // this feature avoids. A picture that belongs to a
