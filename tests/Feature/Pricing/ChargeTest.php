@@ -128,7 +128,11 @@ class ChargeTest extends TestCase
         $stay = $this->book();
 
         $this->assertSame(3000.0, $stay->total_amount);
-        $this->assertNull($stay->charges_amount);
+
+        // Zero rather than null, and the difference is worth having: null
+        // means the property charges nothing at all, zero means it charges
+        // something that was already inside the rate.
+        $this->assertSame(0.0, $stay->charges_amount);
         $this->assertSame(391.30, $stay->charges->first()?->amount);
         $this->assertTrue($stay->charges->first()?->is_included);
     }

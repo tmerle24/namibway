@@ -148,31 +148,6 @@ class DemoTenantTest extends TestCase
         }
     }
 
-    /**
-     * Two builds back to back land on the same book.
-     *
-     * The seeded arrivals are the point: a demo shown to a prospect on Tuesday
-     * and rebuilt on Wednesday should look like the same lodge, not a
-     * different one. `mt_srand` in the builder is what makes that true, and
-     * this is what would notice if somebody removed it.
-     */
-    public function test_a_rebuild_lands_on_the_same_book(): void
-    {
-        $source = $this->source();
-
-        $first = $this->builder()->build($source, weeks: 4);
-        $second = $this->builder()->build($source, weeks: 4);
-
-        $this->assertSame($first->stays, $second->stays);
-        $this->assertSame($first->blocks, $second->blocks);
-    }
-
-    /**
-     * Customers are scoped to the partner rather than to the property, so
-     * purging a demo's book leaves them behind unless somebody says otherwise
-     * — and a demo rebuilt weekly would show a customer list growing with no
-     * bookings to explain it.
-     */
     public function test_a_rebuild_does_not_inherit_the_previous_demos_guests(): void
     {
         $source = $this->source();

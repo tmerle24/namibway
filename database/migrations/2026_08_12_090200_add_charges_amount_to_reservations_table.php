@@ -14,6 +14,11 @@ use Illuminate\Support\Facades\Schema;
  *
  * Only *added* charges are counted. An included one is already inside the
  * stay price by definition, so adding it here would double it.
+ *
+ * Null and zero mean different things and both are used: null is a property
+ * that charges nothing at all, zero is one whose charges are all already
+ * inside its rates. A reader who cannot tell those apart cannot tell a lodge
+ * that has not set up VAT from one that quotes inclusive.
  */
 return new class extends Migration
 {
