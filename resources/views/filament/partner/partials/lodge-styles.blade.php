@@ -781,6 +781,31 @@
         font-variant-numeric: tabular-nums;
     }
 
+    /* Quiet until wanted: an outline button that fills in on hover, so a day
+       with eight departures is not eight call-to-actions competing with the
+       seat counts somebody actually came to read. */
+    .nw-departure__sell {
+        display: block;
+        width: 100%;
+        margin-top: 3px;
+        padding: 0.1rem 0.35rem;
+        border: 1px dashed var(--nw-line-strong);
+        border-radius: 0.3rem;
+        font: inherit;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-align: center;
+        color: var(--nw-muted);
+        background: none;
+        cursor: pointer;
+    }
+
+    .nw-departure__sell:hover {
+        border-style: solid;
+        border-color: rgb(var(--primary-600, 163 91 26));
+        color: rgb(var(--primary-600, 163 91 26));
+    }
+
     .nw-departure__stay {
         display: block;
         width: 100%;

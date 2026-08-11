@@ -2,6 +2,7 @@
 
 namespace App\Services\Inventory\DTOs;
 
+use App\Models\BookingSlot;
 use App\Models\GuestCategory;
 use App\Models\RoomType;
 use App\Services\Pricing\Occupancy;
@@ -19,7 +20,25 @@ class ManualBookingLinePreview
         public readonly string $currency,
         public readonly int $unitsFree,
         public readonly ?Occupancy $occupancy = null,
+        public readonly ?BookingSlot $slot = null,
+        /** Dates the line covers. More than one departure is a repeated ride. */
+        public readonly int $dates = 1,
     ) {}
+
+    /**
+     * "Morning ride, 09:00" — which departure the seats came off, said back to
+     * whoever is typing it in. Null for everything sold by the night.
+     */
+    public function departureLabel(): ?string
+    {
+        if ($this->slot === null) {
+            return null;
+        }
+
+        $label = $this->slot->label().', '.$this->slot->timeLabel();
+
+        return $this->dates > 1 ? $label.' × '.$this->dates.' days' : $label;
+    }
 
     /**
      * "2 adults, 1 child" — what the price was worked out from, said back to

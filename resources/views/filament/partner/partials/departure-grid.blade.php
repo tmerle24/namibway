@@ -91,6 +91,8 @@
                             $facts[] = Money::format($column->rate, $column->currency).' per seat';
                         @endphp
 
+                        @php($sellable = $column->seatsFree > 0)
+
                         <div
                             @class([
                                 'nw-departure',
@@ -113,6 +115,26 @@
                             </div>
 
                             <div class="nw-departure__rate">{{ Money::format($column->rate, $column->currency) }}</div>
+
+                            {{--
+                                A departure with a seat left is where a booking
+                                starts — the form opens knowing the unit, the
+                                date and which departure, so a walk-in is two
+                                clicks rather than a re-typed day. A full one
+                                stays inert: offering a form that can only
+                                refuse is a dead end, and the writer would
+                                refuse it anyway.
+                            --}}
+                            @if ($sellable)
+                                <button
+                                    type="button"
+                                    class="nw-departure__sell"
+                                    wire:click="startDeparture({{ $column->unit->id }}, '{{ $day->date->toDateString() }}', {{ $column->slot->id }})"
+                                    aria-label="Book a seat on {{ $column->label() }}, {{ $day->date->isoFormat('D MMMM YYYY') }}"
+                                >
+                                    + Seat
+                                </button>
+                            @endif
 
                             {{--
                                 Who is on it. A seat sale has no span to draw,

@@ -119,8 +119,93 @@ class RoomTypesRelationManager extends RelationManager
                     ->directory('room-types/gallery')
                     ->fetchFileInformation(false)
                     ->columnSpanFull(),
+                self::departures(),
             ])
             ->columns(2);
+    }
+
+    /**
+     * The timetable this unit runs, where it runs one.
+     *
+     * It lives inside the unit rather than on a screen of its own because a
+     * departure has no meaning apart from the thing it departs — and because a
+     * nav item called "Departures" would be one every lodge in the panel has
+     * to read past. Collapsed and empty by default, so a property that sells
+     * nights sees one closed heading and never opens it. That is the rule this
+     * whole design is judged by: unused things stay invisible.
+     *
+     * Deleting a departure that has seats on it is refused by the model — the
+     * foreign keys cascade, so a delete would take the bookings and the prices
+     * with it, below Eloquent and past the inventory write guard.
+     */
+    private static function departures(): Forms\Components\Section
+    {
+        return Forms\Components\Section::make('Departures')
+            ->description('Only for something sold by the hour — a tour, a drive, a transfer. A room sold by the night has none, and this stays empty.')
+            ->collapsed()
+            ->columnSpanFull()
+            ->schema([
+                Forms\Components\Repeater::make('slots')
+                    ->relationship()
+                    ->hiddenLabel()
+                    ->addActionLabel('Add a departure')
+                    ->itemLabel(fn (array $state): ?string => trim(
+                        substr((string) ($state['starts_at'] ?? ''), 0, 5).' '.($state['label'] ?? '')
+                    ) ?: null)
+                    // No drag handle: an hour axis is ordered by the clock, and
+                    // a second order nobody can see would only be something to
+                    // disagree with it.
+                    ->reorderable(false)
+                    ->schema([
+                        Forms\Components\TimePicker::make('starts_at')
+                            ->label('Departs at')
+                            ->seconds(false)
+                            ->required(),
+                        Forms\Components\TextInput::make('duration_minutes')
+                            ->label('Runs for')
+                            ->helperText('Minutes. A drive that ends after midnight is still a duration, not a second date.')
+                            ->numeric()
+                            ->minValue(5)
+                            ->maxValue(1440)
+                            ->default(180)
+                            ->required(),
+                        Forms\Components\TextInput::make('label')
+                            ->label('Called')
+                            ->helperText('Optional — a property running one departure a day has nothing to call it that the time does not already say.')
+                            ->maxLength(255),
+                        Forms\Components\Toggle::make('is_active')
+                            ->label('On sale')
+                            ->helperText('Switch a departure off rather than deleting it. What it already sold stays where it is.')
+                            ->default(true),
+                    ])
+                    ->columns(2)
+                    // One departure per unit per start time — a second one at
+                    // 09:00 is a capacity question, not a timetable entry, and
+                    // the database refuses it anyway. Said here first, because
+                    // a unique-constraint violation is not something to show a
+                    // lodge manager.
+                    ->rules([
+                        fn (): callable => function (string $attribute, mixed $value, callable $fail): void {
+                            $times = [];
+
+                            foreach (is_array($value) ? $value : [] as $slot) {
+                                $time = substr((string) ($slot['starts_at'] ?? ''), 0, 5);
+
+                                if ($time === '') {
+                                    continue;
+                                }
+
+                                if (isset($times[$time])) {
+                                    $fail("Two departures both start at {$time}. One departure per start time — if two run at once, that is more seats on the same one.");
+
+                                    return;
+                                }
+
+                                $times[$time] = true;
+                            }
+                        },
+                    ]),
+            ]);
     }
 
     public function table(Table $table): Table

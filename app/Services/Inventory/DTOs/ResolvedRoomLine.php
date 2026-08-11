@@ -2,6 +2,7 @@
 
 namespace App\Services\Inventory\DTOs;
 
+use App\Models\BookingSlot;
 use App\Models\RatePlan;
 use App\Models\RoomType;
 use App\Services\Pricing\Occupancy;
@@ -22,6 +23,8 @@ final class ResolvedRoomLine
         public readonly int $quantity,
         public readonly ?RatePlan $ratePlan = null,
         public readonly ?Occupancy $occupancy = null,
+        /** Which departure, for a unit sold by the hour. Null is every night. */
+        public readonly ?BookingSlot $slot = null,
     ) {}
 
     /**
@@ -31,6 +34,6 @@ final class ResolvedRoomLine
      */
     public function plus(int $quantity): self
     {
-        return new self($this->roomType, $this->quantity + $quantity, $this->ratePlan, $this->occupancy);
+        return new self($this->roomType, $this->quantity + $quantity, $this->ratePlan, $this->occupancy, $this->slot);
     }
 }

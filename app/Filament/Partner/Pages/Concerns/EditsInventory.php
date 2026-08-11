@@ -10,6 +10,7 @@ use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Exceptions\Pricing\PromotionUnavailableException;
 use App\Exceptions\Pricing\UnpriceableStayException;
+use App\Models\BookingSlot;
 use App\Models\GuestCategory;
 use App\Models\Listing;
 use App\Models\Note;
@@ -67,6 +68,9 @@ trait EditsInventory
 
     public ?string $prefillDate = null;
 
+    /** Set by a click on a departure block, so the form opens on that one. */
+    public ?int $prefillSlotId = null;
+
     /** The property the page is showing — see SelectedProperty. */
     abstract protected function property(): ?Listing;
 
@@ -94,6 +98,36 @@ trait EditsInventory
 
         $this->prefillRoomTypeId = $room?->id;
         $this->prefillDate = $this->parseDate($date)?->toDateString();
+
+        $this->mountAction('createBooking');
+    }
+
+    /**
+     * Start a booking from a departure block on the day view.
+     *
+     * The same shape as startBooking() and resolved the same way, with one
+     * more question asked: the departure has to belong to the room type it was
+     * named with, or the form would open on the 09:00 quad tour with the game
+     * drive selected.
+     *
+     * The dates come from here rather than from the operator: a seat is sold
+     * on the day it departs, and making a desk type an arrival and a departure
+     * date to sell a morning ride is how a screen stops being used.
+     */
+    public function startDeparture(int $roomTypeId, string $date, int $slotId): void
+    {
+        $property = $this->property();
+
+        if ($property === null) {
+            return;
+        }
+
+        $room = $property->roomTypes()->find($roomTypeId);
+        $slot = $room === null ? null : $room->slots()->where('is_active', true)->find($slotId);
+
+        $this->prefillRoomTypeId = $room?->id;
+        $this->prefillDate = $this->parseDate($date)?->toDateString();
+        $this->prefillSlotId = $slot?->id;
 
         $this->mountAction('createBooking');
     }
@@ -143,6 +177,7 @@ trait EditsInventory
         $room = [
             'room_type_id' => $this->prefillRoomTypeId ?? array_key_first($this->bookableRoomTypes()),
             'rate_plan_id' => array_key_first($plans),
+            'slot_id' => $this->prefillSlotId,
         ];
 
         // Two adults is the booking a desk takes all day. Prefilling it is the
@@ -284,6 +319,19 @@ trait EditsInventory
                 ->options(fn (): array => $this->bookableRoomTypes())
                 ->required()
                 ->live(),
+            // Only for a unit that runs departures, and required for one.
+            // Leaving it blank there would take the seat off the property's
+            // own counter instead of off the tour — a different pool, and the
+            // calendar would go on offering a departure that is full.
+            Select::make('slot_id')
+                // Not "Departure": that word is already the check-out date at
+                // the top of this same form, and two fields called the same
+                // thing on one screen is how a desk books the wrong one.
+                ->label('Which departure')
+                ->options(fn (Get $get): array => $this->departureOptions($get('room_type_id')))
+                ->visible(fn (Get $get): bool => $this->departureOptions($get('room_type_id')) !== [])
+                ->required(fn (Get $get): bool => $this->departureOptions($get('room_type_id')) !== [])
+                ->live(),
         ];
 
         // A property with one product never chose it, so it is never asked.
@@ -298,7 +346,7 @@ trait EditsInventory
 
         if (! $this->pricesByGuests()) {
             $fields[] = TextInput::make('quantity')
-                ->label('Units')
+                ->label(fn (Get $get): string => $this->departureOptions($get('room_type_id')) === [] ? 'Units' : 'Seats')
                 ->numeric()
                 ->minValue(1)
                 ->maxValue(99)
@@ -405,6 +453,7 @@ trait EditsInventory
 
         $this->prefillRoomTypeId = null;
         $this->prefillDate = null;
+        $this->prefillSlotId = null;
         $this->showReservation($reservation->id);
     }
 
@@ -448,12 +497,14 @@ trait EditsInventory
         $lines = collect($preview->lines)
             ->map(function (ManualBookingLinePreview $line) use ($categories): string {
                 $who = $line->occupancyLabel($categories);
+                $departure = $line->departureLabel();
 
                 return '<li>'.e(
                     $line->roomType->name.' ×'.$line->quantity
+                    .($departure === null ? '' : ' — '.$departure)
                     .($who === null ? '' : ' ('.$who.')')
                     .' — '.Money::format($line->total, $line->currency)
-                    .' ('.$line->unitsFree.' free)'
+                    .' ('.$line->unitsFree.($departure === null ? ' free)' : ' seats free)')
                 ).'</li>';
             })
             ->implode('');
@@ -478,7 +529,7 @@ trait EditsInventory
             .e(Money::format($preview->total, $preview->currency))
             .'</span>'
             .'<span style="opacity: .7;">'
-            .e($preview->nights.' '.str('night')->plural($preview->nights))
+            .e($preview->lengthLabel())
             .'</span>'
             .'</div>'
             .$offer
@@ -812,6 +863,34 @@ trait EditsInventory
             ->get()
             ->sortBy(fn (RoomType $room) => $room->name, SORT_NATURAL | SORT_FLAG_CASE)
             ->mapWithKeys(fn (RoomType $room) => [$room->id => $room->name.' ('.$room->code.')'])
+            ->all();
+    }
+
+    /**
+     * The departures of one of this property's units, for the room line.
+     *
+     * Empty for everything sold by the night, which is what hides the field:
+     * a lodge never learns that departures exist.
+     *
+     * @return array<int, string>
+     */
+    private function departureOptions(mixed $roomTypeId): array
+    {
+        $property = $this->property();
+        $id = (int) $roomTypeId;
+
+        if ($property === null || $id < 1) {
+            return [];
+        }
+
+        $room = $property->roomTypes()->find($id);
+
+        if (! $room instanceof RoomType) {
+            return [];
+        }
+
+        return BookingSlot::forUnit($room)
+            ->mapWithKeys(fn (BookingSlot $slot) => [$slot->id => $slot->timeLabel().' — '.$slot->label()])
             ->all();
     }
 

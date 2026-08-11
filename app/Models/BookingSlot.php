@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Exceptions\Inventory\DepartureInUseException;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 /**
  * One departure a bookable unit runs — see the migration for why it is a row
@@ -40,6 +42,35 @@ class BookingSlot extends Model
         'is_active' => 'boolean',
         'sort' => 'integer',
     ];
+
+    /**
+     * Deleting a departure is refused once anything has been sold on it.
+     *
+     * Both `room_type_calendar_days.slot_id` and `rate_plan_days.slot_id`
+     * cascade, so a delete reaches the counters through the database — below
+     * Eloquent, past InventoryWriteGuard, and with nothing left to restore
+     * from. This is the one place that can stop it, so it lives on the model
+     * rather than on a screen: a timetable is editable from more than one
+     * panel, and a rule only one of them knows is not a rule.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $slot): void {
+            $seats = $slot->seatsHeld();
+
+            if ($seats > 0) {
+                throw new DepartureInUseException($slot->label(), $seats);
+            }
+        });
+    }
+
+    /** Seats sold or held off sale on this departure, on any date. */
+    public function seatsHeld(): int
+    {
+        return (int) RoomTypeCalendarDay::query()
+            ->where('slot_id', $this->id)
+            ->sum(DB::raw('units_sold + units_blocked'));
+    }
 
     /**
      * @return BelongsTo<RoomType, $this>

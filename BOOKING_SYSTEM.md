@@ -475,9 +475,55 @@ Two things the build decided that the design had not:
   the calendar opens the booking form on that room and that night; a departure
   has no night to sell, and a click that quietly moved the property's own
   counter instead of the 09:00 tour's would put the calendar wrong in exactly
-  the way this design exists to prevent. Selling a departure from the day view
-  is the next step and wants a departure field on the booking form; until it
-  exists the block is a place to read the day and open the stays on it.
+  the way this design exists to prevent. On the *month* view that is still
+  true — the cell there is a day of departures summed, and there is no one
+  departure to sell. On the day view it is now the block itself that sells;
+  see below.
+
+**A timetable, and a seat sold on it — 2026-08-12.** The two halves of the
+same slice, because either alone leaves the feature unreachable: a departure
+nobody can enter is a screen nobody sees, and a departure nobody can sell is a
+screen nobody uses.
+
+The timetable is entered **inside the unit that runs it**, as a collapsed
+"Departures" section on the room type — not a nav item of its own. A departure
+has no meaning apart from the thing it departs, and a heading called
+"Departures" in the sidebar is one more thing every lodge in the panel has to
+read past. A property selling nights leaves the section closed and empty
+forever, which is the rule the whole design is judged by.
+
+Selling one: the day view's block carries a "+ Seat" that opens the booking
+form already knowing the unit, the date and the departure, and the form itself
+grows one field — **"Which departure"**, visible only where the unit has any,
+and required there. Required, because leaving it blank on a unit that runs
+departures takes the seat off the property's own counter instead: a different
+pool, and the calendar would go on offering a tour that is full. A lodge is
+never shown the field and never learns it exists.
+
+Three decisions the build made that are worth stating:
+
+- **Stay restrictions do not reach a departure.** A minimum stay and a
+  closed-to-arrival day are rules about selling a *night*; a seat on the 09:00
+  ride is not one, and a lodge's three-night minimum on the same property has
+  no business refusing it. Skipped in the preview and in `InventoryWriter`
+  alike — availability is still enforced, exactly as it is for a night.
+- **Two rows of one unit on two departures are two lines.** Rows that say
+  nothing about who is in the room are merged, because "2 standard" twice means
+  four rooms. Two departures are two pools of seats, so the merge key gained
+  the departure — merged, a booking for two on each tour would hold four on one.
+- **Deleting a departure that has been sold is refused, on the model.**
+  `room_type_calendar_days.slot_id` and `rate_plan_days.slot_id` both cascade,
+  so a delete reaches the counters through the database — below Eloquent, past
+  `InventoryWriteGuard`, and with nothing to restore from. The rule lives on
+  `BookingSlot` rather than on a screen because the timetable is editable from
+  more than one panel, and a rule only one of them knows is not a rule. An
+  empty departure still deletes; a sold one is switched off instead.
+
+The words changed with the thing being sold, because the screen made it obvious:
+a room line on a tour says **Seats** rather than Units, the preview counts
+**days** rather than nights when every line is a departure, and the field is
+"Which departure" rather than "Departure" — the booking form already had a
+field by that name, and it is the check-out date.
 
 **A guard test, because the risk here is a leak and not a bug.**
 `AccommodationUnchangedByTimeTest` asserts the thing the whole section rests on:

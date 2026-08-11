@@ -114,6 +114,48 @@ class AvailabilityCalendar
     }
 
     /**
+     * Seats free on every date a departure line covers, keyed by Y-m-d.
+     *
+     * A line spanning more than one date is a repeated ride — the writer takes
+     * a seat on the departure once per date, which is what it already does for
+     * a night — so the question is the same one asked of each date, and what
+     * limits the line is the worst of them.
+     *
+     * @return array<string, int>
+     */
+    public function seatsFreeAcross(RoomType $roomType, BookingSlot $slot, CarbonInterface $checkIn, CarbonInterface $checkOut): array
+    {
+        $rows = RoomTypeCalendarDay::query()
+            ->where('room_type_id', $roomType->id)
+            ->where('slot_id', $slot->id)
+            ->whereBetween('date', [
+                Carbon::parse($checkIn)->toDateString(),
+                Carbon::parse($checkOut)->toDateString(),
+            ])
+            ->get()
+            ->keyBy(fn (RoomTypeCalendarDay $day) => $day->date->toDateString());
+
+        $free = [];
+
+        foreach ($this->nights($checkIn, $checkOut) as $date) {
+            $key = $date->toDateString();
+            $day = $rows->get($key);
+
+            $free[$key] = $this->capacityFrom($roomType, $day) - $this->occupiedFrom($day);
+        }
+
+        return $free;
+    }
+
+    /** The fullest departure of the ones a line covers — what it is limited by. */
+    public function seatsFreeThroughout(RoomType $roomType, BookingSlot $slot, CarbonInterface $checkIn, CarbonInterface $checkOut): int
+    {
+        $free = $this->seatsFreeAcross($roomType, $slot, $checkIn, $checkOut);
+
+        return $free === [] ? 0 : (int) min($free);
+    }
+
+    /**
      * Units free on every night of a stay, keyed by Y-m-d. The check-out day
      * is not a night and is not included.
      *

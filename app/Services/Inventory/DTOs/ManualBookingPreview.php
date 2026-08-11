@@ -36,6 +36,37 @@ class ManualBookingPreview
         public readonly array $charges = [],
     ) {}
 
+    /**
+     * "1 night" or "1 day" — how long this booking is, in the word that fits
+     * what was sold.
+     *
+     * Nothing on a tour operator's booking is a night: a seat on the 14:00
+     * drive is bought for a day, and a form that insists on counting nights is
+     * a form written for somebody else's business.
+     */
+    public function lengthLabel(): string
+    {
+        $unit = $this->isDeparturesOnly() ? 'day' : 'night';
+
+        return $this->nights.' '.str($unit)->plural($this->nights);
+    }
+
+    /** Whether every line on this booking is a seat on a departure. */
+    public function isDeparturesOnly(): bool
+    {
+        if ($this->lines === []) {
+            return false;
+        }
+
+        foreach ($this->lines as $line) {
+            if ($line->slot === null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /** What the guest pays for the stay itself, before anything is added on top. */
     public function stayAmount(): float
     {

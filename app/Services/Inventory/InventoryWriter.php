@@ -115,6 +115,15 @@ class InventoryWriter
 
             if (! $request->ignoreStayRules) {
                 foreach ($lines as $index => $line) {
+                    // A stay restriction is a rule about selling a *night*: a
+                    // minimum stay, a day nobody may arrive on. A seat on a
+                    // departure has none of those, and checking the night's
+                    // rules would let a lodge's three-night minimum refuse a
+                    // morning ride on the same property.
+                    if ($line->slot !== null) {
+                        continue;
+                    }
+
                     $this->calendar->assertStayRules($line->roomType, $line->checkIn, $line->checkOut, $plans[$index]);
                 }
             }

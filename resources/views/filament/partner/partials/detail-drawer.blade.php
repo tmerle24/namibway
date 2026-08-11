@@ -195,7 +195,18 @@
                     <tbody>
                         @foreach ($reservation->units as $unit)
                             <tr>
-                                <td>{{ $unit->roomType?->name ?? '—' }}</td>
+                                <td>
+                                    {{ $unit->roomType?->name ?? '—' }}
+                                    {{--
+                                        Which departure, frozen onto the stay
+                                        for the same reason the plan's name is:
+                                        renaming "Morning departure" in March
+                                        must not change what February sold.
+                                    --}}
+                                    @if (filled($unit->slot_label))
+                                        <div class="nw-hint">{{ $unit->slot_label }}</div>
+                                    @endif
+                                </td>
                                 {{--
                                     Read from the stay, not from the rate plan:
                                     what this room was sold as is a fact about
