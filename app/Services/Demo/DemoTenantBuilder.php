@@ -472,6 +472,11 @@ class DemoTenantBuilder
                         source: $this->source(),
                         adults: max(1, min($room->max_adults, $quantity + 1)),
                         children: mt_rand(0, 1),
+                        // Twelve weeks of invented history would otherwise
+                        // post several hundred confirmations about guests who
+                        // do not exist. A booking somebody makes *in* the demo
+                        // still sends, which is the part worth seeing.
+                        notify: false,
                     ));
                 } catch (InventoryUnavailableException|StayRuleViolationException) {
                     continue;

@@ -19,6 +19,11 @@ class BookingRequest
      *                                     is not what the calendar priced. The calendar's
      *                                     own figure is kept either way — see the
      *                                     reservations price-override migration.
+     * @param  bool  $notify  Whether this booking should tell anybody about itself.
+     *                        True for every real one. False exists for seeding a demo
+     *                        property with months of history, which would otherwise
+     *                        post hundreds of confirmations about guests who do not
+     *                        exist.
      */
     public function __construct(
         public readonly Listing $listing,
@@ -35,5 +40,6 @@ class BookingRequest
         public readonly ?int $inquiryId = null,
         public readonly ?float $totalOverride = null,
         public readonly ?string $overrideReason = null,
+        public readonly bool $notify = true,
     ) {}
 }

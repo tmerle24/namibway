@@ -5,6 +5,7 @@ namespace App\Services\Inventory;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
+use App\Jobs\NotifyAboutStay;
 use App\Models\InventoryBlock;
 use App\Models\Listing;
 use App\Models\RatePlan;
@@ -76,7 +77,7 @@ class InventoryWriter
     {
         $lines = $this->validatedLines($request);
 
-        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($request, $lines) {
+        $reservation = InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($request, $lines) {
             // Resolved once per line and reused for rules, pricing and the
             // recorded line, so a stay cannot be checked against one plan and
             // priced under another.
@@ -207,6 +208,16 @@ class InventoryWriter
 
             return $reservation->refresh();
         }));
+
+        // After the transaction, never inside it: a confirmation for a booking
+        // that then rolled back is worse than no confirmation, and no stay
+        // should fail because a mail server was slow. Where the mail goes is
+        // BookingMailbox's decision, not this class's.
+        if ($request->notify) {
+            NotifyAboutStay::dispatch($reservation, NotifyAboutStay::BOOKED);
+        }
+
+        return $reservation;
     }
 
     /**
@@ -218,14 +229,21 @@ class InventoryWriter
      *
      * `$late` defaults to asking the property's country how close to arrival
      * counts as late, rather than to a hardcoded window.
+     *
+     * `$notify` is how a demo rebuild cancels a hundred seeded stays without
+     * apologising to a hundred people who do not exist.
      */
-    public function cancel(Reservation $reservation, ?string $reason = null, ?bool $late = null): Reservation
-    {
+    public function cancel(
+        Reservation $reservation,
+        ?string $reason = null,
+        ?bool $late = null,
+        bool $notify = true,
+    ): Reservation {
         if (! $reservation->status->occupiesInventory()) {
             return $reservation;
         }
 
-        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($reservation, $reason, $late) {
+        $cancelled = InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($reservation, $reason, $late) {
             $reservation->loadMissing('units.roomType', 'listing');
 
             foreach ($this->orderedUnits($reservation) as $unit) {
@@ -250,6 +268,12 @@ class InventoryWriter
 
             return $reservation;
         }));
+
+        if ($notify) {
+            NotifyAboutStay::dispatch($cancelled, NotifyAboutStay::CANCELLED);
+        }
+
+        return $cancelled;
     }
 
     /**
