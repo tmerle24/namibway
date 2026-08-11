@@ -624,6 +624,27 @@ here at all.
 
 ---
 
+### Open bug: printing the arrivals board prints the menu — found 2026-08-12
+
+Printing the arrivals view produces the navigation and none of the board.
+
+The print rules that exist are the ones this codebase wrote — `nw-noprint`, the
+calendar viewport's ceiling coming off, table rows not breaking across pages
+(`lodge-styles.blade.php`). They all assume the *page* prints and only some
+parts of it need hiding. What they never handle is Filament's own shell: the
+sidebar and topbar are laid out as fixed/positioned elements and the main
+content sits in a scrolling container, so on paper the shell is what has a
+position and the content is what gets clipped.
+
+The fix belongs in one place — a print stylesheet on the panel, not on the
+board — because every screen a lodge prints has the same problem: hide the
+sidebar, the topbar and the page header, and let the main region flow at full
+width with no scroll container. Worth doing properly rather than patching the
+arrivals view, since a printed arrivals list is carried around the property and
+a printed calendar goes on the office wall.
+
+---
+
 ### Open bug: capacity is a filter, not a rule — found 2026-08-12
 
 Reported from the panel: a room for 2 adults and 2 children took a booking for
