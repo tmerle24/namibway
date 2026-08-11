@@ -10,6 +10,7 @@ use App\Enums\VehicleClass;
 use App\Filament\Partner\Resources\ListingResource\Pages;
 use App\Filament\Resources\ListingResource\RelationManagers as AdminRelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
+use App\Filament\Support\CreateWebsiteAction;
 use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
 use App\Models\Amenity;
@@ -281,6 +282,11 @@ class ListingResource extends Resource
             ->filters([])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                // The same button the team has, and switched off until the
+                // subscription exists to unlock it. Shown rather than hidden:
+                // the owner should see that a website is one click away, which
+                // is the whole offer.
+                CreateWebsiteAction::locked(),
             ])
             ->paginated(false);
     }

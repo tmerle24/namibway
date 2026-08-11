@@ -116,6 +116,8 @@ class GenerateSite extends Command
             $report->kept,
         ));
 
+        $this->section('Shortened to fit', $report->shortened);
+
         $this->section('Blocks with nothing to show yet', $report->disabledBlocks);
 
         $this->newLine();

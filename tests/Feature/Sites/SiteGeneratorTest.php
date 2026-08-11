@@ -6,11 +6,14 @@ use App\Enums\BusinessType;
 use App\Enums\ContentSource;
 use App\Enums\ListingType;
 use App\Enums\VehicleCategory;
+use App\Jobs\GenerateSiteJob;
+use App\Mail\SiteReady;
 use App\Models\Listing;
 use App\Models\Site;
 use App\Sites\BlockRegistry;
 use App\Sites\Generation\SiteGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -179,6 +182,85 @@ class SiteGeneratorTest extends TestCase
             ->assertSuccessful();
 
         $this->assertNotNull(Site::where('source_listing_id', $listing->id)->first());
+    }
+
+    /**
+     * A hero subline is one sentence by design; a listing's short description
+     * is written under no such rule. Where they collide the text gets cut, and
+     * generation carries on — this listing used to produce no website at all
+     * and a validation message nobody outside the code could act on.
+     */
+    public function test_a_field_too_long_for_its_block_is_shortened_rather_than_refused(): void
+    {
+        $listing = Listing::factory()->create([
+            'short_description' => str_repeat('Twelve rooms where the dunes start and the lawn stops. ', 10),
+            'description_source' => ContentSource::Partner,
+        ]);
+
+        $generator = new SiteGenerator;
+        $site = $generator->fromListing($listing);
+
+        $hero = $site->pages()->first()->blocks()->where('type', 'hero')->first();
+
+        $this->assertLessThanOrEqual(240, mb_strlen((string) $hero->data['subline']));
+        $this->assertNotEmpty($hero->data['subline']);
+        $this->assertNotEmpty($generator->report()->shortened);
+    }
+
+    /**
+     * A string with no spaces in it must not be cut down to nothing — the
+     * naive "truncate at the last space" does exactly that.
+     */
+    public function test_an_unbroken_string_is_cut_rather_than_emptied(): void
+    {
+        $listing = Listing::factory()->create([
+            'short_description' => str_repeat('a', 400),
+            'description_source' => ContentSource::Partner,
+        ]);
+
+        $site = (new SiteGenerator)->fromListing($listing);
+        $hero = $site->pages()->first()->blocks()->where('type', 'hero')->first();
+
+        $this->assertSame(240, mb_strlen((string) $hero->data['subline']));
+    }
+
+    /**
+     * The button in both panels: one click, a site, and a mail with the link.
+     */
+    public function test_the_one_click_job_builds_the_site_and_mails_the_link(): void
+    {
+        Mail::fake();
+
+        $listing = Listing::factory()->create(['name' => 'Katutura Hardware']);
+
+        (new GenerateSiteJob($listing, 'charnette@example.com'))->handle();
+
+        $site = Site::where('source_listing_id', $listing->id)->first();
+
+        $this->assertNotNull($site);
+
+        // Queued, not sent. SiteReady is a ShouldQueue mailable, so
+        // Mail::to()->send() hands it to the queue rather than the transport —
+        // deliberately, even though this already runs inside a queued job: a
+        // mail server having a bad minute should retry on its own, not fail the
+        // job that just built the website.
+        Mail::assertQueued(SiteReady::class, fn (SiteReady $mail): bool => $mail->site->is($site));
+    }
+
+    public function test_the_one_click_job_sends_no_mail_when_nobody_is_waiting(): void
+    {
+        Mail::fake();
+
+        $listing = Listing::factory()->create();
+
+        (new GenerateSiteJob($listing))->handle();
+
+        $this->assertNotNull(Site::where('source_listing_id', $listing->id)->first());
+
+        // Outgoing rather than sent: the queued path is the one this mailable
+        // actually takes, so asserting only on "sent" would pass without
+        // proving anything.
+        Mail::assertNothingOutgoing();
     }
 
     public function test_the_command_needs_a_type_for_a_business_with_no_listing(): void

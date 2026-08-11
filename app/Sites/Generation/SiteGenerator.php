@@ -197,16 +197,16 @@ class SiteGenerator
         $payloads = [
             'hero' => [
                 'image_id' => $hero?->id,
-                'eyebrow' => $listing->city?->name,
-                'headline' => (string) $listing->name,
-                'subline' => $short,
+                'eyebrow' => $this->fit($listing->city?->name, 60, 'hero eyebrow'),
+                'headline' => $this->fit((string) $listing->name, 120, 'hero headline'),
+                'subline' => $this->fit($short, 240, 'hero subline'),
                 'cta_label' => null,
                 'cta_href' => null,
             ],
             'about' => [
                 'eyebrow' => null,
                 'heading' => 'About us',
-                'body' => $description,
+                'body' => $this->fit($description, 8000, 'about text'),
                 'image_id' => $images[1]->id ?? null,
             ],
             'gallery' => [
@@ -216,22 +216,71 @@ class SiteGenerator
             'opening_hours' => [
                 'heading' => 'Opening hours',
                 'note' => null,
-                'days' => $hours,
+                'days' => array_map(fn (array $row): array => [
+                    'day' => (string) $this->fit($row['day'], 40, 'opening hours'),
+                    'hours' => (string) $this->fit($row['hours'], 60, 'opening hours'),
+                ], $hours),
             ],
         ];
 
         // Highlights first, then what the property has, so a listing with
         // neither leaves the block empty rather than half-populated with the
         // wrong thing.
-        $items = $highlights !== []
-            ? array_map(fn (string $text) => ['title' => Str::limit($text, 80, ''), 'text' => null], $highlights)
-            : array_map(fn (string $text) => ['title' => Str::limit($text, 80, ''), 'text' => null], array_slice($amenities, 0, 6));
+        $source = $highlights !== [] ? $highlights : array_slice($amenities, 0, 6);
+        $items = array_map(
+            fn (string $text): array => ['title' => $this->fit($text, 80, 'highlight'), 'text' => null],
+            $source,
+        );
 
         if ($items !== []) {
             $payloads['highlights'] = ['heading' => 'What we offer', 'items' => array_values($items)];
         }
 
         return $payloads;
+    }
+
+    /**
+     * Cut a value down to what the block will accept, at a word boundary.
+     *
+     * A block's limits are design decisions — a hero subline is one sentence,
+     * not three paragraphs — and a listing's own fields are written under no
+     * such constraint. Where they collide, the text gets shortened and the
+     * report says so.
+     *
+     * It must not be an exception. Generation is a one-click promise, and a
+     * lodge whose `short_description` happens to run to 300 characters is not
+     * an error case: it is Tuesday. Before this, that listing produced no
+     * website at all and a validation message nobody outside the code could
+     * act on. The strict validation on the block itself stays exactly as it
+     * is — this makes generation produce payloads that satisfy it, rather than
+     * loosening what the renderer is allowed to be handed.
+     */
+    private function fit(?string $value, int $max, string $field): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (mb_strlen($value) <= $max) {
+            return $value;
+        }
+
+        $this->report->shortened($field, $max);
+
+        // Cut at the last word boundary, unless that would throw away most of
+        // the allowance — a long string with no spaces in it (a URL, a run-on
+        // name) then gets a hard cut rather than becoming empty, which is what
+        // a naive "truncate at the last space" does to it.
+        $cut = mb_substr($value, 0, $max);
+        $space = mb_strrpos($cut, ' ');
+
+        if ($space !== false && $space > (int) ($max * 0.6)) {
+            $cut = mb_substr($cut, 0, $space);
+        }
+
+        return rtrim($cut, " \t\n\r\0\x0B.,;:–-") ?: mb_substr($value, 0, $max);
     }
 
     /**
