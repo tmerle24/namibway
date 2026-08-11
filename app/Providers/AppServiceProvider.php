@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Filament\Navigation\AlphabeticalNavigationManager;
 use App\Filament\Partner\Support\SelectedProperty;
 use App\Models\ApiClient;
 use App\Models\Inquiry;
@@ -15,6 +16,7 @@ use App\Observers\ReviewObserver;
 use App\Observers\SiteObserver;
 use Carbon\CarbonImmutable;
 use Filament\Forms\Components\FileUpload;
+use Filament\Navigation\NavigationManager;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandStarting;
@@ -38,6 +40,12 @@ class AppServiceProvider extends ServiceProvider
         // lodge-facing pages all ask which property is selected while
         // rendering the same page.
         $this->app->scoped(SelectedProperty::class);
+
+        // Replaces Filament's own scoped binding (FilamentServiceProvider
+        // registers first, app providers last), so both panels sort the items
+        // inside every navigation group alphabetically instead of by hand-kept
+        // sort numbers. See AlphabeticalNavigationManager.
+        $this->app->scoped(NavigationManager::class, fn (): NavigationManager => new AlphabeticalNavigationManager);
     }
 
     /**

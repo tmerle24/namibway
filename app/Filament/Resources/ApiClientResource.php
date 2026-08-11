@@ -17,7 +17,12 @@ class ApiClientResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-key';
 
-    protected static ?string $navigationGroup = 'Interfaces';
+    // Was the sole occupant of an "Interfaces" group, which meant a whole
+    // sidebar section for one rarely-touched screen. It configures who may talk
+    // to the platform, which is a setting.
+    protected static ?string $navigationGroup = 'Settings';
+
+    protected static ?string $navigationLabel = 'API Clients';
 
     public static function form(Form $form): Form
     {

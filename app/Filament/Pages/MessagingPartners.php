@@ -28,8 +28,6 @@ class MessagingPartners extends Page implements HasTable
 
     protected static ?string $navigationLabel = 'Partners';
 
-    protected static ?int $navigationSort = 2;
-
     protected static ?string $title = 'Partner messages';
 
     protected static string $view = 'filament.pages.messaging-partners';

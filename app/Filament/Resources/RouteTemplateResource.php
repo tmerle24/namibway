@@ -24,8 +24,6 @@ class RouteTemplateResource extends Resource
 
     protected static ?string $navigationGroup = 'Settings';
 
-    protected static ?int $navigationSort = 40;
-
     public static function form(Form $form): Form
     {
         return $form

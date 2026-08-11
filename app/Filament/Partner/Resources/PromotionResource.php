@@ -41,8 +41,6 @@ class PromotionResource extends Resource
 
     protected static ?string $navigationGroup = 'Setup';
 
-    protected static ?int $navigationSort = 30;
-
     protected static ?string $slug = 'offers';
 
     public static function canAccess(): bool
