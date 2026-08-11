@@ -107,6 +107,100 @@ same shape as `PricingStrategy` and `ConnectorFactory` already use. The strategy
 answers three questions and nothing else — what do we ask the guest for now, what
 do we owe or claim afterwards, and who issues the guest's invoice.
 
+### The model is not a fourth setting — the deposit share picks it
+
+Decided 2026-08-12, and it is the thing that keeps this from becoming a
+configuration screen nobody understands. Read the table's middle column: the
+models differ in *what share of the folio we collect*, and nothing else.
+
+- **0 % → agency.** We collect nothing and invoice the partner for commission.
+- **between → split.** We collect the deposit, the property collects the balance.
+- **100 % → merchant.** We collect everything and pay out net.
+
+One number, three behaviours, no way to configure a combination that contradicts
+itself. A partner cannot end up in "merchant model but we collect nothing".
+
+**What happens at 0 % is a real consequence and must be shown at the moment it is
+chosen, not discovered a month later.** It means we raise a commission invoice to
+that partner, with payment terms, a dunning process when it goes unpaid, and the
+question of what we do about a partner who simply does not pay — for which our
+only real lever is `Partner.booking_enabled`. That is not a rounding difference
+from the other two models; it is the one where our money depends on someone
+else's willingness.
+
+So two guards, both worth their small cost:
+
+- **A platform-wide minimum deposit**, defaulting to the commission rate. At that
+  floor model C nets to exactly zero between us and the partner, which is the
+  cheapest arrangement that exists for both sides — it is a sensible thing to
+  make the natural landing spot.
+- **0 % is not simply a number a partner may type.** It has to be unlocked per
+  partner by us (a flag on the partner), because choosing it moves cost and risk
+  onto us and that is not the partner's decision alone. The partner still chooses
+  their deposit; we choose whether zero is in their range.
+
+---
+
+## 2a. Who sets which number
+
+Two rates, two very different owners — decided 2026-08-12:
+
+- **Commission is ours.** Base 5 %, set in admin settings; adjustable per partner
+  and per listing, but **only by us**. It never appears as an editable field in
+  the partner panel. A partner may of course see what they pay.
+- **The deposit is the partner's.** Base 15 %, set in admin settings as the
+  default, and the partner adjusts it for their own property within the range we
+  allow (see the floor and the 0 % unlock above).
+
+Both resolve the same way, and it is a rule the codebase already uses elsewhere:
+**most specific wins, null means inherit.**
+
+    listing override → partner override → platform setting → config default
+
+This is deliberately the same shape as the availability calendar, where a missing
+row or a null override means "follow the unit's default" (`CalendarSnapshot`).
+Same rule, same reason: sparse storage, one place to change the common case, and
+no row that has to be written just to say "unchanged".
+
+Both levels exist for both rates because both cases are real: a partner with
+twenty camps wants one number; the one lodge in that group we negotiated
+separately needs its own. Listing-level is the exception, not the workflow.
+
+The platform defaults live in a single-row settings model with a Filament page,
+the pattern `MessageSettings` + `MessagingSettings` already establishes — not in
+`config/`, because the point is that the team changes them without a deploy. A
+`config/` value stays as the fallback the settings row is seeded from.
+
+**And, as always: stored as a result.** The commission rate and deposit rate that
+applied are written onto the reservation when it is taken. Changing the platform
+rate next season must not silently rewrite what we earned last season. Same rule
+as the price, for the same reason.
+
+---
+
+## 2b. Booking system or PMS — the customer decides at setup
+
+Decided 2026-08-12: NamibWay is both, and which one a given partner gets is a
+choice made when their account is set up, not a fork in the product.
+
+- **Booking-only** — sell the room, take the request, keep the calendar. What
+  exists today.
+- **Full (PMS)** — additionally the desk: room-level assignment, an in-house /
+  checked-out status on a stay, extras posted to the folio, housekeeping, day-end
+  reporting.
+
+One rule makes this safe rather than a second product: **the mode decides what a
+partner sees, never how anything is recorded.** A booking-only property still has
+a folio, still has payment records, still has an invoice — it simply has no
+screens for posting a bar bill to a room. The moment the mode changes what is
+*stored*, upgrading a partner from booking-only to full becomes a migration, and
+two partners on the same server stop being comparable. That is exactly the "two
+systems" problem this whole workstream exists to avoid, reintroduced from the
+inside.
+
+`Partner.operating_mode` as an enum, read by the partner panel's navigation and
+by nothing in `app/Services`.
+
 ---
 
 ## 3. Commission is earned once, however it is collected
@@ -115,9 +209,9 @@ Worth stating separately because it is the thing that must **not** live inside
 the settlement strategies, or the three models will drift into three different
 answers to "what do we earn":
 
-- **Rate:** a per-partner percentage, defaulting to the platform rate. `CLAUDE.md`
-  models ~5 %, deliberately below OTA rates; the actual number is commercial and
-  belongs in config plus a partner override, never hardcoded at a call site.
+- **Rate:** resolved by §2a — listing, then partner, then the platform setting,
+  which starts at 5 % (`CLAUDE.md` models ~5 %, deliberately below OTA rates).
+  Ours to set at every level; never hardcoded at a call site.
 - **Base:** the stay, before taxes and levies. Charging commission on the
   government's VAT and Tourism Levy is indefensible in front of an operator, and
   `ChargeKind` already distinguishes `Tax`/`Levy` from `Fee` — which is what makes
@@ -194,19 +288,33 @@ a real account**, so all of it is unvalidated until one does.
 
 Realities to design around rather than discover:
 
-- **Stripe is for us, not necessarily for them.** Stripe does not support Namibia
-  as a business location, and Stripe Connect cannot onboard a Namibian connected
-  account — so "we collect and Stripe splits to the lodge automatically" is not
-  available. Whether NamibWay itself can be the Stripe merchant depends on which
-  entity holds the account, which is commercial and needs confirming before this
-  is built on.
-- **What Namibian and South African properties actually use:** DPO Pay, PayGate,
-  Peach Payments, Ozow, Netcash, and — very commonly — plain bank transfer. A
-  provider abstraction whose only implementation is Stripe will not survive
-  contact with the market.
+- **NamibWay will be a Namibian company** (decided 2026-08-12), which settles the
+  Stripe question rather than leaving it open: Stripe does not support Namibia as
+  a business location, so **Stripe is not the provider** — not for us, and Stripe
+  Connect cannot onboard a Namibian connected account either, so an automatic
+  split to the lodge is not on the table under any arrangement.
+- **So the real provider is a decision that has not been made**, and it is
+  commercial before it is technical: a merchant account with a Namibian bank
+  (FNB, Bank Windhoek, Standard Bank Namibia all offer e-commerce acquiring),
+  or a gateway operating in the region — DPO Pay, Peach, PayGate, Ozow, Netcash,
+  PayToday. **Treat every name in that list as a candidate to verify, not a fact:
+  availability, fees and settlement terms in Namibia specifically all need
+  checking with the provider.** What matters for the code is that this list
+  exists at all — a provider abstraction whose only implementation is one
+  gateway will not survive contact with it.
+- **Therefore build against a `DemoProvider` first, and mean it.** The
+  requirement (2026-08-12) is that the whole flow works end to end in a demo
+  before any real provider is chosen: authorise, capture, fail, refund, and the
+  asynchronous callback, all simulated in-process with no network. Two things
+  fall out of that, both good. A prospect sees their own lodge taking a deposit
+  in the demo tenant that `booking:demo-tenant` already builds. And when the real
+  provider is picked, it is one class and a configuration entry — nothing above
+  it has to change, because nothing above it was ever written against a
+  particular gateway.
 - **Bank transfer is a first-class method, not a fallback.** It has no callback:
   somebody marks it received. That is precisely why "recorded vs cleared" above
-  is a field.
+  is a field. It is also, realistically, how a good share of Namibian lodge
+  business is settled today.
 - **Currency.** Everything is stored in NAD (`config/currencies.php`, NAD pegged
   1:1 to ZAR); a guest may well pay in EUR or USD. The amount charged, the
   amount received, and the rate used are three separate facts and all three get
@@ -218,7 +326,8 @@ Realities to design around rather than discover:
 ## 6. Order of work
 
 The order matters: each step is useful on its own, and none of them commits us to
-a settlement model we have not chosen yet.
+a settlement model we have not chosen yet. `PAYMENTS_BUILD.md` turns this into a
+brief that can be worked through slice by slice.
 
 1. **Folio + payments + balance.** Record what is owed and what was paid, by any
    method, from the partner panel. Immediately useful with no PSP at all, because
@@ -226,17 +335,24 @@ a settlement model we have not chosen yet.
    complaint that started this document.
 2. **Invoice.** Numbered, immutable, VAT-correct, PDF, with a credit note for
    corrections.
-3. **Settlement model per partner** — the enum, the three strategies, the
-   commission calculation stored as a result.
-4. **One payment provider, end to end**, for the deposit in model C. Which one
-   depends on the answer to the Stripe-entity question above.
-5. **Payouts and partner statements** — what models B and C owe the partner, and
+3. **The two rates and where they are set** — §2a's resolution chain, the
+   platform settings page, the partner and listing overrides, and both rates
+   frozen onto the reservation when it is taken.
+4. **Settlement model per partner** — the deposit share picks it, the three
+   strategies, the commission earned as a stored result, and the 0 % unlock with
+   its consequence shown where it is chosen.
+5. **The provider abstraction and a demo provider that fully works** — authorise,
+   capture, fail, refund, asynchronous callback, all simulated, wired into the
+   demo tenant so the flow can be shown before a real gateway exists.
+6. **Payouts and partner statements** — what models B and C owe the partner, and
    what model A claims from them. Last, because it is the only part that needs
    real money to have moved before it can be tested at all.
 
-An honest note on sequencing: steps 1 and 2 are ordinary work. Step 4 onward is
-where a real bank account, a real entity and a real partner are prerequisites, and
-no amount of code substitutes for them.
+An honest note on sequencing: steps 1 through 5 are ordinary work and can be done
+now — the demo provider is precisely what makes step 5 possible without a bank
+account. Step 6, and swapping the demo provider for a real one, need a real
+entity, a real merchant account and a real partner, and no amount of code
+substitutes for them.
 
 ---
 

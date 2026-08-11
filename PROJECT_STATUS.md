@@ -525,7 +525,13 @@ What stands between here and that is no longer software of this kind:
    commission; we collect everything and pay out net; deposit to us and the balance at the
    property — the last is the default, because a deposit set at the commission means no
    money has to move between us and the partner). Recording a payment is identical under
-   all three; only who collects differs.
+   all three; only who collects differs. Also decided: the settlement model is not a
+   separate setting but is picked by the deposit share (0 % → agency, 100 % → merchant,
+   between → split); commission is ours to set and the deposit is the partner's, both
+   resolving listing → partner → platform setting → default; and NamibWay being a
+   Namibian company rules Stripe out entirely, so slice 5 builds a demo provider that
+   fully works and the real gateway is a later configuration step. `PAYMENTS_BUILD.md`
+   turns all of it into six slices with acceptance criteria.
 4. **Room-level assignment**, for a lodge that assigns real rooms rather than room types.
    Deliberately not modelled, and the first thing a real desk is likely to ask for.
 5. **The API as the system's second front door** — decided 2026-08-12, written up as
