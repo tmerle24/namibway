@@ -34,6 +34,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property int $children
  * @property float|null $total_amount
  * @property float|null $quoted_amount
+ * @property float|null $charges_amount
  * @property string|null $price_override_reason
  * @property int|null $price_overridden_by
  * @property CarbonImmutable|null $price_overridden_at
@@ -69,6 +70,7 @@ class Reservation extends Model
         'promotion_id',
         'promotion_code',
         'discount_amount',
+        'charges_amount',
         'price_override_reason',
         'price_overridden_by',
         'price_overridden_at',
@@ -89,6 +91,7 @@ class Reservation extends Model
         'total_amount' => 'float',
         'quoted_amount' => 'float',
         'discount_amount' => 'float',
+        'charges_amount' => 'float',
         'price_overridden_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
@@ -157,6 +160,27 @@ class Reservation extends Model
     public function units(): HasMany
     {
         return $this->hasMany(ReservationUnit::class);
+    }
+
+    /**
+     * The taxes, levies and fees as they were at booking. Frozen — never
+     * recomputed, so a VAT change cannot rewrite an old invoice.
+     *
+     * @return HasMany<ReservationCharge, $this>
+     */
+    public function charges(): HasMany
+    {
+        return $this->hasMany(ReservationCharge::class)->orderBy('sort')->orderBy('id');
+    }
+
+    /**
+     * What the stay itself came to, before anything was added on top. Derived
+     * rather than stored: it is the total minus the added charges, and a
+     * fourth money column would be a fourth thing that can disagree.
+     */
+    public function stayAmount(): float
+    {
+        return round(($this->total_amount ?? 0.0) - ($this->charges_amount ?? 0.0), 2);
     }
 
     /**

@@ -336,6 +336,99 @@ Entwicklung und CI brauchen also keinen Hosts-Eintrag und keine Konfiguration.
    PHP-FPM-Socket zeigt wie namibway.com. Es ist dieselbe Anwendung, nicht eine zweite
    Installation.
 
+### Der nginx-vhost
+
+`/etc/nginx/sites-available/booking.namibway.com`:
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name booking.namibway.com;
+
+    # Dasselbe Verzeichnis wie namibway.com. Kein zweites Deployment, kein
+    # zweites git-Repo — eine Installation, zwei Adressen.
+    root /var/www/namibway/public;
+
+    index index.php;
+    charset utf-8;
+
+    # Muss zum Hauptvhost passen: im Panel werden Zimmerfotos hochgeladen.
+    client_max_body_size 32M;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+    }
+
+    # .env, .git & Co. — nur .well-known bleibt erreichbar, das braucht Certbot.
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+```
+
+**Den `fastcgi_pass` nicht raten.** Auf diesem Server laufen `php8.3-fpm` und `php8.4-fpm`
+gleichzeitig (siehe Deploy-Zwischenfall 2026-08-02), und der Panel-vhost muss auf denselben
+Socket zeigen wie der Hauptvhost, sonst läuft dieselbe Anwendung auf zwei PHP-Versionen:
+
+```bash
+grep fastcgi_pass /etc/nginx/sites-available/namibway.com
+```
+
+Bewusst nur ein reiner Port-80-Block — **kein** eigener `listen 443`-Teil und keine manuelle
+Weiterleitung. Beides ergänzt Certbot im nächsten Schritt selbst.
+
+### Aktivieren und Zertifikat
+
+Reihenfolge ist wichtig: Certbot prüft die Domain über den laufenden vhost, der A-Record muss
+also stehen (ist er) und nginx den Host bereits kennen.
+
+```bash
+sudo ln -s /etc/nginx/sites-available/booking.namibway.com /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# Erreichbarkeit vor dem Zertifikat prüfen — ein 301/200 hier, kein Timeout:
+curl -I http://booking.namibway.com
+
+sudo certbot --nginx -d booking.namibway.com
+```
+
+Certbot schreibt danach den `listen 443 ssl`-Block mit den Zertifikatspfaden in dieselbe Datei
+und richtet die Weiterleitung von 80 auf 443 ein. Kurz prüfen:
+
+```bash
+sudo cat /etc/nginx/sites-available/booking.namibway.com | grep -E "listen|ssl_certificate|return 301"
+```
+
+Fehlt die Weiterleitung (ältere Certbot-Versionen fragen sie interaktiv ab):
+`sudo certbot install --nginx -d booking.namibway.com`.
+
+Die Erneuerung läuft über den Certbot-Timer mit, der für namibway.com schon existiert —
+nichts einzurichten. Kontrolle: `sudo certbot renew --dry-run`.
+
+### Erst danach die Variable setzen
+
+```bash
+sudo -u www-data php /var/www/namibway/artisan down   # optional, dauert Sekunden
+# .env bearbeiten (siehe unten), dann:
+cd /var/www/namibway && php artisan config:cache && sudo systemctl reload php8.4-fpm
+sudo -u www-data php /var/www/namibway/artisan up
+```
+
+**`SESSION_DOMAIN` zu ändern meldet alle angemeldeten Nutzer einmalig ab** — die bestehenden
+Cookies gelten für den alten Wert und werden nicht mehr gelesen. Einmaliger Effekt, aber
+besser abends als vormittags.
+
 ### `.env`
 
 ```

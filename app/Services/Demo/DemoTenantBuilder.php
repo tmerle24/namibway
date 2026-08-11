@@ -88,6 +88,16 @@ class DemoTenantBuilder
 
         $rooms = $this->copyRoomTypes($source, $listing);
 
+        // Seeded so a demo does not reinvent itself on every run. It makes the
+        // shape of the business stable — the same guest names, the same
+        // rhythm of arrivals — but **not the same book down to the row**:
+        // whether a seeded arrival lands depends on the rooms the ones before
+        // it took, and a refused arrival skips the lifecycle draw that follows
+        // it, so a single difference shifts everything after. Measured on
+        // 2026-08-12: two builds back to back came to 72 and 74 stays. Worth
+        // knowing before somebody writes a test asserting otherwise — that
+        // test was written, failed, and is why this note exists. What the seed
+        // is for is a demo that looks like the same lodge, not a fixture.
         mt_srand(self::RANDOM_SEED);
 
         // `weeks` is weeks of *coming* business, which is what a prospect

@@ -80,7 +80,7 @@ trait ShowsReservationDetail
 
         return Reservation::query()
             ->where('listing_id', $property->id)
-            ->with(['units.roomType', 'units.nights', 'units.guests.category'])
+            ->with(['units.roomType', 'units.nights', 'units.guests.category', 'charges'])
             ->find($reservationId);
     }
 

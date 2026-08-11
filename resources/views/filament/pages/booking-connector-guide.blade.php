@@ -150,7 +150,7 @@
                 <a href="#resconnect">ResConnect</a>
                 <a href="#nightsbridge">NightsBridge</a>
                 <a href="#hopecloud">hopeCloud</a>
-                <a href="#native">NamibWay Native</a>
+                <a href="#native">NamibWay Booking</a>
                 <a href="#wetu">Wetu</a>
                 <a href="#nwr-manual">NWR &amp; Manual</a>
             </nav>
@@ -206,7 +206,7 @@
                                 <td>Yes</td>
                             </tr>
                             <tr>
-                                <td class="name">NamibWay Native</td>
+                                <td class="name">NamibWay Booking</td>
                                 <td>— none —</td>
                                 <td class="mono">Room types (repeater)</td>
                                 <td>Yes — our own engine</td>
@@ -272,11 +272,11 @@
                         ],
                         [
                             'id' => 'native',
-                            'name' => 'NamibWay Native Booking',
+                            'name' => 'NamibWay Booking',
                             'badge' => ['label' => '● Live bookable', 'class' => 'live'],
                             'intro' => "NamibWay's own booking engine, for partners with no PMS at all. No external API, no credentials — availability lives entirely in our own database.",
                             'rows' => [
-                                ['connector_type', 'Partner', true, 'Select "NamibWay Native Booking"'],
+                                ['connector_type', 'Partner', true, 'Select "NamibWay Booking"'],
                                 ['Room types', 'Listing', true, 'Add via the "Room types" repeater in this same section — name, code, units, rate per night, max occupancy'],
                             ],
                             'note' => 'Availability is computed live: each room type\'s total units minus overlapping active bookings — no calendar to maintain. A booking is held for 24h (status "On Request") awaiting the partner\'s confirmation via the usual email link, then auto-released if not confirmed in time.',

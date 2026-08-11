@@ -35,6 +35,15 @@
 </x-mail::table>
 
 @if ($reservation->total_amount !== null)
+@if ($reservation->charges->isNotEmpty())
+{{-- Named rather than folded into one number: a guest asked to pay a park
+     permit on arrival should have read about it here first. --}}
+Stay: {{ \App\Support\Money::format($reservation->stayAmount(), $reservation->currency) }}
+@foreach ($reservation->charges as $charge)
+{{ $charge->label() }}: {{ \App\Support\Money::format($charge->amount, $charge->currency) }}@if ($charge->is_included) (included)@endif
+
+@endforeach
+@endif
 **Total: {{ \App\Support\Money::format($reservation->total_amount, $reservation->currency) }}**
 @endif
 
