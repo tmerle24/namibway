@@ -183,8 +183,8 @@ class CreateDemoTenant extends Command
             ['Partner', 'Built from', 'Property'],
             $tenants->map(fn (Partner $partner) => [
                 $partner->name,
-                $partner->demoSourceListing?->name ?? '— source listing gone —',
-                $partner->listings()->first()?->name ?? '—',
+                $partner->demoSourceListing->name ?? '— source listing gone —',
+                $partner->listings()->first()->name ?? '—',
             ])->all(),
         );
 
