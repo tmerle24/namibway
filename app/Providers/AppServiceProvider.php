@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Filament\Partner\Support\SelectedProperty;
 use App\Models\ApiClient;
 use App\Models\Inquiry;
 use App\Models\Listing;
@@ -31,7 +32,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Resolved once per request: the partner panel's topbar and the
+        // lodge-facing pages all ask which property is selected while
+        // rendering the same page.
+        $this->app->scoped(SelectedProperty::class);
     }
 
     /**
