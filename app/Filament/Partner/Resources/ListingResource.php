@@ -2,6 +2,7 @@
 
 namespace App\Filament\Partner\Resources;
 
+use App\Enums\AmenityScope;
 use App\Enums\ListingType;
 use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
@@ -11,7 +12,6 @@ use App\Filament\Resources\ListingResource\RelationManagers as AdminRelationMana
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
-use App\Enums\AmenityScope;
 use App\Models\Amenity;
 use App\Models\Listing;
 use Filament\Forms;
