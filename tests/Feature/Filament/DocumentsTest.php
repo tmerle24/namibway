@@ -3,7 +3,6 @@
 namespace Tests\Feature\Filament;
 
 use App\Enums\DocumentKind;
-use App\Filament\Resources\DocumentCategoryResource\Pages\ListDocumentCategories;
 use App\Filament\Resources\DocumentResource\Pages\CreateDocument;
 use App\Filament\Resources\DocumentResource\Pages\EditDocument;
 use App\Filament\Resources\DocumentResource\Pages\ListDocuments;
@@ -38,9 +37,12 @@ class DocumentsTest extends TestCase
         return User::factory()->create(['is_admin' => true, 'name' => $name]);
     }
 
-    private function folder(string $name = 'Business papers'): DocumentCategory
+    private function folder(string $name = 'Business papers', ?DocumentCategory $parent = null): DocumentCategory
     {
-        return DocumentCategory::create(['name' => $name]);
+        return DocumentCategory::create([
+            'name' => $name,
+            'parent_id' => $parent?->id,
+        ]);
     }
 
     public function test_a_folder_names_itself_in_the_url(): void
@@ -172,10 +174,13 @@ class DocumentsTest extends TestCase
 
     public function test_the_store_opens_with_the_three_folders_it_was_asked_for(): void
     {
+        // Listed alphabetically, which is how the explorer reads a level.
         $this->assertSame(
-            ['Marketing', 'Business', 'Brand & logos'],
-            DocumentCategory::query()->orderBy('position')->pluck('name')->all(),
+            ['Brand & logos', 'Business', 'Marketing'],
+            DocumentCategory::query()->orderBy('name')->pluck('name')->all(),
         );
+
+        $this->assertSame([null, null, null], DocumentCategory::query()->pluck('parent_id')->all());
     }
 
     public function test_the_list_shows_both_kinds_side_by_side(): void
@@ -193,20 +198,9 @@ class DocumentsTest extends TestCase
 
         Livewire::actingAs($this->admin())
             ->test(ListDocuments::class)
+            ->call('openFolder', $folder->id)
             ->assertOk()
             ->assertCanSeeTableRecords([$page, $file]);
-    }
-
-    public function test_the_folder_list_renders_with_its_counts(): void
-    {
-        $folder = $this->folder('Business papers');
-        Document::factory()->create(['document_category_id' => $folder->id]);
-
-        Livewire::actingAs($this->admin())
-            ->test(ListDocumentCategories::class)
-            ->assertOk()
-            ->assertCanSeeTableRecords(DocumentCategory::query()->get())
-            ->assertSee('Business papers');
     }
 
     public function test_a_filed_file_is_shown_with_a_way_to_open_it(): void

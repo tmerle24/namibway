@@ -9,10 +9,12 @@ use App\Models\DocumentCategory;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * The team's own filing cabinet: marketing material, business documents, brand
@@ -32,9 +34,12 @@ class DocumentResource extends Resource
 
     protected static ?string $navigationLabel = 'Documents';
 
-    protected static ?string $navigationGroup = 'Documents';
+    // Under Content rather than in a group of its own: one entry, and the panel
+    // does not grow a section for it. Folders have no menu entry at all — they
+    // are made and moved inside the explorer, where you can see where they land.
+    protected static ?string $navigationGroup = 'Content';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 70;
 
     protected static ?string $recordTitleAttribute = 'title';
 
@@ -89,24 +94,13 @@ class DocumentResource extends Resource
 
                         Forms\Components\Select::make('document_category_id')
                             ->label('Folder')
-                            ->relationship('category', 'name')
-                            ->required()
+                            ->options(fn (): array => DocumentCategory::options())
+                            // Empty is the top level, which is a real place to
+                            // file something — see the tree migration.
+                            ->placeholder('Top level')
                             ->native(false)
                             ->searchable()
-                            ->preload()
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('name')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->unique(DocumentCategory::class, 'name'),
-                                Forms\Components\Select::make('icon')
-                                    ->options(DocumentCategoryResource::icons())
-                                    ->default('heroicon-o-folder')
-                                    ->native(false),
-                                Forms\Components\Textarea::make('description')
-                                    ->rows(2)
-                                    ->maxLength(500),
-                            ]),
+                            ->helperText('Where this is filed. Leave it empty to keep it at the top level.'),
 
                         Forms\Components\Textarea::make('description')
                             ->label('Description')
@@ -161,37 +155,71 @@ class DocumentResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('updated_at', 'desc')
-            ->modifyQueryUsing(fn (Builder $query) => $query->with('category')->withCount('notes'))
+            // Alphabetical, the way a folder listing is expected to open. Date,
+            // type and size are each one click on a column header away, and the
+            // filters narrow by type or by when something last changed.
+            ->defaultSort('title')
+            ->modifyQueryUsing(fn (Builder $query) => $query->withCount('notes'))
             ->recordUrl(fn (Document $record): string => static::getUrl('view', ['record' => $record]))
-            ->groups([
-                Tables\Grouping\Group::make('category.name')->label('Folder')->collapsible(),
-            ])
             ->columns([
+                // A logo or a photo is recognised by looking at it, not by
+                // reading its name. Non-images have no state, so the cell is
+                // simply empty and the row keeps its icon in the name column.
+                //
+                // The preview is the stored original, streamed through the
+                // download route — the /thumbs pipeline resizes objects in the
+                // public media bucket, and these deliberately are not there.
+                // Acceptable on an internal screen showing ten rows; it would
+                // not be on a traveller-facing one.
+                Tables\Columns\ImageColumn::make('preview')
+                    ->label('')
+                    ->getStateUsing(fn (Document $record): ?string => $record->isImage()
+                        ? route('documents.download', $record)
+                        : null)
+                    ->checkFileExistence(false)
+                    ->size(40)
+                    ->extraImgAttributes(['loading' => 'lazy', 'class' => 'object-cover rounded'])
+                    ->square(),
                 Tables\Columns\TextColumn::make('title')
-                    ->searchable()
+                    ->label('Name')
+                    // The search box looks where somebody would look for it: the
+                    // name they gave it, the name the file arrived under, and
+                    // what they wrote about it. A page's body is deliberately
+                    // not in here — see the note on the search box below.
+                    ->searchable(['title', 'description', 'original_name'])
                     ->sortable()
                     ->weight('medium')
+                    ->icon(fn (Document $record): string => $record->kind->getIcon())
                     ->description(fn (Document $record): ?string => $record->description
                         ? str($record->description)->limit(90)->toString()
                         : null)
                     ->wrap(),
-                Tables\Columns\TextColumn::make('category.name')
-                    ->label('Folder')
-                    ->badge()
-                    ->color('gray')
+                Tables\Columns\TextColumn::make('original_name')
+                    ->label('File name')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('kind')
                     ->label('Type')
-                    ->badge(),
+                    ->badge()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('size')
                     ->label('Size')
                     ->getStateUsing(fn (Document $record): string => $record->humanSize() ?? '—')
+                    // Sorts on the stored byte count rather than on the "1.4 MB"
+                    // the cell shows, which would put 9 KB after 10 MB.
+                    ->sortable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('notes_count')
                     ->label('Comments')
                     ->badge()
                     ->color(fn (?int $state): string => ($state ?? 0) > 0 ? 'primary' : 'gray'),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Filed')
+                    ->dateTime('d M Y, H:i')
+                    ->description(fn (Document $record): string => $record->author_name)
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Last changed')
                     ->dateTime('d M Y, H:i')
@@ -199,35 +227,121 @@ class DocumentResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('document_category_id')
-                    ->label('Folder')
-                    ->relationship('category', 'name')
-                    ->searchable()
-                    ->preload(),
                 Tables\Filters\SelectFilter::make('kind')
                     ->label('Type')
                     ->options(fn (): array => collect(DocumentKind::cases())
                         ->mapWithKeys(fn (DocumentKind $kind): array => [$kind->value => $kind->getLabel()])
                         ->all()),
+                Tables\Filters\Filter::make('changed')
+                    ->label('Last changed')
+                    ->form([
+                        Forms\Components\DatePicker::make('from')->label('From'),
+                        Forms\Components\DatePicker::make('until')->label('Until'),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when($data['from'] ?? null, fn (Builder $q, string $date): Builder => $q->whereDate('updated_at', '>=', $date))
+                        ->when($data['until'] ?? null, fn (Builder $q, string $date): Builder => $q->whereDate('updated_at', '<=', $date)))
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+
+                        if ($data['from'] ?? null) {
+                            $indicators[] = 'Changed from '.$data['from'];
+                        }
+
+                        if ($data['until'] ?? null) {
+                            $indicators[] = 'Changed until '.$data['until'];
+                        }
+
+                        return $indicators;
+                    }),
             ])
+            ->searchPlaceholder('Search name, file name, description')
+            // Collapsed into one menu per row: four labelled buttons left the
+            // name column two words wide, and a name you cannot read is worse
+            // than a click you have to make.
             ->actions([
-                Tables\Actions\Action::make('download')
-                    ->label('Open')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->url(fn (Document $record): string => route('documents.download', $record))
-                    ->openUrlInNewTab()
-                    ->visible(fn (Document $record): bool => $record->isFile()),
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('download')
+                        ->label('Open file')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->url(fn (Document $record): string => route('documents.download', $record))
+                        ->openUrlInNewTab()
+                        ->visible(fn (Document $record): bool => $record->isFile()),
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\Action::make('move')
+                        ->label('Move to…')
+                        ->icon('heroicon-o-arrow-right-circle')
+                        ->modalWidth('lg')
+                        ->modalSubmitActionLabel('Move')
+                        ->fillForm(fn (Document $record): array => [
+                            'document_category_id' => $record->document_category_id,
+                        ])
+                        ->form([
+                            Forms\Components\Select::make('document_category_id')
+                                ->label('Folder')
+                                ->options(fn (): array => DocumentCategory::options())
+                                ->placeholder('Top level')
+                                ->native(false)
+                                ->searchable(),
+                        ])
+                        ->action(function (Document $record, array $data): void {
+                            $record->update(['document_category_id' => $data['document_category_id'] ?? null]);
+
+                            Notification::make()->success()->title('Moved')->send();
+                        }),
+                    Tables\Actions\DeleteAction::make(),
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('move')
+                        ->label('Move to…')
+                        ->icon('heroicon-o-arrow-right-circle')
+                        ->modalWidth('lg')
+                        ->modalSubmitActionLabel('Move')
+                        ->deselectRecordsAfterCompletion()
+                        ->form([
+                            Forms\Components\Select::make('document_category_id')
+                                ->label('Folder')
+                                ->options(fn (): array => DocumentCategory::options())
+                                ->placeholder('Top level')
+                                ->native(false)
+                                ->searchable(),
+                        ])
+                        ->action(fn (Collection $records, array $data) => self::moveAll(
+                            $records,
+                            $data['document_category_id'] ?? null,
+                        )),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('Nothing filed yet')
-            ->emptyStateDescription('Upload a file, or write a page — both end up in the same folder.');
+            ->emptyStateHeading('Nothing filed here')
+            ->emptyStateDescription('Add a document, or open one of the folders above.');
+    }
+
+    /**
+     * Named method rather than an inline closure so $records carries an
+     * explicit generic type — PHPStan cannot infer Collection<int, Document>
+     * from an untyped closure parameter (same reason as
+     * ListingResource::assignCity).
+     *
+     * @param  Collection<int, Document>  $records
+     */
+    private static function moveAll(Collection $records, mixed $folder): void
+    {
+        $folder = is_numeric($folder) ? (int) $folder : null;
+
+        $records->each(fn (Document $record) => $record->update([
+            'document_category_id' => $folder,
+        ]));
+
+        Notification::make()
+            ->success()
+            ->title(trans_choice('{1}Document moved|[2,*]:count documents moved', $records->count(), [
+                'count' => $records->count(),
+            ]))
+            ->send();
     }
 
     public static function getPages(): array

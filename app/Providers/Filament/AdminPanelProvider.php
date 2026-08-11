@@ -62,10 +62,6 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->navigationGroups([
                 NavigationGroup::make('Content'),
-                // The team's own filing cabinet — marketing material, business
-                // documents, brand assets and the internal wiki. Separate from
-                // Documentation, which is the guides *about* the platform.
-                NavigationGroup::make('Documents')->collapsed(),
                 NavigationGroup::make('Messaging')->collapsed(),
                 NavigationGroup::make('Documentation')->collapsed(),
                 NavigationGroup::make('Interfaces')->collapsed(),

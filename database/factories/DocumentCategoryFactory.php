@@ -21,7 +21,6 @@ class DocumentCategoryFactory extends Factory
             'name' => fake()->unique()->words(2, true),
             'description' => fake()->sentence(),
             'icon' => 'heroicon-o-folder',
-            'position' => 0,
         ];
     }
 }
