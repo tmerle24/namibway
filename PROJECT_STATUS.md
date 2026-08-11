@@ -473,15 +473,34 @@ one item from this analysis still open.
 
 ### Questions to answer before building
 
-These change the shape of the system, so they are worth asking the user directly:
+These change the shape of the system, so they are worth asking the user directly.
+**Two of the four were answered on 2026-08-12** and are kept here with their answers,
+because the answers are what the rest of the workstream now assumes.
 
-- Is this a **reservation system** (bookings and availability only) or a **PMS** (in-house
-  guests, folios, housekeeping)? The flyer implies the former; "bedienbar in Lodges"
-  could mean either.
-- Do lodge staff need it to work **offline**?
+- ~~Is this a **reservation system** or a **PMS**?~~ **Answered: far enough towards a PMS
+  that a lodge can stop using its old one.** That follows from the NWR answer below rather
+  than being a separate ambition — if a camp is to run on one system, we have to cover what
+  their current system does at the desk, or they keep it for the invoice and the
+  housekeeping list and we are back to two systems selling the same room. Concretely
+  missing today: room-level assignment, an in-house/checked-out status on a stay, the
+  folio and payments (`PAYMENTS.md`), housekeeping, and day-end reporting.
+- ~~For the pilot, does our system take **all** bookings for that camp, or only ours?~~
+  **Answered: the goal is one system — ours.** Until NWR agrees to that, two interim
+  shapes, and neither pretends to be an integration: an **allotment** (they give us N
+  rooms per date that we may sell without asking), or the manual concierge check that
+  `NwrConnector` already implements. And explicitly: **other lodges first.** A property
+  that actually hands us its inventory validates the system far better than the hardest
+  partner in the market does, so NWR is the proof, not the starting point.
+- Do lodge staff need it to work **offline**? Still open.
 - Who owns the **rate calendar** — do they maintain rates in our system, or do rates
-  arrive from theirs?
-- For the pilot, does our system take **all** bookings for that camp, or only ours?
+  arrive from theirs? Still open.
+
+The allotment shape is worth one note, because it is much smaller than it sounds: an
+allotment *is* a calendar row with `total_units = N`, which the ARI model already
+expresses exactly. It needs no new architecture — only a marker that the row is somebody
+else's inventory rather than ours, and a **release deadline**, since what is unsold a set
+number of days before arrival falls back to the property. That deadline is the standard
+term of every allotment agreement and is the reason a house grants one at all.
 
 ### What is actually next — rewritten 2026-08-12
 
@@ -494,9 +513,19 @@ What stands between here and that is no longer software of this kind:
    up surprises, and nothing else in this workstream can be de-risked without it.
 2. **The reconciliation question, which is a design problem and not a feature.** Their
    current system keeps running during the pilot, so two systems hold inventory for the
-   same rooms. That has to be answered *before* the pilot, and it is still unanswered —
-   see "Questions to answer before building" above.
-3. **Money owed.** Costing is thorough; there is no folio and no payment collection.
+   same rooms and will drift. **Answered 2026-08-12 in direction:** the goal is that NWR
+   runs on one system, ours, and until they agree the two honest interim shapes are an
+   allotment or the manual concierge check — with other lodges taken on first. What that
+   leaves to build is the allotment marker and its release deadline; see "Questions to
+   answer before building" above.
+3. **Money owed** — designed 2026-08-12 in `PAYMENTS.md`, none of it built. Costing is
+   thorough and the reservation carries the entire debit side; there is no credit side at
+   all — no payment record, no invoice, no invoice number. Decided at the same time: we
+   offer three settlement models rather than picking one (partner collects and we invoice
+   commission; we collect everything and pay out net; deposit to us and the balance at the
+   property — the last is the default, because a deposit set at the commission means no
+   money has to move between us and the partner). Recording a payment is identical under
+   all three; only who collects differs.
 4. **Room-level assignment**, for a lodge that assigns real rooms rather than room types.
    Deliberately not modelled, and the first thing a real desk is likely to ask for.
 5. **The API as the system's second front door** — decided 2026-08-12, written up as

@@ -881,8 +881,15 @@ Four decisions worth stating:
 Naming these matters as much as the plan, because a disabled button is a claim:
 
 Channel synchronisation, iCal, room-level assignment (a reservation holds room
-types and quantities, never a named room), folio and payments, housekeeping, and
-tax reporting.
+types and quantities, never a named room), housekeeping, and tax reporting.
+
+**Folio and payments used to be on that list and came off it on 2026-08-12.** A
+booking system that cannot say whether a stay has been paid is not one, and this
+one cannot: the reservation carries the whole debit side (`total_amount`,
+`charges_amount`, `discount_amount`, `currency`) and there is no credit side at
+all — no payment record, no invoice, no invoice number. The design, including the
+three settlement models we offer partners rather than picking one, is
+`PAYMENTS.md`. Nothing of it is built.
 
 Channel synchronisation deserves one word of precision, because §8 looks like it
 contradicts this line and does not: what is out of scope is *us* pushing rates
