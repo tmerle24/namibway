@@ -23,8 +23,6 @@ class BulkCaptureGuide extends Page
 
     protected static ?string $navigationGroup = 'Documentation';
 
-    protected static ?int $navigationSort = 4;
-
     protected static ?string $title = 'Capturing listings in Excel';
 
     protected static string $view = 'filament.pages.bulk-capture-guide';

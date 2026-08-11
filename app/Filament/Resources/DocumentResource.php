@@ -39,8 +39,6 @@ class DocumentResource extends Resource
     // are made and moved inside the explorer, where you can see where they land.
     protected static ?string $navigationGroup = 'Content';
 
-    protected static ?int $navigationSort = 70;
-
     protected static ?string $recordTitleAttribute = 'title';
 
     /** @return array<int, string> */

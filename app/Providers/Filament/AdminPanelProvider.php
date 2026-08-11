@@ -64,30 +64,25 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Content'),
                 NavigationGroup::make('Messaging')->collapsed(),
                 NavigationGroup::make('Documentation')->collapsed(),
-                NavigationGroup::make('Interfaces')->collapsed(),
                 NavigationGroup::make('Settings')->collapsed(),
             ])
             ->navigationItems([
                 // Links out to the Scribe-generated static docs (see config/scribe.php,
                 // routes/api.php) rather than a Filament page — there's no in-app content
                 // to render, just the public /docs site partners/OTAs already use.
-                // The Documentation group is kept in alphabetical order by hand
-                // (Filament sorts on navigationSort, not on the label): this is 1,
-                // ApiSetupGuide 2, BookingConnectorGuide 3, BulkCaptureGuide 4,
-                // ListingsPartnerHandbook 5, MarketingMaterial 6, ReleaseNotes 7.
+                // No ->sort(): items inside a group are ordered by label, see
+                // App\Filament\Navigation\AlphabeticalNavigationManager.
                 NavigationItem::make('API Documentation')
                     ->url(rtrim(config('scribe.base_url'), '/').'/docs', shouldOpenInNewTab: true)
                     ->icon('heroicon-o-code-bracket')
-                    ->group('Documentation')
-                    ->sort(1),
+                    ->group('Documentation'),
                 // Opens the Roundcube webmail client (separate install, see WEBMAIL.md)
                 // rather than an in-app inbox — real IMAP mailbox with attachments,
                 // folders, and search instead of reimplementing those in Filament.
                 NavigationItem::make('Emails')
                     ->url('https://webmail.namibway.com', shouldOpenInNewTab: true)
                     ->icon('heroicon-o-envelope')
-                    ->group('Messaging')
-                    ->sort(0),
+                    ->group('Messaging'),
             ])
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,

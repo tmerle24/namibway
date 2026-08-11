@@ -31,13 +31,15 @@ class AmenityResource extends Resource
 {
     protected static ?string $model = Amenity::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-sparkles';
+    // Not the sparkles mark — that one means "AI" everywhere else in the panel
+    // (Data Enrichment), and an amenity catalogue is hand-curated by definition.
+    protected static ?string $navigationIcon = 'heroicon-o-wifi';
 
-    protected static ?string $navigationGroup = 'Content';
+    // A vocabulary the rest of the content is written against, like regions and
+    // cities — not something the content team edits day to day.
+    protected static ?string $navigationGroup = 'Settings';
 
     protected static ?string $navigationLabel = 'Amenities';
-
-    protected static ?int $navigationSort = 60;
 
     public static function form(Form $form): Form
     {

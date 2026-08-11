@@ -40,8 +40,6 @@ class ChargeResource extends Resource
 
     protected static ?string $navigationGroup = 'Setup';
 
-    protected static ?int $navigationSort = 40;
-
     protected static ?string $slug = 'taxes';
 
     public static function canAccess(): bool

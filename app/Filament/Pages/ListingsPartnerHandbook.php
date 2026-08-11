@@ -14,7 +14,5 @@ class ListingsPartnerHandbook extends Page
 
     protected static ?string $navigationGroup = 'Documentation';
 
-    protected static ?int $navigationSort = 5;
-
     protected static string $view = 'filament.pages.listings-partner-handbook';
 }

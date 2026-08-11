@@ -31,8 +31,6 @@ class GettingStarted extends Page
 
     protected static ?string $navigationGroup = 'Setup';
 
-    protected static ?int $navigationSort = 0;
-
     protected static ?string $title = 'Getting started';
 
     public static function shouldRegisterNavigation(): bool

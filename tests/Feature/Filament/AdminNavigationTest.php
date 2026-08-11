@@ -2,22 +2,26 @@
 
 namespace Tests\Feature\Filament;
 
-use App\Filament\Pages\ApiSetupGuide;
-use App\Filament\Pages\BookingConnectorGuide;
-use App\Filament\Pages\BulkCaptureGuide;
+use App\Enums\ListingType;
 use App\Filament\Pages\ListingImport;
-use App\Filament\Pages\ListingsPartnerHandbook;
-use App\Filament\Pages\MarketingMaterial;
-use App\Filament\Pages\ReleaseNotes;
 use App\Filament\Resources\ReleaseNoteResource;
+use App\Models\Listing;
+use App\Models\Partner;
 use App\Models\User;
+use Filament\Facades\Filament;
+use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
+use Filament\Navigation\NavigationManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * What belongs in the admin sidebar and in which order. The Documentation group
- * is sorted by hand (Filament orders on navigationSort, not on the label), so
- * the alphabetical promise needs a test or the next added page silently breaks it.
+ * What belongs in the sidebar and in which order.
+ *
+ * The order is not maintained by hand any more — every item inside a group is
+ * sorted on its label by AlphabeticalNavigationManager — so this asserts the
+ * navigation the panels actually build, in both panels, rather than the sort
+ * numbers that used to stand in for it.
  */
 class AdminNavigationTest extends TestCase
 {
@@ -28,34 +32,53 @@ class AdminNavigationTest extends TestCase
         return User::factory()->create(['is_admin' => true]);
     }
 
-    public function test_the_documentation_group_is_alphabetical(): void
+    public function test_every_admin_group_is_alphabetical(): void
     {
-        $pages = [
-            ApiSetupGuide::class,
-            BookingConnectorGuide::class,
-            BulkCaptureGuide::class,
-            ListingsPartnerHandbook::class,
-            MarketingMaterial::class,
-            ReleaseNotes::class,
-        ];
+        $this->actingAs($this->admin());
 
-        $labels = collect($pages)
-            // "API Documentation" (sort 1) is a NavigationItem in AdminPanelProvider,
-            // not a page, so it isn't in this list — it just leads the alphabet.
-            ->mapWithKeys(fn (string $page): array => [$page::getNavigationLabel() => $page::getNavigationSort()])
-            ->sort()
-            ->keys()
-            ->all();
+        foreach ($this->sidebarGroups('admin') as $group => $labels) {
+            $this->assertNotEmpty($labels, "The {$group} group is empty.");
+            $this->assertSame($this->sorted($labels), $labels, "The {$group} group is out of order.");
+        }
+    }
 
-        $alphabetical = $labels;
-        sort($alphabetical, SORT_NATURAL | SORT_FLAG_CASE);
+    public function test_every_partner_group_is_alphabetical(): void
+    {
+        $partner = Partner::create(['name' => 'Etosha Camp', 'email' => 'camp@example.test']);
+        Listing::factory()->create([
+            'partner_id' => $partner->id,
+            'type' => ListingType::Accommodation,
+            'name' => 'Etosha Camp',
+        ]);
 
-        $this->assertSame($alphabetical, $labels);
+        $this->actingAs(User::factory()->create(['partner_id' => $partner->id]));
+
+        $groups = $this->sidebarGroups('partner');
+
+        // Guards the loop below against passing on an empty sidebar.
+        $this->assertArrayHasKey('Setup', $groups);
+        $this->assertContains('Rate plans', $groups['Setup']);
+
+        foreach ($groups as $group => $labels) {
+            $this->assertSame($this->sorted($labels), $labels, "The {$group} group is out of order.");
+        }
+    }
+
+    public function test_amenities_and_api_clients_live_under_settings(): void
+    {
+        $this->actingAs($this->admin());
+
+        $groups = $this->sidebarGroups('admin');
+
+        $this->assertContains('Amenities', $groups['Settings']);
+        $this->assertContains('API Clients', $groups['Settings']);
+
+        // Interfaces held nothing but the API clients screen, so it went with it.
+        $this->assertArrayNotHasKey('Interfaces', $groups);
     }
 
     public function test_the_deploy_log_is_the_only_release_notes_entry(): void
     {
-        $this->assertSame('Release Notes', ReleaseNotes::getNavigationLabel());
         $this->assertFalse(ReleaseNoteResource::shouldRegisterNavigation());
 
         // Renamed, not moved: the URL and its bookmarks stay.
@@ -74,5 +97,41 @@ class AdminNavigationTest extends TestCase
             ->assertOk()
             ->assertSee('Import listings')
             ->assertSee(ListingImport::getUrl(), escape: false);
+    }
+
+    /**
+     * The named groups of a panel's sidebar, as labels. The unnamed top-level
+     * list is left out on purpose: in the partner panel that is the working day
+     * in order (Calendar, Arrivals, Rates), not an alphabet.
+     *
+     * @return array<string, list<string>>
+     */
+    private function sidebarGroups(string $panel): array
+    {
+        // The manager is scoped and reads the current panel in its constructor,
+        // so asking a second panel in the same test needs a fresh one.
+        $this->app->forgetInstance(NavigationManager::class);
+        Filament::setCurrentPanel(Filament::getPanel($panel));
+
+        return collect(Filament::getNavigation())
+            ->filter(fn (NavigationGroup $group): bool => filled($group->getLabel()))
+            ->mapWithKeys(fn (NavigationGroup $group): array => [
+                $group->getLabel() => collect($group->getItems())
+                    ->map(fn (NavigationItem $item): string => $item->getLabel())
+                    ->values()
+                    ->all(),
+            ])
+            ->all();
+    }
+
+    /**
+     * @param  list<string>  $labels
+     * @return list<string>
+     */
+    private function sorted(array $labels): array
+    {
+        sort($labels, SORT_NATURAL | SORT_FLAG_CASE);
+
+        return $labels;
     }
 }

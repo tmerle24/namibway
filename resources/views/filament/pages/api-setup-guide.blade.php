@@ -13,7 +13,7 @@
                 <span class="text-2xl font-semibold text-primary-600 dark:text-primary-400">1</span>
                 <h3 class="mt-1 text-sm font-semibold text-gray-950 dark:text-white">Create the API client</h3>
                 <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                    <em>Interfaces &rarr; Api Clients &rarr; New.</em> Name it after the partner/OTA
+                    <em>Settings &rarr; API Clients &rarr; New.</em> Name it after the partner/OTA
                     (e.g. "SafariBookings"), add a contact email.
                 </p>
             </div>

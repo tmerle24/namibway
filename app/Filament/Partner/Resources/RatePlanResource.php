@@ -46,8 +46,6 @@ class RatePlanResource extends Resource
 
     protected static ?string $navigationGroup = 'Setup';
 
-    protected static ?int $navigationSort = 10;
-
     protected static ?string $slug = 'rate-plans';
 
     public static function canAccess(): bool

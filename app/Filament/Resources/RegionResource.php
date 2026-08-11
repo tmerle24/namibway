@@ -21,8 +21,6 @@ class RegionResource extends Resource
 
     protected static ?string $navigationGroup = 'Settings';
 
-    protected static ?int $navigationSort = 20;
-
     public static function form(Form $form): Form
     {
         return $form

@@ -27,8 +27,6 @@ class MessagingSettings extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'Message Settings';
 
-    protected static ?int $navigationSort = 50;
-
     protected static ?string $title = 'Messaging settings';
 
     protected static string $view = 'filament.pages.messaging-settings';

@@ -34,8 +34,6 @@ class GuestCategoryResource extends Resource
 
     protected static ?string $navigationGroup = 'Setup';
 
-    protected static ?int $navigationSort = 20;
-
     protected static ?string $slug = 'guest-types';
 
     public static function canAccess(): bool

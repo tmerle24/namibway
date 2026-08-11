@@ -50,8 +50,6 @@ class EnrichmentResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Data Enrichment - Listings';
 
-    protected static ?int $navigationSort = 0;
-
     /** 1-based tab indexes, matching the order of Tabs\Tab entries in form(). */
     private const TAB_BASIC = 1;
 

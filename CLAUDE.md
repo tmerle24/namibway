@@ -66,6 +66,13 @@ This file is the condensed, load-bearing summary. The detail lives next to it:
 
 Rejected alternative: Next.js/Payload — would require re-solving problems (AI integration, multi-tenancy, i18n, storage, PDF, payments, deploy) already solved in the team's proven Laravel stack. Not worth it for a solo 3-month build.
 
+### Panel navigation — every group is alphabetical
+**Items inside a navigation group are ordered alphabetically by their label, in both Filament panels, always.** A sidebar is a place people look things up, and the only order you can look something up in is the one you can predict from its name. This is enforced, not remembered: `App\Filament\Navigation\AlphabeticalNavigationManager` (bound over Filament's own `NavigationManager` in `AppServiceProvider`) sorts each group on the label, and `AdminNavigationTest` asserts it for every group of both panels. So **do not add `$navigationSort` to anything that lives in a group** — it does nothing, and it reads as a promise of an order that isn't kept. Give the screen a good `$navigationLabel` and it lands where people will look for it.
+
+The two exclusions, both deliberate: the **ungrouped top-level items** (the partner panel's Calendar → Arrivals → Rates is the working day in sequence, not a lookup) still use `$navigationSort`; and the **groups themselves** keep the curated order declared in the panel provider, because that order is an editorial statement about what matters most.
+
+While you're in there: an icon means one thing across a panel — `heroicon-o-sparkles` is AI (Data Enrichment), so don't reach for it to mean "nice-to-have".
+
 ### Local dev & CI
 - `composer setup` once, then `composer dev` (serves app + queue + vite; ports configured in `.claude/launch.json`). Postgres/Redis via `docker-compose.yml`.
 - `composer ci:check` runs exactly what CI runs: eslint, prettier `--check`, `vue-tsc`, then `composer test` (pint `--test`, phpstan, `artisan test`). Run it before pushing — CI red means no deploy.

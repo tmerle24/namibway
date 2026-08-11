@@ -22,8 +22,6 @@ class ReleaseNotes extends Page
 
     protected static ?string $navigationGroup = 'Documentation';
 
-    protected static ?int $navigationSort = 7;
-
     protected static string $view = 'filament.pages.release-notes';
 
     /** @var ReleaseData */
