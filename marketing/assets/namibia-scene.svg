@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="560" viewBox="0 0 420 560" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Namibian landscape at sunset">
+  <title>Namibian landscape at sunset</title>
+
+  <!--
+    Drawn, not photographed. The flyer needs a Namibian scene behind the phone
+    mock-up and we have no photograph whose rights are established — the images
+    under public/images/explore are demo assets of unknown provenance and are
+    too small for print besides. This stands in until there is one we own, and
+    the flyer keeps a hero-photo slot for that day.
+  -->
+
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0.25" y2="1">
+      <stop offset="0%" stop-color="#F6D9A4"/>
+      <stop offset="26%" stop-color="#EFB16A"/>
+      <stop offset="52%" stop-color="#DE8438"/>
+      <stop offset="76%" stop-color="#A85426"/>
+      <stop offset="100%" stop-color="#5E2E19"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.68" cy="0.42" r="0.42">
+      <stop offset="0%" stop-color="#FFE9BE" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="#FFD08A" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FFD08A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="420" height="560" fill="url(#sky)"/>
+  <circle cx="286" cy="235" r="140" fill="url(#glow)"/>
+  <circle cx="286" cy="235" r="34" fill="#FFEFD0" opacity="0.92"/>
+
+  <!-- Three ridge layers, each darker, so the plain reads as depth rather than a band. -->
+  <path d="M0 352 C 58 336, 104 356, 158 344 C 214 332, 256 350, 306 338 C 352 327, 388 340, 420 332 L420 560 L0 560 Z"
+        fill="#8A4420" opacity="0.55"/>
+  <path d="M0 392 C 52 374, 96 398, 150 386 C 210 372, 252 396, 310 382 C 358 371, 392 388, 420 378 L420 560 L0 560 Z"
+        fill="#6E351C" opacity="0.75"/>
+  <path d="M0 436 C 64 420, 118 444, 176 432 C 236 420, 288 444, 344 434 C 380 428, 402 436, 420 430 L420 560 L0 560 Z"
+        fill="#3B2418"/>
+
+  <!-- A camel thorn: broad flat crown over a low fork, the shape that says
+       Namibia at a glance. Ellipses rather than outlines, so the crown reads as
+       a solid mass at 60 mm wide instead of a thin crescent. -->
+  <g fill="#241610" transform="translate(104,-6)">
+    <path d="M209 470 C 207 450, 206 428, 209 404 L 214 380 L 221 380 L 217 406 C 214 430, 215 450, 218 470 Z"/>
+    <path d="M215 392 C 198 386, 184 378, 172 366 C 186 376, 200 383, 215 386 Z"/>
+    <path d="M217 388 C 234 380, 248 372, 258 360 C 246 372, 232 381, 217 384 Z"/>
+    <ellipse cx="214" cy="352" rx="82" ry="21"/>
+    <ellipse cx="172" cy="360" rx="44" ry="14"/>
+    <ellipse cx="256" cy="359" rx="40" ry="13"/>
+    <ellipse cx="214" cy="342" rx="52" ry="13"/>
+  </g>
+
+</svg>

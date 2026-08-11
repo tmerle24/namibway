@@ -44,7 +44,7 @@
 .wf-head {
     padding: calc(var(--bleed) + 7mm) var(--pad) 0;
     display: grid;
-    grid-template-columns: 1fr 66mm;
+    grid-template-columns: 1fr 74mm;
     gap: 8mm;
     align-items: start;
 }
@@ -64,7 +64,19 @@
 
 /* The mock-up is drawn, not photographed — no stock image, no rights to chase,
    and it prints cleanly because there is no raster in it at all. */
-.phone-wrap { position: relative; padding-top: 2mm; }
+/* The scene runs off the right trim edge, the way a photograph would, and the
+   phone sits on it. Both are drawn: see assets/namibia-scene.svg for why. */
+.phone-wrap { position: relative; height: 90mm; }
+.phone-wrap .scene {
+    position: absolute;
+    top: calc(-1 * (var(--bleed) + 7mm));
+    right: calc(-1 * var(--pad));
+    width: calc(100% + var(--pad));
+    height: calc(90mm + var(--bleed) + 7mm);
+    object-fit: cover;
+    display: block;
+}
+.phone-wrap .phone { position: absolute; left: 0; top: 4mm; }
 .phone {
     width: 62mm;
     height: 82mm;
@@ -347,6 +359,10 @@ ul.checklist li { padding-bottom: 2.2mm; }
         <!-- EDIT: phone screen — drawn in CSS on purpose. Replace with a real
              customer's site once one exists and they have said yes. -->
         <div class="phone-wrap">
+            <!-- EDIT: hero photo — swap this for a real photograph the moment we
+                 have one whose rights are ours. Same box, same object-fit. -->
+            <img class="scene" src="assets/namibia-scene.svg" alt="">
+
             <div class="phone">
                 <div class="bar"><span>Your Business</span><span>&#9776;</span></div>
 

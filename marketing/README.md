@@ -57,23 +57,48 @@ the organisation name on the booking-system flyer.
 
 ### The "Built in Namibia" seal
 
-`assets/built-in-namibia-seal.svg` (for light grounds) and
-`assets/built-in-namibia-seal-light.svg` (for the brown ground). A round stamp —
-double ring, **BUILT IN NAMIBIA** around the top, **NAMIBWAY** along the bottom, the
-compass mark in the middle.
+Round stamp — heavy double ring, **BUILT IN NAMIBIA** across the top, **NAMIBWAY**
+along the foot, star separators, the compass mark in the middle.
 
-This is meant to be reused, not redrawn: put it on flyers, quotes, proposals, email
-signatures, the website footer, invoices. It is the one argument no overseas builder
-can answer, so it should look the same everywhere it appears.
+| File | Use |
+|---|---|
+| `assets/built-in-namibia-seal.svg` | light grounds (paper, sand) — vector, use this for print |
+| `assets/built-in-namibia-seal-light.svg` | the brown ground — vector |
+| `assets/built-in-namibia-seal-1024.png` | transparent PNG for Canva, Word, social, signatures |
+| `assets/built-in-namibia-seal-512.png` | the same, smaller |
+| `assets/built-in-namibia-seal-light-1024.png` / `-512.png` | transparent PNGs of the light colourway |
 
-- Generated from the compass mark itself, so it stays in step with the logo. There is
-  no hand-drawn copy of the needle to drift out of date.
-- Vector, so it scales without loss. It stays legible down to about 20 mm across;
-  below that the ring text closes up and you should use the plain compass instead.
+Regenerate the two SVGs with `node marketing/build-seal.mjs`. The compass is lifted
+out of the brand mark at build time rather than redrawn, so the seal cannot drift out
+of step with the logo — change the logo, re-run, done. The PNGs are rasterised from
+the SVGs; redo them if the seal changes.
+
+This is meant to be reused, not redrawn: flyers, quotes, proposals, email signatures,
+the website footer, invoices.
+
 - Keep it circular. Do not stretch it, recolour it outside the two files, or set it on
   a busy photograph — it reads as a stamp only if it looks stamped.
-- Regenerate with the snippet in this repo's history if the mark ever changes; the two
-  files differ only in their ink, accent and mark colours.
+- It stays legible down to about 20 mm across. Below that, use the plain compass.
+- Put the light colourway on dark grounds; the dark one on anything pale.
+
+**On the wording.** It says *built*, not *made*, for two reasons. "Made in Namibia" is
+country-of-origin phrasing that reads as manufactured goods, and this is software.
+More practically, it is close to the wording of the local buy-local campaign — a round
+stamp saying "Made in Namibia" can be read as a certification we have not applied for,
+which is a claim we should not make by accident. If we ever want that association, the
+honest route is to join the scheme and use their mark, not to imitate it. The phrase
+lives in one constant at the top of `build-seal.mjs` if this is ever revisited.
+
+### The landscape illustration
+
+`assets/namibia-scene.svg` — sunset sky, ridge layers and a camel thorn, used behind
+the phone mock-up on the websites flyer.
+
+It is **drawn, not photographed**, and that is a stopgap, not a preference. We have no
+photograph whose rights are established: the images under `public/images/explore` are
+demo assets of unknown provenance and are 900 px wide, which is too small for print
+anyway. The flyer marks the slot `EDIT: hero photo` — swapping in a real photograph is
+a one-line change once we own one.
 
 ### Logos
 
