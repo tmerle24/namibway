@@ -51,6 +51,7 @@ class ImportNamibweb extends Command
         {--only=              : Comma-separated scrape_ids to process}
         {--changed-only       : Skip records the scraper marked unchanged}
         {--with-descriptions  : Also write upstream text into the description column}
+        {--publish-locatable  : Publish newly created listings that carry coordinates or an address}
         {--no-photos          : Skip staging photos}
         {--dry-run            : Report what would change without writing}';
 
@@ -81,6 +82,10 @@ class ImportNamibweb extends Command
     private int $skipped = 0;
 
     private int $photosStaged = 0;
+
+    private bool $publishLocatable = false;
+
+    private int $published = 0;
 
     /** @var array<int, array{listing: string, field: string, ours: string, theirs: string}> */
     private array $conflicts = [];
@@ -161,6 +166,18 @@ class ImportNamibweb extends Command
             $records = array_slice(array_values($records), 0, $limit);
         }
 
+        $this->publishLocatable = (bool) $this->option('publish-locatable');
+
+        if ($this->publishLocatable && $this->option('with-descriptions')) {
+            $this->error('--publish-locatable cannot be combined with --with-descriptions: that would put namibweb\'s prose on a public page.');
+
+            return self::FAILURE;
+        }
+
+        if ($this->publishLocatable) {
+            $this->line('Publishing newly created listings that carry coordinates or an address');
+        }
+
         if ($this->dry) {
             $this->warn('DRY RUN — nothing will be written');
         }
@@ -185,8 +202,8 @@ class ImportNamibweb extends Command
         $this->newLine(2);
 
         $this->table(
-            ['Created', 'Updated', 'Unchanged', 'Skipped', 'Photos staged'],
-            [[$this->created, $this->updated, $this->unchanged, $this->skipped, $this->photosStaged]]
+            ['Created', 'Published', 'Updated', 'Unchanged', 'Skipped', 'Photos staged'],
+            [[$this->created, $this->published, $this->updated, $this->unchanged, $this->skipped, $this->photosStaged]]
         );
 
         $this->reportConflicts();
@@ -241,6 +258,25 @@ class ImportNamibweb extends Command
      * for listings no other source already owns, so an NTB or namibiayp record
      * gets enriched rather than duplicated — and never hijacked.
      */
+    /**
+     * Whether a listing can actually be found by a traveller — and placed by
+     * Kaia, which needs a position to put anything in a route.
+     *
+     * Only 196 of 1165 Namibian records clear this; the rest are a name, a type
+     * and a region. Publishing those would put a row in Explore that nobody can
+     * visit, reach or route to, which is worse than no row at all.
+     *
+     * @param  array<string, mixed>  $incoming
+     */
+    private function isLocatable(array $incoming): bool
+    {
+        if ($incoming['latitude'] !== null && $incoming['longitude'] !== null) {
+            return true;
+        }
+
+        return trim((string) ($incoming['address'] ?? '')) !== '';
+    }
+
     private function findListing(string $scrapeId, string $name): ?Listing
     {
         $byId = Listing::query()
@@ -382,8 +418,13 @@ class ImportNamibweb extends Command
      */
     private function createListing(array $record, array $incoming): void
     {
+        $publish = $this->publishLocatable && $this->isLocatable($incoming);
+
         if ($this->dry) {
             $this->created++;
+            if ($publish) {
+                $this->published++;
+            }
 
             return;
         }
@@ -407,12 +448,19 @@ class ImportNamibweb extends Command
             'scrape_id' => $record['scrape_id'],
             'scraped_at' => CarbonImmutable::now(),
             'claim_status' => 'unclaimed',
-            // Nothing from this source goes live unreviewed: the text is
-            // namibweb's, the photography is namibweb's, and neither is ours to
-            // publish until it has been rewritten and cleared.
-            'is_published' => false,
+            // Nothing of namibweb's authorship goes live: the text is theirs
+            // and the photography is theirs. Facts are a different matter — a
+            // name, a position, an address and a category are data, not
+            // authorship, and --publish-locatable publishes exactly those. It
+            // is refused alongside --with-descriptions, which is the one switch
+            // that would put their prose on a public page.
+            'is_published' => $publish,
             'accepts_inquiries' => true,
         ]);
+
+        if ($publish) {
+            $this->published++;
+        }
 
         $listing->setTranslation('name', 'en', $incoming['name']);
 
