@@ -1,0 +1,151 @@
+<?php
+
+namespace App\Models;
+
+use App\Enums\ReservationSource;
+use App\Enums\StayStatus;
+use App\Models\Concerns\GuardsInventoryWrites;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+/**
+ * A stay at a property. Not an Inquiry — see CLAUDE.md, "How a confirmed
+ * Inquiry becomes a Reservation", for why the two stay separate and how the
+ * one-way promotion is meant to work. `inquiry_id` is that bridge and nothing
+ * writes it yet.
+ *
+ * @property int $id
+ * @property string $reference
+ * @property int $listing_id
+ * @property int|null $inquiry_id
+ * @property StayStatus $status
+ * @property ReservationSource $source
+ * @property string $guest_name
+ * @property string|null $guest_email
+ * @property string|null $guest_phone
+ * @property CarbonImmutable $check_in
+ * @property CarbonImmutable $check_out
+ * @property int $adults
+ * @property int $children
+ * @property float|null $total_amount
+ * @property float|null $quoted_amount
+ * @property string|null $price_override_reason
+ * @property int|null $price_overridden_by
+ * @property CarbonImmutable|null $price_overridden_at
+ * @property string $currency
+ * @property string|null $notes
+ * @property int|null $created_by
+ * @property CarbonImmutable|null $cancelled_at
+ * @property string|null $cancellation_reason
+ * @property-read Listing|null $listing
+ * @property-read Inquiry|null $inquiry
+ * @property-read Collection<int, ReservationUnit> $units
+ */
+class Reservation extends Model
+{
+    use GuardsInventoryWrites;
+
+    protected $fillable = [
+        'reference',
+        'listing_id',
+        'inquiry_id',
+        'status',
+        'source',
+        'guest_name',
+        'guest_email',
+        'guest_phone',
+        'check_in',
+        'check_out',
+        'adults',
+        'children',
+        'total_amount',
+        'quoted_amount',
+        'price_override_reason',
+        'price_overridden_by',
+        'price_overridden_at',
+        'currency',
+        'notes',
+        'created_by',
+        'cancelled_at',
+        'cancellation_reason',
+    ];
+
+    protected $casts = [
+        'status' => StayStatus::class,
+        'source' => ReservationSource::class,
+        'check_in' => 'date',
+        'check_out' => 'date',
+        'adults' => 'integer',
+        'children' => 'integer',
+        'total_amount' => 'float',
+        'quoted_amount' => 'float',
+        'price_overridden_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+    ];
+
+    /**
+     * @return BelongsTo<Listing, $this>
+     */
+    public function listing(): BelongsTo
+    {
+        return $this->belongsTo(Listing::class);
+    }
+
+    /**
+     * @return BelongsTo<Inquiry, $this>
+     */
+    public function inquiry(): BelongsTo
+    {
+        return $this->belongsTo(Inquiry::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * @return HasMany<ReservationUnit, $this>
+     */
+    public function units(): HasMany
+    {
+        return $this->hasMany(ReservationUnit::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function priceOverrider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'price_overridden_by');
+    }
+
+    /**
+     * Whether somebody charged something other than what the calendar priced.
+     *
+     * Derived from the two amounts rather than stored as a flag, so it stays
+     * true to the numbers even if one of them is later corrected. Compared to
+     * the cent, because these are money columns and a float equality check on
+     * money is a bug waiting for a rounding difference.
+     */
+    public function priceWasOverridden(): bool
+    {
+        if ($this->quoted_amount === null || $this->total_amount === null) {
+            return false;
+        }
+
+        return abs($this->total_amount - $this->quoted_amount) >= 0.01;
+    }
+
+    /** Nights, not days — a stay from the 5th to the 8th is three nights. */
+    public function nights(): int
+    {
+        return (int) $this->check_in->diffInDays($this->check_out);
+    }
+}

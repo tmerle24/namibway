@@ -53,12 +53,20 @@ final class ImportPlan
             }
         }
 
+        foreach ($this->applicableRoomRows() as $row) {
+            if ($row->photoFolder !== null) {
+                return true;
+            }
+        }
+
         return false;
     }
 
+    /** Listings and room types whose photos this import would replace. */
     public function photoCount(): int
     {
-        return count(array_filter($this->applicableRows(), static fn (PlannedRow $row) => $row->photoFolder !== null));
+        return count(array_filter($this->applicableRows(), static fn (PlannedRow $row) => $row->photoFolder !== null))
+            + count(array_filter($this->applicableRoomRows(), static fn (PlannedRoomRow $row) => $row->photoFolder !== null));
     }
 
     /** @return list<PlannedRow> */

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Filament;
 
+use App\Filament\Pages\ReleaseNotes;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
@@ -65,7 +66,9 @@ class ReleaseNotesTest extends TestCase
             ->get('/admin')
             ->assertOk()
             ->assertSee('v1.0.187 ('.now()->toDateString().' 14:23)')
-            ->assertSee('/admin/release-notes', escape: false);
+            // The badge points at the deploy log, whose URL kept its old slug when the
+            // page was renamed to "Release Notes" (ReleaseNoteResource owns that path).
+            ->assertSee(ReleaseNotes::getUrl(), escape: false);
     }
 
     public function test_release_notes_page_renders_the_snapshotted_log(): void

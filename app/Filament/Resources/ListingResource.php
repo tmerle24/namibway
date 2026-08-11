@@ -9,9 +9,11 @@ use App\Enums\ListingType;
 use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
 use App\Enums\VehicleClass;
+use App\Filament\Pages\ListingImport;
 use App\Filament\Resources\ListingResource\Pages;
 use App\Filament\Resources\ListingResource\RelationManagers;
 use App\Filament\Support\BookingConnectorSchema;
+use App\Filament\Support\MessagesColumn;
 use App\Filament\Support\PipelineImageResolver;
 use App\Filament\Support\WorkbookDownload;
 use App\Http\Controllers\Controller;
@@ -332,27 +334,13 @@ class ListingResource extends Resource
                     ->whereNull('read_at'),
             ]))
             ->columns([
-                Tables\Columns\TextColumn::make('unread_messages_count')
-                    ->label('Messages')
-                    ->badge(fn (Listing $record): bool => $record->partner?->email !== null)
-                    ->icon(fn (Listing $record): ?string => $record->partner?->email !== null
-                        ? 'heroicon-o-envelope'
-                        : null)
-                    ->formatStateUsing(fn (int $state, Listing $record): string => match (true) {
-                        $record->partner?->email === null => '',
-                        $state > 0 => (string) $state,
-                        default => "\u{00A0}",
-                    })
-                    ->color(fn (int $state): string => $state > 0 ? 'danger' : 'gray')
-                    ->tooltip(fn (int $state, Listing $record): ?string => match (true) {
-                        $record->partner?->email === null => null,
-                        $state > 0 => "{$state} unread message(s) — click to view",
-                        default => 'View messages',
-                    })
-                    ->url(fn (Listing $record): ?string => $record->partner?->email !== null
-                        ? static::getUrl('messages', ['record' => $record])
-                        : null)
-                    ->sortable(),
+                MessagesColumn::make(
+                    url: fn (Listing $record): string => static::getUrl('messages', ['record' => $record]),
+                    // Same fallback the messages page writes to: the owner's
+                    // address often sits on the listing rather than on the
+                    // Partner the importer created (see ListingMessages).
+                    contactEmail: fn (Listing $record): ?string => $record->partner?->email ?: $record->contact_email,
+                ),
                 Tables\Columns\ImageColumn::make('image')
                     // Not disk('public'): a manually-uploaded image can be on either 'r2'
                     // (the form field's disk) or 'public' (rows from before the r2 switch,
@@ -500,9 +488,14 @@ class ListingResource extends Resource
                     ),
             ])
             ->headerActions([
+                Tables\Actions\Action::make('import_listings')
+                    ->label('Import listings')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('gray')
+                    ->url(ListingImport::getUrl()),
                 // Exports whatever the table currently shows, filters included — the
                 // workbook carries the id column, so editing it and importing it back
-                // (Content → Import listings) updates exactly these rows.
+                // through that button updates exactly these rows.
                 Tables\Actions\Action::make('export_excel')
                     ->label('Export to Excel')
                     ->icon('heroicon-o-arrow-down-tray')

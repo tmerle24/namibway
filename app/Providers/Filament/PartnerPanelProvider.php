@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Controllers\Partner\SelectPropertyController;
 use App\Http\Middleware\ForceAdminLocale;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -19,15 +20,27 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class PartnerPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel
+        $panel = $panel
             ->id('partner')
-            ->path('partner')
+            ->path('partner');
+
+        // The lodge-facing booking system is sold in its own right, so it gets
+        // its own address rather than looking like a sub-page of a travel
+        // site. Unset — local development, CI, and production until the DNS
+        // record exists — the panel answers on whatever host serves the app,
+        // exactly as before. See config/booking.php and DEPLOYMENT.md.
+        if (filled(config('booking.panel_domain'))) {
+            $panel = $panel->domain((string) config('booking.panel_domain'));
+        }
+
+        return $panel
             ->login()
             ->brandLogo(asset('images/namibway-logo-dark.png'))
             ->darkModeBrandLogo(asset('images/namibway-logo-light.png'))
@@ -44,6 +57,27 @@ class PartnerPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('filament.partials.sticky-page-header')->render(),
             )
+            // A demo tenant has to be unmistakable from any screen, including
+            // one someone photographs or prints. BODY_START rather than a page
+            // header hook, because a seeded booking must not look real on the
+            // login screen or on a page nobody thought to decorate either.
+            ->renderHook(
+                PanelsRenderHook::BODY_START,
+                fn (): string => view('filament.partner.partials.demo-banner')->render(),
+            )
+            // A partner with several properties — NWR is one partner with about
+            // twenty camps — picks which one the lodge-facing screens show. The
+            // partial renders nothing for a partner with one property or none.
+            ->renderHook(
+                PanelsRenderHook::TOPBAR_START,
+                fn (): string => view('filament.partner.partials.property-switcher')->render(),
+            )
+            // Registered on the panel rather than in routes/web.php so the post
+            // runs the panel's own middleware. The same route in the web group
+            // would drag the traveller-facing stack — Inertia, currency, locale
+            // — through a form submission that only writes a session key.
+            ->authenticatedRoutes(fn () => Route::post('property', SelectPropertyController::class)
+                ->name('property.select'))
             ->discoverResources(in: app_path('Filament/Partner/Resources'), for: 'App\\Filament\\Partner\\Resources')
             ->discoverPages(in: app_path('Filament/Partner/Pages'), for: 'App\\Filament\\Partner\\Pages')
             ->pages([

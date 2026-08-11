@@ -28,6 +28,8 @@ use Spatie\Translatable\HasTranslations;
  * @property ConnectorType|null $connector_type
  * @property array<string, mixed>|null $connector_config
  * @property Carbon|null $connector_verified_at
+ * @property bool $is_demo
+ * @property int|null $demo_source_listing_id
  */
 class Partner extends Model
 {
@@ -54,6 +56,8 @@ class Partner extends Model
         'connector_type',
         'connector_config',
         'connector_verified_at',
+        'is_demo',
+        'demo_source_listing_id',
     ];
 
     protected $casts = [
@@ -63,6 +67,7 @@ class Partner extends Model
         'claimed_at' => 'datetime',
         'claim_rejected_at' => 'datetime',
         'connector_verified_at' => 'datetime',
+        'is_demo' => 'boolean',
     ];
 
     /**
@@ -79,6 +84,18 @@ class Partner extends Model
     public function listings(): HasMany
     {
         return $this->hasMany(Listing::class);
+    }
+
+    /**
+     * The real listing a demo tenant was built from. Read-only: the demo path
+     * copies out of it and never writes back, which is why the copy exists at
+     * all rather than the demo partner simply being pointed at the real row.
+     *
+     * @return BelongsTo<Listing, $this>
+     */
+    public function demoSourceListing(): BelongsTo
+    {
+        return $this->belongsTo(Listing::class, 'demo_source_listing_id');
     }
 
     /**

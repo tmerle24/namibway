@@ -286,6 +286,67 @@ class ListingPhotoRoomImportTest extends TestCase
         $this->assertSame(0, RoomType::count());
     }
 
+    public function test_room_photos_come_from_a_folder_inside_the_listing_folder(): void
+    {
+        $listing = $this->listing();
+
+        $zip = $this->makeZip([
+            'Okonjima Bush Camp/cover.jpg' => 'listing-cover',
+            'Okonjima Bush Camp/STD/01-bed.jpg' => 'bed-bytes',
+            'Okonjima Bush Camp/STD/02-bath.jpg' => 'bath-bytes',
+        ]);
+
+        $workbook = $this->makeWorkbook([
+            'Listings' => [['id', 'photo_folder'], [$listing->id, 'Okonjima Bush Camp']],
+            'RoomTypes' => [
+                ['listing_id', 'code', 'name', 'total_units', 'rate_per_night', 'photo_folder'],
+                [$listing->id, 'STD', 'Standard Chalet', 4, '1450', 'Okonjima Bush Camp/STD'],
+            ],
+        ]);
+
+        $plan = $this->importer()->plan($workbook, $zip);
+
+        $this->assertFalse($plan->hasErrors(), implode(' / ', $plan->invalidRoomRows()[0]->errors ?? []));
+        $this->assertSame(2, $plan->photoCount());
+        $this->importer()->apply($plan, $zip);
+
+        $room = RoomType::where('listing_id', $listing->id)->where('code', 'STD')->firstOrFail();
+        $this->assertCount(2, $room->gallery ?? []);
+        $this->assertStringStartsWith('room-types/okonjima-bush-camp/STD/', $room->gallery[0]);
+        Storage::disk('r2')->assertExists($room->gallery[0]);
+
+        // The listing's own folder must not swallow the room's photos.
+        $listing->refresh();
+        $this->assertStringContainsString('cover-', (string) $listing->image);
+        $this->assertSame([], $listing->gallery);
+    }
+
+    public function test_a_room_folder_name_that_matches_several_listings_asks_for_the_path(): void
+    {
+        $listing = $this->listing();
+        $other = $this->listing(['name' => 'Desert Whisper', 'slug' => 'desert-whisper']);
+
+        $zip = $this->makeZip([
+            'Okonjima Bush Camp/STD/bed.jpg' => 'a',
+            'Desert Whisper/STD/bed.jpg' => 'b',
+        ]);
+
+        $workbook = $this->makeWorkbook([
+            'Listings' => [['id'], [$listing->id]],
+            'RoomTypes' => [
+                ['listing_id', 'code', 'name', 'total_units', 'rate_per_night', 'photo_folder'],
+                [$listing->id, 'STD', 'Standard', 2, '900', 'STD'],
+            ],
+        ]);
+
+        $plan = $this->importer()->plan($workbook, $zip);
+
+        $this->assertTrue($plan->hasErrors());
+        $this->assertStringContainsString('matches several folders', $plan->invalidRoomRows()[0]->errors[0]);
+        $this->assertSame(0, RoomType::count());
+        $this->assertNotNull($other->id);
+    }
+
     public function test_the_export_carries_room_types_and_reimports_as_a_no_op(): void
     {
         $listing = $this->listing();

@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use Database\Factories\RoomTypeFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A bookable room/unit type for listings on the Native booking connector
@@ -26,6 +29,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class RoomType extends Model
 {
+    /** @use HasFactory<RoomTypeFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'listing_id',
         'code',
@@ -55,5 +61,18 @@ class RoomType extends Model
     public function listing(): BelongsTo
     {
         return $this->belongsTo(Listing::class);
+    }
+
+    /**
+     * The ARI calendar for this room type. Sparse — a night with no row uses
+     * the defaults on this model, so absence of rows is normal and never a
+     * gap to be filled in. Read it through
+     * App\Services\Inventory\AvailabilityCalendar rather than by hand.
+     *
+     * @return HasMany<RoomTypeCalendarDay, $this>
+     */
+    public function calendarDays(): HasMany
+    {
+        return $this->hasMany(RoomTypeCalendarDay::class);
     }
 }

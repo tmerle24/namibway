@@ -12,15 +12,17 @@ class ReleaseNotes extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-sparkles';
 
-    protected static ?string $navigationLabel = 'Deploy Log';
+    protected static ?string $navigationLabel = 'Release Notes';
 
-    protected static ?string $title = 'Deploy Log';
+    protected static ?string $title = 'Release Notes';
 
+    // The URL stays /admin/deploy-log: ReleaseNoteResource already owns
+    // /admin/release-notes, and existing bookmarks keep working.
     protected static ?string $slug = 'deploy-log';
 
     protected static ?string $navigationGroup = 'Documentation';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 7;
 
     protected static string $view = 'filament.pages.release-notes';
 

@@ -63,11 +63,15 @@ class AdminPanelProvider extends PanelProvider
                 // Links out to the Scribe-generated static docs (see config/scribe.php,
                 // routes/api.php) rather than a Filament page — there's no in-app content
                 // to render, just the public /docs site partners/OTAs already use.
+                // The Documentation group is kept in alphabetical order by hand
+                // (Filament sorts on navigationSort, not on the label): this is 1,
+                // ApiSetupGuide 2, BookingConnectorGuide 3, BulkCaptureGuide 4,
+                // ListingsPartnerHandbook 5, MarketingMaterial 6, ReleaseNotes 7.
                 NavigationItem::make('API Documentation')
                     ->url(rtrim(config('scribe.base_url'), '/').'/docs', shouldOpenInNewTab: true)
                     ->icon('heroicon-o-code-bracket')
                     ->group('Documentation')
-                    ->sort(2),
+                    ->sort(1),
                 // Opens the Roundcube webmail client (separate install, see WEBMAIL.md)
                 // rather than an in-app inbox — real IMAP mailbox with attachments,
                 // folders, and search instead of reimplementing those in Filament.

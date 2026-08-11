@@ -261,6 +261,19 @@ class Listing extends Model
     }
 
     /**
+     * Stays at this property. Distinct from inquiries(): an inquiry is a
+     * request that may never become a stay, and a walk-in is a stay that was
+     * never a request. See CLAUDE.md, "How a confirmed Inquiry becomes a
+     * Reservation".
+     *
+     * @return HasMany<Reservation, $this>
+     */
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
+    /**
      * @return HasMany<EnrichmentJob, $this>
      */
     public function enrichmentJobs(): HasMany

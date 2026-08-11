@@ -47,11 +47,27 @@
         padding-bottom: 10px;
         margin-inline: -20px;
         padding-inline: 20px;
-        background-color: #fff;
-        box-shadow: 0 2px 4px 0 rgb(0 0 0 / 0.1);
+
+        /* The page background, not white. The header only has to be *opaque*
+           so nothing scrolls into view behind it — it does not have to be a
+           different colour, and being one made it read as a card sitting on
+           the page rather than as part of it. That matters more now that
+           partners see this panel and not only the team.
+
+           These two values track the classes Filament puts on <body>
+           (bg-gray-50 dark:bg-gray-950). Filament publishes its palette as
+           space-separated RGB channels; the literals are the fallback for if
+           it ever stops. */
+        background-color: rgb(var(--gray-50, 249 250 251));
+
+        /* Soft enough to read as depth rather than as an edge, but still
+           there — without it, content scrolling underneath appears to end in
+           mid-air. */
+        box-shadow: 0 4px 6px -4px rgb(0 0 0 / 0.08);
     }
 
     .dark .fi-header {
-        background-color: #000;
+        background-color: rgb(var(--gray-950, 3 7 18));
+        box-shadow: 0 4px 6px -4px rgb(0 0 0 / 0.4);
     }
 </style>
