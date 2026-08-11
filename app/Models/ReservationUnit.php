@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BoardBasis;
 use App\Models\Concerns\GuardsInventoryWrites;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
@@ -24,6 +25,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read Reservation|null $reservation
  * @property-read RoomType|null $roomType
  * @property int|null $rate_plan_id
+ * @property BoardBasis|null $board_basis
+ * @property string|null $rate_plan_name
  * @property-read Collection<int, ReservationNight> $nights
  * @property-read Collection<int, ReservationGuest> $guests
  */
@@ -35,6 +38,8 @@ class ReservationUnit extends Model
         'reservation_id',
         'room_type_id',
         'rate_plan_id',
+        'board_basis',
+        'rate_plan_name',
         'quantity',
         'check_in',
         'check_out',
@@ -43,6 +48,7 @@ class ReservationUnit extends Model
     ];
 
     protected $casts = [
+        'board_basis' => BoardBasis::class,
         'quantity' => 'integer',
         'check_in' => 'date',
         'check_out' => 'date',
@@ -82,5 +88,23 @@ class ReservationUnit extends Model
     public function guests(): HasMany
     {
         return $this->hasMany(ReservationGuest::class);
+    }
+
+    /**
+     * What this room was sold as — "Standard rate (DBB)".
+     *
+     * Read from the frozen columns rather than from the plan, which is the
+     * whole point of freezing them: this answers what the guest bought, and it
+     * keeps answering after the plan has been renamed or removed.
+     */
+    public function soldAs(): ?string
+    {
+        $board = $this->board_basis?->shortLabel();
+
+        if ($this->rate_plan_name === null) {
+            return $board;
+        }
+
+        return $board === null ? $this->rate_plan_name : $this->rate_plan_name.' ('.$board.')';
     }
 }

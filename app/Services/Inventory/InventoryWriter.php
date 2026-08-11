@@ -170,6 +170,11 @@ class InventoryWriter
                     'reservation_id' => $reservation->id,
                     'room_type_id' => $line->roomType->id,
                     'rate_plan_id' => $plans[$index]?->id,
+                    // Frozen beside the price, and for the same reason: a plan
+                    // renamed in March must not change what a stay sold in
+                    // February says it included.
+                    'board_basis' => $plans[$index]?->board_basis,
+                    'rate_plan_name' => $plans[$index]?->name,
                     'quantity' => $line->quantity,
                     'check_in' => $line->checkIn,
                     'check_out' => $line->checkOut,

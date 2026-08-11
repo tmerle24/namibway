@@ -35,6 +35,26 @@
                     </div>
 
                     <div class="nw-toolbar__group">
+                        {{--
+                            Only when the property sells more than one product.
+                            Availability is the same whichever is chosen — a
+                            room is sold once — so this changes the prices in
+                            the cells and nothing else.
+                        --}}
+                        @if ($ratePlans !== [])
+                            <span class="nw-hint">Rates:</span>
+
+                            @foreach ($ratePlans as $plan)
+                                <button
+                                    type="button"
+                                    class="nw-btn @if ($shownRatePlan && $shownRatePlan->id === $plan->id) nw-btn--primary @endif"
+                                    wire:click="showRatePlan({{ $plan->id }})"
+                                >
+                                    {{ $plan->label() }}
+                                </button>
+                            @endforeach
+                        @endif
+
                         <span class="nw-hint">
                             {{ $grid->occupancyPercent() }}% sold over these {{ $grid->columnCount() }} nights
                         </span>

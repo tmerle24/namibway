@@ -6,6 +6,7 @@ use App\Filament\Partner\Pages\Concerns\EditsInventory;
 use App\Filament\Partner\Pages\Concerns\ShowsReservationDetail;
 use App\Filament\Partner\Support\SelectedProperty;
 use App\Models\Listing;
+use App\Models\RatePlan;
 use App\Services\Inventory\DTOs\OccupancyGridData;
 use App\Services\Inventory\OccupancyGrid;
 use App\Support\CountrySettings;
@@ -54,6 +55,14 @@ class OccupancyCalendar extends Page implements HasForms
     #[Url(as: 'from')]
     public ?string $from = null;
 
+    /**
+     * Which product's rates the cells show. In the URL for the same reason the
+     * dates are: a rate sheet somebody is checking is a page they will want to
+     * come back to.
+     */
+    #[Url(as: 'rate')]
+    public ?int $ratePlanId = null;
+
     /** How far the arrows move: half a screen, so context is never lost. */
     private const STEP_DAYS = 14;
 
@@ -90,6 +99,13 @@ class OccupancyCalendar extends Page implements HasForms
         $this->closeReservation();
     }
 
+    /** Show another product's rates. Nothing else about the grid changes. */
+    public function showRatePlan(?int $ratePlanId): void
+    {
+        $this->ratePlanId = $this->ratePlan($ratePlanId)?->id;
+        $this->closeReservation();
+    }
+
     public function grid(): ?OccupancyGridData
     {
         $property = $this->property();
@@ -98,7 +114,59 @@ class OccupancyCalendar extends Page implements HasForms
             return null;
         }
 
-        return app(OccupancyGrid::class)->build($property, $this->start(), OccupancyGrid::DEFAULT_DAYS);
+        return app(OccupancyGrid::class)->build(
+            $property,
+            $this->start(),
+            OccupancyGrid::DEFAULT_DAYS,
+            $this->ratePlan($this->ratePlanId),
+        );
+    }
+
+    /**
+     * The plans this property sells, for the switcher.
+     *
+     * A property with one plan gets an empty list rather than a switcher of
+     * one: a control with a single option is a control that asks a question
+     * nobody has.
+     *
+     * @return array<int, RatePlan>
+     */
+    public function ratePlans(): array
+    {
+        $property = $this->property();
+
+        if ($property === null) {
+            return [];
+        }
+
+        $plans = RatePlan::forListing($property);
+
+        return $plans->count() > 1 ? $plans->all() : [];
+    }
+
+    public function shownRatePlan(): ?RatePlan
+    {
+        return $this->ratePlan($this->ratePlanId);
+    }
+
+    /**
+     * An id from the query string resolved against this property, falling back
+     * to the default plan. A rate plan id belonging to another lodge selects
+     * nothing rather than showing its prices.
+     */
+    private function ratePlan(?int $ratePlanId): ?RatePlan
+    {
+        $property = $this->property();
+
+        if ($property === null) {
+            return null;
+        }
+
+        $chosen = $ratePlanId === null
+            ? null
+            : RatePlan::forListing($property)->firstWhere('id', $ratePlanId);
+
+        return $chosen instanceof RatePlan ? $chosen : RatePlan::defaultFor($property);
     }
 
     /**
@@ -141,6 +209,8 @@ class OccupancyCalendar extends Page implements HasForms
             'grid' => $this->grid(),
             'property' => $this->property(),
             'stepDays' => self::STEP_DAYS,
+            'ratePlans' => $this->ratePlans(),
+            'shownRatePlan' => $this->shownRatePlan(),
         ];
     }
 }

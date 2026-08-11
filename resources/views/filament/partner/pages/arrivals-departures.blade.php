@@ -59,6 +59,13 @@
                         <div class="nw-stats__value nw-num">{{ $board->guestsStayingTonight() }}</div>
                         guests tonight
                     </div>
+                    {{-- What the kitchen needs before anything else. --}}
+                    @foreach ($board->boardTonight() as $basis => $rooms)
+                        <div>
+                            <div class="nw-stats__value nw-num">{{ $rooms }}</div>
+                            {{ Str::plural('room', $rooms) }} on {{ $basis }}
+                        </div>
+                    @endforeach
                 </div>
             </x-filament::section>
 
@@ -78,6 +85,7 @@
                                 <tr>
                                     <th>Guest</th>
                                     <th>Room type</th>
+                                    <th>Sold as</th>
                                     <th>Rooms</th>
                                     <th>Guests</th>
                                     <th>Arrival</th>
@@ -103,6 +111,11 @@
                                         <td>
                                             @foreach ($reservation->units as $unit)
                                                 <div>{{ $unit->roomType?->name ?? '—' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif</div>
+                                            @endforeach
+                                        </td>
+                                        <td>
+                                            @foreach ($reservation->units as $unit)
+                                                <div>{{ $unit->soldAs() ?? '—' }}</div>
                                             @endforeach
                                         </td>
                                         <td class="nw-num">{{ $reservation->units->sum('quantity') }}</td>

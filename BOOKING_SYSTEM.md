@@ -323,7 +323,23 @@ usual set" on Guest types if it prices by people, then enter the numbers on the
 Rates screen. A property that prices per room sees none of it — no rate switcher,
 no guest rows, no guest types — which is the rule this whole design is judged by.
 
-**3. Board basis.** Mostly configuration and wording, because board is a rate plan.
+**3. Board basis. — Done, 2026-08-11.** Mostly configuration and wording, because
+board is a rate plan — so what this step actually built is everything *around* it:
+the board basis and the plan's name frozen onto `reservation_units` at booking (a
+plan renamed in March must not change what a stay sold in February says it
+included, and `rate_plan_id` is `nullOnDelete`, so the link alone is not a record);
+"sold as" on the stay detail and the arrivals board; rooms-by-board for tonight,
+which is the kitchen's question; the rate plan switcher on the calendar the design
+promised; and three setup profiles — guesthouse per room, lodge per person sharing
+with DBB and B&B, and resident / SADC / international side by side.
+
+The booking form was tightened at the same time. It stays **one page, not a
+wizard**: a desk takes the same booking thirty times a day, every field depends on
+the others, and steps would hide the total somebody is watching. What it gained is
+what a long form always needs — a heading and a save button that stay put while the
+middle scrolls, the total set in large type where it is read out to a guest, and
+the price-override fields folded away, since a field used once a month costs a
+screenful every other time.
 
 **4. Promotions and codes.** They compute on a finished price, so they come after
 step 2.
