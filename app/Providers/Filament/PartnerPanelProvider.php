@@ -74,6 +74,12 @@ class PartnerPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('filament.partials.brand-logo')->render(),
             )
+            // The panel has its own address and that address gets shared, so
+            // it needs its own link preview — Filament's layout carries none.
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => view('filament.partner.partials.link-preview')->render(),
+            )
             // A demo tenant has to be unmistakable from any screen, including
             // one someone photographs or prints. BODY_START rather than a page
             // header hook, because a seeded booking must not look real on the
