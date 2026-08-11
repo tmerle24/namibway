@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ResolveSiteHost;
 use App\Http\Middleware\SetCurrency;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Console\Scheduling\Schedule;
@@ -10,6 +11,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,6 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function (): void {
+            // Customer websites, in their own middleware group — see
+            // routes/sites.php and App\Http\Middleware\ResolveSiteHost.
+            Route::middleware('sites')->group(__DIR__.'/../routes/sites.php');
+        },
     )
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('partners:sync-content')->dailyAt('03:00');
@@ -42,6 +49,18 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'locale', 'currency']);
+
+        // Before route matching, because the travel platform's routes carry no
+        // host constraint and would otherwise answer on a customer's domain.
+        // Costs one cached array lookup while no site has a host, which is the
+        // state of the world until the first customer signs.
+        $middleware->prepend(ResolveSiteHost::class);
+
+        // Deliberately empty. A customer website renders Blade and nothing
+        // else: no session, no CSRF cookie, no locale or currency negotiation,
+        // no Inertia share. That is most of how the page stays small enough to
+        // open on a weak mobile connection.
+        $middleware->group('sites', []);
 
         $middleware->web(append: [
             HandleAppearance::class,

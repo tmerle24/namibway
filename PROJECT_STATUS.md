@@ -32,7 +32,7 @@ Three business lines now exist, and only the first has software behind it:
 | Line | State |
 |---|---|
 | **Travel platform** (namibway.com) | In production. Kaia interview → trip plan → booking requests. The flagship is the trip plan — see `TRAVEL_PLAN.md`. |
-| **Websites for Namibian businesses** | Sold, not built. Flyer exists (N$ 399/month, all inclusive). No product, no tenancy, no builder. Workstream B below. |
+| **Websites for Namibian businesses** | **Since 2026-08-12 a generated site is real and viewable** — content model, block library, one template, the public renderer and `sites:generate`. No editor, no customer live yet. Workstream B below. |
 | **Custom software / booking system** | Sold as a proposal to NWR. **Since 2026-08-12 the lodge-facing product exists** — a lodge can price, sell, block, check a guest in and read its morning board, and a tour operator can sell a seat on a departure. No partner is connected. Workstream A below. |
 
 Marketing material for all three lives in `marketing/` and is downloadable from the
@@ -557,6 +557,68 @@ not survive the margin.
 The block library and one template, an admin-side editor, subdomain hosting, and one
 real customer's site live end to end. A second template only after the first customer
 has been through the whole loop, including a change request.
+
+### Built 2026-08-12 — slice 1: model, blocks, renderer, generation
+
+A generated site is now a real, viewable page rather than a plan. `WEBSITE_BUILDER.md`
+is superseded as a build brief by what is here; it stays useful as a checklist of what
+this slice deliberately did not answer.
+
+What exists:
+
+- **Four tables** — `sites`, `site_pages`, `site_blocks`, `site_images`. The site owns
+  its content; a listing is an import source at creation time and nothing else. A
+  `site_pages.locale` column and a page row that never varies today are there so a
+  German page and a second page are inserts rather than migrations on live customer
+  content.
+- **Twelve block types** (`App\Sites\Blocks` + `BlockRegistry`). Type is a string,
+  payload is JSON, validation is per type on the model — so a new block is a class,
+  never a migration. The layout each business type starts in lives in the registry.
+- **One template**, server-rendered Blade with inlined CSS and about fifteen lines of
+  JavaScript. No Inertia, no Vue, no Tailwind build, no external host of any kind.
+  Site requests skip the whole `web` middleware group.
+- **Host resolution before routing** (`ResolveSiteHost`, prepended globally). The
+  platform's routes carry no host constraint, so this could not be a route file: a
+  site group matching `/` would have replaced the travel home page. Costs one cached
+  array lookup while no site has a host. `/_sites/{slug}` is the back door for review
+  before DNS, and how CI exercises the renderer at all.
+- **`sites:generate`** — from a listing or empty with `--name`/`--type`, re-runnable,
+  and it reports what it left empty and why. Re-running refreshes what it wrote and
+  never touches what has been edited since (the namibweb importer's rule).
+- **A performance budget with a test behind it** (`config/sites.php`). A page carrying
+  every block at once is 18 KB uncompressed against a 60 KB ceiling.
+
+Decisions worth knowing before the next slice:
+
+- **`publishable()` answers the wrong question for this product.** It means "may
+  namibway.com show this", not "may a customer keep it". Google Places photographs pass
+  it and are still not ours to hand over, so they are imported for prospecting, marked
+  `prospect_only`, and `PublishGate` refuses publication while one is still referenced.
+  Directory content is not imported at all. Unsplash placeholders are skipped loudly —
+  a stock photograph on a paying customer's site implies it is theirs.
+- **Provenance is coarser than it looks.** A listing has two source columns
+  (`description_source`, and `photos_source` covering image and gallery together) and
+  none at all for address, telephone, coordinates or opening hours. The mapping that
+  follows from that is written out in `App\Sites\Generation\ListingImport`.
+- **The booking block reads live and cannot yet book.** Availability and prices come
+  from `RoomOffers` — a direct service call, not our own `/api/v1`, which is
+  token-authenticated, has no booking endpoint, and answers availability out of the
+  partner's connector rather than our calendar. The block quotes and then hands over to
+  namibway.com.
+
+### The open question slice 2 has to answer
+
+When a guest on a customer's own site presses "book", either they are sent to
+namibway.com to sign in — where the account and `ActiveRequestGate` live, with NamibWay
+appearing in the middle of the customer's own journey — or the site takes a booking
+straight to that one property, outside that gate. The gate exists to stop one traveller
+spamming many partners, which a guest booking the lodge whose site they are reading is
+not; but it is the rule §5 below calls load-bearing, so this is a decision and not an
+implementation detail. Slice 1 deep-links to the platform, which is the reversible
+choice.
+
+Also still open, and unchanged: whether the customer ever edits their own site, how
+N$ 399/month is actually collected, and who registers and renews the domains.
 
 ---
 

@@ -460,6 +460,79 @@ echten Login auf der Subdomain testen** — eine Routenliste beweist nichts übe
 
 ---
 
+## Customer websites (`*.websites.namibway.com`)
+
+> Written in English, the project language (`CLAUDE.md` → Language). The rest of this
+> file predates that rule.
+
+Customer websites are served by the same installation, resolved by host — see
+`config/sites.php` and `App\Http\Middleware\ResolveSiteHost`. Nothing happens until
+`SITES_HOST_SUFFIX` is set; without it a site simply has no host and is reviewed at
+`/_sites/{slug}`, which is also how local development and CI run.
+
+### Prerequisites on the server
+
+1. A wildcard DNS record `*.websites.namibway.com` at OVH. **namibway.com's DNS is not
+   at Cloudflare** — that is what broke `cdn.namibway.com` on 2026-08-09, and it is why
+   a wildcard certificate has to be issued over DNS-01 with an OVH API credential
+   rather than over HTTP-01.
+2. A wildcard certificate covering `*.websites.namibway.com`.
+3. The vhost below.
+
+### The vhost
+
+Same directory as the main site: one installation, many addresses — exactly like the
+booking subdomain above.
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name *.websites.namibway.com;
+
+    root /var/www/namibway/public;
+    index index.php;
+    charset utf-8;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+
+    # Deliberately NO `location = /robots.txt` here, unlike the other vhosts.
+    # Customer sites answer robots.txt from PHP, because a draft has to say
+    # Disallow and a published site has to name its sitemap — the static file in
+    # public/ says neither, and it would win.
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+```
+
+`fastcgi_pass`: do not guess it — see the warning under the booking subdomain, this
+server runs both `php8.3-fpm` and `php8.4-fpm`.
+
+### Then set the variable
+
+```
+SITES_HOST_SUFFIX=websites.namibway.com
+```
+
+Sites created afterwards get `{slug}.websites.namibway.com` as their host. A site
+created before that has a null host and keeps working at `/_sites/{slug}`; giving it
+an address is an `UPDATE` on one column, not a regeneration.
+
+---
+
 ## Bild-Thumbnails
 
 Die App speichert von jedem Foto **nur das Original** — Google-Places-Fotos kommen mit
