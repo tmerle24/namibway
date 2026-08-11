@@ -80,6 +80,17 @@ class RoomOffers
             }
 
             $stay = round($quote->total(), 2);
+
+            // A room nobody has priced comes back as zero rather than as a
+            // refusal — the calendar is sparse, so "no rate anywhere" reads as
+            // the room type's own rate, which is what a lodge leaves at zero
+            // until it gets round to pricing. Offering it would put "N$ 0"
+            // beside a Book button for a real property, and the booking would
+            // be refused at the other end anyway. The panel's own setup notice
+            // calls the same rooms unpriced, so the two screens agree.
+            if ($stay <= 0.0) {
+                continue;
+            }
             $nights = $quote->nightCount();
 
             $charges = $this->charges->for($listing, $checkIn, new ChargeableStay(

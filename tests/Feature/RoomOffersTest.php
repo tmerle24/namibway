@@ -182,6 +182,11 @@ class RoomOffersTest extends TestCase
             ->assertJsonPath('rooms.0.charges.0.included', true);
     }
 
+    /**
+     * Nobody having priced a room reads as zero rather than as a refusal: the
+     * calendar is sparse, so "no rate anywhere" falls back to the room type's
+     * own rate, which is what a lodge leaves at zero until it gets round to it.
+     */
     public function test_a_room_nobody_priced_is_left_out_rather_than_offered_at_nothing(): void
     {
         RoomType::create([
