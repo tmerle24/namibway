@@ -7,10 +7,12 @@ use App\Models\ApiClient;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Review;
+use App\Models\Site;
 use App\Models\User;
 use App\Observers\InquiryObserver;
 use App\Observers\ListingObserver;
 use App\Observers\ReviewObserver;
+use App\Observers\SiteObserver;
 use Carbon\CarbonImmutable;
 use Filament\Forms\Components\FileUpload;
 use Illuminate\Auth\Events\Login;
@@ -48,6 +50,7 @@ class AppServiceProvider extends ServiceProvider
         Inquiry::observe(InquiryObserver::class);
         Listing::observe(ListingObserver::class);
         Review::observe(ReviewObserver::class);
+        Site::observe(SiteObserver::class);
 
         Event::listen(function (Login $event) {
             if ($event->user instanceof User) {
