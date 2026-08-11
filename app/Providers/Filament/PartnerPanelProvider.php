@@ -82,13 +82,6 @@ class PartnerPanelProvider extends PanelProvider
                 PanelsRenderHook::BODY_START,
                 fn (): string => view('filament.partner.partials.demo-banner')->render(),
             )
-            // Whether a booking's mail is actually reaching anybody. Shown
-            // until a property is switched on, because an operator who
-            // believes a guest was written to has been misled by silence.
-            ->renderHook(
-                PanelsRenderHook::BODY_START,
-                fn (): string => view('filament.partner.partials.booking-state-banner')->render(),
-            )
             // A partner with several properties — NWR is one partner with about
             // twenty camps — picks which one the lodge-facing screens show. The
             // partial renders nothing for a partner with one property or none.
