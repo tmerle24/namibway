@@ -108,6 +108,8 @@
         "roomsUnavailable": "Für diesen Aufenthalt sind online keine Zimmer hinterlegt — der Partner stimmt das Zimmer nach der Anfrage mit dir ab.",
         "roomsLeft": "Letztes zu diesen Daten | Nur noch {count} zu diesen Daten",
         "roomTotalForNights": "Gesamt {total} für {count} Nacht | Gesamt {total} für {count} Nächte",
+        "roomChargesIncluded": "inkl. {names}",
+        "roomChargesAdded": "zzgl. {amount} {names}",
         "roomPhotoStandIn": "Foto der Unterkunft — für dieses Zimmer gibt es noch keins",
         "changeRoom": "Zimmer ändern",
         "changeStay": "Unterkunft ändern",

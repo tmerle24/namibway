@@ -551,14 +551,21 @@ Channel synchronisation, iCal, room-level assignment (a reservation holds room
 types and quantities, never a named room), folio and payments, housekeeping, and
 tax reporting.
 
-One thing is now *half* here and should be named rather than assumed: the
-traveller-facing side and the lodge-facing side still count availability
-separately — the trip plan's room picker counts overlapping inquiries, the
-calendar counts its own units — and the picker shows a room type's base rate
-rather than the rate plan's price. Room types themselves are one table and are
-shared. Making the picker read the calendar is the step that removes the one
-failure mode `StayPromoter` has to alert about, and it is worth doing before the
-first real partner sells through both at once.
+One thing is now *half* here and should be named rather than assumed. Since
+2026-08-12 the trip plan prices from the property's own calendar and rate plan,
+taxes included (`App\Services\Booking\RoomOffers`), and availability is the
+smaller of two counts: what the calendar has free, and what is left after the
+requests already asking for the same nights. So a stay the lodge took at its own
+desk stops being offered online, and a season the lodge priced reaches the
+traveller.
+
+What is left is deliberate: **a request in flight holds no ARI inventory**,
+because holding real rooms for every question is the flooding problem this whole
+mechanic exists to prevent. Writing soft holds into the calendar as real
+inventory — a held reservation, released by the same expiry job that exists
+today — is the step that would leave exactly one count and close the
+`StayPromoter` alert for good. It is the last piece of this seam and it is not
+built.
 
 Also worth repeating: **no connector has ever run against a real partner account.**
 The market conventions this design follows are well established, but the data

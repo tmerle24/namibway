@@ -96,6 +96,8 @@
         "roomsUnavailable": "No hay habitaciones reservadas en línea para esta estancia: el socio confirmará la habitación contigo tras la solicitud.",
         "roomsLeft": "Última en estas fechas | Solo quedan {count} en estas fechas",
         "roomTotalForNights": "Total {total} por {count} noche | Total {total} por {count} noches",
+        "roomChargesIncluded": "{names} incluido",
+        "roomChargesAdded": "más {amount} {names}",
         "roomPhotoStandIn": "Foto del alojamiento: aún no hay foto de esta habitación"
     },
     "priceUnit": {

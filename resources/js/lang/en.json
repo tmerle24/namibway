@@ -150,6 +150,8 @@
         "roomsUnavailable": "No rooms held online for this stay — the partner confirms the room with you after the request.",
         "roomsLeft": "Last one at these dates | Only {count} left at these dates",
         "roomTotalForNights": "Total {total} for {count} night | Total {total} for {count} nights",
+        "roomChargesIncluded": "{names} included",
+        "roomChargesAdded": "plus {amount} {names}",
         "roomPhotoStandIn": "Photo of the property — no photo of this room yet",
         "changeRoom": "Change room",
         "changeStay": "Change accommodation",

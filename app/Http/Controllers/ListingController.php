@@ -10,9 +10,11 @@ use App\Models\Listing;
 use App\Models\Review;
 use App\Models\RoomType;
 use App\Services\Booking\ActiveRequestGate;
-use App\Services\Booking\RoomAvailability;
+use App\Services\Booking\RoomOffer;
+use App\Services\Booking\RoomOffers;
 use App\Services\Enrichment\CoordinateTextParser;
 use App\Services\Enrichment\OsmLocationFinder;
+use App\Services\Pricing\ComputedCharge;
 use App\Services\Region\PhoneNumberFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -194,8 +196,10 @@ class ListingController extends Controller
      * property's `price_from` — plausible-looking numbers sitting right next to
      * a Book button, which is the worst place in the product to be making
      * things up. This returns what actually exists: the listing's active
-     * `RoomType` rows, their real rate, their own photos, and how many units
-     * are still free for these dates.
+     * `RoomType` rows, priced from the property's own calendar and rate plan
+     * — season, occupancy, offers and tax included — their own photos, and how
+     * many units are still free for these dates. A room the property has not
+     * priced is left out rather than quoted at zero.
      *
      * A listing with no room types is the normal case today (scraped listings,
      * partners on a PMS we don't hold inventory for), and it returns an empty
@@ -225,8 +229,11 @@ class ListingController extends Controller
         $checkOut = CarbonImmutable::parse($validated['check_out']);
         $nights = max(1, $checkIn->diffInDays($checkOut));
 
-        $bookable = RoomAvailability::bookableFor(
-            $listing->id,
+        // Priced and counted from the lodge's own calendar, so a season, a
+        // rate plan and a tax reach the traveller exactly as they reach the
+        // invoice. See App\Services\Booking\RoomOffers.
+        $offers = app(RoomOffers::class)->for(
+            $listing,
             $checkIn,
             $checkOut,
             (int) ($validated['adults'] ?? 1),
@@ -235,9 +242,8 @@ class ListingController extends Controller
 
         return response()->json([
             'nights' => $nights,
-            'rooms' => $bookable->map(function (array $row) use ($nights) {
-                /** @var RoomType $roomType */
-                $roomType = $row['room_type'];
+            'rooms' => collect($offers)->map(function (RoomOffer $offer) {
+                $roomType = $offer->roomType;
 
                 return [
                     'code' => $roomType->code,
@@ -245,10 +251,24 @@ class ListingController extends Controller
                     'description' => $roomType->description,
                     'max_adults' => $roomType->max_adults,
                     'max_children' => $roomType->max_children,
-                    'price_per_night' => (float) $roomType->rate_per_night,
-                    'total_price' => (float) $roomType->rate_per_night * $nights,
-                    'currency' => $roomType->currency,
-                    'units_left' => $row['units_left'],
+                    // An average where a stay crosses a season boundary, which
+                    // is why the nights are here too rather than only a figure
+                    // that cannot be checked.
+                    'price_per_night' => $offer->averageNightly(),
+                    'nightly_rates' => $offer->nightlyRates,
+                    // What the room costs, and what the traveller pays. They
+                    // differ by whatever the property adds on top; a screen
+                    // that shows only one of them either hides a park permit
+                    // or double-counts an inclusive VAT.
+                    'total_price' => $offer->stayAmount,
+                    'total_payable' => $offer->totalPayable,
+                    'charges' => collect($offer->charges)->map(fn (ComputedCharge $charge) => [
+                        'name' => $charge->name,
+                        'amount' => $charge->amount,
+                        'included' => $charge->isIncluded,
+                    ])->values(),
+                    'currency' => $offer->currency,
+                    'units_left' => $offer->unitsLeft,
                     // The room's own pictures. Empty is normal and the caller
                     // falls back to the property gallery — that fallback is a
                     // stand-in and should read as one, so it isn't merged in

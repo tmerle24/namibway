@@ -110,6 +110,32 @@ function openLightbox(room: RoomTypeOffer) {
     lightboxIndex.value = 0;
 }
 
+/**
+ * "incl. VAT" when the rate already contains everything, "+ N$ 240 park
+ * permit" when it does not. One line either way: a traveler comparing rooms
+ * wants to know whether the number they see is the number they pay.
+ */
+function chargeLabel(room: RoomTypeOffer): string {
+    const added = room.charges.filter((charge) => !charge.included);
+
+    if (!added.length) {
+        return t('itinerary.roomChargesIncluded', {
+            named: {
+                names: room.charges.map((charge) => charge.name).join(', '),
+            },
+        });
+    }
+
+    return t('itinerary.roomChargesAdded', {
+        named: {
+            amount: formatPrice(
+                String(added.reduce((sum, charge) => sum + charge.amount, 0)),
+            ),
+            names: added.map((charge) => charge.name).join(', '),
+        },
+    });
+}
+
 function choose(room: RoomTypeOffer) {
     emit('select', {
         code: room.code,
@@ -118,6 +144,7 @@ function choose(room: RoomTypeOffer) {
         price_per_night: room.price_per_night,
         currency: room.currency,
         total_price: room.total_price,
+        total_payable: room.total_payable,
         units_left: room.units_left,
         image: room.gallery[0] ?? null,
     });
@@ -197,11 +224,20 @@ function choose(room: RoomTypeOffer) {
                     {{
                         t('itinerary.roomTotalForNights', nights, {
                             named: {
-                                total: formatPrice(String(room.total_price)),
+                                total: formatPrice(String(room.total_payable)),
                                 count: nights,
                             },
                         })
                     }}
+                </span>
+                <!--
+                    What the property adds, named. A guest asked for a park
+                    permit at the gate should have read about it here first —
+                    and a VAT that is already in the rate is said so rather
+                    than left for them to wonder about.
+                -->
+                <span v-if="room.charges.length" class="room-option-charges">
+                    {{ chargeLabel(room) }}
                 </span>
                 <!--
                     Only shown when it is genuinely tight. "12 units left" is
@@ -249,6 +285,11 @@ function choose(room: RoomTypeOffer) {
 .room-option-total {
     flex-basis: 100%;
     font-size: 11.5px;
+    color: #8a7f68;
+}
+.room-option-charges {
+    flex-basis: 100%;
+    font-size: 11px;
     color: #8a7f68;
 }
 .room-option-scarce {
