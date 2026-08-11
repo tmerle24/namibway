@@ -11,7 +11,9 @@ use Filament\Pages\Page;
  *
  * There is no upload here on purpose: the flyers are built from source in
  * marketing/ and committed, so a file dropped into the admin panel would be the
- * one nobody can rebuild and everybody keeps printing.
+ * one nobody can rebuild and everybody keeps printing. Material that genuinely
+ * is a file rather than a build artifact belongs under Documents
+ * (App\Filament\Resources\DocumentResource), which is where uploads go.
  */
 class MarketingMaterial extends Page
 {
