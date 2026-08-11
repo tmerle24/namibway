@@ -238,7 +238,13 @@ class SiteGeneratorTest extends TestCase
         $site = Site::where('source_listing_id', $listing->id)->first();
 
         $this->assertNotNull($site);
-        Mail::assertSent(SiteReady::class, fn (SiteReady $mail): bool => $mail->site->is($site));
+
+        // Queued, not sent. SiteReady is a ShouldQueue mailable, so
+        // Mail::to()->send() hands it to the queue rather than the transport —
+        // deliberately, even though this already runs inside a queued job: a
+        // mail server having a bad minute should retry on its own, not fail the
+        // job that just built the website.
+        Mail::assertQueued(SiteReady::class, fn (SiteReady $mail): bool => $mail->site->is($site));
     }
 
     public function test_the_one_click_job_sends_no_mail_when_nobody_is_waiting(): void
@@ -250,7 +256,11 @@ class SiteGeneratorTest extends TestCase
         (new GenerateSiteJob($listing))->handle();
 
         $this->assertNotNull(Site::where('source_listing_id', $listing->id)->first());
-        Mail::assertNothingSent();
+
+        // Outgoing rather than sent: the queued path is the one this mailable
+        // actually takes, so asserting only on "sent" would pass without
+        // proving anything.
+        Mail::assertNothingOutgoing();
     }
 
     public function test_the_command_needs_a_type_for_a_business_with_no_listing(): void
