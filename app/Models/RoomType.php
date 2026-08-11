@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use InvalidArgumentException;
 
 /**
  * A bookable room/unit type for listings on the Native booking connector
@@ -49,6 +50,39 @@ class RoomType extends Model
         'currency',
         'is_active',
     ];
+
+    /**
+     * A property sells in one currency.
+     *
+     * Refused here rather than only at booking time, because the writer's
+     * check arrives far too late: by then the rates are entered, the calendar
+     * shows a symbol that belongs to another room, and somebody has been
+     * quoting the wrong number for a week. The message names both currencies,
+     * because the fix is a decision — change this room or change the others.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $roomType): void {
+            if (blank($roomType->currency) || ! $roomType->isDirty('currency') && $roomType->exists) {
+                return;
+            }
+
+            $sibling = self::query()
+                ->where('listing_id', $roomType->listing_id)
+                ->when($roomType->exists, fn ($query) => $query->whereKeyNot($roomType->getKey()))
+                ->whereNotNull('currency')
+                ->where('currency', '!=', $roomType->currency)
+                ->first();
+
+            if ($sibling !== null) {
+                throw new InvalidArgumentException(
+                    "This property already sells in {$sibling->currency} ({$sibling->name}), "
+                    ."so {$roomType->name} cannot be in {$roomType->currency}. "
+                    .'A reservation carries one total in one currency.'
+                );
+            }
+        });
+    }
 
     protected $casts = [
         'gallery' => 'array',

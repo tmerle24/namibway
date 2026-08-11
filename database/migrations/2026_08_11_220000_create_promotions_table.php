@@ -88,7 +88,7 @@ return new class extends Migration
             // discount is frozen like the price it came off, so deleting a
             // finished offer must not make last month's bookings look
             // mispriced. Rule 4 covers a discount as much as a rate.
-            $table->foreignId('promotion_id')->nullable()->after('quoted_amount')->nullOnDelete();
+            $table->foreignId('promotion_id')->nullable()->constrained()->nullOnDelete();
             $table->string('promotion_code', 40)->nullable()->after('promotion_id');
             $table->decimal('discount_amount', 10, 2)->nullable()->after('promotion_code');
         });

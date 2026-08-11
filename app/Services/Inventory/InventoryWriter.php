@@ -145,7 +145,7 @@ class InventoryWriter
             // code at once is the same race as two people booking the last
             // room, and PHP cannot referee it.
             $promotion = $this->promotionFor($request, $lines, $plans, $quotes, $quoted);
-            $discount = $promotion?->amount ?? 0.0;
+            $discount = $promotion->amount ?? 0.0;
 
             if ($promotion !== null && ! $this->claimPromotion($promotion->promotion)) {
                 throw PromotionUnavailableException::exhausted(

@@ -8,6 +8,7 @@ use App\Enums\ListingType;
 use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
 use App\Enums\VehicleClass;
+use App\Support\CountrySettings;
 use Database\Factories\ListingFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -265,6 +266,31 @@ class Listing extends Model
     public function ratePlans(): HasMany
     {
         return $this->hasMany(RatePlan::class);
+    }
+
+    /**
+     * The currency this property sells in.
+     *
+     * Read from a room type rather than from the country, because a room type
+     * carries its own column and that is what a price is actually stored
+     * against. A screen that took the country's currency while the price came
+     * from the room type would print the wrong symbol in front of a real
+     * number — a small bug with an expensive shape.
+     *
+     * Falls back to the country's currency for a property with no room types
+     * yet, which is every property before somebody sets it up.
+     */
+    public function sellingCurrency(): string
+    {
+        $room = $this->roomTypes()
+            ->where('is_active', true)
+            ->whereNotNull('currency')
+            ->orderBy('id')
+            ->first();
+
+        return $room === null
+            ? CountrySettings::for($this)->currency()
+            : CountrySettings::currencyForRoomType($room);
     }
 
     /**

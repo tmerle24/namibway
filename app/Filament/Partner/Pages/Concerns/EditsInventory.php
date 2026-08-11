@@ -871,7 +871,7 @@ trait EditsInventory
 
         return $property === null
             ? CountrySettings::forCountry(null)->currency()
-            : CountrySettings::for($property)->currency();
+            : $property->sellingCurrency();
     }
 
     /**

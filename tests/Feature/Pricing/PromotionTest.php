@@ -16,6 +16,7 @@ use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\InventoryWriter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 /**
@@ -248,6 +249,27 @@ class PromotionTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-09-01 09:00:00'));
 
         $this->assertNull($this->book('2026-12-24', '2026-12-27')->promotion_id);
+    }
+
+    public function test_a_property_sells_in_one_currency(): void
+    {
+        // Caught when the room type is saved, not when somebody finally tries
+        // to book: by then the rates are entered and the calendar has been
+        // showing a symbol that belongs to another room.
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('already sells in NAD');
+
+        RoomType::factory()->create([
+            'listing_id' => $this->listing->id,
+            'currency' => 'USD',
+        ]);
+    }
+
+    public function test_the_screens_take_the_currency_from_the_room_it_prices(): void
+    {
+        // Not from the country: the rate is stored against the room type, and
+        // a symbol from anywhere else would sit in front of the wrong number.
+        $this->assertSame('NAD', $this->listing->sellingCurrency());
     }
 
     public function test_an_offer_another_property_runs_is_not_this_propertys_offer(): void
