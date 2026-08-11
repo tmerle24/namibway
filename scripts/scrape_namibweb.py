@@ -2177,6 +2177,8 @@ def main() -> int:
     parser.add_argument("--photos-dir", default=str(OUTPUT_DIR / "namibweb_photos"),
                         help="Where downloaded photos go")
     parser.add_argument("--no-photos", action="store_true", help="Skip photo downloads (URLs are still recorded)")
+    parser.add_argument("--photos-country", default="",
+                        help="Only download photos for listings in this country (\"all\" or empty = every country)")
     parser.add_argument("--archive", default=str(ARCHIVE_FILE), help="Gzipped JSONL of the raw HTML")
     parser.add_argument("--no-archive", action="store_true", help="Skip the raw HTML archive")
     parser.add_argument("--no-reverse-geocode", action="store_true",
@@ -2279,7 +2281,18 @@ def main() -> int:
             fresh[scrape_id] = {k: v for k, v in previous.items() if k not in ("status", "changed_fields")}
 
     if not args.no_photos:
-        downloaded, reused = download_photos(fresh, baseline, Path(args.photos_dir), fetcher, args.workers)
+        # Photos are by far the heaviest part of a run — several thousand image
+        # requests — and a country we do not import yet needs none of them. The
+        # URLs stay in the JSON either way, so a later market costs image
+        # fetches only, never another crawl.
+        targets = fresh
+        wanted = (args.photos_country or "").strip()
+        if wanted and wanted.lower() != "all":
+            targets = {k: v for k, v in fresh.items()
+                       if (v.get("country") or "").lower() == wanted.lower()}
+            urls = sum(len(v.get("photos") or []) for v in targets.values())
+            print(f"Photos limited to {wanted}: {len(targets)} of {len(fresh)} listings, {urls} images")
+        downloaded, reused = download_photos(targets, baseline, Path(args.photos_dir), fetcher, args.workers)
         print(f"Photos: {downloaded} downloaded, {reused} already held → {args.photos_dir}")
 
     if not args.no_reverse_geocode:
