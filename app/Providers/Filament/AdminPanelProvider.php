@@ -41,7 +41,11 @@ class AdminPanelProvider extends PanelProvider
             // exactly what's wanted here, an uncapped-width <main>.
             ->maxContentWidth('max-w-8xl')
             ->colors([
-                'primary' => Color::Amber,
+                // Same brand rust as the partner panel (kaia-home.css --rust,
+                // the brown of the logo's wordmark) — both panels are NamibWay,
+                // so they read as one product rather than two tools that happen
+                // to share a login.
+                'primary' => Color::hex('#b5651d'),
             ])
             ->plugin(
                 SpatieLaravelTranslatablePlugin::make()
