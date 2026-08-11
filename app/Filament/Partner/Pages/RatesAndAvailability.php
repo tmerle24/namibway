@@ -231,11 +231,10 @@ class RatesAndAvailability extends Page implements HasForms
             return;
         }
 
-        /** @var array<int, int> $weekdays */
-        $weekdays = array_map('intval', $data['weekdays'] ?? []);
+        $weekdays = $this->intList($data['weekdays'] ?? null);
 
         $rooms = $property->roomTypes()
-            ->whereIn('id', array_map('intval', $data['room_type_ids'] ?? []))
+            ->whereIn('id', $this->intList($data['room_type_ids'] ?? null))
             ->get();
 
         if ($rooms->isEmpty()) {
@@ -273,6 +272,16 @@ class RatesAndAvailability extends Page implements HasForms
             ->body($nights.' '.str('night')->plural($nights).' across '
                 .$rooms->count().' '.str('room type')->plural($rooms->count()).'.')
             ->send();
+    }
+
+    /**
+     * Checkbox-list state arrives as `mixed`, and its values as strings.
+     *
+     * @return array<int, int>
+     */
+    private function intList(mixed $value): array
+    {
+        return is_array($value) ? array_values(array_map('intval', $value)) : [];
     }
 
     /**

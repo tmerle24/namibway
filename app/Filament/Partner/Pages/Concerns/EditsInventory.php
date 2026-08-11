@@ -10,6 +10,7 @@ use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Models\Listing;
 use App\Models\RoomType;
 use App\Services\Inventory\DTOs\BlockRequest;
+use App\Services\Inventory\DTOs\ManualBookingLinePreview;
 use App\Services\Inventory\InventoryWriter;
 use App\Services\Inventory\ManualBooking;
 use App\Support\CountrySettings;
@@ -225,8 +226,7 @@ trait EditsInventory
         $property = $this->requireProperty();
         $manual = app(ManualBooking::class);
 
-        /** @var array<int, array{room_type_id?: int|string|null, quantity?: int|string|null}> $rooms */
-        $rooms = array_values($data['rooms'] ?? []);
+        $rooms = $this->roomRows($data['rooms'] ?? null);
 
         $checkIn = $this->parseDate($data['check_in'] ?? null);
         $checkOut = $this->parseDate($data['check_out'] ?? null);
@@ -283,14 +283,11 @@ trait EditsInventory
             return new HtmlString('');
         }
 
-        /** @var array<int, array{room_type_id?: int|string|null, quantity?: int|string|null}> $rooms */
-        $rooms = array_values($get('rooms') ?? []);
-
         $preview = app(ManualBooking::class)->preview(
             $property,
             $this->parseDate($get('check_in')),
             $this->parseDate($get('check_out')),
-            $rooms,
+            $this->roomRows($get('rooms')),
         );
 
         if ($preview->problems !== []) {
@@ -304,7 +301,7 @@ trait EditsInventory
         }
 
         $lines = collect($preview->lines)
-            ->map(fn ($line) => '<li>'.e(
+            ->map(fn (ManualBookingLinePreview $line) => '<li>'.e(
                 $line->roomType->name.' ×'.$line->quantity
                 .' — '.Money::format($line->total, $line->currency)
                 .' ('.$line->unitsFree.' free)'
@@ -643,6 +640,24 @@ trait EditsInventory
         return $property === null
             ? CountrySettings::forCountry(null)->currency()
             : CountrySettings::for($property)->currency();
+    }
+
+    /**
+     * Repeater rows as they come back from the form: keyed by uuid, and
+     * `mixed` as far as any type checker is concerned.
+     *
+     * @return array<int, array{room_type_id?: int|string|null, quantity?: int|string|null}>
+     */
+    private function roomRows(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        /** @var array<int, array{room_type_id?: int|string|null, quantity?: int|string|null}> $rows */
+        $rows = array_values($value);
+
+        return $rows;
     }
 
     /**
