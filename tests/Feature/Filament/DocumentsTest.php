@@ -3,6 +3,7 @@
 namespace Tests\Feature\Filament;
 
 use App\Enums\DocumentKind;
+use App\Filament\Resources\DocumentCategoryResource\Pages\ListDocumentCategories;
 use App\Filament\Resources\DocumentResource\Pages\CreateDocument;
 use App\Filament\Resources\DocumentResource\Pages\EditDocument;
 use App\Filament\Resources\DocumentResource\Pages\ListDocuments;
@@ -194,6 +195,36 @@ class DocumentsTest extends TestCase
             ->test(ListDocuments::class)
             ->assertOk()
             ->assertCanSeeTableRecords([$page, $file]);
+    }
+
+    public function test_the_folder_list_renders_with_its_counts(): void
+    {
+        $folder = $this->folder('Business papers');
+        Document::factory()->create(['document_category_id' => $folder->id]);
+
+        Livewire::actingAs($this->admin())
+            ->test(ListDocumentCategories::class)
+            ->assertOk()
+            ->assertCanSeeTableRecords(DocumentCategory::query()->get())
+            ->assertSee('Business papers');
+    }
+
+    public function test_a_filed_file_is_shown_with_a_way_to_open_it(): void
+    {
+        Storage::fake('local');
+        Storage::disk('local')->put('documents/flyer.pdf', 'bytes');
+
+        $document = Document::factory()->file('documents/flyer.pdf')->create([
+            'document_category_id' => $this->folder()->id,
+            'title' => 'Partner flyer',
+            'original_name' => 'namibway-partner-flyer.pdf',
+        ]);
+
+        Livewire::actingAs($this->admin())
+            ->test(ViewDocument::class, ['record' => $document->getRouteKey()])
+            ->assertOk()
+            ->assertSee('namibway-partner-flyer.pdf')
+            ->assertSee(route('documents.download', $document), escape: false);
     }
 
     public function test_only_a_signed_in_admin_can_open_a_filed_file(): void
