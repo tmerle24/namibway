@@ -60,14 +60,13 @@ class LodgeOccupancyBookingTest extends TestCase
 
         $this->asPartner($user);
 
-        Livewire::test(OccupancyCalendar::class)
-            ->callAction('createBooking', [
-                'check_in' => '2026-09-14',
-                'check_out' => '2026-09-16',
-                'rooms' => [['room_type_id' => $room->id, 'quantity' => 2]],
-                'guest_name' => 'Two Rooms',
-                'source' => ReservationSource::WalkIn->value,
-            ]);
+        $this->submitBooking([
+            'check_in' => '2026-09-14',
+            'check_out' => '2026-09-16',
+            'rooms' => [['room_type_id' => $room->id, 'quantity' => 2]],
+            'guest_name' => 'Two Rooms',
+            'source' => ReservationSource::WalkIn->value,
+        ]);
 
         $reservation = Reservation::where('listing_id', $listing->id)->firstOrFail();
 
@@ -94,22 +93,21 @@ class LodgeOccupancyBookingTest extends TestCase
 
         $this->asPartner($user);
 
-        Livewire::test(OccupancyCalendar::class)
-            ->callAction('createBooking', [
-                'check_in' => '2026-09-14',
-                'check_out' => '2026-09-15',
-                'rooms' => [
-                    ['room_type_id' => $room->id, 'guests' => [
-                        ['guest_category_id' => $categories['AD']->id, 'count' => 2],
-                    ]],
-                    ['room_type_id' => $room->id, 'guests' => [
-                        ['guest_category_id' => $categories['AD']->id, 'count' => 2],
-                        ['guest_category_id' => $categories['CH']->id, 'count' => 1],
-                    ]],
-                ],
-                'guest_name' => 'Two Families',
-                'source' => ReservationSource::Telephone->value,
-            ]);
+        $this->submitBooking([
+            'check_in' => '2026-09-14',
+            'check_out' => '2026-09-15',
+            'rooms' => [
+                ['room_type_id' => $room->id, 'guests' => [
+                    ['guest_category_id' => $categories['AD']->id, 'count' => 2],
+                ]],
+                ['room_type_id' => $room->id, 'guests' => [
+                    ['guest_category_id' => $categories['AD']->id, 'count' => 2],
+                    ['guest_category_id' => $categories['CH']->id, 'count' => 1],
+                ]],
+            ],
+            'guest_name' => 'Two Families',
+            'source' => ReservationSource::Telephone->value,
+        ]);
 
         $reservation = Reservation::where('listing_id', $listing->id)->firstOrFail();
 
@@ -140,18 +138,17 @@ class LodgeOccupancyBookingTest extends TestCase
 
         $this->asPartner($user);
 
-        Livewire::test(OccupancyCalendar::class)
-            ->callAction('createBooking', [
-                'check_in' => '2026-09-14',
-                'check_out' => '2026-09-15',
-                'rooms' => [
-                    ['room_type_id' => $room->id, 'guests' => [
-                        ['guest_category_id' => $categories['AD']->id, 'count' => 4],
-                    ]],
-                ],
-                'guest_name' => 'Four Adults',
-                'source' => ReservationSource::WalkIn->value,
-            ]);
+        $this->submitBooking([
+            'check_in' => '2026-09-14',
+            'check_out' => '2026-09-15',
+            'rooms' => [
+                ['room_type_id' => $room->id, 'guests' => [
+                    ['guest_category_id' => $categories['AD']->id, 'count' => 4],
+                ]],
+            ],
+            'guest_name' => 'Four Adults',
+            'source' => ReservationSource::WalkIn->value,
+        ]);
 
         // Nothing written, and the calendar untouched.
         $this->assertSame(0, Reservation::count());
@@ -241,6 +238,29 @@ class LodgeOccupancyBookingTest extends TestCase
         // An id from a browser selects one of this property's own plans or
         // nothing at all — never somebody else's.
         $this->assertSame(0, RatePlanGuestAmount::where('rate_plan_id', $theirPlan->id)->count());
+    }
+
+    /**
+     * Open the booking form and submit it.
+     *
+     * Not Filament's callAction() helper: that one dot-flattens the data it is
+     * given, so `rooms` arrives as `rooms.0.…` and lands *beside* the row the
+     * form was prefilled with rather than replacing it — a booking for two
+     * rooms would quietly become three, and the test would be asserting
+     * against the helper rather than against the screen. Setting each
+     * top-level key whole avoids the question.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function submitBooking(array $data): void
+    {
+        $page = Livewire::test(OccupancyCalendar::class)->mountAction('createBooking');
+
+        foreach ($data as $key => $value) {
+            $page->set("mountedActionsData.0.{$key}", $value);
+        }
+
+        $page->callMountedAction();
     }
 
     private function asPartner(User $user): void
