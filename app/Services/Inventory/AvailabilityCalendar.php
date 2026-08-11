@@ -33,10 +33,14 @@ use Illuminate\Support\Carbon;
  *
  * Availability is read without one — a room is sold once however many plans it
  * is offered under. Anything about money or restrictions takes an optional
- * rate plan, and **null means "the room type's own rate"**, which is both the
- * behaviour before rate plans existed and the honest answer for a property
- * that has not defined any. Resolving which plan applies is the caller's job,
- * not this class's; see RatePlan::defaultFor().
+ * rate plan, and **null means the property's default plan**, falling back to
+ * the room type's own rate where a property has defined none — which is the
+ * behaviour before rate plans existed. A caller that knows which product it is
+ * selling names it; one that just wants "the price of this room" does not have
+ * to know rate plans exist.
+ *
+ * snapshot() is the exception and takes the plan explicitly: it is handed room
+ * types rather than a property, so there is nothing for it to resolve against.
  */
 class AvailabilityCalendar
 {
@@ -82,10 +86,10 @@ class AvailabilityCalendar
     }
 
     /**
-     * The rate for one night: the calendar's override where there is one, the
-     * room type's own rate otherwise. A pure function of (room type, date) —
-     * which is exactly why seasons are written onto dates rather than
-     * resolved at read time.
+     * The rate for one night: what the plan says for that night where it says
+     * anything, the room type's own rate otherwise. A pure function of (room
+     * type, date, plan) — which is exactly why seasons are written onto dates
+     * rather than resolved at read time.
      */
     public function rateFor(RoomType $roomType, CarbonInterface $date, ?RatePlan $ratePlan = null): float
     {
@@ -259,9 +263,27 @@ class AvailabilityCalendar
         return new CalendarSnapshot($days, $keyed, $rateDays);
     }
 
+    /**
+     * The plan to read when the caller named none: the property's default.
+     * Null comes back only where a property has no plan at all, and that reads
+     * as the room type's own rate.
+     */
+    private function planFor(RoomType $roomType, ?RatePlan $ratePlan): ?RatePlan
+    {
+        if ($ratePlan !== null) {
+            return $ratePlan;
+        }
+
+        $listing = $roomType->listing;
+
+        return $listing === null ? null : RatePlan::defaultFor($listing);
+    }
+
     /** One night's rate row, or null when the plan — or the property — has none. */
     private function rateDay(RoomType $roomType, CarbonInterface $date, ?RatePlan $ratePlan): ?RatePlanDay
     {
+        $ratePlan = $this->planFor($roomType, $ratePlan);
+
         if ($ratePlan === null) {
             return null;
         }
@@ -282,6 +304,8 @@ class AvailabilityCalendar
         CarbonInterface $checkOut,
         ?RatePlan $ratePlan,
     ): array {
+        $ratePlan = $this->planFor($roomType, $ratePlan);
+
         if ($ratePlan === null) {
             return [];
         }

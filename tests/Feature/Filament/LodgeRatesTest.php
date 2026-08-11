@@ -7,6 +7,7 @@ use App\Enums\ReservationSource;
 use App\Filament\Partner\Pages\RatesAndAvailability;
 use App\Models\Listing;
 use App\Models\Partner;
+use App\Models\RatePlanDay;
 use App\Models\RoomType;
 use App\Models\RoomTypeCalendarDay;
 use App\Models\User;
@@ -71,8 +72,10 @@ class LodgeRatesTest extends TestCase
         $this->assertSame(2200.0, $calendar->rateFor($room, Carbon::parse('2026-09-14')));
         $this->assertSame(1500.0, $calendar->rateFor($room, Carbon::parse('2026-09-15')));
 
-        // Nothing outside the range gained a row at all.
-        $this->assertSame(5, RoomTypeCalendarDay::where('room_type_id', $room->id)->count());
+        // Nothing outside the range gained a row at all — and a rate-only edit
+        // writes no inventory row, because it changes nothing physical.
+        $this->assertSame(5, RatePlanDay::where('room_type_id', $room->id)->count());
+        $this->assertSame(0, RoomTypeCalendarDay::where('room_type_id', $room->id)->count());
     }
 
     public function test_a_weekend_surcharge_touches_only_weekends(): void
@@ -97,7 +100,7 @@ class LodgeRatesTest extends TestCase
         $this->assertSame(1900.0, $calendar->rateFor($room, Carbon::parse('2026-09-12'))); // Saturday
         $this->assertSame(1900.0, $calendar->rateFor($room, Carbon::parse('2026-09-13'))); // Sunday
         $this->assertSame(1500.0, $calendar->rateFor($room, Carbon::parse('2026-09-14'))); // Monday
-        $this->assertSame(4, RoomTypeCalendarDay::where('room_type_id', $room->id)->count());
+        $this->assertSame(4, RatePlanDay::where('room_type_id', $room->id)->count());
     }
 
     public function test_an_empty_field_leaves_what_is_already_there_alone(): void
@@ -124,7 +127,7 @@ class LodgeRatesTest extends TestCase
             ])
             ->call('apply');
 
-        $day = RoomTypeCalendarDay::where('room_type_id', $room->id)
+        $day = RatePlanDay::where('room_type_id', $room->id)
             ->whereDate('date', '2026-09-10')
             ->firstOrFail();
 
@@ -156,7 +159,7 @@ class LodgeRatesTest extends TestCase
             ])
             ->call('apply');
 
-        $day = RoomTypeCalendarDay::where('room_type_id', $room->id)
+        $day = RatePlanDay::where('room_type_id', $room->id)
             ->whereDate('date', '2026-09-10')
             ->firstOrFail();
 
@@ -218,6 +221,7 @@ class LodgeRatesTest extends TestCase
             app(AvailabilityCalendar::class)->rateFor($theirRoom, Carbon::parse('2026-09-10')),
         );
         $this->assertSame(0, RoomTypeCalendarDay::where('room_type_id', $theirRoom->id)->count());
+        $this->assertSame(0, RatePlanDay::where('room_type_id', $theirRoom->id)->count());
     }
 
     private function asPartner(User $user): void

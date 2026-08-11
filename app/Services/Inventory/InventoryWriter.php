@@ -607,12 +607,17 @@ class InventoryWriter
             $blocks = $roomTypeIds === [] ? 0 : InventoryBlock::query()->whereIn('room_type_id', $roomTypeIds)->delete();
             $days = $roomTypeIds === [] ? 0 : RoomTypeCalendarDay::query()->whereIn('room_type_id', $roomTypeIds)->delete();
 
+            // Rates too: a room type survives a purge, so leaving its priced
+            // nights behind would show a rebuilt demo last month's rates.
+            $rateDays = $roomTypeIds === [] ? 0 : RatePlanDay::query()->whereIn('room_type_id', $roomTypeIds)->delete();
+
             return [
                 'reservations' => $reservations,
                 'reservation_units' => $units,
                 'reservation_nights' => $nights,
                 'blocks' => $blocks,
                 'calendar_days' => $days,
+                'rate_plan_days' => $rateDays,
             ];
         }));
     }
