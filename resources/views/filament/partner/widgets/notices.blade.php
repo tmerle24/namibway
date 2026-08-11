@@ -39,13 +39,14 @@
                 </div>
             @endforeach
         </div>
-    </x-filament::section>
-</x-filament-widgets::widget>
 
-{{-- Plain CSS on Filament's own palette variables with literal fallbacks, the
-     same approach as the calendar's lodge styles: the panel carries no custom
-     Filament theme, so a Tailwind class invented here would not be compiled. --}}
-<style>
+        {{-- Inside the widget, not after it: a Livewire component may have
+             exactly one root element, and a trailing <style> is a second one.
+             Plain CSS on Filament's own palette variables with literal
+             fallbacks, the same approach as the calendar's lodge styles — the
+             panel carries no custom Filament theme, so a Tailwind class
+             invented here would never be compiled. --}}
+        <style>
     .nw-notices {
         display: flex;
         flex-direction: column;
@@ -191,4 +192,6 @@
             display: none;
         }
     }
-</style>
+        </style>
+    </x-filament::section>
+</x-filament-widgets::widget>
