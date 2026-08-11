@@ -308,6 +308,64 @@ class LodgeOccupancyBookingTest extends TestCase
     }
 
     /**
+     * The desk half of the capacity rule: warned, and asked what it is doing
+     * about it, but never refused. A receptionist told "no" by software they
+     * cannot argue with writes the booking on paper, and then the property's
+     * own system does not know about the guest at all.
+     */
+    public function test_the_desk_may_overfill_a_room_once_it_says_what_it_is_doing(): void
+    {
+        [$user, $listing] = $this->partnerWithProperty('Lodge');
+        $room = $this->roomType($listing);
+
+        $this->asPartner($user);
+
+        // The room sleeps 4 + 2. Seven people do not fit however they arrange
+        // themselves, and the form asks about it rather than shrugging.
+        $this->submitBooking([
+            'check_in' => '2026-09-14',
+            'check_out' => '2026-09-16',
+            'guest_name' => 'Familie Braun',
+            'source' => ReservationSource::WalkIn->value,
+            'adults' => 4,
+            'children' => 3,
+            'rooms' => [['room_type_id' => $room->id, 'quantity' => 1]],
+            'over_capacity_note' => 'Cot in the chalet',
+        ]);
+
+        $reservation = Reservation::query()->latest('id')->firstOrFail();
+
+        $this->assertSame('Cot in the chalet', $reservation->over_capacity_note);
+        $this->assertSame(7, $reservation->adults + $reservation->children);
+
+        // And it is on the board somebody makes the room up from.
+        $this->actingAs($user)
+            ->get('/partner/arrivals?date=2026-09-14')
+            ->assertOk()
+            ->assertSee('Cot in the chalet');
+    }
+
+    public function test_a_booking_that_fits_is_never_asked_about_beds(): void
+    {
+        [$user, $listing] = $this->partnerWithProperty('Lodge');
+        $room = $this->roomType($listing);
+
+        $this->asPartner($user);
+
+        $this->submitBooking([
+            'check_in' => '2026-09-14',
+            'check_out' => '2026-09-16',
+            'guest_name' => 'Fits Fine',
+            'source' => ReservationSource::WalkIn->value,
+            'adults' => 2,
+            'children' => 1,
+            'rooms' => [['room_type_id' => $room->id, 'quantity' => 1]],
+        ]);
+
+        $this->assertNull(Reservation::query()->latest('id')->firstOrFail()->over_capacity_note);
+    }
+
+    /**
      * Open the booking form and submit it.
      *
      * Not Filament's callAction() helper: that one dot-flattens the data it is

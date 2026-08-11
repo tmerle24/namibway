@@ -18,6 +18,7 @@ use App\Models\RatePlan;
 use App\Models\RoomType;
 use App\Models\User;
 use App\Services\Booking\BookingMailbox;
+use App\Services\Booking\RoomCapacity;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\ManualBookingLinePreview;
 use App\Services\Inventory\DTOs\ManualBookingPreview;
@@ -263,8 +264,32 @@ trait EditsInventory
                         ->required(),
                     TextInput::make('guest_email')->label('Email')->email()->maxLength(180),
                     TextInput::make('guest_phone')->label('Phone')->tel()->maxLength(40),
-                    TextInput::make('adults')->label('Adults')->numeric()->minValue(1)->maxValue(99)->default(2)->required(),
-                    TextInput::make('children')->label('Children')->numeric()->minValue(0)->maxValue(99)->default(0)->required(),
+                    // Live, because the capacity warning below is about these
+                    // two numbers and a warning that only appears on save is a
+                    // warning nobody reads.
+                    TextInput::make('adults')->label('Adults')->numeric()->minValue(1)->maxValue(99)->default(2)->required()->live(onBlur: true),
+                    TextInput::make('children')->label('Children')->numeric()->minValue(0)->maxValue(99)->default(0)->required()->live(onBlur: true),
+
+                    /*
+                     * More people than the rooms sleep. Not a refusal: at a
+                     * desk a cot goes in the room, and a receptionist told
+                     * "no" by software they cannot argue with writes the
+                     * booking on paper — after which the property's own system
+                     * does not know about the guest at all.
+                     *
+                     * But it is not silent either, which is what it used to
+                     * be. The numbers are named once, in the price block above
+                     * where every other thing about this booking is reported,
+                     * and this is where the desk answers them.
+                     */
+                    TextInput::make('over_capacity_note')
+                        ->label('More people than the room sleeps — what is being done?')
+                        ->placeholder('Extra bed, cot, child shares …')
+                        ->maxLength(200)
+                        ->visible(fn (Get $get): bool => $this->overCapacity($get) !== null)
+                        ->required(fn (Get $get): bool => $this->overCapacity($get) !== null)
+                        ->helperText('Kept on the booking, so whoever makes the room up knows.')
+                        ->columnSpanFull(),
                 ]),
 
             // Folded away, because almost no booking needs it. A field that is
@@ -422,6 +447,7 @@ trait EditsInventory
                 totalOverride: filled($data['total_override'] ?? null) ? (float) $data['total_override'] : null,
                 overrideReason: $data['override_reason'] ?? null,
                 promotionCode: $data['promotion_code'] ?? null,
+                overCapacityNote: $data['over_capacity_note'] ?? null,
             );
         } catch (InventoryUnavailableException|StayRuleViolationException $refusal) {
             // The preview said yes a moment ago and the writer says no, which
@@ -515,6 +541,14 @@ trait EditsInventory
         // An offer is shown as what it took off, not only as a smaller total:
         // a guest who read out a code wants to hear the discount, and a desk
         // explaining the bill needs both numbers.
+        // Amber and not red: a problem stops the booking, a warning asks a
+        // question this desk is allowed to answer.
+        $warnings = $preview->hasWarnings()
+            ? '<div style="margin-top: .35rem; color: rgb(180 83 9);">'
+                .implode('', array_map(fn (string $line): string => '<div>'.e($line).'</div>', $preview->warnings))
+                .'</div>'
+            : '';
+
         $offer = $preview->discount > 0.0
             ? '<div style="margin-top: .35rem; color: rgb(21 128 61);">'
                 .e($preview->offer ?? 'Offer')
@@ -532,6 +566,7 @@ trait EditsInventory
             .e($preview->lengthLabel())
             .'</span>'
             .'</div>'
+            .$warnings
             .$offer
             .$this->chargeLinesHtml($preview)
             .'<ul style="list-style: disc; margin: .35rem 0 0 1.1rem;">'.$lines.'</ul>'
@@ -864,6 +899,57 @@ trait EditsInventory
             ->sortBy(fn (RoomType $room) => $room->name, SORT_NATURAL | SORT_FLAG_CASE)
             ->mapWithKeys(fn (RoomType $room) => [$room->id => $room->name.' ('.$room->code.')'])
             ->all();
+    }
+
+    /**
+     * The sentence to show when the party does not fit what is being booked,
+     * or null when it does.
+     *
+     * Reads the form as it stands rather than running the whole preview: this
+     * runs on every keystroke that matters, and the question — do these people
+     * fit these rooms — needs no prices, no calendar and no queries beyond the
+     * room types themselves.
+     */
+    private function overCapacity(Get $get): ?string
+    {
+        // Under a plan that prices by guests, each room line carries its own
+        // people and the pricer refuses a line it cannot price. Saying it
+        // again here, from the header counts, would be a second voice on one
+        // question — see ManualBooking::capacityWarnings().
+        if ($this->pricesByGuests()) {
+            return null;
+        }
+
+        $property = $this->property();
+
+        if ($property === null) {
+            return null;
+        }
+
+        $lines = [];
+
+        foreach ($this->roomRows($get('rooms')) as $row) {
+            // A seat on a departure is not a room and sleeps nobody.
+            if (filled($row['slot_id'] ?? null)) {
+                continue;
+            }
+
+            $roomType = $property->roomTypes()->find((int) ($row['room_type_id'] ?? 0));
+            $quantity = (int) ($row['quantity'] ?? 0);
+
+            if ($roomType instanceof RoomType && $quantity > 0) {
+                $lines[] = [$roomType, $quantity];
+            }
+        }
+
+        $adults = (int) ($get('adults') ?? 0);
+        $children = (int) ($get('children') ?? 0);
+
+        if ($lines === [] || $adults < 1 || RoomCapacity::fitsAcross($lines, $adults, $children)) {
+            return null;
+        }
+
+        return RoomCapacity::explain($lines, $adults, $children);
     }
 
     /**

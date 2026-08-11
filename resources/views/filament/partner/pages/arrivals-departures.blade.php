@@ -193,6 +193,12 @@
                                                 {{ $reservation->guest_name }}
                                             </button>
                                             <div class="nw-hint">{{ $reservation->source->label() }}</div>
+                                            {{-- The reason the note is a column and not a
+                                                 line in a log: this list is what a room is
+                                                 made up from. --}}
+                                            @if (filled($reservation->over_capacity_note))
+                                                <div class="nw-warn">Extra bed: {{ $reservation->over_capacity_note }}</div>
+                                            @endif
                                         </td>
                                         <td>
                                             @foreach ($reservation->units as $unit)

@@ -12,6 +12,7 @@ use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\Reservation;
 use App\Models\RoomType;
+use App\Services\Booking\RoomCapacity;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\DTOs\ManualBookingLinePreview;
@@ -211,7 +212,49 @@ class ManualBooking
             discount: $discount,
             offer: $offer,
             charges: $charges,
+            warnings: $this->capacityWarnings($rooms, $adults, $children),
         );
+    }
+
+    /**
+     * More people than the rooms sleep — a warning and not a refusal.
+     *
+     * At a desk this is legitimate: a cot goes in the room, a teenager takes
+     * the sofa. A receptionist told "no" by software they cannot argue with
+     * writes the booking on paper, and then the property's own system does not
+     * know about the guest at all. So the desk is told, and what it answers is
+     * kept on the stay. The website refuses the same case, because nobody is
+     * standing there to judge it — see BOOKING_SYSTEM.md.
+     *
+     * Only where the header counts are the booking's occupancy. Under a plan
+     * that prices by guests each room line carries its own people and
+     * AvailabilityCalendar::assertFits already refuses a line that cannot be
+     * priced — a hard refusal, since there is no price to compute — and saying
+     * it twice in two voices would be worse than saying it once.
+     *
+     * @param  array<int, ResolvedRoomLine>  $rooms
+     * @return array<int, string>
+     */
+    private function capacityWarnings(array $rooms, int $adults, int $children): array
+    {
+        $lines = [];
+
+        foreach ($rooms as $room) {
+            if ($room->occupancy !== null && ! $room->occupancy->isEmpty()) {
+                return [];
+            }
+
+            // A seat on a departure is not a room and sleeps nobody.
+            if ($room->slot === null) {
+                $lines[] = [$room->roomType, $room->quantity];
+            }
+        }
+
+        if ($lines === [] || RoomCapacity::fitsAcross($lines, $adults, $children)) {
+            return [];
+        }
+
+        return [RoomCapacity::explain($lines, $adults, $children)];
     }
 
     /**
@@ -300,6 +343,7 @@ class ManualBooking
         ?float $totalOverride = null,
         ?string $overrideReason = null,
         ?string $promotionCode = null,
+        ?string $overCapacityNote = null,
     ): Reservation {
         $in = Carbon::parse($checkIn)->startOfDay();
         $out = Carbon::parse($checkOut)->startOfDay();
@@ -339,6 +383,7 @@ class ManualBooking
             totalOverride: $totalOverride,
             overrideReason: $overrideReason,
             promotionCode: $promotionCode,
+            overCapacityNote: $overCapacityNote,
         ));
     }
 

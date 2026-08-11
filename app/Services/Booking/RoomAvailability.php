@@ -104,23 +104,11 @@ class RoomAvailability
                 'room_type' => $roomType,
                 'units_left' => self::unitsLeft($listingId, $roomType, $checkIn, $checkOut),
             ])
-            ->filter(fn (array $row) => $row['units_left'] >= 1 && self::seats($row['room_type'], $adults, $children))
+            ->filter(fn (array $row) => $row['units_left'] >= 1 && RoomCapacity::fits($row['room_type'], $adults, $children))
             ->values();
     }
 
-    /**
-     * Children are allowed to take an adult slot when the room has spare adult
-     * capacity — a family of two adults and one child fits a room for three
-     * adults. The reverse is not true: an adult never occupies a child slot.
-     */
-    private static function seats(RoomType $roomType, int $adults, int $children): bool
-    {
-        if ($adults > $roomType->max_adults) {
-            return false;
-        }
-
-        $childOverflow = max(0, $children - $roomType->max_children);
-
-        return $adults + $childOverflow <= $roomType->max_adults;
-    }
+    // Whether a party fits a room now lives on RoomCapacity, because this
+    // screen declining to *offer* a room was the only opinion anything had
+    // about capacity — and a filter is not a rule. See BOOKING_SYSTEM.md.
 }

@@ -144,6 +144,17 @@
                     </div>
                 @endif
 
+                {{--
+                    More people than the room sleeps, and what the desk said it
+                    was doing about it. Kept beside the booking rather than in
+                    the running log because whoever makes the room up has to
+                    see it without reading a conversation.
+                --}}
+                @if (filled($reservation->over_capacity_note))
+                    <div class="nw-subhead">Extra bed</div>
+                    <p class="nw-warn">{{ $reservation->over_capacity_note }}</p>
+                @endif
+
                 @if (filled($reservation->notes))
                     <div class="nw-subhead">Booking note</div>
                     <p class="nw-hint">{{ $reservation->notes }}</p>

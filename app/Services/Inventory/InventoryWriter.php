@@ -245,6 +245,13 @@ class InventoryWriter
                 'price_overridden_by' => $overridden ? $request->createdBy : null,
                 'price_overridden_at' => $overridden ? now() : null,
                 'currency' => $currencies[0],
+                // Recorded, never enforced here. Whether a room may be
+                // overfilled is a question about *who is asking*: the website
+                // refuses because nobody is there to judge, a desk answers it
+                // and the answer is this. The writer is neither, and refusing
+                // would also break promoting a request taken before any of
+                // this existed.
+                'over_capacity_note' => $request->overCapacityNote,
                 'notes' => $request->notes,
                 'created_by' => $request->createdBy,
             ]);

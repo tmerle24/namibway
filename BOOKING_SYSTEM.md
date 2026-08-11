@@ -808,7 +808,7 @@ Two things the fix turned up that the diagnosis had not:
 
 ---
 
-### Open bug: capacity is a filter, not a rule — found 2026-08-12
+### Capacity was a filter, not a rule — found 2026-08-12, fixed the same day
 
 Reported from the panel: a room for 2 adults and 2 children took a booking for
 2 adults and **3 children** without an error or a warning.
@@ -841,6 +841,38 @@ at the desk warn with a reason the operator confirms — "sleeps 2 + 2, this is 
 3, extra bed?" — recorded on the stay like a price override is, so the
 housekeeping list and the arrivals board know a cot is needed. That last part is
 the reason to record it rather than merely allow it.
+
+**Built as designed.** The arithmetic moved out of `RoomAvailability` into
+`App\Services\Booking\RoomCapacity`, which owns both the sum and the sentence, so
+the three places that now have an opinion share one answer and differ only in
+what they *do* with it:
+
+- the picker still declines to offer a room the party does not fit;
+- `TripController::store` refuses one, before the trip is created and before an
+  anonymous plan is claimed — a rejected request leaves no trace, which is the
+  rule the one-active-request gate above it already follows;
+- the desk is warned in the price block, and the answer it types
+  (`reservations.over_capacity_note`) is kept and shown on the stay detail and
+  on the arrivals board, which is the list a room is made up from.
+
+Four decisions worth stating:
+
+- **Capacity is asked of the whole booking, not of each room.** A stay holding
+  two rooms under a per-room tariff has its guest counts on the header and
+  nothing that says who is where; splitting them would be inventing an
+  attribution, and the honest question is whether the party fits what was
+  booked. Seven people in two doubles is over capacity however they arrange
+  themselves.
+- **`InventoryWriter` records the note and enforces nothing.** Whether a room
+  may be overfilled is a question about *who is asking*, and the writer is
+  neither the website nor a desk. Making it refuse would also break promoting a
+  request taken before any of this existed.
+- **Where a plan prices by guests, nothing changed.** Those lines carry their own
+  people and `AvailabilityCalendar::assertFits` already refuses a line it cannot
+  price — a hard refusal, since there is no price to compute. The header-count
+  warning is skipped there rather than saying it twice in two voices.
+- **A room type with no capacity entered refuses nobody.** Blank is not zero, and
+  refusing every booking of a half-set-up room would be worse than not checking.
 
 ---
 

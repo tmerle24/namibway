@@ -17,6 +17,12 @@ class ManualBookingPreview
 {
     /**
      * @param  array<int, string>  $problems  Plain sentences a front desk can act on
+     * @param  array<int, string>  $warnings  Things a desk should see but may
+     *                                        overrule. A problem stops the
+     *                                        booking; a warning asks a question
+     *                                        somebody standing at a counter is
+     *                                        allowed to answer — see
+     *                                        App\Services\Booking\RoomCapacity.
      * @param  array<int, ManualBookingLinePreview>  $lines
      * @param  float  $discount  What an offer took off, already subtracted from the total
      * @param  string|null  $offer  What to call it on screen
@@ -34,7 +40,13 @@ class ManualBookingPreview
         public readonly float $discount = 0.0,
         public readonly ?string $offer = null,
         public readonly array $charges = [],
+        public readonly array $warnings = [],
     ) {}
+
+    public function hasWarnings(): bool
+    {
+        return $this->warnings !== [];
+    }
 
     /**
      * "1 night" or "1 day" — how long this booking is, in the word that fits

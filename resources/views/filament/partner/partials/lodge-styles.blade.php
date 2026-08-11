@@ -152,6 +152,14 @@
         color: var(--nw-muted);
     }
 
+    /* Something a person has to notice without it reading as an error — an
+       extra bed is a normal booking that needs one extra thing done to it. */
+    .nw-warn {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: rgb(var(--warning-600, 217 119 6));
+    }
+
     /* ---------- legend ---------- */
 
     .nw-legend {

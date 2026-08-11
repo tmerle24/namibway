@@ -60,5 +60,12 @@ class BookingRequest
         public readonly bool $notify = true,
         public readonly ?int $guestUserId = null,
         public readonly bool $ignoreStayRules = false,
+        /**
+         * What the desk said when it put more people in a room than it
+         * sleeps. Kept because "which rooms need an extra bed tonight" is a
+         * question with an answer — see the migration. Null on every booking
+         * that fits, which is nearly all of them.
+         */
+        public readonly ?string $overCapacityNote = null,
     ) {}
 }

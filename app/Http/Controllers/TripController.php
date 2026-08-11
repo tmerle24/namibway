@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Enums\InquiryStatus;
 use App\Models\Inquiry;
+use App\Models\RoomType;
 use App\Models\SavedPlan;
 use App\Models\Trip;
 use App\Services\Booking\ActiveRequestGate;
+use App\Services\Booking\RoomCapacity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -78,28 +80,6 @@ class TripController extends Controller
             return response()->json(['error' => ActiveRequestGate::message()], 422);
         }
 
-        // Booking is the strongest possible commitment signal, so an anonymous
-        // plan becomes this account's plan at the same moment — otherwise the
-        // trip they just booked wouldn't show up on their own dashboard. After
-        // the gate, so a rejected request leaves no trace on the plan.
-        if ($plan->user_id === null) {
-            $plan->update(['user_id' => $user->id]);
-        }
-
-        $trip = Trip::create([
-            'user_id' => $user->id,
-            'saved_plan_id' => $plan->id,
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-            'check_in' => $validated['check_in'],
-            'check_out' => $validated['check_out'],
-            'adults' => $validated['adults'],
-            'children' => $validated['children'] ?? 0,
-            'variant_name' => $validated['variant_name'],
-            'plan' => $validated['plan'],
-        ]);
-
         /** @var list<array<string, mixed>> $variantDays */
         $variantDays = $validated['variant_days'];
 
@@ -126,6 +106,48 @@ class TripController extends Controller
             }
         }
 
+        // Capacity is a rule on this path and not a filter. The picker only
+        // ever declined to *offer* a room that does not fit, which a party
+        // growing after the room was chosen walks straight past — and nobody
+        // is standing here to judge whether the room can take a fourth child.
+        // At a desk that judgement exists and the answer is different; see
+        // BOOKING_SYSTEM.md and App\Services\Booking\RoomCapacity.
+        $tooSmall = $this->roomsTooSmall(
+            $roomByListing,
+            (int) $validated['adults'],
+            (int) ($validated['children'] ?? 0),
+        );
+
+        if ($tooSmall !== []) {
+            return response()->json([
+                'error' => __('One of the rooms you picked is too small for your party.'),
+                'rooms' => $tooSmall,
+            ], 422);
+        }
+
+        // Booking is the strongest possible commitment signal, so an anonymous
+        // plan becomes this account's plan at the same moment — otherwise the
+        // trip they just booked wouldn't show up on their own dashboard. After
+        // the gate *and* after the capacity check, so a rejected request
+        // leaves no trace on the plan and no trip nobody asked for.
+        if ($plan->user_id === null) {
+            $plan->update(['user_id' => $user->id]);
+        }
+
+        $trip = Trip::create([
+            'user_id' => $user->id,
+            'saved_plan_id' => $plan->id,
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'check_in' => $validated['check_in'],
+            'check_out' => $validated['check_out'],
+            'adults' => $validated['adults'],
+            'children' => $validated['children'] ?? 0,
+            'variant_name' => $validated['variant_name'],
+            'plan' => $validated['plan'],
+        ]);
+
         foreach ($roomByListing as $listingId => $roomTypeCode) {
             Inquiry::create([
                 'listing_id' => $listingId,
@@ -147,6 +169,43 @@ class TripController extends Controller
             'trip_id' => $trip->id,
             'inquiry_count' => count($roomByListing),
         ]);
+    }
+
+    /**
+     * The rooms on this booking that the party does not fit into, said in words
+     * a traveller can act on.
+     *
+     * A room chosen for a plan is named by code, so a code that names nothing —
+     * a room type retired since the plan was made — is left alone rather than
+     * refused: the request goes to the property without a room on it, which is
+     * what a plan with no picker does anyway, and is a question the partner can
+     * answer.
+     *
+     * @param  array<int, string|null>  $roomByListing  listing id => room type code
+     * @return array<int, string>
+     */
+    private function roomsTooSmall(array $roomByListing, int $adults, int $children): array
+    {
+        $problems = [];
+
+        foreach ($roomByListing as $listingId => $code) {
+            if ($code === null) {
+                continue;
+            }
+
+            $roomType = RoomType::query()
+                ->where('listing_id', $listingId)
+                ->where('code', $code)
+                ->first();
+
+            if (! $roomType instanceof RoomType || RoomCapacity::fits($roomType, $adults, $children)) {
+                continue;
+            }
+
+            $problems[] = RoomCapacity::explain([[$roomType, 1]], $adults, $children);
+        }
+
+        return $problems;
     }
 
     /**
