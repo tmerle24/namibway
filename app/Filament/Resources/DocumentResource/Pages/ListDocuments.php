@@ -52,7 +52,9 @@ class ListDocuments extends ListRecords
     /** The place you are in, which is the only title this page needs. */
     public function getTitle(): string
     {
-        return $this->currentFolder()?->name ?? 'Documents';
+        // No ?-> : the ?? already covers the top level, and PHPStan reads a
+        // nullsafe on the left of it as a promise that means nothing.
+        return $this->currentFolder()->name ?? 'Documents';
     }
 
     /**
@@ -145,7 +147,7 @@ class ListDocuments extends ListRecords
                 ->modalWidth('lg')
                 ->modalHeading(fn (): string => $this->folder === null
                     ? 'New folder at the top level'
-                    : 'New folder in '.($this->currentFolder()?->name ?? ''))
+                    : 'New folder in '.($this->currentFolder()->name ?? ''))
                 ->modalSubmitActionLabel('Create folder')
                 ->form($this->folderForm())
                 ->action(function (array $data): void {
@@ -256,7 +258,13 @@ class ListDocuments extends ListRecords
      */
     private function folderFromArguments(array $arguments): DocumentCategory
     {
-        return DocumentCategory::query()->findOrFail($arguments['folder'] ?? null);
+        // whereKey()->firstOrFail() rather than findOrFail(): the argument comes
+        // off a rendered action and is therefore mixed, and findOrFail() with a
+        // mixed key could as well be a list — which is a Collection, not a
+        // folder.
+        return DocumentCategory::query()
+            ->whereKey($arguments['folder'] ?? null)
+            ->firstOrFail();
     }
 
     /**
