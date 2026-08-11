@@ -46,6 +46,14 @@ class PartnerPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('filament.partials.sticky-page-header')->render(),
             )
+            // A demo tenant has to be unmistakable from any screen, including
+            // one someone photographs or prints. BODY_START rather than a page
+            // header hook, because a seeded booking must not look real on the
+            // login screen or on a page nobody thought to decorate either.
+            ->renderHook(
+                PanelsRenderHook::BODY_START,
+                fn (): string => view('filament.partner.partials.demo-banner')->render(),
+            )
             // A partner with several properties — NWR is one partner with about
             // twenty camps — picks which one the lodge-facing screens show. The
             // partial renders nothing for a partner with one property or none.
