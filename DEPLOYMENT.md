@@ -470,29 +470,92 @@ Customer websites are served by the same installation, resolved by host — see
 `SITES_HOST_SUFFIX` is set; without it a site simply has no host and is reviewed at
 `/_sites/{slug}`, which is also how local development and CI run.
 
-### Prerequisites on the server
+### Step 1 — the certificate, and why this one is different
 
-1. A wildcard DNS record `*.websites.namibway.com` at OVH. **namibway.com's DNS is not
-   at Cloudflare** — that is what broke `cdn.namibway.com` on 2026-08-09, and it is why
-   a wildcard certificate has to be issued over DNS-01 with an OVH API credential
-   rather than over HTTP-01.
-2. A wildcard certificate covering `*.websites.namibway.com`.
-3. The vhost below.
+The booking subdomain was issued with `certbot --nginx`, which proves ownership by
+answering an HTTP request on that exact host. **That cannot work here.** A wildcard
+covers hosts that do not exist yet, so there is nothing to answer on; Let's Encrypt
+only issues a wildcard against a DNS-01 challenge, which means writing a TXT record
+into the zone. namibway.com's DNS is at OVH, so that needs OVH's API.
 
-### The vhost
+Create an OVH API token at <https://eu.api.ovh.com/createToken/> with these rights —
+nothing wider, this credential can edit the whole zone:
+
+```
+GET     /domain/zone/*
+POST    /domain/zone/*
+PUT     /domain/zone/*
+DELETE  /domain/zone/*
+```
+
+Then, on the server:
+
+```bash
+sudo apt install -y python3-certbot-dns-ovh
+
+sudo install -d -m 700 /root/.secrets
+sudo tee /root/.secrets/ovh.ini >/dev/null <<'INI'
+dns_ovh_endpoint = ovh-eu
+dns_ovh_application_key = APPLICATION_KEY
+dns_ovh_application_secret = APPLICATION_SECRET
+dns_ovh_consumer_key = CONSUMER_KEY
+INI
+sudo chmod 600 /root/.secrets/ovh.ini
+
+sudo certbot certonly \
+  --dns-ovh --dns-ovh-credentials /root/.secrets/ovh.ini \
+  --dns-ovh-propagation-seconds 60 \
+  -d '*.websites.namibway.com'
+```
+
+The quotes around the `-d` argument are not optional: an unquoted `*` is expanded by
+the shell against the current directory.
+
+Note the lineage name certbot prints — it is the name without the asterisk, so the
+paths below are `/etc/letsencrypt/live/websites.namibway.com/`. Confirm rather than
+assume:
+
+```bash
+sudo certbot certificates | grep -A3 websites
+```
+
+Renewal runs on the existing certbot timer and re-reads the credentials file on its
+own — nothing to schedule. Check it once: `sudo certbot renew --dry-run`.
+
+### Step 2 — the vhost
 
 Same directory as the main site: one installation, many addresses — exactly like the
-booking subdomain above.
+booking subdomain above. Certbot does **not** write the TLS block for a certificate it
+issued with `certonly`, so unlike the booking vhost this file carries it itself.
 
-```nginx
+```bash
+sudo tee /etc/nginx/sites-available/websites.namibway.com >/dev/null <<'NGINX'
 server {
     listen 80;
     listen [::]:80;
     server_name *.websites.namibway.com;
 
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name *.websites.namibway.com;
+
+    ssl_certificate     /etc/letsencrypt/live/websites.namibway.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/websites.namibway.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
     root /var/www/namibway/public;
     index index.php;
     charset utf-8;
+
+    # A customer's photographs, not a lodge's room list — but the same bucket
+    # and the same uploader, so keep this in step with the main vhost.
+    client_max_body_size 32M;
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
@@ -516,20 +579,65 @@ server {
         deny all;
     }
 }
+NGINX
+
+sudo ln -s /etc/nginx/sites-available/websites.namibway.com /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-`fastcgi_pass`: do not guess it — see the warning under the booking subdomain, this
-server runs both `php8.3-fpm` and `php8.4-fpm`.
+**`fastcgi_pass`: do not guess it.** This server runs both `php8.3-fpm` and
+`php8.4-fpm` — see the warning under the booking subdomain and copy whichever socket
+the main vhost actually uses:
 
-### Then set the variable
+```bash
+grep fastcgi_pass /etc/nginx/sites-available/namibway.com
+```
+
+### Step 3 — check it before switching the application on
+
+The host resolves and TLS is valid before any site exists. A 404 from Laravel here is
+the correct answer — it means the request reached PHP and no site claims that host:
+
+```bash
+curl -I https://anything.websites.namibway.com
+```
+
+A TLS error at this point means the certificate or the paths are wrong. A connection
+refused or a timeout means DNS or the vhost.
+
+### Step 4 — then set the variable
+
+```bash
+cd /var/www/namibway
+sudo -u www-data nano .env          # add the line below
+php artisan config:cache
+sudo systemctl reload php8.4-fpm
+```
 
 ```
 SITES_HOST_SUFFIX=websites.namibway.com
 ```
 
+No `SESSION_DOMAIN` change, unlike the booking subdomain: customer sites carry no
+session at all, so there is nothing to share and nobody gets logged out.
+
 Sites created afterwards get `{slug}.websites.namibway.com` as their host. A site
 created before that has a null host and keeps working at `/_sites/{slug}`; giving it
-an address is an `UPDATE` on one column, not a regeneration.
+an address is an `UPDATE` on one column, not a regeneration:
+
+```bash
+php artisan tinker --execute="App\Models\Site::where('slug','x')->update(['host'=>'x.websites.namibway.com']);"
+```
+
+### Step 5 — end to end
+
+```bash
+php artisan sites:generate <listing-slug>     # prints the address and the draft token
+```
+
+Open the printed URL. A draft answers only with its `?preview=` token, on its own host
+as much as on `/_sites/{slug}` — that is deliberate, a draft is research about somebody's
+business and not publication under their name.
 
 ---
 

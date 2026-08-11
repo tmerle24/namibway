@@ -606,19 +606,60 @@ Decisions worth knowing before the next slice:
   partner's connector rather than our calendar. The block quotes and then hands over to
   namibway.com.
 
-### The open question slice 2 has to answer
+### Decided 2026-08-12 — the answers slice 2 builds against
 
-When a guest on a customer's own site presses "book", either they are sent to
-namibway.com to sign in — where the account and `ActiveRequestGate` live, with NamibWay
-appearing in the middle of the customer's own journey — or the site takes a booking
-straight to that one property, outside that gate. The gate exists to stop one traveller
-spamming many partners, which a guest booking the lodge whose site they are reading is
-not; but it is the rule §5 below calls load-bearing, so this is a decision and not an
-implementation detail. Slice 1 deep-links to the platform, which is the reversible
-choice.
+Every question this section listed as open has now been answered. Recorded here in the
+form they were given, with the consequence each one has for the build.
 
-Also still open, and unchanged: whether the customer ever edits their own site, how
-N$ 399/month is actually collected, and who registers and renews the domains.
+- **Booking stays on the customer's site.** The guest never leaves it. Pressing "book"
+  opens a NamibWay login/register modal — the shape of a Google sign-in — and once it
+  closes the guest is connected and the booking completes in place.
+
+  **The hard part is not the modal, it is the cookie.** A customer's site runs on its
+  own host, and once we register their own domain it is a different registrable domain
+  entirely — `bakkie-repairs.com.na` cannot read a namibway.com session cookie, and no
+  `SESSION_DOMAIN` setting changes that. So this is not "add a login form to the tenant
+  site": it needs the shape OAuth uses — a popup or redirect to namibway.com, which
+  hands back a short-lived token the tenant site exchanges for its own session. Design
+  that before building the modal. It also means tenant hosts stop being entirely
+  session-free, which is a real cost against the byte budget and should be paid only on
+  the pages that need it.
+
+  This also settles the `ActiveRequestGate` question by implication: a guest booking the
+  one property whose site they are on is not the flooding case that gate exists to stop,
+  so that booking does not run through it. Write down where the boundary is before the
+  first one is taken.
+
+- **Both edit.** The customer can edit their own site, and we offer to do it for them as
+  part of the monthly fee. Same fields, same tables, different surface and different
+  permissions — there must never be an "admin version" and a "customer version" of a
+  piece of content. Build the admin editor first: it covers the flyer's promise on its
+  own, and it is what makes a prospecting draft fillable for the businesses that have no
+  listing to generate from.
+
+- **The subscription has to start by itself.** Stripe is known and unavailable in this
+  market, so a payment provider still has to be found. **Until then: manual invoicing**,
+  which means the subscription state machine gets built now and the collection is
+  plugged in behind it later. Do not let the price or the provider leak into the state
+  logic.
+
+- **We register the domains.** A domain is cheap and it removes a step from a sale.
+
+- **Liability: the customer always answers for the content, we answer for hosting and
+  the technology.** That is the line the contract has to draw, and the technical side
+  already supports it — the owner cannot introduce code, so what they publish is
+  entirely what they typed into structured fields.
+
+- **Multilingual throughout: EN, DE, NL, FR, ES** — the platform's five (`config/locales.php`),
+  and what the flyer sells.
+
+  **Correcting slice 1 honestly:** what exists today is a `site_pages.locale` column, so
+  a second language is an insert rather than a migration. That is the foundation and not
+  the feature. There is no language switcher, no per-locale routing, no way to say which
+  languages a site publishes, and the renderer reads `default_locale` and nothing else.
+  Five languages per site is real work, and it interacts with the editor decision above:
+  whoever edits, edits one language at a time and has to see what is missing in the
+  others.
 
 ---
 
@@ -653,7 +694,16 @@ Nothing below is blocking today's work, but each one changes what gets built:
 2. Booking system: must the front desk work offline?
 3. Booking system: during the pilot, do we take all bookings for that camp or only ours?
 4. Booking system: who maintains the rate calendar?
-5. Websites: subdomains only at first, or custom domains immediately?
-6. Websites: does the customer ever edit, or is it always us?
-7. Websites: how is N$ 399/month actually collected in Namibia?
-8. Both: is the website builder allowed to read from `Listing`, or are the two kept apart?
+5. ~~Websites: subdomains only at first, or custom domains immediately?~~ **Answered
+   2026-08-12** — subdomain first, and we register the customer's own domain. One `host`
+   column serves both, so the move is an `UPDATE`.
+6. ~~Websites: does the customer ever edit, or is it always us?~~ **Answered 2026-08-12**
+   — both. Admin editor first, customer editor after; same fields, never two versions of
+   a piece of content.
+7. **Websites: how is N$ 399/month actually collected in Namibia?** Still open, and now
+   the only one on this list that is. Stripe is out for this market, so a provider has to
+   be found; manual invoicing bridges the gap and the subscription state machine gets
+   built against it regardless. See §4.
+8. ~~Both: is the website builder allowed to read from `Listing`, or are the two kept
+   apart?~~ **Answered by the build** — a listing seeds a site once, by copying, and is
+   never read at render time.
