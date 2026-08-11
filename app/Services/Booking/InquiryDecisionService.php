@@ -18,6 +18,8 @@ use Throwable;
  */
 class InquiryDecisionService
 {
+    public function __construct(private readonly StayPromoter $promoter) {}
+
     /** @return bool false if the inquiry wasn't awaiting a decision (already handled elsewhere). */
     public function confirm(Inquiry $inquiry): bool
     {
@@ -27,6 +29,12 @@ class InquiryDecisionService
 
         $inquiry->update(['status' => InquiryStatus::Confirmed]);
         Mail::to($inquiry->email)->send(new GuestBookingConfirmed($inquiry));
+
+        // The request is now a stay: it holds real inventory, it appears on the
+        // arrivals board, and the property can work from it. Quietly, because a
+        // calendar that cannot take it is the team's problem to fix and never a
+        // reason to undo a confirmation the guest has already been sent.
+        $this->promoter->promoteQuietly($inquiry->refresh());
 
         $this->notifyConnector($inquiry, 'confirm');
 

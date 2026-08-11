@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * A stay at a property. Not an Inquiry — see CLAUDE.md, "How a confirmed
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property string $reference
  * @property int $listing_id
+ * @property int|null $customer_id
  * @property int|null $inquiry_id
  * @property StayStatus $status
  * @property ReservationSource $source
@@ -51,6 +53,7 @@ class Reservation extends Model
     protected $fillable = [
         'reference',
         'listing_id',
+        'customer_id',
         'inquiry_id',
         'status',
         'source',
@@ -116,6 +119,28 @@ class Reservation extends Model
     public function inquiry(): BelongsTo
     {
         return $this->belongsTo(Inquiry::class);
+    }
+
+    /**
+     * Whose stay this is. The frozen guest_* strings beside it are what this
+     * booking said at the time and do not follow a later correction.
+     *
+     * @return BelongsTo<Customer, $this>
+     */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * What staff have written about this stay since it was taken. The `notes`
+     * column is a different thing — see the notes migration.
+     *
+     * @return MorphMany<Note, $this>
+     */
+    public function noteLog(): MorphMany
+    {
+        return $this->morphMany(Note::class, 'notable')->latest();
     }
 
     /**

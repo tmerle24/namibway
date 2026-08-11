@@ -12,8 +12,10 @@ use App\Exceptions\Pricing\PromotionUnavailableException;
 use App\Exceptions\Pricing\UnpriceableStayException;
 use App\Models\GuestCategory;
 use App\Models\Listing;
+use App\Models\Note;
 use App\Models\RatePlan;
 use App\Models\RoomType;
+use App\Models\User;
 use App\Services\Booking\BookingMailbox;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\ManualBookingLinePreview;
@@ -553,6 +555,45 @@ trait EditsInventory
                         ? 'Recorded as a late cancellation — it falls inside the property’s penalty window.'
                         : 'The rooms are back on sale.')
                     ->send();
+            });
+    }
+
+    /**
+     * A note on the stay, with who wrote it and when.
+     *
+     * Separate from the `notes` column above it, which is what the booking
+     * itself said and does not change. This is the running log — "guest called
+     * to move the arrival forward", "paid the balance in cash" — and it is the
+     * half a desk actually uses during a stay.
+     */
+    public function addStayNoteAction(): Action
+    {
+        return Action::make('addStayNote')
+            ->label('Add a note')
+            ->icon('heroicon-m-pencil-square')
+            ->modalHeading('Add a note to this stay')
+            ->modalSubmitActionLabel('Save the note')
+            ->form([
+                Textarea::make('body')
+                    ->label('Note')
+                    ->required()
+                    ->rows(4)
+                    ->maxLength(2000)
+                    ->placeholder('Called to say they will arrive late. Asked to keep dinner.'),
+            ])
+            ->action(function (array $data): void {
+                $reservation = $this->selectedReservation();
+
+                if ($reservation === null) {
+                    return;
+                }
+
+                /** @var User|null $author */
+                $author = auth()->user();
+
+                Note::write($reservation, (string) $data['body'], $author);
+
+                Notification::make()->success()->title('Note added')->send();
             });
     }
 

@@ -28,6 +28,18 @@ class BookingRequest
      *                        property with months of history, which would otherwise
      *                        post hundreds of confirmations about guests who do not
      *                        exist.
+     * @param  bool  $ignoreStayRules  Record the stay without checking minimum stays and
+     *                                 closed-to-arrival days. Those are rules about
+     *                                 *selling* a night; a stay already confirmed to a
+     *                                 guest is being written down, not sold again, and
+     *                                 refusing it would leave the calendar lying about how
+     *                                 full the property is. Availability is still enforced
+     *                                 — see StayPromoter, the only caller.
+     * @param  int|null  $guestUserId  The NamibWay account this stay belongs to, where
+     *                                 there is one — not the same thing as `createdBy`,
+     *                                 which is the staff member typing it in. It is what
+     *                                 CustomerDirectory matches on first, because an
+     *                                 account survives an email change.
      */
     public function __construct(
         public readonly Listing $listing,
@@ -46,5 +58,7 @@ class BookingRequest
         public readonly ?string $overrideReason = null,
         public readonly ?string $promotionCode = null,
         public readonly bool $notify = true,
+        public readonly ?int $guestUserId = null,
+        public readonly bool $ignoreStayRules = false,
     ) {}
 }

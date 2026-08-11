@@ -441,32 +441,54 @@ months of scraper work. That was wrong, and worth recording as wrong: the scrape
 takes hours, nothing traveller-facing reads the column, and the vocabulary is
 eleven keys.)
 
-**7. Guests as a thing, not a name on a booking. — Not built.** Raised in review,
-and it is the largest remaining gap in the lodge-facing product: there is no guest
-menu, no guest search, no view of somebody's previous stays, and nowhere to write
-down what a lodge knows about them.
+**7. The customer, and the bridge from a request to a stay. — Done, 2026-08-11.**
+Raised in review as the largest remaining gap, and it was: a booking system has a
+small number of main entities and the customer is one of them, and this one went six
+slices without it. `reservations` carried a name, an email and a phone as free text,
+so "this guest's last three stays" could not be asked at all.
 
-The requirement behind it is worth stating in its own words, because it is not only
-about one screen: **somebody at a reception desk has to be able to reach the same
-data by whatever route they happen to be on.** By date on the calendar, by arrival
-on the board, by reference, by name, by phone number, by the room somebody is in.
-A system that has one path to each fact is a system that gets abandoned for a
-notebook.
+The requirement behind it, in its own words, because it is not only about one
+screen: **somebody at a reception desk has to be able to reach the same data by
+whatever route they happen to be on.** By date on the calendar, by arrival on the
+board, by reference, by name, by phone number. A system with one path to each fact
+is a system that gets abandoned for a notebook. So the customer screen is a search,
+a history and a place for notes, and the stay detail links back the other way.
 
-The data-model question this asks first: today `reservations` carries
-`guest_name`, `guest_email` and `guest_phone` as free text on each booking, so
-"this guest's last three stays" cannot be asked. A guest may also be a `User` with
-an account who booked through the site, or the contact on an `Inquiry`, or a
-walk-in somebody typed in at the desk. Whether those become one `Guest` record with
-the others pointing at it — and how a desk merges two rows that turn out to be the
-same person, which is the part every hotel system gets wrong — is the decision to
-make before any screen is drawn.
+The decisions, each of which is expensive to change later:
 
-Comments: a booking already takes a note, but only one, written when it is created.
-What a desk actually wants is an append-only thread with who wrote what and when,
-on the guest as well as on the stay — "always asks for the far chalet", "the
-transfer driver has her number". That is a small table and a large difference at a
-front desk.
+- **"Customer", not "guest".** The same system is sold to quad tour operators and
+  car rental companies, where nobody is a guest — and `guest` is already taken in
+  this schema, twice, with different meanings (`reservation_guests` is a count per
+  room, `guest_categories` are age bands).
+- **Scoped to the partner, not global.** Two lodges hosting the same traveller each
+  keep their own record with their own notes. One operator's note is not the
+  other's to read, and a shared address book is not what a partner agreed to. A
+  partner's own properties do share — NWR is one partner with twenty camps.
+- **Matched by `user_id` first, then email.** An account survives a change of
+  address; an email does not. This is also what closes the circle from the
+  traveller-facing site: somebody who signs in on namibway.com and books arrives
+  here already identified.
+- **The phone is not a match key.** It is stored normalised and searched on, but a
+  couple's single mobile silently merging two people is much harder to undo than two
+  records. A human decides.
+- **Every booking resolves a customer**, inside `InventoryWriter::book()` rather
+  than in each screen, so the customer view has no holes in it.
+- **An existing customer is used, not overwritten.** A typo in one booking must not
+  rewrite what a property learned over three seasons. Correcting a customer is its
+  own act on its own screen.
+- **Email is required on the website and optional at the desk.** A mandatory field
+  that cannot always be satisfied produces `x@x.com`, which is worse than a blank.
+
+Comments are a polymorphic `notes` table with the author's name frozen beside the
+account id — on customers and stays alike. `reservations.notes` stays and is a
+different thing: that column is what the booking was taken with, the table is the
+running log that starts afterwards.
+
+The same step built the **`Inquiry` → `Reservation` bridge** (`StayPromoter`), which
+had been designed in `CLAUDE.md` and left unbuilt. A confirmed request now becomes a
+stay that holds real inventory and appears on the arrivals board, once, idempotently
+— and a promotion that cannot happen alerts the team instead of un-confirming a
+guest who has already been told they have a room.
 
 Steps 5 and 6 were the other way round in the first draft. Switching a lodge on is
 a rollout feature rather than a booking-core one, but it is what turns all of this
@@ -480,9 +502,17 @@ here at all.
 Naming these matters as much as the plan, because a disabled button is a claim:
 
 Channel synchronisation, iCal, room-level assignment (a reservation holds room
-types and quantities, never a named room), folio and payments, housekeeping, tax
-reporting, and the `Inquiry` → `Reservation` bridge, which is designed in
-`CLAUDE.md` and still unbuilt.
+types and quantities, never a named room), folio and payments, housekeeping, and
+tax reporting.
+
+One thing is now *half* here and should be named rather than assumed: the
+traveller-facing side and the lodge-facing side still count availability
+separately — the trip plan's room picker counts overlapping inquiries, the
+calendar counts its own units — and the picker shows a room type's base rate
+rather than the rate plan's price. Room types themselves are one table and are
+shared. Making the picker read the calendar is the step that removes the one
+failure mode `StayPromoter` has to alert about, and it is worth doing before the
+first real partner sells through both at once.
 
 Also worth repeating: **no connector has ever run against a real partner account.**
 The market conventions this design follows are well established, but the data

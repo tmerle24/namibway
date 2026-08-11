@@ -19,7 +19,7 @@ class PhoneNumberFormatter
             return null;
         }
 
-        $international = $this->normalize($raw);
+        $international = $this->toInternational($raw);
 
         if ($international === null) {
             return null;
@@ -33,9 +33,19 @@ class PhoneNumberFormatter
 
     /**
      * Reduce raw input to a leading-"+" international digit string.
+     *
+     * Public because it is also what "the same number" means when one is
+     * stored to be searched on — "081 234 5678" and "+264 81 234 5678" are one
+     * number, and only this method knows that.
      */
-    private function normalize(string $raw): ?string
+    public function toInternational(?string $raw): ?string
     {
+        $raw = trim((string) $raw);
+
+        if ($raw === '') {
+            return null;
+        }
+
         // "(264) 64 20 90 46" -> "+264 64 20 90 46": some scraped sources
         // wrap the country code in parens instead of using a "+".
         $raw = preg_replace('/^\(\s*(\d{1,4})\s*\)/', '+$1', $raw);

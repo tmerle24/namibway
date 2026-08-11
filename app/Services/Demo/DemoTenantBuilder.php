@@ -7,6 +7,7 @@ use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
+use App\Models\Customer;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\Reservation;
@@ -78,6 +79,12 @@ class DemoTenantBuilder
         // so a rebuild is a rebuild and not a second layer of stays on top of
         // the first.
         $this->wipe($listing);
+
+        // The invented guests too. They are scoped to the partner rather than
+        // to the property, so purging the book leaves them behind — and a demo
+        // rebuilt weekly would otherwise show a customer list growing without
+        // any bookings to explain it.
+        Customer::query()->where('partner_id', $partner->id)->delete();
 
         $rooms = $this->copyRoomTypes($source, $listing);
 

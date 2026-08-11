@@ -1,4 +1,5 @@
 @php
+    use App\Filament\Partner\Resources\CustomerResource;
     use App\Support\Money;
 
     /** @var \App\Models\Reservation|null $reservation */
@@ -122,9 +123,39 @@
                 @endif
 
                 @if (filled($reservation->notes))
-                    <div class="nw-subhead">Notes</div>
+                    <div class="nw-subhead">Booking note</div>
                     <p class="nw-hint">{{ $reservation->notes }}</p>
                 @endif
+
+                {{-- The running log, which is a different thing from the note
+                     the booking was taken with: these have an author and a
+                     time, and they keep arriving while the guest is here. --}}
+                @php($stayNotes = $reservation->noteLog()->limit(20)->get())
+
+                <div class="nw-subhead">Notes</div>
+
+                @if ($stayNotes->isEmpty())
+                    <p class="nw-hint">Nothing written yet.</p>
+                @else
+                    @foreach ($stayNotes as $note)
+                        <p class="nw-hint">
+                            <strong>{{ $note->author_name }}</strong>,
+                            {{ $note->created_at?->isoFormat('D MMM, HH:mm') }} — {{ $note->body }}
+                        </p>
+                    @endforeach
+                @endif
+
+                <div class="nw-drawer__actions nw-noprint">
+                    {{ $this->addStayNoteAction }}
+
+                    @if ($reservation->customer_id !== null)
+                        {{-- The other way round through the same data: from this
+                             stay to everything else this person has booked. --}}
+                        <a class="nw-btn" href="{{ CustomerResource::getUrl('view', ['record' => $reservation->customer_id]) }}">
+                            {{ $reservation->customer?->name ?? 'Customer' }} &rarr;
+                        </a>
+                    @endif
+                </div>
 
                 <div class="nw-subhead">Rooms</div>
 
