@@ -3,6 +3,7 @@
 namespace Tests\Feature\Inventory;
 
 use App\Enums\ReservationSource;
+use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
@@ -116,7 +117,7 @@ class RatePlanTest extends TestCase
         // product — this is the assertion the whole split exists for.
         $this->assertSame(0, $this->calendar->unitsFree($room, Carbon::parse('2026-09-10')));
 
-        $this->expectException(\App\Exceptions\Inventory\InventoryUnavailableException::class);
+        $this->expectException(InventoryUnavailableException::class);
 
         $this->writer->book(new BookingRequest(
             listing: $listing,
