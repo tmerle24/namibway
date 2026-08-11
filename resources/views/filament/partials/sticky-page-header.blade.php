@@ -60,14 +60,15 @@
            it ever stops. */
         background-color: rgb(var(--gray-50, 249 250 251));
 
-        /* Soft enough to read as depth rather than as an edge, but still
-           there — without it, content scrolling underneath appears to end in
-           mid-air. */
-        box-shadow: 0 4px 6px -4px rgb(0 0 0 / 0.08);
+        /* No shadow. It was meant to show that content passes underneath, but
+           CSS cannot tell whether anything is actually under there, so it was
+           painted on a page sitting at the top just the same — permanently
+           darkening the first few pixels of the content for the sake of a
+           state that is usually not the case. The opaque background already
+           does the whole job the header has to do. */
     }
 
     .dark .fi-header {
         background-color: rgb(var(--gray-950, 3 7 18));
-        box-shadow: 0 4px 6px -4px rgb(0 0 0 / 0.4);
     }
 </style>
