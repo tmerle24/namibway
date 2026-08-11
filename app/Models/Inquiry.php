@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\InquiryStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -88,5 +89,17 @@ class Inquiry extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The stay this request holds on the property's calendar, where it took
+     * one — provisional while the partner decides, confirmed once they say
+     * yes. Unique on the reservation side, so there is never more than one.
+     *
+     * @return HasOne<Reservation, $this>
+     */
+    public function reservation(): HasOne
+    {
+        return $this->hasOne(Reservation::class);
     }
 }

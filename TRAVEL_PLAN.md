@@ -158,10 +158,12 @@ Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
   free units and what is left after overlapping requests.
 - ✅ **A room nobody priced is left out** rather than offered at zero — the
   booking would be refused at the other end anyway.
-- ⬜ **The last piece: soft holds as real inventory.** A request in flight still
-  holds no ARI units, so it is counted separately. Writing a held reservation
-  into the calendar, released by the expiry job that already exists, would leave
-  exactly one count and close the `StayPromoter` alert for good.
+- ✅ **The last piece: soft holds as real inventory.** A request now takes a
+  provisional stay on the calendar while the partner decides, so the room really
+  does come off sale — before this, "hold" was a timestamp and the lodge could
+  sell the room at its own desk while the traveller waited. Released on decline
+  and on expiry, and transitioned into the guest's own stay on confirmation
+  rather than becoming a second one.
 
 ### Session 1 — 2026-08-04
 

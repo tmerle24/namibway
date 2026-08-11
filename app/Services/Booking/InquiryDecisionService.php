@@ -4,8 +4,11 @@ namespace App\Services\Booking;
 
 use App\Connectors\ConnectorFactory;
 use App\Enums\InquiryStatus;
+use App\Enums\StayStatus;
 use App\Mail\GuestBookingConfirmed;
 use App\Models\Inquiry;
+use App\Models\Reservation;
+use App\Services\Inventory\InventoryWriter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use InvalidArgumentException;
@@ -52,11 +55,33 @@ class InquiryDecisionService
 
         $inquiry->update(['status' => InquiryStatus::Cancelled]);
 
+        // The room this request was holding goes back on sale. A partner who
+        // declines has said no; leaving the hold behind would keep the room
+        // off the market until it expired on its own.
+        $this->releaseHold($inquiry);
+
         $this->notifyConnector($inquiry, 'cancel');
 
         Log::info("Inquiry [{$inquiry->id}] declined by partner");
 
         return true;
+    }
+
+    /**
+     * Cancel the provisional stay a request was holding. Guarded on the status
+     * so a stay that has already moved on is left alone, and silent when there
+     * was no hold — most requests, for now.
+     */
+    private function releaseHold(Inquiry $inquiry): void
+    {
+        $held = Reservation::query()
+            ->where('inquiry_id', $inquiry->id)
+            ->where('status', StayStatus::Provisional)
+            ->first();
+
+        if ($held !== null) {
+            app(InventoryWriter::class)->cancel($held, 'Request declined by the property');
+        }
     }
 
     private function notifyConnector(Inquiry $inquiry, string $action): void

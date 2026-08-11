@@ -3,6 +3,7 @@
 namespace App\Services\Booking;
 
 use App\Enums\ReservationSource;
+use App\Enums\StayStatus;
 use App\Exceptions\Booking\StayNotPromotableException;
 use App\Mail\StayPromotionFailed;
 use App\Models\Inquiry;
@@ -28,10 +29,17 @@ use Throwable;
  *
  * ## When
  *
- * The moment an inquiry reaches InquiryStatus::Confirmed, and not before. An
- * on-request inquiry is a question, and holding real inventory for every
- * question is exactly the flooding problem the whole booking mechanic exists
- * to prevent.
+ * Twice, in two states. A request that is waiting for an answer takes a
+ * **provisional** stay — the room is held, not promised — and confirming it
+ * turns that same stay into a confirmed one. A request nobody held (a partner
+ * on somebody else's PMS, a stay with no dates) becomes a confirmed stay
+ * outright at the moment it is confirmed.
+ *
+ * A hold is not the flooding problem the booking mechanic guards against.
+ * That problem is *partners* being asked to answer speculative requests, and
+ * the one-active-request gate is what solves it. A room quietly held for a few
+ * hours behind a request that already exists asks nobody for anything — and it
+ * is the difference between selling the same room twice and not.
  *
  * ## Idempotency
  *
@@ -41,13 +49,12 @@ use Throwable;
  *
  * ## What may fail, and what happens then
  *
- * Promotion can fail where the request could not: the traveller-facing room
- * picker counts overlapping inquiries and the calendar counts units, and they
- * are separate readers today. **A failed promotion never un-confirms the
- * guest's booking.** The guest has been told they have a room; the honest
- * consequence is an operational alert to the team, not a cancellation. Making
- * the picker read the calendar is the later step that removes the failure
- * mode; until then this is where it surfaces.
+ * Promotion can fail where the request could not — much more rarely since the
+ * room is now held while the partner decides, but a request that took no hold
+ * still has a window in which its room can go. **A failed promotion never
+ * un-confirms the guest's booking.** The guest has been told they have a room;
+ * the honest consequence is an operational alert to the team, not a
+ * cancellation.
  *
  * Restrictions are the one thing deliberately not enforced here. A minimum
  * stay or a closed-to-arrival day is a rule about *selling* a night. This
@@ -60,6 +67,43 @@ class StayPromoter
     public function __construct(private readonly InventoryWriter $writer) {}
 
     /**
+     * Hold the room while the partner decides.
+     *
+     * A request that is waiting for an answer is not a stay, but it is not
+     * nothing either: the room it asks for should not be sold to somebody else
+     * in the meantime. So it goes onto the calendar as a **provisional** stay —
+     * real inventory, released by the same expiry that already governs the
+     * hold, and turned into a confirmed stay by promote() if the partner says
+     * yes.
+     *
+     * This is what makes the calendar the only counter. Until every request
+     * held inventory, availability had to be the smaller of two numbers; a
+     * request that holds its room is counted once, by the calendar, like
+     * everything else.
+     *
+     * Quiet by design. A hold that cannot be taken — the last room went while
+     * the request was in the post — leaves the request exactly as it was, and
+     * RoomAvailability goes on counting it the old way. A hold is an
+     * improvement on a request, never a precondition for one.
+     */
+    public function hold(Inquiry $inquiry): ?Reservation
+    {
+        $existing = Reservation::query()->where('inquiry_id', $inquiry->id)->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        try {
+            return $this->write($inquiry, StayStatus::Provisional);
+        } catch (Throwable $failure) {
+            Log::info("StayPromoter: no hold taken for inquiry [{$inquiry->id}]: ".$failure->getMessage());
+
+            return null;
+        }
+    }
+
+    /**
      * Record the stay, or say why it cannot be recorded. Called twice for the
      * same request, it returns the stay it made the first time.
      *
@@ -70,9 +114,24 @@ class StayPromoter
         $existing = Reservation::query()->where('inquiry_id', $inquiry->id)->first();
 
         if ($existing !== null) {
-            return $existing;
+            // The room was already held for this request. Confirming it is a
+            // transition, not a second stay — the inventory it consumed at
+            // hold time is the inventory the guest keeps.
+            return $existing->status === StayStatus::Provisional
+                ? $this->writer->transition($existing, StayStatus::Confirmed)
+                : $existing;
         }
 
+        return $this->write($inquiry, StayStatus::Confirmed);
+    }
+
+    /**
+     * The stay itself, in whichever state it is being written.
+     *
+     * @throws StayNotPromotableException when the request cannot become a stay
+     */
+    private function write(Inquiry $inquiry, StayStatus $status): Reservation
+    {
         $listing = $inquiry->listing;
 
         if ($listing === null) {
@@ -96,6 +155,7 @@ class StayPromoter
             guestEmail: $inquiry->email,
             guestPhone: $inquiry->phone,
             source: ReservationSource::Website,
+            status: $status,
             adults: max(1, $inquiry->adults),
             children: max(0, $inquiry->children),
             notes: $inquiry->message,
@@ -105,9 +165,9 @@ class StayPromoter
             // could quietly change what somebody already agreed to pay.
             totalOverride: $inquiry->total_amount,
             overrideReason: $inquiry->total_amount === null ? null : 'Quoted on the website request',
-            // The guest was written to by whoever confirmed the request. A
-            // second confirmation for the same booking reads as a second
-            // booking.
+            // The guest was written to by whoever confirmed the request, and
+            // a hold is not news at all. A second confirmation for the same
+            // booking reads as a second booking.
             notify: false,
             guestUserId: $inquiry->user_id,
             ignoreStayRules: true,

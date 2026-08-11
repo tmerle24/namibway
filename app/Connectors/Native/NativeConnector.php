@@ -15,6 +15,7 @@ use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\RoomType;
 use App\Services\Booking\RoomAvailability;
+use App\Services\Booking\StayPromoter;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -112,6 +113,16 @@ class NativeConnector implements BookingConnector
                 ]);
 
                 ExpireNativeHoldJob::dispatch($request->inquiryId)->delay(now()->addHours(self::HOLD_HOURS));
+
+                // The hold, on the calendar, as a provisional stay. Until this
+                // existed the "hold" was a timestamp and nothing else: the room
+                // stayed on sale in the panel and the lodge could sell it out
+                // from under the traveller while the request sat waiting.
+                $inquiry = Inquiry::find($request->inquiryId);
+
+                if ($inquiry !== null) {
+                    app(StayPromoter::class)->hold($inquiry);
+                }
             }
 
             return new ReservationResponse(

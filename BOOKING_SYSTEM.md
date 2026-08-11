@@ -559,13 +559,13 @@ requests already asking for the same nights. So a stay the lodge took at its own
 desk stops being offered online, and a season the lodge priced reaches the
 traveller.
 
-What is left is deliberate: **a request in flight holds no ARI inventory**,
-because holding real rooms for every question is the flooding problem this whole
-mechanic exists to prevent. Writing soft holds into the calendar as real
-inventory — a held reservation, released by the same expiry job that exists
-today — is the step that would leave exactly one count and close the
-`StayPromoter` alert for good. It is the last piece of this seam and it is not
-built.
+The last piece landed the same day: **a request holds its room.** A request on a
+property whose inventory we hold takes a provisional stay on the calendar
+(`StayPromoter::hold`), released when it is declined or expires and transitioned
+into the guest's own stay when it is confirmed. The second count now covers only
+what could take no hold — a partner on somebody else's PMS, a request with no
+dates — and a request that holds its room is excluded from it precisely because
+it holds it, so the two can never double-count.
 
 Also worth repeating: **no connector has ever run against a real partner account.**
 The market conventions this design follows are well established, but the data

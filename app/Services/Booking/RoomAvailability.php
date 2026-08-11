@@ -20,15 +20,20 @@ use Illuminate\Support\Collection;
  * traveller-facing picker did not read it at all, so a lodge could fill itself
  * up in its own panel while the trip plan carried on offering the same rooms.
  *
- * **Requests in flight** are not in the calendar: an inquiry nobody has
- * confirmed holds no inventory, by design — holding real rooms for every
- * question is the flooding problem the whole booking mechanic exists to
- * prevent. But three travellers already asking about the last room is a reason
- * not to offer it to a fourth, so overlapping requests are counted too.
+ * **Requests that hold no room** are the second count, and it is shrinking. A
+ * request on a property whose inventory we hold now takes a provisional stay
+ * on the calendar (see App\Services\Booking\StayPromoter::hold), so it is
+ * counted there like everything else. What is left over is requests that could
+ * not take one: a partner on somebody else's PMS, a request with no dates, a
+ * room that went while the request was in the post. Those are still subtracted
+ * here, because three travellers asking about the last room is a reason not to
+ * offer it to a fourth.
  *
- * Taking the minimum is conservative in both directions and never oversells.
- * Moving holds into the calendar as real inventory is the step that would
- * leave one count; it is deliberately not this one.
+ * The two never double-count: a request that holds its room is excluded from
+ * the second count precisely *because* it holds it. So the seam closes itself
+ * as coverage grows — when every request takes a hold, the subtraction is
+ * always zero and the calendar is the only counter, with no further change
+ * here.
  *
  * `Inquiry::room_type_code` matches `RoomType::code` (a string, not a foreign
  * key — see the RoomType model), so a room type that is renamed keeps its
@@ -54,6 +59,10 @@ class RoomAvailability
             // not overlap it, so the room turns over the same day.
             ->where('check_in', '<', $checkOut)
             ->where('check_out', '>', $checkIn)
+            // A request holding a room on the calendar is already counted
+            // there. Counting it here as well would take the same room twice
+            // and show a property fuller than it is.
+            ->whereDoesntHave('reservation')
             ->count();
 
         $afterRequests = $roomType->total_units - $overlapping;
