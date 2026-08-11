@@ -14,6 +14,7 @@ use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\DTOs\ManualBookingLinePreview;
 use App\Services\Inventory\DTOs\ManualBookingPreview;
+use App\Services\Inventory\DTOs\ResolvedRoomLine;
 use App\Services\Pricing\Occupancy;
 use App\Support\CountrySettings;
 use Carbon\CarbonInterface;
@@ -76,7 +77,7 @@ class ManualBooking
         $demand = [];
 
         foreach ($rooms as $room) {
-            $demand[$room['room']->id] = ($demand[$room['room']->id] ?? 0) + $room['quantity'];
+            $demand[$room->roomType->id] = ($demand[$room->roomType->id] ?? 0) + $room->quantity;
         }
 
         $problems = [];
@@ -85,9 +86,9 @@ class ManualBooking
         $checked = [];
 
         foreach ($rooms as $room) {
-            $roomType = $room['room'];
-            $quantity = $room['quantity'];
-            $plan = $room['ratePlan'];
+            $roomType = $room->roomType;
+            $quantity = $room->quantity;
+            $plan = $room->ratePlan;
             $free = $this->calendar->unitsFreeThroughout($roomType, $in, $out);
 
             if (! isset($checked[$roomType->id])) {
@@ -106,7 +107,7 @@ class ManualBooking
             }
 
             try {
-                $quote = $this->calendar->quote($roomType, $in, $out, $quantity, $plan, $room['occupancy']);
+                $quote = $this->calendar->quote($roomType, $in, $out, $quantity, $plan, $room->occupancy);
             } catch (UnpriceableStayException $unpriceable) {
                 // A room that cannot be priced is not a room that can be
                 // booked, so this is a problem rather than a zero.
@@ -123,7 +124,7 @@ class ManualBooking
                 total: $quote->total(),
                 currency: $quote->currency,
                 unitsFree: $free,
-                occupancy: $room['occupancy'],
+                occupancy: $room->occupancy,
             );
 
             $currency = $quote->currency;
@@ -171,12 +172,12 @@ class ManualBooking
         // decides, and where it belongs.
         foreach ($this->resolveRooms($listing, $lines) as $room) {
             $bookingLines[] = new BookingLine(
-                $room['room'],
-                $room['quantity'],
+                $room->roomType,
+                $room->quantity,
                 $in,
                 $out,
-                $room['ratePlan'],
-                $room['occupancy'],
+                $room->ratePlan,
+                $room->occupancy,
             );
         }
 
@@ -239,7 +240,7 @@ class ManualBooking
      * reservation_guests migration.
      *
      * @param  array<int, array<string, mixed>>  $lines
-     * @return array<int, array{room: RoomType, quantity: int, ratePlan: RatePlan|null, occupancy: Occupancy|null}>
+     * @return array<int, ResolvedRoomLine>
      */
     private function resolveRooms(Listing $listing, array $lines): array
     {
@@ -283,7 +284,7 @@ class ManualBooking
                 $key = $room->id.':'.($plan->id ?? 0);
 
                 if (isset($merged[$key])) {
-                    $resolved[$merged[$key]]['quantity'] += $quantity;
+                    $resolved[$merged[$key]] = $resolved[$merged[$key]]->plus($quantity);
 
                     continue;
                 }
@@ -291,12 +292,7 @@ class ManualBooking
                 $merged[$key] = count($resolved);
             }
 
-            $resolved[] = [
-                'room' => $room,
-                'quantity' => $quantity,
-                'ratePlan' => $plan,
-                'occupancy' => $occupancy,
-            ];
+            $resolved[] = new ResolvedRoomLine($room, $quantity, $plan, $occupancy);
         }
 
         return $resolved;
