@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Controllers\Partner\SelectPropertyController;
 use App\Http\Middleware\ForceAdminLocale;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -19,6 +20,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class PartnerPanelProvider extends PanelProvider
@@ -44,6 +46,19 @@ class PartnerPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('filament.partials.sticky-page-header')->render(),
             )
+            // A partner with several properties — NWR is one partner with about
+            // twenty camps — picks which one the lodge-facing screens show. The
+            // partial renders nothing for a partner with one property or none.
+            ->renderHook(
+                PanelsRenderHook::TOPBAR_START,
+                fn (): string => view('filament.partner.partials.property-switcher')->render(),
+            )
+            // Registered on the panel rather than in routes/web.php so the post
+            // runs the panel's own middleware. The same route in the web group
+            // would drag the traveller-facing stack — Inertia, currency, locale
+            // — through a form submission that only writes a session key.
+            ->authenticatedRoutes(fn () => Route::post('property', SelectPropertyController::class)
+                ->name('property.select'))
             ->discoverResources(in: app_path('Filament/Partner/Resources'), for: 'App\\Filament\\Partner\\Resources')
             ->discoverPages(in: app_path('Filament/Partner/Pages'), for: 'App\\Filament\\Partner\\Pages')
             ->pages([

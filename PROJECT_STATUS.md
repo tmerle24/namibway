@@ -99,13 +99,16 @@ Ordered so that each item depends only on the ones above it:
 4. ✅ **A stay lifecycle** — `App\Enums\StayStatus`: provisional, confirmed, due-in,
    in-house, checked-out, no-show, cancelled, cancelled-late, with the legal transitions
    enforced in `InventoryWriter`. Done 2026-08-11.
-5. ⬜ **Front-desk surfaces**: today's arrivals and departures, an occupancy view, capture
-   of a walk-in or telephone booking, and room-level assignment if they assign real
-   rooms rather than room types. **Nothing is built** — the substrate has no UI at all.
-   Note that room-level assignment is deliberately *not* modelled yet: a reservation
-   holds room types and quantities, never a named room.
-6. ⬜ **Multi-property under one partner.** NWR is one partner with many camps. `Listing`
-   already models that; the partner panel does not — it has no property switcher.
+5. 🟡 **Front-desk surfaces**: the two screens a lodge *reads* are built — an occupancy
+   calendar and an arrivals/departures board, both in the partner panel and both
+   read-only (2026-08-11, below). What a lodge would *do* is not: capturing a walk-in or
+   telephone booking, and room-level assignment if they assign real rooms rather than
+   room types. Note that room-level assignment is deliberately *not* modelled yet: a
+   reservation holds room types and quantities, never a named room.
+6. ✅ **Multi-property under one partner.** NWR is one partner with many camps. The
+   partner panel now has a property switcher in its topbar, scoping the lodge-facing
+   screens; the existing Listing and Inquiry resources are unchanged and still show
+   everything the partner owns. Done 2026-08-11.
 7. ⬜ **Money**: what a stay costs, what was paid, what is owed. A `Reservation` now
    carries a `total_amount` and a per-night breakdown (`reservation_nights`), so what a
    stay *costs* is answered. What was paid and what is owed is not — there is no folio
@@ -145,6 +148,56 @@ fail.
 Deliberately not built: the `Inquiry` → `Reservation` bridge (designed and written up in
 `CLAUDE.md`, no code), staged confirmations, ledger, allotments, channel sync, iCal,
 offline operation, payments, folio, housekeeping, tax reporting.
+
+### 2026-08-11 — the calendar and the arrivals board (slice 2 of 3)
+
+The half a human touches, in the existing partner panel (`/partner`). **Read-only on
+purpose**: no creating a booking, no editing a rate, no dragging a bar. Entering a
+booking is slice 3, and keeping the two apart is what made this one shippable on its own.
+Nothing added here calls `InventoryWriter`, and a test asserts it by watching for writes
+while both screens render.
+
+What landed:
+
+- **Property switcher** (`App\Filament\Partner\Support\SelectedProperty`) in the panel
+  topbar, remembering the choice in the session but re-resolving it against the partner's
+  own listings on every read — an id put into a session by hand selects nothing rather
+  than someone else's lodge. Only accommodation listings are offered, because the screens
+  read room types. Filament's own multi-tenancy was deliberately *not* used: it would
+  rewrite every panel route to `/partner/{tenant}/…` and force tenant scoping onto the
+  existing Listing and Inquiry resources, which still show everything the partner owns.
+- **Occupancy calendar** (`/partner/calendar`) — room types down, nights across, stays and
+  blocks as bars, with units free and the rate per night in every cell, restrictions as
+  quiet markers, and sold-out and overbooked as distinct states. A block is drawn with a
+  hatch rather than a colour, so "off sale" survives a monochrome print and a colour-blind
+  reader.
+- **Arrivals and departures** (`/partner/arrivals`) — one date, three movements, printable.
+  Deliberately three plain tables rather than Filament tables: this gets carried to a desk,
+  and pagination and search controls do not survive a printer.
+
+Two things are worth knowing before touching either screen:
+
+**Data loading is separate from rendering, and that is load-bearing.**
+`App\Services\Inventory\OccupancyGrid` returns plain DTOs — columns, rows, cells,
+lane-packed bars already clipped to the visible range — so the Blade does no date
+arithmetic and issues no queries. A month across twenty room types is a *fixed* number of
+queries, and a test asserts the count is identical at three room types and at twenty,
+because the failure mode here is one query per cell on a satellite link at a reception
+desk. The bulk read is `AvailabilityCalendar::snapshot()`; the sparse-calendar rules (a
+missing row or a null override means "follow the room type") moved to
+`CalendarSnapshot` and the single-night reads now call the same three helpers, so the
+grid and the booking path cannot drift apart.
+
+**The panel has no custom Filament theme**, so the only Tailwind that exists in the built
+CSS is whatever Filament's own views use. The dense grid is therefore plain CSS in
+`resources/views/filament/partner/partials/lodge-styles.blade.php`, on Filament's own
+palette variables with literal fallbacks. If a Filament theme is ever added, that file is
+the thing to fold into it.
+
+Deliberately not built here: entering or editing a booking, editing rates or restrictions,
+room-level assignment, a phone layout (laptop first, tablet usable — that was the brief),
+and any control for something that does not exist yet (no sync, no iCal, no payments, no
+housekeeping, no invoicing — a disabled button is a claim).
 
 ### Constraints that are specific to this market
 
