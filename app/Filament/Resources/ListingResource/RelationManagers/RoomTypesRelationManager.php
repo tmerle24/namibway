@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ListingResource\RelationManagers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Amenity;
 use App\Models\RoomType;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -73,6 +74,20 @@ class RoomTypesRelationManager extends RelationManager
                 Forms\Components\Toggle::make('is_active')
                     ->helperText('Inactive room types are hidden from travelers and from availability.')
                     ->default(true),
+                // A searchable multi-select rather than forty checkboxes: a
+                // lodge ticking amenities knows what it is looking for and can
+                // type it faster than it can find it. The category rides along
+                // in each label, so "shower" narrows to the bathroom ones
+                // without the list having to be grouped.
+                Forms\Components\Select::make('amenities')
+                    ->label('What this room has')
+                    ->relationship('amenities', 'name')
+                    ->getOptionLabelFromRecordUsing(fn (Amenity $record): string => $record->label())
+                    ->multiple()
+                    ->preload()
+                    ->searchable()
+                    ->helperText('From the shared list, so two lodges describing the same thing describe it the same way. Anything missing is a request to us and one more entry for everybody.')
+                    ->columnSpanFull(),
                 Forms\Components\Placeholder::make('gallery_preview')
                     ->label('Current photos')
                     ->content(function (?RoomType $record): HtmlString {
@@ -134,6 +149,10 @@ class RoomTypesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('rate_per_night')
                     ->label('Per night')
                     ->formatStateUsing(fn (RoomType $record) => "{$record->currency} ".number_format((float) $record->rate_per_night, 2)),
+                Tables\Columns\TextColumn::make('amenities_count')
+                    ->label('Amenities')
+                    ->counts('amenities')
+                    ->placeholder('—'),
                 Tables\Columns\IconColumn::make('is_active')
                     ->boolean(),
             ])

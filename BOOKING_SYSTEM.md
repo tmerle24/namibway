@@ -361,9 +361,27 @@ written to has been misled by silence.
 against their own real inventory needs no invented sandbox. It stays until somebody
 misses it.
 
-**6. Amenities, categories and photos.** Independent of everything above; can slot
-in anywhere, which is exactly why it goes last — it is the one step that never
-blocks another.
+**6. Amenities, categories and photos. — Done, 2026-08-11.** Room photos turned out
+to exist already, editable in both panels; what was missing was amenities. There is
+now **one catalogue everybody shares** — about forty entries grouped for reading
+(beds, bathroom, comfort, outdoors, food, power, services, accessibility) — and a
+room picks from it. Not one catalogue per property: a shared vocabulary is the only
+thing that makes two rooms comparable, a filter possible, or a channel mapping cheap
+later, and a list anybody can extend is one where "WiFi", "Wi-Fi" and "wifi" are
+three amenities within a month. The team curates it under Content → Amenities;
+retiring an entry hides it from the picker without rewriting what the rooms that
+have it claim.
+
+The catalogue is written from Namibian rate sheets rather than a generic hotel list:
+mosquito nets, outdoor shower, braai facilities, star bed, and — because a guest who
+is not told arrives with a dead camera battery — solar power, generator hours only,
+and no power after dark.
+
+Left deliberately alone: `listings.facilities`, the free-text array holding the
+*property's* amenities, which the scrapers fill and the traveller-facing keyword
+search reads. Moving it onto this catalogue is a sensible later step and a bigger
+one — it reaches into the traveller site and the enrichment pipeline, and doing it
+badly would lose data the scrapers took months to gather.
 
 Steps 5 and 6 were the other way round in the first draft. Switching a lodge on is
 a rollout feature rather than a booking-core one, but it is what turns all of this
