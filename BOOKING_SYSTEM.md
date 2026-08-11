@@ -344,11 +344,22 @@ screenful every other time.
 **4. Promotions and codes.** They compute on a finished price, so they come after
 step 2.
 
-**5. `partners.booking_enabled` and per-partner demo mode.** A switch deciding
-whether a lodge is live, and a demo address of the partner's own so an operator can
-test bookings against their real inventory before being switched on. Until then,
-booking mail goes to `team+<lodge>@namibway.com`. It replaces `booking:demo-tenant`,
-which exists only because there was no other way to show the system working.
+**5. `partners.booking_enabled` and per-partner demo mode. — Done, 2026-08-11.**
+Three states, and the only difference between them is who receives the mail: not
+live (everything to `team+<lodge>@namibway.com`), test mode (everything to one
+address the operator chose), live (guests and the lodge). The calendar, the prices
+and the booking form are identical in all three, because a system a partner is
+evaluating has to be the system they will get.
+
+This is also where booking mail started existing at all: a stay now sends the guest
+a confirmation and the property its copy, and a cancellation says so. `BookingMailbox`
+is the single place that decides where any of it goes, and the partner panel carries
+a notice saying so until a property is live — an operator who believes a guest was
+written to has been misled by silence.
+
+`booking:demo-tenant` still works and is now the lesser tool: a partner testing
+against their own real inventory needs no invented sandbox. It stays until somebody
+misses it.
 
 **6. Amenities, categories and photos.** Independent of everything above; can slot
 in anywhere, which is exactly why it goes last — it is the one step that never

@@ -95,6 +95,42 @@ class PartnerResource extends Resource
                                     }),
                             ]),
 
+                        Forms\Components\Tabs\Tab::make('Bookings')
+                            ->icon('heroicon-o-envelope')
+                            ->schema([
+                                Forms\Components\Placeholder::make('booking_state')
+                                    ->label('What happens to booking mail today')
+                                    ->content(fn (Get $get): string => match (true) {
+                                        (bool) $get('booking_demo_mode') => 'Test mode — every confirmation goes to the demo address below and never to a guest.',
+                                        (bool) $get('booking_enabled') => 'Live — guests receive their confirmations and this partner receives the booking notices.',
+                                        default => 'Not live — every confirmation goes to the NamibWay team mailbox, tagged with the property name.',
+                                    }),
+
+                                Forms\Components\Toggle::make('booking_enabled')
+                                    ->label('Bookings are live')
+                                    ->helperText('Switching this on means real guests receive real mail in NamibWay’s name. It is ours to decide, not the partner’s.')
+                                    ->live(),
+
+                                Forms\Components\Toggle::make('booking_demo_mode')
+                                    ->label('Test mode')
+                                    ->helperText('The operator is trying the system against their own inventory. Nothing reaches a guest while this is on — it wins over the switch above.')
+                                    ->live(),
+
+                                Forms\Components\TextInput::make('booking_email')
+                                    ->label('Where bookings should go')
+                                    ->email()
+                                    ->maxLength(255)
+                                    ->helperText('The reservations desk, which is often not the address the partner was first reached on. Empty falls back to the contact email, and then to us — booking mail is never simply dropped.'),
+
+                                Forms\Components\TextInput::make('booking_demo_email')
+                                    ->label('Test address')
+                                    ->email()
+                                    ->maxLength(255)
+                                    ->helperText('Where everything goes while test mode is on. Empty falls back to the team mailbox.')
+                                    ->visible(fn (Get $get): bool => (bool) $get('booking_demo_mode')),
+                            ])
+                            ->columns(2),
+
                         Forms\Components\Tabs\Tab::make('Booking system / API')
                             ->icon('heroicon-o-link')
                             ->schema([

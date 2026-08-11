@@ -29,6 +29,10 @@ use Spatie\Translatable\HasTranslations;
  * @property array<string, mixed>|null $connector_config
  * @property Carbon|null $connector_verified_at
  * @property bool $is_demo
+ * @property bool $booking_enabled
+ * @property bool $booking_demo_mode
+ * @property string|null $booking_email
+ * @property string|null $booking_demo_email
  * @property int|null $demo_source_listing_id
  */
 class Partner extends Model
@@ -57,6 +61,10 @@ class Partner extends Model
         'connector_config',
         'connector_verified_at',
         'is_demo',
+        'booking_enabled',
+        'booking_demo_mode',
+        'booking_email',
+        'booking_demo_email',
         'demo_source_listing_id',
     ];
 
@@ -68,6 +76,8 @@ class Partner extends Model
         'claim_rejected_at' => 'datetime',
         'connector_verified_at' => 'datetime',
         'is_demo' => 'boolean',
+        'booking_enabled' => 'boolean',
+        'booking_demo_mode' => 'boolean',
     ];
 
     /**
