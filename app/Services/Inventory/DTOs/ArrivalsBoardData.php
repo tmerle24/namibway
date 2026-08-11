@@ -57,4 +57,42 @@ class ArrivalsBoardData
     {
         return (int) $reservations->sum(fn (Reservation $reservation) => $reservation->adults + $reservation->children);
     }
+
+    /**
+     * Rooms on each board basis tonight — the kitchen's question, and the
+     * reason board is on this screen at all.
+     *
+     * Counted in **rooms and not in guests**, which is the honest number: board
+     * is a property of a room line, and a stay holding one DBB room and one
+     * B&B room cannot have its head count split between them without inventing
+     * an attribution. The guest total beside it is the other half of the
+     * answer, and between the two a kitchen can lay the tables.
+     *
+     * Rooms sold with no board stated are left out rather than counted as room
+     * only: not saying is not the same as saying no meals.
+     *
+     * @return array<string, int> board label => rooms
+     */
+    public function boardTonight(): array
+    {
+        $counts = [];
+
+        foreach ([$this->arrivals, $this->inHouse] as $reservations) {
+            foreach ($reservations as $reservation) {
+                foreach ($reservation->units as $unit) {
+                    $board = $unit->board_basis;
+
+                    if ($board === null) {
+                        continue;
+                    }
+
+                    $counts[$board->shortLabel()] = ($counts[$board->shortLabel()] ?? 0) + $unit->quantity;
+                }
+            }
+        }
+
+        ksort($counts);
+
+        return $counts;
+    }
 }

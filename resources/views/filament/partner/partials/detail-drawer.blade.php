@@ -132,6 +132,8 @@
                     <thead>
                         <tr>
                             <th>Room type</th>
+                            <th>Sold as</th>
+                            <th>Occupants</th>
                             <th>Units</th>
                             <th>Dates</th>
                             <th>Amount</th>
@@ -141,6 +143,20 @@
                         @foreach ($reservation->units as $unit)
                             <tr>
                                 <td>{{ $unit->roomType?->name ?? '—' }}</td>
+                                {{--
+                                    Read from the stay, not from the rate plan:
+                                    what this room was sold as is a fact about
+                                    February, and the plan may have been renamed
+                                    since. See the reservation_units migration.
+                                --}}
+                                <td>{{ $unit->soldAs() ?? '—' }}</td>
+                                <td>
+                                    @forelse ($unit->guests as $guest)
+                                        {{ $guest->count }} {{ $guest->category?->name ?? 'guest' }}@if (! $loop->last), @endif
+                                    @empty
+                                        —
+                                    @endforelse
+                                </td>
                                 <td class="nw-num">{{ $unit->quantity }}</td>
                                 <td class="nw-num">
                                     {{ $unit->check_in->isoFormat('D MMM') }} – {{ $unit->check_out->isoFormat('D MMM') }}

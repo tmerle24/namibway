@@ -92,6 +92,24 @@ trait EditsInventory
         $this->mountAction('createBooking');
     }
 
+    /**
+     * Taking a booking is the thing this system is for, so the form is one
+     * page and not a wizard.
+     *
+     * A wizard is right when a task is long, branching, and done once by
+     * somebody who has never done it before. This is the opposite: a desk
+     * takes the same booking thirty times a day, and every field depends on
+     * the others — change the dates and the price changes, change the room and
+     * the availability changes. Splitting that across steps hides the number
+     * somebody is watching and turns four keystrokes into four clicks. Tabs
+     * are worse still: a validation error can land on a tab nobody is looking
+     * at. Every property management system worth using does this as one dense
+     * form, and so does this one.
+     *
+     * What the form *does* need is what a long form always needs: the heading
+     * and the save button stay put while the middle scrolls, so the total and
+     * the way out are never below the fold.
+     */
     public function createBookingAction(): Action
     {
         return Action::make('createBooking')
@@ -101,6 +119,8 @@ trait EditsInventory
             ->modalDescription('A walk-in, a telephone booking, or one taken somewhere else and recorded here.')
             ->modalSubmitActionLabel('Save booking')
             ->modalWidth(MaxWidth::ThreeExtraLarge)
+            ->stickyModalHeader()
+            ->stickyModalFooter()
             ->fillForm(fn (): array => $this->bookingPrefill())
             ->form(fn (): array => $this->bookingForm())
             ->action(fn (array $data) => $this->placeBooking($data));
@@ -172,48 +192,57 @@ trait EditsInventory
                         ->content(fn (Get $get): HtmlString => $this->bookingPreviewHtml($get)),
                 ]),
 
+            // Three across rather than two: the same six fields in two rows
+            // instead of three, which is one screenful less to scroll through
+            // on the laptop a reception desk actually has.
             Section::make('Guest')
+                ->columns(3)
                 ->schema([
-                    Grid::make(2)->schema([
-                        TextInput::make('guest_name')->label('Name')->required()->maxLength(160),
-                        Select::make('source')
-                            ->label('Taken by')
-                            ->options(collect(ReservationSource::cases())
-                                // A stay entered here did not come through the
-                                // website, so offering that would be a lie the
-                                // form invited.
-                                ->reject(fn (ReservationSource $source) => $source === ReservationSource::Website)
-                                ->mapWithKeys(fn (ReservationSource $source) => [$source->value => $source->label()])
-                                ->all())
-                            ->default(ReservationSource::WalkIn->value)
-                            ->required(),
-                        TextInput::make('guest_email')->label('Email')->email()->maxLength(180),
-                        TextInput::make('guest_phone')->label('Phone')->tel()->maxLength(40),
-                        TextInput::make('adults')->label('Adults')->numeric()->minValue(1)->maxValue(99)->default(2)->required(),
-                        TextInput::make('children')->label('Children')->numeric()->minValue(0)->maxValue(99)->default(0)->required(),
-                    ]),
+                    TextInput::make('guest_name')->label('Name')->required()->maxLength(160),
+                    Select::make('source')
+                        ->label('Taken by')
+                        ->options(collect(ReservationSource::cases())
+                            // A stay entered here did not come through the
+                            // website, so offering that would be a lie the
+                            // form invited.
+                            ->reject(fn (ReservationSource $source) => $source === ReservationSource::Website)
+                            ->mapWithKeys(fn (ReservationSource $source) => [$source->value => $source->label()])
+                            ->all())
+                        ->default(ReservationSource::WalkIn->value)
+                        ->required(),
+                    TextInput::make('guest_email')->label('Email')->email()->maxLength(180),
+                    TextInput::make('guest_phone')->label('Phone')->tel()->maxLength(40),
+                    TextInput::make('adults')->label('Adults')->numeric()->minValue(1)->maxValue(99)->default(2)->required(),
+                    TextInput::make('children')->label('Children')->numeric()->minValue(0)->maxValue(99)->default(0)->required(),
                 ]),
 
-            Section::make('Price')
-                ->description('The calendar prices every night. Change the total only when the lodge is charging something else.')
+            // Folded away, because almost no booking needs it. A field that is
+            // used once a month costs a screenful every other time it is open.
+            Section::make('Price and notes')
+                ->description('The calendar prices every night. Open this only to charge something else, or to note something about the stay.')
+                ->collapsible()
+                ->collapsed()
+                ->columns(2)
                 ->schema([
-                    Grid::make(2)->schema([
-                        TextInput::make('total_override')
-                            ->label('Total to charge')
-                            ->numeric()
-                            ->minValue(0)
-                            ->prefix(fn (): string => Money::symbol($this->propertyCurrency()))
-                            ->helperText('Leave blank to charge what the calendar says.')
-                            ->live(onBlur: true),
-                        TextInput::make('override_reason')
-                            ->label('Why')
-                            ->maxLength(200)
-                            ->placeholder('Operator rate, repeat guest, apology …')
-                            ->required(fn (Get $get): bool => filled($get('total_override'))),
-                    ]),
+                    TextInput::make('total_override')
+                        ->label('Total to charge')
+                        ->numeric()
+                        ->minValue(0)
+                        ->prefix(fn (): string => Money::symbol($this->propertyCurrency()))
+                        ->helperText('Leave blank to charge what the calendar says.')
+                        ->live(onBlur: true),
+                    TextInput::make('override_reason')
+                        ->label('Why')
+                        ->maxLength(200)
+                        ->placeholder('Operator rate, repeat guest, apology …')
+                        ->required(fn (Get $get): bool => filled($get('total_override'))),
+                    Textarea::make('notes')
+                        ->label('Notes')
+                        ->rows(2)
+                        ->maxLength(2000)
+                        ->placeholder('Late arrival, dietary requirements, anything the desk should know.')
+                        ->columnSpanFull(),
                 ]),
-
-            Textarea::make('notes')->label('Notes')->rows(2)->maxLength(2000),
         ];
     }
 
@@ -395,11 +424,19 @@ trait EditsInventory
             })
             ->implode('');
 
+        // The total is the number somebody reads out loud to the guest on the
+        // phone, so it is the largest thing in the block rather than the last
+        // line of a list.
         return new HtmlString(
-            '<ul style="list-style: disc; margin-left: 1.1rem;">'.$lines.'</ul>'
-            .'<p style="margin-top: .4rem;"><strong>'
-            .e($preview->nights.' '.str('night')->plural($preview->nights).' · '.Money::format($preview->total, $preview->currency))
-            .'</strong></p>'
+            '<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;">'
+            .'<span style="font-size: 1.5rem; font-weight: 600;">'
+            .e(Money::format($preview->total, $preview->currency))
+            .'</span>'
+            .'<span style="opacity: .7;">'
+            .e($preview->nights.' '.str('night')->plural($preview->nights))
+            .'</span>'
+            .'</div>'
+            .'<ul style="list-style: disc; margin: .35rem 0 0 1.1rem;">'.$lines.'</ul>'
         );
     }
 

@@ -240,6 +240,67 @@ class LodgeOccupancyBookingTest extends TestCase
         $this->assertSame(0, RatePlanGuestAmount::where('rate_plan_id', $theirPlan->id)->count());
     }
 
+    public function test_the_calendar_shows_the_rate_plan_it_is_asked_for(): void
+    {
+        [$user, $listing] = $this->partnerWithProperty('Lodge');
+        $room = $this->roomType($listing);
+
+        $resident = $this->plan($listing, PricingStrategy::PerUnit);
+        $international = RatePlan::create([
+            'listing_id' => $listing->id,
+            'name' => 'International',
+            'code' => 'INT',
+            'pricing_strategy' => PricingStrategy::PerUnit,
+        ]);
+
+        $writer = app(InventoryWriter::class);
+        $from = Carbon::parse('2026-09-10');
+        $to = $from->copy()->addDays(5);
+
+        $writer->setRates($resident, $room, $from, $to, ['rate' => 900]);
+        $writer->setRates($international, $room, $from, $to, ['rate' => 2400]);
+
+        $this->asPartner($user);
+
+        $page = Livewire::test(OccupancyCalendar::class);
+
+        // The default until somebody switches, and the switch changes the
+        // prices and nothing else — a room is still sold once.
+        $this->assertSame(900.0, $page->instance()->grid()?->rows[0]->cells[0]->rate);
+
+        $page->call('showRatePlan', $international->id);
+
+        $this->assertSame(2400.0, $page->instance()->grid()?->rows[0]->cells[0]->rate);
+        $this->assertSame(4, $page->instance()->grid()?->rows[0]->cells[0]->unitsFree);
+    }
+
+    public function test_another_partners_rate_plan_cannot_be_shown_on_the_calendar(): void
+    {
+        [$mine, $myListing] = $this->partnerWithProperty('Mine');
+        $myRoom = $this->roomType($myListing);
+        $myPlan = $this->plan($myListing, PricingStrategy::PerUnit);
+
+        [, $theirListing] = $this->partnerWithProperty('Theirs');
+        $theirRoom = $this->roomType($theirListing);
+        $theirPlan = $this->plan($theirListing, PricingStrategy::PerUnit);
+
+        $writer = app(InventoryWriter::class);
+        $from = Carbon::parse('2026-09-10');
+        $to = $from->copy()->addDays(5);
+
+        $writer->setRates($myPlan, $myRoom, $from, $to, ['rate' => 900]);
+        $writer->setRates($theirPlan, $theirRoom, $from, $to, ['rate' => 5555]);
+
+        $this->asPartner($mine);
+
+        $page = Livewire::test(OccupancyCalendar::class)->call('showRatePlan', $theirPlan->id);
+
+        // Falls back to this property's own plan rather than showing another
+        // lodge's prices.
+        $this->assertSame(900.0, $page->instance()->grid()?->rows[0]->cells[0]->rate);
+        $this->assertSame($myPlan->id, $page->instance()->shownRatePlan()?->id);
+    }
+
     /**
      * Open the booking form and submit it.
      *
