@@ -143,6 +143,32 @@ gets built with this future use in mind rather than needing a rewrite.
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-12 — room types are part of the listing, not a box under it
+
+- ✅ **A "Room types" tab in the /admin listing form**, between Media and
+  Booking system / API — the order the work is actually done in, since the
+  rooms are what the connector then sells. They used to be a relation manager,
+  which Filament can only render *underneath* the form: the one part of a
+  listing that is pure data entry sat outside the place every other part of it
+  is edited, below the fold, on a page whose Save button is in the header.
+- ✅ **A relationship Repeater, not the relation manager moved.** It cannot be
+  moved: Filament renders every table action modal as a `<form>`, and nesting
+  one inside the record's own edit `<form>` silently breaks submission in the
+  browser — the same trap already recorded on `HasPartnerMessagesTable`. So the
+  fields moved out into `App\Filament\Support\BookableUnitSchema` and the two
+  surfaces share them; only the frame differs.
+- ✅ **The partner panel keeps its relation manager.** Its listing form is
+  sections rather than tabs, so there is no strip to move anything into, and a
+  lodge editing its own rooms is better served by a table than by a stack of
+  open forms.
+- ✅ **A count badge on the tab.** With nothing below the form any more, that is
+  the only way to see whether a property has its inventory entered without
+  opening it — and today almost none do.
+- 4 tests in `tests/Feature/Filament/ListingRoomTypesTabTest.php`, the load-
+  bearing one being that a departure entered on a new room type still saves:
+  that is a relationship repeater nested inside another one, and a silent
+  failure there would look exactly like somebody forgetting to press save.
+
 ### 2026-08-12 — the room picker reads the lodge's calendar
 
 - ✅ **One price, front and back.** The picker used to quote a room type's base

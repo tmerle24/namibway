@@ -12,7 +12,7 @@ use App\Enums\VehicleCategory;
 use App\Enums\VehicleClass;
 use App\Filament\Pages\ListingImport;
 use App\Filament\Resources\ListingResource\Pages;
-use App\Filament\Resources\ListingResource\RelationManagers;
+use App\Filament\Support\BookableUnitSchema;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\CreateWebsiteAction;
 use App\Filament\Support\MessagesColumn;
@@ -316,6 +316,64 @@ class ListingResource extends Resource
                                     ->directory('listings/gallery')
                                     ->fetchFileInformation(false)
                                     ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
+                                    ->columnSpanFull(),
+                            ]),
+
+                        // Before "Booking system / API" on purpose: the rooms are
+                        // what the connector then sells, so the tab strip reads
+                        // in the order the work is done.
+                        //
+                        // A relationship Repeater rather than the relation
+                        // manager the partner panel uses, because a relation
+                        // manager cannot be moved into the form: Filament's
+                        // table action modals are <form> elements, and nesting
+                        // one inside the record's own edit <form> silently
+                        // breaks submission in the browser (the same trap
+                        // recorded on HasPartnerMessagesTable). Both surfaces
+                        // share BookableUnitSchema, so only the frame differs.
+                        Forms\Components\Tabs\Tab::make('Room types')
+                            ->icon('heroicon-o-home-modern')
+                            // Saved truth, so it lags rows added but not yet
+                            // saved. Worth it: with nothing below the form any
+                            // more, this is the only way to see whether a
+                            // property has its inventory entered without
+                            // opening the tab — which, today, almost none do.
+                            ->badge(function (?Listing $record): ?string {
+                                $count = $record?->bookableUnits()->count() ?? 0;
+
+                                return $count > 0 ? (string) $count : null;
+                            })
+                            // Creating the listing has to come first: the rows
+                            // hang off its id, and nobody types a rate before
+                            // the property exists.
+                            ->visibleOn('edit')
+                            ->schema([
+                                Forms\Components\Repeater::make('bookableUnits')
+                                    ->relationship()
+                                    ->hiddenLabel()
+                                    ->addActionLabel('Add a room type')
+                                    ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null)
+                                        ? trim($state['name'].(filled($state['code'] ?? null) ? " · {$state['code']}" : ''))
+                                        : null)
+                                    ->collapsible()
+                                    ->collapsed()
+                                    // No drag handle: there is no sort column
+                                    // to write an order into, so a handle would
+                                    // promise something the next page load
+                                    // forgets. The traveler-facing order is by
+                                    // rate (see RoomAvailability).
+                                    ->reorderable(false)
+                                    ->defaultItems(0)
+                                    // Removing a row deletes the room type when
+                                    // the listing is saved, and the foreign keys
+                                    // take its calendar and its departures with
+                                    // it. Cheap to confirm, expensive to undo.
+                                    ->deleteAction(fn (Forms\Components\Actions\Action $action): Forms\Components\Actions\Action => $action
+                                        ->requiresConfirmation()
+                                        ->modalHeading('Delete this room type?')
+                                        ->modalDescription('Its calendar, rates and departures go with it once the listing is saved. Switching "Is active" off instead keeps the history and takes it off sale.'))
+                                    ->schema(BookableUnitSchema::schema())
+                                    ->columns(2)
                                     ->columnSpanFull(),
                             ]),
 
@@ -749,11 +807,18 @@ class ListingResource extends Resource
             ->send();
     }
 
+    /**
+     * Deliberately empty. Room types used to be a relation manager here, which
+     * Filament can only render as a box underneath the form — below the tab
+     * strip, so the one part of a listing that is pure data entry sat outside
+     * the place every other part of it is edited. They are the "Room types" tab
+     * now (see form()). The relation manager itself still exists and is still
+     * the partner panel's surface; re-registering it here would show the same
+     * rows twice on one page.
+     */
     public static function getRelations(): array
     {
-        return [
-            RelationManagers\BookableUnitsRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array
