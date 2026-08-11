@@ -19,8 +19,10 @@ use App\Models\User;
 use App\Services\Booking\BookingMailbox;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\ManualBookingLinePreview;
+use App\Services\Inventory\DTOs\ManualBookingPreview;
 use App\Services\Inventory\InventoryWriter;
 use App\Services\Inventory\ManualBooking;
+use App\Services\Pricing\ComputedCharge;
 use App\Support\CountrySettings;
 use App\Support\Money;
 use Filament\Actions\Action;
@@ -420,6 +422,11 @@ trait EditsInventory
             $this->parseDate($get('check_out')),
             $this->roomRows($get('rooms')),
             is_string($get('promotion_code')) ? $get('promotion_code') : null,
+            // A park permit is charged per person, so the preview has to know
+            // how many people — otherwise the number read out to the guest is
+            // not the number they are charged.
+            max(1, (int) $get('adults')),
+            max(0, (int) $get('children')),
         );
 
         if ($preview->problems !== []) {
@@ -475,8 +482,39 @@ trait EditsInventory
             .'</span>'
             .'</div>'
             .$offer
+            .$this->chargeLinesHtml($preview)
             .'<ul style="list-style: disc; margin: .35rem 0 0 1.1rem;">'.$lines.'</ul>'
         );
+    }
+
+    /**
+     * Taxes and fees, named under the total.
+     *
+     * Shown even when they change nothing — a rate that already contains VAT
+     * is exactly the case a guest asks about, and "VAT 15% included" is the
+     * sentence a desk needs to be able to read out.
+     */
+    private function chargeLinesHtml(ManualBookingPreview $preview): string
+    {
+        if ($preview->charges === []) {
+            return '';
+        }
+
+        $lines = collect($preview->charges)
+            ->map(fn (ComputedCharge $charge): string => '<div>'
+                .e($charge->name)
+                .($charge->basis->isPercentage()
+                    ? ' '.e(rtrim(rtrim(number_format($charge->rate, 2), '0'), '.')).'%'
+                    : '')
+                .' — '.e(Money::format($charge->amount, $preview->currency))
+                .($charge->isIncluded ? ' <span style="opacity: .7;">included</span>' : '')
+                .'</div>')
+            ->implode('');
+
+        return '<div style="margin-top: .35rem; opacity: .85;">'
+            .'<div style="opacity: .7;">'.e(Money::format($preview->stayAmount(), $preview->currency)).' for the stay</div>'
+            .$lines
+            .'</div>';
     }
 
     /*

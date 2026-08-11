@@ -158,25 +158,61 @@ a room priced for more people than it sleeps is refused before any of that. Each
 these is a sentence a receptionist can act on, not a number nobody checks until
 check-out.
 
-### Taxes and levies — a layer, reserved, not built
+### Taxes and levies — built 2026-08-12
 
 Namibia charges VAT and a tourism levy, and a lodge may add a conservancy fee or a
-park permit. None of it is built, and none of it belongs in a rate plan: a product
-must never end up knowing "15% VAT plus 2% levy". The shape it will take when a
-real partner needs it:
+park permit. None of it belongs in a rate plan: a product must never end up knowing
+"15% VAT plus 2% levy". So charges sit exactly where promotions sit —
 
 ```
-rate  →  price  →  charges (levy, VAT, fees)  →  total
+rate  →  price  →  discount  →  charges  →  total
 ```
 
-Charges apply *to* a computed price, exactly as promotions do, which is why the two
-sit at the same point in the chain and why neither is allowed to reach back into
-the calculation. Two decisions have to be made when it is built, and are recorded
-here so they are not made by accident in the meantime: whether the rate a lodge
-enters is tax-inclusive or net (Southern African lodges quote both ways, so it is
-per property, not per system), and whether a charge is frozen onto the reservation
-like the price is. It is — rule 4 covers charges as much as rates; a VAT change
-must not alter last month's invoices.
+— applying *to* a computed price and never reaching back into it.
+`App\Services\Pricing\ChargeCalculator` is the only thing that computes one, and
+everything it may see arrives in a `ChargeableStay`: the finished amount, the
+nights, the guests, the room-nights. It cannot reach the rate plan or the occupancy
+machinery, so no charge can quietly become part of how a night is priced.
+
+**Four bases**, which is what this market actually charges: a percentage (VAT, the
+tourism levy), per person per night (a park permit, a conservancy fee), per room per
+night (a bed levy), and once per booking.
+
+The two decisions the earlier draft reserved, now made:
+
+- **Included or added is a question about the charge, not about the property.** The
+  draft said it would be per property, "because Southern African lodges quote both
+  ways". Building it showed that is not expressive enough: the same lodge normally
+  quotes a rate with VAT already inside it *and* adds a park permit on top. A
+  property whose rates include everything simply marks everything included, so the
+  per-charge answer subsumes the per-property one. An included charge is
+  **extracted**, not added — the standard gross-to-net step, which is not the same
+  arithmetic as adding: 15% of 3,000 is 450, but the VAT *inside* 3,000 is 391.30.
+  Getting that backwards is a 15% error nobody notices for a season.
+- **A charge is frozen onto the reservation**, like the price and the rate plan
+  before it. Rule 4 covers a charge as much as a rate: raising VAT in March must
+  leave February's invoices exactly as they were, and a charge a property later
+  deletes must still be readable on the stays that paid it. `reservation_charges`
+  carries everything needed to reprint the line, and `charge_id` is a link for
+  reporting rather than the source of any number on it.
+
+Two decisions the draft did not anticipate:
+
+- **Charges follow the discount, and an override.** VAT is charged on what the guest
+  actually pays, not on a list price nobody paid — so the base is the price after an
+  offer, and after a lodge overrides it. An override therefore replaces what the
+  *stay* costs rather than the final total; taxes and fees follow the number the
+  lodge typed exactly as they follow the number the calendar produced.
+- **No tax on tax, unless a lodge says so.** Every charge works from the stay by
+  default, so two percentages cannot compound by accident. A charge set to "the stay
+  plus the charges above" works from everything sorted before it, which is how VAT
+  sits on top of a tourism levy that is passed on to the guest. The order is the sort
+  order the lodge already sees on its own screen; nothing infers it.
+
+`reservations.charges_amount` holds what was added on top, so that
+quoted − discount + charges = total reads as the total on every screen, with each
+part named — on the stay detail, in the booking form's preview while a price is being
+read out to a guest, and in both confirmation emails.
 
 ### The OTA shape is already the general shape
 
@@ -489,6 +525,16 @@ had been designed in `CLAUDE.md` and left unbuilt. A confirmed request now becom
 stay that holds real inventory and appears on the arrivals board, once, idempotently
 — and a promotion that cannot happen alerts the team instead of un-confirming a
 guest who has already been told they have a room.
+
+**8. Taxes, levies and fees. — Done, 2026-08-12.** The layer §3 reserved, built as
+designed: charges apply to a finished price, are frozen onto the stay, and are the
+one part of the chain that may not reach backwards. What changed against the draft
+is written up there rather than here — in short, included-or-added turned out to be
+a question about the charge rather than about the property, and charges follow a
+discount and an override because tax is charged on what is actually paid.
+
+A lodge that charges nothing sees nothing: no charge rows means no breakdown, no
+extra line on the invoice, and a total identical to the one it had before this step.
 
 Steps 5 and 6 were the other way round in the first draft. Switching a lodge on is
 a rollout feature rather than a booking-core one, but it is what turns all of this

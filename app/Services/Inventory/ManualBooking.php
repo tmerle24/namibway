@@ -16,6 +16,8 @@ use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\DTOs\ManualBookingLinePreview;
 use App\Services\Inventory\DTOs\ManualBookingPreview;
 use App\Services\Inventory\DTOs\ResolvedRoomLine;
+use App\Services\Pricing\ChargeableStay;
+use App\Services\Pricing\ChargeCalculator;
 use App\Services\Pricing\Occupancy;
 use App\Services\Pricing\PromotionFinder;
 use App\Services\Pricing\StaySummary;
@@ -58,6 +60,8 @@ class ManualBooking
         ?CarbonInterface $checkOut,
         array $lines,
         ?string $promotionCode = null,
+        int $adults = 1,
+        int $children = 0,
     ): ManualBookingPreview {
         $currency = CountrySettings::for($listing)->currency();
 
@@ -169,15 +173,45 @@ class ManualBooking
             $problems[] = $refusal->getMessage();
         }
 
+        // The same calculator the writer uses, on the same finished number, so
+        // the figure read out to a guest over the counter is the figure that
+        // ends up on the reservation.
+        $charges = app(ChargeCalculator::class)->for($listing, $in, new ChargeableStay(
+            stayAmount: $total,
+            nights: $nights,
+            adults: $adults,
+            children: $children,
+            unitNights: $this->unitNights($rooms, $in, $out),
+            currency: $currency,
+        ));
+
         return new ManualBookingPreview(
-            total: $total,
+            total: round($total + app(ChargeCalculator::class)->addedTotal($charges), 2),
             currency: $currency,
             nights: $nights,
             problems: $problems,
             lines: $previews,
             discount: $discount,
             offer: $offer,
+            charges: $charges,
         );
+    }
+
+    /**
+     * Rooms × nights, which is what a per-room levy counts.
+     *
+     * @param  array<int, ResolvedRoomLine>  $rooms
+     */
+    private function unitNights(array $rooms, CarbonInterface $in, CarbonInterface $out): int
+    {
+        $nights = (int) $in->diffInDays($out);
+        $total = 0;
+
+        foreach ($rooms as $room) {
+            $total += $room->quantity * $nights;
+        }
+
+        return $total;
     }
 
     /**

@@ -15,6 +15,7 @@ use App\Models\RatePlan;
 use App\Models\RatePlanDay;
 use App\Models\RatePlanGuestAmount;
 use App\Models\Reservation;
+use App\Models\ReservationCharge;
 use App\Models\ReservationGuest;
 use App\Models\ReservationNight;
 use App\Models\ReservationUnit;
@@ -25,6 +26,8 @@ use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\DTOs\Quote;
+use App\Services\Pricing\ChargeableStay;
+use App\Services\Pricing\ChargeCalculator;
 use App\Services\Pricing\PromotionFinder;
 use App\Services\Pricing\PromotionMatch;
 use App\Services\Pricing\StaySummary;
@@ -77,6 +80,7 @@ class InventoryWriter
         private readonly AvailabilityCalendar $calendar,
         private readonly PromotionFinder $promotions = new PromotionFinder,
         private readonly CustomerDirectory $customers = new CustomerDirectory,
+        private readonly ChargeCalculator $charges = new ChargeCalculator,
     ) {}
 
     /**
@@ -167,8 +171,30 @@ class InventoryWriter
             }
 
             $afterDiscount = round($quoted - $discount, 2);
-            $charged = $request->totalOverride === null ? $afterDiscount : round($request->totalOverride, 2);
-            $overridden = abs($charged - $afterDiscount) >= 0.01;
+
+            // An override replaces what the *stay* costs, not what the guest
+            // finally pays: taxes and fees follow the number the lodge typed,
+            // exactly as they follow the number the calendar produced. The
+            // alternative — charging VAT on a figure that already contained it
+            // — is how a discount quietly becomes a tax error.
+            $stayAmount = $request->totalOverride === null ? $afterDiscount : round($request->totalOverride, 2);
+            $overridden = abs($stayAmount - $afterDiscount) >= 0.01;
+
+            // The last link in the chain, and the one that never reaches back:
+            // charges apply to a finished price. What the guest pays is that
+            // price plus whatever is added on top of it; a charge the lodge's
+            // rates already contain moves nothing.
+            $charges = $this->charges->for($request->listing, $this->earliest($lines), new ChargeableStay(
+                stayAmount: $stayAmount,
+                nights: $this->nightsBetween($lines),
+                adults: $request->adults,
+                children: $request->children,
+                unitNights: $this->unitNights($lines),
+                currency: $currencies[0],
+            ));
+
+            $added = $this->charges->addedTotal($charges);
+            $charged = round($stayAmount + $added, 2);
 
             $reservation = new Reservation([
                 'reference' => $this->generateReference(),
@@ -191,6 +217,10 @@ class InventoryWriter
                 'children' => $request->children,
                 'total_amount' => $charged,
                 'quoted_amount' => $quoted,
+                // What the total is made of, so quoted − discount + charges
+                // reads as the total on every screen without anybody having to
+                // recompute a step.
+                'charges_amount' => $charges === [] ? null : $added,
                 // Frozen beside the price it came off. Deleting a finished
                 // offer must not make last month's bookings look mispriced —
                 // rule 4 covers a discount as much as a rate.
@@ -254,6 +284,14 @@ class InventoryWriter
                         'currency' => $quote->currency,
                     ]))->save();
                 }
+            }
+
+            foreach ($charges as $charge) {
+                // Frozen, like the price and the rate plan: a VAT rate that
+                // changes in March must not alter what February's invoices
+                // say, and a charge the property later deletes must still be
+                // readable on the stays that paid it.
+                (new ReservationCharge($charge->toRow($reservation->id, $currencies[0])))->save();
             }
 
             return $reservation->refresh();
@@ -1129,6 +1167,36 @@ class InventoryWriter
     private function latest(array $lines): Carbon
     {
         return collect($lines)->map(fn (BookingLine $line) => $line->checkOut)->max();
+    }
+
+    /**
+     * The stay's own length, arrival to departure. A booking whose lines run
+     * different dates — a guest moving rooms mid-stay — is still one stay, and
+     * a per-night charge counts the nights they are on the property rather
+     * than the sum of the lines.
+     *
+     * @param  array<int, BookingLine>  $lines
+     */
+    private function nightsBetween(array $lines): int
+    {
+        return (int) $this->earliest($lines)->diffInDays($this->latest($lines));
+    }
+
+    /**
+     * Rooms × nights, which is what a per-room levy counts — and here the sum
+     * over the lines is exactly right: two rooms for three nights is six.
+     *
+     * @param  array<int, BookingLine>  $lines
+     */
+    private function unitNights(array $lines): int
+    {
+        $total = 0;
+
+        foreach ($lines as $line) {
+            $total += $line->quantity * (int) $line->checkIn->diffInDays($line->checkOut);
+        }
+
+        return $total;
     }
 
     private function generateReference(): string

@@ -72,6 +72,28 @@
                     @endif
 
                     @if ($reservation->total_amount !== null)
+                        @php($stayCharges = $reservation->charges)
+
+                        {{-- The total is what the guest pays. Where anything was
+                             added on top of the stay, the parts are named above it,
+                             because "what is this 15%?" is the question a desk is
+                             asked and an unexplained total is the reason invoices
+                             get disputed. --}}
+                        @if ($stayCharges->isNotEmpty())
+                            <dt>Stay</dt>
+                            <dd class="nw-num">{{ Money::format($reservation->stayAmount(), $reservation->currency) }}</dd>
+
+                            @foreach ($stayCharges as $charge)
+                                <dt>{{ $charge->label() }}</dt>
+                                <dd class="nw-num">
+                                    {{ Money::format($charge->amount, $charge->currency) }}
+                                    @if ($charge->is_included)
+                                        <span class="nw-hint">included</span>
+                                    @endif
+                                </dd>
+                            @endforeach
+                        @endif
+
                         <dt>Total</dt>
                         <dd class="nw-num">
                             {{ Money::format($reservation->total_amount, $reservation->currency) }}
