@@ -110,10 +110,11 @@ class DemoTenantTest extends TestCase
         $this->assertFalse($tenant->listing->is_published);
         $this->assertFalse($tenant->listing->accepts_inquiries);
 
-        // No address anywhere in the tenant points outside the domain we
-        // control — which is what makes an outbound-suppression layer
-        // unnecessary rather than merely absent.
-        $domain = config('booking.demo.email_domain');
+        // Every address in the tenant is a plus-address on the team mailbox,
+        // which is what makes an outbound-suppression layer unnecessary rather
+        // than merely absent: a demo booking can send real mail through the
+        // normal mailer and still only ever reach us.
+        [$local, $domain] = explode('@', (string) config('booking.team_address'));
         $addresses = Reservation::query()
             ->where('listing_id', $tenant->listing->id)
             ->whereNotNull('guest_email')
@@ -123,6 +124,7 @@ class DemoTenantTest extends TestCase
         $this->assertNotEmpty($addresses);
 
         foreach ($addresses as $address) {
+            $this->assertStringStartsWith($local.'+', (string) $address);
             $this->assertStringEndsWith('@'.$domain, (string) $address);
         }
     }
@@ -248,17 +250,51 @@ class DemoTenantTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_the_command_refuses_a_listing_with_no_room_types(): void
+    /**
+     * The one that matters most in practice: no listing in production has room
+     * types yet, so a demo that required them could not be built for any lodge
+     * at all. Refusing was the original mistake, and this is the test that
+     * would have caught it.
+     */
+    public function test_a_lodge_with_no_room_types_still_gets_a_working_demo(): void
     {
+        $partner = Partner::create(['name' => 'Bare Lodge']);
         $listing = Listing::factory()->create([
+            'partner_id' => $partner->id,
             'type' => ListingType::Accommodation,
             'slug' => 'no-rooms-here',
+            'price_from' => 2000,
+            'price_currency' => 'NAD',
         ]);
 
-        $this->artisan('booking:demo-tenant', ['listing' => $listing->slug])
-            ->assertExitCode(1);
+        $this->assertSame(0, $listing->roomTypes()->count());
 
-        $this->assertSame(0, Partner::where('is_demo', true)->count());
+        $tenant = $this->builder()->build($listing, weeks: 4);
+
+        $this->assertTrue($tenant->roomTypesAreInvented);
+        $this->assertSame(3, $tenant->roomTypes);
+        $this->assertGreaterThan(0, $tenant->stays);
+
+        // Anchored to the listing's own "from" price, so the numbers on screen
+        // are in the right neighbourhood for that property.
+        $cheapest = $tenant->listing->roomTypes()->orderBy('rate_per_night')->first();
+        $this->assertSame(2000.0, (float) $cheapest->rate_per_night);
+
+        // And the real listing still has none — the demo made them on its copy.
+        $this->assertSame(0, $listing->roomTypes()->count());
+    }
+
+    public function test_a_lodge_that_has_room_types_gets_its_own(): void
+    {
+        $source = $this->source();
+
+        $tenant = $this->builder()->build($source, weeks: 4);
+
+        $this->assertFalse($tenant->roomTypesAreInvented);
+        $this->assertEqualsCanonicalizing(
+            ['STD', 'LUX'],
+            $tenant->listing->roomTypes()->pluck('code')->all(),
+        );
     }
 
     public function test_the_command_refuses_to_build_a_demo_from_a_demo(): void

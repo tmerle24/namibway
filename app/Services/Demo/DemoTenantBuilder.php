@@ -69,12 +69,7 @@ class DemoTenantBuilder
     {
         $weeks = max(2, $weeks ?? (int) config('booking.demo.weeks', 12));
 
-        if ($source->roomTypes()->count() === 0) {
-            throw new RuntimeException(
-                "[{$source->name}] has no room types, so there is no inventory to demonstrate. "
-                .'Add room types to the real listing first, or pick a listing that has them.'
-            );
-        }
+        $ownRoomTypes = $source->roomTypes()->count() > 0;
 
         $partner = $this->partner($source);
         $listing = $this->listing($partner, $source);
@@ -111,6 +106,7 @@ class DemoTenantBuilder
             password: $password,
             signInUrl: $this->signInUrl($user),
             roomTypes: count($rooms),
+            roomTypesAreInvented: ! $ownRoomTypes,
             stays: $stays,
             blocks: $blocks,
         );
@@ -258,9 +254,17 @@ class DemoTenantBuilder
     }
 
     /**
-     * Copies rather than references, so that editing demo inventory cannot
-     * reach real content. Rebuilt from scratch each run — the source is the
-     * truth, and a room type a prospect renamed should come back.
+     * The demo's room types.
+     *
+     * Copies the lodge's own where it has them — that is the version worth
+     * showing, because it is theirs. **Where it has none, it invents a
+     * plausible set rather than refusing**, and that is the whole difference
+     * between a demo that works and one that does not: no listing in
+     * production has room types yet, so a demo that requires them cannot be
+     * built for any lodge at all. Refusing was the original mistake here.
+     *
+     * Either way they are the demo listing's own rows. Rebuilt from scratch
+     * each run, so a room type a prospect renamed comes back.
      *
      * @return array<int, RoomType>
      */
@@ -268,10 +272,11 @@ class DemoTenantBuilder
     {
         $listing->roomTypes()->delete();
 
-        $rooms = [];
+        $existing = $source->roomTypes()->orderBy('id')->get();
 
-        foreach ($source->roomTypes()->orderBy('id')->get() as $room) {
-            $rooms[] = RoomType::create([
+        return $existing->isEmpty()
+            ? $this->inventRoomTypes($listing)
+            : $existing->map(fn (RoomType $room) => RoomType::create([
                 'listing_id' => $listing->id,
                 'code' => $room->code,
                 'name' => $room->name,
@@ -283,6 +288,48 @@ class DemoTenantBuilder
                 'rate_per_night' => $room->rate_per_night,
                 'currency' => $room->currency,
                 'is_active' => $room->is_active,
+            ]))->all();
+    }
+
+    /**
+     * A believable three-tier room list for a lodge that has none on file.
+     *
+     * The rates are anchored to the listing's own "from" price where it has
+     * one, so the numbers on screen are in the right neighbourhood for that
+     * property rather than generically Namibian. The currency comes from the
+     * property's country, not from a constant.
+     *
+     * These are made up, and the command says so out loud — a prospect must
+     * not take an invented rate for their own.
+     *
+     * @return array<int, RoomType>
+     */
+    private function inventRoomTypes(Listing $listing): array
+    {
+        $base = (float) ($listing->price_from ?: 0);
+        $base = $base > 0 ? round($base, 2) : 1850.00;
+        $currency = CountrySettings::for($listing)->currency();
+
+        $definitions = [
+            ['STD', 'Standard Room', 8, 1.0, 2, 1],
+            ['FAM', 'Family Room', 4, 1.6, 4, 2],
+            ['LUX', 'Luxury Suite', 2, 2.5, 2, 0],
+        ];
+
+        $rooms = [];
+
+        foreach ($definitions as [$code, $name, $units, $factor, $adults, $children]) {
+            $rooms[] = RoomType::create([
+                'listing_id' => $listing->id,
+                'code' => $code,
+                'name' => $name,
+                'description' => 'Example room type, created for the demonstration.',
+                'max_adults' => $adults,
+                'max_children' => $children,
+                'total_units' => $units,
+                'rate_per_night' => round($base * $factor, 2),
+                'currency' => $currency,
+                'is_active' => true,
             ]);
         }
 
@@ -421,7 +468,7 @@ class DemoTenantBuilder
                         listing: $listing,
                         lines: [new BookingLine($room, $quantity, $night, $checkOut)],
                         guestName: $this->guestName(),
-                        guestEmail: $this->guestEmail(),
+                        guestEmail: $this->guestEmail($listing),
                         source: $this->source(),
                         adults: max(1, min($room->max_adults, $quantity + 1)),
                         children: mt_rand(0, 1),
@@ -475,7 +522,7 @@ class DemoTenantBuilder
      */
     private function user(Partner $partner, Listing $listing, string $password): User
     {
-        $email = 'demo-'.Str::limit($listing->slug, 40, '').'@'.config('booking.demo.email_domain', 'demo.namibway.com');
+        $email = $this->teamAddress(Str::limit($listing->slug, 40, ''));
 
         $user = User::query()->where('partner_id', $partner->id)->first()
             ?? User::query()->where('email', $email)->first()
@@ -520,9 +567,23 @@ class DemoTenantBuilder
         return $password;
     }
 
-    private function guestEmail(): string
+    /**
+     * Every address a demo holds is a plus-address on the team mailbox, so a
+     * demo booking can send real mail through the normal mailer and still
+     * only ever reach us. The tag names the property, so the team box groups
+     * by lodge instead of becoming a pile.
+     */
+    private function teamAddress(string $tag): string
     {
-        return 'guest'.mt_rand(1000, 9999).'@'.config('booking.demo.email_domain', 'demo.namibway.com');
+        $address = (string) config('booking.team_address', 'team@namibway.com');
+        [$local, $domain] = array_pad(explode('@', $address, 2), 2, 'namibway.com');
+
+        return $local.'+'.trim($tag, '-').'@'.$domain;
+    }
+
+    private function guestEmail(Listing $listing): string
+    {
+        return $this->teamAddress(Str::limit($listing->slug, 40, '').'-guest'.mt_rand(1000, 9999));
     }
 
     private function source(): ReservationSource

@@ -20,6 +20,8 @@ class DemoTenant
         public readonly string $password,
         public readonly string $signInUrl,
         public readonly int $roomTypes,
+        /** True when the lodge had none on file and the demo made them up. */
+        public readonly bool $roomTypesAreInvented,
         public readonly int $stays,
         public readonly int $blocks,
     ) {}
