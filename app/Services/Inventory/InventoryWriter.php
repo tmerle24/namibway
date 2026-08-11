@@ -7,6 +7,7 @@ use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Exceptions\Pricing\PromotionUnavailableException;
 use App\Jobs\NotifyAboutStay;
+use App\Models\BookingSlot;
 use App\Models\Customer;
 use App\Models\InventoryBlock;
 use App\Models\Listing;
@@ -129,6 +130,7 @@ class InventoryWriter
                     $line->quantity,
                     $plans[$index],
                     $line->occupancy,
+                    $line->slot,
                 );
                 $quotes[$index] = $quote;
                 $currencies[] = $quote->currency;
@@ -148,7 +150,7 @@ class InventoryWriter
             // written, even though the transaction would roll them back anyway.
             foreach ($lines as $line) {
                 foreach ($this->calendar->nights($line->checkIn, $line->checkOut) as $night) {
-                    $this->consume($line->roomType, $night, $line->quantity, self::COUNTER_SOLD);
+                    $this->consume($line->roomType, $night, $line->quantity, self::COUNTER_SOLD, $line->slot);
                 }
             }
 
@@ -250,6 +252,11 @@ class InventoryWriter
                 $unit = new ReservationUnit([
                     'reservation_id' => $reservation->id,
                     'room_type_id' => $line->roomType->id,
+                    'slot_id' => $line->slot?->id,
+                    // Frozen beside the link, like the rate plan's name: an
+                    // operator renaming a departure in March must not change
+                    // what a stay sold in February says it was.
+                    'slot_label' => $line->slot?->label(),
                     'rate_plan_id' => $plans[$index]?->id,
                     // Frozen beside the price, and for the same reason: a plan
                     // renamed in March must not change what a stay sold in
@@ -416,7 +423,7 @@ class InventoryWriter
         }
 
         $cancelled = InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($reservation, $reason, $late) {
-            $reservation->loadMissing('units.roomType', 'listing');
+            $reservation->loadMissing('units.roomType', 'units.slot', 'listing');
 
             foreach ($this->orderedUnits($reservation) as $unit) {
                 $roomType = $unit->roomType;
@@ -426,7 +433,10 @@ class InventoryWriter
                 }
 
                 foreach ($this->calendar->nights($unit->check_in, $unit->check_out) as $night) {
-                    $this->release($roomType, $night, $unit->quantity, self::COUNTER_SOLD);
+                    // Back to the departure that holds them. Releasing the day
+                    // row instead would leave the 09:00 tour full forever and
+                    // credit seats to a pool nobody bought from.
+                    $this->release($roomType, $night, $unit->quantity, self::COUNTER_SOLD, $unit->slot);
                 }
             }
 
@@ -700,6 +710,10 @@ class InventoryWriter
                 RatePlanDay::query()
                     ->where('rate_plan_id', $ratePlan->id)
                     ->where('room_type_id', $roomType->id)
+                    // The day's rates, never a departure's. A lodge editing a
+                    // season must not reach into a tour's 14:00 price, and a
+                    // property that has no departures has nothing to exclude.
+                    ->whereNull('slot_id')
                     ->whereIn('date', $chunk)
                     ->update($attributes);
             }
@@ -742,6 +756,7 @@ class InventoryWriter
 
                 RoomTypeCalendarDay::query()
                     ->where('room_type_id', $roomType->id)
+                    ->whereNull('slot_id')
                     ->whereIn('date', $chunk)
                     ->update($attributes);
             }
@@ -965,14 +980,18 @@ class InventoryWriter
      *
      * @throws InventoryUnavailableException
      */
-    private function consume(RoomType $roomType, Carbon $night, int $units, string $counter): void
+    private function consume(RoomType $roomType, Carbon $night, int $units, string $counter, ?BookingSlot $slot = null): void
     {
         $counter = $this->counterColumn($counter);
-        $this->ensureDay($roomType, $night);
+        $this->ensureDay($roomType, $night, $slot);
 
         $affected = DB::table('room_type_calendar_days')
             ->where('room_type_id', $roomType->id)
             ->whereDate('date', $night->toDateString())
+            // The departure, where there is one. A row keyed to a slot and the
+            // day row beside it are separate counters on purpose: the 09:00
+            // tour selling out says nothing about the 14:00 one.
+            ->where(fn ($query) => $slot === null ? $query->whereNull('slot_id') : $query->where('slot_id', $slot->id))
             ->whereRaw(
                 'units_sold + units_blocked + ? <= COALESCE(units_total, ?)',
                 [$units, (int) $roomType->total_units]
@@ -990,13 +1009,14 @@ class InventoryWriter
      * cancel a guest's stay because a counter is already wrong would make a
      * bookkeeping problem into an operational one.
      */
-    private function release(RoomType $roomType, Carbon $night, int $units, string $counter): void
+    private function release(RoomType $roomType, Carbon $night, int $units, string $counter, ?BookingSlot $slot = null): void
     {
         $counter = $this->counterColumn($counter);
 
         $affected = DB::table('room_type_calendar_days')
             ->where('room_type_id', $roomType->id)
             ->whereDate('date', $night->toDateString())
+            ->where(fn ($query) => $slot === null ? $query->whereNull('slot_id') : $query->where('slot_id', $slot->id))
             ->where($counter, '>=', $units)
             ->decrement($counter, $units, ['updated_at' => now()]);
 
@@ -1016,10 +1036,11 @@ class InventoryWriter
      * overrides still mean "follow the room type" — but gives the conditional
      * UPDATE a row to lock, which is what serialises two concurrent bookings.
      */
-    private function ensureDay(RoomType $roomType, Carbon $night): void
+    private function ensureDay(RoomType $roomType, Carbon $night, ?BookingSlot $slot = null): void
     {
         DB::table('room_type_calendar_days')->insertOrIgnore([
             'room_type_id' => $roomType->id,
+            'slot_id' => $slot?->id,
             'date' => $night->toDateString(),
             'units_total' => null,
             'units_sold' => 0,

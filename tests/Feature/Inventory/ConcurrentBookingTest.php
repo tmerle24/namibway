@@ -4,12 +4,14 @@ namespace Tests\Feature\Inventory;
 
 use App\Enums\ReservationSource;
 use App\Exceptions\Inventory\InventoryUnavailableException;
+use App\Models\BookingSlot;
 use App\Models\Listing;
 use App\Models\Reservation;
 use App\Models\RoomType;
 use App\Models\RoomTypeCalendarDay;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
+use App\Services\Inventory\InventoryWriteGuard;
 use App\Services\Inventory\InventoryWriter;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Support\Facades\DB;
@@ -63,6 +65,7 @@ class ConcurrentBookingTest extends TestCase
         'reservations',
         'inventory_blocks',
         'room_type_calendar_days',
+        'booking_slots',
         'room_types',
         'listings',
     ];
@@ -162,7 +165,60 @@ class ConcurrentBookingTest extends TestCase
      *
      * @return array<int, string> child index => 'booked' | 'sold_out' | 'error: ...'
      */
-    private function race(Listing $listing, RoomType $room, string $checkIn, string $checkOut): array
+    /**
+     * The same guarantee, one level finer: two people cannot both get the last
+     * seat on one departure.
+     *
+     * It is the same conditional UPDATE on the same table, and that is the
+     * claim — a departure is an ordinary row with an ordinary counter, not a
+     * second mechanism. Worth proving rather than assuming, because the row is
+     * now found by three columns instead of two, and a slot filter that missed
+     * would sell the last seat to everybody who asked.
+     */
+    public function test_two_simultaneous_bookings_for_the_last_seat_on_a_departure_do_not_both_succeed(): void
+    {
+        $listing = Listing::factory()->create(['is_published' => true]);
+        $unit = RoomType::factory()->create([
+            'listing_id' => $listing->id,
+            'name' => 'Quad tour',
+            'total_units' => 1,
+            'rate_per_night' => 950,
+            'currency' => 'NAD',
+        ]);
+
+        $morning = BookingSlot::create([
+            'room_type_id' => $unit->id,
+            'label' => 'Morning departure',
+            'starts_at' => '09:00',
+            'duration_minutes' => 180,
+        ]);
+
+        $results = $this->race($listing, $unit, '2026-09-01', '2026-09-02', $morning);
+
+        $booked = array_keys($results, 'booked', true);
+        $soldOut = array_keys($results, 'sold_out', true);
+        $unexpected = array_filter($results, fn (string $r) => ! in_array($r, ['booked', 'sold_out'], true));
+
+        $this->assertSame([], $unexpected, 'A contender failed for a reason other than the seat being gone: '.json_encode($unexpected));
+        $this->assertCount(1, $booked, 'Exactly one of '.self::CONTENDERS.' simultaneous bookings may win the last seat.');
+        $this->assertCount(self::CONTENDERS - 1, $soldOut);
+        $this->assertSame(1, Reservation::count());
+
+        $departure = RoomTypeCalendarDay::where('room_type_id', $unit->id)
+            ->where('slot_id', $morning->id)
+            ->whereDate('date', '2026-09-01')
+            ->firstOrFail();
+        $this->assertSame(1, $departure->units_sold);
+
+        // And the day beside it was never touched: a departure's seats are not
+        // the property's nights.
+        $this->assertSame(
+            0,
+            RoomTypeCalendarDay::where('room_type_id', $unit->id)->whereNull('slot_id')->count(),
+        );
+    }
+
+    private function race(Listing $listing, RoomType $room, string $checkIn, string $checkOut, ?BookingSlot $slot = null): array
     {
         $dir = storage_path('framework/testing/concurrency-'.getmypid());
         File::ensureDirectoryExists($dir);
@@ -173,12 +229,24 @@ class ConcurrentBookingTest extends TestCase
         // serialises them *incidentally* and hides whether the counter update
         // is safe — the thing this test exists to prove. With the rows already
         // there, the only contention left is the conditional UPDATE itself.
-        app(InventoryWriter::class)->setCalendar(
-            $room,
-            now()->parse($checkIn),
-            now()->parse($checkOut),
-            ['closed_to_arrival' => false],
-        );
+        if ($slot === null) {
+            app(InventoryWriter::class)->setCalendar(
+                $room,
+                now()->parse($checkIn),
+                now()->parse($checkOut),
+                ['closed_to_arrival' => false],
+            );
+        } else {
+            // The same materialisation for a departure. Written straight to the
+            // table because the bulk calendar editor speaks nights, not
+            // departures — and giving it a slot here would be building the next
+            // slice inside a test.
+            InventoryWriteGuard::allow(fn () => RoomTypeCalendarDay::create([
+                'room_type_id' => $room->id,
+                'slot_id' => $slot->id,
+                'date' => $checkIn,
+            ]));
+        }
 
         // A shared wall-clock start, so the children genuinely overlap instead
         // of being spaced out by however long forking took.
@@ -192,7 +260,7 @@ class ConcurrentBookingTest extends TestCase
             }
 
             if ($pid === 0) {
-                $this->contend($i, $dir, $startAt, $listing, $room, $checkIn, $checkOut);
+                $this->contend($i, $dir, $startAt, $listing, $room, $checkIn, $checkOut, $slot);
             }
         }
 
@@ -215,7 +283,7 @@ class ConcurrentBookingTest extends TestCase
     /**
      * Runs inside a forked child and never returns.
      */
-    private function contend(int $index, string $dir, float $startAt, Listing $listing, RoomType $room, string $checkIn, string $checkOut): never
+    private function contend(int $index, string $dir, float $startAt, Listing $listing, RoomType $room, string $checkIn, string $checkOut, ?BookingSlot $slot = null): never
     {
         $result = 'error: never ran';
 
@@ -231,7 +299,7 @@ class ConcurrentBookingTest extends TestCase
 
             app(InventoryWriter::class)->book(new BookingRequest(
                 listing: $listing,
-                lines: [new BookingLine($room, 1, now()->parse($checkIn), now()->parse($checkOut))],
+                lines: [new BookingLine($room, 1, now()->parse($checkIn), now()->parse($checkOut), slot: $slot)],
                 guestName: 'Contender '.$index,
                 source: ReservationSource::Website,
             ));

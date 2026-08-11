@@ -63,6 +63,15 @@ tour operator gets real per-departure inventory. Resist the temptation to model
 time as a timestamp range with overlap queries: that replaces an atomic counter
 with a query nobody can reason about under concurrency, for a gain nobody asked for.
 
+**Decided 2026-08-12, with two refinements** — see `BOOKING_SYSTEM.md`, "Time
+inside a day", which is now the authoritative version:
+
+- A slot carries a **start and a duration**, not an index. A column has to know
+  where on the axis it sits and how tall it is.
+- The **drawing resolution** (15/30/60 minutes) is a property of the screen and
+  configurable per operator. It never reaches a table that counts anything: one
+  departure is one row with one counter, not 96 rows a day.
+
 ### 3.2 What is the sellable thing called?
 
 `room_types` is the wrong name for a quad bike, a seat and a Land Cruiser. Renaming
@@ -164,9 +173,13 @@ steps before it.
    existing process-forking test is the template.
 4. **A vertical's own attributes**, starting with whichever partner is closest to
    signing. Typed config over JSON, at the edge.
-5. **The screens.** The calendar is room types down and nights across; for tours it
-   wants departures down and days across, which is the same grid transposed. Find
-   out whether it really is the same component before writing a second one.
+5. **The screens.** The calendar is room types down and nights across; a tour
+   operator wants the hour axis down and departures across, at a resolution they
+   choose. Find out whether it really is the same component transposed before
+   writing a second one — but the rows underneath must be the same rows either
+   way, or a property selling both a chalet and a sunset drive ends up with two
+   calendars and no way to see its day. The fixed fortnight also becomes day,
+   week and month, with a month and year to jump to.
 
 ## 6. What to be suspicious of
 

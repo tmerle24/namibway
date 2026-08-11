@@ -354,6 +354,87 @@ saved — the point in the day when it matters, and nowhere else.
 
 ---
 
+### Time inside a day — decided 2026-08-12, before any code
+
+The brief in `BOOKING_BEYOND_ROOMS.md` §3.1 proposed a **slot** beside the date,
+null for anything sold by the day. Reviewing it against what an activity
+operator actually needs turned it from a flag into a small entity, and produced
+two decisions that are expensive to get wrong.
+
+**1. The grid is drawing; the slot is inventory.**
+
+A quad tour at 09:00 with eight seats is *one* row with *one* counter, moved by
+the same conditional `UPDATE` that resolves two people racing for the last room.
+A 15-minute grid is how that row is *drawn* on an hour axis — it is not 96 rows
+a day.
+
+This is the decision the whole thing rests on. Putting the grid into the
+inventory would give every unit hundreds of counters per day, and the atomic
+counter — the single most valuable piece of this system, and the one
+`BOOKING_BEYOND_ROOMS.md` §4 forbids replacing — would become an overlap query
+under concurrency that nobody can reason about. The resolution a property draws
+its day at is a **property of the screen**, configurable per operator (15, 30,
+60 minutes), and it touches no table that counts anything.
+
+**2. A slot carries a start and a duration, not a number.**
+
+`slot_1`, `slot_2` would be enough to key a counter and useless for everything
+else: a column has to know where on the axis it sits and how tall it is, and
+"09:00 for three hours" beside "12:00 for three hours" has to be expressible
+without anything guessing. So a slot is a start time and a length, and a
+departure is `(unit, date, slot)` with `slot` null for everything sold by the
+day. Accommodation rows are unchanged, and so is every query that reads them.
+
+**3. Views are a reading of the same rows, not a second calendar.**
+
+The calendar today is one fixed fortnight. It becomes day, week and month, with
+a month and year to jump to. Underneath, the two verticals read the same table
+from different directions:
+
+| | Down the page | Across |
+|---|---|---|
+| A lodge, month view | room types | nights |
+| A tour operator, day view | the hour axis at the property's own resolution | departures |
+
+Whether that is one component transposed or two components is a question to
+answer *while building it*, against a real grid — not to guess at now. What must
+be true either way is that the rows underneath are the same rows, because the
+moment they are not, a property that sells both a chalet and a sunset drive has
+two calendars and no way to see its day.
+
+**Where it stands.** The data model is built (2026-08-12): `booking_slots` is the
+timetable a unit runs, `room_type_calendar_days.slot_id` keys a row to a
+departure, and the uniqueness rule is two partial indexes — one row per unit per
+night where there is no slot, one per unit per date per departure where there is.
+Two indexes rather than one over three columns because SQL treats NULLs as
+distinct, and a single index would have let a lodge keep two counters for the
+same night: the exact failure the counter exists to prevent, arriving silently.
+Selling one works the same day: a `BookingLine` carries an optional slot, the
+counter is keyed to it, and cancelling gives the seats back to the departure that
+holds them rather than to the day beside it. The departure is frozen onto the
+stay (`reservation_units.slot_id` + `slot_label`) for the same reason the rate
+plan's name is — renaming "Morning departure" in March must not change what
+February sold.
+
+A rate per departure works the same way and for the same reason: `rate_plan_days`
+gained the slot, with the same two partial indexes, and the lookup is three steps
+that all already existed — the departure's own rate, else the day's, else the
+unit's. A sunset drive can cost more than the morning one.
+
+**What none of this changes, which is the point.** Every rate a lodge has ever
+entered is a null-slot row; every row it will enter stays one; every query that
+reads a night reads it unchanged. The concurrency guarantee is asserted at both
+levels — the last room of a night and the last seat of a departure — by the same
+forking test against the same conditional `UPDATE`, because it is the same
+mechanism and not a second one.
+
+**What this does not change.** Inventory stays a counter per unit per period.
+Restrictions stay where they are. The price stays frozen. A stay crossing
+midnight is still one row per period, not a range with overlap arithmetic —
+minutes are a scheduling problem, and this is an inventory system.
+
+---
+
 ## 6. Order of work
 
 Each step leaves the system working and shippable.
@@ -540,6 +621,63 @@ Steps 5 and 6 were the other way round in the first draft. Switching a lodge on 
 a rollout feature rather than a booking-core one, but it is what turns all of this
 into something a real partner uses, and amenities have no dependency on anything
 here at all.
+
+---
+
+### Open bug: printing the arrivals board prints the menu — found 2026-08-12
+
+Printing the arrivals view produces the navigation and none of the board.
+
+The print rules that exist are the ones this codebase wrote — `nw-noprint`, the
+calendar viewport's ceiling coming off, table rows not breaking across pages
+(`lodge-styles.blade.php`). They all assume the *page* prints and only some
+parts of it need hiding. What they never handle is Filament's own shell: the
+sidebar and topbar are laid out as fixed/positioned elements and the main
+content sits in a scrolling container, so on paper the shell is what has a
+position and the content is what gets clipped.
+
+The fix belongs in one place — a print stylesheet on the panel, not on the
+board — because every screen a lodge prints has the same problem: hide the
+sidebar, the topbar and the page header, and let the main region flow at full
+width with no scroll container. Worth doing properly rather than patching the
+arrivals view, since a printed arrivals list is carried around the property and
+a printed calendar goes on the office wall.
+
+---
+
+### Open bug: capacity is a filter, not a rule — found 2026-08-12
+
+Reported from the panel: a room for 2 adults and 2 children took a booking for
+2 adults and **3 children** without an error or a warning.
+
+The diagnosis, because it is not what it looks like. Capacity is enforced in
+exactly one place and it is not a rule there either — it is a *filter*:
+`RoomAvailability::seats()` decides which rooms the trip plan **offers**, and it
+gets the arithmetic right, including letting a child take a spare adult slot. But:
+
+- **`ListingController::storeInquiry` validates nothing about it.** `adults` and
+  `children` are checked as integers 1–20 and 0–20, and the chosen
+  `room_type_code` is never compared against the room it names. A party that
+  grows after the room was picked, or a request posted directly, goes through.
+- **`InventoryWriter::book()` never compares them at all.** `assertFits()` looks
+  at the `Occupancy` object, so it only runs where a rate plan prices by guests;
+  under a per-room tariff the header counts are recorded and never questioned.
+  This is the path the desk uses, which is where it was found.
+
+So nothing *accepts* a capacity rule; one screen merely declines to show you the
+room.
+
+The fix is not "refuse everywhere", and this is the part worth deciding before
+building it. **At a desk, exceeding capacity is legitimate** — a cot goes in the
+room, and a receptionist who is told "no" by software they cannot argue with
+writes the booking on paper instead. **On the traveller-facing path it is not**,
+because nobody is there to judge whether the room can take a fourth child.
+
+So: refuse on the website (a validation rule against the named room type), and
+at the desk warn with a reason the operator confirms — "sleeps 2 + 2, this is 2 +
+3, extra bed?" — recorded on the stay like a price override is, so the
+housekeeping list and the arrivals board know a cot is needed. That last part is
+the reason to record it rather than merely allow it.
 
 ---
 
