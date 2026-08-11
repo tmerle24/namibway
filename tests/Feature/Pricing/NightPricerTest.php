@@ -10,6 +10,7 @@ use App\Models\RatePlan;
 use App\Models\RoomType;
 use App\Services\Pricing\NightPricingContext;
 use App\Services\Pricing\Occupancy;
+use App\Services\Pricing\PerPersonSharingPricer;
 use App\Services\Pricing\Pricers;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -84,8 +85,10 @@ class NightPricerTest extends TestCase
             'name' => 'Standard rate',
             'code' => 'STD',
             'pricing_strategy' => $strategy,
-            'single_supplement_amount' => $supplementAmount,
-            'single_supplement_percent' => $supplementPercent,
+            'pricing_config' => [
+                PerPersonSharingPricer::SUPPLEMENT_AMOUNT => $supplementAmount,
+                PerPersonSharingPricer::SUPPLEMENT_PERCENT => $supplementPercent,
+            ],
         ]);
 
         return new NightPricingContext(
@@ -96,6 +99,7 @@ class NightPricerTest extends TestCase
             occupancy: Occupancy::of($guests),
             categories: $this->categories(),
             guestAmounts: $amounts,
+            config: $plan->pricingConfig(),
         );
     }
 

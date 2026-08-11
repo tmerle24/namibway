@@ -22,6 +22,11 @@ use App\Exceptions\Pricing\UnpriceableStayException;
  */
 final class PerPersonSharingPricer implements NightPricer
 {
+    /** The parameters this strategy reads out of the rate plan's config. */
+    public const SUPPLEMENT_AMOUNT = 'single_supplement_amount';
+
+    public const SUPPLEMENT_PERCENT = 'single_supplement_percent';
+
     public function price(NightPricingContext $context): float
     {
         $categories = $context->categories;
@@ -70,13 +75,13 @@ final class PerPersonSharingPricer implements NightPricer
      */
     private function supplement(NightPricingContext $context): float
     {
-        $amount = $context->ratePlan?->single_supplement_amount;
+        $amount = $context->config->float(self::SUPPLEMENT_AMOUNT);
 
         if ($amount !== null) {
             return $amount;
         }
 
-        $percent = $context->ratePlan?->single_supplement_percent;
+        $percent = $context->config->float(self::SUPPLEMENT_PERCENT);
 
         return $percent === null ? 0.0 : $context->baseRate * ($percent / 100);
     }

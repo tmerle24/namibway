@@ -8,6 +8,7 @@ use App\Enums\RatePlanEligibility;
 use App\Filament\Partner\Resources\RatePlanResource\Pages;
 use App\Filament\Partner\Support\SelectedProperty;
 use App\Models\RatePlan;
+use App\Services\Pricing\PerPersonSharingPricer;
 use App\Support\CountrySettings;
 use App\Support\Money;
 use Filament\Forms\Components\Grid;
@@ -118,15 +119,18 @@ class RatePlanResource extends Resource
                         ->required()
                         ->live(),
 
+                    // Written into the strategy's own config rather than into
+                    // columns of their own: the products table must not grow a
+                    // column every time a calculation needs a number.
                     Grid::make(2)
                         ->schema([
-                            TextInput::make('single_supplement_amount')
+                            TextInput::make('pricing_config.'.PerPersonSharingPricer::SUPPLEMENT_AMOUNT)
                                 ->label('Single supplement')
                                 ->numeric()
                                 ->minValue(0)
                                 ->prefix(fn (): string => Money::symbol(static::currency()))
                                 ->helperText('Per night, when one person has the room to themselves.'),
-                            TextInput::make('single_supplement_percent')
+                            TextInput::make('pricing_config.'.PerPersonSharingPricer::SUPPLEMENT_PERCENT)
                                 ->label('… or as a percentage')
                                 ->numeric()
                                 ->minValue(0)

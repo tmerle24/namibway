@@ -17,6 +17,7 @@ use App\Services\Inventory\DTOs\Quote;
 use App\Services\Pricing\NightPricingContext;
 use App\Services\Pricing\Occupancy;
 use App\Services\Pricing\Pricers;
+use App\Services\Pricing\PricingConfig;
 use App\Support\CountrySettings;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -137,6 +138,7 @@ class AvailabilityCalendar
         $pricer = Pricers::for($strategy);
 
         $occupancy ??= Occupancy::empty();
+        $config = $ratePlan?->pricingConfig() ?? PricingConfig::empty();
         $days = $this->rateDaysKeyedByDate($roomType, $checkIn, $checkOut, $ratePlan);
         $categories = $strategy->needsOccupancy() ? $this->guestCategories($roomType) : [];
         $amounts = $strategy === PricingStrategy::PerOccupancy
@@ -160,6 +162,7 @@ class AvailabilityCalendar
                     occupancy: $occupancy,
                     categories: $categories,
                     guestAmounts: $amounts[$key] ?? [],
+                    config: $config,
                 )),
                 units: $units,
             );

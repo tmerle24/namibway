@@ -4,9 +4,9 @@ namespace App\Filament\Partner\Resources\RatePlanResource\Pages;
 
 use App\Filament\Partner\Resources\RatePlanResource;
 use App\Filament\Partner\Support\SelectedProperty;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Exceptions\Halt;
-use Filament\Notifications\Notification;
 
 class CreateRatePlan extends CreateRecord
 {

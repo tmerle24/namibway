@@ -18,6 +18,7 @@ use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\InventoryWriter;
 use App\Services\Pricing\GuestCategoryDefaults;
 use App\Services\Pricing\Occupancy;
+use App\Services\Pricing\PerPersonSharingPricer;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -198,7 +199,7 @@ class OccupancyPricingTest extends TestCase
         $listing = Listing::factory()->create();
         $room = $this->room($listing);
         $plan = $this->plan($listing, PricingStrategy::PerPersonSharing, [
-            'single_supplement_amount' => 500,
+            'pricing_config' => [PerPersonSharingPricer::SUPPLEMENT_AMOUNT => 500],
         ]);
         $categories = $this->categories($listing);
 

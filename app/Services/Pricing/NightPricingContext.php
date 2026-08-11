@@ -29,6 +29,10 @@ final class NightPricingContext
      * @param  array<int, float>  $guestAmounts  number of guests => amount for
      *                                           this night, for the plans that
      *                                           price that way
+     * @param  PricingConfig  $config  The strategy's own parameters. Passed
+     *                                 rather than read off the rate plan, so a
+     *                                 pricer never touches a model and a plan
+     *                                 never has to know what a strategy needs.
      */
     public function __construct(
         public readonly RoomType $roomType,
@@ -38,6 +42,7 @@ final class NightPricingContext
         public readonly Occupancy $occupancy,
         public readonly array $categories = [],
         public readonly array $guestAmounts = [],
+        public readonly PricingConfig $config = new PricingConfig([]),
     ) {}
 
     public function planLabel(): string
