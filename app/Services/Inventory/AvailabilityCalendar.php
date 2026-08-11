@@ -5,6 +5,7 @@ namespace App\Services\Inventory;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Models\RoomType;
 use App\Models\RoomTypeCalendarDay;
+use App\Services\Inventory\DTOs\CalendarSnapshot;
 use App\Services\Inventory\DTOs\NightlyRate;
 use App\Services\Inventory\DTOs\Quote;
 use App\Support\CountrySettings;
@@ -178,6 +179,43 @@ class AvailabilityCalendar
         return $nights;
     }
 
+    /**
+     * The whole calendar for many room types across a range, in one query.
+     *
+     * The single-night reads above are per room type by design — a booking
+     * asks about one. A grid asks about all of them for a month, and asking
+     * night by night would be one query per cell. Both answers come out of the
+     * same rules; see CalendarSnapshot.
+     *
+     * `$to` is exclusive, matching nights() and the half-open stay convention.
+     *
+     * @param  iterable<int, RoomType>  $roomTypes
+     */
+    public function snapshot(iterable $roomTypes, CarbonInterface $from, CarbonInterface $to): CalendarSnapshot
+    {
+        $keyed = [];
+
+        foreach ($roomTypes as $roomType) {
+            $keyed[$roomType->id] = $roomType;
+        }
+
+        $days = [];
+
+        if ($keyed !== []) {
+            $rows = RoomTypeCalendarDay::query()
+                ->whereIn('room_type_id', array_keys($keyed))
+                ->whereDate('date', '>=', Carbon::parse($from)->toDateString())
+                ->whereDate('date', '<', Carbon::parse($to)->toDateString())
+                ->get();
+
+            foreach ($rows as $row) {
+                $days[$row->room_type_id][$row->date->toDateString()] = $row;
+            }
+        }
+
+        return new CalendarSnapshot($days, $keyed);
+    }
+
     private function day(RoomType $roomType, CarbonInterface $date): ?RoomTypeCalendarDay
     {
         return RoomTypeCalendarDay::query()
@@ -203,36 +241,22 @@ class AvailabilityCalendar
     }
 
     /**
-     * Capacity for a night. A null override means "follow the room type",
-     * which is why the override is never copied down at booking time — a
-     * lodge that raises total_units must see the new number on every night it
-     * never explicitly overrode.
+     * The sparse-calendar rules — a missing row or a null override means
+     * "follow the room type" — live on CalendarSnapshot, so the night-by-night
+     * reads here and the bulk read a grid uses cannot drift apart.
      */
     private function capacityFrom(RoomType $roomType, ?RoomTypeCalendarDay $day): int
     {
-        if ($day !== null && $day->units_total !== null) {
-            return $day->units_total;
-        }
-
-        return (int) $roomType->total_units;
+        return CalendarSnapshot::capacityFor($roomType, $day);
     }
 
-    /** Same null-means-fall-back rule as capacity, for the rate. */
     private function rateFrom(RoomType $roomType, ?RoomTypeCalendarDay $day): float
     {
-        if ($day !== null && $day->rate !== null) {
-            return $day->rate;
-        }
-
-        return (float) $roomType->rate_per_night;
+        return CalendarSnapshot::rateFor($roomType, $day);
     }
 
     private function occupiedFrom(?RoomTypeCalendarDay $day): int
     {
-        if ($day === null) {
-            return 0;
-        }
-
-        return $day->units_sold + $day->units_blocked;
+        return CalendarSnapshot::occupiedOn($day);
     }
 }
