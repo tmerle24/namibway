@@ -53,6 +53,73 @@ because there is no number that is answered yet), an optional hero photograph, t
 commission wording on the partner flyer, the monthly price on the websites flyer, and
 the organisation name on the booking-system flyer.
 
+## Brand marks
+
+### The "Built in Namibia" seal
+
+Round stamp — heavy double ring, **BUILT IN NAMIBIA** across the top, **NAMIBWAY**
+along the foot, star separators, the compass mark in the middle.
+
+| File | Use |
+|---|---|
+| `assets/built-in-namibia-seal.svg` | light grounds (paper, sand) — vector, use this for print |
+| `assets/built-in-namibia-seal-light.svg` | the brown ground — vector |
+| `assets/built-in-namibia-seal-1024.png` | transparent PNG for Canva, Word, social, signatures |
+| `assets/built-in-namibia-seal-512.png` | the same, smaller |
+| `assets/built-in-namibia-seal-light-1024.png` / `-512.png` | transparent PNGs of the light colourway |
+
+Regenerate the two SVGs with `node marketing/build-seal.mjs`. The compass is lifted
+out of the brand mark at build time rather than redrawn, so the seal cannot drift out
+of step with the logo — change the logo, re-run, done. The PNGs are rasterised from
+the SVGs; redo them if the seal changes.
+
+This is meant to be reused, not redrawn: flyers, quotes, proposals, email signatures,
+the website footer, invoices.
+
+- Keep it circular. Do not stretch it, recolour it outside the two files, or set it on
+  a busy photograph — it reads as a stamp only if it looks stamped.
+- It stays legible down to about 20 mm across. Below that, use the plain compass.
+- Put the light colourway on dark grounds; the dark one on anything pale.
+
+**On the wording.** It says *built*, not *made*, for two reasons. "Made in Namibia" is
+country-of-origin phrasing that reads as manufactured goods, and this is software.
+More practically, it is close to the wording of the local buy-local campaign — a round
+stamp saying "Made in Namibia" can be read as a certification we have not applied for,
+which is a claim we should not make by accident. If we ever want that association, the
+honest route is to join the scheme and use their mark, not to imitate it. The phrase
+lives in one constant at the top of `build-seal.mjs` if this is ever revisited.
+
+### The landscape illustration
+
+`assets/namibia-scene.svg` — sunset sky, ridge layers and a camel thorn, used behind
+the phone mock-up on the websites flyer.
+
+It is **drawn, not photographed**, and that is a stopgap, not a preference. We have no
+photograph whose rights are established: the images under `public/images/explore` are
+demo assets of unknown provenance and are 900 px wide, which is too small for print
+anyway. The flyer marks the slot `EDIT: hero photo` — swapping in a real photograph is
+a one-line change once we own one.
+
+### Logos
+
+In `public/images/` — these are the app's own files, not copies, so they cannot fall
+out of date:
+
+| File | Use on |
+|---|---|
+| `namibway-logo-dark.png` | light grounds (paper, sand) |
+| `namibway-logo-light.png` | dark grounds (the brown band) |
+| `namibway-icon-amber.png` | the compass mark alone, large |
+| `namibway-icon-amber-inline.svg` | the compass mark alone, vector |
+| `pwa/icon-512.png` | the app icon, tan compass on brown |
+
+`assets/compass-on-brown.svg` and `assets/compass-on-sand.svg` are the same mark
+recoloured for those two grounds, used as the small ornament in the flyer strips.
+
+Anyone who needs the logo — a co-founder building something in Canva, a print shop —
+should be sent these files rather than a screenshot. A wordmark typed out in whatever
+bold font is to hand is not the logo, and it is what makes material look homemade.
+
 ## Other files
 
 | File | What it is |
