@@ -5,6 +5,7 @@ namespace App\Filament\Support;
 use App\Jobs\GenerateSiteJob;
 use App\Models\Listing;
 use App\Models\Site;
+use Filament\Actions\Action as PageAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
 
@@ -68,8 +69,43 @@ class CreateWebsiteAction
      */
     public static function visit(string $name = 'visit_website'): Action
     {
-        return Action::make($name)
-            ->label('')
+        return self::configureVisit(Action::make($name))->label('');
+    }
+
+    /**
+     * The same link, in a record page's header.
+     *
+     * Filament keeps two Action classes — one for tables, one for pages — that
+     * share their configuration methods but not an ancestor worth type-hinting.
+     * Rather than write the button twice and let the two drift, the shape lives
+     * in configureVisit()/configureCreate() and these four methods only pick
+     * which class it is poured into. On a page the label is spelled out; in a
+     * crowded table row it is an icon.
+     */
+    public static function visitHeader(string $name = 'visit_website'): PageAction
+    {
+        return self::configureVisit(PageAction::make($name))->label('Open website');
+    }
+
+    public static function make(string $name = 'create_website'): Action
+    {
+        return self::configureCreate(Action::make($name));
+    }
+
+    public static function makeHeader(string $name = 'create_website'): PageAction
+    {
+        return self::configureCreate(PageAction::make($name));
+    }
+
+    /**
+     * @template T of Action|PageAction
+     *
+     * @param  T  $action
+     * @return T
+     */
+    private static function configureVisit(Action|PageAction $action): Action|PageAction
+    {
+        return $action
             ->icon('heroicon-o-arrow-top-right-on-square')
             ->color('gray')
             ->visible(fn (Listing $record): bool => self::siteFor($record) !== null)
@@ -80,9 +116,15 @@ class CreateWebsiteAction
             ->openUrlInNewTab();
     }
 
-    public static function make(string $name = 'create_website'): Action
+    /**
+     * @template T of Action|PageAction
+     *
+     * @param  T  $action
+     * @return T
+     */
+    private static function configureCreate(Action|PageAction $action): Action|PageAction
     {
-        return Action::make($name)
+        return $action
             ->label(fn (Listing $record): string => self::siteFor($record) === null
                 ? 'Create website'
                 : 'Rebuild website')

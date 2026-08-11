@@ -5,6 +5,8 @@ namespace App\Filament\Partner\Resources\ListingResource\Pages;
 use App\Filament\Concerns\HasFormActionsInHeader;
 use App\Filament\Partner\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
+use App\Filament\Support\CreateWebsiteAction;
+use App\Filament\Support\ViewListingAction;
 use App\Models\Listing;
 use App\Services\Enrichment\OsmLocationFinder;
 use Filament\Actions;
@@ -37,6 +39,11 @@ class EditListing extends EditRecord
     protected function getHeaderActions(): array
     {
         return $this->withFormActions([
+            ViewListingAction::header(),
+            // The link, but not the build button: that one is switched off for
+            // owners until the subscription exists, and a disabled button in a
+            // page header reads as broken rather than as forthcoming.
+            CreateWebsiteAction::visitHeader(),
             Actions\LocaleSwitcher::make(),
             Actions\Action::make('back')
                 ->label('Back to listings')
