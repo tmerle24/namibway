@@ -125,6 +125,9 @@ class BlockRegistry
      */
     public static function layoutFor(BusinessType $type): array
     {
-        return self::LAYOUTS[$type->value] ?? self::LAYOUTS['service'];
+        // No fallback. Every business type has a layout, and a new one added
+        // without one should fail here — loudly, at analysis time — rather than
+        // quietly serving somebody's car rental the layout for a plumber.
+        return self::LAYOUTS[$type->value];
     }
 }

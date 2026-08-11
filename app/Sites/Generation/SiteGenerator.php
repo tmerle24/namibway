@@ -72,7 +72,7 @@ class SiteGenerator
             $import = new ListingImport($this->report);
             $images = $this->importImages($site, $listing, $import, $force);
 
-            $this->writeSiteFields($site, $this->siteFieldsFrom($listing));
+            $this->writeSiteFields($site, $this->siteFieldsFrom($listing), $force);
             $this->writeBlocks($site, $this->payloadsFrom($listing, $import, $images));
 
             return $site->refresh();
@@ -237,9 +237,15 @@ class SiteGenerator
     /**
      * Write site columns, keeping anything edited since the last generation.
      *
+     * Under `--force` nothing is kept. That is what the flag means everywhere
+     * else — blocks and images are already gone by this point — and a rebuild
+     * that quietly preserved half the site while reporting those fields as
+     * "edited since" would be describing something that never happened: force
+     * has just thrown away the record of having written them.
+     *
      * @param  array<string, mixed>  $fields
      */
-    private function writeSiteFields(Site $site, array $fields): void
+    private function writeSiteFields(Site $site, array $fields, bool $force = false): void
     {
         $imported = $site->imported ?? [];
         $previous = is_array($imported['fields'] ?? null) ? $imported['fields'] : [];
@@ -249,7 +255,7 @@ class SiteGenerator
             $current = $site->getAttribute($field);
             $wasGenerated = ($previous[$field] ?? null) === $this->comparable($current);
 
-            if (filled($current) && ! $wasGenerated) {
+            if (! $force && filled($current) && ! $wasGenerated) {
                 $this->report->keptEdit($field, 'edited since the last generation');
                 $written[$field] = $previous[$field] ?? null;
 

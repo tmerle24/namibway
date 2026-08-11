@@ -139,11 +139,21 @@ class ListingImport
             return [];
         }
 
-        $highlights = is_array($listing->highlights) ? $listing->highlights : [];
+        // Read through getAttribute() rather than as a property, deliberately.
+        // `highlights` is a json column that is translatable but carries no
+        // array cast, so static analysis reads it as a string while at runtime
+        // it is a list of short phrases. Going through the accessor keeps the
+        // value honestly `mixed` and the checks below meaningful, instead of
+        // being narrowed away against a type the column does not really have.
+        $highlights = $listing->getAttribute('highlights');
+
+        if (! is_array($highlights)) {
+            return [];
+        }
 
         return array_values(array_filter(
             $highlights,
-            fn ($value) => is_string($value) && trim($value) !== '',
+            fn (mixed $value): bool => is_string($value) && trim($value) !== '',
         ));
     }
 
