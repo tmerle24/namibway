@@ -972,10 +972,23 @@
 
     /* ---------- print ---------- */
 
+    /* A heading that exists only on paper. The date is next to the arrows on
+       screen, where it belongs; the arrows do not print, and a calendar on an
+       office wall or a list carried around a property has to say which day it
+       is for. */
+    .nw-printonly {
+        display: none;
+    }
+
     @media print {
         .nw-noprint,
         .nw-drawer {
             display: none !important;
+        }
+
+        .nw-printonly {
+            display: block;
+            margin-bottom: 0.5rem;
         }
 
         /* On paper there is no window to cap against, so the ceiling comes off

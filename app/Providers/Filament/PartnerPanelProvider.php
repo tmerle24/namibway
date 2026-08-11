@@ -80,6 +80,15 @@ class PartnerPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('filament.partner.partials.link-preview')->render(),
             )
+            // On the panel and not on a screen, because every page a property
+            // prints has the same problem: Filament's shell is what has a
+            // position on paper, and the content is what gets clipped. A
+            // printed passenger list is carried to a vehicle and a printed
+            // calendar goes on the office wall.
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => view('filament.partner.partials.print-styles')->render(),
+            )
             // A demo tenant has to be unmistakable from any screen, including
             // one someone photographs or prints. BODY_START rather than a page
             // header hook, because a seeded booking must not look real on the

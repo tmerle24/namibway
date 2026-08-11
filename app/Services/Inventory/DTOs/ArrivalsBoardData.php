@@ -4,11 +4,18 @@ namespace App\Services\Inventory\DTOs;
 
 use App\Models\Listing;
 use App\Models\Reservation;
+use App\Models\ReservationUnit;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 /**
- * One day at the front desk: who arrives, who leaves, who is staying on.
+ * One day at the front desk: who arrives, who leaves, who is staying on — and,
+ * where the property runs departures, who is on each of them.
+ *
+ * The manifests are a DayGridData: the calendar's own reading of the same day,
+ * presented as passenger lists rather than as blocks on an hour axis. Null for
+ * a property that sells only nights, which is what keeps every departure-shaped
+ * thing off a lodge's screen.
  */
 class ArrivalsBoardData
 {
@@ -24,11 +31,48 @@ class ArrivalsBoardData
         public readonly Collection $arrivals,
         public readonly Collection $departures,
         public readonly Collection $inHouse,
+        public readonly ?DayGridData $manifests = null,
+        /** Whether anything here is sold by the night. False for a tour operator. */
+        public readonly bool $sellsNights = true,
     ) {}
 
     public function isEmpty(): bool
     {
-        return $this->arrivals->isEmpty() && $this->departures->isEmpty() && $this->inHouse->isEmpty();
+        return $this->arrivals->isEmpty()
+            && $this->departures->isEmpty()
+            && $this->inHouse->isEmpty()
+            && ! $this->hasManifests();
+    }
+
+    /** Whether anything departs on this date. False for every lodge. */
+    public function hasManifests(): bool
+    {
+        return $this->manifests !== null && ! $this->manifests->isEmpty();
+    }
+
+    /**
+     * Departures that actually have somebody on them. A timetable entry
+     * nobody booked is on the calendar, where an empty seat count is the
+     * point; on a passenger list it is a page of nothing.
+     *
+     * @return array<int, DepartureColumn>
+     */
+    public function runningToday(): array
+    {
+        if ($this->manifests === null) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $this->manifests->columns,
+            fn (DepartureColumn $column) => $column->stays !== [],
+        ));
+    }
+
+    /** Seats sold across every departure today. */
+    public function seatsToday(): int
+    {
+        return $this->manifests?->seatsSold() ?? 0;
     }
 
     /** Rooms occupied tonight: everyone arriving plus everyone staying on. */
@@ -43,11 +87,21 @@ class ArrivalsBoardData
     }
 
     /**
+     * Rooms held by these stays.
+     *
+     * Seat lines are left out: a mixed booking of one chalet and three places
+     * on the morning ride holds one room, and counting four would put a lodge
+     * four beds short on a list it lays tables from.
+     *
      * @param  Collection<int, Reservation>  $reservations
      */
     public function units(Collection $reservations): int
     {
-        return (int) $reservations->sum(fn (Reservation $reservation) => $reservation->units->sum('quantity'));
+        return (int) $reservations->sum(
+            fn (Reservation $reservation) => $reservation->units
+                ->filter(fn (ReservationUnit $unit) => $unit->slot_id === null)
+                ->sum('quantity')
+        );
     }
 
     /**

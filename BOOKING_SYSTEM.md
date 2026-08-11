@@ -525,6 +525,37 @@ a room line on a tour says **Seats** rather than Units, the preview counts
 "Which departure" rather than "Departure" — the booking form already had a
 field by that name, and it is the check-out date.
 
+**The morning board — 2026-08-12.** The arrivals board was night-shaped, and for
+a seat that produced a plausible lie: a booking for three places on the morning
+ride read as *3 rooms arriving*, a number a desk lays tables from.
+
+It now carries a **passenger list per departure** — time order down the page,
+one section each so a page breaks between departures and a guide can be handed
+the sheet for their own vehicle, with the seats, the party, the status and the
+phone number. The phone is the reason the sheet leaves the office at all:
+somebody is not at the vehicle and there is five minutes to find out why.
+
+The manifests come from `DayGrid`, which is the calendar's own answer to what
+departs today and how full it is. One definition read twice, so a list carried
+to a vehicle and the grid on the office wall cannot disagree about who is on the
+09:00.
+
+Three rules, each of which is the board telling the truth rather than a feature:
+
+- **A booking made only of seats is not an arrival.** Nobody checks in, nobody
+  is given a key, and it is on its manifest and nowhere else. A booking holding
+  a chalet *and* a ride is on both — the guest really does arrive — but it
+  counts as the one room it holds. `ArrivalsBoardData::units()` ignores seat
+  lines for the same reason: three seats are not three rooms, and the room
+  count is what a kitchen lays tables from.
+- **A departure nobody booked is not a page.** It is on the calendar, where an
+  empty seat count is the entire point; on a passenger list it is a sheet of
+  nothing.
+- **An operator who sells nothing by the night is not asked about rooms.**
+  Arriving / departing / staying-on come off the screen entirely rather than
+  printing three headings that say "nobody" — that is not a board, it is
+  somebody else's board with the rows taken out.
+
 **A guard test, because the risk here is a leak and not a bug.**
 `AccommodationUnchangedByTimeTest` asserts the thing the whole section rests on:
 a property that sells nights does not notice that departures exist. It is the
@@ -745,24 +776,35 @@ here at all.
 
 ---
 
-### Open bug: printing the arrivals board prints the menu — found 2026-08-12
+### Printing the arrivals board printed the menu — found 2026-08-12, fixed the same day
 
-Printing the arrivals view produces the navigation and none of the board.
+Printing the arrivals view produced the navigation and none of the board.
 
-The print rules that exist are the ones this codebase wrote — `nw-noprint`, the
-calendar viewport's ceiling coming off, table rows not breaking across pages
+The print rules that existed were the ones this codebase wrote — `nw-noprint`,
+the calendar viewport's ceiling coming off, table rows not breaking across pages
 (`lodge-styles.blade.php`). They all assume the *page* prints and only some
-parts of it need hiding. What they never handle is Filament's own shell: the
+parts of it need hiding. What they never handled is Filament's own shell: the
 sidebar and topbar are laid out as fixed/positioned elements and the main
 content sits in a scrolling container, so on paper the shell is what has a
 position and the content is what gets clipped.
 
-The fix belongs in one place — a print stylesheet on the panel, not on the
-board — because every screen a lodge prints has the same problem: hide the
-sidebar, the topbar and the page header, and let the main region flow at full
-width with no scroll container. Worth doing properly rather than patching the
-arrivals view, since a printed arrivals list is carried around the property and
-a printed calendar goes on the office wall.
+Fixed as designed — one print stylesheet on the panel
+(`filament.partner.partials.print-styles`, a `HEAD_END` render hook), not on the
+board, because every screen a property prints has the same problem. A printed
+passenger list is carried to a vehicle and a printed calendar goes on the office
+wall.
+
+Two things the fix turned up that the diagnosis had not:
+
+- **The page header is sticky in this panel** (`sticky-page-header`, so header
+  actions stay put while a long form scrolls), and a sticky element on paper is
+  one that has left the flow. It printed *on top of* the first line of the
+  board, which is where the date was. A passenger list with no date on it is
+  worse than no sheet, and nothing about it was visible on screen — which is the
+  argument for looking at the print, not only at the page.
+- **A date that only exists next to the arrows does not print**, because the
+  arrows do not. The calendar's range now also renders as a `nw-printonly`
+  heading, so what comes off the printer says which week it is.
 
 ---
 

@@ -21,6 +21,14 @@ class DepartureStay
         public readonly int $seats,
         public readonly StayStatus $state,
         public readonly ?string $reference = null,
+        /**
+         * For the manifest. A guide holding a passenger list needs a number to
+         * ring when somebody is not at the vehicle, and the calendar chip
+         * simply does not print it — the same row read twice, not two rows.
+         */
+        public readonly ?string $phone = null,
+        /** Adults plus children on the booking, as the party was counted. */
+        public readonly int $party = 0,
     ) {}
 
     public function stateLabel(): string

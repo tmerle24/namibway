@@ -112,6 +112,10 @@
                     </div>
                 </div>
 
+                <div class="nw-printonly nw-range">
+                    {{ $property->name }} — {{ $rangeLabel }}
+                </div>
+
                 @if ($grid->isEmpty() && ! $dayGrid)
                     <p class="nw-hint" style="margin-top: 1rem;">
                         {{ $property->name }} has no room types yet, so there is nothing to show a calendar for.

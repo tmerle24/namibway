@@ -294,6 +294,8 @@ class DayGrid
                 seats: $unit->quantity,
                 state: $reservation->status,
                 reference: $reservation->reference,
+                phone: $reservation->guest_phone,
+                party: $reservation->adults + $reservation->children,
             );
         }
 
