@@ -147,6 +147,16 @@ class DemoTenantTest extends TestCase
         }
     }
 
+    public function test_diagnostic_a_rebuild_on_its_own_is_reproducible(): void
+    {
+        $source = $this->source();
+
+        $a = $this->builder()->build($source, weeks: 4);
+        $b = $this->builder()->build($source, weeks: 4);
+
+        $this->assertSame($a->stays, $b->stays, 'two builds back to back');
+    }
+
     public function test_rebuilding_leaves_one_clean_complete_tenant(): void
     {
         $source = $this->source();
