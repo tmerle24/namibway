@@ -468,6 +468,20 @@ class ListingResource extends Resource
                         'rejected' => 'Rejected',
                     ]),
                 Tables\Filters\TernaryFilter::make('is_published'),
+                // Combined with "Published: No", this is the working set for
+                // filling in a scraped batch by hand: a directory gives us a
+                // name and a category and rarely much else, so someone looks
+                // the place up and completes it. Export to Excel respects the
+                // active filters, so that batch leaves as a workbook and comes
+                // back through Content → Import listings.
+                Tables\Filters\SelectFilter::make('scrape_source')
+                    ->label('Imported from')
+                    ->options(fn (): array => Listing::query()
+                        ->whereNotNull('scrape_source')
+                        ->distinct()
+                        ->orderBy('scrape_source')
+                        ->pluck('scrape_source', 'scrape_source')
+                        ->all()),
                 Tables\Filters\TernaryFilter::make('is_homepage_pick')
                     ->label('Homepage pick'),
                 Tables\Filters\TernaryFilter::make('has_image')
