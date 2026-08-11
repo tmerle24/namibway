@@ -44,10 +44,19 @@ class PartnerPanelProvider extends PanelProvider
             ->login()
             ->brandLogo(asset('images/namibway-logo-dark.png'))
             ->darkModeBrandLogo(asset('images/namibway-logo-light.png'))
-            ->brandLogoHeight('80px')
+            // The sidebar header offers 272px of width (20rem less px-6), and
+            // the logo is 733×171 — so anything over ~63px tall gets its width
+            // clamped and the wordmark squeezed. 56px also leaves the h-16
+            // header a little air. brand-logo.blade.php guards the ratio if a
+            // container is ever narrower still.
+            ->brandLogoHeight('56px')
             ->favicon(asset('favicon.png'))
             ->colors([
-                'primary' => Color::Teal,
+                // The brand rust from the homepage palette (kaia-home.css
+                // --rust), which is the brown of the logo's wordmark — the
+                // lodge-facing panel is sold as NamibWay's own product, so it
+                // wears the brand colour rather than a generic teal.
+                'primary' => Color::hex('#b5651d'),
             ])
             ->plugin(
                 SpatieLaravelTranslatablePlugin::make()
@@ -56,6 +65,10 @@ class PartnerPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('filament.partials.sticky-page-header')->render(),
+            )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => view('filament.partials.brand-logo')->render(),
             )
             // A demo tenant has to be unmistakable from any screen, including
             // one someone photographs or prints. BODY_START rather than a page

@@ -25,7 +25,7 @@
         --nw-text: rgb(var(--gray-950, 3 7 18));
         --nw-weekend: rgb(var(--gray-50, 249 250 251));
         --nw-past: rgb(var(--gray-100, 243 244 246));
-        --nw-today: rgb(var(--primary-500, 20 184 166));
+        --nw-today: rgb(var(--primary-500, 181 101 29));
     }
 
     .dark .nw-lodge {
@@ -76,14 +76,14 @@
 
     .nw-btn--primary {
         color: rgb(255 255 255);
-        background: rgb(var(--primary-600, 13 148 136));
-        border-color: rgb(var(--primary-600, 13 148 136));
+        background: rgb(var(--primary-600, 163 91 26));
+        border-color: rgb(var(--primary-600, 163 91 26));
     }
 
     .nw-btn--primary:hover {
         color: rgb(255 255 255);
-        background: rgb(var(--primary-700, 15 118 110));
-        border-color: rgb(var(--primary-700, 15 118 110));
+        background: rgb(var(--primary-700, 136 76 22));
+        border-color: rgb(var(--primary-700, 136 76 22));
     }
 
     .nw-btn[disabled] {
@@ -382,7 +382,7 @@
         border-inline-end: 2px dashed rgb(255 255 255 / 0.7);
     }
 
-    .nw-bar--primary { background: rgb(var(--primary-600, 13 148 136)); }
+    .nw-bar--primary { background: rgb(var(--primary-600, 163 91 26)); }
     .nw-bar--success { background: rgb(var(--success-600, 22 163 74)); }
     .nw-bar--warning { background: rgb(var(--warning-500, 245 158 11)); color: rgb(69 26 3); }
     .nw-bar--info { background: rgb(var(--info-600, 37 99 235)); }
@@ -442,12 +442,12 @@
     }
 
     .nw-cell--bookable:hover {
-        background: rgb(var(--primary-500, 20 184 166) / 0.14);
-        box-shadow: inset 0 0 0 1px rgb(var(--primary-500, 20 184 166) / 0.55);
+        background: rgb(var(--primary-500, 181 101 29) / 0.14);
+        box-shadow: inset 0 0 0 1px rgb(var(--primary-500, 181 101 29) / 0.55);
     }
 
     .nw-cell--bookable:focus-visible {
-        outline: 2px solid rgb(var(--primary-600, 13 148 136));
+        outline: 2px solid rgb(var(--primary-600, 163 91 26));
         outline-offset: -2px;
     }
 
@@ -652,14 +652,14 @@
         white-space: nowrap;
     }
 
-    .nw-badge--primary { color: rgb(var(--primary-700, 15 118 110)); }
+    .nw-badge--primary { color: rgb(var(--primary-700, 136 76 22)); }
     .nw-badge--success { color: rgb(var(--success-700, 21 128 61)); }
     .nw-badge--warning { color: rgb(var(--warning-700, 180 83 9)); }
     .nw-badge--info { color: rgb(var(--info-700, 29 78 216)); }
     .nw-badge--danger { color: rgb(var(--danger-700, 185 28 28)); }
     .nw-badge--gray { color: var(--nw-muted); }
 
-    .dark .nw-badge--primary { color: rgb(var(--primary-400, 45 212 191)); }
+    .dark .nw-badge--primary { color: rgb(var(--primary-400, 203 147 97)); }
     .dark .nw-badge--success { color: rgb(var(--success-400, 74 222 128)); }
     .dark .nw-badge--warning { color: rgb(var(--warning-400, 251 191 36)); }
     .dark .nw-badge--info { color: rgb(var(--info-400, 96 165 250)); }
