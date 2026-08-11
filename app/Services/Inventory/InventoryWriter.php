@@ -710,6 +710,10 @@ class InventoryWriter
                 RatePlanDay::query()
                     ->where('rate_plan_id', $ratePlan->id)
                     ->where('room_type_id', $roomType->id)
+                    // The day's rates, never a departure's. A lodge editing a
+                    // season must not reach into a tour's 14:00 price, and a
+                    // property that has no departures has nothing to exclude.
+                    ->whereNull('slot_id')
                     ->whereIn('date', $chunk)
                     ->update($attributes);
             }
@@ -752,6 +756,7 @@ class InventoryWriter
 
                 RoomTypeCalendarDay::query()
                     ->where('room_type_id', $roomType->id)
+                    ->whereNull('slot_id')
                     ->whereIn('date', $chunk)
                     ->update($attributes);
             }

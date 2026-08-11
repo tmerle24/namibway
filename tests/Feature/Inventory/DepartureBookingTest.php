@@ -156,6 +156,58 @@ class DepartureBookingTest extends TestCase
         $this->assertSame(2800.0, $this->book($this->afternoon, seats: 2)->total_amount);
     }
 
+    /**
+     * The bug CI caught, kept caught.
+     *
+     * Every reader that answers "what does this day cost / how full is this
+     * day" has to ignore departure rows. Without that, a tour operator's 14:00
+     * price answers the question for the whole day — and for the 09:00
+     * departure too, since that one falls back to the day. The same applies in
+     * reverse to a lodge's bulk season edit, which must not reach into a
+     * departure's price.
+     */
+    public function test_a_departures_price_never_answers_for_the_day(): void
+    {
+        $plan = RatePlan::create([
+            'listing_id' => $this->listing->id,
+            'name' => 'Standard rate',
+            'code' => 'STD',
+            'pricing_strategy' => PricingStrategy::PerUnit,
+            'is_default' => true,
+        ]);
+
+        InventoryWriteGuard::allow(fn () => RatePlanDay::create([
+            'rate_plan_id' => $plan->id,
+            'room_type_id' => $this->unit->id,
+            'slot_id' => $this->afternoon->id,
+            'date' => '2026-09-10',
+            'rate' => 1400,
+        ]));
+
+        $calendar = app(AvailabilityCalendar::class);
+
+        // The day is still the unit's own rate, not the departure's.
+        $this->assertSame(950.0, $calendar->rateFor($this->unit, Carbon::parse('2026-09-10'), $plan));
+
+        // A season written across the day leaves the departure alone.
+        app(InventoryWriter::class)->setRates(
+            $plan,
+            $this->unit,
+            Carbon::parse('2026-09-10'),
+            Carbon::parse('2026-09-10'),
+            ['rate' => 1100],
+        );
+
+        $this->assertSame(1100.0, $calendar->rateFor($this->unit, Carbon::parse('2026-09-10'), $plan));
+        $this->assertSame(1400.0, $calendar->rateForSlot($this->unit, Carbon::parse('2026-09-10'), $this->afternoon, $plan));
+
+        // And the seats a departure sold are not the property's units.
+        $this->book($this->morning, seats: 3);
+
+        $this->assertSame(8, $calendar->unitsFree($this->unit, Carbon::parse('2026-09-10')));
+        $this->assertSame(5, $calendar->seatsFree($this->unit, Carbon::parse('2026-09-10'), $this->morning));
+    }
+
     public function test_a_night_is_still_a_night(): void
     {
         // The same writer, the same counter, no departure: a lodge notices

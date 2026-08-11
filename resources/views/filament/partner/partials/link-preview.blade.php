@@ -13,13 +13,13 @@
 --}}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{ config('app.name') }} Booking">
-<meta property="og:title" content="{{ config('app.name') }} Booking — the booking system your lodge runs">
-<meta property="og:description" content="Calendar, rates, arrivals and guests in one place. Take a booking at the desk, on the phone or from namibway.com, and see the same book everywhere.">
+<meta property="og:title" content="{{ config('app.name') }} Booking — the booking system your business runs">
+<meta property="og:description" content="Calendar, rates, arrivals and guests in one place — rooms by the night, departures by the hour. Take a booking at the desk, on the phone or from namibway.com, and see the same book everywhere.">
 <meta property="og:image" content="{{ asset('images/og-image.png') }}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:url" content="{{ url()->current() }}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ config('app.name') }} Booking — the booking system your lodge runs">
-<meta name="twitter:description" content="Calendar, rates, arrivals and guests in one place.">
+<meta name="twitter:title" content="{{ config('app.name') }} Booking — the booking system your business runs">
+<meta name="twitter:description" content="Calendar, rates, arrivals and guests in one place — rooms by the night, departures by the hour.">
 <meta name="twitter:image" content="{{ asset('images/og-image.png') }}">

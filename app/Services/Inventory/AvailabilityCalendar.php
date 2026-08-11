@@ -476,6 +476,12 @@ class AvailabilityCalendar
         return RatePlanDay::query()
             ->where('rate_plan_id', $ratePlan->id)
             ->where('room_type_id', $roomType->id)
+            ->whereNull('slot_id')
+            // The day's own rate, never a departure's. Without this a tour
+            // operator's 14:00 price would answer the question "what does this
+            // day cost" — and, worse, would answer it for the 09:00 departure
+            // too, since that one falls back to the day.
+            ->whereNull('slot_id')
             ->whereDate('date', Carbon::parse($date)->toDateString())
             ->first();
     }
@@ -547,6 +553,10 @@ class AvailabilityCalendar
     {
         return RoomTypeCalendarDay::query()
             ->where('room_type_id', $roomType->id)
+            // The day's own row. A departure keeps its own counter beside it,
+            // and reading one as the other would make a full 09:00 tour look
+            // like a full property.
+            ->whereNull('slot_id')
             ->whereDate('date', Carbon::parse($date)->toDateString())
             ->first();
     }
@@ -558,6 +568,7 @@ class AvailabilityCalendar
     {
         return RoomTypeCalendarDay::query()
             ->where('room_type_id', $roomType->id)
+            ->whereNull('slot_id')
             ->whereBetween('date', [
                 Carbon::parse($checkIn)->toDateString(),
                 Carbon::parse($checkOut)->toDateString(),
