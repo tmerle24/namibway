@@ -286,6 +286,44 @@ staged confirmations, ledger, allotments, channel sync, iCal, offline operation,
 folio, housekeeping, tax reporting. No control exists for any of them — a disabled button
 is a claim.
 
+### Noted, not built — decided 2026-08-11, deliberately parked
+
+Two things are agreed and written down here so they are not lost, and are **not** being
+built yet, because the pricing question below changes what they sit on top of.
+
+**A switch per partner, and a demo mode per partner.** `partners.booking_enabled` decides
+whether a lodge is live on the booking system. While it is off, booking mail for that
+partner goes to the team mailbox as a plus-address (`team+okonjima-bush-camp@namibway.com`)
+instead of to the lodge — one resolver answering "where does post for this partner go?",
+called by the five places that currently write `Mail::to($partner->email)`. Separately,
+each partner gets a **demo mode with an address of their own**, so an operator can put
+test bookings through their real inventory and receive the mail themselves before being
+switched on. Both together replace the `booking:demo-tenant` construct, which exists today
+only because there was no other way to show the system working.
+
+**What the pricing model cannot express, and has to.** This is the larger one, and it
+blocks the above from being finalised:
+
+- **Namibian lodges price per person, not per room.** "Per person per night sharing" plus
+  a single supplement is the norm; per-unit pricing is the exception, for self-catering
+  units, guest farms and campsites. Both models have to coexist — one property can sell
+  chalets per person and campsites per unit — so the mode belongs on the room type.
+- **`adults` and `children` are recorded on a reservation and change nothing.** The price
+  comes from `rate_per_night` alone, and `max_adults` is not even enforced.
+- **Children are priced in age bands** (commonly 0–2 free, 3–11 at about half, 12+ adult),
+  and the boundaries differ per property, so they cannot be a constant. Pricing by band
+  needs the children's *ages* at booking, not just a count.
+- **Board basis** — B&B, DBB, full board — is part of what a per-person rate means, and at
+  Namibian lodges DBB is closer to the rule than the exception.
+- **NWR has resident / SADC / international tariffs.** For a state operator that is not a
+  refinement, it is a requirement: a system with one price per night cannot represent the
+  first partner we are aiming at.
+
+The shape this points to leaves the ARI calendar as it is — one rate per room type per
+night — and changes only what that rate is *per*: a mode on the room type, a single
+supplement, child bands with percentages, and guest ages captured at booking. That is the
+same shape channel managers use, so it stays a mapping rather than a translation.
+
 ### Constraints that are specific to this market
 
 - **Connectivity.** These are camps in Etosha, Sossusvlei and Fish River Canyon. A

@@ -142,6 +142,29 @@
 
     /* ---------- the grid ---------- */
 
+    /* Spacing lives here rather than inline, because the grid is now shared by
+       the Calendar page and the dashboard widget. */
+    .nw-cal {
+        margin-top: 1rem;
+    }
+
+    /* On the dashboard the grid is one card among several, so it sizes to its
+       contents with a ceiling instead of reaching for the window — a widget
+       that fills the screen is not a widget. */
+    .nw-lodge--widget .nw-cal__viewport {
+        height: auto;
+        min-height: 0;
+        max-height: 24rem;
+    }
+
+    .nw-lodge--widget .nw-cal__table {
+        min-height: 0;
+    }
+
+    .nw-lodge--widget .nw-cal__row {
+        min-height: 2.5rem;
+    }
+
     /* The grid takes the room it is given, in both directions. A wall planner
        that occupies a corner of the screen while the rest is empty is harder
        to read than one that does not, and this is the screen a lodge leaves
