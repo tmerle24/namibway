@@ -4,6 +4,7 @@ namespace App\Services\Inventory\DTOs;
 
 use App\Models\RatePlan;
 use App\Models\RoomType;
+use App\Services\Pricing\Occupancy;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
@@ -26,6 +27,11 @@ class BookingLine
      *                                   property's default plan — a front desk
      *                                   that has never heard of rate plans
      *                                   should not have to name one.
+     * @param  Occupancy|null  $occupancy  Who is in the room. Null is the right
+     *                                     answer for a per-room tariff, which
+     *                                     never asks; a plan that prices by
+     *                                     guests refuses the line instead of
+     *                                     assuming a number of people.
      */
     public function __construct(
         public readonly RoomType $roomType,
@@ -33,6 +39,7 @@ class BookingLine
         CarbonInterface $checkIn,
         CarbonInterface $checkOut,
         public readonly ?RatePlan $ratePlan = null,
+        public readonly ?Occupancy $occupancy = null,
     ) {
         $this->checkIn = Carbon::parse($checkIn)->startOfDay();
         $this->checkOut = Carbon::parse($checkOut)->startOfDay();

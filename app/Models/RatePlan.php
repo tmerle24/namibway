@@ -27,6 +27,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property RatePlanEligibility $eligibility
  * @property PricingStrategy $pricing_strategy
  * @property int|null $cancellation_days
+ * @property float|null $single_supplement_amount
+ * @property float|null $single_supplement_percent
  * @property bool $is_refundable
  * @property bool $is_default
  * @property bool $is_active
@@ -46,6 +48,8 @@ class RatePlan extends Model
         'eligibility',
         'pricing_strategy',
         'cancellation_days',
+        'single_supplement_amount',
+        'single_supplement_percent',
         'is_refundable',
         'is_default',
         'is_active',
@@ -57,11 +61,39 @@ class RatePlan extends Model
         'eligibility' => RatePlanEligibility::class,
         'pricing_strategy' => PricingStrategy::class,
         'cancellation_days' => 'integer',
+        'single_supplement_amount' => 'float',
+        'single_supplement_percent' => 'float',
         'is_refundable' => 'boolean',
         'is_default' => 'boolean',
         'is_active' => 'boolean',
         'sort' => 'integer',
     ];
+
+    /**
+     * A property has at most one default, and the database says so with a
+     * partial unique index. Enforcing it *only* there would turn "tick the
+     * other rate as default" into a constraint violation on screen, so ticking
+     * one unticks the rest instead — here rather than in the form, because a
+     * seeder and an import have the same rule.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $plan): void {
+            if (! $plan->is_default || ! $plan->listing_id) {
+                return;
+            }
+
+            $others = self::query()
+                ->where('listing_id', $plan->listing_id)
+                ->where('is_default', true);
+
+            if ($plan->exists) {
+                $others->whereKeyNot($plan->getKey());
+            }
+
+            $others->update(['is_default' => false]);
+        });
+    }
 
     /**
      * @return BelongsTo<Listing, $this>

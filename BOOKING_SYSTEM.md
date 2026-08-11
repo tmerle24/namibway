@@ -87,6 +87,20 @@ change to the calendar, no change to availability. That is the technical meaning
 Each strategy is a pure function, so it is tested with a table of examples. Without
 that, "we support everything" becomes "we can verify nothing".
 
+Age bands turned out not to be a strategy but a property of the guest category —
+they apply the same way under every strategy, so a fourth class would have had to
+be combined with the other three rather than chosen instead of them. The nightly
+rate is what each strategy reads differently: per-unit reads it as the price of the
+room, per-person-sharing as the price of one person sharing, and per-occupancy as
+the fallback for a night whose guest counts nobody has entered.
+
+What refuses rather than guesses, and why it matters more than it sounds: a plan
+that prices by guests will not price a booking that names none; a night priced for
+one and two guests refuses four rather than selling it at the two-guest price; and
+a room priced for more people than it sleeps is refused before any of that. Each of
+these is a sentence a receptionist can act on, not a number nobody checks until
+check-out.
+
 ### The OTA shape is already the general shape
 
 This is worth stating plainly, because it removes the temptation to invent:
@@ -123,16 +137,33 @@ pointless.
 |---|---|
 | `rate_plans` | Per listing: name, code, board basis, cancellation terms, eligibility, pricing strategy, default flag |
 | `rate_plan_days` | Rate and restrictions per rate plan × room type × night |
-| `rate_plan_guest_amounts` | Base amount by guest count, per rate plan × room type |
-| `rate_plan_extra_guest_amounts` | Amount or percentage per guest category |
-| `guest_categories` | Per property: adult, child 3–11, infant 0–2 … name, age range |
+| `rate_plan_guest_amounts` | Base amount by guest count, per rate plan × room type × **night** |
+| `guest_categories` | Per property: adult, child 3–11, infant 0–2 … name, age range, share of the adult price, whether it counts as an occupant |
 | `promotions` | Discount, optional code, stay window, booking window, which rate plans and room types, minimum nights, usage cap |
 | `amenities` + `room_type_amenity` | Amenity catalogue with categories, and what each room type has |
+
+Two departures from the first draft of this table, both made while building step 2
+and both worth stating rather than leaving to be discovered:
+
+- **The guest amounts carry a date.** The draft hung them off the rate plan and the
+  room type alone. That cannot express a season — 1000 / 1300 / 1500 in low season
+  is 1400 / 1800 / 2100 in high — and the alternative was a second season mechanism
+  beside the one the calendar already has. In OTA the amounts hang off the rate for
+  a date, which is what this now does. It is more rows; it is also the standard.
+- **`rate_plan_extra_guest_amounts` was not built.** Its job — what a child pays —
+  is done by `guest_categories.charge_percent`, a share of the adult amount, which
+  is how every rate sheet in the market states it and which keeps a child's price
+  following the adult price through every season with no second set of numbers to
+  maintain. A per-category *amount* can be added later if a real partner quotes
+  that way; nothing here has to move for it.
 
 ### Changes to existing tables
 
 - `reservation_units` gains `rate_plan_id`
 - `reservation_guests` is new — guest category and count per unit line
+- `rate_plans` gains `single_supplement_amount` and `single_supplement_percent`,
+  because the market states the supplement both ways and converting at entry time
+  would need the season to be known
 - `reservations` gains the promotion applied and the discount recorded
 
 ### What does not change
@@ -183,15 +214,23 @@ Each step leaves the system working and shippable.
 booking entry, stay lifecycle, blocks, bulk rate editing, dashboard widgets, the
 panel on its own host.
 
-**1. Rate plans and the calendar split.** Every listing gets one default rate plan
-carrying its current rates, so nothing changes on screen. This is the migration
-that must happen once and early — retrofitting a dimension into the table the whole
-availability logic hangs on is the excavation the single write path exists to
-prevent.
+**1. Rate plans and the calendar split. — Done, 2026-08-11.** Every listing got one
+default rate plan carrying its current rates, so nothing changed on screen. This is
+the migration that had to happen once and early — retrofitting a dimension into the
+table the whole availability logic hangs on is the excavation the single write path
+exists to prevent.
 
-**2. Occupancy and guest categories.** The strategies, the guest category table,
-and the booking form's occupancy rows. After this the prices in the system are
-real.
+**2. Occupancy and guest categories. — Done, 2026-08-11.** All three strategies are
+built (`App\Services\Pricing`, one class each, pure, checked against a table of
+examples in `NightPricerTest`), along with `guest_categories`,
+`rate_plan_guest_amounts`, `reservation_guests`, the rate plan and guest type
+screens, and the booking form's occupancy rows. A room line with occupancy holds
+one room, so two families on one booking are two lines with their own prices.
+
+What a lodge does now: create a rate plan, choose how it is priced, press "add the
+usual set" on Guest types if it prices by people, then enter the numbers on the
+Rates screen. A property that prices per room sees none of it — no rate switcher,
+no guest rows, no guest types — which is the rule this whole design is judged by.
 
 **3. Board basis.** Mostly configuration and wording, because board is a rate plan.
 

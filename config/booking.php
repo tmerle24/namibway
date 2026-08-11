@@ -56,6 +56,30 @@ return [
 
     'team_address' => env('BOOKING_TEAM_ADDRESS', 'team@namibway.com'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | The usual guest categories
+    |--------------------------------------------------------------------------
+    |
+    | Offered to a property the first time it prices by guests, so setting up
+    | is a choice rather than a configuration exercise — see
+    | BOOKING_SYSTEM.md, "profiles, not configuration". A lodge edits them
+    | afterwards; the age boundaries genuinely differ between properties,
+    | which is why they are data and not an enum.
+    |
+    | These are the bands most Southern African lodges publish. They are a
+    | starting point, not a rule, and a property that never touches them is
+    | not thereby claiming anything about its own policy — nothing is created
+    | until somebody asks for it.
+    |
+    */
+
+    'guest_categories' => [
+        ['code' => 'AD', 'name' => 'Adult', 'kind' => 'adult', 'min_age' => 12, 'max_age' => null, 'charge_percent' => 100, 'counts_toward_occupancy' => true],
+        ['code' => 'CH', 'name' => 'Child', 'kind' => 'child', 'min_age' => 3, 'max_age' => 11, 'charge_percent' => 50, 'counts_toward_occupancy' => true],
+        ['code' => 'IN', 'name' => 'Infant', 'kind' => 'infant', 'min_age' => 0, 'max_age' => 2, 'charge_percent' => 0, 'counts_toward_occupancy' => false],
+    ],
+
     'demo' => [
 
         // How long a printed sign-in link stays valid. Long enough to survive

@@ -2,14 +2,21 @@
 
 namespace App\Services\Inventory;
 
+use App\Enums\PricingStrategy;
 use App\Exceptions\Inventory\StayRuleViolationException;
+use App\Exceptions\Pricing\UnpriceableStayException;
+use App\Models\GuestCategory;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
+use App\Models\RatePlanGuestAmount;
 use App\Models\RoomType;
 use App\Models\RoomTypeCalendarDay;
 use App\Services\Inventory\DTOs\CalendarSnapshot;
 use App\Services\Inventory\DTOs\NightlyRate;
 use App\Services\Inventory\DTOs\Quote;
+use App\Services\Pricing\NightPricingContext;
+use App\Services\Pricing\Occupancy;
+use App\Services\Pricing\Pricers;
 use App\Support\CountrySettings;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -90,6 +97,11 @@ class AvailabilityCalendar
      * anything, the room type's own rate otherwise. A pure function of (room
      * type, date, plan) — which is exactly why seasons are written onto dates
      * rather than resolved at read time.
+     *
+     * This is the *base* number, which is what a calendar cell shows and what
+     * a lodge edits. Under a per-person plan it is the price of one person
+     * sharing, not of the room — what a stay actually costs comes out of
+     * quote(), where the strategy has the occupancy to work with.
      */
     public function rateFor(RoomType $roomType, CarbonInterface $date, ?RatePlan $ratePlan = null): float
     {
@@ -105,6 +117,12 @@ class AvailabilityCalendar
      * Price a stay night by night. `units` multiplies each night rather than
      * the total, so a quote stays correct if a line's quantity ever varies
      * across the stay.
+     *
+     * What one night costs is the rate plan's strategy to decide — per room,
+     * per number of guests, or per person sharing. This method gathers what
+     * the calculation needs and stays out of it; see App\Services\Pricing.
+     *
+     * @throws UnpriceableStayException when the strategy cannot price a night
      */
     public function quote(
         RoomType $roomType,
@@ -112,21 +130,129 @@ class AvailabilityCalendar
         CarbonInterface $checkOut,
         int $units = 1,
         ?RatePlan $ratePlan = null,
+        ?Occupancy $occupancy = null,
     ): Quote {
+        $ratePlan = $this->planFor($roomType, $ratePlan);
+        $strategy = $ratePlan?->pricing_strategy ?? PricingStrategy::PerUnit;
+        $pricer = Pricers::for($strategy);
+
+        $occupancy ??= Occupancy::empty();
         $days = $this->rateDaysKeyedByDate($roomType, $checkIn, $checkOut, $ratePlan);
+        $categories = $strategy->needsOccupancy() ? $this->guestCategories($roomType) : [];
+        $amounts = $strategy === PricingStrategy::PerOccupancy
+            ? $this->guestAmounts($roomType, $checkIn, $checkOut, $ratePlan)
+            : [];
+
+        $this->assertFits($roomType, $occupancy, $categories);
+
         $nights = [];
 
         foreach ($this->nights($checkIn, $checkOut) as $night) {
-            $day = $days[$night->toDateString()] ?? null;
+            $key = $night->toDateString();
 
             $nights[] = new NightlyRate(
                 date: $night,
-                rate: $this->rateFrom($roomType, $day),
+                rate: $pricer->price(new NightPricingContext(
+                    roomType: $roomType,
+                    date: $night,
+                    ratePlan: $ratePlan,
+                    baseRate: $this->rateFrom($roomType, $days[$key] ?? null),
+                    occupancy: $occupancy,
+                    categories: $categories,
+                    guestAmounts: $amounts[$key] ?? [],
+                )),
                 units: $units,
             );
         }
 
         return new Quote($nights, CountrySettings::currencyForRoomType($roomType));
+    }
+
+    /**
+     * How many people the room sleeps, checked before anything is priced.
+     *
+     * The strategies would otherwise happily price six people into a double —
+     * per-person-sharing by multiplying, per-occupancy by refusing for the
+     * wrong reason ("no price for 6 guests" rather than "it sleeps 2").
+     *
+     * @param  array<int, GuestCategory>  $categories
+     *
+     * @throws UnpriceableStayException
+     */
+    private function assertFits(RoomType $roomType, Occupancy $occupancy, array $categories): void
+    {
+        if ($categories === [] || $occupancy->isEmpty()) {
+            return;
+        }
+
+        $capacity = $roomType->max_adults + $roomType->max_children;
+
+        // A room type that has never had its capacity filled in says nothing,
+        // and refusing every booking of it would be worse than not checking.
+        if ($capacity < 1) {
+            return;
+        }
+
+        $guests = $occupancy->occupancyCount($categories);
+
+        if ($guests > $capacity) {
+            throw UnpriceableStayException::tooManyGuests($roomType->name, $guests, $capacity);
+        }
+    }
+
+    /**
+     * The property's guest categories, keyed by id for the pricers.
+     *
+     * @return array<int, GuestCategory>
+     */
+    private function guestCategories(RoomType $roomType): array
+    {
+        $listing = $roomType->listing;
+
+        if ($listing === null) {
+            return [];
+        }
+
+        $categories = [];
+
+        foreach (GuestCategory::forListing($listing) as $category) {
+            $categories[$category->id] = $category;
+        }
+
+        return $categories;
+    }
+
+    /**
+     * Amounts by guest count for every night of the stay, in one query.
+     *
+     * @return array<string, array<int, float>> Y-m-d => guests => amount
+     */
+    private function guestAmounts(
+        RoomType $roomType,
+        CarbonInterface $checkIn,
+        CarbonInterface $checkOut,
+        ?RatePlan $ratePlan,
+    ): array {
+        if ($ratePlan === null) {
+            return [];
+        }
+
+        $rows = RatePlanGuestAmount::query()
+            ->where('rate_plan_id', $ratePlan->id)
+            ->where('room_type_id', $roomType->id)
+            ->whereBetween('date', [
+                Carbon::parse($checkIn)->toDateString(),
+                Carbon::parse($checkOut)->toDateString(),
+            ])
+            ->get();
+
+        $amounts = [];
+
+        foreach ($rows as $row) {
+            $amounts[$row->date->toDateString()][$row->guests] = $row->amount;
+        }
+
+        return $amounts;
     }
 
     /**

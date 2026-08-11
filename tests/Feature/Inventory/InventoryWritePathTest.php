@@ -11,7 +11,9 @@ use App\Models\InventoryBlock;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
+use App\Models\RatePlanGuestAmount;
 use App\Models\Reservation;
+use App\Models\ReservationGuest;
 use App\Models\ReservationNight;
 use App\Models\ReservationUnit;
 use App\Models\RoomType;
@@ -41,9 +43,11 @@ class InventoryWritePathTest extends TestCase
     private const INVENTORY_TABLES = [
         'room_type_calendar_days',
         'rate_plan_days',
+        'rate_plan_guest_amounts',
         'reservations',
         'reservation_units',
         'reservation_nights',
+        'reservation_guests',
         'inventory_blocks',
     ];
 
@@ -55,9 +59,11 @@ class InventoryWritePathTest extends TestCase
     private const INVENTORY_MODELS = [
         RoomTypeCalendarDay::class,
         RatePlanDay::class,
+        RatePlanGuestAmount::class,
         Reservation::class,
         ReservationUnit::class,
         ReservationNight::class,
+        ReservationGuest::class,
         InventoryBlock::class,
     ];
 
@@ -120,6 +126,24 @@ class InventoryWritePathTest extends TestCase
             'room_type_id' => $room->id,
             'date' => '2026-09-01',
             'rate' => 1,
+        ]);
+    }
+
+    /** A price by guest count is a rate under another name, and guarded alike. */
+    public function test_writing_a_guest_amount_outside_the_writer_is_refused(): void
+    {
+        $listing = Listing::factory()->create();
+        $room = RoomType::factory()->create(['listing_id' => $listing->id]);
+        $plan = RatePlan::ensureDefaultFor($listing);
+
+        $this->expectException(DirectInventoryWriteException::class);
+
+        RatePlanGuestAmount::create([
+            'rate_plan_id' => $plan->id,
+            'room_type_id' => $room->id,
+            'date' => '2026-09-01',
+            'guests' => 2,
+            'amount' => 1,
         ]);
     }
 

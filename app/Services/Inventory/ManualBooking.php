@@ -5,6 +5,7 @@ namespace App\Services\Inventory;
 use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\StayRuleViolationException;
+use App\Exceptions\Pricing\UnpriceableStayException;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\Reservation;
@@ -13,6 +14,7 @@ use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\DTOs\ManualBookingLinePreview;
 use App\Services\Inventory\DTOs\ManualBookingPreview;
+use App\Services\Pricing\Occupancy;
 use App\Support\CountrySettings;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -44,12 +46,11 @@ class ManualBooking
     /**
      * Price and check a proposed stay without writing anything.
      *
-     * @param  array<int, array{room_type_id?: int|string|null, quantity?: int|string|null}>  $lines
+     * @param  array<int, array<string, mixed>>  $lines
      */
     public function preview(Listing $listing, ?CarbonInterface $checkIn, ?CarbonInterface $checkOut, array $lines): ManualBookingPreview
     {
         $currency = CountrySettings::for($listing)->currency();
-        $ratePlan = RatePlan::defaultFor($listing);
 
         if ($checkIn === null || $checkOut === null) {
             return new ManualBookingPreview(0.0, $currency, 0, ['Choose an arrival and a departure date.']);
@@ -69,32 +70,60 @@ class ManualBooking
             return new ManualBookingPreview(0.0, $currency, $nights, ['Choose at least one room type.']);
         }
 
+        // Two lines of the same room type are two rooms, so the availability
+        // question is about their sum. Asking per line would tell a desk that
+        // both of them fit when only one room is left.
+        $demand = [];
+
+        foreach ($rooms as $room) {
+            $demand[$room['room']->id] = ($demand[$room['room']->id] ?? 0) + $room['quantity'];
+        }
+
         $problems = [];
         $previews = [];
         $total = 0.0;
+        $checked = [];
 
-        foreach ($rooms as [$room, $quantity]) {
-            $free = $this->calendar->unitsFreeThroughout($room, $in, $out);
+        foreach ($rooms as $room) {
+            $roomType = $room['room'];
+            $quantity = $room['quantity'];
+            $plan = $room['ratePlan'];
+            $free = $this->calendar->unitsFreeThroughout($roomType, $in, $out);
 
-            if ($free < $quantity) {
-                $problems[] = $this->shortfall($room, $in, $out, $quantity);
+            if (! isset($checked[$roomType->id])) {
+                $checked[$roomType->id] = true;
+                $wanted = $demand[$roomType->id];
+
+                if ($free < $wanted) {
+                    $problems[] = $this->shortfall($roomType, $in, $out, $wanted);
+                }
+
+                try {
+                    $this->calendar->assertStayRules($roomType, $in, $out, $plan);
+                } catch (StayRuleViolationException $violation) {
+                    $problems[] = $roomType->name.': '.$violation->getMessage();
+                }
             }
 
             try {
-                $this->calendar->assertStayRules($room, $in, $out, $ratePlan);
-            } catch (StayRuleViolationException $violation) {
-                $problems[] = $room->name.': '.$violation->getMessage();
+                $quote = $this->calendar->quote($roomType, $in, $out, $quantity, $plan, $room['occupancy']);
+            } catch (UnpriceableStayException $unpriceable) {
+                // A room that cannot be priced is not a room that can be
+                // booked, so this is a problem rather than a zero.
+                $problems[] = $unpriceable->getMessage();
+
+                continue;
             }
 
-            $quote = $this->calendar->quote($room, $in, $out, $quantity, $ratePlan);
             $total += $quote->total();
 
             $previews[] = new ManualBookingLinePreview(
-                roomType: $room,
+                roomType: $roomType,
                 quantity: $quantity,
                 total: $quote->total(),
                 currency: $quote->currency,
                 unitsFree: $free,
+                occupancy: $room['occupancy'],
             );
 
             $currency = $quote->currency;
@@ -114,7 +143,7 @@ class ManualBooking
      * this class's — including refusing a booking this preview thought was
      * fine a moment ago.
      *
-     * @param  array<int, array{room_type_id?: int|string|null, quantity?: int|string|null}>  $lines
+     * @param  array<int, array<string, mixed>>  $lines
      */
     public function place(
         Listing $listing,
@@ -137,11 +166,18 @@ class ManualBooking
 
         $bookingLines = [];
 
-        // The writer resolves the plan again for the line it records. Passing
-        // it here as well would be the same lookup twice; leaving it null lets
-        // the one place that writes decide, which is where it belongs.
-        foreach ($this->resolveRooms($listing, $lines) as [$room, $quantity]) {
-            $bookingLines[] = new BookingLine($room, $quantity, $in, $out);
+        // A line names its plan only when the desk chose one. Left null, the
+        // writer resolves the property's default — which is the one place that
+        // decides, and where it belongs.
+        foreach ($this->resolveRooms($listing, $lines) as $room) {
+            $bookingLines[] = new BookingLine(
+                $room['room'],
+                $room['quantity'],
+                $in,
+                $out,
+                $room['ratePlan'],
+                $room['occupancy'],
+            );
         }
 
         return $this->writer->book(new BookingRequest(
@@ -194,39 +230,108 @@ class ManualBooking
      * Form rows into room types, dropping empty ones and refusing any that
      * does not belong to this property.
      *
-     * Same-room-type rows are merged rather than passed through as two lines:
-     * a desk adding "2 standard" twice means four, and two lines for one room
-     * type would price correctly but read as two bookings on the calendar.
+     * Rows that say nothing about who is in the room are merged, because a
+     * desk adding "2 standard" twice means four and two identical lines would
+     * read as two bookings on the calendar. Rows *with* occupancy are never
+     * merged: two adults in one chalet and a family in the next are different
+     * prices, and merging them would lose the difference. That is the same
+     * reason a room line with occupancy holds one room — see the
+     * reservation_guests migration.
      *
-     * @param  array<int, array{room_type_id?: int|string|null, quantity?: int|string|null}>  $lines
-     * @return array<int, array{0: RoomType, 1: int}>
+     * @param  array<int, array<string, mixed>>  $lines
+     * @return array<int, array{room: RoomType, quantity: int, ratePlan: RatePlan|null, occupancy: Occupancy|null}>
      */
     private function resolveRooms(Listing $listing, array $lines): array
     {
-        $quantities = [];
+        $wanted = [];
 
         foreach ($lines as $line) {
             $id = (int) ($line['room_type_id'] ?? 0);
-            $quantity = (int) ($line['quantity'] ?? 0);
+            $occupancy = $this->occupancyFrom($line['guests'] ?? null);
+            $quantity = $occupancy === null ? (int) ($line['quantity'] ?? 0) : 1;
 
             if ($id <= 0 || $quantity <= 0) {
                 continue;
             }
 
-            $quantities[$id] = ($quantities[$id] ?? 0) + $quantity;
+            $wanted[] = [
+                'room_type_id' => $id,
+                'rate_plan_id' => (int) ($line['rate_plan_id'] ?? 0),
+                'quantity' => $quantity,
+                'occupancy' => $occupancy,
+            ];
         }
 
-        if ($quantities === []) {
+        if ($wanted === []) {
             return [];
         }
 
-        $rooms = $listing->roomTypes()->whereIn('id', array_keys($quantities))->orderBy('id')->get();
-        $resolved = [];
+        $rooms = $listing->roomTypes()
+            ->whereIn('id', array_column($wanted, 'room_type_id'))
+            ->get()
+            ->keyBy('id');
 
-        foreach ($rooms as $room) {
-            $resolved[] = [$room, $quantities[$room->id]];
+        $plans = RatePlan::forListing($listing)->keyBy('id');
+        $resolved = [];
+        $merged = [];
+
+        foreach ($wanted as $row) {
+            $room = $rooms->get($row['room_type_id']);
+
+            if ($room === null) {
+                continue;
+            }
+
+            $plan = $row['rate_plan_id'] > 0 ? $plans->get($row['rate_plan_id']) : null;
+
+            if ($row['occupancy'] === null) {
+                $key = $room->id.':'.($plan?->id ?? 0);
+
+                if (isset($merged[$key])) {
+                    $resolved[$merged[$key]]['quantity'] += $row['quantity'];
+
+                    continue;
+                }
+
+                $merged[$key] = count($resolved);
+            }
+
+            $resolved[] = [
+                'room' => $room,
+                'quantity' => $row['quantity'],
+                'ratePlan' => $plan,
+                'occupancy' => $row['occupancy'],
+            ];
         }
 
         return $resolved;
+    }
+
+    /**
+     * A row's guest counts, or null when the row does not say — which is the
+     * normal state for a property that prices per room and never asks.
+     */
+    private function occupancyFrom(mixed $guests): ?Occupancy
+    {
+        if (! is_array($guests)) {
+            return null;
+        }
+
+        $counts = [];
+
+        foreach ($guests as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $categoryId = (int) ($row['guest_category_id'] ?? 0);
+            $count = (int) ($row['count'] ?? 0);
+
+            if ($categoryId > 0 && $count > 0) {
+                $counts[$categoryId] = ($counts[$categoryId] ?? 0) + $count;
+            }
+        }
+
+        return $counts === [] ? null : Occupancy::of($counts);
     }
 }

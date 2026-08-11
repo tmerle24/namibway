@@ -15,12 +15,11 @@ namespace App\Enums;
  * architecture takes a new strategy cheaply — not that every conceivable
  * option ships before a partner has asked for one.
  *
- * Only PerUnit is implemented today; the calendar rate is the whole price of
- * the room for the night, which is exactly what the system did before rate
- * plans existed. The others are declared so the column that stores them has
- * its full vocabulary from the start, and are rejected until they are built —
- * a strategy that silently fell back to per-unit would price a stay wrongly
- * and say nothing.
+ * All three are implemented — see App\Services\Pricing, where each is a class
+ * with one pure method. Which of them reads the calendar's nightly rate as the
+ * price of the room and which reads it as the price of one person is the
+ * strategy's own business, and the reason they are separate classes rather
+ * than flags on one calculation.
  */
 enum PricingStrategy: string
 {
@@ -52,19 +51,14 @@ enum PricingStrategy: string
     }
 
     /**
-     * Whether the calculation behind this strategy exists yet.
+     * Whether the booking has to say who is in the room.
      *
-     * @see BOOKING_SYSTEM.md, "Order of work" — occupancy and per-person
-     *      pricing arrive in step 2, together with guest categories.
+     * A per-room tariff never asks, and a form that asked anyway would be a
+     * field with no purpose — see BOOKING_SYSTEM.md, "unused things stay
+     * invisible".
      */
-    public function isImplemented(): bool
+    public function needsOccupancy(): bool
     {
-        return $this === self::PerUnit;
-    }
-
-    /** @return array<int, self> */
-    public static function implemented(): array
-    {
-        return array_values(array_filter(self::cases(), fn (self $case) => $case->isImplemented()));
+        return $this !== self::PerUnit;
     }
 }

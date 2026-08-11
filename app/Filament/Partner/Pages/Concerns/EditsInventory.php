@@ -3,11 +3,15 @@
 namespace App\Filament\Partner\Pages\Concerns;
 
 use App\Enums\BlockReason;
+use App\Enums\GuestKind;
 use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
+use App\Exceptions\Pricing\UnpriceableStayException;
+use App\Models\GuestCategory;
 use App\Models\Listing;
+use App\Models\RatePlan;
 use App\Models\RoomType;
 use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\ManualBookingLinePreview;
@@ -108,14 +112,23 @@ trait EditsInventory
     private function bookingPrefill(): array
     {
         $arrival = $this->prefillDate ?? $this->propertyToday()->toDateString();
+        $plans = $this->sellableRatePlans();
+
+        $room = [
+            'room_type_id' => $this->prefillRoomTypeId ?? array_key_first($this->bookableRoomTypes()),
+            'rate_plan_id' => array_key_first($plans),
+        ];
+
+        // Two adults is the booking a desk takes all day. Prefilling it is the
+        // difference between confirming a form and filling one in.
+        $room += $this->pricesByGuests()
+            ? ['guests' => [['guest_category_id' => $this->defaultGuestCategoryId(), 'count' => 2]]]
+            : ['quantity' => 1];
 
         return [
             'check_in' => $arrival,
             'check_out' => Carbon::parse($arrival)->addDay()->toDateString(),
-            'rooms' => [[
-                'room_type_id' => $this->prefillRoomTypeId ?? array_key_first($this->bookableRoomTypes()),
-                'quantity' => 1,
-            ]],
+            'rooms' => [$room],
             'source' => ReservationSource::WalkIn->value,
             'adults' => 2,
             'children' => 0,
@@ -148,22 +161,8 @@ trait EditsInventory
 
                     Repeater::make('rooms')
                         ->label('Rooms')
-                        ->addActionLabel('Add another room type')
-                        ->schema([
-                            Select::make('room_type_id')
-                                ->label('Room type')
-                                ->options(fn (): array => $this->bookableRoomTypes())
-                                ->required()
-                                ->live(),
-                            TextInput::make('quantity')
-                                ->label('Units')
-                                ->numeric()
-                                ->minValue(1)
-                                ->maxValue(99)
-                                ->default(1)
-                                ->required()
-                                ->live(onBlur: true),
-                        ])
+                        ->addActionLabel($this->pricesByGuests() ? 'Add another room' : 'Add another room type')
+                        ->schema($this->roomLineSchema())
                         ->columns(2)
                         ->minItems(1)
                         ->defaultItems(1),
@@ -219,6 +218,79 @@ trait EditsInventory
     }
 
     /**
+     * One room line.
+     *
+     * Which fields it has is decided by what the property actually sells, not
+     * by what the system can express — see BOOKING_SYSTEM.md, "unused things
+     * stay invisible". A guesthouse with one per-room tariff sees a room type
+     * and a number of units, exactly as before. A lodge pricing per person
+     * sees guest rows instead, and its lines hold one room each, because two
+     * adults in one chalet and a family in the next are different prices.
+     *
+     * @return array<int, mixed>
+     */
+    private function roomLineSchema(): array
+    {
+        $plans = $this->sellableRatePlans();
+
+        $fields = [
+            Select::make('room_type_id')
+                ->label('Room type')
+                ->options(fn (): array => $this->bookableRoomTypes())
+                ->required()
+                ->live(),
+        ];
+
+        // A property with one product never chose it, so it is never asked.
+        if (count($plans) > 1) {
+            $fields[] = Select::make('rate_plan_id')
+                ->label('Rate')
+                ->options($plans)
+                ->default(array_key_first($plans))
+                ->required()
+                ->live();
+        }
+
+        if (! $this->pricesByGuests()) {
+            $fields[] = TextInput::make('quantity')
+                ->label('Units')
+                ->numeric()
+                ->minValue(1)
+                ->maxValue(99)
+                ->default(1)
+                ->required()
+                ->live(onBlur: true);
+
+            return $fields;
+        }
+
+        $fields[] = Repeater::make('guests')
+            ->label('Who is in the room')
+            ->addActionLabel('Add a guest type')
+            ->schema([
+                Select::make('guest_category_id')
+                    ->label('Guest')
+                    ->options(fn (): array => $this->guestCategoryOptions())
+                    ->required()
+                    ->live(),
+                TextInput::make('count')
+                    ->label('How many')
+                    ->numeric()
+                    ->minValue(1)
+                    ->maxValue(20)
+                    ->default(1)
+                    ->required()
+                    ->live(onBlur: true),
+            ])
+            ->columns(2)
+            ->minItems(1)
+            ->defaultItems(1)
+            ->columnSpanFull();
+
+        return $fields;
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     private function placeBooking(array $data): void
@@ -262,6 +334,10 @@ trait EditsInventory
             // means somebody else booked it in between. That is the system
             // working, so it is reported as a fact rather than as an error.
             $this->refuse('That room went while the form was open', [$refusal->getMessage()]);
+        } catch (UnpriceableStayException $unpriceable) {
+            // A different sentence, and a different fix: the room is free and
+            // nobody has said what it costs.
+            $this->refuse('That stay has no price yet', [$unpriceable->getMessage()]);
         }
 
         Notification::make()
@@ -300,12 +376,23 @@ trait EditsInventory
             );
         }
 
+        $categories = [];
+
+        foreach (GuestCategory::forListing($property) as $category) {
+            $categories[$category->id] = $category;
+        }
+
         $lines = collect($preview->lines)
-            ->map(fn (ManualBookingLinePreview $line) => '<li>'.e(
-                $line->roomType->name.' ×'.$line->quantity
-                .' — '.Money::format($line->total, $line->currency)
-                .' ('.$line->unitsFree.' free)'
-            ).'</li>')
+            ->map(function (ManualBookingLinePreview $line) use ($categories): string {
+                $who = $line->occupancyLabel($categories);
+
+                return '<li>'.e(
+                    $line->roomType->name.' ×'.$line->quantity
+                    .($who === null ? '' : ' ('.$who.')')
+                    .' — '.Money::format($line->total, $line->currency)
+                    .' ('.$line->unitsFree.' free)'
+                ).'</li>';
+            })
             ->implode('');
 
         return new HtmlString(
@@ -575,6 +662,85 @@ trait EditsInventory
             ->all();
     }
 
+    /**
+     * Whether this property's booking form asks who is in the room.
+     *
+     * Both halves are needed: a plan that prices per person, and categories to
+     * price them by. A property that has one without the other is mid-setup,
+     * and the honest thing is to keep taking bookings the old way rather than
+     * show a select with nothing in it — the rates screen is where the missing
+     * half is offered.
+     */
+    private function pricesByGuests(): bool
+    {
+        $property = $this->property();
+
+        if ($property === null) {
+            return false;
+        }
+
+        if ($this->guestCategoryOptions() === []) {
+            return false;
+        }
+
+        foreach (RatePlan::forListing($property) as $plan) {
+            if ($plan->pricing_strategy->needsOccupancy()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The products this property sells, for the rate select on a room line.
+     *
+     * @return array<int, string>
+     */
+    private function sellableRatePlans(): array
+    {
+        $property = $this->property();
+
+        if ($property === null) {
+            return [];
+        }
+
+        return RatePlan::forListing($property)
+            ->mapWithKeys(fn (RatePlan $plan) => [$plan->id => $plan->label()])
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function guestCategoryOptions(): array
+    {
+        $property = $this->property();
+
+        if ($property === null) {
+            return [];
+        }
+
+        return GuestCategory::forListing($property)
+            ->mapWithKeys(fn (GuestCategory $category) => [$category->id => $category->label()])
+            ->all();
+    }
+
+    /** Adults, where the property has them — the first row of any rate sheet. */
+    private function defaultGuestCategoryId(): ?int
+    {
+        $property = $this->property();
+
+        if ($property === null) {
+            return null;
+        }
+
+        $categories = GuestCategory::forListing($property);
+        $adult = $categories->first(fn (GuestCategory $category) => $category->kind === GuestKind::Adult);
+
+        return ($adult ?? $categories->first())?->id;
+    }
+
     private function requireProperty(): Listing
     {
         $property = $this->property();
@@ -644,9 +810,10 @@ trait EditsInventory
 
     /**
      * Repeater rows as they come back from the form: keyed by uuid, and
-     * `mixed` as far as any type checker is concerned.
+     * `mixed` as far as any type checker is concerned. Nested repeaters (the
+     * guest rows) arrive the same way, and ManualBooking reads them.
      *
-     * @return array<int, array{room_type_id?: int|string|null, quantity?: int|string|null}>
+     * @return array<int, array<string, mixed>>
      */
     private function roomRows(mixed $value): array
     {
@@ -654,10 +821,28 @@ trait EditsInventory
             return [];
         }
 
-        /** @var array<int, array{room_type_id?: int|string|null, quantity?: int|string|null}> $rows */
-        $rows = array_values($value);
+        $rows = [];
+
+        foreach (array_values($value) as $row) {
+            if (is_array($row)) {
+                $rows[] = $this->normaliseRow($row);
+            }
+        }
 
         return $rows;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private function normaliseRow(array $row): array
+    {
+        if (is_array($row['guests'] ?? null)) {
+            $row['guests'] = array_values($row['guests']);
+        }
+
+        return $row;
     }
 
     /**
