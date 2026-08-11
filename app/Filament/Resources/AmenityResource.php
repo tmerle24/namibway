@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Enums\AmenityCategory;
+use App\Enums\AmenityScope;
 use App\Filament\Resources\AmenityResource\Pages;
 use App\Models\Amenity;
 use Filament\Forms\Components\Select;
@@ -59,6 +60,16 @@ class AmenityResource extends Resource
                 ->required()
                 ->native(false),
 
+            Select::make('scope')
+                ->label('Asked about')
+                ->options(collect(AmenityScope::cases())
+                    ->mapWithKeys(fn (AmenityScope $case) => [$case->value => $case->label()])
+                    ->all())
+                ->default(AmenityScope::Room->value)
+                ->required()
+                ->native(false)
+                ->helperText('A pool belongs to the lodge, a mosquito net to the chalet, and Wi-Fi to both — often with different answers.'),
+
             TextInput::make('sort')
                 ->numeric()
                 ->default(0)
@@ -79,6 +90,13 @@ class AmenityResource extends Resource
                 Tables\Columns\TextColumn::make('code')->badge()->color('gray')->searchable(),
                 Tables\Columns\TextColumn::make('category')
                     ->formatStateUsing(fn (AmenityCategory $state): string => $state->label())
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('scope')
+                    ->label('Asked about')
+                    ->formatStateUsing(fn (AmenityScope $state): string => $state->label()),
+                Tables\Columns\TextColumn::make('listings_count')
+                    ->label('Properties')
+                    ->counts('listings')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('room_types_count')
                     ->label('Rooms')

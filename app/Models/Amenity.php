@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AmenityCategory;
+use App\Enums\AmenityScope;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property string $code
  * @property string $name
  * @property AmenityCategory $category
+ * @property AmenityScope $scope
  * @property int $sort
  * @property bool $is_active
  * @property-read Collection<int, RoomType> $roomTypes
@@ -25,15 +27,25 @@ class Amenity extends Model
         'code',
         'name',
         'category',
+        'scope',
         'sort',
         'is_active',
     ];
 
     protected $casts = [
         'category' => AmenityCategory::class,
+        'scope' => AmenityScope::class,
         'sort' => 'integer',
         'is_active' => 'boolean',
     ];
+
+    /**
+     * @return BelongsToMany<Listing, $this>
+     */
+    public function listings(): BelongsToMany
+    {
+        return $this->belongsToMany(Listing::class)->withTimestamps();
+    }
 
     /**
      * @return BelongsToMany<RoomType, $this>
@@ -44,12 +56,16 @@ class Amenity extends Model
     }
 
     /**
-     * The catalogue in the order a room description reads: bathroom together,
-     * power together, and never alphabetical across the lot.
+     * The catalogue in the order a description reads: bathroom together, power
+     * together, and never alphabetical across the lot.
+     *
+     * `$scope` narrows it to what can be said of a room or of a property.
+     * Null is everything, which is what the team curating the list wants to
+     * see.
      *
      * @return Collection<int, Amenity>
      */
-    public static function catalogue(): Collection
+    public static function catalogue(?AmenityScope $scope = null): Collection
     {
         // Sorted on one composed key rather than in the database: the category
         // order is the enum's business (a reading order, not alphabetical),
@@ -57,6 +73,8 @@ class Amenity extends Model
         // that nobody would remember to keep in step.
         return self::query()
             ->where('is_active', true)
+            ->when($scope === AmenityScope::Room, fn ($query) => $query->whereIn('scope', ['room', 'both']))
+            ->when($scope === AmenityScope::Property, fn ($query) => $query->whereIn('scope', ['property', 'both']))
             ->get()
             ->sortBy(fn (Amenity $amenity): string => sprintf(
                 '%03d-%05d-%s',

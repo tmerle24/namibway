@@ -377,11 +377,25 @@ mosquito nets, outdoor shower, braai facilities, star bed, and — because a gue
 is not told arrives with a dead camera battery — solar power, generator hours only,
 and no power after dark.
 
-Left deliberately alone: `listings.facilities`, the free-text array holding the
-*property's* amenities, which the scrapers fill and the traveller-facing keyword
-search reads. Moving it onto this catalogue is a sensible later step and a bigger
-one — it reaches into the traveller site and the enrichment pipeline, and doing it
-badly would lose data the scrapers took months to gather.
+The same catalogue covers the **property** as well as the room, with a scope on each
+entry (`room`, `property`, `both`) rather than a second list — a pool belongs to the
+lodge and a mosquito net to the chalet, but Wi-Fi is asked about at both levels and
+as two entries the two would drift apart.
+
+`listings.facilities` — the free-text array the scrapers and the AI extractor fill —
+stays where it is, under one rule, which is CLAUDE.md's content-source ladder
+applied to amenities: **once a property has chosen amenities, the free text is
+ignored.** Not merged with it, which would put "pool" beside "Swimming pool" and
+make an owner's own list look careless; and not deleted, because it remains the
+record of what a source claimed and a listing nobody has claimed still needs
+something to show. `amenities:backfill-listings` maps the free text across where it
+can — the namibweb scraper emits exactly eleven keys, so that half is an exact
+mapping — and reports what it could not place instead of guessing.
+
+(An earlier draft of this section claimed migrating `facilities` risked losing
+months of scraper work. That was wrong, and worth recording as wrong: the scrape
+takes hours, nothing traveller-facing reads the column, and the vocabulary is
+eleven keys.)
 
 Steps 5 and 6 were the other way round in the first draft. Switching a lodge on is
 a rollout feature rather than a booking-core one, but it is what turns all of this

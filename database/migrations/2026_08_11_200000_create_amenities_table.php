@@ -17,13 +17,10 @@ use Illuminate\Support\Facades\Schema;
  * anybody can extend is a catalogue where "WiFi", "Wi-Fi" and "wifi" are three
  * different amenities within a month.
  *
- * A deliberate gap this leaves alone: `listings.facilities` is a free-text
- * array holding the *property's* amenities (pool, restaurant), populated by
- * the scrapers and searched by the traveller-facing keyword box. It is not
- * touched here. Moving it onto this catalogue is a sensible later step and a
- * bigger one — it reaches into the traveller site and into the enrichment
- * pipeline, and doing it badly would lose data the scrapers took months to
- * gather.
+ * This migration is the room half. The property half — a scope on each entry
+ * and the pivot to listings — is the one immediately after it, along with the
+ * rule that decides between this catalogue and the free-text
+ * `listings.facilities` the scrapers fill.
  *
  * The seed below is the catalogue as it stood on this date. Later additions
  * are later migrations, which is the price of it being data everyone shares

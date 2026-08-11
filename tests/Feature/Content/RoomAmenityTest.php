@@ -3,6 +3,7 @@
 namespace Tests\Feature\Content;
 
 use App\Enums\AmenityCategory;
+use App\Enums\AmenityScope;
 use App\Models\Amenity;
 use App\Models\Listing;
 use App\Models\RoomType;
@@ -97,6 +98,85 @@ class RoomAmenityTest extends TestCase
         sort($sorted);
 
         $this->assertSame($sorted, $categories, 'The catalogue is not grouped by category.');
+    }
+
+    public function test_a_property_that_has_chosen_amenities_ignores_the_scraped_text(): void
+    {
+        $listing = Listing::factory()->create([
+            'facilities' => ['pool', 'restaurant', 'wifi'],
+        ]);
+
+        // Nothing chosen yet: the scraped guess is all there is, so it is what
+        // gets shown.
+        $this->assertSame(['pool', 'restaurant', 'wifi'], $listing->amenityList());
+        $this->assertFalse($listing->hasChosenAmenities());
+
+        $listing->amenities()->attach(Amenity::whereIn('code', ['swimming_pool', 'restaurant'])->pluck('id'));
+
+        $listing = $listing->fresh()?->load('amenities');
+
+        // Once somebody who owns the place has said, the free text stops being
+        // an answer — not merged with it, which would put "pool" beside
+        // "Swimming pool" and make the owner's own list look careless.
+        $this->assertSame(['Swimming pool', 'Restaurant'], $listing?->amenityList());
+        $this->assertTrue($listing?->hasChosenAmenities());
+
+        // And it is ignored, not deleted: the record of what the source
+        // claimed survives.
+        $this->assertSame(['pool', 'restaurant', 'wifi'], $listing?->facilities);
+    }
+
+    public function test_the_backfill_maps_the_scrapers_own_keys_and_reports_the_rest(): void
+    {
+        $listing = Listing::factory()->create([
+            'facilities' => ['pool', 'restaurant', 'airstrip', 'llama trekking'],
+        ]);
+
+        $this->artisan('amenities:backfill-listings', ['--dry-run' => true])
+            ->expectsOutputToContain('Would attach 3')
+            ->expectsOutputToContain('llama trekking')
+            ->assertSuccessful();
+
+        // A dry run wrote nothing.
+        $this->assertSame(0, $listing->amenities()->count());
+
+        $this->artisan('amenities:backfill-listings')->assertSuccessful();
+
+        $codes = $listing->load('amenities')->amenities->pluck('code')->sort()->values()->all();
+
+        $this->assertSame(['airstrip', 'restaurant', 'swimming_pool'], $codes);
+
+        // The one it could not place is still in the free text, which is where
+        // somebody can see it and decide whether it deserves a catalogue entry.
+        $this->assertContains('llama trekking', $listing->facilities ?? []);
+    }
+
+    public function test_the_backfill_never_touches_a_property_that_has_already_chosen(): void
+    {
+        $listing = Listing::factory()->create(['facilities' => ['pool', 'restaurant']]);
+        $listing->amenities()->attach(Amenity::where('code', 'bar')->firstOrFail());
+
+        $this->artisan('amenities:backfill-listings')->assertSuccessful();
+
+        // A scraper's guess does not get to add to what an owner chose, let
+        // alone correct it.
+        $this->assertSame(['bar'], $listing->load('amenities')->amenities->pluck('code')->all());
+    }
+
+    public function test_the_catalogue_can_be_narrowed_to_where_it_applies(): void
+    {
+        $rooms = Amenity::catalogue(AmenityScope::Room)->pluck('code');
+        $properties = Amenity::catalogue(AmenityScope::Property)->pluck('code');
+
+        $this->assertContains('mosquito_nets', $rooms);
+        $this->assertNotContains('mosquito_nets', $properties);
+
+        $this->assertContains('swimming_pool', $properties);
+        $this->assertNotContains('swimming_pool', $rooms);
+
+        // Asked about at both levels, and often with different answers.
+        $this->assertContains('wifi', $rooms);
+        $this->assertContains('wifi', $properties);
     }
 
     public function test_a_room_cannot_claim_the_same_amenity_twice(): void

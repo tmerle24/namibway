@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Connectors\ConnectorFactory;
 use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
+use App\Enums\AmenityScope;
 use App\Enums\ConnectorType;
 use App\Enums\ListingType;
 use App\Enums\PriceUnit;
@@ -18,6 +19,7 @@ use App\Filament\Support\PipelineImageResolver;
 use App\Filament\Support\WorkbookDownload;
 use App\Http\Controllers\Controller;
 use App\Models\City;
+use App\Models\Amenity;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\PartnerMessage;
@@ -173,6 +175,23 @@ class ListingResource extends Resource
                                             ->columnSpanFull(),
                                     ])
                                     ->columns(2)
+                                    ->columnSpanFull(),
+
+                                Forms\Components\Section::make('What this property has')
+                                    ->description('From the shared catalogue. The moment anything is ticked here, the scraped free-text facilities stop being shown — see Listing::amenityList().')
+                                    ->schema([
+                                        Forms\Components\Select::make('amenities')
+                                            ->hiddenLabel()
+                                            ->relationship('amenities', 'name')
+                                            ->getOptionLabelFromRecordUsing(fn (Amenity $record): string => $record->label())
+                                            ->options(fn (): array => Amenity::catalogue(AmenityScope::Property)
+                                                ->mapWithKeys(fn (Amenity $amenity) => [$amenity->id => $amenity->label()])
+                                                ->all())
+                                            ->multiple()
+                                            ->preload()
+                                            ->searchable()
+                                            ->columnSpanFull(),
+                                    ])
                                     ->columnSpanFull(),
 
                                 Forms\Components\Section::make('Pricing & ratings')
