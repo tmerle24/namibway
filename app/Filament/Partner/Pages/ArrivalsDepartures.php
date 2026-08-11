@@ -2,6 +2,7 @@
 
 namespace App\Filament\Partner\Pages;
 
+use App\Filament\Partner\Pages\Concerns\EditsInventory;
 use App\Filament\Partner\Pages\Concerns\ShowsReservationDetail;
 use App\Filament\Partner\Support\SelectedProperty;
 use App\Models\Listing;
@@ -9,6 +10,8 @@ use App\Services\Inventory\ArrivalsBoard;
 use App\Services\Inventory\DTOs\ArrivalsBoardData;
 use App\Support\CountrySettings;
 use Carbon\Exceptions\InvalidFormatException;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Url;
@@ -18,10 +21,17 @@ use Livewire\Attributes\Url;
  *
  * Three plain sections rather than three Filament tables — this one gets
  * printed and carried to a desk, and pagination, search and sort controls do
- * not survive a printer. Read only, like the calendar.
+ * not survive a printer.
+ *
+ * It carries the stay lifecycle too, because this is where checking a guest in
+ * actually happens: the board is the list somebody works down at the counter,
+ * and sending them to the calendar to change a status would be sending them to
+ * the wrong screen.
  */
-class ArrivalsDepartures extends Page
+class ArrivalsDepartures extends Page implements HasForms
 {
+    use EditsInventory;
+    use InteractsWithForms;
     use ShowsReservationDetail;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrow-right-on-rectangle';

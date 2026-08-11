@@ -38,6 +38,9 @@
                         <span class="nw-hint">
                             {{ $grid->occupancyPercent() }}% sold over these {{ $grid->columnCount() }} nights
                         </span>
+
+                        {{ $this->createBookingAction }}
+                        {{ $this->createBlockAction }}
                     </div>
                 </div>
 
@@ -172,16 +175,34 @@
                                                         }
                                                     @endphp
 
-                                                    <div
+                                                    {{--
+                                                        A night with something left is where a booking starts:
+                                                        clicking it opens the form already knowing the room type
+                                                        and the arrival date, which is the difference between
+                                                        taking a walk-in in two clicks and re-typing what is
+                                                        already on the screen. A night with nothing free stays
+                                                        inert — offering a form that can only refuse would be a
+                                                        dead end, and the writer would refuse it anyway.
+                                                    --}}
+                                                    @php($bookable = $cell->unitsFree > 0)
+
+                                                    <button
+                                                        type="button"
+                                                        @disabled(! $bookable)
+                                                        @if ($bookable)
+                                                            wire:click="startBooking({{ $row->roomType->id }}, '{{ $cell->date->toDateString() }}')"
+                                                            aria-label="Book {{ $row->roomType->name }}, arriving {{ $cell->date->isoFormat('D MMMM YYYY') }}"
+                                                        @endif
                                                         @class([
                                                             'nw-cell',
+                                                            'nw-cell--bookable' => $bookable,
                                                             'nw-cell--weekend' => $grid->columns[$index]->isWeekend,
                                                             'nw-cell--past' => $grid->columns[$index]->isPast,
                                                             'nw-cell--month' => $grid->columns[$index]->startsMonth,
                                                             'nw-cell--soldout' => $cell->isSoldOut(),
                                                             'nw-cell--overbooked' => $cell->isOverbooked(),
                                                         ])
-                                                        title="{{ implode(' · ', $facts) }}"
+                                                        title="{{ implode(' · ', $facts) }}{{ $bookable ? ' · click to book' : '' }}"
                                                     >
                                                         @if ($cell->closedToArrival)
                                                             <span class="nw-cell__cta" aria-hidden="true"></span>
@@ -204,7 +225,7 @@
                                                         @if ($cell->minStay > 1)
                                                             <span class="nw-cell__minstay">{{ $cell->minStay }}+</span>
                                                         @endif
-                                                    </div>
+                                                    </button>
                                                 @endforeach
                                             </div>
                                         </div>

@@ -57,6 +57,9 @@ class DemoTenantBuilder
     /** Fixed so two runs of the same demo produce the same-looking business. */
     private const RANDOM_SEED = 20260811;
 
+    /** Days of history before today, so the calendar does not start abruptly. */
+    private const LOOKBACK_DAYS = 14;
+
     public function __construct(private readonly InventoryWriter $writer) {}
 
     /**
@@ -85,11 +88,16 @@ class DemoTenantBuilder
 
         mt_srand(self::RANDOM_SEED);
 
-        $start = CountrySettings::for($listing)->today()->subDays(14);
-        $end = $start->copy()->addWeeks($weeks);
+        // `weeks` is weeks of *coming* business, which is what a prospect
+        // scrolls through. The fortnight behind today is extra, and it is
+        // there so the calendar opens with departed guests and a history
+        // rather than starting abruptly at today.
+        $today = CountrySettings::for($listing)->today();
+        $start = $today->copy()->subDays(self::LOOKBACK_DAYS);
+        $end = $today->copy()->addWeeks($weeks);
 
-        $this->seasons($rooms, $start, $end);
-        $blocks = $this->blocks($rooms, $start);
+        $this->seasons($rooms, $start, $today, $end);
+        $blocks = $this->blocks($rooms, $today, $end);
         $stays = $this->stays($listing, $rooms, $start, $end);
 
         $password ??= $this->readablePassword();
@@ -293,42 +301,76 @@ class DemoTenantBuilder
      *
      * @param  array<int, RoomType>  $rooms
      */
-    private function seasons(array $rooms, Carbon $start, Carbon $end): void
+    private function seasons(array $rooms, Carbon $start, Carbon $today, Carbon $end): void
     {
-        $highSeason = $start->copy()->addDays(42);
+        // The last night in the window; setCalendar counts nights and is
+        // inclusive at both ends, unlike $end, which is a boundary.
+        $lastNight = $end->copy()->subDay();
+
+        // The boundary sits a little way into the coming weeks rather than at
+        // a fixed 42 days, so a short demo still shows one — a rate that never
+        // changes teaches a prospect nothing about seasons, and a boundary
+        // past the end of the window is a backwards range.
+        $ahead = max(1, (int) $today->diffInDays($lastNight));
+        $highSeason = $today->copy()->addDays(max(3, (int) round($ahead * 0.4)));
+
+        if ($highSeason->gt($lastNight)) {
+            $highSeason = $lastNight->copy();
+        }
 
         foreach ($rooms as $room) {
             $base = round((float) $room->rate_per_night, 2);
 
             $this->writer->setCalendar($room, $start, $highSeason->copy()->subDay(), ['rate' => $base]);
-            $this->writer->setCalendar($room, $highSeason, $end, ['rate' => round($base * 1.6, 2)]);
+            $this->writer->setCalendar($room, $highSeason, $lastNight, ['rate' => round($base * 1.6, 2)]);
 
             // Weekends carry a surcharge — the reason the bulk editor has a
             // weekday filter at all.
-            $this->writer->setCalendar($room, $start, $end, ['rate' => round($base * 1.25, 2)], [5, 6]);
+            $this->writer->setCalendar($room, $start, $lastNight, ['rate' => round($base * 1.25, 2)], [5, 6]);
+
+            $this->writer->setCalendar($room, $highSeason, $highSeason, ['closed_to_arrival' => true]);
 
             $peakFriday = $highSeason->copy()->next(Carbon::FRIDAY);
-            $this->writer->setCalendar($room, $peakFriday, $peakFriday->copy()->addDay(), ['min_stay' => 2]);
-            $this->writer->setCalendar($room, $highSeason, $highSeason, ['closed_to_arrival' => true]);
+
+            if ($peakFriday->lte($lastNight)) {
+                $peakSaturday = $peakFriday->copy()->addDay();
+                $this->writer->setCalendar(
+                    $room,
+                    $peakFriday,
+                    $peakSaturday->gt($lastNight) ? $peakFriday : $peakSaturday,
+                    ['min_stay' => 2],
+                );
+            }
         }
     }
 
     /**
      * @param  array<int, RoomType>  $rooms
      */
-    private function blocks(array $rooms, Carbon $start): int
+    private function blocks(array $rooms, Carbon $today, Carbon $end): int
     {
         $created = 0;
+        $lastNight = $end->copy()->subDay();
+
+        // Close enough to today that they are on screen when the calendar
+        // opens, rather than something a prospect has to go looking for.
         $plans = [
-            [0, BlockReason::Maintenance, 'Re-thatching two units.', 20, 24],
-            [count($rooms) - 1, BlockReason::OwnerUse, 'Owner staying over.', 30, 32],
+            [0, BlockReason::Maintenance, 'Re-thatching two units.', 5, 9],
+            [count($rooms) - 1, BlockReason::OwnerUse, 'Owner staying over.', 15, 17],
         ];
 
         foreach ($plans as [$index, $reason, $note, $from, $to]) {
             $room = $rooms[$index] ?? null;
+            $firstNight = $today->copy()->addDays($from);
 
-            if ($room === null) {
+            if ($room === null || $firstNight->gt($lastNight)) {
                 continue;
+            }
+
+            $lastBlockNight = $today->copy()->addDays($to);
+
+            if ($lastBlockNight->gt($lastNight)) {
+                $lastBlockNight = $lastNight->copy();
             }
 
             // Never the whole room type: a demo where a row is entirely off
@@ -339,8 +381,8 @@ class DemoTenantBuilder
                 $this->writer->block(new BlockRequest(
                     roomType: $room,
                     units: $units,
-                    firstNight: $start->copy()->addDays($from),
-                    lastNight: $start->copy()->addDays($to),
+                    firstNight: $firstNight,
+                    lastNight: $lastBlockNight,
                     reason: $reason,
                     note: $note,
                 ));

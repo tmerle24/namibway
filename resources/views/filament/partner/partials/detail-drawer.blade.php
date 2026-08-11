@@ -8,9 +8,14 @@
 @endphp
 
 {{--
-    The read-only detail both lodge screens open — a stay from a bar or a row,
-    a block from a bar. Nothing in here changes anything: editing a booking is
-    slice 3, and a button that did nothing would be a promise we have not kept.
+    The detail both lodge screens open — a stay from a bar or a row, a block
+    from a bar.
+
+    The actions offered here are the ones the domain says are legal right now:
+    the status buttons come from InventoryWriter::allowedTransitions(), so a
+    screen can never offer a move the writer would refuse. Cancelling is not
+    among them on purpose — it gives rooms back, so it goes through cancel()
+    and asks for a reason.
 --}}
 @if ($reservation || $block)
     <div
@@ -67,9 +72,54 @@
 
                     @if ($reservation->total_amount !== null)
                         <dt>Total</dt>
-                        <dd class="nw-num">{{ Money::format($reservation->total_amount, $reservation->currency) }}</dd>
+                        <dd class="nw-num">
+                            {{ Money::format($reservation->total_amount, $reservation->currency) }}
+                            @if ($reservation->priceWasOverridden())
+                                <span class="nw-hint">
+                                    (calendar said {{ Money::format($reservation->quoted_amount, $reservation->currency) }})
+                                </span>
+                            @endif
+                        </dd>
+                    @endif
+
+                    @if ($reservation->priceWasOverridden() && filled($reservation->price_override_reason))
+                        <dt>Price changed</dt>
+                        <dd>{{ $reservation->price_override_reason }}</dd>
+                    @endif
+
+                    @if ($reservation->cancelled_at)
+                        <dt>Cancelled</dt>
+                        <dd>
+                            {{ $reservation->cancelled_at->isoFormat('ddd D MMM YYYY') }}
+                            @if (filled($reservation->cancellation_reason))
+                                — {{ $reservation->cancellation_reason }}
+                            @endif
+                        </dd>
                     @endif
                 </dl>
+
+                {{-- Nothing to offer on a stay that is over or cancelled, and an
+                     empty toolbar reads better than disabled buttons. --}}
+                @php($transitions = $this->availableTransitions())
+
+                @if ($transitions !== [] || $reservation->status->occupiesInventory())
+                    <div class="nw-drawer__actions nw-noprint">
+                        @foreach ($transitions as $transition)
+                            <button
+                                type="button"
+                                class="nw-btn nw-btn--primary"
+                                wire:click="transitionStay('{{ $transition->value }}')"
+                                wire:loading.attr="disabled"
+                            >
+                                {{ $transition->label() }}
+                            </button>
+                        @endforeach
+
+                        @if ($reservation->status->occupiesInventory())
+                            {{ $this->cancelStayAction }}
+                        @endif
+                    </div>
+                @endif
 
                 @if (filled($reservation->notes))
                     <div class="nw-subhead">Notes</div>
@@ -157,6 +207,17 @@
                 @if (filled($block->note))
                     <div class="nw-subhead">Note</div>
                     <p class="nw-hint">{{ $block->note }}</p>
+                @endif
+
+                @if ($block->released_at === null)
+                    <div class="nw-drawer__actions nw-noprint">
+                        {{ $this->editBlockAction }}
+                        {{ $this->releaseBlockAction }}
+                    </div>
+                @else
+                    <p class="nw-hint">
+                        Back on sale since {{ $block->released_at->isoFormat('D MMM YYYY') }}.
+                    </p>
                 @endif
             @endif
         </div>

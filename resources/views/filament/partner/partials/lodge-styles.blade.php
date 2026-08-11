@@ -74,6 +74,36 @@
         color: var(--nw-today);
     }
 
+    .nw-btn--primary {
+        color: rgb(255 255 255);
+        background: rgb(var(--primary-600, 13 148 136));
+        border-color: rgb(var(--primary-600, 13 148 136));
+    }
+
+    .nw-btn--primary:hover {
+        color: rgb(255 255 255);
+        background: rgb(var(--primary-700, 15 118 110));
+        border-color: rgb(var(--primary-700, 15 118 110));
+    }
+
+    .nw-btn[disabled] {
+        opacity: 0.55;
+        cursor: progress;
+    }
+
+    /* The row of things you can do to whatever the drawer is showing. Wraps,
+       because a stay early in its life offers more moves than a late one and
+       the drawer is narrow on a tablet. */
+    .nw-drawer__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid var(--nw-line);
+    }
+
     .nw-range {
         font-size: 0.9375rem;
         font-weight: 600;
@@ -317,12 +347,46 @@
         border-top: 1px dashed var(--nw-line);
     }
 
+    /* A cell is a <button>, because clicking a free night is how a booking
+       starts. Everything a button brings with it has to be undone first —
+       the colour, the font, the padding — or the grid stops being a grid. */
     .nw-cell {
         position: relative;
+        display: block;
+        width: 100%;
+        appearance: none;
+        -webkit-appearance: none;
+        margin: 0;
         padding: 0.2rem 0.1rem 0.25rem;
         text-align: center;
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 0;
         border-left: 1px solid var(--nw-line);
+        border-radius: 0;
         line-height: 1.15;
+        cursor: default;
+    }
+
+    .nw-cell--bookable {
+        cursor: pointer;
+    }
+
+    .nw-cell--bookable:hover {
+        background: rgb(var(--primary-500, 20 184 166) / 0.14);
+        box-shadow: inset 0 0 0 1px rgb(var(--primary-500, 20 184 166) / 0.55);
+    }
+
+    .nw-cell--bookable:focus-visible {
+        outline: 2px solid rgb(var(--primary-600, 13 148 136));
+        outline-offset: -2px;
+    }
+
+    /* A sold-out night is a disabled button; it must not look faded, because
+       the number in it is exactly what somebody came to read. */
+    .nw-cell:disabled {
+        opacity: 1;
     }
 
     .nw-cell--month {
