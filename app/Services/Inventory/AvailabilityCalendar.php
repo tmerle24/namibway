@@ -5,6 +5,7 @@ namespace App\Services\Inventory;
 use App\Enums\PricingStrategy;
 use App\Exceptions\Inventory\StayRuleViolationException;
 use App\Exceptions\Pricing\UnpriceableStayException;
+use App\Models\BookingSlot;
 use App\Models\GuestCategory;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
@@ -59,6 +60,26 @@ class AvailabilityCalendar
     public function unitsFree(RoomType $roomType, CarbonInterface $date): int
     {
         $day = $this->day($roomType, $date);
+
+        return $this->capacityFrom($roomType, $day) - $this->occupiedFrom($day);
+    }
+
+    /**
+     * Seats free on one departure.
+     *
+     * A departure keeps its own row and its own counter, so this is the same
+     * question as unitsFree() asked of a different row — the 09:00 tour
+     * selling out says nothing about the 14:00 one. Capacity falls back to the
+     * unit's own total, exactly as it does for a night: a sparse calendar
+     * means "as many as the unit has".
+     */
+    public function seatsFree(RoomType $roomType, CarbonInterface $date, BookingSlot $slot): int
+    {
+        $day = RoomTypeCalendarDay::query()
+            ->where('room_type_id', $roomType->id)
+            ->where('slot_id', $slot->id)
+            ->whereDate('date', $date->toDateString())
+            ->first();
 
         return $this->capacityFrom($roomType, $day) - $this->occupiedFrom($day);
     }

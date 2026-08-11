@@ -37,6 +37,8 @@ class ReservationUnit extends Model
     protected $fillable = [
         'reservation_id',
         'room_type_id',
+        'slot_id',
+        'slot_label',
         'rate_plan_id',
         'board_basis',
         'rate_plan_name',
@@ -46,6 +48,18 @@ class ReservationUnit extends Model
         'total_amount',
         'currency',
     ];
+
+    /**
+     * The departure this stay was sold on, where the unit is sold by the hour.
+     * Read for the release when a stay is cancelled — the seats belong to the
+     * departure, not to the day.
+     *
+     * @return BelongsTo<BookingSlot, $this>
+     */
+    public function slot(): BelongsTo
+    {
+        return $this->belongsTo(BookingSlot::class);
+    }
 
     protected $casts = [
         'board_basis' => BoardBasis::class,

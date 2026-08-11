@@ -409,8 +409,17 @@ night where there is no slot, one per unit per date per departure where there is
 Two indexes rather than one over three columns because SQL treats NULLs as
 distinct, and a single index would have let a lodge keep two counters for the
 same night: the exact failure the counter exists to prevent, arriving silently.
-The writer and the calendar cannot yet *sell* a departure — that is the next
-slice, and it is where the concurrency test on the last seat belongs.
+Selling one works the same day: a `BookingLine` carries an optional slot, the
+counter is keyed to it, and cancelling gives the seats back to the departure that
+holds them rather than to the day beside it. The departure is frozen onto the
+stay (`reservation_units.slot_id` + `slot_label`) for the same reason the rate
+plan's name is — renaming "Morning departure" in March must not change what
+February sold.
+
+Still open, and named so it is not assumed: **a rate per departure.** A
+departure prices at the unit's own rate today, because `rate_plan_days` is keyed
+by (plan, room type, date) and knows nothing about slots. A sunset drive that
+costs more than the morning one is the case that will need it.
 
 **What this does not change.** Inventory stays a counter per unit per period.
 Restrictions stay where they are. The price stays frozen. A stay crossing
