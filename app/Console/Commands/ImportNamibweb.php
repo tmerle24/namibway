@@ -46,6 +46,7 @@ class ImportNamibweb extends Command
     protected $signature = 'listings:import-namibweb
         {--file=              : Path to namibweb_listings.json}
         {--photos-dir=        : Directory the scraper downloaded photos into}
+        {--country=Namibia    : Only import records from this country ("all" to import every country)}
         {--limit=0            : Max records to process (0 = all)}
         {--only=              : Comma-separated scrape_ids to process}
         {--changed-only       : Skip records the scraper marked unchanged}
@@ -109,6 +110,25 @@ class ImportNamibweb extends Command
             $this->error('Unexpected JSON shape — expected {"records": [...]} or a bare array');
 
             return self::FAILURE;
+        }
+
+        // namibweb is not a Namibia-only source: a crawl brings back several
+        // hundred Botswana establishments plus South Africa, Mozambique, Zambia
+        // and Zimbabwe. They are scraped deliberately — the concept expands to
+        // other African countries later, and re-scraping then would be waste —
+        // but only the current market is imported. The filter belongs here, not
+        // in the scraper, so nothing has to be collected twice.
+        $country = (string) $this->option('country');
+        if ($country !== '' && strtolower($country) !== 'all') {
+            $before = count($records);
+            $records = array_filter(
+                $records,
+                fn ($r) => strcasecmp((string) ($r['country'] ?? ''), $country) === 0
+            );
+            $this->line(sprintf(
+                'Country filter %s: %d of %d records',
+                $country, count($records), $before
+            ));
         }
 
         if ($only = $this->option('only')) {
