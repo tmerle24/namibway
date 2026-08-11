@@ -24,6 +24,27 @@ The resolution is an **hourglass**: a very small core that never changes, all th
 variety pushed to the edges, and the computed result frozen so that nothing
 downstream has to understand any of it.
 
+```
+        rate plans · pricing strategies · promotions
+        board basis · residency · taxes · channels          variety in
+                            │
+                            ▼
+                ┌───────────────────────┐
+                │  inventory            │
+                │  dates and rules      │                   the core:
+                │  rate                 │                   no business models,
+                │  price, as a result   │                   only their results
+                └───────────────────────┘
+                            │
+                            ▼
+        booking · invoice · reporting · accounting          variety out
+        connectors · channel managers
+```
+
+The sentence that makes it work: **the core knows no business models, only their
+results.** Everything above the waist decides what a night costs; everything below
+reads a number that was already decided and frozen.
+
 ---
 
 ## 2. The core — deliberately tiny
@@ -46,6 +67,42 @@ without the rest of the system paying for it.
 Concurrency stays exactly where it is: availability is a counter moved by a
 conditional `UPDATE`, so two people racing for the last room are resolved by the
 database. Nothing in this plan touches that mechanism.
+
+### The five rules
+
+Everything below is an application of these. They were written down before step 1
+and hold whatever is built next; a change that breaks one of them is a change to
+this document first.
+
+1. **Inventory is physical.** It is counted per room type per night, never per rate
+   plan. A room is sold once however many products it is offered under.
+2. **A rate plan is a product, not the pricing engine.** It carries what is being
+   sold — name, board, cancellation, eligibility — plus which calculation applies
+   and that calculation's parameters. It does not contain the calculation.
+3. **A pricing strategy computes; it never touches inventory.** Every pricer is a
+   pure function of a context handed to it: no queries, no clock, no writes. It can
+   therefore be checked against a table of examples, which is what makes "we
+   support everything" a claim rather than a hope.
+4. **The price is frozen at booking.** `reservation_nights` holds the amount per
+   night as it was computed at the moment the stay was written. Nothing recomputes
+   it, ever. A lodge raising a rate tomorrow does not make yesterday's booking more
+   expensive, and no report has to reconstruct a price from rules that have since
+   changed.
+5. **A new pricing strategy is an extension, not a schema change.** One class and
+   one enum case. Its parameters go in the rate plan's `pricing_config`, so the
+   products table does not grow a column every time a calculation needs a number.
+
+Rule 4 is worth being explicit about, because it is invisible when it works. The
+path is one-way and each arrow is a step that cannot be run backwards:
+
+```
+rate plan + calendar  →  price calculation  →  reservation  →  reservation_nights
+                                                                (frozen)
+```
+
+Availability is read before the calculation and the counters move inside the same
+transaction that writes the stay, so a stay is never priced against inventory it
+did not get.
 
 ---
 
@@ -87,6 +144,40 @@ change to the calendar, no change to availability. That is the technical meaning
 Each strategy is a pure function, so it is tested with a table of examples. Without
 that, "we support everything" becomes "we can verify nothing".
 
+Age bands turned out not to be a strategy but a property of the guest category —
+they apply the same way under every strategy, so a fourth class would have had to
+be combined with the other three rather than chosen instead of them. The nightly
+rate is what each strategy reads differently: per-unit reads it as the price of the
+room, per-person-sharing as the price of one person sharing, and per-occupancy as
+the fallback for a night whose guest counts nobody has entered.
+
+What refuses rather than guesses, and why it matters more than it sounds: a plan
+that prices by guests will not price a booking that names none; a night priced for
+one and two guests refuses four rather than selling it at the two-guest price; and
+a room priced for more people than it sleeps is refused before any of that. Each of
+these is a sentence a receptionist can act on, not a number nobody checks until
+check-out.
+
+### Taxes and levies — a layer, reserved, not built
+
+Namibia charges VAT and a tourism levy, and a lodge may add a conservancy fee or a
+park permit. None of it is built, and none of it belongs in a rate plan: a product
+must never end up knowing "15% VAT plus 2% levy". The shape it will take when a
+real partner needs it:
+
+```
+rate  →  price  →  charges (levy, VAT, fees)  →  total
+```
+
+Charges apply *to* a computed price, exactly as promotions do, which is why the two
+sit at the same point in the chain and why neither is allowed to reach back into
+the calculation. Two decisions have to be made when it is built, and are recorded
+here so they are not made by accident in the meantime: whether the rate a lodge
+enters is tax-inclusive or net (Southern African lodges quote both ways, so it is
+per property, not per system), and whether a charge is frozen onto the reservation
+like the price is. It is — rule 4 covers charges as much as rates; a VAT change
+must not alter last month's invoices.
+
 ### The OTA shape is already the general shape
 
 This is worth stating plainly, because it removes the temptation to invent:
@@ -123,16 +214,47 @@ pointless.
 |---|---|
 | `rate_plans` | Per listing: name, code, board basis, cancellation terms, eligibility, pricing strategy, default flag |
 | `rate_plan_days` | Rate and restrictions per rate plan × room type × night |
-| `rate_plan_guest_amounts` | Base amount by guest count, per rate plan × room type |
-| `rate_plan_extra_guest_amounts` | Amount or percentage per guest category |
-| `guest_categories` | Per property: adult, child 3–11, infant 0–2 … name, age range |
+| `rate_plan_guest_amounts` | Base amount by guest count, per rate plan × room type × **night** |
+| `guest_categories` | Per property: adult, child 3–11, infant 0–2 … name, age range, share of the adult price, whether it counts as an occupant |
 | `promotions` | Discount, optional code, stay window, booking window, which rate plans and room types, minimum nights, usage cap |
 | `amenities` + `room_type_amenity` | Amenity catalogue with categories, and what each room type has |
+
+Two departures from the first draft of this table, both made while building step 2
+and both worth stating rather than leaving to be discovered:
+
+- **The guest amounts carry a date.** The draft hung them off the rate plan and the
+  room type alone. That cannot express a season — 1000 / 1300 / 1500 in low season
+  is 1400 / 1800 / 2100 in high — and the alternative was a second season mechanism
+  beside the one the calendar already has. In OTA the amounts hang off the rate for
+  a date, which is what this now does. It is more rows; it is also the standard.
+- **`rate_plan_extra_guest_amounts` was not built.** Its job — what a child pays —
+  is done by `guest_categories.charge_percent`, a share of the adult amount, which
+  is how every rate sheet in the market states it and which keeps a child's price
+  following the adult price through every season with no second set of numbers to
+  maintain. A per-category *amount* can be added later if a real partner quotes
+  that way; nothing here has to move for it.
+
+A guest category answers *who somebody is* — an age band, whether they are an adult
+for the purpose of a single supplement, whether they count as an occupant. It
+deliberately does **not** become `adult_price` / `child_price` / `infant_price`
+anywhere: the counts go into a strategy, and the strategy produces a price. That
+distinction is what lets an unusual scheme be one new class rather than three new
+columns.
+
+The one number a category does carry is `charge_percent`, and it is worth naming
+the trade-off: it makes a child's share a **property-wide policy** rather than a
+per-rate-plan one. That matches how lodges publish child policies (one line, all
+rates), and it means a resident rate and an international rate cannot yet discount
+children differently. When a partner needs that, it is an override table keyed by
+rate plan and category — additive, no change to anything above.
 
 ### Changes to existing tables
 
 - `reservation_units` gains `rate_plan_id`
 - `reservation_guests` is new — guest category and count per unit line
+- `rate_plans` gains `single_supplement_amount` and `single_supplement_percent`,
+  because the market states the supplement both ways and converting at entry time
+  would need the season to be known
 - `reservations` gains the promotion applied and the discount recorded
 
 ### What does not change
@@ -183,30 +305,43 @@ Each step leaves the system working and shippable.
 booking entry, stay lifecycle, blocks, bulk rate editing, dashboard widgets, the
 panel on its own host.
 
-**1. Rate plans and the calendar split.** Every listing gets one default rate plan
-carrying its current rates, so nothing changes on screen. This is the migration
-that must happen once and early — retrofitting a dimension into the table the whole
-availability logic hangs on is the excavation the single write path exists to
-prevent.
+**1. Rate plans and the calendar split. — Done, 2026-08-11.** Every listing got one
+default rate plan carrying its current rates, so nothing changed on screen. This is
+the migration that had to happen once and early — retrofitting a dimension into the
+table the whole availability logic hangs on is the excavation the single write path
+exists to prevent.
 
-**2. Occupancy and guest categories.** The strategies, the guest category table,
-and the booking form's occupancy rows. After this the prices in the system are
-real.
+**2. Occupancy and guest categories. — Done, 2026-08-11.** All three strategies are
+built (`App\Services\Pricing`, one class each, pure, checked against a table of
+examples in `NightPricerTest`), along with `guest_categories`,
+`rate_plan_guest_amounts`, `reservation_guests`, the rate plan and guest type
+screens, and the booking form's occupancy rows. A room line with occupancy holds
+one room, so two families on one booking are two lines with their own prices.
+
+What a lodge does now: create a rate plan, choose how it is priced, press "add the
+usual set" on Guest types if it prices by people, then enter the numbers on the
+Rates screen. A property that prices per room sees none of it — no rate switcher,
+no guest rows, no guest types — which is the rule this whole design is judged by.
 
 **3. Board basis.** Mostly configuration and wording, because board is a rate plan.
 
 **4. Promotions and codes.** They compute on a finished price, so they come after
 step 2.
 
-**5. Amenities, categories and photos.** Independent of everything above; can slot
-in anywhere.
-
-**6. `partners.booking_enabled` and per-partner demo mode.** A switch deciding
+**5. `partners.booking_enabled` and per-partner demo mode.** A switch deciding
 whether a lodge is live, and a demo address of the partner's own so an operator can
 test bookings against their real inventory before being switched on. Until then,
-booking mail goes to `team+<lodge>@namibway.com`. Last, because it sits on top of
-everything else — and it replaces `booking:demo-tenant`, which exists only because
-there was no other way to show the system working.
+booking mail goes to `team+<lodge>@namibway.com`. It replaces `booking:demo-tenant`,
+which exists only because there was no other way to show the system working.
+
+**6. Amenities, categories and photos.** Independent of everything above; can slot
+in anywhere, which is exactly why it goes last — it is the one step that never
+blocks another.
+
+Steps 5 and 6 were the other way round in the first draft. Switching a lodge on is
+a rollout feature rather than a booking-core one, but it is what turns all of this
+into something a real partner uses, and amenities have no dependency on anything
+here at all.
 
 ---
 

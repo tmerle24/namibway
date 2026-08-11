@@ -2,6 +2,7 @@
 
 namespace App\Filament\Partner\Pages;
 
+use App\Enums\PricingStrategy;
 use App\Filament\Partner\Support\SelectedProperty;
 use App\Models\Listing;
 use App\Models\RatePlan;
@@ -13,9 +14,11 @@ use App\Support\Money;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
@@ -74,6 +77,7 @@ class RatesAndAvailability extends Page implements HasForms
         $today = $this->today();
 
         $this->getForm('form')?->fill([
+            'rate_plan_id' => $this->defaultRatePlanId(),
             'room_type_ids' => array_keys($this->roomTypes()),
             'from' => $today->toDateString(),
             'to' => $today->copy()->addDays(30)->toDateString(),
@@ -82,6 +86,7 @@ class RatesAndAvailability extends Page implements HasForms
             'closed_to_arrival' => '',
             'closed_to_departure' => '',
             'units_mode' => '',
+            'guest_amounts' => [],
         ]);
     }
 
@@ -97,6 +102,16 @@ class RatesAndAvailability extends Page implements HasForms
             ->schema([
                 Section::make('Which nights')
                     ->schema([
+                        Select::make('rate_plan_id')
+                            ->label('Rate plan')
+                            ->options(fn (): array => $this->ratePlanOptions())
+                            ->default(fn (): ?int => $this->defaultRatePlanId())
+                            ->required()
+                            ->live()
+                            // A property with one product never chose it.
+                            ->visible(fn (): bool => count($this->ratePlanOptions()) > 1)
+                            ->helperText('Rates and restrictions are per product. Units on sale are not — a room is sold once.'),
+
                         CheckboxList::make('room_type_ids')
                             ->label('Room types')
                             ->options(fn (): array => $this->roomTypes())
@@ -143,11 +158,11 @@ class RatesAndAvailability extends Page implements HasForms
                     ->schema([
                         Grid::make(2)->schema([
                             TextInput::make('rate')
-                                ->label('Rate per night')
+                                ->label(fn (Get $get): string => $this->rateLabel($get))
                                 ->numeric()
                                 ->minValue(0)
                                 ->prefix(fn (): string => Money::symbol($this->currency()))
-                                ->helperText('Empty leaves the rate untouched.'),
+                                ->helperText(fn (Get $get): string => $this->rateHelp($get)),
 
                             Select::make('min_stay_mode')
                                 ->label('Minimum stay')
@@ -191,6 +206,37 @@ class RatesAndAvailability extends Page implements HasForms
                                 ->visible(fn (Get $get): bool => $get('units_mode') === 'set'),
                         ]),
                     ]),
+
+                Section::make('Price by number of guests')
+                    ->description('What the room costs for one guest, for two, for three. Guest counts not listed here are left exactly as they are.')
+                    ->schema([
+                        Repeater::make('guest_amounts')
+                            ->hiddenLabel()
+                            ->addActionLabel('Add a guest count')
+                            ->schema([
+                                Select::make('guests')
+                                    ->label('Guests')
+                                    ->options(fn (): array => $this->guestCountOptions())
+                                    ->required(),
+                                TextInput::make('amount')
+                                    ->label('Price per night')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->prefix(fn (): string => Money::symbol($this->currency()))
+                                    ->required(fn (Get $get): bool => $get('remove') !== true)
+                                    ->visible(fn (Get $get): bool => $get('remove') !== true),
+                                Toggle::make('remove')
+                                    ->label('Stop selling this many')
+                                    ->live()
+                                    ->helperText('Removes the price instead of setting one.'),
+                            ])
+                            ->columns(3)
+                            ->defaultItems(0),
+                    ])
+                    // Only the by-the-guest-count strategy reads these. On a
+                    // per-room or per-person plan they would be numbers with
+                    // nowhere to go.
+                    ->visible(fn (Get $get): bool => $this->strategyFor($get) === PricingStrategy::PerOccupancy),
             ]);
     }
 
@@ -209,12 +255,13 @@ class RatesAndAvailability extends Page implements HasForms
 
         $data = $this->getForm('form')?->getState() ?? [];
         $attributes = $this->attributesFrom($data);
+        $guestAmounts = $this->guestAmountsFrom($data);
 
         if ($data === []) {
             return;
         }
 
-        if ($attributes === []) {
+        if ($attributes === [] && $guestAmounts === []) {
             Notification::make()
                 ->warning()
                 ->title('Nothing to change')
@@ -256,7 +303,7 @@ class RatesAndAvailability extends Page implements HasForms
         }
 
         $writer = app(InventoryWriter::class);
-        $ratePlan = RatePlan::ensureDefaultFor($property);
+        $ratePlan = $this->chosenRatePlan($property, $data);
         $days = $weekdays === [] ? null : $weekdays;
 
         $inventory = array_intersect_key($attributes, ['units_total' => true]);
@@ -269,6 +316,10 @@ class RatesAndAvailability extends Page implements HasForms
 
                 if ($rates !== []) {
                     $written = $writer->setRates($ratePlan, $room, $from, $to, $rates, $days);
+                }
+
+                if ($guestAmounts !== []) {
+                    $written = max($written, $writer->setGuestAmounts($ratePlan, $room, $from, $to, $guestAmounts, $days));
                 }
 
                 if ($inventory !== []) {
@@ -289,6 +340,158 @@ class RatesAndAvailability extends Page implements HasForms
             ->body($nights.' '.str('night')->plural($nights).' across '
                 .$rooms->count().' '.str('room type')->plural($rooms->count()).'.')
             ->send();
+    }
+
+    /**
+     * The plan being edited, resolved against this property.
+     *
+     * An id from the browser can only ever select one of this property's own
+     * plans, and a property with none gets its default created — setting a
+     * rate needs somewhere to put it.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function chosenRatePlan(Listing $property, array $data): RatePlan
+    {
+        $id = (int) ($data['rate_plan_id'] ?? 0);
+
+        $chosen = $id > 0
+            ? RatePlan::forListing($property)->firstWhere('id', $id)
+            : null;
+
+        return $chosen ?? RatePlan::ensureDefaultFor($property);
+    }
+
+    /**
+     * The guest-count prices to write: a number to set, or null to remove that
+     * count from those nights.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<int, float|null>
+     */
+    private function guestAmountsFrom(array $data): array
+    {
+        $rows = $data['guest_amounts'] ?? null;
+
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        $amounts = [];
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $guests = (int) ($row['guests'] ?? 0);
+
+            if ($guests < 1) {
+                continue;
+            }
+
+            if (($row['remove'] ?? false) === true) {
+                $amounts[$guests] = null;
+
+                continue;
+            }
+
+            if (filled($row['amount'] ?? null)) {
+                $amounts[$guests] = round((float) $row['amount'], 2);
+            }
+        }
+
+        return $amounts;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function ratePlanOptions(): array
+    {
+        $property = $this->property();
+
+        if ($property === null) {
+            return [];
+        }
+
+        return RatePlan::forListing($property)
+            ->mapWithKeys(fn (RatePlan $plan) => [$plan->id => $plan->label()])
+            ->all();
+    }
+
+    private function defaultRatePlanId(): ?int
+    {
+        $property = $this->property();
+
+        return $property === null ? null : RatePlan::defaultFor($property)?->id;
+    }
+
+    /** How the selected plan turns a night into an amount. */
+    private function strategyFor(Get $get): PricingStrategy
+    {
+        $property = $this->property();
+        $id = (int) $get('rate_plan_id');
+
+        if ($property === null) {
+            return PricingStrategy::PerUnit;
+        }
+
+        $plan = $id > 0
+            ? RatePlan::forListing($property)->firstWhere('id', $id)
+            : RatePlan::defaultFor($property);
+
+        return $plan->pricing_strategy ?? PricingStrategy::PerUnit;
+    }
+
+    /**
+     * The same field means different things under different plans, so it says
+     * which. "Rate per night" against a per-person tariff is how a lodge ends
+     * up selling a chalet for the price of one bed.
+     */
+    private function rateLabel(Get $get): string
+    {
+        return match ($this->strategyFor($get)) {
+            PricingStrategy::PerPersonSharing => 'Rate per person sharing',
+            PricingStrategy::PerOccupancy => 'Rate per night (fallback)',
+            PricingStrategy::PerUnit => 'Rate per night',
+        };
+    }
+
+    private function rateHelp(Get $get): string
+    {
+        return match ($this->strategyFor($get)) {
+            PricingStrategy::PerPersonSharing => 'Per person per night. Children pay their share of it, and the single supplement is on the rate plan.',
+            PricingStrategy::PerOccupancy => 'Used on nights with no price by guest count below. Empty leaves it untouched.',
+            PricingStrategy::PerUnit => 'Empty leaves the rate untouched.',
+        };
+    }
+
+    /**
+     * Guest counts worth offering: up to what the property's biggest room
+     * sleeps, because a price for more people than fit is a price nobody can
+     * book.
+     *
+     * @return array<int, string>
+     */
+    private function guestCountOptions(): array
+    {
+        $property = $this->property();
+        $largest = 0;
+
+        if ($property !== null) {
+            foreach ($property->roomTypes()->where('is_active', true)->get() as $room) {
+                $largest = max($largest, $room->max_adults + $room->max_children);
+            }
+        }
+
+        $options = [];
+
+        foreach (range(1, max(2, min($largest, 12))) as $guests) {
+            $options[$guests] = $guests.' '.str('guest')->plural($guests);
+        }
+
+        return $options;
     }
 
     /**

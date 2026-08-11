@@ -23,7 +23,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $currency
  * @property-read Reservation|null $reservation
  * @property-read RoomType|null $roomType
+ * @property int|null $rate_plan_id
  * @property-read Collection<int, ReservationNight> $nights
+ * @property-read Collection<int, ReservationGuest> $guests
  */
 class ReservationUnit extends Model
 {
@@ -69,5 +71,16 @@ class ReservationUnit extends Model
     public function nights(): HasMany
     {
         return $this->hasMany(ReservationNight::class);
+    }
+
+    /**
+     * Who is in this room — the occupancy the price was computed from. Empty
+     * for a property that prices per room and never asks.
+     *
+     * @return HasMany<ReservationGuest, $this>
+     */
+    public function guests(): HasMany
+    {
+        return $this->hasMany(ReservationGuest::class);
     }
 }

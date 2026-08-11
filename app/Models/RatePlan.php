@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\BoardBasis;
 use App\Enums\PricingStrategy;
 use App\Enums\RatePlanEligibility;
+use App\Services\Pricing\PricingConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property RatePlanEligibility $eligibility
  * @property PricingStrategy $pricing_strategy
  * @property int|null $cancellation_days
+ * @property array<string, mixed>|null $pricing_config
  * @property bool $is_refundable
  * @property bool $is_default
  * @property bool $is_active
@@ -46,6 +48,7 @@ class RatePlan extends Model
         'eligibility',
         'pricing_strategy',
         'cancellation_days',
+        'pricing_config',
         'is_refundable',
         'is_default',
         'is_active',
@@ -57,11 +60,38 @@ class RatePlan extends Model
         'eligibility' => RatePlanEligibility::class,
         'pricing_strategy' => PricingStrategy::class,
         'cancellation_days' => 'integer',
+        'pricing_config' => 'array',
         'is_refundable' => 'boolean',
         'is_default' => 'boolean',
         'is_active' => 'boolean',
         'sort' => 'integer',
     ];
+
+    /**
+     * A property has at most one default, and the database says so with a
+     * partial unique index. Enforcing it *only* there would turn "tick the
+     * other rate as default" into a constraint violation on screen, so ticking
+     * one unticks the rest instead — here rather than in the form, because a
+     * seeder and an import have the same rule.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $plan): void {
+            if (! $plan->is_default || ! $plan->listing_id) {
+                return;
+            }
+
+            $others = self::query()
+                ->where('listing_id', $plan->listing_id)
+                ->where('is_default', true);
+
+            if ($plan->exists) {
+                $others->whereKeyNot($plan->getKey());
+            }
+
+            $others->update(['is_default' => false]);
+        });
+    }
 
     /**
      * @return BelongsTo<Listing, $this>
@@ -140,6 +170,18 @@ class RatePlan extends Model
             ->orderBy('sort')
             ->orderBy('id')
             ->get();
+    }
+
+    /**
+     * The strategy's parameters, typed.
+     *
+     * A rate plan holds them without understanding them: what a single
+     * supplement is, is the per-person-sharing calculation's business, not the
+     * product's. See PricingConfig and BOOKING_SYSTEM.md, rule 2.
+     */
+    public function pricingConfig(): PricingConfig
+    {
+        return PricingConfig::from($this->pricing_config);
     }
 
     /** What to put on a switcher: the name, and what it includes if it says. */

@@ -9,7 +9,9 @@ use App\Models\InventoryBlock;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
+use App\Models\RatePlanGuestAmount;
 use App\Models\Reservation;
+use App\Models\ReservationGuest;
 use App\Models\ReservationNight;
 use App\Models\ReservationUnit;
 use App\Models\RoomType;
@@ -99,6 +101,7 @@ class InventoryWriter
                     $line->checkOut,
                     $line->quantity,
                     $plans[$index],
+                    $line->occupancy,
                 );
                 $quotes[$index] = $quote;
                 $currencies[] = $quote->currency;
@@ -174,6 +177,17 @@ class InventoryWriter
                     'currency' => $quote->currency,
                 ]);
                 $unit->save();
+
+                // Who the price was computed from, kept beside the price. A
+                // stay whose occupancy is only in the total is one nobody can
+                // check afterwards.
+                foreach ($line->occupancy->counts ?? [] as $categoryId => $count) {
+                    (new ReservationGuest([
+                        'reservation_unit_id' => $unit->id,
+                        'guest_category_id' => $categoryId,
+                        'count' => $count,
+                    ]))->save();
+                }
 
                 foreach ($quote->nights as $night) {
                     (new ReservationNight([
@@ -536,6 +550,90 @@ class InventoryWriter
     }
 
     /**
+     * Write what a room costs for one guest, for two, for three — across a
+     * date range. Both ends inclusive; these are nights.
+     *
+     * `$amounts` is guest count => amount, and a null amount removes that
+     * guest count from those nights. Removing matters: a lodge that stops
+     * selling a chalet to four people needs the four-guest price to *go*, not
+     * to sit there being sold, and there is no other way to say so.
+     *
+     * Guest counts not mentioned are left alone, which is the same rule as
+     * everywhere else in the bulk editor — somebody changing the two-guest
+     * price must not silently drop the three-guest one.
+     *
+     * @param  array<int, float|null>  $amounts  guests => amount, or null to remove
+     * @param  array<int, int>|null  $weekdays  ISO-8601 day numbers, or null for every night
+     * @return int number of nights written
+     */
+    public function setGuestAmounts(
+        RatePlan $ratePlan,
+        RoomType $roomType,
+        CarbonInterface $from,
+        CarbonInterface $to,
+        array $amounts,
+        ?array $weekdays = null,
+    ): int {
+        if ($roomType->listing_id !== $ratePlan->listing_id) {
+            throw new InvalidArgumentException(
+                "Rate plan [{$ratePlan->id}] and room type [{$roomType->id}] belong to different properties."
+            );
+        }
+
+        foreach (array_keys($amounts) as $guests) {
+            if ($guests < 1) {
+                throw new InvalidArgumentException("A guest count has to be at least 1; got [{$guests}].");
+            }
+        }
+
+        $dates = $this->rangeDates($from, $to, $weekdays);
+
+        if ($dates === [] || $amounts === []) {
+            return 0;
+        }
+
+        return InventoryWriteGuard::allow(fn () => DB::transaction(function () use ($ratePlan, $roomType, $dates, $amounts) {
+            foreach (array_chunk($dates, 500) as $chunk) {
+                foreach ($amounts as $guests => $amount) {
+                    if ($amount === null) {
+                        RatePlanGuestAmount::query()
+                            ->where('rate_plan_id', $ratePlan->id)
+                            ->where('room_type_id', $roomType->id)
+                            ->where('guests', $guests)
+                            ->whereIn('date', $chunk)
+                            ->delete();
+
+                        continue;
+                    }
+
+                    $rows = [];
+                    $now = now();
+
+                    foreach ($chunk as $date) {
+                        $rows[] = [
+                            'rate_plan_id' => $ratePlan->id,
+                            'room_type_id' => $roomType->id,
+                            'date' => $date,
+                            'guests' => $guests,
+                            'amount' => round($amount, 2),
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+                    }
+
+                    RatePlanGuestAmount::query()->upsert(
+                        $rows,
+                        ['rate_plan_id', 'room_type_id', 'date', 'guests'],
+                        ['amount', 'updated_at'],
+                    );
+                }
+            }
+
+            return count($dates);
+        }));
+    }
+
+    /**
      * @param  array<string, mixed>  $attributes
      * @param  array<int, string>  $allowed
      */
@@ -601,6 +699,11 @@ class InventoryWriter
             // Children first: reservation_units restricts deletion of the room
             // types the demo rebuild is about to replace.
             $nights = $unitIds === [] ? 0 : ReservationNight::query()->whereIn('reservation_unit_id', $unitIds)->delete();
+
+            if ($unitIds !== []) {
+                ReservationGuest::query()->whereIn('reservation_unit_id', $unitIds)->delete();
+            }
+
             $units = $unitIds === [] ? 0 : ReservationUnit::query()->whereIn('id', $unitIds)->delete();
             $reservations = $reservationIds === [] ? 0 : Reservation::query()->whereIn('id', $reservationIds)->delete();
 
@@ -610,6 +713,10 @@ class InventoryWriter
             // Rates too: a room type survives a purge, so leaving its priced
             // nights behind would show a rebuilt demo last month's rates.
             $rateDays = $roomTypeIds === [] ? 0 : RatePlanDay::query()->whereIn('room_type_id', $roomTypeIds)->delete();
+
+            if ($roomTypeIds !== []) {
+                RatePlanGuestAmount::query()->whereIn('room_type_id', $roomTypeIds)->delete();
+            }
 
             return [
                 'reservations' => $reservations,

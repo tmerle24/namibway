@@ -267,6 +267,18 @@ class Listing extends Model
     }
 
     /**
+     * Who this property charges differently — adults, children, infants, with
+     * the age bands it publishes. Empty until a property prices by guests, and
+     * empty is the right state for one that never does.
+     *
+     * @return HasMany<GuestCategory, $this>
+     */
+    public function guestCategories(): HasMany
+    {
+        return $this->hasMany(GuestCategory::class);
+    }
+
+    /**
      * @return HasMany<RoomType, $this>
      */
     public function roomTypes(): HasMany
