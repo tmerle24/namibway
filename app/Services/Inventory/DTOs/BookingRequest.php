@@ -15,6 +15,10 @@ class BookingRequest
 {
     /**
      * @param  array<int, BookingLine>  $lines
+     * @param  float|null  $totalOverride  What the lodge decided to charge, when that
+     *                                     is not what the calendar priced. The calendar's
+     *                                     own figure is kept either way — see the
+     *                                     reservations price-override migration.
      */
     public function __construct(
         public readonly Listing $listing,
@@ -29,5 +33,7 @@ class BookingRequest
         public readonly ?string $notes = null,
         public readonly ?int $createdBy = null,
         public readonly ?int $inquiryId = null,
+        public readonly ?float $totalOverride = null,
+        public readonly ?string $overrideReason = null,
     ) {}
 }

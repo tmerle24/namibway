@@ -31,6 +31,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $adults
  * @property int $children
  * @property float|null $total_amount
+ * @property float|null $quoted_amount
+ * @property string|null $price_override_reason
+ * @property int|null $price_overridden_by
+ * @property CarbonImmutable|null $price_overridden_at
  * @property string $currency
  * @property string|null $notes
  * @property int|null $created_by
@@ -58,6 +62,10 @@ class Reservation extends Model
         'adults',
         'children',
         'total_amount',
+        'quoted_amount',
+        'price_override_reason',
+        'price_overridden_by',
+        'price_overridden_at',
         'currency',
         'notes',
         'created_by',
@@ -73,6 +81,8 @@ class Reservation extends Model
         'adults' => 'integer',
         'children' => 'integer',
         'total_amount' => 'float',
+        'quoted_amount' => 'float',
+        'price_overridden_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
 
@@ -106,6 +116,31 @@ class Reservation extends Model
     public function units(): HasMany
     {
         return $this->hasMany(ReservationUnit::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function priceOverrider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'price_overridden_by');
+    }
+
+    /**
+     * Whether somebody charged something other than what the calendar priced.
+     *
+     * Derived from the two amounts rather than stored as a flag, so it stays
+     * true to the numbers even if one of them is later corrected. Compared to
+     * the cent, because these are money columns and a float equality check on
+     * money is a bug waiting for a rounding difference.
+     */
+    public function priceWasOverridden(): bool
+    {
+        if ($this->quoted_amount === null || $this->total_amount === null) {
+            return false;
+        }
+
+        return abs($this->total_amount - $this->quoted_amount) >= 0.01;
     }
 
     /** Nights, not days — a stay from the 5th to the 8th is three nights. */
