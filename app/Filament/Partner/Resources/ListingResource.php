@@ -287,6 +287,9 @@ class ListingResource extends Resource
                 // the owner should see that a website is one click away, which
                 // is the whole offer.
                 CreateWebsiteAction::locked(),
+                // Shown whether or not the owner may build one: a site made for
+                // them by the team is still theirs to look at.
+                CreateWebsiteAction::visit(),
             ])
             ->paginated(false);
     }

@@ -1,7 +1,7 @@
 @php
     $image = $images->get($data['image_id'] ?? null);
 @endphp
-<section class="hero" id="top">
+<section class="hero {{ $image ? '' : 'hero--plain' }}" id="top">
     @if ($image)
         <div class="hero__media">
             {{-- The one eager image on the page, and the one allowed to be
