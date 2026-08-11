@@ -47,7 +47,7 @@ final class NightPricingContext
 
     public function planLabel(): string
     {
-        return $this->ratePlan?->name ?? 'the standard rate';
+        return $this->ratePlan->name ?? 'the standard rate';
     }
 
     public function dateLabel(): string

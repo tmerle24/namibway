@@ -243,52 +243,47 @@ class ManualBooking
      */
     private function resolveRooms(Listing $listing, array $lines): array
     {
-        $wanted = [];
+        $roomTypeIds = [];
 
         foreach ($lines as $line) {
-            $id = (int) ($line['room_type_id'] ?? 0);
-            $occupancy = $this->occupancyFrom($line['guests'] ?? null);
-            $quantity = $occupancy === null ? (int) ($line['quantity'] ?? 0) : 1;
-
-            if ($id <= 0 || $quantity <= 0) {
-                continue;
-            }
-
-            $wanted[] = [
-                'room_type_id' => $id,
-                'rate_plan_id' => (int) ($line['rate_plan_id'] ?? 0),
-                'quantity' => $quantity,
-                'occupancy' => $occupancy,
-            ];
+            $roomTypeIds[] = (int) ($line['room_type_id'] ?? 0);
         }
 
-        if ($wanted === []) {
+        $roomTypeIds = array_values(array_filter($roomTypeIds, fn (int $id) => $id > 0));
+
+        if ($roomTypeIds === []) {
             return [];
         }
 
-        $rooms = $listing->roomTypes()
-            ->whereIn('id', array_column($wanted, 'room_type_id'))
-            ->get()
-            ->keyBy('id');
-
+        $rooms = $listing->roomTypes()->whereIn('id', $roomTypeIds)->get()->keyBy('id');
         $plans = RatePlan::forListing($listing)->keyBy('id');
+
         $resolved = [];
         $merged = [];
 
-        foreach ($wanted as $row) {
-            $room = $rooms->get($row['room_type_id']);
+        foreach ($lines as $line) {
+            $room = $rooms->get((int) ($line['room_type_id'] ?? 0));
 
-            if ($room === null) {
+            if (! $room instanceof RoomType) {
                 continue;
             }
 
-            $plan = $row['rate_plan_id'] > 0 ? $plans->get($row['rate_plan_id']) : null;
+            $occupancy = $this->occupancyFrom($line['guests'] ?? null);
+            $quantity = $occupancy === null ? (int) ($line['quantity'] ?? 0) : 1;
 
-            if ($row['occupancy'] === null) {
-                $key = $room->id.':'.($plan?->id ?? 0);
+            if ($quantity <= 0) {
+                continue;
+            }
+
+            $planId = (int) ($line['rate_plan_id'] ?? 0);
+            $plan = $planId > 0 ? $plans->get($planId) : null;
+            $plan = $plan instanceof RatePlan ? $plan : null;
+
+            if ($occupancy === null) {
+                $key = $room->id.':'.($plan->id ?? 0);
 
                 if (isset($merged[$key])) {
-                    $resolved[$merged[$key]]['quantity'] += $row['quantity'];
+                    $resolved[$merged[$key]]['quantity'] += $quantity;
 
                     continue;
                 }
@@ -298,9 +293,9 @@ class ManualBooking
 
             $resolved[] = [
                 'room' => $room,
-                'quantity' => $row['quantity'],
+                'quantity' => $quantity,
                 'ratePlan' => $plan,
-                'occupancy' => $row['occupancy'],
+                'occupancy' => $occupancy,
             ];
         }
 

@@ -48,10 +48,13 @@ class GuestCategoryResource extends Resource
     {
         $property = app(SelectedProperty::class)->current();
 
-        return parent::getEloquentQuery()
-            ->where('listing_id', $property?->id ?? 0)
+        /** @var Builder<GuestCategory> $query */
+        $query = parent::getEloquentQuery()
+            ->where('listing_id', $property->id ?? 0)
             ->orderBy('sort')
             ->orderBy('id');
+
+        return $query;
     }
 
     public static function form(Form $form): Form
@@ -140,9 +143,6 @@ class GuestCategoryResource extends Resource
             ->paginated(false);
     }
 
-    /**
-     * @return array<string, class-string>
-     */
     public static function getPages(): array
     {
         return [

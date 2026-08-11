@@ -134,7 +134,7 @@ class AvailabilityCalendar
         ?Occupancy $occupancy = null,
     ): Quote {
         $ratePlan = $this->planFor($roomType, $ratePlan);
-        $strategy = $ratePlan?->pricing_strategy ?? PricingStrategy::PerUnit;
+        $strategy = $ratePlan->pricing_strategy ?? PricingStrategy::PerUnit;
         $pricer = Pricers::for($strategy);
 
         $occupancy ??= Occupancy::empty();

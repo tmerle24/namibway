@@ -45,7 +45,7 @@ final class PerPersonSharingPricer implements NightPricer
             // An unknown category pays the full share. It can only happen to a
             // stay whose category was removed afterwards, and the safe
             // direction there is the price the guest was quoted.
-            $percent = ($categories[$categoryId] ?? null)?->charge_percent ?? 100.0;
+            $percent = $categories[$categoryId]->charge_percent ?? 100.0;
 
             $total += $people * $context->baseRate * ($percent / 100);
         }

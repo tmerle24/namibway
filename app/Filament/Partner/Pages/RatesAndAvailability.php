@@ -441,7 +441,7 @@ class RatesAndAvailability extends Page implements HasForms
             ? RatePlan::forListing($property)->firstWhere('id', $id)
             : RatePlan::defaultFor($property);
 
-        return $plan?->pricing_strategy ?? PricingStrategy::PerUnit;
+        return $plan->pricing_strategy ?? PricingStrategy::PerUnit;
     }
 
     /**

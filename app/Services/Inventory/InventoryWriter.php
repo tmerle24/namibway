@@ -9,6 +9,7 @@ use App\Models\InventoryBlock;
 use App\Models\Listing;
 use App\Models\RatePlan;
 use App\Models\RatePlanDay;
+use App\Models\RatePlanGuestAmount;
 use App\Models\Reservation;
 use App\Models\ReservationGuest;
 use App\Models\ReservationNight;
@@ -180,7 +181,7 @@ class InventoryWriter
                 // Who the price was computed from, kept beside the price. A
                 // stay whose occupancy is only in the total is one nobody can
                 // check afterwards.
-                foreach ($line->occupancy?->counts ?? [] as $categoryId => $count) {
+                foreach ($line->occupancy->counts ?? [] as $categoryId => $count) {
                     (new ReservationGuest([
                         'reservation_unit_id' => $unit->id,
                         'guest_category_id' => $categoryId,

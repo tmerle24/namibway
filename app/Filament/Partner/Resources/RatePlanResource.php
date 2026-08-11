@@ -12,6 +12,7 @@ use App\Services\Pricing\PerPersonSharingPricer;
 use App\Support\CountrySettings;
 use App\Support\Money;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -59,12 +60,15 @@ class RatePlanResource extends Resource
     {
         $property = app(SelectedProperty::class)->current();
 
-        return parent::getEloquentQuery()
-            // No property selected means no rate plans, not every partner's.
-            ->where('listing_id', $property?->id ?? 0)
+        // No property selected means no rate plans, not every partner's.
+        /** @var Builder<RatePlan> $query */
+        $query = parent::getEloquentQuery()
+            ->where('listing_id', $property->id ?? 0)
             ->orderByDesc('is_default')
             ->orderBy('sort')
             ->orderBy('id');
+
+        return $query;
     }
 
     public static function form(Form $form): Form
@@ -107,7 +111,11 @@ class RatePlanResource extends Resource
             Section::make('How it is priced')
                 ->description('This decides what the number on the calendar means.')
                 ->schema([
-                    Select::make('pricing_strategy')
+                    // A radio rather than a select, because each option needs a
+                    // sentence: this is the one choice on the screen that
+                    // changes what every number under it means, and it is made
+                    // once by somebody who has never seen the system before.
+                    Radio::make('pricing_strategy')
                         ->label('Priced')
                         ->options(collect(PricingStrategy::cases())
                             ->mapWithKeys(fn (PricingStrategy $case) => [$case->value => $case->label()])
@@ -128,7 +136,7 @@ class RatePlanResource extends Resource
                                 ->label('Single supplement')
                                 ->numeric()
                                 ->minValue(0)
-                                ->prefix(fn (): string => Money::symbol(static::currency()))
+                                ->prefix(fn (): string => Money::symbol(self::currency()))
                                 ->helperText('Per night, when one person has the room to themselves.'),
                             TextInput::make('pricing_config.'.PerPersonSharingPricer::SUPPLEMENT_PERCENT)
                                 ->label('… or as a percentage')
@@ -189,9 +197,6 @@ class RatePlanResource extends Resource
             ->paginated(false);
     }
 
-    /**
-     * @return array<string, class-string>
-     */
     public static function getPages(): array
     {
         return [

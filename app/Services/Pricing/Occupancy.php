@@ -83,7 +83,7 @@ final class Occupancy
         foreach ($this->counts as $categoryId => $people) {
             // A category the property has since removed still counts: dropping
             // it would quietly make a stay cheaper than it was sold for.
-            if (($categories[$categoryId] ?? null)?->counts_toward_occupancy ?? true) {
+            if ($categories[$categoryId]->counts_toward_occupancy ?? true) {
                 $count += $people;
             }
         }
