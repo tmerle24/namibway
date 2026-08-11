@@ -54,7 +54,7 @@ class Note extends Model
     {
         $note = new self([
             'user_id' => $author?->id,
-            'author_name' => $author?->name ?? 'NamibWay',
+            'author_name' => $author->name ?? 'NamibWay',
             'body' => $body,
         ]);
 

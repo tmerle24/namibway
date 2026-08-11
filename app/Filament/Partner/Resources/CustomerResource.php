@@ -56,7 +56,7 @@ class CustomerResource extends Resource
     {
         /** @var Builder<Customer> $query */
         $query = parent::getEloquentQuery()
-            ->where('partner_id', auth()->user()?->partner_id ?? 0)
+            ->where('partner_id', auth()->user()->partner_id ?? 0)
             ->withCount('reservations')
             ->withMax('reservations', 'check_in');
 
@@ -79,7 +79,7 @@ class CustomerResource extends Resource
                             // Lowercased by the model on the way in, which is
                             // what makes this unique key case-insensitive.
                             ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule
-                                ->where('partner_id', auth()->user()?->partner_id ?? 0)),
+                                ->where('partner_id', auth()->user()->partner_id ?? 0)),
                         TextInput::make('phone')->tel()->maxLength(60),
                         TextInput::make('country')
                             ->label('Country')
