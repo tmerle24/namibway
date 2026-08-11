@@ -27,9 +27,20 @@ class PartnerPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel
+        $panel = $panel
             ->id('partner')
-            ->path('partner')
+            ->path('partner');
+
+        // The lodge-facing booking system is sold in its own right, so it gets
+        // its own address rather than looking like a sub-page of a travel
+        // site. Unset — local development, CI, and production until the DNS
+        // record exists — the panel answers on whatever host serves the app,
+        // exactly as before. See config/booking.php and DEPLOYMENT.md.
+        if (filled(config('booking.panel_domain'))) {
+            $panel = $panel->domain((string) config('booking.panel_domain'));
+        }
+
+        return $panel
             ->login()
             ->brandLogo(asset('images/namibway-logo-dark.png'))
             ->darkModeBrandLogo(asset('images/namibway-logo-light.png'))

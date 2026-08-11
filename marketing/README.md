@@ -117,6 +117,43 @@ customer figures to quote. Nothing in that flyer criticises the system the recip
 runs today — the argument is the outcome, not their current supplier. Check the exact
 registered name and preferred short form of the organisation before printing.
 
+## What the live demo actually shows
+
+`php artisan booking:demo-tenant <listing-slug>` puts a prospect's own lodge into the
+system before the meeting, and prints a sign-in link to hand over. **What it shows is
+real software on made-up data — not a mock-up, and not a pilot.** Say it that way.
+
+Demonstrable, because it works:
+
+- An occupancy calendar for one property: room types down, nights across, stays and
+  blocks as bars, units free and the rate on every night, sold-out and off-sale as
+  visibly different things.
+- An arrivals and departures board for one date, printable.
+- Entering a walk-in or telephone booking, including several room types at once, with
+  the price built from the calendar night by night and an override that is recorded.
+- A booking being refused because a night is short — and the refusal naming the room
+  type and the date.
+- Moving a guest through the day: due in, in house, checked out, no show; cancelling,
+  with the rooms going back on sale.
+- Taking rooms off sale for maintenance or owner use, editing that, and releasing it.
+- Setting rates and restrictions across a season in one go, weekends only if you like.
+- Several properties under one partner, switched from the topbar.
+
+Not demonstrable, and must not be implied:
+
+- **A connection to anything.** No channel sync, no iCal, no PMS link. The demo tenant
+  has no connector at all, deliberately.
+- **Payments, invoices, a folio, housekeeping or tax reporting.** None of it exists, and
+  there is no button that hints at it.
+- **Room-level assignment.** The system holds room types and quantities, never a named
+  room. A lodge that assigns physical rooms needs that built.
+- **Anything about the prospect's own live data.** The demo is a copy. It carries none of
+  their contact details and cannot write back to their listing — worth saying out loud in
+  the room, because it is the first thing an operator worries about.
+
+Every screen in a demo tenant carries a striped "Demonstration" banner, and it survives
+printing and screenshots. Do not remove it for a nicer-looking slide.
+
 ## Photography
 
 Printed material may only use photographs we have the rights to. Scraped and

@@ -7,6 +7,7 @@ Diese Doku beschreibt, wie man NamibWay lokal zum Laufen bringt und auf einem Pr
 - [Voraussetzungen](#voraussetzungen)
 - [Lokale Entwicklung](#lokale-entwicklung)
 - [Produktions-Deployment](#produktions-deployment)
+- [Buchungs-Subdomain](#buchungs-subdomain)
 - [Bild-Thumbnails](#bild-thumbnails)
 - [Nützliche Befehle](#nützliche-befehle)
 - [Troubleshooting](#troubleshooting)
@@ -311,6 +312,58 @@ bash deploy.sh
 `restore.sh` sichert ein eventuell schon vorhandenes `.env` vor dem Überschreiben nach
 `.env.bak-restore`. `APP_URL`/`DB_HOST` in der wiederhergestellten `.env` prüfen, falls sich
 Hostname oder DB-Standort gegenüber dem alten Server geändert haben.
+
+---
+
+## Buchungs-Subdomain
+
+Das Partner-Panel — das Buchungssystem, das Lodges selbst bedienen — kann unter einer
+eigenen Adresse laufen (`booking.namibway.com`), statt wie ein Unterverzeichnis der
+Reise-Website auszusehen. Das ist ein Verkaufsargument, kein Detail: das Panel wird als
+eigenes Produkt angeboten.
+
+**Ohne gesetzte Variable ändert sich nichts.** `BOOKING_PANEL_DOMAIN` leer heißt: Panel
+antwortet wie bisher unter `/partner` auf dem Host, der die App ausliefert. Lokale
+Entwicklung und CI brauchen also keinen Hosts-Eintrag und keine Konfiguration.
+
+### Voraussetzungen auf dem Server (vor dem Setzen der Variable)
+
+1. **DNS-Record bei OVH**, nicht bei Cloudflare. Die DNS von namibway.com liegt bei OVH —
+   genau das hat am 2026-08-09 `cdn.namibway.com` zerlegt, als eine Cloudflare-Adresse
+   konfiguriert wurde, die es nie gab. Erst den A-Record anlegen, dann die Variable setzen.
+2. **Zertifikat**, das den Host abdeckt (`certbot --nginx -d booking.namibway.com`).
+3. **nginx-Server-Block** für den Host, der auf dasselbe `public/`-Verzeichnis und denselben
+   PHP-FPM-Socket zeigt wie namibway.com. Es ist dieselbe Anwendung, nicht eine zweite
+   Installation.
+
+### `.env`
+
+```
+BOOKING_PANEL_DOMAIN=booking.namibway.com
+
+# Muss mit einem führenden Punkt gesetzt werden, sonst gilt das Session-Cookie nur für
+# genau einen der beiden Hosts und ein Login auf namibway.com trägt nicht nach
+# booking.namibway.com (und umgekehrt).
+SESSION_DOMAIN=.namibway.com
+```
+
+`APP_URL` bleibt `https://namibway.com`. Die Weiterleitung von `/partner` auf den neuen
+Host wird für genau diesen Host registriert.
+
+### Was danach passiert
+
+- `booking.namibway.com/` → Weiterleitung auf `/partner`
+- `booking.namibway.com/partner/...` → das Panel
+- `namibway.com/partner/...` → Weiterleitung auf denselben Pfad unter
+  `booking.namibway.com`, damit bereits verschickte Links und Lesezeichen weiter
+  funktionieren
+- `namibway.com/partner/inquiries/{id}/confirm|cancel` → **bleibt, wo es ist.** Eine
+  URL-Signatur deckt den Host mit ab; eine Weiterleitung würde genau die Signatur
+  ungültig machen, die den Link autorisiert. Diese Ausnahme steht als Muster in
+  `routes/partner.php` und nicht in der Reihenfolge der Routen.
+
+Nach der Änderung `php artisan config:cache` bzw. `deploy.sh` laufen lassen und **einen
+echten Login auf der Subdomain testen** — eine Routenliste beweist nichts über Cookies.
 
 ---
 

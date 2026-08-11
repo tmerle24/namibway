@@ -71,7 +71,7 @@ class RatesAndAvailability extends Page implements HasForms
     {
         $today = $this->today();
 
-        $this->form->fill([
+        $this->getForm('form')?->fill([
             'room_type_ids' => array_keys($this->roomTypes()),
             'from' => $today->toDateString(),
             'to' => $today->copy()->addDays(30)->toDateString(),
@@ -205,8 +205,12 @@ class RatesAndAvailability extends Page implements HasForms
             return;
         }
 
-        $data = $this->form->getState();
+        $data = $this->getForm('form')?->getState() ?? [];
         $attributes = $this->attributesFrom($data);
+
+        if ($data === []) {
+            return;
+        }
 
         if ($attributes === []) {
             Notification::make()

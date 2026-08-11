@@ -37,4 +37,27 @@ $demoSignIn = Route::get('/partner/demo-sign-in/{user}', DemoSignInController::c
 
 if (filled(config('booking.panel_domain'))) {
     $demoSignIn->domain((string) config('booking.panel_domain'));
+
+    /*
+    | Everything else under /partner on the main site is the panel, which has
+    | moved. Forwarding it keeps every bookmark and every link already sent in
+    | an email working.
+    |
+    | Constrained to the app's own host, or it would also match on the booking
+    | host and redirect the panel to itself for ever. And the two signed routes
+    | above are excluded by the pattern rather than by ordering: a signature
+    | covers the host, so forwarding one would invalidate it, and relying on
+    | registration order for that would be a trap for whoever adds the third
+    | signed route.
+    */
+    $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+    if (is_string($appHost) && $appHost !== '') {
+        Route::domain($appHost)
+            ->get('/partner/{path?}', fn (?string $path = null) => redirect()->away(
+                'https://'.config('booking.panel_domain').'/partner'.($path === null ? '' : '/'.$path)
+            ))
+            ->where('path', '(?!inquiries|demo-sign-in)[A-Za-z0-9\-_/]*')
+            ->name('partner.panel.moved');
+    }
 }
