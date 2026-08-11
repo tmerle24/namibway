@@ -35,7 +35,11 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(asset('images/namibway-logo-dark.png'))
             ->darkModeBrandLogo(asset('images/namibway-logo-light.png'))
             ->brandLogoHeight('59px')
-            ->favicon(asset('favicon.png'))
+            // The same mark the traveller-facing site declares first
+            // (app.blade.php) — favicon.png is an older, darker variant that
+            // predates the rebrand, so pointing at it gave the panels a
+            // different tab icon from namibway.com.
+            ->favicon(asset('favicon.ico'))
             // Tailwind's max-w scale stops at 7xl (80rem); '8xl' isn't a real
             // utility class, so it generates no CSS rule at all — which is
             // exactly what's wanted here, an uncapped-width <main>.

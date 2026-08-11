@@ -50,7 +50,11 @@ class PartnerPanelProvider extends PanelProvider
             // header a little air. brand-logo.blade.php guards the ratio if a
             // container is ever narrower still.
             ->brandLogoHeight('56px')
-            ->favicon(asset('favicon.png'))
+            // The same mark the traveller-facing site declares first
+            // (app.blade.php) — favicon.png is an older, darker variant that
+            // predates the rebrand, so pointing at it gave the panels a
+            // different tab icon from namibway.com.
+            ->favicon(asset('favicon.ico'))
             ->colors([
                 // The brand rust from the homepage palette (kaia-home.css
                 // --rust), which is the brown of the logo's wordmark — the
