@@ -120,14 +120,31 @@ class ImportNamibweb extends Command
         // in the scraper, so nothing has to be collected twice.
         $country = (string) $this->option('country');
         if ($country !== '' && strtolower($country) !== 'all') {
-            $before = count($records);
-            $records = array_filter(
-                $records,
-                fn ($r) => strcasecmp((string) ($r['country'] ?? ''), $country) === 0
-            );
+            // Only a *known* other country is grounds for skipping. A record
+            // without one is not evidence of anything — records scraped before
+            // the field existed have none, and so do pages whose title omits
+            // it — and silently dropping those would lose listings to a
+            // missing attribute rather than to a decision.
+            $matched = $unknown = $foreign = 0;
+            $records = array_filter($records, function ($r) use ($country, &$matched, &$unknown, &$foreign) {
+                $value = trim((string) ($r['country'] ?? ''));
+                if ($value === '') {
+                    $unknown++;
+
+                    return true;
+                }
+                if (strcasecmp($value, $country) === 0) {
+                    $matched++;
+
+                    return true;
+                }
+                $foreign++;
+
+                return false;
+            });
             $this->line(sprintf(
-                'Country filter %s: %d of %d records',
-                $country, count($records), $before
+                'Country filter %s: %d matched, %d without a country kept, %d from other countries skipped',
+                $country, $matched, $unknown, $foreign
             ));
         }
 
