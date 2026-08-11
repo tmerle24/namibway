@@ -45,10 +45,10 @@ jobs:
     timeout-minutes: 180
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -122,7 +122,7 @@ jobs:
       # Data and change report are small enough to commit via commit-artifact.yml.
       - name: Upload data
         if: ${{ github.event.inputs.probe == '0' || github.event.inputs.probe == '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: namibweb-listings-${{ github.run_number }}
           path: data/scraped/namibweb_listings.json
@@ -130,7 +130,7 @@ jobs:
 
       - name: Upload change report
         if: ${{ github.event.inputs.probe == '0' || github.event.inputs.probe == '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: namibweb-changes-${{ github.run_number }}
           path: data/scraped/namibweb_changes.json
@@ -140,7 +140,7 @@ jobs:
       # insurance — too big for the repo, kept as artifacts instead.
       - name: Upload raw HTML archive
         if: ${{ always() && (github.event.inputs.probe == '0' || github.event.inputs.probe == '') }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: namibweb-pages-${{ github.run_number }}
           path: data/scraped/namibweb_pages.jsonl.gz
@@ -149,7 +149,7 @@ jobs:
 
       - name: Upload photos
         if: ${{ always() && github.event.inputs.photos != 'false' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: namibweb-photos-${{ github.run_number }}
           path: data/scraped/namibweb_photos
