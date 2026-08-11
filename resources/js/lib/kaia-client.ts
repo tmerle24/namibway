@@ -309,14 +309,31 @@ export async function searchListings(
 }
 
 /** One real, bookable room type — see ListingController::roomTypes. */
+/**
+ * A tax, levy or fee on top of a room — or already inside its rate, which is
+ * the common case here and the reason `included` exists: naming a VAT that
+ * changes no total is what stops a traveler adding it twice in their head.
+ */
+export interface RoomCharge {
+    name: string;
+    amount: number;
+    included: boolean;
+}
+
 export interface RoomTypeOffer {
     code: string;
     name: string;
     description: string | null;
     max_adults: number;
     max_children: number;
+    /** An average where the stay crosses a season boundary — see `nightly_rates`. */
     price_per_night: number;
+    nightly_rates: number[];
+    /** The room itself, before anything the property adds on top. */
     total_price: number;
+    /** What the traveler pays: the stay plus every charge that is not already in the rate. */
+    total_payable: number;
+    charges: RoomCharge[];
     currency: string;
     units_left: number;
     /** The room's own photos. Empty is normal — no room photos uploaded yet. */

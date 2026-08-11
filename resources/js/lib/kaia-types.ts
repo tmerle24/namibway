@@ -53,8 +53,14 @@ export interface RoomOption {
     capacity: string;
     price_per_night: number;
     currency: string;
-    /** Rate × nights, as the server counted them. */
+    /** What the room itself costs across the stay, as the calendar priced it. */
     total_price?: number | null;
+    /**
+     * What the traveler pays: the stay plus anything the property adds on top.
+     * Equal to `total_price` where the rates already contain the tax, which is
+     * how most lodges here quote.
+     */
+    total_payable?: number | null;
     /** Units still free for these dates. Absent when unknown. */
     units_left?: number | null;
     /** The room's own photo, not the property's. */

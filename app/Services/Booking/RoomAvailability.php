@@ -5,18 +5,30 @@ namespace App\Services\Booking;
 use App\Enums\InquiryStatus;
 use App\Models\Inquiry;
 use App\Models\RoomType;
+use App\Services\Inventory\AvailabilityCalendar;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 /**
  * How many units of a room type are still free for a date range.
  *
- * Availability is derived, never stored: `total_units` minus the requests
- * already in flight that overlap the dates. There is no calendar table, so
- * this query *is* the source of truth — which is why it lives in one place
- * rather than being written out again wherever it's needed. It used to be a
- * private method on NativeConnector; the trip plan's room picker needs the
- * same answer, and a second copy would be a second thing to keep correct.
+ * Two counts, and the answer is the smaller of them.
+ *
+ * **The calendar** — `room_type_calendar_days`, the ARI counters the lodge
+ * sells from — knows every stay the property has taken, including the walk-in
+ * somebody typed in at the desk this morning. Until 2026-08-12 the
+ * traveller-facing picker did not read it at all, so a lodge could fill itself
+ * up in its own panel while the trip plan carried on offering the same rooms.
+ *
+ * **Requests in flight** are not in the calendar: an inquiry nobody has
+ * confirmed holds no inventory, by design — holding real rooms for every
+ * question is the flooding problem the whole booking mechanic exists to
+ * prevent. But three travellers already asking about the last room is a reason
+ * not to offer it to a fourth, so overlapping requests are counted too.
+ *
+ * Taking the minimum is conservative in both directions and never oversells.
+ * Moving holds into the calendar as real inventory is the step that would
+ * leave one count; it is deliberately not this one.
  *
  * `Inquiry::room_type_code` matches `RoomType::code` (a string, not a foreign
  * key — see the RoomType model), so a room type that is renamed keeps its
@@ -44,7 +56,14 @@ class RoomAvailability
             ->where('check_out', '>', $checkIn)
             ->count();
 
-        return $roomType->total_units - $overlapping;
+        $afterRequests = $roomType->total_units - $overlapping;
+
+        // What the lodge's own calendar has left. Sparse by design: a room
+        // type with no rows falls back to `total_units`, so a property that
+        // has never opened the calendar reads exactly as it did before.
+        $onCalendar = app(AvailabilityCalendar::class)->unitsFreeThroughout($roomType, $checkIn, $checkOut);
+
+        return min($afterRequests, $onCalendar);
     }
 
     /**

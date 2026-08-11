@@ -96,6 +96,8 @@
         "roomsUnavailable": "Voor dit verblijf zijn online geen kamers vastgelegd — de partner stemt de kamer na de aanvraag met je af.",
         "roomsLeft": "Laatste op deze data | Nog maar {count} op deze data",
         "roomTotalForNights": "Totaal {total} voor {count} nacht | Totaal {total} voor {count} nachten",
+        "roomChargesIncluded": "inclusief {names}",
+        "roomChargesAdded": "plus {amount} {names}",
         "roomPhotoStandIn": "Foto van de accommodatie — van deze kamer nog geen foto"
     },
     "priceUnit": {

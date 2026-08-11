@@ -143,6 +143,26 @@ gets built with this future use in mind rather than needing a rewrite.
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-12 — the room picker reads the lodge's calendar
+
+- ✅ **One price, front and back.** The picker used to quote a room type's base
+  rate times the nights. It now prices from the property's own calendar and rate
+  plan (`App\Services\Booking\RoomOffers`), so a season, an occupancy rule and a
+  tax reach the traveller exactly as they reach the invoice. The payload gained
+  `nightly_rates`, `total_payable` and a named `charges` list; `price_per_night`
+  is now an average where a stay crosses a season boundary, which is why the
+  nights are there to check it against.
+- ✅ **Availability stopped lying in one direction.** A booking a lodge took at
+  its own desk was invisible to the trip plan, which went on offering the same
+  rooms. `RoomAvailability::unitsLeft` now returns the smaller of the calendar's
+  free units and what is left after overlapping requests.
+- ✅ **A room nobody priced is left out** rather than offered at zero — the
+  booking would be refused at the other end anyway.
+- ⬜ **The last piece: soft holds as real inventory.** A request in flight still
+  holds no ARI units, so it is counted separately. Writing a held reservation
+  into the calendar, released by the expiry job that already exists, would leave
+  exactly one count and close the `StayPromoter` alert for good.
+
 ### Session 1 — 2026-08-04
 
 - ✅ **Summary text truncation.** The AI-generated trip summary paragraph
