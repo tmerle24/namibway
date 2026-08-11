@@ -130,6 +130,7 @@ class InventoryWriter
                     $line->quantity,
                     $plans[$index],
                     $line->occupancy,
+                    $line->slot,
                 );
                 $quotes[$index] = $quote;
                 $currencies[] = $quote->currency;

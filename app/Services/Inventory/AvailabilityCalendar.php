@@ -73,6 +73,35 @@ class AvailabilityCalendar
      * unit's own total, exactly as it does for a night: a sparse calendar
      * means "as many as the unit has".
      */
+    /**
+     * What one seat on a departure costs.
+     *
+     * Three steps, and every one of them already existed: the departure's own
+     * rate where the plan sets one, the day's rate where it does not, and the
+     * unit's own rate where neither does. A property that has never heard of
+     * departures reads step two, which is exactly what it read before.
+     */
+    public function rateForSlot(RoomType $roomType, CarbonInterface $date, BookingSlot $slot, ?RatePlan $ratePlan = null): float
+    {
+        $plan = $this->planFor($roomType, $ratePlan);
+
+        if ($plan !== null) {
+            $forDeparture = RatePlanDay::query()
+                ->where('rate_plan_id', $plan->id)
+                ->where('room_type_id', $roomType->id)
+                ->where('slot_id', $slot->id)
+                ->whereDate('date', $date->toDateString())
+                ->whereNotNull('rate')
+                ->value('rate');
+
+            if ($forDeparture !== null) {
+                return round((float) $forDeparture, 2);
+            }
+        }
+
+        return $this->rateFor($roomType, $date, $ratePlan);
+    }
+
     public function seatsFree(RoomType $roomType, CarbonInterface $date, BookingSlot $slot): int
     {
         $day = RoomTypeCalendarDay::query()
@@ -153,6 +182,7 @@ class AvailabilityCalendar
         int $units = 1,
         ?RatePlan $ratePlan = null,
         ?Occupancy $occupancy = null,
+        ?BookingSlot $slot = null,
     ): Quote {
         $ratePlan = $this->planFor($roomType, $ratePlan);
         $strategy = $ratePlan->pricing_strategy ?? PricingStrategy::PerUnit;
@@ -179,7 +209,12 @@ class AvailabilityCalendar
                     roomType: $roomType,
                     date: $night,
                     ratePlan: $ratePlan,
-                    baseRate: $this->rateFrom($roomType, $days[$key] ?? null),
+                    // A departure's own rate where the plan sets one, and the
+                    // day's rate where it does not — which is every rate a
+                    // lodge has ever entered, read exactly as before.
+                    baseRate: $slot === null
+                        ? $this->rateFrom($roomType, $days[$key] ?? null)
+                        : $this->rateForSlot($roomType, $night, $slot, $ratePlan),
                     occupancy: $occupancy,
                     categories: $categories,
                     guestAmounts: $amounts[$key] ?? [],

@@ -416,10 +416,17 @@ stay (`reservation_units.slot_id` + `slot_label`) for the same reason the rate
 plan's name is — renaming "Morning departure" in March must not change what
 February sold.
 
-Still open, and named so it is not assumed: **a rate per departure.** A
-departure prices at the unit's own rate today, because `rate_plan_days` is keyed
-by (plan, room type, date) and knows nothing about slots. A sunset drive that
-costs more than the morning one is the case that will need it.
+A rate per departure works the same way and for the same reason: `rate_plan_days`
+gained the slot, with the same two partial indexes, and the lookup is three steps
+that all already existed — the departure's own rate, else the day's, else the
+unit's. A sunset drive can cost more than the morning one.
+
+**What none of this changes, which is the point.** Every rate a lodge has ever
+entered is a null-slot row; every row it will enter stays one; every query that
+reads a night reads it unchanged. The concurrency guarantee is asserted at both
+levels — the last room of a night and the last seat of a departure — by the same
+forking test against the same conditional `UPDATE`, because it is the same
+mechanism and not a second one.
 
 **What this does not change.** Inventory stays a counter per unit per period.
 Restrictions stay where they are. The price stays frozen. A stay crossing

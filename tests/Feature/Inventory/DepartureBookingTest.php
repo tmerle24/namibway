@@ -2,15 +2,19 @@
 
 namespace Tests\Feature\Inventory;
 
+use App\Enums\PricingStrategy;
 use App\Enums\ReservationSource;
 use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Models\BookingSlot;
 use App\Models\Listing;
+use App\Models\RatePlan;
+use App\Models\RatePlanDay;
 use App\Models\Reservation;
 use App\Models\RoomType;
 use App\Services\Inventory\AvailabilityCalendar;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
+use App\Services\Inventory\InventoryWriteGuard;
 use App\Services\Inventory\InventoryWriter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -118,6 +122,38 @@ class DepartureBookingTest extends TestCase
         $this->morning->update(['label' => 'Sunrise ride']);
 
         $this->assertSame('Morning departure', $unit?->refresh()->slot_label);
+    }
+
+    public function test_a_departure_can_cost_more_than_the_one_before_it(): void
+    {
+        $plan = RatePlan::create([
+            'listing_id' => $this->listing->id,
+            'name' => 'Standard rate',
+            'code' => 'STD',
+            'pricing_strategy' => PricingStrategy::PerUnit,
+            'is_default' => true,
+        ]);
+
+        // The sunset drive is dearer than the morning one, which is the
+        // ordinary case a rate keyed by date alone could not express.
+        InventoryWriteGuard::allow(fn () => RatePlanDay::create([
+            'rate_plan_id' => $plan->id,
+            'room_type_id' => $this->unit->id,
+            'slot_id' => $this->afternoon->id,
+            'date' => '2026-09-10',
+            'rate' => 1400,
+        ]));
+
+        $calendar = app(AvailabilityCalendar::class);
+
+        $this->assertSame(1400.0, $calendar->rateForSlot($this->unit, Carbon::parse('2026-09-10'), $this->afternoon, $plan));
+
+        // The morning has no rate of its own and falls back to the day, which
+        // falls back to the unit — the three steps that were already there.
+        $this->assertSame(950.0, $calendar->rateForSlot($this->unit, Carbon::parse('2026-09-10'), $this->morning, $plan));
+
+        // And a booking is priced at what its own departure costs.
+        $this->assertSame(2800.0, $this->book($this->afternoon, seats: 2)->total_amount);
     }
 
     public function test_a_night_is_still_a_night(): void

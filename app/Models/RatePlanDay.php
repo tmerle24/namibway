@@ -37,6 +37,7 @@ class RatePlanDay extends Model
     protected $fillable = [
         'rate_plan_id',
         'room_type_id',
+        'slot_id',
         'date',
         'rate',
         'min_stay',
