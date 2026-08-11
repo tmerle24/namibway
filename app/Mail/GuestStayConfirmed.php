@@ -30,7 +30,7 @@ class GuestStayConfirmed extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your booking at '.($this->reservation->listing?->name ?? 'your stay')
+            subject: 'Your booking at '.($this->reservation->listing->name ?? 'your stay')
                 .' — '.$this->reservation->reference,
         );
     }
