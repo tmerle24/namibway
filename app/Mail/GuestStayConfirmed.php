@@ -25,7 +25,6 @@ use Illuminate\Mail\Mailables\Envelope;
  */
 class GuestStayConfirmed extends Mailable
 {
-
     public function __construct(public readonly Reservation $reservation) {}
 
     public function envelope(): Envelope

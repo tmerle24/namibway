@@ -21,7 +21,6 @@ use Illuminate\Mail\Mailables\Envelope;
  */
 class PartnerStayRecorded extends Mailable
 {
-
     public function __construct(
         public readonly Reservation $reservation,
         public readonly ?string $notice = null,
