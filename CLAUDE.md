@@ -117,6 +117,19 @@ This is written down because it has gone wrong twice: an entire site crawled to 
 
 A near miss of the same class, found 2026-08-09 before it fired: `photos:audit-r2 --delete-orphaned` decided what was referenced by comparing the raw DB value against `Storage::disk('r2')->url($key)`. Scraper photos are stored as **absolute** URLs built from `CLOUDFLARE_R2_URL` at download time, so changing that variable — exactly what attaching a custom domain to the bucket requires — would have made every referenced photo look orphaned and deleted the entire live library on confirm. It now matches on filename, which no host or prefix change can affect, and which errs toward "referenced" (leaves an orphan) rather than toward deletion. General rule for anything that deletes: never key the keep/delete decision on a value derived from mutable config.
 
+## Standards — use the established one, don't invent a better one
+Where a problem already has an industry standard, follow it, even when something bespoke looks tidier. Three reasons, in order of weight: a partner system already speaks the standard, so a connector becomes a mapping instead of a translation; the standard encodes mistakes other people already made and fixed; and "we model it the way the industry models it" is a sales argument in front of an operator who has been burned by a bespoke system before.
+
+Deviating is allowed — the standard sometimes genuinely doesn't fit. Write down why, here, next to the standard it departs from. An undocumented deviation is indistinguishable from not having known the standard existed.
+
+Standards in force:
+
+- **ARI (Availability, Rates, Inventory)** for the lodge booking system. One row per room type per date carrying inventory, rate and stay restrictions (min stay, closed-to-arrival, closed-to-departure); reservations are stay-shaped rows with a quantity; availability is a counter on the date row, changed by an atomic conditional `UPDATE` rather than recomputed. This is how NightsBridge, ResRequest and every channel manager model it. Seasons are ranges *written onto dates*, not a runtime-resolved season entity, so rate resolution stays a pure function of (room type, date) and a stay crossing a season boundary prices per night without special cases. See `App\Services\Inventory`.
+- **Half-open date intervals** for stays: a stay ending on the day another begins does not overlap it, so the room turns over the same day. Already the rule in `RoomAvailability`; the calendar follows it.
+- **ISO 3166-1 alpha-2** for countries (`regions.country_code`), **ISO 4217** for currency codes.
+
+Note the deliberate deviation already in the model: **availability derived from overlapping `Inquiry` rows** (`App\Services\Booking\RoomAvailability`) is *not* ARI. It predates the calendar, it drives the traveller-facing room picker, and it stays as it is — the calendar is a separate reader for the lodge-facing system. Merging the two is a later, deliberate step, not a cleanup.
+
 ## The core product mechanic — read before touching the booking flow
 The central design problem: **turning an AI-generated plan into confirmed bookings without flooding partner owners with speculative requests.**
 
@@ -126,6 +139,19 @@ Status of the governance rules:
 - ✅ **Soft hold with expiry** — Native connector reservations set `hold_expires_at` and dispatch `ExpireNativeHoldJob`, which releases the hold and mails the guest if the partner doesn't respond in time (idempotent, status-guarded).
 - ✅ **Low-effort partner response** — signed one-click confirm/cancel URLs (`routes/partner.php`) plus the same transition from the logged-in dashboard, both through `InquiryDecisionService`.
 - ⬜ **Staged confirmations** — lock accommodation first, then layer in activities/restaurants once the route is fixed. Still not implemented; today's flow treats each inquiry independently.
+
+### How a confirmed `Inquiry` becomes a `Reservation` — designed, deliberately not built
+`Inquiry` and `Reservation` are not two names for the same thing and must not be merged. An `Inquiry` is the traveller's *request*: it may be declined, it may expire with its soft hold, and it is what the one-active-request gate counts. A `Reservation` is the lodge's *stay*: it holds inventory, has a lifecycle at a front desk, and exists for walk-ins and telephone bookings that never had a request at all.
+
+So the bridge is a one-way promotion, not a sync:
+
+- **When.** At the moment an inquiry reaches `InquiryStatus::Confirmed` — `InquiryDecisionService::confirm()` and the `ProcessInquiry` path that confirms directly. Not before: an `on_request` inquiry is a question, and holding real inventory for every question is the flooding problem this whole mechanic exists to prevent.
+- **What is created.** One `Reservation` with `source = website` and `inquiry_id` set, one `reservation_units` row from `Inquiry::room_type_code` resolved against `RoomType::code` for that listing, and the nights the writer prices. The inquiry is left exactly as it is — it stays the record of the request, and nothing copies back onto it.
+- **Idempotency.** `reservations.inquiry_id` is unique, so a re-confirm, a retried job or a partner clicking the signed link twice cannot produce a second stay. That constraint is the mechanism; do not replace it with a PHP check.
+- **The failure that has to be handled.** Promotion can fail where the request could not: the calendar may have no units left, because the inquiry-based availability the traveller saw and the ARI calendar are separate readers today. A failed promotion must not silently un-confirm the guest's booking — it is an operational alert, and the honest fix is the later step of making the traveller-facing picker read the calendar.
+- **Missing dates.** `Inquiry.check_in` / `check_out` are nullable (there is a free-text `travel_dates` field), and a stay without dates cannot be allocated. An inquiry without both dates is not promotable, and that is a validation rule at confirmation time, not a guess.
+
+Nothing above is implemented. When it is, it belongs behind `InventoryWriter` like every other inventory mutation.
 
 ## AI engine notes
 - Claude is NOT the source of truth for hard logistics facts (driving distances, night-driving rules, fuel stops). These come from the maintained `city_driving_hours` data + OSRM, and route shape comes from `RouteTemplate` — don't trust model memory for specific Namibian geography.

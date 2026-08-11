@@ -9,11 +9,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
- * One of Namibia's 14 official political regions.
+ * One of Namibia's 14 official political regions — and, once the concept
+ * expands past Namibia, the level that carries the country. A region belongs
+ * to exactly one country and a listing inherits it through its city, which is
+ * why `country_code` lives here rather than on every listing.
  *
  * @property int $id
  * @property string $name
  * @property string $slug
+ * @property string $country_code ISO 3166-1 alpha-2; keys into config('region.countries')
  * @property string|null $image
  */
 class Region extends Model
@@ -24,6 +28,7 @@ class Region extends Model
     protected $fillable = [
         'name',
         'slug',
+        'country_code',
         'image',
     ];
 

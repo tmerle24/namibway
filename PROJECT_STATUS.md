@@ -36,19 +36,29 @@ booking-system flyer is addressed to a named organisation.
 code, not from memory, and several of them are the reason the lodge system is a real
 build rather than a UI on top of what exists.
 
-- **`Inquiry` is the booking record.** Its statuses are request-shaped, not stay-shaped:
-  `pending`, `processing`, `on_request`, `nwr_pending`, `confirmed`, `cancelled`,
-  `failed` (`App\Enums\InquiryStatus`). There is no arrival, in-house, checked-out or
-  no-show state.
-- **Availability is derived, never stored.** `App\Services\Booking\RoomAvailability`
-  answers "how many units are free" as `total_units` minus the overlapping inquiries
-  in `on_request` or `confirmed`. **There is no calendar table.** That query *is* the
-  source of truth.
-- **One inquiry is implicitly one unit.** The `inquiries` table has no quantity column,
-  so "three rooms for the same party" cannot be expressed as one booking today.
-- **`RoomType` carries a single flat `rate_per_night`** plus `total_units`, `max_adults`,
-  `max_children` and a string `code`. No seasons, no weekday/weekend, no contracted
-  versus rack rates.
+> **Updated 2026-08-11.** The four bullets below marked ✅ describe what the
+> *traveller-facing* flow still does, and that has not changed. What changed is that a
+> lodge-facing ARI substrate now exists beside it (`App\Services\Inventory`) — see the
+> 2026-08-11 entry in section 3. Read both: the two are deliberately separate, and
+> confusing them is the mistake this note exists to prevent.
+
+- **`Inquiry` is the booking record for the traveller-facing flow.** Its statuses are
+  request-shaped, not stay-shaped: `pending`, `processing`, `on_request`, `nwr_pending`,
+  `confirmed`, `cancelled`, `failed` (`App\Enums\InquiryStatus`). Stay-shaped states now
+  exist separately as `App\Enums\StayStatus` on `Reservation`; nothing bridges the two yet
+  (the design for that bridge is written down in `CLAUDE.md`).
+- **Traveller-facing availability is still derived, never stored.**
+  `App\Services\Booking\RoomAvailability` answers "how many units are free" as
+  `total_units` minus the overlapping inquiries in `on_request` or `confirmed`, and it
+  still drives the trip plan's room picker. A calendar table now exists
+  (`room_type_calendar_days`) but **is not wired into this path** — pointing the picker at
+  it is a later, deliberate step, guarded by a test.
+- **One inquiry is still implicitly one unit.** The `inquiries` table has no quantity
+  column. A `Reservation` can hold several room types with quantities; an `Inquiry`
+  cannot.
+- **`RoomType` still carries a single flat `rate_per_night`** plus `total_units`,
+  `max_adults`, `max_children` and a string `code` — but those are now *defaults*, and the
+  calendar overrides them per night, which is where seasons live.
 - **Soft holds exist**: `inquiries.hold_expires_at` with `ExpireNativeHoldJob` releasing
   the hold and mailing the guest, idempotent and status-guarded.
 - **Partner response is one click**: signed confirm/decline URLs (`routes/partner.php`)
@@ -61,10 +71,11 @@ build rather than a UI on top of what exists.
   `NwrConnector` is deliberately a concierge stub: NWR has no API, so availability always
   returns "on request" and the team checks manually.
 
-The consequence: today's model can express *"a traveller asked for a room and a partner
-said yes"*. It cannot express a rate that changes by season, a room blocked for
-maintenance, a booking of three rooms, a walk-in guest, or anyone standing at a front
-desk. That gap is workstream A.
+The consequence, as of 2026-08-10: the traveller-facing model can express *"a traveller
+asked for a room and a partner said yes"* and nothing more. Everything it could not
+express — a seasonal rate, a maintenance block, a booking of three rooms, a walk-in, a
+guest standing at a desk — is what the inventory substrate added on 2026-08-11. What is
+still missing is every screen that would let a human use it.
 
 ---
 
@@ -78,22 +89,62 @@ season, running alongside what they use today** — that promise should shape th
 
 Ordered so that each item depends only on the ones above it:
 
-1. **A calendar table.** Per room type, per date: units available, rate, minimum stay,
-   closed-to-arrival. Everything else here depends on it, and derived availability
-   cannot express a block or a season. This is the first thing to build, and it changes
-   `RoomAvailability` from the source of truth into a reader.
-2. **Quantity per booking** — several rooms, possibly of different types, under one
-   reservation and one guest.
-3. **Blocking**: maintenance, owner use, a group hold that is not a guest booking.
-4. **A stay lifecycle** beyond request states: due-in, in-house, checked-out, no-show,
-   cancelled-late. This is what makes it operable at a desk rather than an inbox.
-5. **Front-desk surfaces**: today's arrivals and departures, an occupancy view, capture
+1. ✅ **A calendar table.** `room_type_calendar_days` — per room type, per night: units,
+   rate, minimum stay, closed-to-arrival, closed-to-departure. Sparse, with null meaning
+   "follow the room type's default". Done 2026-08-11.
+2. ✅ **Quantity per booking** — `reservations` + `reservation_units`: several room types
+   with quantities under one guest. Done 2026-08-11.
+3. ✅ **Blocking** — `inventory_blocks`, counted separately from sales so an occupancy
+   view can tell "sold out" from "taken off sale". Done 2026-08-11.
+4. ✅ **A stay lifecycle** — `App\Enums\StayStatus`: provisional, confirmed, due-in,
+   in-house, checked-out, no-show, cancelled, cancelled-late, with the legal transitions
+   enforced in `InventoryWriter`. Done 2026-08-11.
+5. ⬜ **Front-desk surfaces**: today's arrivals and departures, an occupancy view, capture
    of a walk-in or telephone booking, and room-level assignment if they assign real
-   rooms rather than room types.
-6. **Multi-property under one partner.** NWR is one partner with many camps. `Listing`
+   rooms rather than room types. **Nothing is built** — the substrate has no UI at all.
+   Note that room-level assignment is deliberately *not* modelled yet: a reservation
+   holds room types and quantities, never a named room.
+6. ⬜ **Multi-property under one partner.** NWR is one partner with many camps. `Listing`
    already models that; the partner panel does not — it has no property switcher.
-7. **Money**: what a stay costs, what was paid, what is owed. There is a `total_amount`
-   on an inquiry and nothing else.
+7. ⬜ **Money**: what a stay costs, what was paid, what is owed. A `Reservation` now
+   carries a `total_amount` and a per-night breakdown (`reservation_nights`), so what a
+   stay *costs* is answered. What was paid and what is owed is not — there is no folio
+   and no payment collection, and Stripe remains Phase 2.
+
+### 2026-08-11 — inventory substrate (slice 1 of 3)
+
+Domain layer only, no UI. Standard-shaped rather than bespoke: **ARI** (Availability,
+Rates, Inventory), the model NightsBridge, ResRequest and every channel manager speak, so
+a future connector is a mapping rather than a translation. The standards rule this came
+from is now written down in `CLAUDE.md` → "Standards".
+
+What landed:
+
+- `room_type_calendar_days`, `reservations`, `reservation_units`, `reservation_nights`,
+  `inventory_blocks`, and `regions.country_code`. All additive; no existing table changed
+  destructively and nothing was backfilled over existing data.
+- `App\Services\Inventory\InventoryWriter` — **the single write path.** Enforced twice: a
+  runtime guard on the models throws on any Eloquent write from elsewhere, and an
+  architecture test fails CI if query-builder writes to those tables appear outside the
+  namespace. This is the down payment on the deferred work (ledger, allotments, channel
+  sync, offline replay), which all become changes inside that one class.
+- `App\Services\Inventory\AvailabilityCalendar` — the lodge-facing reader, deliberately
+  **separate from `RoomAvailability`**, with a test asserting they stay independent.
+- Country resolution: `listings.city_id → cities.region_id → regions.country_code →
+  config/region.php` (currency, timezone, tax, cancellation window), via
+  `App\Support\CountrySettings`. No hardcoded Namibia in the booking domain.
+- `InventoryDemoSeeder` (development only) — one lodge, three room types, two seasons,
+  blocks and ~12 weeks of stays, all written through the writer.
+
+Concurrency is settled in the database, not in PHP: availability is a counter moved by a
+conditional `UPDATE`, so of two transactions racing for the last unit one changes a row
+and the other changes none. The test forks real processes, and was **verified by
+mutation** — replacing the conditional update with the naive check-then-write makes it
+fail.
+
+Deliberately not built: the `Inquiry` → `Reservation` bridge (designed and written up in
+`CLAUDE.md`, no code), staged confirmations, ledger, allotments, channel sync, iCal,
+offline operation, payments, folio, housekeeping, tax reporting.
 
 ### Constraints that are specific to this market
 
@@ -119,12 +170,13 @@ These change the shape of the system, so they are worth asking the user directly
   arrive from theirs?
 - For the pilot, does our system take **all** bookings for that camp, or only ours?
 
-### Suggested first slice
+### Suggested first slice — done, and what follows
 
-The calendar table plus per-date rates and quantity, a partner-panel property switcher,
-and an arrivals/departures view — with NWR modelled as one `Partner` and its camps as
-`Listing` rows. That is enough to run one camp for one season without touching the
-traveller-facing flow, which is what the flyer promises.
+The calendar table plus per-date rates and quantity landed on 2026-08-11 (above). What
+that slice deliberately left is the half a human touches: a partner-panel property
+switcher and an arrivals/departures view, with NWR modelled as one `Partner` and its camps
+as `Listing` rows. Together with the substrate that is enough to run one camp for one
+season without touching the traveller-facing flow, which is what the flyer promises.
 
 ---
 
