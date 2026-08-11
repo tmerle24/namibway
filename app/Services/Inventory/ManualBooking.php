@@ -5,6 +5,7 @@ namespace App\Services\Inventory;
 use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\StayRuleViolationException;
+use App\Exceptions\Pricing\PromotionUnavailableException;
 use App\Exceptions\Pricing\UnpriceableStayException;
 use App\Models\Listing;
 use App\Models\RatePlan;
@@ -16,6 +17,8 @@ use App\Services\Inventory\DTOs\ManualBookingLinePreview;
 use App\Services\Inventory\DTOs\ManualBookingPreview;
 use App\Services\Inventory\DTOs\ResolvedRoomLine;
 use App\Services\Pricing\Occupancy;
+use App\Services\Pricing\PromotionFinder;
+use App\Services\Pricing\StaySummary;
 use App\Support\CountrySettings;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -49,8 +52,13 @@ class ManualBooking
      *
      * @param  array<int, array<string, mixed>>  $lines
      */
-    public function preview(Listing $listing, ?CarbonInterface $checkIn, ?CarbonInterface $checkOut, array $lines): ManualBookingPreview
-    {
+    public function preview(
+        Listing $listing,
+        ?CarbonInterface $checkIn,
+        ?CarbonInterface $checkOut,
+        array $lines,
+        ?string $promotionCode = null,
+    ): ManualBookingPreview {
         $currency = CountrySettings::for($listing)->currency();
 
         if ($checkIn === null || $checkOut === null) {
@@ -130,13 +138,92 @@ class ManualBooking
             $currency = $quote->currency;
         }
 
+        $total = round($total, 2);
+        $discount = 0.0;
+        $offer = null;
+
+        // The same finder the writer uses, on the same finished number. A code
+        // that does not work is a problem the desk is told about while the
+        // guest is still there, not a full-price booking they find out about
+        // later.
+        try {
+            $match = app(PromotionFinder::class)->find(
+                $listing,
+                new StaySummary(
+                    checkIn: $in,
+                    checkOut: $out,
+                    total: $total,
+                    nightlyAmounts: $this->nightlyAmounts($rooms, $in, $out),
+                    ratePlanIds: $this->planIds($rooms, $listing),
+                    roomTypeIds: array_map(fn (ResolvedRoomLine $room) => $room->roomType->id, $rooms),
+                ),
+                $promotionCode,
+            );
+
+            if ($match !== null) {
+                $discount = $match->amount;
+                $offer = $match->promotion->label();
+                $total = round($total - $discount, 2);
+            }
+        } catch (PromotionUnavailableException $refusal) {
+            $problems[] = $refusal->getMessage();
+        }
+
         return new ManualBookingPreview(
-            total: round($total, 2),
+            total: $total,
             currency: $currency,
             nights: $nights,
             problems: $problems,
             lines: $previews,
+            discount: $discount,
+            offer: $offer,
         );
+    }
+
+    /**
+     * Every night of the proposed stay as priced, which is what a free-nights
+     * offer needs and nothing else looks at.
+     *
+     * @param  array<int, ResolvedRoomLine>  $rooms
+     * @return array<int, float>
+     */
+    private function nightlyAmounts(array $rooms, Carbon $in, Carbon $out): array
+    {
+        $amounts = [];
+
+        foreach ($rooms as $room) {
+            try {
+                $quote = $this->calendar->quote($room->roomType, $in, $out, $room->quantity, $room->ratePlan, $room->occupancy);
+            } catch (UnpriceableStayException) {
+                continue;
+            }
+
+            foreach ($quote->nights as $night) {
+                $amounts[] = round($night->subtotal(), 2);
+            }
+        }
+
+        return $amounts;
+    }
+
+    /**
+     * @param  array<int, ResolvedRoomLine>  $rooms
+     * @return array<int, int>
+     */
+    private function planIds(array $rooms, Listing $listing): array
+    {
+        $fallback = RatePlan::defaultFor($listing);
+        $ids = [];
+
+        foreach ($rooms as $room) {
+            $plan = $room->ratePlan ?? $fallback;
+
+            if ($plan !== null) {
+                $ids[$plan->id] = $plan->id;
+            }
+        }
+
+        return array_values($ids);
     }
 
     /**
@@ -161,6 +248,7 @@ class ManualBooking
         ?int $createdBy = null,
         ?float $totalOverride = null,
         ?string $overrideReason = null,
+        ?string $promotionCode = null,
     ): Reservation {
         $in = Carbon::parse($checkIn)->startOfDay();
         $out = Carbon::parse($checkOut)->startOfDay();
@@ -198,6 +286,7 @@ class ManualBooking
             createdBy: $createdBy,
             totalOverride: $totalOverride,
             overrideReason: $overrideReason,
+            promotionCode: $promotionCode,
         ));
     }
 

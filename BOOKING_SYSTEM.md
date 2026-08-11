@@ -341,8 +341,31 @@ middle scrolls, the total set in large type where it is read out to a guest, and
 the price-override fields folded away, since a field used once a month costs a
 screenful every other time.
 
-**4. Promotions and codes.** They compute on a finished price, so they come after
-step 2.
+**4. Promotions and codes. — Done, 2026-08-11.** Three kinds — a percentage, an
+amount, and free nights, because "stay 4, pay 3" is what lodges here advertise and a
+percentage would give a different number on every stay length. Two windows, and
+they are not the same window: when the guest is *there* and when they *booked*, so
+an early bird and a last-minute deal are both expressible.
+
+Three decisions worth stating:
+
+- **They never stack.** At most one offer per booking. Stacking is where discount
+  systems stop being auditable and where two reasonable offers accidentally give
+  sixty percent off a peak-season chalet. Where several public offers fit, the guest
+  gets the best one, which is the only tie-break nobody has to defend.
+- **A typed code beats a larger public offer.** Somebody handed that code to that
+  guest for a reason, and substituting a different discount would make the agent's
+  own paperwork wrong.
+- **A code that does not work refuses the booking.** Quietly charging full price is
+  how a guest finds out at check-out, and the refusal says which part failed — the
+  dates, the rooms, or the cap — because "invalid code" is not something a desk can
+  act on.
+
+The cap is claimed by a conditional `UPDATE` inside the booking transaction, exactly
+like an inventory counter: two people typing the last available code at once is the
+same race as two people booking the last room. The discount is frozen onto the
+reservation beside the price it came off — deleting a finished offer must not make
+last month's bookings look mispriced.
 
 **5. `partners.booking_enabled` and per-partner demo mode. — Done, 2026-08-11.**
 Three states, and the only difference between them is who receives the mail: not
@@ -396,6 +419,33 @@ mapping — and reports what it could not place instead of guessing.
 months of scraper work. That was wrong, and worth recording as wrong: the scrape
 takes hours, nothing traveller-facing reads the column, and the vocabulary is
 eleven keys.)
+
+**7. Guests as a thing, not a name on a booking. — Not built.** Raised in review,
+and it is the largest remaining gap in the lodge-facing product: there is no guest
+menu, no guest search, no view of somebody's previous stays, and nowhere to write
+down what a lodge knows about them.
+
+The requirement behind it is worth stating in its own words, because it is not only
+about one screen: **somebody at a reception desk has to be able to reach the same
+data by whatever route they happen to be on.** By date on the calendar, by arrival
+on the board, by reference, by name, by phone number, by the room somebody is in.
+A system that has one path to each fact is a system that gets abandoned for a
+notebook.
+
+The data-model question this asks first: today `reservations` carries
+`guest_name`, `guest_email` and `guest_phone` as free text on each booking, so
+"this guest's last three stays" cannot be asked. A guest may also be a `User` with
+an account who booked through the site, or the contact on an `Inquiry`, or a
+walk-in somebody typed in at the desk. Whether those become one `Guest` record with
+the others pointing at it — and how a desk merges two rows that turn out to be the
+same person, which is the part every hotel system gets wrong — is the decision to
+make before any screen is drawn.
+
+Comments: a booking already takes a note, but only one, written when it is created.
+What a desk actually wants is an append-only thread with who wrote what and when,
+on the guest as well as on the stay — "always asks for the far chalet", "the
+transfer driver has her number". That is a small table and a large difference at a
+front desk.
 
 Steps 5 and 6 were the other way round in the first draft. Switching a lodge on is
 a rollout feature rather than a booking-core one, but it is what turns all of this
