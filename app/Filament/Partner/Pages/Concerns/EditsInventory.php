@@ -28,7 +28,6 @@ use Filament\Notifications\Notification;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 use InvalidArgumentException;
 use Throwable;
@@ -113,7 +112,7 @@ trait EditsInventory
             'check_in' => $arrival,
             'check_out' => Carbon::parse($arrival)->addDay()->toDateString(),
             'rooms' => [[
-                'room_type_id' => $this->prefillRoomTypeId ?? $this->bookableRoomTypes()->keys()->first(),
+                'room_type_id' => $this->prefillRoomTypeId ?? array_key_first($this->bookableRoomTypes()),
                 'quantity' => 1,
             ]],
             'source' => ReservationSource::WalkIn->value,
@@ -152,7 +151,7 @@ trait EditsInventory
                         ->schema([
                             Select::make('room_type_id')
                                 ->label('Room type')
-                                ->options(fn (): array => $this->bookableRoomTypes()->all())
+                                ->options(fn (): array => $this->bookableRoomTypes())
                                 ->required()
                                 ->live(),
                             TextInput::make('quantity')
@@ -254,7 +253,7 @@ trait EditsInventory
                 adults: (int) ($data['adults'] ?? 1),
                 children: (int) ($data['children'] ?? 0),
                 notes: $data['notes'] ?? null,
-                createdBy: auth()->id(),
+                createdBy: $this->currentUserId(),
                 totalOverride: filled($data['total_override'] ?? null) ? (float) $data['total_override'] : null,
                 overrideReason: $data['override_reason'] ?? null,
             );
@@ -315,7 +314,7 @@ trait EditsInventory
         return new HtmlString(
             '<ul style="list-style: disc; margin-left: 1.1rem;">'.$lines.'</ul>'
             .'<p style="margin-top: .4rem;"><strong>'
-            .e($preview->nights.' '.str($preview->nights)->plural('night').' · '.Money::format($preview->total, $preview->currency))
+            .e($preview->nights.' '.str('night')->plural($preview->nights).' · '.Money::format($preview->total, $preview->currency))
             .'</strong></p>'
         );
     }
@@ -417,7 +416,7 @@ trait EditsInventory
             ->fillForm(fn (): array => [
                 'first_night' => $this->prefillDate ?? $this->propertyToday()->toDateString(),
                 'last_night' => $this->prefillDate ?? $this->propertyToday()->toDateString(),
-                'room_type_id' => $this->prefillRoomTypeId ?? $this->bookableRoomTypes()->keys()->first(),
+                'room_type_id' => $this->prefillRoomTypeId ?? array_key_first($this->bookableRoomTypes()),
                 'units' => 1,
                 'reason' => BlockReason::Maintenance->value,
             ])
@@ -433,7 +432,7 @@ trait EditsInventory
                         lastNight: $this->requireDate($data['last_night'] ?? null, 'last night'),
                         reason: BlockReason::from((string) $data['reason']),
                         note: $data['note'] ?? null,
-                        createdBy: auth()->id(),
+                        createdBy: $this->currentUserId(),
                     ));
                 } catch (InventoryUnavailableException $refusal) {
                     $this->refuse('Those rooms could not be taken off sale', [$refusal->getMessage()]);
@@ -522,7 +521,7 @@ trait EditsInventory
             Grid::make(2)->schema([
                 Select::make('room_type_id')
                     ->label('Room type')
-                    ->options(fn (): array => $this->bookableRoomTypes()->all())
+                    ->options(fn (): array => $this->bookableRoomTypes())
                     ->required(),
                 TextInput::make('units')->label('Units')->numeric()->minValue(1)->maxValue(99)->default(1)->required(),
                 DatePicker::make('first_night')->label('First night')->native(false)->displayFormat('D, d M Y')->required(),
@@ -557,24 +556,26 @@ trait EditsInventory
      * page. Scoped to the property rather than filtered in the view, so a
      * room type id posted from a browser can only ever be one of these.
      *
-     * @return Collection<int, string>
+     * Returned as a plain array rather than a Collection: Filament wants an
+     * array anyway, and Collection's value type is invariant, so a collection
+     * of labels does not satisfy Collection<int, string>.
+     *
+     * @return array<int, string>
      */
-    private function bookableRoomTypes(): Collection
+    private function bookableRoomTypes(): array
     {
         $property = $this->property();
 
         if ($property === null) {
-            /** @var Collection<int, string> $empty */
-            $empty = collect();
-
-            return $empty;
+            return [];
         }
 
         return $property->roomTypes()
             ->where('is_active', true)
             ->get()
             ->sortBy(fn (RoomType $room) => $room->name, SORT_NATURAL | SORT_FLAG_CASE)
-            ->mapWithKeys(fn (RoomType $room) => [$room->id => $room->name.' ('.$room->code.')']);
+            ->mapWithKeys(fn (RoomType $room) => [$room->id => $room->name.' ('.$room->code.')'])
+            ->all();
     }
 
     private function requireProperty(): Listing
@@ -618,6 +619,14 @@ trait EditsInventory
             ->send();
 
         throw new Halt;
+    }
+
+    /** auth()->id() widens to int|string|null; the inventory domain wants int|null. */
+    private function currentUserId(): ?int
+    {
+        $id = auth()->id();
+
+        return is_numeric($id) ? (int) $id : null;
     }
 
     private function propertyToday(): Carbon
