@@ -545,7 +545,10 @@ server {
     # configuration, so one bad file takes every vhost on the box down with it.
     # That happened on 2026-08-11; see the note under this block.
     listen 443 ssl http2;
-    listen [::]:443 ssl http2;
+    # No `http2` on the second line: nginx takes protocol options once per
+    # socket, and another vhost already set them for [::]:443. Harmless as a
+    # warning, noise in every `nginx -t` if left in.
+    listen [::]:443 ssl;
     server_name *.websites.namibway.com;
 
     ssl_certificate     /etc/letsencrypt/live/websites.namibway.com/fullchain.pem;
@@ -560,6 +563,16 @@ server {
     # A customer's photographs, not a lodge's room list — but the same bucket
     # and the same uploader, so keep this in step with the main vhost.
     client_max_body_size 32M;
+
+    # Not optional, and their absence does not look like their absence.
+    # A request that reaches a host no site claims falls through to the travel
+    # platform, whose Inertia response carries a `Link:` header preloading every
+    # Vite asset — several kilobytes of header. With nginx's default 4k buffer
+    # that is "upstream sent too big header" and a 502, which reads like PHP is
+    # broken. It is not; the buffer is. Cost us an evening on 2026-08-11.
+    fastcgi_buffer_size 32k;
+    fastcgi_buffers 16 32k;
+    fastcgi_busy_buffers_size 64k;
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
@@ -632,39 +645,66 @@ curl -I https://anything.websites.namibway.com
 A TLS error at this point means the certificate or the paths are wrong. A connection
 refused or a timeout means DNS or the vhost.
 
-### Step 4 — then set the variable
+### Step 4 — set the variable, before generating anything
+
+**Order matters here and it is not obvious.** A site is given its host when it is
+created, from this variable. Generate a site while the variable is unset and it gets no
+host — it works at `/_sites/{slug}` and its subdomain answers with the travel platform,
+which is the 502 described above rather than anything that says "misconfigured".
 
 ```bash
 cd /var/www/namibway
-sudo -u www-data nano .env          # add the line below
+echo "SITES_HOST_SUFFIX=websites.namibway.com" | sudo tee -a .env
 php artisan config:cache
 sudo systemctl reload php8.4-fpm
-```
-
-```
-SITES_HOST_SUFFIX=websites.namibway.com
 ```
 
 No `SESSION_DOMAIN` change, unlike the booking subdomain: customer sites carry no
 session at all, so there is nothing to share and nobody gets logged out.
 
-Sites created afterwards get `{slug}.websites.namibway.com` as their host. A site
-created before that has a null host and keeps working at `/_sites/{slug}`; giving it
-an address is an `UPDATE` on one column, not a regeneration:
+For sites that already exist without one — because they were built before this step:
 
 ```bash
-php artisan tinker --execute="App\Models\Site::where('slug','x')->update(['host'=>'x.websites.namibway.com']);"
+php artisan sites:hosts --backfill
 ```
+
+That writes the host through the model, which is what clears the host→site cache. The
+cache is held indefinitely and invalidated by an observer, so a mass `UPDATE` from
+tinker sets the column and leaves the resolver believing the old map; the site then
+stays unreachable until somebody works out why. If a host is ever changed by hand
+anyway, follow it with `php artisan cache:forget sites.host_map`.
 
 ### Step 5 — end to end
 
 ```bash
-php artisan sites:generate <listing-slug>     # prints the address and the draft token
+php artisan sites:generate --candidates        # listings worth building from
+php artisan sites:generate <listing-slug>      # prints the address and the draft token
 ```
+
+Start with `--candidates`. Most of this catalogue came from directories, whose text and
+photographs we may read and may not publish, and a draft built from one of those is
+correct and looks like nothing. The command says so when it happens, but it is a better
+conversation to have before the meeting than during it.
 
 Open the printed URL. A draft answers only with its `?preview=` token, on its own host
 as much as on `/_sites/{slug}` — that is deliberate, a draft is research about somebody's
 business and not publication under their name.
+
+### When something is wrong
+
+| Symptom | Cause |
+|---|---|
+| **502**, log says *upstream sent too big header* | The host reached no site and fell through to the travel platform, whose `Link:` header is bigger than the default fastcgi buffer. Either the site has no host (step 4) or the buffers are missing (step 2). |
+| **502**, log says *connect() to unix:… failed* | Wrong PHP socket. `grep fastcgi_pass /etc/nginx/sites-available/namibway.com` and copy what the main vhost uses. |
+| Host is right in the database and still not served | The host map is cached. `php artisan cache:forget sites.host_map`. |
+| **404** on a draft | Working as intended without `?preview=<token>`. `php artisan sites:generate --list` prints the full address. |
+| The page renders and is nearly empty | Not a bug: nothing on that listing was publishable. `--candidates`. |
+
+The nginx error log is the first place to look, and it names all of the above exactly:
+
+```bash
+sudo tail -20 /var/log/nginx/error.log
+```
 
 ---
 

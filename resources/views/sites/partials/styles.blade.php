@@ -160,6 +160,32 @@
     }
     .hero__cta { margin-top: var(--s5); }
 
+    /* Hero with no photograph.
+       Not a rare case: plenty of listings hold no picture we are allowed to
+       publish, and the first draft a prospect is shown is often one of them.
+       Full height and bottom-aligned text is a composition built around an
+       image — without one it is most of a screen of near-black with a line
+       floating at the bottom, which reads as broken rather than as sparse.
+       So: shorter, centred, and on a ground with some colour in it. */
+    .hero--plain .hero__body {
+        min-height: min(56vh, 460px);
+        justify-content: center;
+        padding-top: calc(64px + var(--s6));
+        padding-bottom: var(--s6);
+    }
+    .hero--plain {
+        background:
+            radial-gradient(120% 90% at 15% 0%, color-mix(in srgb, var(--accent) 34%, transparent) 0%, transparent 60%),
+            linear-gradient(160deg, #23262C 0%, var(--ink) 70%);
+    }
+    .hero--plain::after { display: none; }
+    /* A rule under the name, so the band has a bottom edge rather than
+       stopping. Cheap, and it ties the hero to the numbered rules below. */
+    .hero--plain h1::after {
+        content: ''; display: block; width: 64px; height: 2px;
+        background: var(--accent); margin-top: var(--s5);
+    }
+
     @keyframes heroZoom { from { transform: scale(1); } to { transform: scale(1.07); } }
 
     /* ---- Sections and the signature rule ------------------------------ */
