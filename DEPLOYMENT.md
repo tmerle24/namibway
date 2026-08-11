@@ -539,9 +539,13 @@ server {
 }
 
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
+    # `listen … ssl http2` rather than a separate `http2 on;` directive: the
+    # latter is nginx 1.25.1 and newer, and this server is older. An unknown
+    # directive is not a warning — nginx refuses to load the whole
+    # configuration, so one bad file takes every vhost on the box down with it.
+    # That happened on 2026-08-11; see the note under this block.
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name *.websites.namibway.com;
 
     ssl_certificate     /etc/letsencrypt/live/websites.namibway.com/fullchain.pem;
@@ -581,9 +585,32 @@ server {
 }
 NGINX
 
+# Enable it, and take it straight back out if it does not test clean. The `||`
+# is not belt and braces — see the incident note below. nginx validates the
+# whole configuration at once, so a file that fails leaves every other vhost on
+# this machine unable to start until it is removed.
 sudo ln -s /etc/nginx/sites-available/websites.namibway.com /etc/nginx/sites-enabled/
+sudo nginx -t || sudo rm /etc/nginx/sites-enabled/websites.namibway.com
 sudo nginx -t && sudo systemctl reload nginx
 ```
+
+> **Incident, 2026-08-11 — this vhost took the whole server down.** The block first
+> written here used `http2 on;`, which is nginx 1.25.1 and newer; this server is older
+> and treats an unknown directive as fatal. `nginx -t` failed, so the `&&` meant the
+> reload never ran and nginx kept serving from memory — but **the symlink stayed**, and
+> the next thing to restart nginx found a configuration it could not load. Everything
+> on the box went with it: namibway.com, the booking panel, and the iOS and Android
+> apps, which are shells around the live site and have no offline mode beyond their
+> bootstrap page.
+>
+> Two rules follow, and they apply to every vhost added here, not just this one:
+> **never leave a symlink behind a failed `nginx -t`** (hence the `||` above), and
+> **never point `ssl_certificate` at a file that does not exist yet** — a missing
+> certificate fails exactly as hard as a bad directive. Run certbot first, confirm with
+> `sudo certbot certificates`, and only then enable the site.
+>
+> Recovery, if it happens again: `sudo rm /etc/nginx/sites-enabled/<file>` then
+> `sudo nginx -t && sudo systemctl restart nginx`.
 
 **`fastcgi_pass`: do not guess it.** This server runs both `php8.3-fpm` and
 `php8.4-fpm` — see the warning under the booking subdomain and copy whichever socket
