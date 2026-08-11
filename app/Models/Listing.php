@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
@@ -264,6 +265,54 @@ class Listing extends Model
     public function ratePlans(): HasMany
     {
         return $this->hasMany(RatePlan::class);
+    }
+
+    /**
+     * What this property has, from the shared catalogue.
+     *
+     * @return BelongsToMany<Amenity, $this>
+     */
+    public function amenities(): BelongsToMany
+    {
+        return $this->belongsToMany(Amenity::class)->withTimestamps();
+    }
+
+    /**
+     * What to show as this property's amenities.
+     *
+     * **Structured beats free text, completely.** `facilities` is what a
+     * directory said or what an AI read off a website; the catalogue entries
+     * are what somebody who owns the property chose. Once there is one of the
+     * latter, the former stops being an answer — not merged with it, because
+     * merging would put "Pool" beside "Swimming pool" and make the owner's own
+     * list look careless.
+     *
+     * The free text is kept rather than deleted: it is a record of what a
+     * source claimed, the same way scrape_data is, and a listing that has
+     * never been claimed still needs something to show.
+     *
+     * This is the content-source ladder from CLAUDE.md — partner over scrape —
+     * applied to amenities.
+     *
+     * @return array<int, string>
+     */
+    public function amenityList(): array
+    {
+        $chosen = $this->amenities->sortBy('sort')->pluck('name')->all();
+
+        if ($chosen !== []) {
+            return array_values($chosen);
+        }
+
+        $facilities = $this->facilities ?? [];
+
+        return array_values(array_filter($facilities, fn (mixed $item): bool => is_string($item) && $item !== ''));
+    }
+
+    /** Whether somebody has said what this property has, rather than a scraper guessing. */
+    public function hasChosenAmenities(): bool
+    {
+        return $this->amenities()->exists();
     }
 
     /**

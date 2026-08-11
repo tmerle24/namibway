@@ -2,6 +2,7 @@
 
 namespace App\Filament\Partner\Resources;
 
+use App\Enums\AmenityScope;
 use App\Enums\ListingType;
 use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
@@ -11,6 +12,7 @@ use App\Filament\Resources\ListingResource\RelationManagers as AdminRelationMana
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
+use App\Models\Amenity;
 use App\Models\Listing;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -191,6 +193,28 @@ class ListingResource extends Resource
                             ->directory('listings/gallery')
                             ->fetchFileInformation(false)
                             ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
+                            ->columnSpanFull(),
+                    ]),
+
+                Forms\Components\Section::make('What this property has')
+                    ->description('From the shared list, so two lodges describing the same thing describe it the same way.')
+                    ->schema([
+                        Forms\Components\Select::make('amenities')
+                            ->hiddenLabel()
+                            ->relationship('amenities', 'name')
+                            ->getOptionLabelFromRecordUsing(fn (Amenity $record): string => $record->label())
+                            ->options(fn (): array => Amenity::catalogue(AmenityScope::Property)
+                                ->mapWithKeys(fn (Amenity $amenity) => [$amenity->id => $amenity->label()])
+                                ->all())
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            // Once anything is chosen here, the scraped
+                            // free-text `facilities` stops being shown at all —
+                            // see Listing::amenityList(). Saying so on the
+                            // screen matters, because the first tick changes
+                            // what a traveller reads.
+                            ->helperText('The moment you tick anything here, this replaces whatever was collected about the property automatically.')
                             ->columnSpanFull(),
                     ]),
 

@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\AmenityCategory;
 use Database\Factories\RoomTypeFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -26,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property float $rate_per_night
  * @property string $currency
  * @property bool $is_active
+ * @property-read Collection<int, Amenity> $amenities
  */
 class RoomType extends Model
 {
@@ -61,6 +65,46 @@ class RoomType extends Model
     public function listing(): BelongsTo
     {
         return $this->belongsTo(Listing::class);
+    }
+
+    /**
+     * What this room has, from the shared catalogue.
+     *
+     * A plain pivot with no columns of its own: a per-room note ("hot water
+     * from 6pm") was considered and left out, because it would turn a
+     * multi-select somebody fills in once into a repeater they fill in forty
+     * times. The room's own description is where a sentence belongs.
+     *
+     * @return BelongsToMany<Amenity, $this>
+     */
+    public function amenities(): BelongsToMany
+    {
+        return $this->belongsToMany(Amenity::class)->withTimestamps();
+    }
+
+    /**
+     * The room's amenities grouped for reading — bathroom together, power
+     * together. Empty categories are left out rather than shown blank.
+     *
+     * @return array<string, array<int, string>> category label => names
+     */
+    public function amenitiesByCategory(): array
+    {
+        $grouped = [];
+
+        foreach (AmenityCategory::inReadingOrder() as $category) {
+            $names = $this->amenities
+                ->where('category', $category)
+                ->sortBy('sort')
+                ->pluck('name')
+                ->all();
+
+            if ($names !== []) {
+                $grouped[$category->label()] = array_values($names);
+            }
+        }
+
+        return $grouped;
     }
 
     /**

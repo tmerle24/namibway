@@ -1,0 +1,93 @@
+<?php
+
+namespace App\Models;
+
+use App\Enums\AmenityCategory;
+use App\Enums\AmenityScope;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+/**
+ * One thing a room can have, from the catalogue everyone shares — see the
+ * migration for why it is shared rather than per property.
+ *
+ * @property int $id
+ * @property string $code
+ * @property string $name
+ * @property AmenityCategory $category
+ * @property AmenityScope $scope
+ * @property int $sort
+ * @property bool $is_active
+ * @property-read Collection<int, RoomType> $roomTypes
+ */
+class Amenity extends Model
+{
+    protected $fillable = [
+        'code',
+        'name',
+        'category',
+        'scope',
+        'sort',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'category' => AmenityCategory::class,
+        'scope' => AmenityScope::class,
+        'sort' => 'integer',
+        'is_active' => 'boolean',
+    ];
+
+    /**
+     * @return BelongsToMany<Listing, $this>
+     */
+    public function listings(): BelongsToMany
+    {
+        return $this->belongsToMany(Listing::class)->withTimestamps();
+    }
+
+    /**
+     * @return BelongsToMany<RoomType, $this>
+     */
+    public function roomTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(RoomType::class)->withTimestamps();
+    }
+
+    /**
+     * The catalogue in the order a description reads: bathroom together, power
+     * together, and never alphabetical across the lot.
+     *
+     * `$scope` narrows it to what can be said of a room or of a property.
+     * Null is everything, which is what the team curating the list wants to
+     * see.
+     *
+     * @return Collection<int, Amenity>
+     */
+    public static function catalogue(?AmenityScope $scope = null): Collection
+    {
+        // Sorted on one composed key rather than in the database: the category
+        // order is the enum's business (a reading order, not alphabetical),
+        // and it would otherwise have to be duplicated as a CASE expression
+        // that nobody would remember to keep in step.
+        return self::query()
+            ->where('is_active', true)
+            ->when($scope === AmenityScope::Room, fn ($query) => $query->whereIn('scope', ['room', 'both']))
+            ->when($scope === AmenityScope::Property, fn ($query) => $query->whereIn('scope', ['property', 'both']))
+            ->get()
+            ->sortBy(fn (Amenity $amenity): string => sprintf(
+                '%03d-%05d-%s',
+                $amenity->category->sort(),
+                $amenity->sort,
+                $amenity->name,
+            ))
+            ->values();
+    }
+
+    /** "Bathroom · Outdoor shower" — enough to pick from a long list. */
+    public function label(): string
+    {
+        return $this->category->label().' · '.$this->name;
+    }
+}
