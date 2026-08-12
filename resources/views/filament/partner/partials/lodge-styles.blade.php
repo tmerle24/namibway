@@ -1040,10 +1040,14 @@
        and a footer over it. Desk mode has none of that, so the grid gets the
        height back. */
     .nw-lodge--desk .nw-cal__viewport {
+        /* min-height fills the screen when there are only a few room types;
+           max-height still lets it shrink to none in print and compact modes. */
+        min-height: calc(100vh - 11rem);
         max-height: calc(100vh - 11rem);
     }
 
     .nw-lodge--desk .nw-day__viewport {
+        min-height: calc(100vh - 14rem);
         max-height: calc(100vh - 14rem);
     }
 
