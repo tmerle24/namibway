@@ -39,9 +39,12 @@
                 @endif
             </div>
 
-            @if ($whatsapp)
+            {{-- The button follows the site's switch; the line above it does
+                 not. Switching the WhatsApp button off is a decision about
+                 buttons, not about whether the number is published. --}}
+            @if ($actions->whatsapp)
                 <p style="margin-top: var(--s5)">
-                    <a class="btn" href="{{ $whatsapp }}" target="_blank" rel="noopener">Message us on WhatsApp</a>
+                    <a class="btn" href="{{ $actions->whatsapp }}" target="_blank" rel="noopener">Message us on WhatsApp</a>
                 </p>
             @endif
         </div>

@@ -12,6 +12,10 @@
     // The number in the signature rule counts content sections only — the hero
     // announces itself and the footer is not a section.
     $counter = 0;
+
+    // Book, call, WhatsApp — resolved once for the hero's buttons and the strip
+    // at the foot of the page, which have to offer the same thing.
+    $actions = \App\Sites\Rendering\SiteActions::for($site, $blocks);
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $site->default_locale }}">
@@ -67,11 +71,14 @@
                 'block' => $block,
                 'data' => $block->data,
                 'definition' => $definition,
+                'actions' => $actions,
                 'number' => $numbered ? str_pad((string) $counter, 2, '0', STR_PAD_LEFT) : null,
                 'anchor' => 's'.$counter,
             ])
         @endforeach
     </main>
+
+    @include('sites.partials.action-bar', ['actions' => $actions])
 
     @include('sites.partials.motion')
 </body>

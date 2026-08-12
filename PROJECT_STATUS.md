@@ -1291,6 +1291,41 @@ reviewing it to a 404.
 
 The sitemap needed nothing: it already walked every page of the site's default locale.
 
+### Built 2026-08-13 — book, call, WhatsApp: the three action buttons
+
+The booking link was the last item in the menu, which on a phone put the one thing the
+site exists to do behind a burger, under "Opening hours". `App\Sites\Rendering\SiteActions`
+now resolves the three actions once per page and three places render them: a button in the
+top bar (from 640px up), a pair under the hero headline, and a strip fixed to the foot of
+the screen below 1100px — call, WhatsApp, and the primary action, at thumb height on every
+screen of the site.
+
+What is worth knowing later:
+
+- **The primary action degrades: booking → enquiry → contact.** The booking band renders
+  only where the property has sellable inventory with us, and the enquiry form only where
+  we hold a listing — so on most sites neither exists, and a template whose main button is
+  missing two thirds of the time is not a template. The contact fallback is labelled
+  "Contact" rather than the band's own heading, because a contact section is usually headed
+  "Find us", which on a button reads as directions. It is also the one case dropped from
+  the foot strip when Call or WhatsApp is already there: a third button meaning "the same
+  two things, further down the page" is noise on the surface with least room for it.
+- **The hero gets a button without anybody typing one in.** Generation leaves
+  `cta_label`/`cta_href` empty — nothing knows the anchors at that point — so a generated
+  site used to open with a headline and no way to act on it. An owner's own label and
+  target still win over the derived one.
+- **Each button has a switch on the site, on by default** (`show_book_button`,
+  `show_call_button`, `show_whatsapp_button`; `EditActionButtonsAction`, on the Website tab
+  and in the owner's own panel). Switching one off hides the *button* everywhere at once —
+  it does not unpublish the number, which stays in the contact section and the footer.
+- **The strip makes room for itself with a spacer element, not with padding on the body**,
+  so the thing that covers the foot of the page and the thing that clears it can never
+  exist without each other.
+- The one CSS trap met on the way: `.nav__cta` is also a `.btn`, `.btn` is declared later
+  in the same stylesheet, and at equal specificity the later rule wins — so the selector is
+  deliberately `.nav .nav__cta`.
+
+
 ### Next up, in the order it was asked for
 
 - **Our website terms, and the business confirming from the mail.**

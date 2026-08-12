@@ -188,6 +188,19 @@
     }
     .nav__panel a:last-child { border-bottom: 0; }
 
+    /* The one button in the bar. Smaller than a .btn elsewhere, because the
+       bar's outside height is fixed at 64px and cannot grow — see above.
+       Hidden on a phone, where there is only room for the name and the burger:
+       below 640px the action bar at the foot of the page carries it instead,
+       and carries it better.
+
+       Two class names deep, and that is load-bearing rather than sloppy: this
+       is a .btn as well, .btn is declared further down, and at equal
+       specificity the later rule wins — so a single .nav__cta was overruled on
+       every property it sets, including the one that hides it on a phone. */
+    .nav .nav__cta { display: none; flex: none; padding: 9px 16px; font-size: 12px; }
+    @media (min-width: 640px) { .nav .nav__cta { display: inline-block; } }
+
     /* Wide enough for the bar to carry the links itself: the burger and its
        panel go away entirely, whatever state the script left them in.
        1100, and the number is measured rather than chosen. Six menu items take
@@ -215,6 +228,16 @@
         box-shadow: inset 0 0 0 1px var(--bone);
     }
     .btn--ghost:hover { box-shadow: inset 0 0 0 1px var(--accent); filter: none; }
+    /* The secondary button over a photograph. .btn--ghost is ink on a bone
+       hairline and disappears there; this one is the same idea in the other
+       direction, with just enough fill to survive a bright sky behind it. */
+    .btn--light {
+        background: rgba(255,255,255,.14); color: #fff;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.6);
+        -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    }
+    .btn--light:hover { background: rgba(255,255,255,.24); filter: none; }
+    .btn__icon { height: 16px; width: 16px; vertical-align: -3px; margin-right: 7px; }
 
     /* ---- Hero -------------------------------------------------------- */
 
@@ -250,7 +273,9 @@
         margin: var(--s4) 0 0; max-width: 46ch;
         font-size: clamp(17px, 2.2vw, 20px); color: rgba(255,255,255,.88);
     }
-    .hero__cta { margin-top: var(--s5); }
+    /* Wrap rather than shrink: two buttons at 375px are about 20px wider than
+       the room they have, and a squeezed pair reads worse than a stacked one. */
+    .hero__cta { margin-top: var(--s5); display: flex; flex-wrap: wrap; gap: var(--s3); }
 
     /* Hero with no photograph.
        Not a rare case: plenty of listings hold no picture we are allowed to
@@ -443,6 +468,39 @@
     /* Pushed to the end of its own row on a wide screen, so the business's own
        pages read first and ours is a footnote. */
     @media (min-width: 720px) { .foot__powered { margin-left: auto; } }
+
+    /* ---- Action bar ----------------------------------------------------
+       Call, WhatsApp and the booking button, fixed to the foot of the screen
+       on a phone. See partials/action-bar.blade.php for why it exists; what
+       matters here is that it is the only fixed element on the page, and that
+       it takes its height out of the flow with a spacer rather than with
+       padding on the body, so it can never cover the last line of the footer.
+       Gone above 1100px, where the bar at the top carries the same button. */
+
+    .bar {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+        display: flex; background: var(--salt);
+        border-top: 1px solid var(--bone);
+        box-shadow: 0 -6px 18px rgba(0,0,0,.10);
+        /* The home indicator on an iPhone sits over the bottom 34px. */
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .bar__item {
+        flex: 1 1 0; min-width: 0;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 3px; padding: 8px 6px; min-height: 56px;
+        font-size: 11px; letter-spacing: .07em; text-transform: uppercase;
+        text-decoration: none; color: var(--ink); text-align: center;
+        border-left: 1px solid var(--bone);
+    }
+    .bar__item:first-child { border-left: 0; }
+    /* The one filled item, and the widest: it is what the page is for. */
+    .bar__item--primary { background: var(--accent); color: #fff; border-left: 0; flex-grow: 1.4; }
+    .bar__icon { height: 20px; width: 20px; flex: none; }
+    /* 56px of item, one border, and the pixel the two rounded apart when this
+       was measured against the foot of a real page. */
+    .bar__spacer { height: calc(58px + env(safe-area-inset-bottom, 0px)); }
+    @media (min-width: 1100px) { .bar, .bar__spacer { display: none; } }
 
     /* ---- Legal pages --------------------------------------------------- */
 
