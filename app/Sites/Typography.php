@@ -106,9 +106,13 @@ class Typography
     }
 
     /**
-     * Sizes offered for the name, in pixels. `null` is the automatic one.
+     * Sizes offered for the name, in pixels. The blank one is the automatic.
      *
-     * @return array<string, string>
+     * The key type is not a typo: PHP turns a numeric string key into an
+     * integer on the way into the array, so '14' arrives as 14 while '' stays a
+     * string. The action that reads this casts back to string before comparing.
+     *
+     * @return array<int|string, string>
      */
     public static function brandSizeOptions(): array
     {
