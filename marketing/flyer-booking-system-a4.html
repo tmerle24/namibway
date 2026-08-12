@@ -26,6 +26,12 @@
   the back is deliberately limited to what is actually running in production.
   Nothing in here criticises the system they run today; the argument is the
   outcome, not their current supplier.
+
+  The money line has the same rule as the connectors. The folio, the payments,
+  the invoices and the online payment flow are all built and running, but no
+  merchant account has ever settled a real transaction — so "built to settle
+  in Namibian dollars" must not become "we take card payments today". Payouts
+  and partner statements are not built at all and belong on no list here.
   ==========================================================================
 -->
 
@@ -33,6 +39,18 @@
 <style>
 /* The build script rewrites the next line for the screen variant. */
 @page { size: 216mm 303mm; margin: 0; } /* PAGESIZE */
+
+/* The back page runs tighter than the shared defaults: the list of what already
+   runs is the whole argument of this flyer, so it gets the space and the four
+   sections around it give it up.
+   Check after any copy change — the page is `overflow: hidden`, so it clips in
+   silence rather than reflowing. The number that matters is the topstrip, the
+   back body and the contact strip adding up to less than the page height; the
+   list alone fitting proves nothing. */
+.back-body { padding-top: 7mm; }
+.section { margin-bottom: 5mm; }
+ul.checklist li { font-size: 8.5pt; line-height: 1.4; padding-bottom: 1.9mm; }
+.closing { padding-top: 5mm; }
 </style>
 </head>
 
@@ -52,9 +70,11 @@
 
         <p class="sub">
             NamibWay is a Namibian travel platform, built and operated here, running in
-            production today. We would like to build and run a booking system for your
-            camps — <strong>starting with one property</strong>, so you can judge it
-            against the real thing rather than against a proposal document.
+            production today — and the booking system behind it now covers the whole
+            stay, from the availability calendar to the numbered invoice. We would like
+            to run it for your camps — <strong>starting with one property</strong>, so
+            you can judge it against the real thing rather than against a proposal
+            document.
         </p>
     </header>
 
@@ -71,11 +91,11 @@
 
         <article class="panel">
             <span class="num">02</span>
-            <h3>Simple enough<br>to be used</h3>
+            <h3>One system,<br>not four</h3>
             <p>
-                A request arrives as an email with two links: confirm or decline. No login,
-                no training, no new screen to learn. Staff who prefer a dashboard get one;
-                staff who prefer the inbox keep working as they do.
+                A request arrives as an email with two links: confirm or decline — no
+                login, no training. Behind that same booking sit the calendar, the guest's
+                folio and the invoice, so nothing is reconciled by hand afterwards.
             </p>
         </article>
 
@@ -120,20 +140,27 @@
         <section class="section">
             <h2>This does not start from zero</h2>
             <ul class="checklist">
-                <li><strong>A booking pipeline</strong> with real statuses, from first request to confirmation</li>
-                <li><strong>Room-level availability</strong> with holds that expire and tell the guest</li>
-                <li><strong>One-click confirm and decline</strong> from a signed link in an email</li>
-                <li><strong>A dashboard</strong> for staff who would rather use a screen than an inbox</li>
-                <li><strong>Nightly encrypted backups</strong> to separate off-site storage</li>
-                <li><strong>Automated deployments</strong> that only ship once the tests pass</li>
-                <li><strong>Five languages</strong> — English, German, Dutch, French, Spanish</li>
-                <li><strong>iOS and Android apps</strong> alongside the website</li>
-                <li><strong>A documented public API</strong>, so other systems can read and write</li>
-                <li><strong>Adapters designed for</strong> ResRequest, NightsBridge and hopeCloud</li>
+                <li><strong>A booking pipeline</strong> with real statuses, request to confirmation</li>
+                <li><strong>An occupancy calendar</strong>, units free and the rate on every night</li>
+                <li><strong>Rates, seasons and stay rules</strong> set across a season at once</li>
+                <li><strong>Walk-in and telephone bookings</strong>, priced night by night</li>
+                <li><strong>An arrivals and departures board</strong>, printable</li>
+                <li><strong>Rooms taken off sale</strong> for maintenance, and released again</li>
+                <li><strong>Holds that expire</strong> by themselves and tell the guest</li>
+                <li><strong>One-click confirm and decline</strong> from a signed email link</li>
+                <li><strong>A guest record</strong> per property, with a log of what was said</li>
+                <li><strong>A folio on every stay</strong> — extras, paid, outstanding</li>
+                <li><strong>Payments and refunds</strong>, corrected by reversal, never edited</li>
+                <li><strong>Numbered invoices</strong>, gapless, VAT and levy shown apart</li>
+                <li><strong>Online payment</strong>, built to settle in Namibian dollars</li>
+                <li><strong>Several properties</strong> under one login</li>
+                <li><strong>Nightly encrypted backups</strong> to off-site storage</li>
+                <li><strong>Five languages</strong>, plus iOS and Android apps</li>
+                <li><strong>A documented public API</strong> for other systems to read and write</li>
+                <li><strong>Adapters designed for</strong> ResRequest, NightsBridge, hopeCloud</li>
             </ul>
-            <p style="font-size: 8.8pt; line-height: 1.55; color: var(--muted); margin-top: 5mm;">
-                What a partnership adds to this is your inventory, your rules and your
-                branding — not a system written from scratch while you wait.
+            <p style="font-size: 8.8pt; line-height: 1.55; color: var(--muted); margin-top: 4mm;">
+                What a partnership adds is your inventory, your rules and your branding.
             </p>
         </section>
 
@@ -203,9 +230,13 @@
         </section>
 
         <section class="section">
+            <!-- The demo runs on example bookings, never on the recipient's own data —
+                 see "What the live demo actually shows" in marketing/README.md. Keep the
+                 words "example bookings" in this sentence. -->
             <p class="closing">
-                The ask is deliberately small: one camp, one season, measures agreed before
-                we start — and nothing owed beyond it if the numbers do not convince you.
+                We can set one of your camps up on example bookings and show it running
+                before you decide anything. The ask after that is small — one camp, one
+                season, and nothing owed beyond it.
             </p>
         </section>
 

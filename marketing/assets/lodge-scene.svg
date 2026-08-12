@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A Namibian evening: dune ridges, a camel thorn, and a lodge with its lamps on.
+
+  Drawn rather than photographed, because we own no photograph whose rights are
+  established. It is used twice on the websites flyer and has to survive both:
+  full width behind the hero, where a dark gradient sits over the left of it, and
+  cropped into the phone screen. So the subject — the lodge — stays right of
+  centre and just above the horizon, the part that survives a `cover` crop either
+  way.
+
+  Two things learned the hard way, both worth keeping:
+
+  1. The ground is built from flat fills, not gradients. Chrome's print-to-PDF
+     renders a gradient on these paths three shades too light and flattens the
+     shape it is filling, while a flat fill in the same place comes out exact.
+     The sky is the one gradient, and it does render — so test, do not assume.
+  2. Every `d` is on one line. The same paths written across several lines came
+     back with a straight edge where a curve should be.
+
+  Check it in Chrome, never in ImageMagick: IM's own SVG renderer drops the sky
+  gradient entirely and shows black, which is a renderer bug, not the file.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700">
+
+  <defs>
+    <linearGradient id="sky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="560">
+      <stop offset="0" stop-color="#3E2110"/>
+      <stop offset="0.30" stop-color="#7E3C15"/>
+      <stop offset="0.55" stop-color="#B85F1D"/>
+      <stop offset="0.76" stop-color="#DE9038"/>
+      <stop offset="0.94" stop-color="#F0BC72"/>
+    </linearGradient>
+    <radialGradient id="sunglow" gradientUnits="userSpaceOnUse" cx="826" cy="416" r="250">
+      <stop offset="0" stop-color="#FFEDC6" stop-opacity="0.92"/>
+      <stop offset="0.30" stop-color="#FFCE8C" stop-opacity="0.40"/>
+      <stop offset="1" stop-color="#FFBB6A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="700" fill="url(#sky)"/>
+
+  <circle cx="826" cy="416" r="250" fill="url(#sunglow)"/>
+  <circle cx="826" cy="416" r="42" fill="#FFF0D2" opacity="0.94"/>
+
+  <!-- far dunes, almost the colour of the sky -->
+  <path fill="#B06A32" opacity="0.38" d="M0 446 C 96 412 178 406 258 430 C 338 454 384 436 462 406 C 540 376 618 396 696 422 C 774 448 838 432 916 406 C 994 380 1088 400 1200 428 L 1200 500 L 0 500 Z"/>
+
+  <!-- middle dunes, with the sun catching the crest -->
+  <path fill="#8A4A1E" d="M0 484 C 122 452 224 466 336 490 C 436 512 508 484 610 456 C 712 428 800 450 892 478 C 972 502 1074 484 1200 462 L 1200 552 L 0 552 Z"/>
+  <path fill="none" stroke="#F2B268" stroke-width="3" opacity="0.5" d="M0 484 C 122 452 224 466 336 490 C 436 512 508 484 610 456 C 712 428 800 450 892 478 C 972 502 1074 484 1200 462"/>
+  <!-- the shaded flank of the middle dune, so it is not one flat mass -->
+  <path fill="#6B3616" opacity="0.6" d="M0 516 C 130 492 240 508 350 530 C 450 550 520 526 620 500 C 720 474 806 496 894 522 C 974 546 1076 528 1200 506 L 1200 560 L 0 560 Z"/>
+
+  <!-- the near dune the lodge stands on -->
+  <path fill="#4A2610" d="M0 528 C 148 500 268 514 392 542 C 512 568 600 544 712 518 C 824 492 924 512 1032 536 C 1112 554 1156 550 1200 542 L 1200 700 L 0 700 Z"/>
+  <path fill="none" stroke="#E09A55" stroke-width="2.4" opacity="0.32" d="M0 528 C 148 500 268 514 392 542 C 512 568 600 544 712 518 C 824 492 924 512 1032 536 C 1112 554 1156 550 1200 542"/>
+
+  <!-- two shadow bands down the near dune, taking the foreground to near black -->
+  <path fill="#2E1709" d="M0 596 C 160 574 300 590 430 612 C 560 634 660 616 780 594 C 900 572 1010 590 1120 610 C 1160 617 1180 618 1200 616 L 1200 700 L 0 700 Z"/>
+  <path fill="#1B0E05" d="M0 654 C 180 636 340 650 480 666 C 620 682 720 670 850 656 C 980 642 1090 654 1200 668 L 1200 700 L 0 700 Z"/>
+
+  <!-- a two-track road curving out of the foreground towards the lodge -->
+  <path fill="#C98B48" opacity="0.20" d="M236 700 C 330 636 452 578 606 540 L 620 552 C 486 592 372 646 296 700 Z"/>
+  <path fill="#C98B48" opacity="0.16" d="M414 700 C 486 650 560 604 640 566 L 650 578 C 578 616 512 656 462 700 Z"/>
+
+  <!-- the lodge: thatch, veranda, lamps on -->
+  <g>
+    <ellipse cx="836" cy="590" rx="196" ry="40" fill="#FFC98A" opacity="0.10"/>
+    <path fill="#31200F" d="M676 570 L1000 560 L1000 590 L676 598 Z"/>
+    <rect x="704" y="588" width="10" height="30" fill="#241407"/>
+    <rect x="958" y="582" width="10" height="30" fill="#241407"/>
+    <path fill="#44290F" d="M710 512 L964 504 L964 570 L710 576 Z"/>
+    <rect x="740" y="524" width="44" height="34" fill="#FFCD86" stroke="#241407" stroke-width="3"/>
+    <rect x="838" y="522" width="26" height="36" fill="#FFD79A" stroke="#241407" stroke-width="3"/>
+    <rect x="898" y="520" width="44" height="34" fill="#FFCD86" stroke="#241407" stroke-width="3"/>
+    <path fill="#3E240F" d="M688 516 L838 450 L988 506 L988 518 Z"/>
+    <path fill="#2C1809" d="M838 450 L988 506 L988 518 L838 464 Z"/>
+    <g stroke="#5E3919" stroke-width="2" opacity="0.45">
+      <path d="M726 506 L836 460"/><path d="M764 504 L840 468"/><path d="M802 502 L842 474"/>
+      <path d="M900 500 L844 464"/><path d="M938 504 L846 470"/>
+    </g>
+    <rect x="720" y="516" width="9" height="56" fill="#241407"/>
+    <rect x="828" y="510" width="9" height="58" fill="#241407"/>
+    <rect x="940" y="506" width="9" height="58" fill="#241407"/>
+  </g>
+
+  <!-- Camel thorn: a broad, flat, slightly ragged crown on a short forked trunk.
+       Deliberately not a smooth arc — an earlier version was, and read as a mushroom. -->
+  <g fill="#170D06">
+    <path d="M198 664 L212 664 L215 578 L201 578 Z"/>
+    <path d="M203 592 L150 556 L156 548 L209 582 Z"/>
+    <path d="M210 586 L268 550 L274 558 L215 590 Z"/>
+    <path d="M204 614 L172 592 L177 585 L208 608 Z"/>
+    <path d="M211 610 L250 588 L255 595 L215 614 Z"/>
+    <path d="M155 556 L118 540 L121 535 L158 550 Z"/>
+    <path d="M266 552 L302 538 L305 543 L269 558 Z"/>
+    <path d="M72 552 C 108 522 150 510 196 509 C 250 508 300 518 336 542 C 352 552 356 558 350 560 C 330 552 306 544 276 540 C 236 534 190 534 152 540 C 122 544 96 550 76 558 C 68 561 66 556 72 552 Z"/>
+    <path d="M110 532 C 140 514 170 506 200 506 C 236 506 268 514 296 530 C 302 533 300 537 294 535 C 266 526 234 522 200 522 C 168 522 140 526 116 536 C 110 538 106 535 110 532 Z"/>
+    <path d="M246 546 C 274 546 300 552 322 562 C 300 556 272 552 244 551 Z"/>
+  </g>
+
+  <!-- a few grasses, small: any bigger and they read as teeth -->
+  <g fill="#120A04">
+    <path d="M84 700 L92 668 L96 700 Z M98 700 L110 674 L107 700 Z"/>
+    <path d="M546 700 L554 674 L558 700 Z"/>
+    <path d="M1054 700 L1062 666 L1068 700 Z M1070 700 L1084 676 L1080 700 Z"/>
+  </g>
+
+</svg>

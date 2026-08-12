@@ -18,6 +18,11 @@
     3. EDIT: hero photo — --hero-photo, empty by default (needs rights-cleared imagery)
 
   Copy comes from marketing/partner-outreach-copy.md. Keep the two in step.
+
+  The booking system this now offers a partner is real and running, but it has
+  no price yet — so the flyer offers to quote and never names a figure. Same
+  rule as the commission line, for the same reason: the phone script does not
+  quote either.
   ==========================================================================
 -->
 
@@ -25,6 +30,13 @@
 <style>
 /* The build script rewrites the next line for the screen variant. */
 @page { size: 216mm 303mm; margin: 0; } /* PAGESIZE */
+
+/* The comparison table gained a row, so the back page runs a little tighter
+   than the shared defaults. Check after any copy change: the page is
+   `overflow: hidden` and clips rather than reflowing, and what has to fit is
+   the topstrip, the back body and the contact strip together. */
+.section { margin-bottom: 6.5mm; }
+table.compare th, table.compare td { padding-top: 2.4mm; padding-bottom: 2.4mm; }
 </style>
 </head>
 
@@ -63,22 +75,23 @@
 
         <article class="panel">
             <span class="num">02</span>
-            <h3>Nothing to set up,<br>nothing to pay</h3>
+            <h3>Free to list,<br>and yours</h3>
             <p>
-                A listing on NamibWay is free to create and free to keep. No software to
-                install, no channel manager required. A request arrives as an email with two
-                buttons: confirm or decline. That is the whole workflow.
+                A listing is free to create and free to keep, and it is yours: your
+                description, your photographs, your rates. No software to install, no
+                channel manager required. A request arrives as an email with two buttons —
+                confirm or decline. That is the whole workflow.
             </p>
         </article>
 
         <article class="panel">
             <span class="num">03</span>
-            <h3>Your property,<br>your words</h3>
+            <h3>As much system<br>as you want</h3>
             <p>
-                You control the description, the photos, the rates and how you are reachable.
-                If you run ResRequest, NightsBridge or hopeCloud, we can connect to it and
-                confirm automatically. If you would rather stay with email, that works just
-                as well.
+                Answer by email and nothing changes. Or run the property here: an occupancy
+                calendar, your own rates and seasons, walk-in bookings taken at the desk,
+                and invoices with VAT and the levy on their own lines. Already on
+                ResRequest, NightsBridge or hopeCloud? We can connect to that instead.
             </p>
         </article>
     </div>
@@ -126,9 +139,9 @@
                     <span class="n">2</span>
                     <h3>Say how to reach you</h3>
                     <p>
-                        One-click email is the default and needs no setup. Or connect
-                        ResConnect (ResRequest), NightsBridge or hopeCloud for automatic
-                        availability and confirmation.
+                        One-click email is the default and needs no setup. Connect
+                        ResRequest, NightsBridge or hopeCloud instead — or keep your
+                        calendar and rates here, and let us answer from those.
                     </p>
                 </article>
                 <article class="step">
@@ -188,6 +201,11 @@
                         <td class="ours">English, German, Dutch, French, Spanish — Namibia's actual source markets</td>
                     </tr>
                     <tr>
+                        <td>Running the property day to day</td>
+                        <td>Not what they do</td>
+                        <td class="ours">A calendar, your rates, the front desk and the invoice — if you want them</td>
+                    </tr>
+                    <tr>
                         <td>Who answers the guest afterwards</td>
                         <td>Nobody</td>
                         <td class="ours">We do, before and during the trip</td>
@@ -217,9 +235,9 @@
                 <article class="block">
                     <h3>Where we are today</h3>
                     <p>
-                        NamibWay is live and we are signing our founding partners now. Your
-                        property is among the first travellers see, and we still have time to
-                        build the platform around what you tell us you need.
+                        NamibWay is live and we are signing our founding partners now, so
+                        your property is among the first travellers see. The booking system
+                        behind the platform is open to partners who want it — ask us.
                     </p>
                     <p>
                         If something about the way requests reach you does not fit how you

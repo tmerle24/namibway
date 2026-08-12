@@ -35,15 +35,17 @@ part of that plan, not one of forty results on a search page.
    they have an account, a name, and firm dates. You hear from people who have
    actually decided — not from someone shopping twelve lodges at once.
 
-2. **Nothing to set up, nothing to pay**
-   A listing on NamibWay is free to create and free to keep. No software to install,
-   no channel manager required. A request arrives as an email with two buttons:
-   confirm or decline. That is the whole workflow.
+2. **Free to list, and yours**
+   A listing is free to create and free to keep, and it is yours: your description,
+   your photographs, your rates. No software to install, no channel manager required.
+   A request arrives as an email with two buttons — confirm or decline. That is the
+   whole workflow.
 
-3. **Your property, your words**
-   You control the description, the photos, the rates and how you are reachable.
-   If you run ResRequest, NightsBridge or hopeCloud, we can connect to it and
-   confirm automatically. If you would rather stay with email, that works just as well.
+3. **As much system as you want**
+   Answer by email and nothing changes. Or run the property here: an occupancy
+   calendar, your own rates and seasons, walk-in bookings taken at the desk, and
+   invoices with VAT and the levy on their own lines. Already on ResRequest,
+   NightsBridge or hopeCloud? We can connect to that instead.
 
 **Call to action**
 Claim your free listing at namibway.com/claim
@@ -58,8 +60,8 @@ Claim your free listing at namibway.com/claim
 1. **Claim your listing.** We have already prepared a free listing for most Namibian
    properties from public information. Claiming takes a minute and hands you the keys.
 2. **Tell us how you want to be reached.** One-click email is the default and needs no
-   setup. Or connect ResConnect (ResRequest), NightsBridge or hopeCloud for automatic
-   availability and confirmation.
+   setup. Connect ResRequest, NightsBridge or hopeCloud instead — or keep your calendar
+   and rates here, and let us answer from those.
 3. **Answer in one click.** Every request email carries a confirm and a decline link
    that works without logging in. Rooms we hold for you are released automatically if
    the request goes stale, so nothing sits blocked.
@@ -75,6 +77,7 @@ Claim your free listing at namibway.com/claim
 | Requests you receive | Every speculative search | One committed traveller at a time |
 | Driving times and routing | Not their problem | Planned from real road data, so guests arrive when they say they will |
 | Languages | Global | English, German, Dutch, French, Spanish — Namibia's actual source markets |
+| Running the property day to day | Not what they do | A calendar, your rates, the front desk and the invoice — if you want them |
 | Who answers the guest afterwards | Nobody | We do, before and during the trip |
 
 **Section: What it costs**
@@ -92,10 +95,15 @@ book with you directly after finding you here.
 
 **Section: Where we are today**
 
-NamibWay is live and we are signing our founding partners now. That means your
-property is among the first travellers see, and it means we still have time to build
-the platform around what you tell us you need. If something about the way requests
-reach you does not fit how you work, say so — at this stage we can still change it.
+NamibWay is live and we are signing our founding partners now, so your property is
+among the first travellers see. The booking system behind the platform is open to
+partners who want it — ask us. If something about the way requests reach you does not
+fit how you work, say so — at this stage we can still change it.
+
+> **Decision needed before print, same class as the commission line:** the booking
+> system has no price. The flyer therefore offers to quote and names no figure, and
+> the talk track below does the same. If a price is ever set, both have to move
+> together.
 
 **Contact block**
 
@@ -124,7 +132,7 @@ stay on email if you don't.
 **Three lines**
 - Free listing, free to keep — commission only on confirmed bookings
 - One committed traveller per request, never a mass enquiry
-- Your photos, your description, your rates
+- Your photos, your description, your rates — and a calendar and invoices if you want them
 
 **Call to action**
 Claim your listing: namibway.com/claim
@@ -176,6 +184,18 @@ other lodges."
 "Then don't take one. The default is an email with a confirm and a decline button —
 no login, no dashboard, no app. The dashboard is there if you want it."
 
+**If they ask whether we could run their bookings**
+"Yes — there is a full booking system behind the platform: an occupancy calendar,
+your own rates and seasons, bookings taken at the desk, an arrivals list, and
+invoices with VAT and the levy. We can set your property up on example bookings and
+show you it running." Then stop. Do not quote a price for it; note the question and
+pass it to Till or Adriano, exactly as with commission.
+
+**If they ask whether guests can pay online**
+The software does it and you may say so. What you may not say is that we take card
+payments today — no merchant account has settled a real transaction yet. "It is
+built and we are setting the merchant side up" is the honest sentence.
+
 **If they ask how many travellers you have**
 Answer honestly: we are launching and signing founding partners now. Do not invent a
 number. The honest version is a better pitch at this stage than a vague one — being
@@ -196,7 +216,14 @@ better requests.
 **"Do I have to give you my availability?"**
 Only if you want to. Without a connection, we send you a request and you answer it.
 With a connection to ResRequest, NightsBridge or hopeCloud, availability and
-confirmation happen automatically.
+confirmation happen automatically. You can also keep the calendar with us instead —
+then a room a traveller books comes off sale everywhere at once.
+
+**"Could you run our bookings as well?"**
+Yes. The same system runs the property: an occupancy calendar, your rates and
+seasons, walk-in and telephone bookings, an arrivals list for the day, a folio per
+stay and numbered invoices with VAT and the tourism levy shown separately. It is
+quoted per property — ask and we will come back with a number.
 
 **"What happens to a request I don't answer?"**
 If we are holding a room for you, the hold expires and the guest is told. Nothing

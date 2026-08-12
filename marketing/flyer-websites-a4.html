@@ -11,23 +11,34 @@
 
   Build:   node marketing/build-flyer.mjs   (builds every flyer in marketing/)
 
-  The front page merges the co-founder's own draft into the NamibWay brand:
-  his phone mock-up, the pillar band, the price block with its reassurance
-  ticks, the "built in Namibia" argument and the WhatsApp-first contact strip
-  — set in our type, our palette and with real bleed. The back page is
-  unchanged and still carries the detail his one-pager had no room for.
+  The branded layout — the same hero band, panel row and call to action as the
+  other two flyers — carrying a scene and a phone mock-up, which an earlier
+  attempt got wrong twice on 2026-08-12 and which are worth understanding before
+  touching either. That version had a phone drawn 62 × 82 mm, a ratio of 0.76
+  that reads as a squashed handset the moment it is printed, sitting on a scene
+  so thinly drawn it came out an illegible brown smear. Both were rejected on
+  sight. What fixed them: a real handset ratio, and a scene with enough tonal
+  range to survive being printed and being cropped into a 46 mm screen.
 
   Things you are likely to want to edit, all marked with EDIT: below —
-    1. EDIT: price — appears twice, in the price block on the front and in the
-       costs block on the back. N$ 399 per month is a proposal, not a decision.
-    2. EDIT: phone — the WhatsApp number, on the front and in the back strip.
-       Taken from the co-founder's draft; confirm before a print run.
-    3. EDIT: phone screen — the mock-up is drawn in CSS, no photograph. Drop a
-       real customer's site in once one exists and we have their permission.
+    1. EDIT: price — appears twice, in the call to action and in the costs
+       block on the back. N$ 399 per month is a proposal, not a decision.
+    2. EDIT: phone — the WhatsApp number in the contact strip. Taken from the
+       co-founder's draft; confirm it before a print run.
+    3. EDIT: hero photo — the drawn scene, in two places: the hero background
+       and the phone screen. They must stay the same image, because the point of
+       the mock-up is that the phone is showing the place it is standing in. A
+       photograph replaces both the day we own one.
 
   Claims are bounded by marketing/README.md. In particular: we can set a
   business up on Google Maps and Google Business Profile, we cannot promise
   where it ranks in search — do not let that sentence drift.
+
+  The availability line on the back is bounded the same way. A site really can
+  show live availability and prices, but the guest finishes the booking on
+  namibway.com — so "book through NamibWay" must stay in that sentence. And no
+  flyer may promise card payment on a customer's own site: the flow is built,
+  but no merchant account has ever settled a transaction.
   ==========================================================================
 -->
 
@@ -36,301 +47,160 @@
 /* The build script rewrites the next line for the screen variant. */
 @page { size: 216mm 303mm; margin: 0; } /* PAGESIZE */
 
-/* ---------------- front: light hero with the phone mock-up ---------------- */
+/* ---------------- front: the hero, its scene and the phone ---------------- */
 
-/* This front page is light where the other flyers lead with the brown band.
-   Deliberate: a shop owner is not being sold a safari, and the dark ground is
-   spent further down on the pillars and the contact strip instead. */
-.wf-head {
-    padding: calc(var(--bleed) + 7mm) var(--pad) 0;
-    display: grid;
-    grid-template-columns: 1fr 74mm;
-    gap: 8mm;
-    align-items: start;
-}
-.wf-head .logo { height: 12mm; margin-bottom: 6mm; }
-.wf-head h1 {
-    font-size: 24.5pt;
-    line-height: 1.12;
-    color: var(--brown);
-    margin-bottom: 6mm;
-}
-.wf-head .sub {
-    font-size: 10.2pt;
-    line-height: 1.6;
-    color: var(--muted);
-    max-width: 105mm;
-}
+/* EDIT: hero photo — the drawn scene, until a photograph we own exists. Swapping
+   it is this one line plus the same file in the phone below; both must stay the
+   same image, because the point of the mock-up is that the phone is showing the
+   customer's own site. */
+:root { --hero-photo: url('assets/lodge-scene.svg'); }
 
-/* The mock-up is drawn, not photographed — no stock image, no rights to chase,
-   and it prints cleanly because there is no raster in it at all. */
-/* The scene runs off the right trim edge, the way a photograph would, and the
-   phone sits on it. Both are drawn: see assets/namibia-scene.svg for why. */
-.phone-wrap { position: relative; height: 90mm; }
-.phone-wrap .scene {
-    position: absolute;
-    top: calc(-1 * (var(--bleed) + 7mm));
-    right: calc(-1 * var(--pad));
-    width: calc(100% + var(--pad));
-    height: calc(90mm + var(--bleed) + 7mm);
-    object-fit: cover;
-    display: block;
+/* The hero has to be at least as tall as the phone floating in it, or the phone
+   runs into the panel row — that is what `min-height` is for, and it is the number
+   to change if the phone changes. It also runs tighter than the other two flyers
+   top and bottom, because the seal band further down has to be paid for out of the
+   same page. The lodge sits right of centre in the drawing, so the background is
+   pulled that way and stays out from behind the headline. */
+.hero {
+    min-height: 126mm;
+    padding-top: calc(var(--bleed) + 11mm);
+    padding-bottom: 10mm;
+    background-position: 62% 50%;
 }
-.phone-wrap .phone { position: absolute; left: 0; top: 4mm; }
+.hero .logo { margin-bottom: 10mm; }
+
+/* The shared overlay is near-opaque all the way across, which would bury the
+   scene. Here it is weighted to the left instead: solid under the headline, and
+   thin enough on the right that the dunes and the lit windows come through. */
+.hero::before {
+    background: linear-gradient(100deg,
+        rgba(40, 23, 13, 0.95) 0%,
+        rgba(40, 23, 13, 0.92) 30%,
+        rgba(40, 23, 13, 0.62) 46%,
+        rgba(40, 23, 13, 0.22) 64%,
+        rgba(40, 23, 13, 0.06) 100%);
+}
+.hero h1, .hero .sub { max-width: 112mm; }
+
+/* The phone. 46 × 96 mm is 0.48 — a real handset. The version this replaced was
+   62 × 82 mm, which is 0.76, and it read as distorted on sight in print. If the
+   size changes, keep the ratio. */
 .phone {
-    width: 62mm;
-    height: 82mm;
-    border: 1.6mm solid #241610;
-    border-radius: 7mm;
+    position: absolute;
+    top: calc(var(--bleed) + 13mm);
+    right: var(--pad);
+    width: 46mm;
+    height: 96mm;
+    border: 1.5mm solid #1B0F07;
+    border-radius: 5.5mm;
+    background: #1B0F07;
+    box-shadow: 0 2mm 6mm rgba(20, 10, 4, 0.45);
     overflow: hidden;
-    background: #fff;
-    box-shadow: 0 1.5mm 4mm rgba(46, 27, 16, .22);
 }
+.phone__screen { height: 100%; background: #FFFDF8; display: flex; flex-direction: column; }
+
 .phone .bar {
     background: var(--brown);
     color: #FFF8EC;
-    font-size: 7pt;
-    font-weight: bold;
-    padding: 2.6mm 3mm;
+    padding: 2.4mm 3mm;
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
 }
-.phone .shot {
-    height: 38mm;
-    background: linear-gradient(170deg, #F0B266 0%, #D9812F 42%, #8A4420 74%, #3B2418 100%);
-    padding: 5mm 3.5mm 3.5mm;
-    text-align: center;
-    color: #fff;
-    position: relative;
-}
-/* A horizon, so the gradient reads as a place rather than a colour swatch. */
-.phone .shot::after {
-    content: '';
+.phone .bar span { font-size: 6pt; font-weight: bold; letter-spacing: .08em; }
+.phone .bar .burger { font-size: 7pt; }
+
+/* The background is the colour of the drawing's own bottom edge. The image is
+   scaled and pushed up far enough to bring the lodge above the headline, which
+   leaves a strip at the foot of the box uncovered; matching the colour makes that
+   strip read as more foreground instead of as a seam. */
+.phone .shot { position: relative; height: 36mm; overflow: hidden; background: #1B0E05; }
+/* Placed rather than fitted. `object-fit: cover` alone crops the sides of a 1200×700
+   drawing but nothing off the top, which left the lodge sitting behind the buttons.
+   Scaling it up and offsetting puts the lodge where a lodge's own website would put
+   it — big, just above the middle. Re-check these three numbers if the scene moves. */
+.phone .shot img { position: absolute; width: 190%; left: -86%; top: -64%; display: block; }
+.phone .shot .veil {
     position: absolute;
-    left: 0; right: 0; bottom: 0;
-    height: 7mm;
-    background: #2A1810;
-    clip-path: polygon(0 100%, 0 62%, 14% 44%, 27% 60%, 41% 30%, 55% 55%, 72% 38%, 88% 58%, 100% 42%, 100% 100%);
+    inset: 0;
+    background: linear-gradient(180deg, rgba(30, 16, 8, 0) 26%, rgba(30, 16, 8, 0.82) 100%);
 }
-.phone .shot h4 { font-size: 8.4pt; line-height: 1.25; margin-bottom: 1.5mm; color: #fff; }
-.phone .shot p { font-size: 5.8pt; color: #FCE7CC; margin-bottom: 3mm; }
-.phone .shot .btns { display: flex; gap: 2mm; justify-content: center; position: relative; z-index: 1; }
+.phone .shot .copy { position: absolute; left: 3mm; right: 3mm; bottom: 2.6mm; text-align: center; }
+.phone .shot h4 { font-size: 8pt; line-height: 1.15; color: #fff; margin-bottom: 1.2mm; }
+.phone .shot p { font-size: 5.2pt; line-height: 1.3; color: #F6DDBC; margin-bottom: 2.2mm; }
+.phone .shot .btns { display: flex; gap: 1.6mm; justify-content: center; }
 .phone .shot .btns span {
-    font-size: 5.4pt;
+    font-size: 4.8pt;
     font-weight: bold;
-    letter-spacing: .04em;
-    padding: 1.6mm 2.6mm;
+    letter-spacing: .05em;
+    padding: 1.3mm 2.4mm;
     background: var(--amber);
     color: #fff;
 }
-.phone .shot .btns span + span { background: rgba(255, 255, 255, .9); color: var(--brown); }
-.phone .card { padding: 3mm; text-align: center; border-bottom: .4mm solid var(--rule); }
-.phone .card h5 { font-size: 7.6pt; margin-bottom: 1.5mm; color: var(--ink); }
-.phone .card p { font-size: 5.6pt; line-height: 1.45; color: var(--muted); }
-/* Two tiles, not three: the badge sits over that corner of the phone. */
-.phone .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1mm; padding: 2.6mm 17mm 2.6mm 2mm; }
-.phone .tiles div { text-align: center; font-size: 4.8pt; font-weight: bold; letter-spacing: .04em; color: var(--muted); }
-.phone .tiles svg { display: block; margin: 0 auto 1.2mm; width: 4.5mm; height: 4.5mm; }
+.phone .shot .btns span + span { background: rgba(255, 255, 255, .92); color: var(--brown); }
 
-.phone-wrap .badge {
-    position: absolute;
-    right: -7mm;
-    bottom: -7mm;
-    width: 25mm;
-    height: 25mm;
-    border-radius: 50%;
-    background: var(--amber);
-    color: #fff;
-    font-size: 6.6pt;
-    font-weight: bold;
-    line-height: 1.25;
-    letter-spacing: .04em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 3mm;
-    box-shadow: 0 1mm 3mm rgba(46, 27, 16, .25);
-}
+.phone .intro { padding: 3mm 3mm 2.6mm; text-align: center; border-bottom: .35mm solid var(--rule); }
+.phone .intro h5 { font-family: var(--serif); font-size: 7.4pt; color: var(--ink); margin-bottom: 1.2mm; }
+.phone .intro p { font-size: 5pt; line-height: 1.45; color: var(--muted); }
 
-/* ---------------- front: the pillar band ---------------- */
+.phone .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1mm; padding: 3mm 2mm; }
+.phone .tiles div { text-align: center; font-size: 4.4pt; font-weight: bold; letter-spacing: .04em; color: var(--muted); }
+.phone .tiles svg { display: block; margin: 0 auto 1.2mm; width: 4.4mm; height: 4.4mm; }
 
-.pillars {
-    margin: 5mm var(--pad) 0;
-    background: var(--brown);
-    color: var(--cream);
-    border-radius: 4mm;
-    padding: 5.5mm 7mm;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 7mm;
-}
-.pillars .p + .p { border-left: .4mm solid rgba(226, 171, 108, .3); padding-left: 7mm; }
-.pillars .ico {
-    width: 9mm;
-    height: 9mm;
-    border-radius: 50%;
-    border: .5mm solid var(--mark);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 3.5mm;
-}
-.pillars .ico svg { width: 5mm; height: 5mm; }
-.pillars h3 {
-    font-size: 10.5pt;
-    line-height: 1.2;
-    color: #FFF8EC;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    font-family: var(--sans);
-    font-weight: bold;
-    margin-bottom: 2.5mm;
-}
-.pillars p { font-size: 8.2pt; line-height: 1.5; color: #DDCCB2; }
-
-/* ---------------- front: the price block ---------------- */
-
-.price-block {
-    margin: 5mm var(--pad) 0;
+.phone .foot {
+    margin-top: auto;
     background: var(--sand);
-    padding: 5mm;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 7mm;
-    align-items: center;
-}
-.price-block .big { text-align: center; }
-.price-block .all {
-    font-size: 7.4pt;
-    font-weight: bold;
-    letter-spacing: .14em;
-    text-transform: uppercase;
+    padding: 2.4mm 3mm;
+    text-align: center;
+    font-size: 4.6pt;
+    letter-spacing: .05em;
     color: var(--muted);
+    border-top: .35mm solid var(--rule);
 }
-.price-block .amount {
-    font-family: var(--serif);
-    font-size: 38pt;
-    line-height: 1.05;
-    color: var(--amber);
-    display: block;
-    margin: 1mm 0;
-}
-.price-block .per {
-    font-size: 8.6pt;
-    font-weight: bold;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--muted);
-    display: block;
-    margin-bottom: 3mm;
-}
-.price-block .tag {
-    display: inline-block;
-    background: var(--amber);
-    color: #fff;
-    font-size: 7.2pt;
-    font-weight: bold;
-    letter-spacing: .1em;
-    padding: 1.8mm 4mm;
-}
-.price-block ul { list-style: none; margin: 0; padding: 0; border-left: .4mm solid var(--rule); padding-left: 7mm; }
-.price-block li {
-    font-size: 9.4pt;
-    color: var(--ink);
-    padding: 0 0 3mm 7mm;
-    position: relative;
-}
-.price-block li:last-child { padding-bottom: 0; }
-.price-block li svg { position: absolute; left: 0; top: -0.3mm; width: 4.6mm; height: 4.6mm; }
-.price-block .say { border-left: .4mm solid var(--rule); padding-left: 7mm; }
-.price-block .say .script {
-    font-family: var(--serif);
-    font-style: italic;
-    font-size: 14pt;
-    color: var(--amber);
-    display: block;
-    margin-bottom: 3mm;
-}
-.price-block .say p { font-size: 9.6pt; line-height: 1.5; color: var(--ink); }
-.price-block .say strong { font-weight: bold; }
 
-/* ---------------- front: built in Namibia ---------------- */
+/* ---------------- front: the seal band ---------------- */
 
-/* Its own band rather than a chip in the footer: it is the argument that a
-   business in Otjiwarongo can act on, and the one no overseas builder has. */
-.namibia {
-    margin: 6mm var(--pad) 0;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 7mm;
-    align-items: center;
-    border-top: 1.2pt solid var(--gold);
-    border-bottom: 1.2pt solid var(--gold);
+/* The stamp gets a band of its own above the call to action rather than a chip
+   in a corner: "built here" is the argument a business in Otjiwarongo can act
+   on, and the one no overseas builder has. It also fills the air the panel row
+   leaves, so nothing had to be padded to make the page balance.
+   `.cta` pins itself to the foot with `margin-top: auto`; that job moves here,
+   so the two sit together at the bottom. */
+/* The panel row gives up some of its air for the band too. */
+.panels { padding-top: 8mm; }
+
+.seal-band {
+    margin: 0 var(--pad);
+    margin-top: auto;
     padding: 4mm 0;
+    border-top: 1.2pt solid var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8mm;
 }
-.namibia .flag { display: flex; align-items: center; gap: 3mm; }
-.namibia .flag img { height: 27mm; }
-.namibia .headline {
+/* 24 mm. The stamp stops being legible below about 20 mm — see the note in
+   marketing/README.md — so this is close to the floor already; if the page ever
+   needs space back, take it from somewhere else. */
+.seal-band img { width: 24mm; height: 24mm; flex: 0 0 auto; }
+.seal-band .headline {
     font-family: var(--serif);
     font-size: 15pt;
     line-height: 1.2;
     color: var(--brown);
-    white-space: nowrap;
-}
-.namibia .points { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; }
-.namibia .points div { font-size: 8.2pt; line-height: 1.45; color: var(--muted); }
-.namibia .points strong {
-    display: block;
-    color: var(--ink);
-    font-weight: bold;
-    font-size: 8.4pt;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-    margin-bottom: 1.2mm;
-}
-
-/* ---------------- front: contact strip ---------------- */
-
-.wa-strip {
-    margin-top: auto;
-    background: var(--brown);
-    color: var(--cream);
-    padding: 5.5mm var(--pad) calc(var(--bleed) + 5.5mm);
-    display: flex;
-    align-items: center;
-    gap: 7mm;
-}
-.wa-strip .wa {
     flex: 0 0 auto;
-    width: 16mm;
-    height: 16mm;
-    border-radius: 50%;
-    background: #25D366;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
-.wa-strip .wa svg { width: 10mm; height: 10mm; }
-.wa-strip h2 { font-size: 15pt; color: #FFF8EC; margin-bottom: 2mm; }
-.wa-strip p { font-size: 9pt; line-height: 1.5; color: #DDCCB2; max-width: 86mm; }
-.wa-strip .lines {
-    margin-left: auto;
-    text-align: right;
-    font-size: 10.4pt;
-    line-height: 1.75;
-    white-space: nowrap;
-}
-.wa-strip .lines a, .wa-strip .lines span { color: var(--mark); text-decoration: none; display: block; }
-.wa-strip .lines .num { font-family: var(--serif); font-size: 14pt; color: #FFF8EC; }
+.seal-band p { font-size: 8.6pt; line-height: 1.5; color: var(--muted); }
+.seal-band strong { color: var(--ink); font-weight: bold; }
+.cta { margin-top: 0; }
 
 /* ---------------- back ---------------- */
 
 /* This back page carries four sections instead of three, so it runs tighter than
-   the shared defaults. Re-measure if you add copy: the page clips silently. */
+   the shared defaults. Re-measure if you add copy: the page clips silently, and
+   what has to fit is the topstrip, the back body and the contact strip together
+   — not the sections on their own. */
 .back-body { padding-top: 8mm; }
-.section { margin-bottom: 5.8mm; }
+.section { margin-bottom: 7mm; }
 ul.checklist li { padding-bottom: 2.2mm; }
 </style>
 </head>
@@ -340,163 +210,124 @@ ul.checklist li { padding-bottom: 2.2mm; }
 <!-- ============================== FRONT ============================== -->
 <section class="page">
 
-    <header class="wf-head">
-        <div>
-            <img class="logo" src="../public/images/namibway-logo-dark.png" alt="NamibWay">
+    <header class="hero">
+        <!-- No compass watermark on this flyer: the scene occupies that corner, and
+             the two fight each other. -->
+        <img class="logo" src="../public/images/namibway-logo-light.png" alt="NamibWay">
 
-            <p class="eyebrow">Websites for Namibian businesses</p>
+        <p class="eyebrow">Websites for Namibian businesses</p>
 
-            <h1>Your customers are searching for you. Right now they find nothing.</h1>
+        <h1>Your customers are searching for you. Right now they find nothing.</h1>
 
-            <p class="sub">
-                We build small business websites here in Namibia, and we look after them
-                for you — so you can get back to running your business. Your own address
-                on the internet, your photos, your prices and your opening hours, on the
-                phone your customers actually carry.
-            </p>
-        </div>
+        <p class="sub">
+            We build small business websites here in Namibia, and we look after them for
+            you. Your own address on the internet, your photos, your prices and your
+            opening hours — on the phone your customers actually carry. <strong>One
+            monthly fee covers all of it.</strong>
+        </p>
 
-        <!-- EDIT: phone screen — drawn in CSS on purpose. Replace with a real
-             customer's site once one exists and they have said yes. -->
-        <div class="phone-wrap">
-            <!-- EDIT: hero photo — swap this for a real photograph the moment we
-                 have one whose rights are ours. Same box, same object-fit. -->
-            <img class="scene" src="assets/namibia-scene.svg" alt="">
-
-            <div class="phone">
-                <div class="bar"><span>Your Business</span><span>&#9776;</span></div>
+        <!-- The phone shows the same scene as the page behind it, on purpose: what a
+             customer's own site would look like, standing in the place it is about.
+             The wording stays generic ("Your Lodge") — we have no customer to name,
+             and inventing one would be a claim we may not make. -->
+        <div class="phone">
+            <div class="phone__screen">
+                <div class="bar"><span>YOUR LODGE</span><span class="burger">&#9776;</span></div>
 
                 <div class="shot">
-                    <h4>Discover. Experience.<br>Enjoy Namibia.</h4>
-                    <p>Your adventure starts here.</p>
-                    <div class="btns"><span>BOOK NOW</span><span>CONTACT US</span></div>
+                    <img src="assets/lodge-scene.svg" alt="">
+                    <div class="veil"></div>
+                    <div class="copy">
+                        <h4>Where the desert<br>begins.</h4>
+                        <p>Rooms, meals and guided drives.</p>
+                        <div class="btns"><span>BOOK NOW</span><span>WHATSAPP</span></div>
+                    </div>
                 </div>
 
-                <div class="card">
+                <div class="intro">
                     <h5>Welcome</h5>
-                    <p>We offer unforgettable experiences, excellent service and memorable moments.</p>
+                    <p>
+                        Eight rooms, a long table under the thorn tree, and the dunes
+                        twenty minutes away. Open all year.
+                    </p>
                 </div>
 
                 <div class="tiles">
                     <div>
                         <svg viewBox="0 0 24 24" fill="none" stroke="#6B6350" stroke-width="1.8"><path d="M3 18v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6M3 18h18M3 18v2M21 18v2M7 10V8a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v2"/></svg>
-                        ACCOMMODATION
+                        ROOMS
+                    </div>
+                    <div>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#6B6350" stroke-width="1.8"><path d="M6 3v8a2 2 0 0 0 4 0V3M8 11v10M17 3c-1.5 1.5-2 3.5-2 5.5V13h3V3"/></svg>
+                        RESTAURANT
                     </div>
                     <div>
                         <svg viewBox="0 0 24 24" fill="none" stroke="#6B6350" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.2"/></svg>
                         ACTIVITIES
                     </div>
-                                    </div>
-            </div>
+                </div>
 
-            <div class="badge">BUILT FOR PHONES FIRST</div>
+                <div class="foot">FIND US &nbsp;·&nbsp; +264 …</div>
+            </div>
         </div>
     </header>
 
-    <div class="pillars">
-        <article class="p">
-            <div class="ico">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#E2AB6C" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9S14.5 21.3 12 21c-2.5-.3-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>
-            </div>
+    <div class="panels">
+        <article class="panel">
+            <span class="num">01</span>
             <h3>A real website,<br>not a social page</h3>
             <p>
-                Your own domain, your photos, your prices, directions that open in Google
-                Maps, and a WhatsApp button to chat with you.
+                Your own domain name, your photographs, your prices, directions that open
+                in Google Maps, and a button that starts a WhatsApp chat with you. Built
+                to load on an old phone and a slow connection.
             </p>
         </article>
 
-        <article class="p">
-            <div class="ico">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#E2AB6C" stroke-width="1.7"><path d="M7 18h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.6 1.6A3.5 3.5 0 0 0 7 18z"/></svg>
-            </div>
+        <article class="panel">
+            <span class="num">02</span>
             <h3>We keep it<br>running</h3>
             <p>
-                You never touch a server, a renewal or an update. Send us a message and we
-                change it — that is part of the monthly fee.
+                You never touch a server, a renewal or an update. When your prices change
+                or the season changes, send us a message and we change it. That is part of
+                the monthly fee, not an extra invoice.
             </p>
         </article>
 
-        <article class="p">
-            <div class="ico">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#E2AB6C" stroke-width="1.7"><path d="M12 3l7 3v6c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
-            </div>
+        <article class="panel">
+            <span class="num">03</span>
             <h3>No big bill<br>at the start</h3>
             <p>
-                No setup fee and no long-term contract. If it does not earn its keep, you
-                stop paying and we hand you everything.
+                No setup fee and no multi-year contract. If it does not earn its keep, you
+                stop paying and we hand you your domain and your content. That is the whole
+                risk you are taking.
             </p>
         </article>
     </div>
 
-    <!-- EDIT: price — must match the costs block on the back. -->
-    <div class="price-block">
-        <div class="big">
-            <span class="all">All-inclusive</span>
-            <span class="amount">N$&#8239;399</span>
-            <span class="per">per month</span>
-            <span class="tag">EVERYTHING INCLUDED</span>
-        </div>
-
-        <ul>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>No setup fee</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>No contract</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>No hidden costs</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>Cancel any time</li>
-        </ul>
-
-        <div class="say">
-            <span class="script">One monthly fee.</span>
-            <p>
-                We build it. We host it.<br>
-                We keep it running.<br>
-                <strong>You focus on your business.</strong>
-            </p>
-        </div>
+    <div class="seal-band">
+        <img src="assets/built-in-namibia-stamp-1024.png" alt="Built in Namibia">
+        <span class="headline">Built in Namibia,<br>for Namibia.</span>
+        <p>
+            <strong>Same time zone, same working week.</strong> Call in the morning and get
+            an answer the same morning, not overnight from another continent. Built for the
+            phones and the connections your customers really have — and paid to a Namibian
+            business, in Namibian dollars.
+        </p>
     </div>
 
-    <div class="namibia">
-        <div class="flag">
-            <img src="assets/built-in-namibia-seal.svg" alt="Built in Namibia">
-            <span class="headline">Built in Namibia,<br>for Namibia.</span>
-        </div>
-
-        <div class="points">
-            <div>
-                <strong>We are here</strong>
-                Same time zone, same working week. Call in the morning and get an
-                answer the same morning, not overnight from another continent.
-            </div>
-            <div>
-                <strong>We know the conditions</strong>
-                Built for the phones and the connections your customers really have,
-                not for a fibre line in Europe.
-            </div>
-            <div>
-                <strong>Your money stays here</strong>
-                Paid to a Namibian business, in Namibian dollars, employing people
-                in Namibia.
-            </div>
-        </div>
-    </div>
-
-    <!-- EDIT: phone — same number appears in the strip on the back. -->
-    <footer class="wa-strip">
-        <div class="wa">
-            <svg viewBox="0 0 32 32" fill="#fff"><path d="M16 3C8.8 3 3 8.8 3 16c0 2.3.6 4.5 1.7 6.4L3 29l6.8-1.8A13 13 0 1 0 16 3zm0 23.6c-2 0-4-.5-5.7-1.6l-.4-.2-4 1 1.1-3.9-.3-.4A10.6 10.6 0 1 1 16 26.6zm6-7.9c-.3-.2-1.9-1-2.2-1.1-.3-.1-.5-.2-.7.2s-.8 1-1 1.2c-.2.2-.4.2-.7.1a8.7 8.7 0 0 1-4.3-3.7c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.6h-.6c-.2 0-.6.1-.9.4-.3.4-1.2 1.2-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.7 5.9 5.1 2.2.9 3 1 4.1.8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5-.1-.2-.3-.3-.6-.4z"/></svg>
-        </div>
-
+    <footer class="cta">
         <div>
-            <h2>Let us take a look at your business.</h2>
+            <h2>Let us show you what yours would look like</h2>
             <p>
-                Message us on WhatsApp or email us today — no obligation, just a friendly
-                conversation about what your customers are looking for.
+                A twenty-minute conversation, no charge and no obligation. Bring your photos
+                if you have them — if you do not, we will sort that out too.
+                Write to team@namibway.com or talk to the person who handed you this.
             </p>
         </div>
-
-        <div class="lines">
-            <span class="num">+264 81 889 2128</span>
-            <a href="mailto:team@namibway.com">team@namibway.com</a>
-            <a href="https://namibway.com">namibway.com</a>
+        <!-- EDIT: price — also appears in the costs block on the back. Keep both in step. -->
+        <div class="price">
+            <span class="amount">N$ 399</span>
+            <span class="per">per month, everything included</span>
         </div>
     </footer>
 
@@ -522,7 +353,7 @@ ul.checklist li { padding-bottom: 2.2mm; }
                 <li><strong>Prices, opening hours and directions</strong>, kept current</li>
                 <li><strong>A map</strong> that opens straight into Google Maps</li>
                 <li><strong>A WhatsApp button</strong> that starts a chat with you</li>
-                <li><strong>A contact form</strong> that arrives in your email</li>
+                <li><strong>An enquiry form</strong> that reaches you by email</li>
                 <li><strong>English and German</strong>, further languages on request</li>
                 <li><strong>Google Maps and Google Business Profile</strong> set up properly</li>
                 <li><strong>A secure address</strong> (https), so browsers do not warn people off</li>
@@ -563,7 +394,7 @@ ul.checklist li { padding-bottom: 2.2mm; }
 
         <section class="section">
             <div class="blocks even">
-                <!-- EDIT: price — must match the price block on the front. -->
+                <!-- EDIT: price — must match the call to action on the front. -->
                 <article class="block">
                     <h3>What it costs</h3>
                     <p>
@@ -581,14 +412,14 @@ ul.checklist li { padding-bottom: 2.2mm; }
                 <article class="block dark">
                     <h3>If you need more than a website</h3>
                     <p>
-                        We also build proper software: booking and reservation systems, stock
-                        and order tracking, internal tools, links between systems you already
-                        run, and mobile apps.
+                        If you let rooms or beds, your site can show live availability and
+                        prices — guests pick their dates on your own page and book through
+                        NamibWay, off one calendar with your own rates.
                     </p>
                     <p>
-                        This is the same team that built and operates NamibWay — a travel
-                        booking platform running in production, with backups, monitoring and
-                        automated deployments. Priced per project, after we understand it.
+                        We also build stock and order tracking, internal tools, links between
+                        systems you run, and mobile apps — by the team that built and runs
+                        NamibWay. Priced per project.
                     </p>
                 </article>
             </div>
@@ -626,7 +457,7 @@ ul.checklist li { padding-bottom: 2.2mm; }
 
     </div>
 
-    <!-- EDIT: phone — same number appears on the front. -->
+    <!-- EDIT: phone — the co-founder's WhatsApp number. Confirm before printing. -->
     <footer class="contact">
         <div class="lines">
             <strong>Let us take a look at your business.</strong>
