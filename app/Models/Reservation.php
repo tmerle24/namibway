@@ -6,6 +6,7 @@ use App\Enums\FolioStatus;
 use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Models\Concerns\GuardsInventoryWrites;
+use App\Support\Money;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -236,10 +237,19 @@ class Reservation extends Model
     /**
      * Whether somebody charged something other than what the calendar priced.
      *
-     * Derived from the two amounts rather than stored as a flag, so it stays
-     * true to the numbers even if one of them is later corrected. Compared to
-     * the cent, because these are money columns and a float equality check on
+     * Derived from the amounts rather than stored as a flag, so it stays true
+     * to the numbers even if one of them is later corrected. Compared in whole
+     * cents, because these are money columns and a float equality check on
      * money is a bug waiting for a rounding difference.
+     *
+     * The comparison is between the **stay** and what the calendar quoted less
+     * any discount — which is exactly the pair InventoryWriter compares when it
+     * decides to record an override. It used to compare `total_amount` against
+     * `quoted_amount`, and those are not the same kind of number: the total
+     * carries the added taxes and fees and the quote does not. Any property
+     * with VAT added on top therefore reported *every* booking as
+     * price-overridden, and the stay drawer printed "calendar said N$ 7,350"
+     * on a booking nobody had touched. Found by looking at the screen.
      */
     public function priceWasOverridden(): bool
     {
@@ -247,7 +257,9 @@ class Reservation extends Model
             return false;
         }
 
-        return abs($this->total_amount - $this->quoted_amount) >= 0.01;
+        $expected = Money::cents($this->quoted_amount) - Money::cents($this->discount_amount ?? 0.0);
+
+        return Money::cents($this->stayAmount()) !== $expected;
     }
 
     /** Nights, not days — a stay from the 5th to the 8th is three nights. */

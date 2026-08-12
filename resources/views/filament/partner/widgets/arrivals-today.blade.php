@@ -60,37 +60,39 @@
                         Nobody is expected on {{ $board->date->isoFormat('D MMMM') }}.
                     </p>
                 @else
-                    <table class="nw-table" style="margin-top: 0.9rem;">
-                        <thead>
-                            <tr>
-                                <th>Guest</th>
-                                <th>Rooms</th>
-                                <th>Nights</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($board->arrivals as $reservation)
+                    <div class="nw-scroll">
+                        <table class="nw-table" style="margin-top: 0.9rem;">
+                            <thead>
                                 <tr>
-                                    <td>
-                                        {{ $reservation->guest_name }}
-                                        <div class="nw-hint">{{ $reservation->reference }}</div>
-                                    </td>
-                                    <td>
-                                        @foreach ($reservation->units as $unit)
-                                            {{ $unit->bookableUnit?->name ?? '—' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif{{ ! $loop->last ? ', ' : '' }}
-                                        @endforeach
-                                    </td>
-                                    <td class="nw-num">{{ $reservation->nights() }}</td>
-                                    <td>
-                                        <span class="nw-badge nw-badge--{{ $reservation->status->color() }}">
-                                            {{ $reservation->status->label() }}
-                                        </span>
-                                    </td>
+                                    <th>Guest</th>
+                                    <th>Rooms</th>
+                                    <th>Nights</th>
+                                    <th>Status</th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach ($board->arrivals as $reservation)
+                                    <tr>
+                                        <td>
+                                            {{ $reservation->guest_name }}
+                                            <div class="nw-hint">{{ $reservation->reference }}</div>
+                                        </td>
+                                        <td>
+                                            @foreach ($reservation->units as $unit)
+                                                {{ $unit->bookableUnit?->name ?? '—' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif{{ ! $loop->last ? ', ' : '' }}
+                                            @endforeach
+                                        </td>
+                                        <td class="nw-num">{{ $reservation->nights() }}</td>
+                                        <td>
+                                            <span class="nw-badge nw-badge--{{ $reservation->status->color() }}">
+                                                {{ $reservation->status->label() }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 @endif
             @endif
         </div>

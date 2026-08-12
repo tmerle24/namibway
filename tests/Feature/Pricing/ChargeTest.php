@@ -273,6 +273,41 @@ class ChargeTest extends TestCase
         $this->assertTrue($stay->priceWasOverridden());
     }
 
+    /**
+     * The other half of the same question, and the one that was wrong.
+     *
+     * priceWasOverridden() compared the total against the quote, and those
+     * carry different things: the total includes VAT and the quote does not.
+     * Every booking at a property that charges anything on top therefore
+     * claimed to have been overridden, and the stay drawer printed "calendar
+     * said N$ 3,000" beside a total of N$ 3,450 on a booking nobody touched.
+     */
+    public function test_added_tax_is_not_mistaken_for_someone_changing_the_price(): void
+    {
+        $this->charge();
+
+        $stay = $this->book();
+
+        $this->assertSame(3000.0, $stay->quoted_amount);
+        $this->assertSame(3450.0, $stay->total_amount);
+        $this->assertFalse($stay->priceWasOverridden());
+    }
+
+    /** Nor is a discount, which the quote does not carry either. */
+    public function test_a_discount_on_top_of_tax_is_not_mistaken_for_an_override(): void
+    {
+        $this->charge();
+        Promotion::create([
+            'listing_id' => $this->listing->id,
+            'name' => 'Green season',
+            'discount_type' => DiscountType::Percentage,
+            'discount_value' => 20,
+            'is_active' => true,
+        ]);
+
+        $this->assertFalse($this->book()->priceWasOverridden());
+    }
+
     public function test_a_charge_is_frozen_onto_the_stay(): void
     {
         $charge = $this->charge();

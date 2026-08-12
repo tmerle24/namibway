@@ -258,6 +258,14 @@ this is what makes model C expressible), a reference, who recorded it, a note.
   for the same reason.
 - **Recorded ≠ cleared.** An EFT that a partner says has arrived and one Stripe
   has confirmed are not the same certainty; the record needs to say which.
+- **A reversal takes the status of the row it reverses.** The first cut wrote
+  every reversal as cleared, reasoning that a correction is certain the moment
+  it is made. That is true of the correction and false of the money: undoing a
+  transfer still sitting at *recorded* left nothing certain on the debit side
+  and the full amount certain on the credit side, so the folio reported a
+  negative cleared figure and the stay drawer printed "Paid N$ 2,519.90
+  (N$ -700.00 confirmed)". Mirroring the original keeps the pair symmetrical on
+  both views. Fixed 2026-08-12.
 
 ### Balance and status
 

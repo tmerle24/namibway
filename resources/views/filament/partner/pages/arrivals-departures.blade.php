@@ -104,48 +104,50 @@
                         {{ $departure->seatsSold }} of {{ $departure->capacity }} seats taken
                     </x-slot>
 
-                    <table class="nw-table">
-                        <thead>
-                            <tr>
-                                <th>Guest</th>
-                                <th>Seats</th>
-                                <th>Party</th>
-                                <th>Phone</th>
-                                <th>Status</th>
-                                <th>Reference</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($departure->stays as $stay)
+                    <div class="nw-scroll">
+                        <table class="nw-table">
+                            <thead>
                                 <tr>
-                                    <td>
-                                        <button
-                                            type="button"
-                                            class="nw-table__link"
-                                            wire:click="showReservation({{ $stay->reservationId }})"
-                                        >
-                                            {{ $stay->label }}
-                                        </button>
-                                    </td>
-                                    <td class="nw-num">{{ $stay->seats }}</td>
-                                    <td class="nw-num">{{ $stay->party ?: '—' }}</td>
-                                    {{--
-                                        Printed, not only shown: a guide standing
-                                        at the vehicle with somebody missing needs
-                                        a number, and that is the whole reason this
-                                        sheet leaves the office.
-                                    --}}
-                                    <td class="nw-num">{{ $stay->phone ?: '—' }}</td>
-                                    <td>
-                                        <span class="nw-badge nw-badge--{{ $stay->color() }}">
-                                            {{ $stay->stateLabel() }}
-                                        </span>
-                                    </td>
-                                    <td class="nw-num nw-hint">{{ $stay->reference }}</td>
+                                    <th>Guest</th>
+                                    <th>Seats</th>
+                                    <th>Party</th>
+                                    <th>Phone</th>
+                                    <th>Status</th>
+                                    <th>Reference</th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach ($departure->stays as $stay)
+                                    <tr>
+                                        <td>
+                                            <button
+                                                type="button"
+                                                class="nw-table__link"
+                                                wire:click="showReservation({{ $stay->reservationId }})"
+                                            >
+                                                {{ $stay->label }}
+                                            </button>
+                                        </td>
+                                        <td class="nw-num">{{ $stay->seats }}</td>
+                                        <td class="nw-num">{{ $stay->party ?: '—' }}</td>
+                                        {{--
+                                            Printed, not only shown: a guide standing
+                                            at the vehicle with somebody missing needs
+                                            a number, and that is the whole reason this
+                                            sheet leaves the office.
+                                        --}}
+                                        <td class="nw-num">{{ $stay->phone ?: '—' }}</td>
+                                        <td>
+                                            <span class="nw-badge nw-badge--{{ $stay->color() }}">
+                                                {{ $stay->stateLabel() }}
+                                            </span>
+                                        </td>
+                                        <td class="nw-num nw-hint">{{ $stay->reference }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </x-filament::section>
             @endforeach
 
@@ -166,90 +168,92 @@
                     @if ($reservations->isEmpty())
                         <p class="nw-empty">{{ $emptyMessage }}</p>
                     @else
-                        <table class="nw-table">
-                            <thead>
-                                <tr>
-                                    <th>Guest</th>
-                                    <th>Room type</th>
-                                    <th>Sold as</th>
-                                    <th>Rooms</th>
-                                    <th>Guests</th>
-                                    <th>Arrival</th>
-                                    <th>Departure</th>
-                                    <th>Nights</th>
-                                    <th>Status</th>
-                                    {{-- Money is collected when a guest is
-                                         standing there, so the number belongs
-                                         on the list somebody works down at the
-                                         counter rather than one screen away. --}}
-                                    <th>Outstanding</th>
-                                    <th>Reference</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($reservations as $reservation)
+                        <div class="nw-scroll">
+                            <table class="nw-table">
+                                <thead>
                                     <tr>
-                                        <td>
-                                            <button
-                                                type="button"
-                                                class="nw-table__link"
-                                                wire:click="showReservation({{ $reservation->id }})"
-                                            >
-                                                {{ $reservation->guest_name }}
-                                            </button>
-                                            <div class="nw-hint">{{ $reservation->source->label() }}</div>
-                                            {{-- The reason the note is a column and not a
-                                                 line in a log: this list is what a room is
-                                                 made up from. --}}
-                                            @if (filled($reservation->over_capacity_note))
-                                                <div class="nw-warn">Extra bed: {{ $reservation->over_capacity_note }}</div>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @foreach ($reservation->units as $unit)
-                                                <div>{{ $unit->bookableUnit?->name ?? '—' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif</div>
-                                            @endforeach
-                                        </td>
-                                        <td>
-                                            @foreach ($reservation->units as $unit)
-                                                <div>{{ $unit->soldAs() ?? '—' }}</div>
-                                            @endforeach
-                                        </td>
-                                        <td class="nw-num">{{ $reservation->units->sum('quantity') }}</td>
-                                        <td class="nw-num">
-                                            {{ $reservation->adults }}@if ($reservation->children)+{{ $reservation->children }}@endif
-                                        </td>
-                                        <td class="nw-num">{{ $reservation->check_in->isoFormat('ddd D MMM') }}</td>
-                                        <td class="nw-num">{{ $reservation->check_out->isoFormat('ddd D MMM') }}</td>
-                                        <td class="nw-num">{{ $reservation->nights() }}</td>
-                                        <td>
-                                            <span class="nw-badge nw-badge--{{ $reservation->status->color() }}">
-                                                {{ $reservation->status->label() }}
-                                            </span>
-                                        </td>
-                                        {{-- Read off the stay, not summed here:
-                                             `paid_amount` is written down by
-                                             PaymentRecorder so this board and
-                                             the stay drawer cannot disagree. --}}
-                                        <td class="nw-num">
-                                            @if ($reservation->total_amount === null)
-                                                <span class="nw-hint">No price</span>
-                                            @elseif ($reservation->payment_status->isSettled())
-                                                <span class="nw-hint">Paid</span>
-                                            @else
-                                                {{ Money::format($reservation->total_amount - $reservation->paid_amount, $reservation->currency) }}
-                                            @endif
-                                        </td>
-                                        <td class="nw-num nw-hint">
-                                            {{ $reservation->reference }}
-                                            @if ($reservation->total_amount !== null)
-                                                <div>{{ Money::format($reservation->total_amount, $reservation->currency) }}</div>
-                                            @endif
-                                        </td>
+                                        <th>Guest</th>
+                                        <th>Room type</th>
+                                        <th>Sold as</th>
+                                        <th>Rooms</th>
+                                        <th>Guests</th>
+                                        <th>Arrival</th>
+                                        <th>Departure</th>
+                                        <th>Nights</th>
+                                        <th>Status</th>
+                                        {{-- Money is collected when a guest is
+                                             standing there, so the number belongs
+                                             on the list somebody works down at the
+                                             counter rather than one screen away. --}}
+                                        <th>Outstanding</th>
+                                        <th>Reference</th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    @foreach ($reservations as $reservation)
+                                        <tr>
+                                            <td>
+                                                <button
+                                                    type="button"
+                                                    class="nw-table__link"
+                                                    wire:click="showReservation({{ $reservation->id }})"
+                                                >
+                                                    {{ $reservation->guest_name }}
+                                                </button>
+                                                <div class="nw-hint">{{ $reservation->source->label() }}</div>
+                                                {{-- The reason the note is a column and not a
+                                                     line in a log: this list is what a room is
+                                                     made up from. --}}
+                                                @if (filled($reservation->over_capacity_note))
+                                                    <div class="nw-warn">Extra bed: {{ $reservation->over_capacity_note }}</div>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @foreach ($reservation->units as $unit)
+                                                    <div>{{ $unit->bookableUnit?->name ?? '—' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif</div>
+                                                @endforeach
+                                            </td>
+                                            <td>
+                                                @foreach ($reservation->units as $unit)
+                                                    <div>{{ $unit->soldAs() ?? '—' }}</div>
+                                                @endforeach
+                                            </td>
+                                            <td class="nw-num">{{ $reservation->units->sum('quantity') }}</td>
+                                            <td class="nw-num">
+                                                {{ $reservation->adults }}@if ($reservation->children)+{{ $reservation->children }}@endif
+                                            </td>
+                                            <td class="nw-num">{{ $reservation->check_in->isoFormat('ddd D MMM') }}</td>
+                                            <td class="nw-num">{{ $reservation->check_out->isoFormat('ddd D MMM') }}</td>
+                                            <td class="nw-num">{{ $reservation->nights() }}</td>
+                                            <td>
+                                                <span class="nw-badge nw-badge--{{ $reservation->status->color() }}">
+                                                    {{ $reservation->status->label() }}
+                                                </span>
+                                            </td>
+                                            {{-- Read off the stay, not summed here:
+                                                 `paid_amount` is written down by
+                                                 PaymentRecorder so this board and
+                                                 the stay drawer cannot disagree. --}}
+                                            <td class="nw-num">
+                                                @if ($reservation->total_amount === null)
+                                                    <span class="nw-hint">No price</span>
+                                                @elseif ($reservation->payment_status->isSettled())
+                                                    <span class="nw-hint">Paid</span>
+                                                @else
+                                                    {{ Money::format($reservation->total_amount - $reservation->paid_amount, $reservation->currency) }}
+                                                @endif
+                                            </td>
+                                            <td class="nw-num nw-hint">
+                                                {{ $reservation->reference }}
+                                                @if ($reservation->total_amount !== null)
+                                                    <div>{{ Money::format($reservation->total_amount, $reservation->currency) }}</div>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     @endif
                 </x-filament::section>
             @endforeach
