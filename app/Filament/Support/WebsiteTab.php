@@ -6,6 +6,7 @@ use App\Enums\SiteStatus;
 use App\Jobs\GenerateSiteJob;
 use App\Models\Listing;
 use App\Models\Site;
+use App\Sites\LegalText;
 use App\Sites\Publishing\CannotPublish;
 use App\Sites\Publishing\PublishGate;
 use Filament\Forms;
@@ -66,7 +67,77 @@ class WebsiteTab
                         );
                     }),
 
+                Forms\Components\Placeholder::make('website_terms')
+                    ->label('Legal pages')
+                    ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null)
+                    ->content(function (?Listing $record): string {
+                        $site = $record === null ? null : self::siteFor($record);
+
+                        if ($site === null) {
+                            return '—';
+                        }
+
+                        return $site->terms_accepted_at === null
+                            ? 'We have written the first version of Privacy, the legal notice and the copyright line. '
+                                .'The business confirms them — and accepts our website terms — when the site is published.'
+                            : 'Confirmed by '.($site->terms_accepted_by ?: 'the business')
+                                .' on '.$site->terms_accepted_at->format('j M Y').'.';
+                    }),
+
                 Forms\Components\Actions::make([
+                    Action::make('edit_legal')
+                        ->label('Privacy, legal notice & copyright')
+                        ->icon('heroicon-o-scale')
+                        ->color('gray')
+                        ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null)
+                        ->modalDescription('These three belong to the business, not to us. We write the first '
+                            .'version so the site is publishable; correct anything that is wrong for them.')
+                        ->modalSubmitActionLabel('Save')
+                        ->fillForm(function (?Listing $record): array {
+                            $site = $record === null ? null : self::siteFor($record);
+
+                            if ($site === null) {
+                                return [];
+                            }
+
+                            return [
+                                'legal_copyright' => LegalText::copyright($site),
+                                'legal_privacy' => LegalText::privacy($site),
+                                'legal_imprint' => LegalText::imprint($site),
+                            ];
+                        })
+                        ->form([
+                            Forms\Components\TextInput::make('legal_copyright')
+                                ->label('Copyright line')
+                                ->helperText('Shown at the foot of every page after the year.')
+                                ->maxLength(255),
+
+                            Forms\Components\Textarea::make('legal_privacy')
+                                ->label('Privacy')
+                                ->helperText('Plain text. A blank line starts a new paragraph.')
+                                ->rows(12),
+
+                            Forms\Components\Textarea::make('legal_imprint')
+                                ->label('Legal notice')
+                                ->helperText('Who is behind the site, and who is responsible for what.')
+                                ->rows(12),
+                        ])
+                        ->action(function (?Listing $record, array $data): void {
+                            $site = $record === null ? null : self::siteFor($record);
+
+                            if ($site === null) {
+                                return;
+                            }
+
+                            $site->fill([
+                                'legal_copyright' => $data['legal_copyright'] ?? null,
+                                'legal_privacy' => $data['legal_privacy'] ?? null,
+                                'legal_imprint' => $data['legal_imprint'] ?? null,
+                            ])->save();
+
+                            Notification::make()->title('Saved')->success()->send();
+                        }),
+
                     Action::make('build_website')
                         ->label(fn (?Listing $record): string => $record !== null && self::siteFor($record) !== null
                             ? 'Rebuild from this listing'
@@ -106,7 +177,25 @@ class WebsiteTab
                             ? 'It stops being indexable and goes back to being a draft.'
                             : 'It becomes indexable by search engines under this business\'s name. '
                                 .'Only do this once they have seen it and agreed.')
-                        ->action(fn (?Listing $record) => $record === null ? null : self::togglePublished($record)),
+                        // Publishing is the moment somebody's name goes on this,
+                        // so it is also the moment the legal pages and our own
+                        // terms have to have been agreed to. Recorded rather
+                        // than assumed: who confirmed, and when.
+                        ->form(fn (?Listing $record): array => $record !== null && self::siteFor($record)?->isPublished() === true
+                            ? []
+                            : [
+                                Forms\Components\Checkbox::make('terms')
+                                    ->label(fn (): string => 'The business has seen the site and its legal pages, and accepts the NamibWay website terms'
+                                        .(LegalText::termsUrl() === null ? '.' : ' ('.LegalText::termsUrl().').'))
+                                    ->required()
+                                    ->accepted(),
+
+                                Forms\Components\TextInput::make('confirmed_by')
+                                    ->label('Who confirmed')
+                                    ->helperText('The person at the business who agreed — a name is enough.')
+                                    ->maxLength(255),
+                            ])
+                        ->action(fn (?Listing $record, array $data) => $record === null ? null : self::togglePublished($record, $data)),
 
                     Action::make('open_website')
                         ->label('Open')
@@ -119,7 +208,10 @@ class WebsiteTab
             ]);
     }
 
-    private static function togglePublished(Listing $listing): void
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private static function togglePublished(Listing $listing, array $data = []): void
     {
         $site = self::siteFor($listing);
 
@@ -133,6 +225,17 @@ class WebsiteTab
             Notification::make()->title('Back to a draft')->success()->send();
 
             return;
+        }
+
+        // Recorded before the attempt, so a publish blocked by the gate does
+        // not lose the confirmation that was just given.
+        if ($site->terms_accepted_at === null) {
+            $confirmedBy = trim((string) ($data['confirmed_by'] ?? ''));
+
+            $site->forceFill([
+                'terms_accepted_at' => now(),
+                'terms_accepted_by' => $confirmedBy !== '' ? $confirmedBy : null,
+            ])->save();
         }
 
         try {

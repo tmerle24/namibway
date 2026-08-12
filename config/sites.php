@@ -168,4 +168,21 @@ return [
 
     'allow_google_photos_when_published' => (bool) env('SITES_ALLOW_GOOGLE_PHOTOS', true),
 
+    /*
+    |---------------------------------------------------------------------------
+    | Our own terms for the website product
+    |---------------------------------------------------------------------------
+    |
+    | Linked from the foot of every customer site, and named in the confirmation
+    | the business gives when the site is published — publishing under somebody
+    | else's name is the moment they have to have agreed to both their own legal
+    | pages and to ours.
+    |
+    | Empty until that page is written, and empty means no link. A Terms link
+    | that 404s in front of a prospective customer is worse than no link.
+    |
+    */
+
+    'terms_url' => env('SITES_TERMS_URL', ''),
+
 ];

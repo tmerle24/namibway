@@ -39,6 +39,11 @@ use Illuminate\Support\Str;
  * @property string|null $latitude
  * @property string|null $longitude
  * @property array<string, string>|null $social_links
+ * @property string|null $legal_privacy
+ * @property string|null $legal_imprint
+ * @property string|null $legal_copyright
+ * @property Carbon|null $terms_accepted_at
+ * @property string|null $terms_accepted_by
  * @property array<string, mixed>|null $imported
  */
 class Site extends Model
@@ -65,6 +70,11 @@ class Site extends Model
         'latitude',
         'longitude',
         'social_links',
+        'legal_privacy',
+        'legal_imprint',
+        'legal_copyright',
+        'terms_accepted_at',
+        'terms_accepted_by',
         'imported',
     ];
 
@@ -89,6 +99,7 @@ class Site extends Model
         'business_type' => BusinessType::class,
         'status' => SiteStatus::class,
         'published_at' => 'datetime',
+        'terms_accepted_at' => 'datetime',
         'social_links' => 'array',
         'imported' => 'array',
         'latitude' => 'decimal:7',
@@ -178,11 +189,26 @@ class Site extends Model
      */
     public function publicUrl(): string
     {
+        return $this->pageUrl();
+    }
+
+    /**
+     * The address of one page of this site — the home page when given nothing.
+     *
+     * Subpages have to go through here rather than be concatenated onto
+     * publicUrl(), because a draft is read at `?preview=<token>` and appending
+     * a path after the query string produces an address that resolves to
+     * nothing.
+     */
+    public function pageUrl(?string $pageSlug = null): string
+    {
+        $suffix = filled($pageSlug) ? '/'.ltrim((string) $pageSlug, '/') : '';
+
         if ($this->isPublished() && filled($this->host)) {
-            return 'https://'.$this->host;
+            return 'https://'.$this->host.$suffix;
         }
 
-        $path = '/'.trim((string) config('sites.path_prefix', '_sites'), '/').'/'.$this->slug;
+        $path = '/'.trim((string) config('sites.path_prefix', '_sites'), '/').'/'.$this->slug.$suffix;
 
         return url($path).($this->isPublished() ? '' : '?preview='.$this->draft_token);
     }

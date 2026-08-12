@@ -659,6 +659,56 @@ Decisions worth knowing before the next slice:
   partner's connector rather than our calendar. The block quotes and then hands over to
   namibway.com.
 
+### Added 2026-08-12 — the enquiry form, the legal foot, the burger
+
+Three things the sites were sold as having and did not.
+
+- **The enquiry form** (`App\Sites\Blocks\EnquiryBlock`, `SiteEnquiryController`). A
+  marketing page with no way to write to the business is missing the only thing the
+  visitor came for. It creates the same `Inquiry` the travel platform creates, on the
+  listing the site was generated from — so the partner gets the mail with the signed
+  confirm and decline links and the guest gets an answer either way, through a pipeline
+  that already worked. An accommodation is asked for an arrival and a departure; an
+  activity or a restaurant for a date and a **time**, and never a departure. There is no
+  column for a time, so it rides in the free-text `travel_dates` beside the date.
+
+  Neither the account requirement nor `ActiveRequestGate` applies here, deliberately.
+  The gate stops one traveller putting the same speculative request to twenty lodges;
+  somebody writing to the single business whose site they are reading is not that, and a
+  registration wall would lose the enquiry. A rate limit and a honeypot are the
+  proportionate guards, and a filled honeypot is answered exactly like a success.
+
+  Two consequences of these pages having no session: `SubstituteBindings` is named on
+  the route explicitly (the `sites` group is empty on purpose, and without it
+  `{site:slug}` arrives as a string), and `withErrors()` has nowhere to flash to, so the
+  outcome rides in the query string — with the referer rebuilt rather than concatenated,
+  since a draft is read at `?preview=` and appending to that loses the token.
+
+- **Privacy, the legal notice and the copyright line** (`App\Sites\LegalText`, columns
+  on `sites`, rendered at `/privacy` and `/legal`). We write the first version, the
+  business owns and edits all three from the Website tab, and confirms them when the
+  site is published — which is also when they accept our website terms
+  (`terms_accepted_at` / `terms_accepted_by`, with the terms URL in `config/sites.php`,
+  empty until that page exists, because a Terms link that 404s in front of a prospect is
+  worse than no link).
+
+  This does not overturn the rule that the system writes no legal wording. What is
+  generated is a *factual description of how this website works* — what the form
+  collects, where it goes, that there is no tracking — which we know because we built
+  it. Everything about the business itself comes off the record, so a blank address
+  produces a shorter page rather than an invented one. The text is escaped and given its
+  line breaks back, never rendered as markup: a paste out of a word processor must not
+  be able to put a script on the customer's own site.
+
+- **The mobile menu.** One array renders twice — the bar and the panel behind the burger
+  — so a link can never be in one and missing from the other. Both the button and the
+  panel arrive `hidden` and the page's own script unhides the button, so a browser with
+  scripting off gets no control that cannot work. Highlights is in the menu now.
+
+Still to do here: the same three legal fields in the **partner** panel (they are in the
+admin's Website tab today), and the confirm-by-email path — the owner accepting from the
+mail rather than us ticking the box for them.
+
 ### Next up, in the order it was asked for
 
 - **The custom domain, entered in the admin, and nginx following by itself.**

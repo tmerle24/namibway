@@ -33,24 +33,6 @@
             </div>
         </div>
 
-        {{-- Slots, not text. The system frames the legal foot and fills it with
-             the owner's own particulars; it writes no legal wording, because
-             generated wording that reads like advice is advice with nobody
-             behind it. See WEBSITE_BUILDER.md §5c. --}}
-        <div class="foot__legal">
-            <span>&copy; {{ now()->year }} {{ ($data['legal_name'] ?? null) ?: $site->name }}</span>
-
-            @if (filled($data['registration'] ?? null))
-                <span>{{ $data['registration'] }}</span>
-            @endif
-
-            @if (filled($data['responsible_person'] ?? null))
-                <span>Responsible: {{ $data['responsible_person'] }}</span>
-            @endif
-
-            @foreach ($data['links'] ?? [] as $link)
-                <a href="{{ SafeLink::href($link['href']) }}">{{ $link['label'] }}</a>
-            @endforeach
-        </div>
+        @include('sites.partials.legal-foot')
     </div>
 </footer>

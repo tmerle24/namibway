@@ -7,6 +7,7 @@ use App\Models\SiteBlock;
 use App\Models\SiteImage;
 use App\Models\SitePage;
 use App\Sites\BlockRegistry;
+use App\Sites\LegalText;
 use App\Sites\Rendering\BookingPanel;
 use App\Sites\Rendering\BookingPanelData;
 use Illuminate\Http\Request;
@@ -71,6 +72,14 @@ class SiteController
             )
             ->first();
 
+        // Privacy and the legal notice are not made of blocks. They are one
+        // body of text the business owns and edits, so they are rendered from
+        // the site record rather than being pages somebody could delete and
+        // leave the footer pointing at nothing.
+        if ($page === null && LegalText::isLegalPage($pageSlug)) {
+            return $this->legal($site, $pageSlug);
+        }
+
         abort_if($page === null, 404);
 
         $stored = $page->renderableBlocks()->get()
@@ -106,6 +115,25 @@ class SiteController
             // under their name. Belt and braces with the token check above:
             // nothing indexes what it cannot reach, but a link pasted into a
             // chat thread is exactly how a URL reaches a crawler.
+            $response->header('X-Robots-Tag', 'noindex, nofollow');
+        }
+
+        return $response;
+    }
+
+    /**
+     * Privacy or the legal notice — one heading, one body, the same furniture.
+     */
+    private function legal(Site $site, string $slug): Response
+    {
+        $response = response()->view('sites.legal', [
+            'site' => $site,
+            'accent' => $this->accent($site),
+            'title' => LegalText::pages()[$slug],
+            'body' => $slug === 'privacy' ? LegalText::privacy($site) : LegalText::imprint($site),
+        ]);
+
+        if (! $site->isPublished()) {
             $response->header('X-Robots-Tag', 'noindex, nofollow');
         }
 
@@ -216,6 +244,9 @@ class SiteController
     {
         abort_unless($site->isPublished() && filled($site->host), 404);
 
+        // The legal pages are deliberately absent: they carry noindex, and a
+        // sitemap that offers a crawler a page it is then told to ignore is
+        // just a contradiction in two files.
         $urls = $site->pages()
             ->where('locale', $site->default_locale)
             ->orderBy('sort')
