@@ -3,6 +3,7 @@
 namespace App\Sites;
 
 use App\Models\Site;
+use App\Models\WebsiteTerms;
 
 /**
  * The first version of a site's Privacy, Legal and copyright text.
@@ -140,10 +141,23 @@ class LegalText
      * Terms link that 404s in front of a prospective customer is worse than no
      * link at all.
      */
+    /**
+     * Our own terms, or null while there are none to point at.
+     *
+     * Config first, so a version hosted somewhere else can be named without a
+     * deploy; otherwise the page this application serves, and only once a
+     * version has actually been published. Null is a real answer that every
+     * caller handles — a Terms link that 404s in front of a prospective
+     * customer is worse than no link at all.
+     */
     public static function termsUrl(): ?string
     {
         $url = trim((string) config('sites.terms_url', ''));
 
-        return $url === '' ? null : $url;
+        if ($url !== '') {
+            return $url;
+        }
+
+        return WebsiteTerms::current() === null ? null : route('website.terms');
     }
 }

@@ -60,6 +60,7 @@ use Illuminate\Support\Str;
  * @property string|null $legal_copyright
  * @property Carbon|null $terms_accepted_at
  * @property string|null $terms_accepted_by
+ * @property string|null $terms_version
  * @property array<string, mixed>|null $imported
  */
 class Site extends Model
@@ -104,6 +105,7 @@ class Site extends Model
         'legal_copyright',
         'terms_accepted_at',
         'terms_accepted_by',
+        'terms_version',
         'imported',
     ];
 

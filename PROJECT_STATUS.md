@@ -1291,6 +1291,41 @@ reviewing it to a 404.
 
 The sitemap needed nothing: it already walked every page of the site's default locale.
 
+### Built 2026-08-12 — our own terms, and the business confirming them
+
+Two halves of one thing. `config('sites.terms_url')` was empty, so the foot of every
+customer site and the publish confirmation both linked to nothing; and the confirmation was
+ticked by us on the business's behalf, which records what we were told rather than what they
+did.
+
+- **The terms are versions in a table** (`website_terms`, edited in Settings → Website
+  Terms), not a settings row and not a config string. A customer's acceptance is recorded
+  against a moment, and editing one text over and over would make every past acceptance
+  unanswerable — so `sites.terms_version` now stores which text was agreed, and an old
+  version stays readable. Publishing is what makes a version the one customers are shown;
+  an unpublished row is a draft.
+- **The first draft is written in-house and starts unpublished** (`App\Sites\WebsiteTermsText`).
+  It is a scaffold for a lawyer, not a reviewed contract, and it says so in the panel in
+  front of whoever edits it — and deliberately **not** on the public page, where terms
+  announcing their own uncertainty would be useless and alarming at once. Every clause
+  describes how the product actually works today, which is the part an outside lawyer cannot
+  know and the part that takes longest to explain. It follows decisions already recorded
+  here: the customer owns and answers for the content, we answer for hosting and technology,
+  the content leaves with them, and a booking is between the guest and the business.
+- **The business confirms from an email** (`SiteTermsConfirmation` → a signed link →
+  `SiteTermsController`). The page shows the site, the privacy and legal notices, and our
+  terms where one is published; confirming records who and when and against which version,
+  and publishes the site. The GET only shows and the POST acts, because a mail client that
+  prefetches links must not be able to publish somebody's website by opening the message.
+  A publish the gate refuses does not lose the confirmation — it is recorded first and the
+  failure is reported to us, not explained to the owner.
+- Plain Blade rather than Inertia for both public pages: they are reached from a customer
+  site's footer or from an email by somebody who may never have seen the platform, and a
+  JavaScript bundle adds nothing to a page whose whole job is to be read.
+
+The checkbox on the publish action stays for the case it was written for — somebody
+confirming on the telephone while we are on the call.
+
 ### Built 2026-08-13 — book, call, WhatsApp: the three action buttons
 
 The booking link was the last item in the menu, which on a phone put the one thing the
@@ -1325,57 +1360,49 @@ What is worth knowing later:
   in the same stylesheet, and at equal specificity the later rule wins — so the selector is
   deliberately `.nav .nav__cta`.
 
+### Built 2026-08-13 — the subscription, and a button to order one
+
+The create-website button in the partner panel had been switched off since the day it was
+written, with a tooltip saying to talk to us. That is a dead end on a screen: it tells
+somebody the product exists and gives them nothing to press. Now there is an **Order a
+website** button beside it, and the lock opens by itself when the subscription is active.
+
+- **An order is a request, not a purchase.** There is no payment provider for this market,
+  billing runs by invoice, and a person at NamibWay decides they are a customer. So ordering
+  creates a `requested` subscription, mails the team, and says plainly to the owner that
+  nothing has been charged.
+- **Four states and no more** (`SubscriptionStatus`): requested, active, suspended,
+  cancelled. Only *active* entitles anything. Suspending takes the entitlement away and
+  leaves the website exactly as it is — the content is theirs, and holding it hostage over
+  an invoice is not the product.
+- **Nothing in it names a price, a currency or a gateway**, and a test asserts that of the
+  columns. The price is a property of the offer and not of one customer; a column here would
+  be a per-customer price nobody decided to have, and the first discount typed into it
+  becomes a commitment nobody remembers making. Whatever a provider needs later is its own
+  table, keyed to this one.
+- **One subscription per partner**, as a unique index rather than as care: the fee buys the
+  business a website, a partner with two lodges is one customer, and a second row would make
+  "are they entitled?" a question with two answers. Ordering twice returns the same row.
+- **The check is behind the button as well as on it.** A partner reaches the build action
+  through a Livewire call from their own browser, and a disabled attribute is something the
+  browser was asked to render rather than something it can be held to. The admin is
+  deliberately not subject to it — we build drafts for prospects who have subscribed to
+  nothing, which is how the product is sold.
+- **`activated_at` is written once.** A subscription switched back on is the same customer,
+  and the date they became one does not move.
+
+Billing is still a person reading Settings → Website Subscriptions, invoicing the new ones
+and pressing Activate. That is the decision this was built against: the state machine now,
+the collection behind it once a provider for this market exists.
 
 ### Next up, in the order it was asked for
 
-- **Our website terms, and the business confirming from the mail.**
-  `config('sites.terms_url')` is empty, so the foot of every site and the publish
-  confirmation both link to nothing; the page gets written, and maintained in the admin
-  rather than in a config string. And the confirmation is ticked by us on the business's
-  behalf today — `terms_accepted_by` is typed into a box in our panel, which records what
-  we were told rather than what they did. The business confirms its own legal pages and
-  our terms through a signed link in a mail, the pattern `routes/partner.php` already uses
-  for confirm and decline.
-
-- ~~**The custom domain, entered in the admin, and nginx following by itself.**~~
-  **Built 2026-08-12.** The shape below is what was built, unchanged: an admin field
-  with copy-and-paste DNS instructions (`EditCustomDomainAction`), a five-minute
-  `sites:check-domains` that only ever resolves an A record and writes down what it saw,
-  `sites:pending-certificates` as the read-only handover, and a root-side reconciler on a
-  systemd timer that issues the certificate, writes the vhost atomically and reports back
-  through `sites:domain-live`. `DEPLOYMENT.md` → "Custom domains" carries the script.
-
-  Three decisions inside it worth not relitigating: **both `@` and `www` must resolve**
-  before a certificate is attempted, because one covering half of what the customer hands
-  out fails in front of a guest instead of here; **a live domain is never re-checked**, so
-  a momentary DNS failure cannot take a website off the air that nothing in the
-  application could put back; and **the subdomain is permanent**, because it is what the
-  draft was reviewed on and what still answers when somebody lets their registration
-  lapse.
-
-  The original note, kept because the reasoning is the reason for the split: A site's own domain is one field away
-  today (`sites.host`), but a wildcard certificate does not cover somebody's own
-  `.com.na` — each one needs its own certificate and its own `server_name`.
-
-  The shape when it gets built: an admin field for the domain, and a **reconciler
-  outside the application** — a root-side script on a systemd timer that asks the app
-  which hosts are still without a certificate, checks each one actually points at us,
-  issues it, writes the vhost, reloads nginx. HTTP-01 is enough there, since it is the
-  customer's own domain resolving to our server; no OVH API needed, unlike the wildcard.
-
-  **PHP must not be the thing that runs certbot.** A queue worker allowed to `sudo` and
-  to write into `/etc/nginx` is a web process with root, and the 2026-08-11 outage in
-  `CLAUDE.md` is a fair illustration of what one bad nginx file costs on this box. The
-  app's half of this is read-only: a command that lists the pending hosts.
-
-  For the customer it is still click-free, just not instant — DNS has to propagate, and
-  the site runs on its subdomain in the meantime.
-
-- **The subscription gates the owner's button.** The create-website action exists in the
-  partner panel and is switched off (`CreateWebsiteAction::locked()`), because nothing
-  yet knows whether a customer is paying. When the state machine lands, the entitlement
-  check goes *behind* the action as well as on it — a greyed-out button is what an owner
-  should see, and not what the platform should rely on.
+- **Collecting the money.** A provider that onboards a Namibian entity and settles in NAD,
+  plugged in behind the subscription rather than into it. Until then a person invoices and
+  presses Activate, which is what the state machine was built to allow.
+- **Multilingual sites** — EN, DE, NL, FR, ES. `site_pages.locale` is the foundation and not
+  the feature: there is no switcher, no per-locale routing, and the renderer reads
+  `default_locale` and nothing else.
 
 ### Decided 2026-08-12 — the answers slice 2 builds against
 
