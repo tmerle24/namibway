@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Sites;
 
+use App\Mail\EnquiryCopy;
 use App\Models\Site;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use Throwable;
 
 /**
  * An enquiry sent from a customer's own website.
@@ -47,7 +50,7 @@ class SiteEnquiryController
     {
         $listing = $site->sourceListing;
 
-        abort_if($listing === null || ! $listing->accepts_inquiries, 404);
+        abort_if($listing === null, 404);
 
         // A filled honeypot is answered exactly like a success, so the machine
         // that filled it learns nothing and stops retrying. Nothing is written.
@@ -74,7 +77,7 @@ class SiteEnquiryController
         /** @var array<string, mixed> $validated */
         $validated = $validator->validated();
 
-        $listing->inquiries()->create([
+        $inquiry = $listing->inquiries()->create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
@@ -91,6 +94,22 @@ class SiteEnquiryController
             'children' => $validated['children'] ?? 0,
             'message' => $validated['message'] ?? null,
         ]);
+
+        // The visitor's own receipt, at once. The business has not answered yet,
+        // so this is deliberately not a confirmation — but somebody who filled
+        // in a form on a small lodge's website should not be left with nothing
+        // to show for it, and nothing to chase.
+        //
+        // Guarded, because the enquiry is already written by this point: a queue
+        // that is down must not turn a recorded enquiry into an error page and
+        // send the visitor away thinking it failed. Found the honest way — the
+        // local Redis was off and this returned a 500 over a row that had
+        // committed perfectly well.
+        try {
+            Mail::to($validated['email'])->send(new EnquiryCopy($inquiry));
+        } catch (Throwable $e) {
+            report($e);
+        }
 
         // Back to the form, which then says thank you. A redirect rather than a
         // rendered response so a refresh cannot send it twice.
