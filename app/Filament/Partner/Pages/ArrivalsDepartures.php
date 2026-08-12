@@ -54,9 +54,22 @@ class ArrivalsDepartures extends Page implements HasForms
     #[Url(as: 'date')]
     public ?string $date = null;
 
+    /**
+     * The desk's own screen, so it belongs to the partners who bought the
+     * desk — see App\Enums\OperatingMode.
+     *
+     * A booking-only property is not missing information here: its calendar
+     * shows the same stays. What it does not get is the counter workflow, and
+     * a board built to be printed and worked down at a counter is exactly
+     * that.
+     *
+     * canAccess() rather than a navigation flag, so the URL is closed too.
+     */
     public static function canAccess(): bool
     {
-        return filled(auth()->user()?->partner_id);
+        $user = auth()->user();
+
+        return filled($user?->partner_id) && ($user?->partner?->runsFrontDesk() ?? false);
     }
 
     /** Three wide tables and a print target — see OccupancyCalendar. */

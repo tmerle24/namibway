@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Enums\ConnectorType;
+use App\Enums\OperatingMode;
 use App\Enums\SettlementModel;
 use App\Filament\Resources\PartnerResource\Pages;
 use App\Filament\Support\MessagesColumn;
@@ -107,6 +108,20 @@ class PartnerResource extends Resource
                                         (bool) $get('booking_enabled') => 'Live — guests receive their confirmations and this partner receives the booking notices.',
                                         default => 'Not live — every confirmation goes to the NamibWay team mailbox, tagged with the property name.',
                                     }),
+
+                                Forms\Components\Select::make('operating_mode')
+                                    ->label('What they bought')
+                                    ->options(collect(OperatingMode::cases())
+                                        ->mapWithKeys(fn (OperatingMode $mode) => [$mode->value => $mode->label()])
+                                        ->all())
+                                    ->default(OperatingMode::Full->value)
+                                    ->required()
+                                    ->live()
+                                    ->columnSpanFull()
+                                    // Ours to set, like the live switch above:
+                                    // it is what the partner is paying for.
+                                    ->helperText(fn (Get $get): string => (OperatingMode::tryFrom((string) $get('operating_mode')) ?? OperatingMode::Full)->description()
+                                        .' Changing this hides or shows screens and changes nothing that is stored — a partner can be upgraded at any time.'),
 
                                 Forms\Components\Toggle::make('booking_enabled')
                                     ->label('Bookings are live')

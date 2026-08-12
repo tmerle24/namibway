@@ -1,14 +1,20 @@
 # Money: folio, payments, invoice, and who collects
 
-Commissioned 2026-08-12. Nothing in this document is built yet.
+Commissioned 2026-08-12. **Built 2026-08-12** — slices 1 to 6 of
+`PAYMENTS_BUILD.md`; only step 6 of §6 below (payouts and partner statements)
+is outstanding, and it is the one that needs real money to have moved before it
+can be tested at all.
+
+Read the rest of this document as the design it still is. Where the build
+departed from it or answered something it left open, the section says so.
 
 This is the companion to `BOOKING_SYSTEM.md`, which deliberately excluded folio
 and payments (§7) while the calendar was being built. That exclusion is now
 lifted. A booking system that cannot say whether a stay has been paid is not a
-booking system, and today's cannot: the reservation carries `total_amount`,
-`charges_amount`, `discount_amount` and `currency` — the whole debit side — and
-there is no credit side at all. No payment record, no invoice, no invoice
-number.
+booking system, and the one described here could not: the reservation carried
+`total_amount`, `charges_amount`, `discount_amount` and `currency` — the whole
+debit side — and there was no credit side at all. No payment record, no
+invoice, no invoice number. All three exist now.
 
 Read `BOOKING_SYSTEM.md` first for the calendar and the reservation; this
 document starts where a confirmed stay does.
@@ -302,6 +308,19 @@ Realities to design around rather than discover:
   checking with the provider.** What matters for the code is that this list
   exists at all — a provider abstraction whose only implementation is one
   gateway will not survive contact with it.
+- **Paystack, checked 2026-08-12 and implemented anyway.** It was raised as the
+  likely choice, so it is worth writing down what it can and cannot do.
+  Paystack's merchant countries are Nigeria, Ghana, Kenya, South Africa and
+  Côte d'Ivoire, with Egypt and Rwanda more recent — **Namibia is not among
+  them**, so a Namibian entity cannot open an account. This is the same wall
+  Stripe presented, for the same reason, and it does not go away by asking
+  differently. The route that *does* work is a **South African entity settling
+  in ZAR**; NAD is pegged 1:1 to ZAR under the Common Monetary Area, so a
+  Namibian folio charged in rand is an identity rather than a conversion
+  anybody has to trust. Whether to have such an entity is a decision about the
+  company. `PaystackProvider` exists so that decision is cheap either way —
+  it is one class behind the interface, and the demo provider remains the
+  default until a real merchant account exists.
 - **Therefore build against a `DemoProvider` first, and mean it.** The
   requirement (2026-08-12) is that the whole flow works end to end in a demo
   before any real provider is chosen: authorise, capture, fail, refund, and the
@@ -329,30 +348,57 @@ The order matters: each step is useful on its own, and none of them commits us t
 a settlement model we have not chosen yet. `PAYMENTS_BUILD.md` turns this into a
 brief that can be worked through slice by slice.
 
-1. **Folio + payments + balance.** Record what is owed and what was paid, by any
+1. ✅ **Folio + payments + balance.** Record what is owed and what was paid, by any
    method, from the partner panel. Immediately useful with no PSP at all, because
    a desk takes cash today. This is also the smallest thing that answers the
    complaint that started this document.
-2. **Invoice.** Numbered, immutable, VAT-correct, PDF, with a credit note for
+2. ✅ **Invoice.** Numbered, immutable, VAT-correct, PDF, with a credit note for
    corrections.
-3. **The two rates and where they are set** — §2a's resolution chain, the
+3. ✅ **The two rates and where they are set** — §2a's resolution chain, the
    platform settings page, the partner and listing overrides, and both rates
    frozen onto the reservation when it is taken.
-4. **Settlement model per partner** — the deposit share picks it, the three
+4. ✅ **Settlement model per partner** — the deposit share picks it, the three
    strategies, the commission earned as a stored result, and the 0 % unlock with
    its consequence shown where it is chosen.
-5. **The provider abstraction and a demo provider that fully works** — authorise,
+5. ✅ **The provider abstraction and a demo provider that fully works** — authorise,
    capture, fail, refund, asynchronous callback, all simulated, wired into the
-   demo tenant so the flow can be shown before a real gateway exists.
-6. **Payouts and partner statements** — what models B and C owe the partner, and
+   demo tenant so the flow can be shown before a real gateway exists. Paystack
+   is implemented alongside it; the demo stays the default.
+6. ⬜ **Payouts and partner statements** — what models B and C owe the partner, and
    what model A claims from them. Last, because it is the only part that needs
-   real money to have moved before it can be tested at all.
+   real money to have moved before it can be tested at all. `SettlementBalance`
+   already answers *what* is owed on one stay and in which direction; what is
+   missing is the run that aggregates it, the statement a partner reads, and the
+   record of a transfer having happened.
 
-An honest note on sequencing: steps 1 through 5 are ordinary work and can be done
-now — the demo provider is precisely what makes step 5 possible without a bank
-account. Step 6, and swapping the demo provider for a real one, need a real
+An honest note on sequencing: steps 1 through 5 are ordinary work and were done
+in a day — the demo provider is precisely what makes step 5 possible without a
+bank account. Step 6, and swapping the demo provider for a real one, need a real
 entity, a real merchant account and a real partner, and no amount of code
 substitutes for them.
+
+## What the build decided that this document left open
+
+Recorded here rather than only in commit messages, because these are the answers
+somebody will look for next:
+
+- **A declined payment produces no `payments` row.** `payment_intents` is money
+  we asked for; `payments` is money that moved. `PaymentStatus::Failed` is for
+  the other case — an EFT recorded as received that the bank did not honour.
+- **A `recorded` payment counts towards the balance**; only a `failed` one stops
+  counting. A desk handed cash is not waiting for a bank.
+- **A stay nobody has priced yet has no balance**, not a zero one, and money
+  against it reads as part-paid — which is what puts it on the unpaid list.
+- **No stored invoice PDF.** The frozen line snapshot is the document; the PDF is
+  a derivative rendered on demand through an authorised route. An invoice names a
+  guest and says what they paid, and the media bucket is public.
+- **Commission is earned at confirmation**, reversed by a plain cancellation and
+  kept by a late one or a no-show. This is a *default*, not the answer to
+  `PAYMENTS_BUILD.md` § D — see `App\Services\Payments\CommissionPolicy`, which
+  exists so the answer changes one file.
+- **A NAD folio is charged in ZAR** where the gateway cannot settle NAD, at the
+  Common Monetary Area peg, with all three currency facts stored on the intent so
+  a refund returns the money that was taken.
 
 ---
 

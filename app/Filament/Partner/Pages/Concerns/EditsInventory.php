@@ -624,6 +624,14 @@ trait EditsInventory
             return [];
         }
 
+        // Due in, in house, checked out: the front desk's own vocabulary, and
+        // therefore the front desk's own screens. A booking-only property
+        // still has every one of these states in the database — the mode hides
+        // buttons, it never changes what is stored (App\Enums\OperatingMode).
+        if (! (auth()->user()?->partner?->runsFrontDesk() ?? false)) {
+            return [];
+        }
+
         return InventoryWriter::allowedTransitions()[$reservation->status->value] ?? [];
     }
 
@@ -633,6 +641,12 @@ trait EditsInventory
         $status = StayStatus::tryFrom($to);
 
         if ($reservation === null || $status === null) {
+            return;
+        }
+
+        // The same gate as the buttons, on the action itself. A hidden button
+        // is a hidden button; this is the rule.
+        if (! (auth()->user()?->partner?->runsFrontDesk() ?? false)) {
             return;
         }
 

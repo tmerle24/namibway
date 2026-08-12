@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ConnectorType;
+use App\Enums\OperatingMode;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -30,6 +31,7 @@ use Spatie\Translatable\HasTranslations;
  * @property Carbon|null $connector_verified_at
  * @property bool $is_demo
  * @property bool $booking_enabled
+ * @property OperatingMode|null $operating_mode
  * @property bool $booking_demo_mode
  * @property string|null $booking_email
  * @property string|null $booking_demo_email
@@ -65,6 +67,7 @@ class Partner extends Model
         'connector_verified_at',
         'is_demo',
         'booking_enabled',
+        'operating_mode',
         'booking_demo_mode',
         'booking_email',
         'booking_demo_email',
@@ -83,6 +86,7 @@ class Partner extends Model
         'connector_verified_at' => 'datetime',
         'is_demo' => 'boolean',
         'booking_enabled' => 'boolean',
+        'operating_mode' => OperatingMode::class,
         'booking_demo_mode' => 'boolean',
         'commission_rate' => 'float',
         'deposit_rate' => 'float',
@@ -115,6 +119,23 @@ class Partner extends Model
     public function demoSourceListing(): BelongsTo
     {
         return $this->belongsTo(Listing::class, 'demo_source_listing_id');
+    }
+
+    /**
+     * Whether this partner's staff check guests in and out on our screens.
+     *
+     * The *only* thing `operating_mode` may be read for, and only from the
+     * panel. It hides screens; it never changes what is stored — see the
+     * enum, and OperatingModeTest, which enforces both halves.
+     */
+    public function runsFrontDesk(): bool
+    {
+        // Falls back to the column's own default rather than to false. A
+        // model built in memory and not yet reloaded has no value here, and
+        // answering "no desk" for it would hide a screen from a partner who
+        // has one — a wrong answer in the direction that looks like a bug
+        // report from a customer.
+        return ($this->operating_mode ?? OperatingMode::Full)->runsFrontDesk();
     }
 
     /**

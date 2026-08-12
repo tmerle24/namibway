@@ -626,6 +626,33 @@ rather than Inertia, because a guest arrives at them from an email or a gateway 
 and booting the whole traveller app to say "your deposit is paid" would be slower and tie a
 page a *payment provider* redirects to to the front-end build.
 
+### 2026-08-12 — booking system or PMS, chosen at setup (money, slice 6 of 6)
+
+`Partner.operating_mode` — `booking_only` or `full` — set when the account is created and
+changeable by us in `/admin`. A booking-only property keeps rates, availability, bookings,
+the calendar, the folio and the unpaid list; what it does not get is the **desk**: the
+arrivals board and the check-in / check-out buttons, which are the only two front-desk
+features that exist today.
+
+**The rule that keeps this from being a second product**: the mode decides what a partner
+*sees*, never how anything is recorded. Three tests hold it — a booking-only partner sees
+no desk navigation and cannot move a stay even by calling the action directly; a full one
+can; and the load-bearing one, that a **booking-only partner still has a folio, payment
+records and an invoice**. Plus a source scan asserting that nothing under `app/Services`
+reads `operating_mode` at all. The moment a service does, upgrading a partner becomes a
+migration and two partners on one server stop being comparable — the "two systems" problem
+this workstream exists to avoid, reintroduced from the inside.
+
+Defaulting to `full` is deliberate: every partner that exists today already has the
+arrivals board, and a migration that silently took a working screen away would be a product
+change delivered as a schema change.
+
+**With this, `PAYMENTS_BUILD.md` is worked through.** Step 6 of `PAYMENTS.md` §6 — payouts
+and partner statements — is the only piece left, and it is the one that needs real money to
+have moved before it can be tested. `SettlementBalance` already says what is owed on one
+stay and in which direction; what is missing is the run that aggregates it, the statement a
+partner reads, and the record of a transfer having happened.
+
 ### Parked on 2026-08-11 — and built on 2026-08-11 and 2026-08-12
 
 > **Superseded, kept for the reasoning.** Everything in this section was written as
