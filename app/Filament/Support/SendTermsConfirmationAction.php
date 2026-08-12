@@ -28,7 +28,7 @@ class SendTermsConfirmationAction
             ->color('gray')
             ->visible(fn (?Listing $record): bool => $record !== null
                 && self::siteFor($record) !== null
-                && self::siteFor($record)?->terms_accepted_at === null)
+                && self::siteFor($record)->terms_accepted_at === null)
             ->requiresConfirmation()
             ->modalHeading('Send them the website to confirm')
             ->modalDescription('They get a link to the site, the privacy and legal notices, our own '
@@ -41,7 +41,8 @@ class SendTermsConfirmationAction
                     return;
                 }
 
-                $to = $site->contact_email ?: $record?->partner?->email ?: $record?->contact_email;
+                // $record cannot be null here: $site was resolved from it above.
+                $to = $site->contact_email ?: $record->partner?->email ?: $record->contact_email;
 
                 if (blank($to)) {
                     Notification::make()
