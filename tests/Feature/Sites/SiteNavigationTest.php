@@ -163,17 +163,23 @@ class SiteNavigationTest extends TestCase
         $this->assertIsString($css);
         $this->assertStringContainsString('height: 64px; overflow: hidden;', $css);
         $this->assertStringContainsString('.hero { position: relative; margin-top: -64px;', $css);
-        // The two things that made it grow: a wrapping name and a wrapping menu.
-        $this->assertMatchesRegularExpression('/\.nav__name \{[^}]*white-space: nowrap/s', $css);
+        // A menu item breaking across two lines was half of what made it grow.
+        // The other half was the name, which is allowed to wrap now — but only
+        // inside the bar, clamped to the two lines its padding leaves room for.
         $this->assertMatchesRegularExpression('/\.nav__links a \{[^}]*white-space: nowrap/s', $css);
+        $this->assertMatchesRegularExpression('/\.nav__name \{[^}]*-webkit-line-clamp: 2/s', $css);
     }
 
-    public function test_a_long_name_is_set_smaller_rather_than_wrapping(): void
+    public function test_a_long_name_is_set_smaller_and_never_cut(): void
     {
         $short = $this->siteWith(['about' => ['heading' => 'About us', 'body' => 'Words.']]);
         $short->update(['name' => 'Dune Edge']);
 
-        $this->get($short->publicUrl())->assertSee('--brand-size: 20px', false);
+        // Mobile first: the base custom property is the phone size and the
+        // wide-screen one is raised in a media query.
+        $this->get($short->publicUrl())
+            ->assertSee('--brand-size: 20px', false)
+            ->assertSee('@media (min-width: 640px) { :root { --brand-size: 22px; } }', false);
 
         $long = Site::factory()->create(['name' => 'Ongombo West #56 Hunting Safari', 'slug' => 'long-name']);
         SitePage::factory()->create(['site_id' => $long->id, 'title' => $long->name]);
@@ -184,7 +190,36 @@ class SiteNavigationTest extends TestCase
             'sort' => 0,
         ]);
 
-        $this->get($long->publicUrl())->assertSee('--brand-size: 18px', false);
+        $this->get($long->publicUrl())
+            ->assertSee('--brand-size: 17px', false)
+            ->assertSee('@media (min-width: 640px) { :root { --brand-size: 20px; } }', false);
+    }
+
+    /**
+     * The regression this replaced: the name was one line with an ellipsis,
+     * which on a phone left about 250px for a name needing 350 — and
+     * `text-overflow` does nothing on a flex container, so it was severed
+     * mid-word with nothing to say so. "…Hunting Safari" became "…Hunting Safa".
+     */
+    public function test_the_name_wraps_inside_the_bar_rather_than_being_cut(): void
+    {
+        $site = $this->siteWith([
+            'hero' => ['headline' => 'Stay a while'],
+            'about' => ['heading' => 'About us', 'body' => 'Words.'],
+        ]);
+
+        $css = $this->get($site->publicUrl())->assertOk()->getContent();
+
+        $this->assertIsString($css);
+        // Two lines, clamped — not one line with an ellipsis.
+        $this->assertMatchesRegularExpression('/\.nav__name \{[^}]*white-space: normal/s', $css);
+        $this->assertMatchesRegularExpression('/\.nav__name \{[^}]*-webkit-line-clamp: 2/s', $css);
+        // On the declaration, not the word: the rule's own comment explains
+        // why the ellipsis went, and that comment is served with the page.
+        $this->assertStringNotContainsString('text-overflow:', $css);
+        // And the room for them: the bar's outside height is untouched, its
+        // padding is what made space.
+        $this->assertStringContainsString('height: 64px; overflow: hidden; padding: var(--s2) var(--s4);', $css);
     }
 
     /**

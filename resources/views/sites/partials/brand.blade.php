@@ -6,14 +6,14 @@
      * down to the same size in both. `$href` is where the mark points — the top
      * of this page on the site itself, back to the site from a legal page.
      *
-     * The bar has a fixed height (see the stylesheet), so the name is one line
-     * whatever happens. Its size is a custom property the stylesheet sets from
-     * App\Sites\Typography — computed from the length of the name, or whatever
-     * the business chose instead — with the ellipsis as the backstop.
+     * The bar has a fixed height (see the stylesheet), but the name is allowed
+     * to wrap inside it — up to two lines, never cut mid-word. Its size is a
+     * custom property the stylesheet sets from App\Sites\Typography: computed
+     * from the length of the name, or whatever the business chose instead.
      */
     $logo = $site->logoUrl(400);
 @endphp
-<a class="nav__name" href="{{ $href }}">
+<a class="nav__name {{ $logo ? 'nav__name--logo' : '' }}" href="{{ $href }}">
     @if ($logo)
         <img src="{{ $logo }}" alt="{{ $site->name }}" class="nav__logo">
     @else

@@ -64,22 +64,52 @@ class SiteTypographyTest extends TestCase
     }
 
     /**
-     * Calibrated against a real one: "Ongombo West #56 Hunting Safari" is 31
-     * characters and wants 18px — smaller and it disappears into the
-     * photograph, larger and it crowds a six-item menu.
+     * Two numbers, not one. A phone gives the name about a quarter of the width
+     * a laptop does, so the size that keeps it readable there is visibly
+     * undersized here.
      */
-    public function test_the_name_is_sized_by_how_long_it_is(): void
+    public function test_the_name_is_sized_by_how_long_it_is_and_by_the_screen(): void
     {
-        $this->assertSame(20, Typography::brandSize(new Site(['name' => 'Dune Edge'])));
-        $this->assertSame(18, Typography::brandSize(new Site(['name' => 'Ongombo West #56 Hunting Safari'])));
-        $this->assertSame(16, Typography::brandSize(new Site(['name' => str_repeat('a', 40)])));
+        $short = new Site(['name' => 'Dune Edge']);
+        $long = new Site(['name' => 'Ongombo West #56 Hunting Safari']);
+
+        $this->assertSame(22, Typography::brandSize($short));
+        $this->assertSame(20, Typography::brandSizeMobile($short));
+
+        $this->assertSame(20, Typography::brandSize($long));
+        $this->assertSame(17, Typography::brandSizeMobile($long));
+
+        $this->assertLessThan(
+            Typography::brandSize($long),
+            Typography::brandSizeMobile($long),
+            'the phone size should never exceed the wide-screen one'
+        );
     }
 
     public function test_a_chosen_size_wins_over_the_computed_one(): void
     {
         $site = $this->site(['name' => 'Ongombo West #56 Hunting Safari', 'brand_size' => 24]);
 
-        $this->get($site->publicUrl())->assertSee('--brand-size: 24px', false);
+        $this->get($site->publicUrl())
+            ->assertSee('@media (min-width: 640px) { :root { --brand-size: 24px; } }', false);
+    }
+
+    /**
+     * Somebody who chose 24 for a laptop did not choose 24 for a phone, so an
+     * explicit wide-screen size steps down rather than being taken literally —
+     * until they say otherwise.
+     */
+    public function test_a_chosen_wide_size_steps_down_on_a_phone_unless_one_is_given(): void
+    {
+        $stepped = new Site(['name' => 'Dune Edge', 'brand_size' => 24]);
+        $this->assertSame(22, Typography::brandSizeMobile($stepped));
+
+        $explicit = new Site(['name' => 'Dune Edge', 'brand_size' => 24, 'brand_size_mobile' => 14]);
+        $this->assertSame(14, Typography::brandSizeMobile($explicit));
+
+        // And it never falls below legibility, however small the choice above.
+        $tiny = new Site(['name' => 'Dune Edge', 'brand_size' => 14]);
+        $this->assertSame(14, Typography::brandSizeMobile($tiny));
     }
 
     /**

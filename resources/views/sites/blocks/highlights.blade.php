@@ -30,10 +30,12 @@
                         @endif
                     @endif
 
-                    <h3>{{ $item['title'] }}</h3>
-                    @if (filled($item['text'] ?? null))
-                        <p>{{ $item['text'] }}</p>
-                    @endif
+                    <div class="card__body">
+                        <h3>{{ $item['title'] }}</h3>
+                        @if (filled($item['text'] ?? null))
+                            <p>{{ $item['text'] }}</p>
+                        @endif
+                    </div>
                 </div>
             @endforeach
         </div>
