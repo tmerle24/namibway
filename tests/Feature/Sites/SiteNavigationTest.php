@@ -60,7 +60,7 @@ class SiteNavigationTest extends TestCase
 
         $this->assertIsString($html);
         $this->assertStringContainsString('id="nav-burger"', $html);
-        $this->assertStringContainsString('id="nav-panel"', $html);
+        $this->assertStringContainsString('id="nav-panel" hidden', $html);
 
         // Each anchor appears twice: once in the bar, once in the panel.
         foreach (['#s1', '#s2'] as $anchor) {
@@ -134,12 +134,14 @@ class SiteNavigationTest extends TestCase
             'about' => ['heading' => 'About us', 'body' => 'A lodge on the plains.'],
         ]);
 
-        $this->get($site->publicUrl())->assertDontSee('nav__logo');
+        // Matched on the attribute, not the bare class name: the stylesheet is
+        // inline, so `nav__logo` is on every page whether or not there is one.
+        $this->get($site->publicUrl())->assertDontSee('class="nav__logo"', false);
 
         $site->update(['logo_key' => 'sites/logos/mark.png']);
 
         $this->get($site->publicUrl())
-            ->assertSee('nav__logo', false)
+            ->assertSee('class="nav__logo"', false)
             ->assertSee('alt="'.$site->name.'"', false);
     }
 
@@ -149,6 +151,9 @@ class SiteNavigationTest extends TestCase
             'hero' => ['headline' => 'Dune Edge Lodge'],
         ]);
 
-        $this->get($site->publicUrl())->assertDontSee('nav-burger');
+        // Again the attribute rather than the name: the page's own script looks
+        // the button up by id, so the string is present even where the button
+        // is not.
+        $this->get($site->publicUrl())->assertDontSee('id="nav-burger"', false);
     }
 }
