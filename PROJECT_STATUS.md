@@ -703,11 +703,26 @@ Three things the sites were sold as having and did not.
 - **The mobile menu.** One array renders twice — the bar and the panel behind the burger
   — so a link can never be in one and missing from the other. Both the button and the
   panel arrive `hidden` and the page's own script unhides the button, so a browser with
-  scripting off gets no control that cannot work. Highlights is in the menu now.
+  scripting off gets no control that cannot work. **Home** is first, and **booking is
+  held aside from the five-item cap** rather than queued with the rest: it is the thing
+  the site exists to do, so it must not be what falls off the end when a business has a
+  lot to say. Highlights is in the menu now too.
 
-Still to do here: the same three legal fields in the **partner** panel (they are in the
-admin's Website tab today), and the confirm-by-email path — the owner accepting from the
-mail rather than us ticking the box for them.
+- **The mark at the top** (`sites.logo_key`, set from either panel). One column holding a
+  bucket key, not a row in `site_images`: a logo is a property of the site, not a picture
+  a block points at, and it is the one image here that is never generated, never imported
+  and never part of the content ladder. Absent is a finished state — the name is set in
+  the site's display face instead. And over a hero the bar's name now **waits until the
+  hero has scrolled past**, because it was being set twice in the same photograph.
+
+The owner edits their own legal text and logo from the partner panel, through the same
+actions the admin uses (`EditLegalTextAction`, `EditSiteLogoAction`) — the moment the two
+copies diverge, "the customer can also edit it themselves" turns into two products with
+one price.
+
+Still to do here: the confirm-by-email path — the owner accepting from the mail rather
+than us ticking the box for them — and our own website-terms page, which
+`config('sites.terms_url')` is waiting for.
 
 ### Next up, in the order it was asked for
 
