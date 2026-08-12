@@ -17,8 +17,8 @@ use InvalidArgumentException;
  *
  * Everything that inserts into `payments` comes through here, exactly as every
  * inventory mutation comes through InventoryWriter — same rule, same two-layer
- * enforcement (PaymentWriteGuard at runtime, an architecture test for the
- * query-builder half). See PaymentWriteGuard for why.
+ * enforcement (MoneyWriteGuard at runtime, an architecture test for the
+ * query-builder half). See MoneyWriteGuard for why.
  *
  * ## Nothing is ever edited
  *
@@ -60,7 +60,7 @@ class PaymentRecorder
         }
 
         return DB::transaction(function () use ($request): Payment {
-            $payment = PaymentWriteGuard::allow(fn (): Payment => Payment::create([
+            $payment = MoneyWriteGuard::allow(fn (): Payment => Payment::create([
                 'reservation_id' => $request->reservation->id,
                 'amount' => $request->amount,
                 'currency' => $request->currency(),
@@ -117,7 +117,7 @@ class PaymentRecorder
         }
 
         return DB::transaction(function () use ($payment, $reservation, $reason, $recordedBy): Payment {
-            $reversal = PaymentWriteGuard::allow(fn (): Payment => Payment::create([
+            $reversal = MoneyWriteGuard::allow(fn (): Payment => Payment::create([
                 'reservation_id' => $reservation->id,
                 'amount' => -$payment->amount,
                 'currency' => $payment->currency,
@@ -185,7 +185,7 @@ class PaymentRecorder
         $reservation = $payment->reservation;
 
         return DB::transaction(function () use ($payment, $reservation, $to): Payment {
-            PaymentWriteGuard::allow(function () use ($payment, $to): void {
+            MoneyWriteGuard::allow(function () use ($payment, $to): void {
                 $payment->status = $to;
                 $payment->save();
             });

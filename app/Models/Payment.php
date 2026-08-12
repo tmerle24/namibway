@@ -5,7 +5,7 @@ namespace App\Models;
 use App\Enums\PaymentCollector;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
-use App\Models\Concerns\GuardsPaymentWrites;
+use App\Models\Concerns\GuardsMoneyWrites;
 use App\Support\Money;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
@@ -39,7 +39,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 class Payment extends Model
 {
-    use GuardsPaymentWrites;
+    use GuardsMoneyWrites;
 
     protected $fillable = [
         'reservation_id',

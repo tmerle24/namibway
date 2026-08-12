@@ -4,6 +4,7 @@ namespace App\Filament\Partner\Pages;
 
 use App\Enums\CalendarRange;
 use App\Filament\Partner\Pages\Concerns\EditsInventory;
+use App\Filament\Partner\Pages\Concerns\IssuesInvoices;
 use App\Filament\Partner\Pages\Concerns\RecordsPayments;
 use App\Filament\Partner\Pages\Concerns\ShowsReservationDetail;
 use App\Filament\Partner\Support\SelectedProperty;
@@ -46,6 +47,7 @@ class OccupancyCalendar extends Page implements HasForms
 {
     use EditsInventory;
     use InteractsWithForms;
+    use IssuesInvoices;
     use RecordsPayments;
     use ShowsReservationDetail;
 

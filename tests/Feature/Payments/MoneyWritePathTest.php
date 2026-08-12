@@ -5,24 +5,31 @@ namespace Tests\Feature\Payments;
 use App\Enums\PaymentCollector;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
-use App\Exceptions\Payments\DirectPaymentWriteException;
-use App\Models\Concerns\GuardsPaymentWrites;
+use App\Exceptions\Payments\DirectMoneyWriteException;
+use App\Models\Concerns\GuardsMoneyWrites;
+use App\Models\Invoice;
+use App\Models\InvoiceSequence;
 use App\Models\Payment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 /**
- * "Every payment goes through PaymentRecorder" — enforced, not merely agreed.
- * Deliberately the same two layers as InventoryWritePathTest, because it is
- * the same rule and a second shape for it would be one more thing to learn:
+ * "Money is written in one place" — enforced, not merely agreed. Deliberately
+ * the same two layers as InventoryWritePathTest, because it is the same rule
+ * and a second shape for it would be one more thing to learn:
  *
- * 1. A runtime guard on the model, which catches Eloquent saves and deletes
+ * 1. A runtime guard on the models, which catches Eloquent saves and deletes
  *    from anywhere, including a Filament action nobody has written yet.
  * 2. A source scan, because query-builder writes fire no model events and so
  *    slip past the runtime guard entirely.
+ *
+ * The invoice tables are here for a sharper reason than the payments one: the
+ * gapless numbering guarantee is a single locked transaction in InvoiceIssuer,
+ * and a second place that takes a number is a second place that can hand out
+ * one that has already been used.
  */
-class PaymentWritePathTest extends TestCase
+class MoneyWritePathTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -33,6 +40,8 @@ class PaymentWritePathTest extends TestCase
      */
     private const MONEY_TABLES = [
         'payments',
+        'invoices',
+        'invoice_sequences',
     ];
 
     /**
@@ -42,6 +51,8 @@ class PaymentWritePathTest extends TestCase
      */
     private const MONEY_MODELS = [
         Payment::class,
+        Invoice::class,
+        InvoiceSequence::class,
     ];
 
     /**
@@ -57,7 +68,7 @@ class PaymentWritePathTest extends TestCase
 
     public function test_creating_a_payment_outside_the_recorder_is_refused(): void
     {
-        $this->expectException(DirectPaymentWriteException::class);
+        $this->expectException(DirectMoneyWriteException::class);
 
         Payment::create([
             'reservation_id' => 1,
@@ -74,9 +85,9 @@ class PaymentWritePathTest extends TestCase
     {
         foreach (self::MONEY_MODELS as $model) {
             $this->assertContains(
-                GuardsPaymentWrites::class,
+                GuardsMoneyWrites::class,
                 class_uses_recursive($model),
-                "[{$model}] holds money but is not guarded — add the GuardsPaymentWrites trait."
+                "[{$model}] holds money but is not guarded — add the GuardsMoneyWrites trait."
             );
         }
     }
@@ -118,8 +129,8 @@ class PaymentWritePathTest extends TestCase
         $this->assertSame(
             [],
             $offences,
-            "Money has exactly one write path (App\\Services\\Payments\\PaymentRecorder).\n"
-            .'Add the operation there instead:'."\n - ".implode("\n - ", $offences)
+            "Money is written from App\\Services\\Payments and nowhere else.\n"
+            .'Add the operation to the writer that owns the table instead:'."\n - ".implode("\n - ", $offences)
         );
     }
 

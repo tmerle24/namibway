@@ -446,6 +446,49 @@ Outstanding column, and there is a new **Unpaid** page listing everything at the
 that is not square, soonest arrival first. A cancelled stay keeps its folio and appears
 there — a forfeited deposit is exactly the case a system without a folio gets wrong.
 
+### 2026-08-12 — the invoice (money, slice 2 of 6)
+
+**There is now a legal document, not a PDF export.** `invoices` holds it: a number,
+an issuer, a kind, and a **frozen JSON snapshot of the lines as issued**. Nothing reads
+back through to `reservation_nights` or `reservation_charges` afterwards, which is what
+lets a property rename a rate plan or change its VAT rate without rewriting last
+season's paperwork. The same "stored as a result" rule the price already follows,
+applied one level up.
+
+**Numbering is gapless per series and year, and that is a locked counter row.**
+`invoice_sequences` is read with `SELECT … FOR UPDATE` inside the issuing transaction.
+Both obvious alternatives are wrong and wrong invisibly: `max(number) + 1` hands two
+simultaneous check-outs the same number, and an auto-increment does not give a number
+back when a transaction rolls back — and a hole in the run is the first thing an auditor
+asks about, because the innocent and the fraudulent explanations look identical.
+`InvoiceNumberingConcurrencyTest` forks six real processes to prove it, and was verified
+by mutation: removing `lockForUpdate()` makes it fail on the unique index.
+
+**An issued invoice cannot be changed.** The model refuses updates and deletes outright
+— tested from *inside* the write path, because the write guard only stops code that
+never meant to write money and this has to stop the writer too. A mistake is a **credit
+note**: its own number, pointing at the invoice it corrects, every line negated so the
+VAT reversal is visible rather than a lump sum, and the pair nets to the corrected
+amount.
+
+**One decision that departs from the brief, and why.** `PAYMENTS_BUILD.md` named a PDF
+path column; there is none. The snapshot *is* the document and the PDF is a derivative
+rendered on demand, exactly as thumbnails are derivatives of an original. Two reasons
+this codebase has already learned: an invoice names a guest and what they paid, and our
+media bucket is public with no per-object visibility — the trap the Documents store was
+built to avoid; and a stored file is a second copy that can drift from an immutable row.
+`/invoices/{invoice}/pdf` is therefore the only way to the document, and its check is the
+access rule. Invoice numbers are sequential by design, so that check is load-bearing:
+without it one property could read every other property's takings by counting upwards.
+
+**On the screens.** Issue an invoice from the stay drawer, see what has been issued
+against the stay, open the PDF, and credit one that was wrong. The button says "credit
+it" and not "edit", because there is no edit.
+
+**Renamed while here.** `PaymentWriteGuard` → `MoneyWriteGuard` (with its trait and
+exception), because it now guards invoices too and a third copy of the same class for the
+next money table is how one rule quietly becomes three.
+
 ### Parked on 2026-08-11 — and built on 2026-08-11 and 2026-08-12
 
 > **Superseded, kept for the reasoning.** Everything in this section was written as

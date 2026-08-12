@@ -35,6 +35,9 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property int $children
  * @property float|null $total_amount
  * @property float|null $quoted_amount
+ * @property int|null $promotion_id
+ * @property string|null $promotion_code
+ * @property float|null $discount_amount
  * @property float|null $charges_amount
  * @property float $paid_amount
  * @property FolioStatus $payment_status

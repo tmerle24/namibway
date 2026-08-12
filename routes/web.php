@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardBookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\InvoiceDownloadController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\ListingsPartnerHandbookPdfController;
 use App\Http\Controllers\MarketingMaterialDownloadController;
@@ -61,6 +62,13 @@ Route::get('admin/workbooks/{token}', WorkbookDownloadController::class)
 Route::get('admin/documents/{document}/file', DocumentDownloadController::class)
     ->middleware('auth')
     ->name('documents.download');
+
+// Invoices are rendered on demand from their frozen snapshot rather than
+// stored, so this route is the only way to the document and its check is the
+// access rule — see InvoiceDownloadController.
+Route::get('invoices/{invoice}/pdf', InvoiceDownloadController::class)
+    ->middleware('auth')
+    ->name('invoices.pdf');
 
 Route::post('currency', [CurrencyController::class, 'update'])
     ->middleware('throttle:30,1')

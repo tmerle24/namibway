@@ -265,7 +265,74 @@
                     @if ($folio && Money::cents($folio->paid()) > 0)
                         {{ $this->recordRefundAction }}
                     @endif
+
+                    {{-- Only where there is a price to invoice. Issuing takes a
+                         number that cannot be given back, so the button is not
+                         offered on a stay nobody has priced. --}}
+                    @if ($reservation->total_amount !== null)
+                        {{ $this->issueInvoiceAction }}
+                    @endif
                 </div>
+
+                {{--
+                    What has been sent to this guest. Listed rather than
+                    summarised because an invoice number is what somebody quotes
+                    on the phone, and because a credited one has to be visibly
+                    dead rather than quietly absent.
+                --}}
+                @php($stayInvoices = $this->stayInvoices())
+
+                @if ($stayInvoices->isNotEmpty())
+                    <div class="nw-subhead">Invoices</div>
+
+                    <table class="nw-table">
+                        <thead>
+                            <tr>
+                                <th>Number</th>
+                                <th>Issued</th>
+                                <th>Kind</th>
+                                <th>Total</th>
+                                <th class="nw-noprint"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($stayInvoices as $document)
+                                <tr>
+                                    <td class="nw-num">
+                                        <a href="{{ route('invoices.pdf', $document) }}" target="_blank" rel="noopener">
+                                            {{ $document->number }}
+                                        </a>
+                                        @if ($document->isCancelled())
+                                            <div class="nw-warn">Credited</div>
+                                        @endif
+                                    </td>
+                                    <td class="nw-num">{{ $document->issued_at->isoFormat('D MMM YYYY') }}</td>
+                                    <td>{{ $document->kind->label() }}</td>
+                                    <td class="nw-num">{{ Money::format($document->total, $document->currency) }}</td>
+                                    <td class="nw-noprint">
+                                        {{-- A credit note is not itself credited,
+                                             and neither is one already taken back. --}}
+                                        @if (! $document->kind->isCredit() && ! $document->isCancelled())
+                                            <button
+                                                type="button"
+                                                class="nw-table__link"
+                                                wire:click="selectInvoice({{ $document->id }})"
+                                            >
+                                                {{ $this->selectedInvoiceId === $document->id ? 'Selected' : 'Select' }}
+                                            </button>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+
+                    @if ($this->selectedInvoiceId !== null)
+                        <div class="nw-drawer__actions nw-noprint">
+                            {{ $this->creditInvoiceAction }}
+                        </div>
+                    @endif
+                @endif
 
                 {{--
                     More people than the room sleeps, and what the desk said it
