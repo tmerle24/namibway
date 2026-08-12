@@ -2,6 +2,7 @@
 
 namespace App\Sites;
 
+use App\Enums\DomainStatus;
 use App\Models\Site;
 use Illuminate\Support\Facades\Cache;
 
@@ -49,15 +50,39 @@ class SiteResolver
     }
 
     /**
+     * Both addresses a site can answer on: the subdomain we issued, and the
+     * customer's own domain once it is actually live.
+     *
+     * A domain that is only pending is deliberately absent. Until the
+     * certificate exists it cannot be reached over https anyway, and answering
+     * on it early would mean the first thing the customer sees when they test
+     * their new domain is a browser warning.
+     *
      * @return array<string, int>
      */
     private function hostMap(): array
     {
         /** @var array<string, int> $map */
-        $map = Cache::rememberForever(self::CACHE_KEY, fn () => Site::query()
-            ->whereNotNull('host')
-            ->pluck('id', 'host')
-            ->all());
+        $map = Cache::rememberForever(self::CACHE_KEY, function (): array {
+            $map = Site::query()
+                ->whereNotNull('host')
+                ->pluck('id', 'host')
+                ->all();
+
+            $custom = Site::query()
+                ->whereNotNull('custom_domain')
+                ->where('domain_status', DomainStatus::Live)
+                ->pluck('id', 'custom_domain')
+                ->all();
+
+            // Normalised on the way in, because `www.` is stripped on the way
+            // out and a row stored with it would otherwise never be found.
+            foreach ($custom as $domain => $id) {
+                $map[$this->normalise((string) $domain)] = $id;
+            }
+
+            return $map;
+        });
 
         return $map;
     }

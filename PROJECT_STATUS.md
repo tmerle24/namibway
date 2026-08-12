@@ -1047,8 +1047,23 @@ than us ticking the box for them — and our own website-terms page, which
 
 ### Next up, in the order it was asked for
 
-- **The custom domain, entered in the admin, and nginx following by itself.**
-  Decided 2026-08-12, deliberately deferred. A site's own domain is one field away
+- ~~**The custom domain, entered in the admin, and nginx following by itself.**~~
+  **Built 2026-08-12.** The shape below is what was built, unchanged: an admin field
+  with copy-and-paste DNS instructions (`EditCustomDomainAction`), a five-minute
+  `sites:check-domains` that only ever resolves an A record and writes down what it saw,
+  `sites:pending-certificates` as the read-only handover, and a root-side reconciler on a
+  systemd timer that issues the certificate, writes the vhost atomically and reports back
+  through `sites:domain-live`. `DEPLOYMENT.md` → "Custom domains" carries the script.
+
+  Three decisions inside it worth not relitigating: **both `@` and `www` must resolve**
+  before a certificate is attempted, because one covering half of what the customer hands
+  out fails in front of a guest instead of here; **a live domain is never re-checked**, so
+  a momentary DNS failure cannot take a website off the air that nothing in the
+  application could put back; and **the subdomain is permanent**, because it is what the
+  draft was reviewed on and what still answers when somebody lets their registration
+  lapse.
+
+  The original note, kept because the reasoning is the reason for the split: A site's own domain is one field away
   today (`sites.host`), but a wildcard certificate does not cover somebody's own
   `.com.na` — each one needs its own certificate and its own `server_name`.
 

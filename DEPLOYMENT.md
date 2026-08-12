@@ -708,6 +708,194 @@ sudo tail -20 /var/log/nginx/error.log
 
 ---
 
+## Custom domains (a customer's own `.com.na`)
+
+> English, like the section above. The rest of this file predates that rule.
+
+The wildcard covers `*.websites.namibway.com` and nothing else, so a customer's own
+domain needs its own certificate and its own server block. That is one command each,
+and it has to happen without anybody being on duty at the moment a customer's DNS
+finally propagates — so it runs on a timer.
+
+### The split, and why it is not negotiable
+
+**The application never runs certbot and never writes into `/etc/nginx`.** It looks up
+an A record and writes down what it saw. That is all of its involvement.
+
+The reason is the 2026-08-11 incident above: one bad nginx file took every application
+on this box down. A queue worker allowed to `sudo certbot` and write server blocks is a
+web process with root, and the blast radius of a bug in it is the whole machine. So the
+half that can do damage runs as root from a script you can read in one sitting, and the
+half that runs on every web request cannot do any.
+
+| Who | Does |
+|---|---|
+| Admin (a person) | Enters the domain on the listing's **Website** tab and sends the customer the copy-and-paste instructions from the same modal. |
+| Laravel, every 5 min | `sites:check-domains` resolves the A records for the domain **and its `www` form**. Both have to point here. Records the result; changes nothing else. |
+| Laravel, on demand | `sites:pending-certificates` prints the domains whose DNS has arrived and whose certificate has not, one per line. |
+| **Root, on a timer** | Reads that list, issues the certificate, writes the vhost, reloads nginx, and reports back with `sites:domain-live`. |
+
+### Step 1 — tell the application its own address
+
+```bash
+# The public IPv4 of this server. Without it the whole flow is switched off,
+# deliberately: an A record compared against nothing either passes everything
+# or fails everything.
+echo "SITES_SERVER_IP=$(curl -4 -s ifconfig.me)" | sudo tee -a /var/www/namibway/.env
+cd /var/www/namibway && php artisan config:clear
+```
+
+### Step 2 — the reconciler
+
+```bash
+sudo tee /usr/local/sbin/namibway-domains >/dev/null <<'SH'
+#!/usr/bin/env bash
+# Issues certificates for customer domains whose DNS has arrived, writes their
+# server block, and tells the application. Runs as root from a systemd timer.
+#
+# Deliberately small and deliberately boring: everything clever about this
+# feature lives in the application, which cannot hurt anything.
+set -euo pipefail
+
+APP=/var/www/namibway
+NGINX_AVAILABLE=/etc/nginx/sites-available
+NGINX_ENABLED=/etc/nginx/sites-enabled
+SOCKET=$(grep -m1 -oP 'fastcgi_pass\s+\K[^;]+' "$NGINX_AVAILABLE/namibway.com")
+
+sudo -u www-data php "$APP/artisan" sites:pending-certificates | while read -r DOMAIN; do
+    [ -z "$DOMAIN" ] && continue
+    echo "== $DOMAIN"
+
+    # HTTP-01, unlike the wildcard: this is the customer's own domain and it
+    # already resolves here, so there is nothing to prove through OVH's API.
+    if ! certbot certonly --nginx --non-interactive --agree-tos \
+         -m admin@namibway.com -d "$DOMAIN" -d "www.$DOMAIN"; then
+        sudo -u www-data php "$APP/artisan" sites:domain-live "$DOMAIN" \
+            --failed="certbot could not issue a certificate. Check that DNS has fully propagated."
+        continue
+    fi
+
+    tee "$NGINX_AVAILABLE/$DOMAIN" >/dev/null <<NGINX
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $DOMAIN www.$DOMAIN;
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name $DOMAIN www.$DOMAIN;
+
+    ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+
+    root $APP/public;
+    index index.php;
+
+    # The same buffers as the wildcard vhost. A host that reaches no site falls
+    # through to the travel platform, whose Link: header is larger than the
+    # default — that is the 502 in the table above.
+    fastcgi_buffer_size 32k;
+    fastcgi_buffers 8 32k;
+    fastcgi_busy_buffers_size 64k;
+
+    location / { try_files \$uri \$uri/ /index.php?\$query_string; }
+
+    location ~ \.php\$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass $SOCKET;
+    }
+
+    location ~ /\.(?!well-known).* { deny all; }
+}
+NGINX
+
+    # Enable and validate as one step. A symlink left behind a failed test is
+    # a landmine for whoever restarts nginx next — that is exactly how the
+    # 2026-08-11 outage happened.
+    ln -sfn "$NGINX_AVAILABLE/$DOMAIN" "$NGINX_ENABLED/$DOMAIN"
+    if ! nginx -t; then
+        rm -f "$NGINX_ENABLED/$DOMAIN"
+        sudo -u www-data php "$APP/artisan" sites:domain-live "$DOMAIN" \
+            --failed="nginx refused the server block; it was removed again. Check nginx -t on the server."
+        continue
+    fi
+
+    systemctl reload nginx
+    sudo -u www-data php "$APP/artisan" sites:domain-live "$DOMAIN"
+done
+SH
+sudo chmod 750 /usr/local/sbin/namibway-domains
+```
+
+### Step 3 — the timer
+
+```bash
+sudo tee /etc/systemd/system/namibway-domains.service >/dev/null <<'UNIT'
+[Unit]
+Description=Issue certificates and vhosts for NamibWay customer domains
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/namibway-domains
+UNIT
+
+sudo tee /etc/systemd/system/namibway-domains.timer >/dev/null <<'UNIT'
+[Unit]
+Description=Check for NamibWay customer domains awaiting a certificate
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now namibway-domains.timer
+sudo systemctl list-timers namibway-domains.timer
+```
+
+Fifteen minutes rather than five: certbot has rate limits, and a customer who has just
+changed an A record is waiting hours for propagation anyway. The application's own
+five-minute DNS check is what makes the admin panel feel live.
+
+### Watching it work
+
+```bash
+# What the application is waiting for, and what it has seen
+cd /var/www/namibway && php artisan sites:check-domains
+php artisan sites:pending-certificates
+
+# What the reconciler did last time
+sudo journalctl -u namibway-domains.service -n 50 --no-pager
+
+# Force a run rather than waiting for the timer
+sudo systemctl start namibway-domains.service
+```
+
+### When something is wrong
+
+| Symptom | Cause |
+|---|---|
+| Stuck on *Waiting for DNS* | Usually only the apex was changed. Both `@` and `www` need an A record — the check requires both, because a certificate covering half of what the customer hands out fails in front of a guest instead of here. |
+| *DNS found* for hours | The timer is not running (`systemctl list-timers`), or certbot failed and said so in the journal. |
+| **Needs attention** with a certbot message | Almost always propagation: the record is visible to us but not yet to Let's Encrypt. It retries on the next run by itself once you set the status back to waiting. |
+| Domain is **live** and shows the wrong site | The host map is cached per host. `php artisan cache:forget sites.host_map`. |
+| Domain answers on `https://` but not `https://www.` | The certificate was issued for one name only. Check `sudo certbot certificates` and reissue with both `-d` flags. |
+
+**The customer's subdomain keeps working throughout, and afterwards.** That is
+deliberate: it is what the draft was reviewed on, what old links point at, and what
+still answers on the day somebody lets their own registration lapse.
+
+---
+
 ## Bild-Thumbnails
 
 Die App speichert von jedem Foto **nur das Original** — Google-Places-Fotos kommen mit
