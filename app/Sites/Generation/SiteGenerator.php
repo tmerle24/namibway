@@ -3,6 +3,7 @@
 namespace App\Sites\Generation;
 
 use App\Enums\BusinessType;
+use App\Enums\ListingType;
 use App\Enums\SiteStatus;
 use App\Enums\VehicleCategory;
 use App\Models\Listing;
@@ -11,6 +12,7 @@ use App\Models\SiteBlock;
 use App\Models\SiteImage;
 use App\Models\SitePage;
 use App\Sites\BlockRegistry;
+use App\Sites\Blocks\EnquiryBlock;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -212,6 +214,15 @@ class SiteGenerator
             'gallery' => [
                 'heading' => null,
                 'image_ids' => array_map(fn (SiteImage $image) => $image->id, $gallery),
+            ],
+            'enquiry' => [
+                'heading' => 'Request availability',
+                'intro' => null,
+                // A lodge is asked for an arrival and a departure; an activity
+                // or a restaurant for a date and a time. See EnquiryBlock.
+                'mode' => $listing->type === ListingType::Accommodation
+                    ? EnquiryBlock::MODE_STAY
+                    : EnquiryBlock::MODE_VISIT,
             ],
             'opening_hours' => [
                 'heading' => 'Opening hours',

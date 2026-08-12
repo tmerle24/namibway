@@ -291,6 +291,19 @@
     .offer__price { text-align: right; white-space: nowrap; }
     .offer__price strong { font-size: 20px; font-variant-numeric: tabular-nums; }
 
+    /* ---- Enquiry form -------------------------------------------------- */
+
+    .enquiry { background: #fff; border: 1px solid var(--bone); padding: var(--s5); }
+    .enquiry__form { display: grid; gap: var(--s4); }
+    .enquiry__row { display: grid; gap: var(--s4); grid-template-columns: 1fr 1fr; }
+    .enquiry__row > * { min-width: 0; }
+    .enquiry__submit { width: 100%; }
+    .enquiry__sent { font-size: 18px; }
+    .enquiry__failed { margin-bottom: var(--s4); padding: var(--s3); border-left: 3px solid var(--accent); background: #fff; font-size: 15px; }
+    /* Off-screen rather than display:none — some bots skip hidden inputs and
+       fill in everything else, which would defeat the point of having one. */
+    .enquiry__trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
     /* ---- Contact and footer ------------------------------------------- */
 
     .channels { display: grid; gap: var(--s4); }

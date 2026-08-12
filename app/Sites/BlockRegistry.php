@@ -8,6 +8,7 @@ use App\Sites\Blocks\BlockDefinition;
 use App\Sites\Blocks\BookingBlock;
 use App\Sites\Blocks\ContactBlock;
 use App\Sites\Blocks\CtaBlock;
+use App\Sites\Blocks\EnquiryBlock;
 use App\Sites\Blocks\FooterBlock;
 use App\Sites\Blocks\GalleryBlock;
 use App\Sites\Blocks\HeroBlock;
@@ -37,6 +38,7 @@ class BlockRegistry
         OpeningHoursBlock::class,
         PriceListBlock::class,
         BookingBlock::class,
+        EnquiryBlock::class,
         RichTextBlock::class,
         LocationBlock::class,
         ContactBlock::class,
@@ -61,13 +63,13 @@ class BlockRegistry
      * @var array<string, array<int, string>>
      */
     private const LAYOUTS = [
-        'accommodation' => ['hero', 'highlights', 'about', 'gallery', 'booking', 'location', 'contact', 'footer'],
-        'restaurant' => ['hero', 'about', 'opening_hours', 'price_list', 'gallery', 'location', 'contact', 'footer'],
-        'activity' => ['hero', 'highlights', 'about', 'gallery', 'price_list', 'booking', 'location', 'contact', 'footer'],
-        'car_rental' => ['hero', 'highlights', 'price_list', 'about', 'booking', 'location', 'contact', 'footer'],
-        'tour_operator' => ['hero', 'highlights', 'about', 'gallery', 'price_list', 'booking', 'contact', 'footer'],
-        'retail' => ['hero', 'about', 'opening_hours', 'gallery', 'price_list', 'location', 'contact', 'footer'],
-        'service' => ['hero', 'highlights', 'about', 'opening_hours', 'price_list', 'location', 'contact', 'footer'],
+        'accommodation' => ['hero', 'highlights', 'about', 'gallery', 'booking', 'enquiry', 'location', 'contact', 'footer'],
+        'restaurant' => ['hero', 'about', 'opening_hours', 'price_list', 'gallery', 'enquiry', 'location', 'contact', 'footer'],
+        'activity' => ['hero', 'highlights', 'about', 'gallery', 'price_list', 'booking', 'enquiry', 'location', 'contact', 'footer'],
+        'car_rental' => ['hero', 'highlights', 'price_list', 'about', 'booking', 'enquiry', 'location', 'contact', 'footer'],
+        'tour_operator' => ['hero', 'highlights', 'about', 'gallery', 'price_list', 'booking', 'enquiry', 'contact', 'footer'],
+        'retail' => ['hero', 'about', 'opening_hours', 'gallery', 'price_list', 'enquiry', 'location', 'contact', 'footer'],
+        'service' => ['hero', 'highlights', 'about', 'opening_hours', 'price_list', 'enquiry', 'location', 'contact', 'footer'],
     ];
 
     /** @var array<string, BlockDefinition>|null */

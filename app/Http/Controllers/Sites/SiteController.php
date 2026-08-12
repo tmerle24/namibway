@@ -95,6 +95,10 @@ class SiteController
             'images' => $images,
             'booking' => $booking,
             'accent' => $this->accent($site),
+            // Absolute, because the form is posted from the site's own host as
+            // well as from the path fallback, and only one of those can use a
+            // named route relative to itself.
+            'enquiryAction' => route('sites.enquiry', $site->slug),
         ]);
 
         if (! $site->isPublished()) {
@@ -124,6 +128,10 @@ class SiteController
     {
         return match ($block->type) {
             'booking' => $booking !== null,
+            // An enquiry with nowhere to go is worse than no form: it needs a
+            // listing behind the site, and that listing has to be taking
+            // requests at all.
+            'enquiry' => $site->sourceListing !== null && $site->sourceListing->accepts_inquiries,
             'location' => filled($site->address) || (filled($site->latitude) && filled($site->longitude)),
             'contact' => filled($site->contact_email) || filled($site->contact_phone) || filled($site->whatsapp),
             default => $block->isFilled(),
