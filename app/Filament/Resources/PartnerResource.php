@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Enums\ConnectorType;
+use App\Enums\SettlementModel;
 use App\Filament\Resources\PartnerResource\Pages;
 use App\Filament\Support\MessagesColumn;
 use App\Http\Controllers\Controller;
@@ -159,7 +160,22 @@ class PartnerResource extends Resource
                                     ->maxValue(100)
                                     ->suffix('%')
                                     ->placeholder(fn (): string => static::platformRateLabel('deposit'))
-                                    ->helperText('The partner’s to choose within the range we allow — set one here only where it was negotiated.'),
+                                    ->helperText('The partner’s to choose within the range we allow — set one here only where it was negotiated.')
+                                    ->live(),
+
+                                Forms\Components\Toggle::make('allow_zero_deposit')
+                                    ->label('May collect no deposit at all')
+                                    ->columnSpanFull()
+                                    ->live()
+                                    // The consequence is stated where the
+                                    // choice is made, not discovered a month
+                                    // later — PAYMENTS.md § 2.
+                                    ->helperText('Switching this on lets the partner set a 0% deposit, which puts them on the agency model: we collect nothing from their guests and invoice them for commission afterwards. That is the only arrangement where our money depends on somebody else paying an invoice, and the only lever we have is switching their bookings off.'),
+
+                                Forms\Components\Placeholder::make('settlement_model')
+                                    ->label('Which arrangement that is')
+                                    ->columnSpanFull()
+                                    ->content(fn (Get $get): string => static::settlementLabel($get('deposit_rate'))),
                             ])
                             ->columns(2),
 
@@ -215,6 +231,24 @@ class PartnerResource extends Resource
         $rate = $which === 'commission' ? $settings->commission_rate : $settings->deposit_rate;
 
         return rtrim(rtrim(number_format($rate, 3, '.', ''), '0'), '.').'% (platform default)';
+    }
+
+    /**
+     * The settlement model this deposit means, said out loud.
+     *
+     * Derived and never stored — see App\Enums\SettlementModel. Showing it
+     * here is what makes "one number, three behaviours" legible instead of
+     * something the reader has to know.
+     */
+    protected static function settlementLabel(mixed $depositRate): string
+    {
+        $rate = blank($depositRate)
+            ? PaymentSettings::current()->deposit_rate
+            : (float) $depositRate;
+
+        $model = SettlementModel::forDepositRate($rate);
+
+        return $model->label().' — '.$model->description();
     }
 
     public static function table(Table $table): Table

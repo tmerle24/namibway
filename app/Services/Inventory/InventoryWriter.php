@@ -29,6 +29,7 @@ use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\DTOs\Quote;
+use App\Services\Payments\CommissionPolicy;
 use App\Services\Payments\RateResolver;
 use App\Services\Pricing\ChargeableStay;
 use App\Services\Pricing\ChargeCalculator;
@@ -87,6 +88,7 @@ class InventoryWriter
         private readonly CustomerDirectory $customers = new CustomerDirectory,
         private readonly ChargeCalculator $charges = new ChargeCalculator,
         private readonly RateResolver $rates = new RateResolver,
+        private readonly CommissionPolicy $commission = new CommissionPolicy,
     ) {}
 
     /**
@@ -283,6 +285,10 @@ class InventoryWriter
                 // commitment signal and a cash-flow arrangement, not a share
                 // of revenue, so its base differs from the commission's.
                 'deposit_amount' => $rates->depositOn($charged),
+                // A confirmed booking is a sale and has earned us something; a
+                // provisional hold is still a question. CommissionPolicy owns
+                // that rule so every screen reads one answer.
+                'commission_earned_at' => $this->commission->isEarnedIn($request->status) ? now() : null,
                 'notes' => $request->notes,
                 'created_by' => $request->createdBy,
             ]);
@@ -517,6 +523,17 @@ class InventoryWriter
             $reservation->status = $isLate ? StayStatus::CancelledLate : StayStatus::Cancelled;
             $reservation->cancelled_at = now();
             $reservation->cancellation_reason = $reason;
+
+            // A plain cancellation takes our commission back; a late one does
+            // not, because the guest was charged a penalty and earning nothing
+            // on it would be us absorbing the property's. The amount stays on
+            // the row either way — only the timestamp moves, so the record of
+            // what the booking would have earned survives. See
+            // App\Services\Payments\CommissionPolicy.
+            $reservation->commission_earned_at = $this->commission->isEarnedIn($reservation->status)
+                ? ($reservation->commission_earned_at ?? now())
+                : null;
+
             $reservation->save();
 
             return $reservation;
@@ -551,6 +568,16 @@ class InventoryWriter
 
         return InventoryWriteGuard::allow(function () use ($reservation, $to) {
             $reservation->status = $to;
+
+            // A provisional hold becoming confirmed is the moment a question
+            // becomes a sale, so it is the moment we have earned something.
+            // Set once and never moved forward by a later transition: what we
+            // earned in March should not become April's number because the
+            // guest checked in.
+            if ($this->commission->isEarnedIn($to) && $reservation->commission_earned_at === null) {
+                $reservation->commission_earned_at = now();
+            }
+
             $reservation->save();
 
             return $reservation;

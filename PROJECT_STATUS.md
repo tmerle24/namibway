@@ -530,6 +530,51 @@ there as a statement of what they pay, never as an input — and the guarantee i
 the field is hidden but that `commission_rate` is not in that form's schema at all, so
 posting it writes nothing. That is the test, rather than "the input is not rendered".
 
+### 2026-08-12 — the three settlement models (money, slice 4 of 6)
+
+**One number, three behaviours, and no way to contradict yourself.**
+`App\Enums\SettlementModel` is *derived* from the effective deposit share — 0 % → agency,
+100 % → merchant, anything between → split — and there is deliberately **no
+`settlement_model` column anywhere**. A test asserts that across `partners`, `listings`,
+`reservations` and `payment_settings`, because storing the model as well as the deposit is
+what would make "merchant model, we collect nothing" configurable.
+
+**A strategy class per model, answering exactly three questions** (`SettlementStrategy`):
+what we ask the guest for now, what is owed between us and the partner afterwards, and who
+issues the guest's invoice. The narrowness is the design — the folio, the payments, the
+invoice and the commission calculation are identical in all three, so anything wider would
+be a place for three models to drift into three answers about what we earn.
+
+**A stay resolves its model from its own frozen deposit rate**, not from the property's
+current one, so a statement about last season still adds up after a renegotiation.
+
+**The balance between us and a partner is one signed number**, not an amount plus a
+direction — because the interesting case is *zero*, and "zero, owed by nobody" would need a
+third direction. At a deposit equal to the commission, `SettlementBalance::isSettled()` is
+true and nothing has to move: no payout run, no statement, no reconciliation. That case has
+its own test, because it is the one the default exists for.
+
+**Commission is earned once and reversed on cancellation.** `commission_earned_at` is a
+timestamp rather than a flag, so "what did we earn in March" is stable. A plain
+cancellation clears it and *keeps the amount*, so the record of what the booking would have
+earned survives; a late cancellation and a no-show keep it earned, because the guest was
+charged and the room was held — earning nothing there would be us absorbing the property's
+penalty.
+
+> ⚠️ **Still a § D question.** *Precisely* when commission is earned — at confirmation, at
+> the cancellation deadline, or after check-in — and what a no-show earns are commercial
+> decisions that have not been made. What is implemented is the reading of `PAYMENTS.md`
+> § 3 that needs no scheduler: **earned at confirmation**. The rule lives alone in
+> `App\Services\Payments\CommissionPolicy` precisely so the answer changes one file. The
+> "cancellation window has closed" reading needs a nightly sweep and is worth building once
+> the business has answered.
+
+**0 % is a permission, not a number.** `partners.allow_zero_deposit`, admin-only. Without
+it the deposit is refused with a sentence explaining that collecting nothing means we
+invoice for commission instead; with it, zero is allowed and skips the floor, because that
+arrangement has deliberately gone below it. Both panels state which model the current
+deposit means, live, next to the field — the consequence belongs where the choice is made.
+
 ### Parked on 2026-08-11 — and built on 2026-08-11 and 2026-08-12
 
 > **Superseded, kept for the reasoning.** Everything in this section was written as

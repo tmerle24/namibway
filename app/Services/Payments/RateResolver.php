@@ -71,18 +71,30 @@ class RateResolver
      * "invalid" is not — and because the floor is not a fixed number a partner
      * could have memorised: it follows our commission.
      *
-     * Zero is refused separately and by name. It is not a smaller number; it
-     * is the arrangement where we collect nothing and have to invoice for our
-     * commission, which moves collection risk onto us. Slice 4 adds the
-     * per-partner unlock; until then nobody may reach it.
+     * Zero is answered separately and by name, because it is not a smaller
+     * number: it is the **agency model**, where we collect nothing and have to
+     * invoice the partner for commission afterwards — with payment terms, a
+     * dunning process, and the question of what we do about a partner who does
+     * not pay. That moves cost and collection risk onto us, so it is unlocked
+     * per partner by us (`allow_zero_deposit`) rather than typed by them. Where
+     * it *is* unlocked, zero is allowed and skips the floor entirely: the floor
+     * exists to keep the deposit above the commission, and this arrangement has
+     * deliberately gone below it.
      */
     public function refuseDeposit(Partner $partner, float $rate): ?string
     {
-        $floor = PaymentSettings::current()->effectiveMinimumDepositRate();
-
         if ($rate < 0 || $rate > 100) {
             return 'A deposit is a percentage of the booking, so it has to be between 0 and 100.';
         }
+
+        if ($this->isZero($rate)) {
+            return $partner->allow_zero_deposit
+                ? null
+                : 'Collecting no deposit means we invoice you for commission instead, with payment terms — '
+                    .'an arrangement we agree case by case rather than one you can switch on here. Talk to us and we will enable it.';
+        }
+
+        $floor = PaymentSettings::current()->effectiveMinimumDepositRate();
 
         if ($rate < $floor) {
             return 'The lowest deposit you can set is '.$this->formatRate($floor).'%. '
@@ -90,6 +102,12 @@ class RateResolver
         }
 
         return null;
+    }
+
+    /** Compared to the thousandth of a percent, like every other money check here. */
+    private function isZero(float $rate): bool
+    {
+        return (int) round($rate * 1000) === 0;
     }
 
     /**

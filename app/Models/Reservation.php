@@ -41,6 +41,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property float|null $commission_rate
  * @property float|null $commission_base
  * @property float|null $commission_amount
+ * @property CarbonImmutable|null $commission_earned_at
  * @property float|null $deposit_rate
  * @property float|null $deposit_amount
  * @property float|null $charges_amount
@@ -88,6 +89,7 @@ class Reservation extends Model
         'commission_rate',
         'commission_base',
         'commission_amount',
+        'commission_earned_at',
         'deposit_rate',
         'deposit_amount',
         'price_override_reason',
@@ -117,6 +119,7 @@ class Reservation extends Model
         'commission_rate' => 'float',
         'commission_base' => 'float',
         'commission_amount' => 'float',
+        'commission_earned_at' => 'datetime',
         'deposit_rate' => 'float',
         'deposit_amount' => 'float',
         'price_overridden_at' => 'datetime',

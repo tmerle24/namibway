@@ -93,6 +93,55 @@ class PartnerRateFieldsTest extends TestCase
             ->assertSee('7.5%');
     }
 
+    /**
+     * Zero is the agency model — we collect nothing and invoice for
+     * commission afterwards — so it is ours to unlock, not theirs to type.
+     */
+    public function test_a_partner_without_the_unlock_cannot_set_a_zero_deposit(): void
+    {
+        [$user, $listing] = $this->partnerWithProperty();
+
+        $this->asPartner($user);
+
+        Livewire::test(EditListing::class, ['record' => $listing->getRouteKey()])
+            ->fillForm(['deposit_rate' => 0])
+            ->call('save')
+            ->assertHasFormErrors(['deposit_rate']);
+
+        $this->assertNull($listing->fresh()?->deposit_rate);
+    }
+
+    public function test_a_partner_with_the_unlock_can_set_a_zero_deposit(): void
+    {
+        [$user, $listing] = $this->partnerWithProperty();
+        $listing->partner?->update(['allow_zero_deposit' => true]);
+
+        $this->asPartner($user);
+
+        Livewire::test(EditListing::class, ['record' => $listing->getRouteKey()])
+            ->fillForm(['deposit_rate' => 0])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(0.0, $listing->fresh()?->deposit_rate);
+    }
+
+    /**
+     * The consequence is stated where the choice is made, not discovered a
+     * month later when the first commission invoice arrives.
+     */
+    public function test_the_partner_is_told_what_their_deposit_means(): void
+    {
+        [$user, $listing] = $this->partnerWithProperty();
+        $listing->partner?->update(['allow_zero_deposit' => true]);
+        $listing->update(['deposit_rate' => 0.0]);
+
+        $this->asPartner($user);
+
+        Livewire::test(EditListing::class, ['record' => $listing->getRouteKey()])
+            ->assertSee('We invoice you for commission afterwards');
+    }
+
     public function test_the_platform_rates_are_edited_in_the_admin_panel(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

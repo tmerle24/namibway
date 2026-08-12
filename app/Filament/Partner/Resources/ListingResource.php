@@ -5,6 +5,7 @@ namespace App\Filament\Partner\Resources;
 use App\Enums\AmenityScope;
 use App\Enums\ListingType;
 use App\Enums\PriceUnit;
+use App\Enums\SettlementModel;
 use App\Enums\VehicleCategory;
 use App\Enums\VehicleClass;
 use App\Filament\Partner\Resources\ListingResource\Pages;
@@ -18,6 +19,7 @@ use App\Models\Listing;
 use App\Services\Payments\RateResolver;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -248,6 +250,7 @@ class ListingResource extends Resource
                             ->label('Deposit')
                             ->numeric()
                             ->suffix('%')
+                            ->live(onBlur: true)
                             ->placeholder(fn (?Listing $record): string => static::inheritedDepositLabel($record))
                             ->helperText(fn (?Listing $record): string => 'Leave empty to use your account’s deposit. '
                                 .'The lowest you can set is '.static::formatRate(static::floorFor($record)).'%.')
@@ -277,6 +280,15 @@ class ListingResource extends Resource
                         Forms\Components\Placeholder::make('commission_rate_display')
                             ->label('NamibWay commission')
                             ->content(fn (?Listing $record): string => static::commissionLabel($record)),
+
+                        // What this deposit *means*, stated where it is chosen
+                        // rather than discovered a month later — PAYMENTS.md
+                        // § 2. Live on the field above, so a property typing 0
+                        // reads the consequence as they type it.
+                        Forms\Components\Placeholder::make('settlement_model_display')
+                            ->label('How the money will flow')
+                            ->columnSpanFull()
+                            ->content(fn (?Listing $record, Get $get): string => static::settlementLabel($record, $get('deposit_rate'))),
                     ])
                     ->columns(2),
 
@@ -313,6 +325,29 @@ class ListingResource extends Resource
         $rates = app(RateResolver::class)->for($record);
 
         return static::formatRate($rates->commissionRate).'% of the stay, before VAT and the tourism levy.';
+    }
+
+    /**
+     * The arrangement this deposit puts the property in, in their words.
+     *
+     * Derived, never stored — see App\Enums\SettlementModel. The point of
+     * showing it is that "0%" and "we will invoice you for commission, with
+     * payment terms" are the same decision, and only one of them is obvious
+     * from a number in a box.
+     */
+    protected static function settlementLabel(?Listing $record, mixed $typedRate): string
+    {
+        if ($record === null) {
+            return '';
+        }
+
+        $rate = blank($typedRate)
+            ? app(RateResolver::class)->for($record)->depositRate
+            : (float) $typedRate;
+
+        $model = SettlementModel::forDepositRate($rate);
+
+        return $model->description();
     }
 
     protected static function floorFor(?Listing $record): float

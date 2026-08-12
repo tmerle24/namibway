@@ -36,6 +36,7 @@ use Spatie\Translatable\HasTranslations;
  * @property int|null $demo_source_listing_id
  * @property float|null $commission_rate
  * @property float|null $deposit_rate
+ * @property bool $allow_zero_deposit
  */
 class Partner extends Model
 {
@@ -70,6 +71,7 @@ class Partner extends Model
         'demo_source_listing_id',
         'commission_rate',
         'deposit_rate',
+        'allow_zero_deposit',
     ];
 
     protected $casts = [
@@ -84,6 +86,7 @@ class Partner extends Model
         'booking_demo_mode' => 'boolean',
         'commission_rate' => 'float',
         'deposit_rate' => 'float',
+        'allow_zero_deposit' => 'boolean',
     ];
 
     /**
