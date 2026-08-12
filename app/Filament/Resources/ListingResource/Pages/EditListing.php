@@ -6,6 +6,7 @@ use App\Filament\Concerns\HasFormActionsInHeader;
 use App\Filament\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\CreateWebsiteAction;
+use App\Filament\Support\PublishWebsiteAction;
 use App\Filament\Support\ViewListingAction;
 use App\Models\Listing;
 use App\Services\Enrichment\OsmLocationFinder;
@@ -53,6 +54,7 @@ class EditListing extends EditRecord
             ViewListingAction::header(),
             CreateWebsiteAction::visitHeader(),
             CreateWebsiteAction::makeHeader(),
+            PublishWebsiteAction::header(),
             Actions\LocaleSwitcher::make(),
             Actions\DeleteAction::make(),
         ]);
