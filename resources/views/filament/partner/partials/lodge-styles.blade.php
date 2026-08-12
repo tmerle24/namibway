@@ -897,6 +897,25 @@
 
     /* ---------- plain tables (arrivals, stay lines) ---------- */
 
+    /* Every wide table sits in one of these.
+
+       Without it a phone simply cuts the right-hand columns off: the drawer's
+       payment lines lost State and the Select button, and the unpaid list lost
+       Outstanding — the one number that page exists to show. Nothing scrolled
+       sideways, so it did not look broken; it looked like a table with fewer
+       columns. Found by taking a screenshot at 375px.
+
+       The wrapper scrolls rather than the table shrinking, because these are
+       money columns: a rate squeezed to two characters per line is not a
+       smaller table, it is an unreadable one. */
+    .nw-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        /* Room for the scrollbar on the platforms that reserve space for one,
+           so it never sits on top of the last row's text. */
+        padding-bottom: 0.125rem;
+    }
+
     .nw-table {
         width: 100%;
         border-collapse: collapse;
@@ -1059,6 +1078,13 @@
 
         .nw-table tbody tr {
             break-inside: avoid;
+        }
+
+        /* Paper has no scrollbar to drag, so a scroll box would print one
+           screenful and silently lose the rest of the columns — exactly the
+           bug the wrapper exists to fix, moved onto the arrivals board. */
+        .nw-scroll {
+            overflow: visible;
         }
 
         .nw-lodge {

@@ -197,7 +197,23 @@ GOOGLE_REDIRECT_URI="${APP_URL}/auth/google/callback"
 FACEBOOK_CLIENT_ID=...
 FACEBOOK_CLIENT_SECRET=...
 FACEBOOK_REDIRECT_URI="${APP_URL}/auth/facebook/callback"
+
+# Payments — see .env.example for the full block and what each value means.
+# `demo` is the correct production value until a merchant account exists: it
+# works end to end and says on every page that it is a demonstration.
+PAYMENTS_PROVIDER=demo
+PAYMENTS_COMMISSION_RATE=5
+PAYMENTS_DEPOSIT_RATE=15
+
+# Only once a DPO merchant account exists. ServiceType is per account.
+DPO_COMPANY_TOKEN=
+DPO_SERVICE_TYPE=
 ```
+
+> Payments: the full explanation lives in the admin panel under **Documentation →
+> Payments Guide** — who sets which value, in what order, and what the partner
+> sets themselves. (In English, because `CLAUDE.md` says everything committed is;
+> this file predates that rule and is the odd one out.)
 
 > Google: OAuth-Client unter [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 > anlegen, Redirect-URI exakt wie oben eintragen.

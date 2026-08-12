@@ -894,7 +894,8 @@ worked through, including the three settlement models we offer partners rather
 than picking one. The design is `PAYMENTS.md`; what it still describes and nobody
 has built is §6 step 6, **payouts and partner statements**, which wants real money
 to have moved before it can be tested. `DpoProvider` is implemented and has never
-run against a real merchant account.
+run against a real merchant account. The rules that must survive a later change to
+any of it are collected in `CLAUDE.md` → "The money side".
 
 Channel synchronisation deserves one word of precision, because §8 looks like it
 contradicts this line and does not: what is out of scope is *us* pushing rates
@@ -1035,9 +1036,12 @@ who is not a browser:
   section and it is genuinely open — worth deciding against a real counterparty's
   documentation rather than in the abstract.
 - **How commission and payment ride along.** A booking taken through a channel
-  has a different money path than one taken on namibway.com, and there is no
-  payments model in the codebase at all today. Named here only so it is not
-  discovered late.
+  has a different money path than one taken on namibway.com. **Updated
+  2026-08-12:** there is a payments model now, and it already answers half of
+  this — commission and deposit resolve per listing and partner, and who collects
+  is derived from the deposit share rather than stored. What it does not answer is
+  a *third* party in the chain: an outside seller taking its own margin is neither
+  us nor the property, and `SettlementBalance` knows about two sides only.
 
 `api.namibway.com` itself is server-side and outside the application — a DNS
 record at OVH (namibway.com's DNS is not at Cloudflare), a certificate, an nginx

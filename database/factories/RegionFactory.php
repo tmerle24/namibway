@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Region;
+use Database\Factories\Concerns\UniqueAcrossTheRun;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -11,6 +12,8 @@ use Illuminate\Support\Str;
  */
 class RegionFactory extends Factory
 {
+    use UniqueAcrossTheRun;
+
     protected $model = Region::class;
 
     /**
@@ -18,7 +21,9 @@ class RegionFactory extends Factory
      */
     public function definition(): array
     {
-        $name = fake()->unique()->city();
+        // Both the name and the slug are unique columns, and faker's own
+        // unique() is not enough to hold them — see UniqueAcrossTheRun.
+        $name = $this->neverSeenBefore(fake()->city());
 
         return [
             'name' => $name,

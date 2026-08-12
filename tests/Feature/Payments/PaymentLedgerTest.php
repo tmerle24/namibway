@@ -132,6 +132,45 @@ class PaymentLedgerTest extends TestCase
         $this->assertSame(FolioStatus::Unpaid, $stay->payment_status);
     }
 
+    /**
+     * A reversal takes the original's status, so the pair nets to zero on the
+     * certain-money view as well as on the balance.
+     *
+     * The reversal used to be written as Cleared whatever it undid, on the
+     * reasoning that a correction is certain the moment it is made. That is
+     * true of the correction and false of the money: reversing a transfer
+     * still sitting at Recorded left nothing cleared on the debit side and
+     * N$ 700 cleared on the credit side, and the stay drawer duly printed
+     * "Paid N$ 2,519.90 (N$ -700.00 confirmed)".
+     */
+    public function test_reversing_an_uncleared_transfer_does_not_leave_a_negative_confirmed_figure(): void
+    {
+        $stay = $this->stay(rate: 1000, nights: 2);
+
+        $eft = $this->pay($stay, 700, PaymentMethod::Eft);
+        $this->assertSame(PaymentStatus::Recorded, $eft->status);
+
+        $reversal = $this->recorder->reverse($eft, 'Entered against the wrong stay.');
+
+        $this->assertSame(PaymentStatus::Recorded, $reversal->status);
+
+        $statement = $this->folio->for($stay->fresh() ?? $stay);
+        $this->assertSame(0.0, $statement->paid());
+        $this->assertSame(0.0, $statement->cleared());
+    }
+
+    /** And the other way: undoing money that had settled is itself settled. */
+    public function test_reversing_a_cleared_payment_is_itself_cleared(): void
+    {
+        $stay = $this->stay(rate: 1000, nights: 2);
+
+        $cash = $this->pay($stay, 700, PaymentMethod::Cash);
+        $this->assertSame(PaymentStatus::Cleared, $cash->status);
+
+        $this->assertSame(PaymentStatus::Cleared, $this->recorder->reverse($cash)->status);
+        $this->assertSame(0.0, $this->folio->for($stay->fresh() ?? $stay)->cleared());
+    }
+
     public function test_a_payment_cannot_be_reversed_twice(): void
     {
         $stay = $this->stay(rate: 1000, nights: 1);

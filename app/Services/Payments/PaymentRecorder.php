@@ -95,9 +95,16 @@ class PaymentRecorder
      * never have it?" — which is a different question with a different answer
      * to an accountant.
      *
-     * The reversal copies the original's method and collector, because it
-     * undoes that movement and not some other one, and its own status is
-     * settled immediately: a correction is certain the moment it is made.
+     * The reversal copies the original's method, collector *and status*,
+     * because it undoes that movement and not some other one. The status used
+     * to be hardcoded to Cleared on the reasoning that a correction is certain
+     * the moment it is made — which is true about the correction and false
+     * about the money. Reversing a transfer that was still merely Recorded then
+     * left the original uncounted-as-certain and the reversal counted, so the
+     * folio reported a *negative* cleared figure: the stay drawer printed
+     * "Paid N$ 2,519.90 (N$ -700.00 confirmed)". Mirroring the original keeps
+     * the pair symmetrical, so a correction nets to zero on both the balance
+     * and the certain-money view. Found by looking at the screen.
      */
     public function reverse(Payment $payment, ?string $reason = null, ?int $recordedBy = null): Payment
     {
@@ -131,7 +138,7 @@ class PaymentRecorder
                 'received_at' => now(),
                 'method' => $payment->method,
                 'collected_by' => $payment->collected_by,
-                'status' => PaymentStatus::Cleared,
+                'status' => $payment->status,
                 'reference' => $payment->reference,
                 'reverses_payment_id' => $payment->id,
                 'recorded_by' => $recordedBy,

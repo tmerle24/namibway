@@ -189,64 +189,66 @@
                     </dl>
 
                     @if ($folio->payments->isNotEmpty())
-                        <table class="nw-table">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>How</th>
-                                    <th>To</th>
-                                    <th>Reference</th>
-                                    <th>Amount</th>
-                                    <th>State</th>
-                                    <th class="nw-noprint"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($folio->payments as $payment)
+                        <div class="nw-scroll">
+                            <table class="nw-table">
+                                <thead>
                                     <tr>
-                                        <td class="nw-num">{{ $payment->received_at->isoFormat('D MMM YYYY') }}</td>
-                                        <td>
-                                            {{ $payment->method->label() }}
-                                            @if ($payment->isReversal())
-                                                <div class="nw-hint">Correction</div>
-                                            @elseif ($payment->isRefund())
-                                                <div class="nw-hint">Refund</div>
-                                            @endif
-                                        </td>
-                                        <td>{{ $payment->collected_by->label() }}</td>
-                                        <td class="nw-hint">
-                                            {{ $payment->reference ?: '—' }}
-                                            {{-- What the guest actually handed
-                                                 over, where that was not the
-                                                 property's own currency. --}}
-                                            @if ($payment->foreignAmountLabel())
-                                                <div>{{ $payment->foreignAmountLabel() }}</div>
-                                            @endif
-                                        </td>
-                                        <td class="nw-num">{{ Money::format($payment->amount, $payment->currency) }}</td>
-                                        <td>
-                                            <span class="nw-badge nw-badge--{{ $payment->status->color() }}">
-                                                {{ $payment->status->label() }}
-                                            </span>
-                                        </td>
-                                        {{-- Only a line that can still change
-                                             offers anything. A corrected or
-                                             failed row is history. --}}
-                                        <td class="nw-noprint">
-                                            @if (! $payment->isReversal() && $payment->reversal === null && $payment->status->countsTowardsBalance())
-                                                <button
-                                                    type="button"
-                                                    class="nw-table__link"
-                                                    wire:click="selectPayment({{ $payment->id }})"
-                                                >
-                                                    {{ $this->selectedPaymentId === $payment->id ? 'Selected' : 'Select' }}
-                                                </button>
-                                            @endif
-                                        </td>
+                                        <th>Date</th>
+                                        <th>How</th>
+                                        <th>To</th>
+                                        <th>Reference</th>
+                                        <th>Amount</th>
+                                        <th>State</th>
+                                        <th class="nw-noprint"></th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    @foreach ($folio->payments as $payment)
+                                        <tr>
+                                            <td class="nw-num">{{ $payment->received_at->isoFormat('D MMM YYYY') }}</td>
+                                            <td>
+                                                {{ $payment->method->label() }}
+                                                @if ($payment->isReversal())
+                                                    <div class="nw-hint">Correction</div>
+                                                @elseif ($payment->isRefund())
+                                                    <div class="nw-hint">Refund</div>
+                                                @endif
+                                            </td>
+                                            <td>{{ $payment->collected_by->label() }}</td>
+                                            <td class="nw-hint">
+                                                {{ $payment->reference ?: '—' }}
+                                                {{-- What the guest actually handed
+                                                     over, where that was not the
+                                                     property's own currency. --}}
+                                                @if ($payment->foreignAmountLabel())
+                                                    <div>{{ $payment->foreignAmountLabel() }}</div>
+                                                @endif
+                                            </td>
+                                            <td class="nw-num">{{ Money::format($payment->amount, $payment->currency) }}</td>
+                                            <td>
+                                                <span class="nw-badge nw-badge--{{ $payment->status->color() }}">
+                                                    {{ $payment->status->label() }}
+                                                </span>
+                                            </td>
+                                            {{-- Only a line that can still change
+                                                 offers anything. A corrected or
+                                                 failed row is history. --}}
+                                            <td class="nw-noprint">
+                                                @if (! $payment->isReversal() && $payment->reversal === null && $payment->status->countsTowardsBalance())
+                                                    <button
+                                                        type="button"
+                                                        class="nw-table__link"
+                                                        wire:click="selectPayment({{ $payment->id }})"
+                                                    >
+                                                        {{ $this->selectedPaymentId === $payment->id ? 'Selected' : 'Select' }}
+                                                    </button>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
 
                         @if ($this->selectedPaymentId !== null)
                             <div class="nw-drawer__actions nw-noprint">
@@ -291,47 +293,49 @@
                 @if ($stayInvoices->isNotEmpty())
                     <div class="nw-subhead">Invoices</div>
 
-                    <table class="nw-table">
-                        <thead>
-                            <tr>
-                                <th>Number</th>
-                                <th>Issued</th>
-                                <th>Kind</th>
-                                <th>Total</th>
-                                <th class="nw-noprint"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($stayInvoices as $document)
+                    <div class="nw-scroll">
+                        <table class="nw-table">
+                            <thead>
                                 <tr>
-                                    <td class="nw-num">
-                                        <a href="{{ route('invoices.pdf', $document) }}" target="_blank" rel="noopener">
-                                            {{ $document->number }}
-                                        </a>
-                                        @if ($document->isCancelled())
-                                            <div class="nw-warn">Credited</div>
-                                        @endif
-                                    </td>
-                                    <td class="nw-num">{{ $document->issued_at->isoFormat('D MMM YYYY') }}</td>
-                                    <td>{{ $document->kind->label() }}</td>
-                                    <td class="nw-num">{{ Money::format($document->total, $document->currency) }}</td>
-                                    <td class="nw-noprint">
-                                        {{-- A credit note is not itself credited,
-                                             and neither is one already taken back. --}}
-                                        @if (! $document->kind->isCredit() && ! $document->isCancelled())
-                                            <button
-                                                type="button"
-                                                class="nw-table__link"
-                                                wire:click="selectInvoice({{ $document->id }})"
-                                            >
-                                                {{ $this->selectedInvoiceId === $document->id ? 'Selected' : 'Select' }}
-                                            </button>
-                                        @endif
-                                    </td>
+                                    <th>Number</th>
+                                    <th>Issued</th>
+                                    <th>Kind</th>
+                                    <th>Total</th>
+                                    <th class="nw-noprint"></th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach ($stayInvoices as $document)
+                                    <tr>
+                                        <td class="nw-num">
+                                            <a href="{{ route('invoices.pdf', $document) }}" target="_blank" rel="noopener">
+                                                {{ $document->number }}
+                                            </a>
+                                            @if ($document->isCancelled())
+                                                <div class="nw-warn">Credited</div>
+                                            @endif
+                                        </td>
+                                        <td class="nw-num">{{ $document->issued_at->isoFormat('D MMM YYYY') }}</td>
+                                        <td>{{ $document->kind->label() }}</td>
+                                        <td class="nw-num">{{ Money::format($document->total, $document->currency) }}</td>
+                                        <td class="nw-noprint">
+                                            {{-- A credit note is not itself credited,
+                                                 and neither is one already taken back. --}}
+                                            @if (! $document->kind->isCredit() && ! $document->isCancelled())
+                                                <button
+                                                    type="button"
+                                                    class="nw-table__link"
+                                                    wire:click="selectInvoice({{ $document->id }})"
+                                                >
+                                                    {{ $this->selectedInvoiceId === $document->id ? 'Selected' : 'Select' }}
+                                                </button>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
 
                     @if ($this->selectedInvoiceId !== null)
                         <div class="nw-drawer__actions nw-noprint">
@@ -388,55 +392,57 @@
 
                 <div class="nw-subhead">Rooms</div>
 
-                <table class="nw-table">
-                    <thead>
-                        <tr>
-                            <th>Room type</th>
-                            <th>Sold as</th>
-                            <th>Occupants</th>
-                            <th>Units</th>
-                            <th>Dates</th>
-                            <th>Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($reservation->units as $unit)
+                <div class="nw-scroll">
+                    <table class="nw-table">
+                        <thead>
                             <tr>
-                                <td>
-                                    {{ $unit->bookableUnit?->name ?? '—' }}
-                                    {{--
-                                        Which departure, frozen onto the stay
-                                        for the same reason the plan's name is:
-                                        renaming "Morning departure" in March
-                                        must not change what February sold.
-                                    --}}
-                                    @if (filled($unit->slot_label))
-                                        <div class="nw-hint">{{ $unit->slot_label }}</div>
-                                    @endif
-                                </td>
-                                {{--
-                                    Read from the stay, not from the rate plan:
-                                    what this room was sold as is a fact about
-                                    February, and the plan may have been renamed
-                                    since. See the reservation_units migration.
-                                --}}
-                                <td>{{ $unit->soldAs() ?? '—' }}</td>
-                                <td>
-                                    @forelse ($unit->guests as $guest)
-                                        {{ $guest->count }} {{ $guest->category?->name ?? 'guest' }}@if (! $loop->last), @endif
-                                    @empty
-                                        —
-                                    @endforelse
-                                </td>
-                                <td class="nw-num">{{ $unit->quantity }}</td>
-                                <td class="nw-num">
-                                    {{ $unit->check_in->isoFormat('D MMM') }} – {{ $unit->check_out->isoFormat('D MMM') }}
-                                </td>
-                                <td class="nw-num">{{ Money::format($unit->total_amount, $unit->currency) }}</td>
+                                <th>Room type</th>
+                                <th>Sold as</th>
+                                <th>Occupants</th>
+                                <th>Units</th>
+                                <th>Dates</th>
+                                <th>Amount</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach ($reservation->units as $unit)
+                                <tr>
+                                    <td>
+                                        {{ $unit->bookableUnit?->name ?? '—' }}
+                                        {{--
+                                            Which departure, frozen onto the stay
+                                            for the same reason the plan's name is:
+                                            renaming "Morning departure" in March
+                                            must not change what February sold.
+                                        --}}
+                                        @if (filled($unit->slot_label))
+                                            <div class="nw-hint">{{ $unit->slot_label }}</div>
+                                        @endif
+                                    </td>
+                                    {{--
+                                        Read from the stay, not from the rate plan:
+                                        what this room was sold as is a fact about
+                                        February, and the plan may have been renamed
+                                        since. See the reservation_units migration.
+                                    --}}
+                                    <td>{{ $unit->soldAs() ?? '—' }}</td>
+                                    <td>
+                                        @forelse ($unit->guests as $guest)
+                                            {{ $guest->count }} {{ $guest->category?->name ?? 'guest' }}@if (! $loop->last), @endif
+                                        @empty
+                                            —
+                                        @endforelse
+                                    </td>
+                                    <td class="nw-num">{{ $unit->quantity }}</td>
+                                    <td class="nw-num">
+                                        {{ $unit->check_in->isoFormat('D MMM') }} – {{ $unit->check_out->isoFormat('D MMM') }}
+                                    </td>
+                                    <td class="nw-num">{{ Money::format($unit->total_amount, $unit->currency) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
 
                 {{--
                     The per-night breakdown is the answer to "why does this stay
@@ -445,28 +451,30 @@
                 --}}
                 <div class="nw-subhead">Per night</div>
 
-                <table class="nw-table">
-                    <thead>
-                        <tr>
-                            <th>Night</th>
-                            <th>Room type</th>
-                            <th>Units</th>
-                            <th>Rate</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($reservation->units as $unit)
-                            @foreach ($unit->nights->sortBy('date') as $night)
-                                <tr>
-                                    <td class="nw-num">{{ $night->date->isoFormat('ddd D MMM') }}</td>
-                                    <td>{{ $unit->bookableUnit?->name ?? '—' }}</td>
-                                    <td class="nw-num">{{ $night->units }}</td>
-                                    <td class="nw-num">{{ Money::format($night->rate, $night->currency) }}</td>
-                                </tr>
+                <div class="nw-scroll">
+                    <table class="nw-table">
+                        <thead>
+                            <tr>
+                                <th>Night</th>
+                                <th>Room type</th>
+                                <th>Units</th>
+                                <th>Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($reservation->units as $unit)
+                                @foreach ($unit->nights->sortBy('date') as $night)
+                                    <tr>
+                                        <td class="nw-num">{{ $night->date->isoFormat('ddd D MMM') }}</td>
+                                        <td>{{ $unit->bookableUnit?->name ?? '—' }}</td>
+                                        <td class="nw-num">{{ $night->units }}</td>
+                                        <td class="nw-num">{{ Money::format($night->rate, $night->currency) }}</td>
+                                    </tr>
+                                @endforeach
                             @endforeach
-                        @endforeach
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             @else
                 <div class="nw-drawer__head">
                     <div>

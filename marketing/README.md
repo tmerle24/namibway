@@ -212,12 +212,34 @@ Demonstrable, because it works:
 - Setting rates and restrictions across a season in one go, weekends only if you like.
 - Several properties under one partner, switched from the topbar.
 
+**Added 2026-08-12 — the money side.** This section used to say payments, invoices and a
+folio did not exist. They do now, and a demo tenant shows them with money already on some
+of its stays:
+
+- A folio on a stay: nights, what was added on top, what has been paid, what is left.
+- Recording a payment by any method, a refund, and correcting a line that should not have
+  been entered — with both lines left standing.
+- An outstanding column on the arrivals board and an unpaid list.
+- Issuing an invoice: numbered, gapless per property, VAT and tourism levy on their own
+  lines, and a credit note as the only way to correct one.
+- The whole online payment flow end to end — pay, decline, abandon, refund — on the demo
+  provider, which needs no account and no internet. **Every page of it says it is a
+  demonstration.**
+
+The commercial framing for that is the three settlement models, and staff should read
+**Documentation → Payments Guide** in the admin panel before pitching them. Two things
+there are not decided and must not be promised: exactly when we count commission as
+earned, and payment terms under the agency model.
+
 Not demonstrable, and must not be implied:
 
 - **A connection to anything.** No channel sync, no iCal, no PMS link. The demo tenant
   has no connector at all, deliberately.
-- **Payments, invoices, a folio, housekeeping or tax reporting.** None of it exists, and
-  there is no button that hints at it.
+- **Housekeeping or tax reporting.** Neither exists, and there is no button that hints
+  at it.
+- **A live card payment.** The payment flow *is* demonstrable — see below — but there is
+  no merchant account, so nothing you show moves real money. Say "real software on
+  made-up data" here too.
 - **Room-level assignment.** The system holds room types and quantities, never a named
   room. A lodge that assigns physical rooms needs that built.
 - **Anything about the prospect's own live data.** The demo is a copy. It carries none of

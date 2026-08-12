@@ -31,10 +31,14 @@ nothing gets lost between sessions.
   server-side: Claude tool-use schema, listing resolution, alternatives,
   routing/driving-distance guidance, availability pre-checks.
 - `app/Models/Listing.php`, `BookableUnit.php` (was `RoomType.php`), `SavedPlan.php` — the backing
-  data. `RoomType` holds per-listing room/unit types; availability is derived
+  data. `BookableUnit` holds per-listing room/unit types; availability is derived
   by `app/Services/Booking/RoomAvailability.php`, which both the Native
   connector and the plan's room picker go through. Edited via the
   `RoomTypesRelationManager` on the listing in the admin *and* partner panels.
+  Since 2026-08-12 the picker's *prices* come from the property's own rate plan
+  and calendar too (`app/Services/Booking/RoomOffers.php`), taxes included — so a
+  season a lodge priced reaches the traveller, and what the plan quotes is what
+  the folio will later say the stay owes.
 
 ## Future concept: collaborative trip plan (partly built — see session 5)
 

@@ -32,73 +32,75 @@
                 @if ($stays->isEmpty())
                     <p class="nw-empty">Every stay is paid up. Nothing to chase.</p>
                 @else
-                    <table class="nw-table" style="margin-top: 1rem;">
-                        <thead>
-                            <tr>
-                                <th>Guest</th>
-                                <th>Room type</th>
-                                <th>Arrival</th>
-                                <th>Departure</th>
-                                <th>Stay</th>
-                                <th>Total</th>
-                                <th>Paid</th>
-                                <th>Outstanding</th>
-                                <th>Reference</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($stays as $stay)
+                    <div class="nw-scroll">
+                        <table class="nw-table" style="margin-top: 1rem;">
+                            <thead>
                                 <tr>
-                                    <td>
-                                        <button
-                                            type="button"
-                                            class="nw-table__link"
-                                            wire:click="showReservation({{ $stay->id }})"
-                                        >
-                                            {{ $stay->guest_name }}
-                                        </button>
-                                        <div class="nw-hint">{{ $stay->source->label() }}</div>
-                                    </td>
-                                    <td>
-                                        @foreach ($stay->units as $unit)
-                                            <div>{{ $unit->bookableUnit?->name ?? '—' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif</div>
-                                        @endforeach
-                                    </td>
-                                    <td class="nw-num">{{ $stay->check_in->isoFormat('ddd D MMM YYYY') }}</td>
-                                    <td class="nw-num">{{ $stay->check_out->isoFormat('ddd D MMM YYYY') }}</td>
-                                    <td>
-                                        {{-- A cancelled stay can still owe money, and
-                                             that is exactly the case a system without
-                                             a folio gets wrong. --}}
-                                        <span class="nw-badge nw-badge--{{ $stay->status->color() }}">
-                                            {{ $stay->status->label() }}
-                                        </span>
-                                    </td>
-                                    <td class="nw-num">
-                                        @if ($stay->total_amount === null)
-                                            <span class="nw-warn">Not priced</span>
-                                        @else
-                                            {{ Money::format($stay->total_amount, $stay->currency) }}
-                                        @endif
-                                    </td>
-                                    <td class="nw-num">{{ Money::format($stay->paid_amount, $stay->currency) }}</td>
-                                    <td class="nw-num">
-                                        @if ($stay->total_amount === null)
-                                            <span class="nw-hint">—</span>
-                                        @else
-                                            {{ Money::format($stay->total_amount - $stay->paid_amount, $stay->currency) }}
-                                        @endif
-                                        <div>
-                                            <span class="nw-badge nw-badge--{{ $stay->payment_status->color() }}">
-                                                {{ $stay->payment_status->label() }}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td class="nw-num nw-hint">{{ $stay->reference }}</td>
+                                    <th>Guest</th>
+                                    <th>Room type</th>
+                                    <th>Arrival</th>
+                                    <th>Departure</th>
+                                    <th>Stay</th>
+                                    <th>Total</th>
+                                    <th>Paid</th>
+                                    <th>Outstanding</th>
+                                    <th>Reference</th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach ($stays as $stay)
+                                    <tr>
+                                        <td>
+                                            <button
+                                                type="button"
+                                                class="nw-table__link"
+                                                wire:click="showReservation({{ $stay->id }})"
+                                            >
+                                                {{ $stay->guest_name }}
+                                            </button>
+                                            <div class="nw-hint">{{ $stay->source->label() }}</div>
+                                        </td>
+                                        <td>
+                                            @foreach ($stay->units as $unit)
+                                                <div>{{ $unit->bookableUnit?->name ?? '—' }}@if ($unit->quantity > 1) ×{{ $unit->quantity }}@endif</div>
+                                            @endforeach
+                                        </td>
+                                        <td class="nw-num">{{ $stay->check_in->isoFormat('ddd D MMM YYYY') }}</td>
+                                        <td class="nw-num">{{ $stay->check_out->isoFormat('ddd D MMM YYYY') }}</td>
+                                        <td>
+                                            {{-- A cancelled stay can still owe money, and
+                                                 that is exactly the case a system without
+                                                 a folio gets wrong. --}}
+                                            <span class="nw-badge nw-badge--{{ $stay->status->color() }}">
+                                                {{ $stay->status->label() }}
+                                            </span>
+                                        </td>
+                                        <td class="nw-num">
+                                            @if ($stay->total_amount === null)
+                                                <span class="nw-warn">Not priced</span>
+                                            @else
+                                                {{ Money::format($stay->total_amount, $stay->currency) }}
+                                            @endif
+                                        </td>
+                                        <td class="nw-num">{{ Money::format($stay->paid_amount, $stay->currency) }}</td>
+                                        <td class="nw-num">
+                                            @if ($stay->total_amount === null)
+                                                <span class="nw-hint">—</span>
+                                            @else
+                                                {{ Money::format($stay->total_amount - $stay->paid_amount, $stay->currency) }}
+                                            @endif
+                                            <div>
+                                                <span class="nw-badge nw-badge--{{ $stay->payment_status->color() }}">
+                                                    {{ $stay->payment_status->label() }}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td class="nw-num nw-hint">{{ $stay->reference }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 @endif
             </x-filament::section>
         @endif
