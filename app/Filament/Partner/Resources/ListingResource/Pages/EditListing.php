@@ -6,6 +6,7 @@ use App\Filament\Concerns\HasFormActionsInHeader;
 use App\Filament\Partner\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\CreateWebsiteAction;
+use App\Filament\Support\EditBlocksAction;
 use App\Filament\Support\EditHeroAction;
 use App\Filament\Support\EditLegalTextAction;
 use App\Filament\Support\EditSiteLogoAction;
@@ -48,9 +49,10 @@ class EditListing extends EditRecord
             // owners until the subscription exists, and a disabled button in a
             // page header reads as broken rather than as forthcoming.
             CreateWebsiteAction::visitHeader(),
-            // The opening screen, the logo and the legal pages: all three are
-            // the owner's, not ours, so the owner sets them here rather than by
-            // asking us.
+            // The content, the opening screen, the logo and the legal pages:
+            // all of it is the owner's, not ours, so the owner sets it here
+            // rather than by asking us.
+            EditBlocksAction::header(),
             EditHeroAction::header(),
             EditSiteLogoAction::header(),
             EditTypographyAction::header(),

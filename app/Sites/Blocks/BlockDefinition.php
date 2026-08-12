@@ -61,6 +61,22 @@ abstract class BlockDefinition
         return [];
     }
 
+    /**
+     * Which payload keys carry markup, and are therefore rendered unescaped.
+     *
+     * Named here rather than assumed anywhere else, because this is the list
+     * SiteBlock runs through the purifier before it writes. Everything not on
+     * it is text and is escaped by the view — the two must not be confused, and
+     * adding a key here is the whole of what it takes to make a field
+     * rich-text.
+     *
+     * @return array<int, string>
+     */
+    public function richTextFields(): array
+    {
+        return [];
+    }
+
     public function view(): string
     {
         return 'sites.blocks.'.$this->type();

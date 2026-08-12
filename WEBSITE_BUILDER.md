@@ -1,7 +1,8 @@
 # Business-Owner Website Builder — Concept Brief
 
-**Status:** Two documents in one file. The **live commission is the next section** — the
-content editor, which is what to build now. Everything after it is the original brief from
+**Status:** Two documents in one file. The next section is the commission for the content
+editor, **built on 2026-08-12** and kept because its constraints still bind whatever is
+built here next. Everything after it is the original brief from
 the concept pass, kept for the constraints it sets, which still hold. That older half is
 **not** a description of the system: slice 1 shipped 2026-08-12 and `PROJECT_STATUS.md` →
 Workstream B is the live record, including where a decision here was later reversed
@@ -11,6 +12,13 @@ checkout).
 ---
 
 ## Commission — the content editor (2026-08-12)
+
+> **Built 2026-08-12.** `EditBlocksAction`, `App\Filament\Support\Sites\BlockForm` and
+> `BlockEditorTest`, in both panels. The commission is kept because the constraints in it
+> still bind whatever is built here next; `PROJECT_STATUS.md` → "Built 2026-08-12 — the
+> content editor" records what was decided while building it, including the two things it
+> deliberately does not do (pages are still not creatable, and pictures cannot be uploaded
+> from the editor).
 
 ### Read first
 

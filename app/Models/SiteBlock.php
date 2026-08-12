@@ -68,6 +68,33 @@ class SiteBlock extends Model
     }
 
     /**
+     * Put the markup-carrying fields through the purifier.
+     *
+     * The views render these with `{!! !!}`, and until there was an editor the
+     * only way one could be filled was by copying a listing description that
+     * had already been sanitised on its own way in — so the guarantee held by
+     * provenance rather than by anything here. An editor is a person typing,
+     * and a page served under our certificate must not be able to carry a
+     * script because somebody pasted one out of a word processor.
+     *
+     * Same allow-list as a listing description, deliberately: one answer to
+     * "what may a customer's prose contain" across the whole product.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function sanitized(array $data, BlockDefinition $definition): array
+    {
+        foreach ($definition->richTextFields() as $field) {
+            if (array_key_exists($field, $data) && is_string($data[$field])) {
+                $data[$field] = Listing::sanitizeRichText($data[$field]);
+            }
+        }
+
+        return $data;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function validatedData(): array
@@ -80,7 +107,7 @@ class SiteBlock extends Model
             );
         }
 
-        $data = $this->data ?? [];
+        $data = $this->sanitized($this->data ?? [], $definition);
 
         $validator = Validator::make($data, $definition->rules());
 
