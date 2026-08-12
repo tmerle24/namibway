@@ -45,4 +45,12 @@ class RichTextBlock extends BlockDefinition
     {
         return ['heading' => null, 'body' => null];
     }
+
+    /**
+     * @return array<int, string>
+     */
+    public function richTextFields(): array
+    {
+        return ['body'];
+    }
 }

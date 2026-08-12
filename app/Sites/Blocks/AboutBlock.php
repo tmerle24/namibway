@@ -52,4 +52,12 @@ class AboutBlock extends BlockDefinition
             'image_id' => null,
         ];
     }
+
+    /**
+     * @return array<int, string>
+     */
+    public function richTextFields(): array
+    {
+        return ['body'];
+    }
 }

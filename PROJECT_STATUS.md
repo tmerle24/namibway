@@ -1194,25 +1194,52 @@ through the same actions the admin uses (`EditHeroAction`, `EditLegalTextAction`
 `EditSiteLogoAction`) — the moment the two copies diverge, "the customer can also edit it
 themselves" turns into two products with one price.
 
+### Built 2026-08-12 — the content editor
+
+The blocks were written once by `sites:generate` and could then be touched by nobody: a
+typo in generated prose was unfixable, and a business with no listing had an empty frame
+nothing could fill — roughly half of them have none. `EditBlocksAction` is the Website
+tab's "Content" button and the same button in the owner's own panel, one implementation
+serving both, like every other editor here.
+
+What it does: bands added, reordered, switched on and off and edited, with a form per
+block type. Filament's Builder rather than a repeater, because the whole point is that each
+type carries different fields.
+
+Four decisions worth not rediscovering:
+
+- **The Filament fields are not on the block classes.** `App\Sites\Blocks` is domain code
+  serving the public renderer, and a panel component in there would sit on the path of every
+  page we serve. They live in `App\Filament\Support\Sites\BlockForm` instead. The cost of
+  that split is drift, and it is paid by `BlockEditorTest`: every type in the registry has a
+  form, every field on a form is a key that type's own `rules()` accept, and only a key the
+  definition names in `richTextFields()` may reach a rich editor. A test, not a sentence
+  asking somebody to remember.
+- **The purifier was missing, and the views had been saying otherwise.** `about` and
+  `rich_text` render their body with `{!! !!}`, and the comment above that line claimed the
+  value had already been sanitised. It had — but by provenance, not by anything in this
+  code: the only way to fill it was to copy a listing description that went through
+  `Listing::sanitizeRichText` on its own way in. An editor is a person typing, so `SiteBlock`
+  now runs the keys a definition declares as rich text through the same allow-list before it
+  writes. Anything else is text and the view escapes it.
+- **One block of each type per page**, refused with the type named rather than silently
+  dropped. Generation resolves a block by its type (`firstOrNew(['type' => …])`), so two
+  galleries would make a rebuild pick one of them arbitrarily — on somebody's live shopfront.
+- **`is_enabled` rides inside the builder item and is taken back out on the way in.** It is a
+  column and not part of the payload, but a switch outside the builder could not follow a
+  band being dragged.
+
+Rebuild protection needed nothing new: `sites.imported.blocks` already records what
+generation wrote, so an edited block is left alone by the next `sites:generate` for free.
+
+**Two things this deliberately does not do**, both worth naming rather than discovering:
+pages are still not creatable — `site_pages` exists so a second page and a second language
+are inserts rather than migrations, but the editor works on the home page and nothing makes
+another one. And there is no picture *upload* here: a band chooses from the site's own
+`site_images`, which are put there by generation. A customer with no listing therefore has
+an editor with an empty picture list, which is the next gap in this workstream.
+
 ### Next up, in the order it was asked for
-
-- **The editor — the content itself, in both panels.** Everything editable today is the
-  frame: the hero lines, the logo, the typography, the legal text, the domain. The content
-  is not. The fourteen block types are written once by `sites:generate` and can then be
-  touched by nobody, so a wrong photograph or a typo in the generated prose is fixable
-  only by a rebuild from the listing — which is to say not at all, since a rebuild leaves
-  edited fields alone and there are none. It is also what a business with no listing needs,
-  and roughly half of them have none: `sites:generate --name` produces an empty frame today
-  and nothing can fill it.
-
-  The shape: blocks added, reordered, switched on and off and edited from the Website tab,
-  with each type's form derived from its `BlockDefinition` so the editor and the renderer
-  cannot drift; images chosen from the site's own `site_images`; pages created. And **the
-  same actions in the partner panel**, the way `EditHeroAction`, `EditSiteLogoAction` and
-  `EditLegalTextAction` are already one implementation serving both places. The owner gets
-  the editor, not a cut-down copy of it — what differs is scope and permission, never the
-  fields. The moment there is an admin version and a customer version of a piece of
-  content, "the customer can also edit it themselves" is two products at one price.
 
 - **Our website terms, and the business confirming from the mail.**
   `config('sites.terms_url')` is empty, so the foot of every site and the publish
