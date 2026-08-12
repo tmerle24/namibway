@@ -48,9 +48,8 @@ use Illuminate\Support\Str;
  * @property string|null $contact_email
  * @property string|null $contact_phone
  * @property string|null $whatsapp
- * @property bool $show_book_button
- * @property bool $show_call_button
- * @property bool $show_whatsapp_button
+ * @property array<string, mixed>|null $action_buttons
+ * @property string|null $brand_name
  * @property string|null $address
  * @property string|null $latitude
  * @property string|null $longitude
@@ -93,9 +92,8 @@ class Site extends Model
         'contact_email',
         'contact_phone',
         'whatsapp',
-        'show_book_button',
-        'show_call_button',
-        'show_whatsapp_button',
+        'action_buttons',
+        'brand_name',
         'address',
         'latitude',
         'longitude',
@@ -118,16 +116,12 @@ class Site extends Model
      * against that instance failed. Defaults that anything reads back
      * immediately have to exist on both sides.
      *
-     * @var array<string, string|bool>
+     * @var array<string, string>
      */
     protected $attributes = [
         'status' => 'draft',
         'default_locale' => 'en',
         'accent' => 'copper',
-        // On unless the business asks otherwise — see the migration.
-        'show_book_button' => true,
-        'show_call_button' => true,
-        'show_whatsapp_button' => true,
     ];
 
     protected $casts = [
@@ -141,9 +135,7 @@ class Site extends Model
         'imported' => 'array',
         'brand_size' => 'integer',
         'brand_size_mobile' => 'integer',
-        'show_book_button' => 'boolean',
-        'show_call_button' => 'boolean',
-        'show_whatsapp_button' => 'boolean',
+        'action_buttons' => 'array',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
     ];
@@ -232,6 +224,22 @@ class Site extends Model
     public function publicUrl(): string
     {
         return $this->pageUrl();
+    }
+
+    /**
+     * The name as the bar sets it, which is not always the name of the
+     * business.
+     *
+     * "Ongombo West #56 Hunting Safari" is the registered name and belongs in
+     * the page title and the legal notice; in a 64px bar beside a menu it wraps
+     * where the browser decides, which was "…Hunting / Safari". So `brand_name`
+     * is a separate field: shorter if they want, and a line break in it is
+     * honoured (the bar allows two lines and no more), while `name` stays the
+     * name everywhere it is read as one.
+     */
+    public function brandName(): string
+    {
+        return filled($this->brand_name) ? (string) $this->brand_name : (string) $this->name;
     }
 
     /**

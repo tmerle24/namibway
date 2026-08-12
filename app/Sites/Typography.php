@@ -140,14 +140,14 @@ class Typography
     public static function brandSize(Site $site): int
     {
         if ($site->brand_size !== null) {
-            return $site->brand_size;
+            return self::fitsTwoLines($site, $site->brand_size);
         }
 
-        return match (true) {
-            mb_strlen($site->name) > 36 => 18,
-            mb_strlen($site->name) > 24 => 20,
+        return self::fitsTwoLines($site, match (true) {
+            self::brandLength($site) > 36 => 18,
+            self::brandLength($site) > 24 => 20,
             default => 22,
-        };
+        });
     }
 
     /**
@@ -169,13 +169,45 @@ class Typography
         // than being taken literally: somebody who chose 22 for a laptop did
         // not choose 22 for a phone, and a floor of 14 keeps it legible.
         if ($site->brand_size !== null) {
-            return max(14, $site->brand_size - 2);
+            return self::fitsTwoLines($site, max(14, $site->brand_size - 2));
         }
 
-        return match (true) {
-            mb_strlen($site->name) > 36 => 15,
-            mb_strlen($site->name) > 24 => 17,
+        return self::fitsTwoLines($site, match (true) {
+            self::brandLength($site) > 36 => 15,
+            self::brandLength($site) > 24 => 17,
             default => 20,
-        };
+        });
+    }
+
+    /**
+     * The size, held down to what two lines can be in the bar.
+     *
+     * The bar is 64px tall with 8px of padding, so a name has 48px, and at a
+     * line height of 1.2 that is 20px a line. A name broken by hand is short
+     * enough to be sized *up* by the steps above — 16 characters asks for
+     * 22px — and two lines of 22px are 53px, which the bar clips. Measured, not
+     * reasoned: it clipped the moment the first hand-broken name went in.
+     *
+     * Only where the break was typed. A name that merely might wrap is already
+     * covered by the steps, which read the whole string.
+     */
+    private static function fitsTwoLines(Site $site, int $size): int
+    {
+        return preg_match('/\R/u', $site->brandName()) === 1 ? min($size, 20) : $size;
+    }
+
+    /**
+     * How wide the name has to be set, in characters.
+     *
+     * The longest line rather than the whole string, because a name broken by
+     * hand — see Site::brandName() — is two short lines and not one long one,
+     * and sizing it as though it were long is what somebody typing that break
+     * is trying to avoid.
+     */
+    private static function brandLength(Site $site): int
+    {
+        $lines = preg_split('/\R/u', $site->brandName()) ?: [];
+
+        return (int) max(array_map(mb_strlen(...), $lines) ?: [0]);
     }
 }

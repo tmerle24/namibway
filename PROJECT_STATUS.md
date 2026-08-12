@@ -1349,16 +1349,56 @@ What is worth knowing later:
   `cta_label`/`cta_href` empty — nothing knows the anchors at that point — so a generated
   site used to open with a headline and no way to act on it. An owner's own label and
   target still win over the derived one.
-- **Each button has a switch on the site, on by default** (`show_book_button`,
-  `show_call_button`, `show_whatsapp_button`; `EditActionButtonsAction`, on the Website tab
-  and in the owner's own panel). Switching one off hides the *button* everywhere at once —
-  it does not unpublish the number, which stays in the contact section and the footer.
+- **Each button has a switch on the site.** Superseded the same day by placements — see
+  the next entry — which is why nothing here says which one is on by default any more.
 - **The strip makes room for itself with a spacer element, not with padding on the body**,
   so the thing that covers the foot of the page and the thing that clears it can never
   exist without each other.
 - The one CSS trap met on the way: `.nav__cta` is also a `.btn`, `.btn` is declared later
   in the same stylesheet, and at equal specificity the later rule wins — so the selector is
   deliberately `.nav .nav__cta`.
+
+### Built 2026-08-13 — where each button goes, per screen
+
+The morning's version had one switch per action and the renderer decided where the button
+went. That was the wrong half of the decision, and a screenshot of the first real site
+showed why: an "Enquire" button in the menu bar, redundant beside the "Request availability"
+band it points at, pushing "Ongombo West #56 Hunting Safari" onto a second line. The same
+button at the foot of a phone screen was exactly right.
+
+So the unit is a **placement** — an action, an area, a device — and there are four actions
+(enquiry, WhatsApp, call, and one the business writes itself), three areas (menu bar,
+opening screen, the strip at the foot of the screen) and two devices. `App\Sites\ActionButtons`
+holds them in one JSON column with the labels; `App\Sites\Rendering\SiteActions` turns them
+into buttons for a page; `EditActionButtonsAction` is one section per action.
+
+The defaults are the product decision, and read as a sentence: the enquiry button under the
+headline on a desktop and at the foot of the screen on a phone; WhatsApp and the telephone
+at the foot of a phone screen, because both are phone things — WhatsApp especially, which
+is how this market answers and is close to useless on a laptop; the business's own button
+("About us" until they change it) under the headline on both. **Nothing in the menu**, which
+is a list of places on the page and not a place for a button.
+
+What is worth knowing later:
+
+- **A placement never renders a broken button.** A WhatsApp button on a site with no
+  WhatsApp number, or an enquiry button where there is nothing to enquire about, is not
+  rendered however it is ticked — that check is in the resolver, not in the panel, so it
+  cannot depend on somebody remembering.
+- **The screen is decided in CSS, not on the server.** The page is rendered once carrying
+  both, and `.at-phone` / `.at-desktop` hide what the screen is not for; a server that reads
+  the device off a user agent serves the phone layout to a laptop sooner or later. 1100px is
+  the only "this is a desktop" number in the stylesheet, and it is the same line the menu
+  uses to stop being a burger.
+- **The strip at the foot follows its buttons**, including onto a desktop if somebody puts
+  one there, and takes its own height out of the flow with a spacer that carries the same
+  visibility class — so it can never clear space on a screen where it is not shown.
+- **Two titles became editable, both with a line break that is honoured.** The opening line
+  is the only text on the site set at 76px, so where it breaks is a decision, not something
+  to leave to a browser; and `sites.brand_name` is the name *the bar* sets, separate from
+  the business's name, which stays whole in the page title and the legal notice. A
+  hand-broken name is short, so the automatic sizing wants to set it larger — and two lines
+  of 22px are 53px in a bar that leaves 48. Capped, after measuring it clip.
 
 ### Built 2026-08-13 — the subscription, and a button to order one
 

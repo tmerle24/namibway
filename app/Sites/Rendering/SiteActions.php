@@ -4,72 +4,207 @@ namespace App\Sites\Rendering;
 
 use App\Models\Site;
 use App\Models\SiteBlock;
+use App\Sites\ActionButtons;
 
 /**
- * The three things a visitor is ever asked to do on a customer's website:
- * book, call, or message on WhatsApp.
+ * The buttons a page offers, resolved once and handed to the three places that
+ * render them: the menu bar, the opening screen, and the strip fixed to the
+ * foot of the screen.
  *
- * Resolved once and used by three places that must agree — the button in the
- * bar, the buttons under the hero headline, and the action bar fixed to the
- * foot of the page on a phone. They are the same actions in three positions,
- * so working out what they are is not a job any of the three should be doing
- * for itself: a hero offering "Book now" while the bar offers "Enquire" is one
- * site disagreeing with itself about what it sells.
+ * Two questions are answered here, and they are different questions:
  *
- * ## What "book" means when there is nothing to book
+ * - **Where does each action point on this page?** The enquiry button needs an
+ *   anchor, and which band it lands on depends on what the page has. The custom
+ *   button needs one too, unless the business typed a link.
+ * - **Is it wanted here, on this screen?** That is App\Sites\ActionButtons —
+ *   the business's own choice, stored per action, area and device.
  *
- * Most sites have no booking block: it only renders where the property has
- * sellable inventory with us (see SiteController::shouldRender). The enquiry
- * form is the next best thing and, failing that, the contact details. So the
- * primary action degrades — booking, then enquiry, then contact — rather than
- * disappearing, because a website whose main button is missing on two thirds
- * of the customers is not a template, it is a special case.
+ * A button survives only if both answers are yes. A WhatsApp button placed at
+ * the foot of a phone screen on a site with no WhatsApp number is not rendered
+ * at all: a button that opens WhatsApp on nobody is worse than no button, and
+ * that must not depend on somebody remembering to switch it off.
+ *
+ * ## Where the enquiry button points, when there is nothing to book
+ *
+ * Booking, then enquiry, then contact. The booking band renders only where the
+ * property has sellable inventory with us and the enquiry form only where we
+ * hold a listing — so on most sites neither exists, and a template whose main
+ * button is missing two thirds of the time is not a template. The label follows
+ * the band, which is the business's own wording, unless it is too long to be a
+ * button or the business has written one here.
  *
  * Anchors are the same `s{n}` numbers the page renders, counted the same way
  * (hero and footer are not sections). If that numbering ever changes, it
  * changes in both places or the buttons scroll to the wrong band.
- *
- * ## Switching one off
- *
- * Each of the three has a switch on the site, on by default. This is the one
- * place they are read, so a button that is off is off everywhere — the bar,
- * the hero and the action bar all ask this object, and none of them asks the
- * site. What the switch does not do is hide the detail: a business with the
- * Call button off still has its number in the contact section and the footer,
- * because that is a contact detail rather than a button.
  */
 final class SiteActions
 {
-    /** Blocks that can be the primary action, best first. */
+    /** Bands the enquiry button will point at, best first. */
     private const PRIMARY = ['booking', 'enquiry', 'contact'];
 
     private const LABELS = [
         'booking' => 'Book now',
         'enquiry' => 'Enquire',
         'contact' => 'Contact',
+        'about' => 'About us',
+        'whatsapp' => 'WhatsApp',
+        'call' => 'Call',
     ];
 
     /**
-     * Longer than this and the owner's own heading is a sentence rather than a
+     * Longer than this and the band's own heading is a sentence rather than a
      * button. "Request availability" is the generated default for an enquiry
-     * block and is exactly the case: right above the form, wrong inside a
+     * band and is exactly the case: right above the form, wrong inside a
      * 96px-wide button on a phone.
      */
-    private const MAX_LABEL = 14;
+    private const MAX_DERIVED_LABEL = 14;
 
+    /**
+     * @param  array<string, ActionButton>  $buttons  every action that has somewhere to go, keyed by action
+     */
     private function __construct(
-        public readonly ?string $primaryAnchor,
-        public readonly string $primaryLabel,
-        /** Which of self::PRIMARY the anchor came from, or null when there is none. */
-        public readonly ?string $primaryType,
-        public readonly ?string $whatsapp,
-        public readonly ?string $tel,
+        private readonly ActionButtons $placement,
+        private readonly array $buttons,
     ) {}
 
     /**
      * @param  iterable<int, SiteBlock>  $blocks  the page's renderable blocks, in render order
      */
     public static function for(Site $site, iterable $blocks): self
+    {
+        $bands = self::bands($blocks);
+        $placement = ActionButtons::for($site);
+        $buttons = [];
+
+        if ($primary = self::primaryBand($bands)) {
+            $buttons['enquiry'] = new ActionButton(
+                'enquiry',
+                $placement->label('enquiry') ?? $primary['label'],
+                '#'.$primary['anchor'],
+                'both',
+            );
+        }
+
+        if ($whatsapp = SafeLink::whatsapp($site->whatsapp)) {
+            $buttons['whatsapp'] = new ActionButton(
+                'whatsapp',
+                $placement->label('whatsapp') ?? self::LABELS['whatsapp'],
+                $whatsapp,
+                'both',
+                external: true,
+                icon: 'whatsapp',
+            );
+        }
+
+        if ($tel = self::tel($site->contact_phone)) {
+            $buttons['call'] = new ActionButton(
+                'call',
+                $placement->label('call') ?? self::LABELS['call'],
+                'tel:'.$tel,
+                'both',
+                icon: 'phone',
+            );
+        }
+
+        // The business's own button. It defaults to the About band, because
+        // that is the one thing nearly every site has and the thing a visitor
+        // on the opening screen most often wants next — but the label and the
+        // link are theirs, and a typed link wins over the band.
+        $typed = $placement->href('custom');
+        $about = $bands['about'] ?? null;
+        $href = $typed !== null ? SafeLink::href($typed) : ($about !== null ? '#'.$about['anchor'] : null);
+
+        if ($href !== null && $href !== '#') {
+            $buttons['custom'] = new ActionButton(
+                'custom',
+                // "About us", not the band's own heading. A heading introduces
+                // a section and a button asks for something, and they are not
+                // the same words: a band headed "Welcome" is fine above the
+                // text and meaningless on a button.
+                $placement->label('custom') ?? self::LABELS['about'],
+                $href,
+                'both',
+                external: ! str_starts_with($href, '#') && ! str_starts_with($href, '/'),
+            );
+        }
+
+        return new self($placement, $buttons);
+    }
+
+    /**
+     * The buttons for one area, in a fixed order, each carrying the screens it
+     * is wanted on.
+     *
+     * The order is fixed rather than following the configuration, because a
+     * strip whose buttons move about from page to page is a strip nobody
+     * learns. It reads differently in the strip on purpose: reading order puts
+     * the important thing first, but a row of equal thumb targets across the
+     * bottom of a phone puts it last, under the thumb rather than under the
+     * hand holding the phone.
+     *
+     * @return array<int, ActionButton>
+     */
+    public function buttons(string $area): array
+    {
+        $out = [];
+        $order = $area === 'footer'
+            ? ['call', 'whatsapp', 'custom', 'enquiry']
+            : ActionButtons::ACTIONS;
+
+        foreach ($order as $action) {
+            $button = $this->buttons[$action] ?? null;
+            $visibility = $this->placement->visibility($action, $area);
+
+            if ($button === null || $visibility === null) {
+                continue;
+            }
+
+            $out[] = new ActionButton(
+                $button->key,
+                $button->label,
+                $button->href,
+                $visibility,
+                $button->external,
+                $button->icon,
+            );
+        }
+
+        return $out;
+    }
+
+    /**
+     * Which screens an area has any button on — 'both', 'phone', 'desktop', or
+     * null for none at all.
+     *
+     * The strip at the foot of the page needs this for itself: it is a fixed
+     * element with a background and a border, so an empty one is a bar of
+     * nothing across the bottom of the screen rather than nothing at all.
+     */
+    public function visibility(string $area): ?string
+    {
+        $phone = false;
+        $desktop = false;
+
+        foreach ($this->buttons($area) as $button) {
+            $phone = $phone || $button->visibility !== 'desktop';
+            $desktop = $desktop || $button->visibility !== 'phone';
+        }
+
+        return match (true) {
+            $phone && $desktop => 'both',
+            $phone => 'phone',
+            $desktop => 'desktop',
+            default => null,
+        };
+    }
+
+    /**
+     * The bands this page has that a button can point at, keyed by type.
+     *
+     * @param  iterable<int, SiteBlock>  $blocks
+     * @return array<string, array{anchor: string, label: string}>
+     */
+    private static function bands(iterable $blocks): array
     {
         $found = [];
         $n = 0;
@@ -81,70 +216,34 @@ final class SiteActions
 
             $n++;
 
-            if (in_array($block->type, self::PRIMARY, true) && ! isset($found[$block->type])) {
-                $found[$block->type] = [
-                    'anchor' => 's'.$n,
-                    'label' => self::label($block),
-                ];
+            if (in_array($block->type, [...self::PRIMARY, 'about'], true) && ! isset($found[$block->type])) {
+                $found[$block->type] = ['anchor' => 's'.$n, 'label' => self::label($block)];
             }
         }
 
-        $primary = null;
-        $type = null;
+        return $found;
+    }
 
-        foreach (self::PRIMARY as $candidate) {
-            if (isset($found[$candidate])) {
-                $primary = $found[$candidate];
-                $type = $candidate;
-
-                break;
+    /**
+     * @param  array<string, array{anchor: string, label: string}>  $bands
+     * @return array{anchor: string, label: string}|null
+     */
+    private static function primaryBand(array $bands): ?array
+    {
+        foreach (self::PRIMARY as $type) {
+            if (isset($bands[$type])) {
+                return $bands[$type];
             }
         }
 
-        $on = $site->show_book_button;
-
-        return new self(
-            $on ? ($primary['anchor'] ?? null) : null,
-            $primary['label'] ?? self::LABELS['booking'],
-            $on ? $type : null,
-            $site->show_whatsapp_button ? SafeLink::whatsapp($site->whatsapp) : null,
-            $site->show_call_button ? self::tel($site->contact_phone) : null,
-        );
-    }
-
-    /**
-     * Whether there is anything to put in the action bar at all. A site with no
-     * phone, no WhatsApp and nothing to book gets no bar rather than an empty
-     * strip across the bottom of every page.
-     */
-    public function any(): bool
-    {
-        return $this->showsPrimaryInBar() || $this->whatsapp !== null || $this->tel !== null;
-    }
-
-    /**
-     * Whether the strip at the foot of the page carries the primary button.
-     *
-     * It does, unless the primary is only the contact section and Call or
-     * WhatsApp is already there: a third button meaning "the same two things,
-     * further down the page" is noise on the one surface with least room for
-     * it. The bar at the top and the hero still offer it — there it is the only
-     * action on the screen, and it means "get in touch".
-     */
-    public function showsPrimaryInBar(): bool
-    {
-        if ($this->primaryAnchor === null) {
-            return false;
-        }
-
-        return $this->primaryType !== 'contact' || ($this->tel === null && $this->whatsapp === null);
+        return null;
     }
 
     private static function label(SiteBlock $block): string
     {
         $default = self::LABELS[$block->type] ?? self::LABELS['booking'];
 
-        // Only where the heading is about the action. A contact section is
+        // Only where the heading is about the action. A contact band is
         // commonly headed "Find us", which on a button reads as directions
         // rather than as an invitation to get in touch.
         if ($block->type === 'contact') {
@@ -153,13 +252,13 @@ final class SiteActions
 
         $heading = trim((string) ($block->data['heading'] ?? ''));
 
-        return $heading !== '' && mb_strlen($heading) <= self::MAX_LABEL ? $heading : $default;
+        return $heading !== '' && mb_strlen($heading) <= self::MAX_DERIVED_LABEL ? $heading : $default;
     }
 
     /**
      * A `tel:` target, or null when what was typed cannot be dialled. Same
      * shape as SafeLink::whatsapp and for the same reason: a button that opens
-     * the dialler on nothing is worse than no button.
+     * the dialler on nobody is worse than no button.
      */
     private static function tel(?string $phone): ?string
     {

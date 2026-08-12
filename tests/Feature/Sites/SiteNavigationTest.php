@@ -95,10 +95,12 @@ class SiteNavigationTest extends TestCase
     }
 
     /**
-     * Booking is the thing the site exists to do, so it must not be the item
-     * that falls off the end when a business has a lot to say.
+     * The menu is a list of places on the page, and booking is not one of them:
+     * it is an action, and where its button goes is placed per screen (see
+     * SiteActionButtonsTest). What matters here is that a crowded menu still
+     * fits the bar and still says where you are.
      */
-    public function test_booking_keeps_its_place_in_a_crowded_menu(): void
+    public function test_a_crowded_menu_keeps_its_cap_and_leaves_booking_out_of_it(): void
     {
         $site = Site::factory()->create();
         $page = SitePage::factory()->create(['site_id' => $site->id, 'title' => $site->name]);
@@ -122,10 +124,21 @@ class SiteNavigationTest extends TestCase
             new SiteBlock(['type' => 'booking', 'data' => ['heading' => 'Book now']])
         );
 
-        $html = view('sites.partials.nav', ['site' => $site, 'blocks' => $blocks, 'hasHero' => true])->render();
+        $html = view('sites.partials.nav', [
+            'site' => $site,
+            'page' => $page,
+            'blocks' => $blocks,
+            'hasHero' => true,
+        ])->render();
 
-        $this->assertStringContainsString('Book now', $html);
         $this->assertStringContainsString('Home', $html);
+        $this->assertStringNotContainsString('Book now', $html);
+        // Five bands plus the one that says where you are, and no more: the bar
+        // has a fixed height the hero is pulled up under by exactly that many
+        // pixels.
+        preg_match_all('/<a href="(#[^"]*)"/', $html, $matches);
+
+        $this->assertCount(6, array_unique($matches[1]), 'the menu is capped at six');
     }
 
     public function test_a_logo_replaces_the_name_in_the_bar(): void

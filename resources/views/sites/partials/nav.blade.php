@@ -75,11 +75,11 @@
     }
 
     /**
-     * Booking is not a menu item. It used to be the last link in the list,
-     * which on a phone meant the one thing the site exists to do was hidden
-     * behind a burger — three taps and a scroll past "Opening hours". It is a
-     * button in the bar now, and below 640px the action bar at the foot of the
-     * page carries it instead, where a thumb already is.
+     * Action buttons beside the menu — none of them by default. A button here
+     * is redundant with the band it points at, which is already a menu item,
+     * and it takes the width a long name needs: on the site this came from it
+     * pushed "Ongombo West #56 Hunting Safari" onto a second line. It is a
+     * switch rather than a rule, per screen, in App\Sites\ActionButtons.
      *
      * Worked out here rather than passed in, so the bar keeps rendering on its
      * own — one loop over the blocks it already has.
@@ -99,9 +99,11 @@
             </nav>
         @endif
 
-        @if ($actions->primaryAnchor)
-            <a class="btn nav__cta" href="#{{ $actions->primaryAnchor }}">{{ $actions->primaryLabel }}</a>
-        @endif
+        @foreach ($actions->buttons('menu') as $button)
+            <a class="btn nav__cta {{ $button->isPrimary() ? '' : 'btn--light' }} {{ $button->deviceClass() }}"
+               href="{{ $button->href }}"
+               @if ($button->external) target="_blank" rel="noopener" @endif>{{ $button->label }}</a>
+        @endforeach
 
         @if ($items !== [])
             {{-- Only ever shown by the script that can close it again. A burger

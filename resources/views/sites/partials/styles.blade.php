@@ -197,9 +197,8 @@
        Two class names deep, and that is load-bearing rather than sloppy: this
        is a .btn as well, .btn is declared further down, and at equal
        specificity the later rule wins — so a single .nav__cta was overruled on
-       every property it sets, including the one that hides it on a phone. */
-    .nav .nav__cta { display: none; flex: none; padding: 9px 16px; font-size: 12px; }
-    @media (min-width: 640px) { .nav .nav__cta { display: inline-block; } }
+       every property it sets. */
+    .nav .nav__cta { flex: none; padding: 9px 16px; font-size: 12px; }
 
     /* Wide enough for the bar to carry the links itself: the burger and its
        panel go away entirely, whatever state the script left them in.
@@ -500,7 +499,23 @@
     /* 56px of item, one border, and the pixel the two rounded apart when this
        was measured against the foot of a real page. */
     .bar__spacer { height: calc(58px + env(safe-area-inset-bottom, 0px)); }
-    @media (min-width: 1100px) { .bar, .bar__spacer { display: none; } }
+
+    /* ---- Which screen a button is for ----------------------------------
+       Every action button is placed per area *and per screen* (see
+       App\Sites\ActionButtons), and a server cannot know the screen — guessing
+       it from a user agent is how you serve the phone layout to a laptop. So
+       the page is rendered once carrying both, and these two rules decide.
+
+       1100px is the same line the menu uses to stop being a burger, and it is
+       the only "this is a desktop" number in the stylesheet: WhatsApp being
+       worth a button and a strip at the foot of the screen being worth its
+       height are the same judgement about the same device.
+
+       !important because these are worth more than any layout rule they land
+       on: .btn sets display, .bar__item sets display, and this has to beat
+       both wherever it is used. */
+    @media (min-width: 1100px) { .at-phone { display: none !important; } }
+    @media (max-width: 1099.98px) { .at-desktop { display: none !important; } }
 
     /* ---- Legal pages --------------------------------------------------- */
 

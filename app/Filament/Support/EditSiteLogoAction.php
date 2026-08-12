@@ -18,7 +18,9 @@ use Filament\Notifications\Notification;
  *
  * Absent is a finished state, not a missing one. Without a logo the name is set
  * in the site's display face, which for most Namibian lodges is better than the
- * logo they actually have.
+ * logo they actually have — which is why the name the bar sets is edited here
+ * too. It is the same slot: whatever is in it, this is what somebody looks at
+ * to find out whose site they are on.
  */
 class EditSiteLogoAction
 {
@@ -43,19 +45,35 @@ class EditSiteLogoAction
     private static function configure(FormAction|PageAction $action): FormAction|PageAction
     {
         return $action
-            ->label('Logo')
+            ->label('Name and logo')
             ->icon('heroicon-o-photo')
             ->color('gray')
-            ->modalHeading('The logo at the top of your website')
-            ->modalDescription('Shown in the bar at the top of every page. Leave it empty and your name is '
-                .'set in the site\'s own typeface instead, which is often the better answer.')
+            ->modalHeading('What the bar at the top shows')
+            ->modalDescription('A logo, or your name set in the site\'s own typeface — which is often the '
+                .'better answer. The name here is only for the bar: the full one stays on the page title '
+                .'and the legal notice.')
             ->modalSubmitActionLabel('Save')
             ->fillForm(function (?Listing $record): array {
                 $site = $record === null ? null : self::siteFor($record);
 
-                return $site === null ? [] : ['logo_key' => $site->logo_key];
+                return $site === null ? [] : [
+                    'logo_key' => $site->logo_key,
+                    'brand_name' => $site->brand_name,
+                ];
             })
             ->form([
+                Forms\Components\Textarea::make('brand_name')
+                    ->label('Name in the bar')
+                    ->rows(2)
+                    ->maxLength(120)
+                    ->placeholder(fn (?Listing $record): string => $record === null
+                        ? ''
+                        : (string) (self::siteFor($record)->name ?? ''))
+                    ->helperText('Empty uses the business\'s full name. A line break here is where the '
+                        .'name breaks in the bar — which beats letting the browser choose, and is what '
+                        .'turned "…Hunting / Safari" into two lines that read. Two lines is the maximum '
+                        .'the bar has room for.'),
+
                 Forms\Components\FileUpload::make('logo_key')
                     ->label('Logo')
                     ->image()
@@ -78,6 +96,9 @@ class EditSiteLogoAction
                 // the bucket key on its own.
                 $key = $data['logo_key'] ?? null;
                 $key = is_array($key) ? (reset($key) ?: null) : $key;
+
+                $brand = trim((string) ($data['brand_name'] ?? ''));
+                $site->brand_name = $brand === '' ? null : $brand;
 
                 $site->forceFill(['logo_key' => is_string($key) && $key !== '' ? $key : null])->save();
 

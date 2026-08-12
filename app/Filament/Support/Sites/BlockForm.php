@@ -67,7 +67,12 @@ class BlockForm
             'hero' => [
                 self::image('image_id', $site, 'Photograph'),
                 TextInput::make('eyebrow')->label('Small line above')->maxLength(60),
-                TextInput::make('headline')->label('The big line')->maxLength(120),
+                // A textarea rather than one line, because this is the only
+                // text on the site set at 76px: where it breaks is a decision,
+                // and a line break typed here is the one the page uses.
+                Textarea::make('headline')->label('The big line')->rows(2)->maxLength(120)
+                    ->helperText('Set in the largest type on the page. Press Enter to break the line '
+                        .'where you want it broken.'),
                 Textarea::make('subline')->label('The line under it')->rows(2)->maxLength(240),
                 TextInput::make('cta_label')->label('Button')->maxLength(40),
                 TextInput::make('cta_href')->label('Button goes to')->maxLength(2048),

@@ -17,6 +17,10 @@
     @if ($logo)
         <img src="{{ $logo }}" alt="{{ $site->name }}" class="nav__logo">
     @else
-        {{ $site->name }}
+        {{-- Site::brandName(), not the name: the registered name belongs in the
+             page title and the legal notice, and in a 64px bar it wrapped
+             wherever the browser felt like — "…Hunting / Safari". A line break
+             typed into that field is honoured here and nowhere else. --}}
+        {!! nl2br(e($site->brandName())) !!}
     @endif
 </a>

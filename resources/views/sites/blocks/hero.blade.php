@@ -4,20 +4,14 @@
     $image = $images->get($data['image_id'] ?? null);
 
     /**
-     * The first screen gets the primary action, whether or not anybody has
-     * typed one in. Generation leaves `cta_label`/`cta_href` empty — nothing
-     * knows the anchors at that point — so a generated site used to open with a
-     * headline and no way to act on it; the visitor's only route to the form
-     * was to scroll or find the burger. An owner who sets their own label and
-     * target still wins over the derived one.
+     * The buttons under the headline come from the site's own placement — by
+     * default the enquiry button on a desktop and the business's own button
+     * ("About us" until they change it) on both. A cta_label/cta_href typed
+     * into the band still wins, and is shown on every screen: somebody typed
+     * it here, into this band, which is as explicit as an instruction gets.
      */
-    $ctaLabel = filled($data['cta_label'] ?? null) && filled($data['cta_href'] ?? null)
-        ? $data['cta_label']
-        : $actions->primaryLabel;
-
-    $ctaHref = filled($data['cta_label'] ?? null) && filled($data['cta_href'] ?? null)
-        ? SafeLink::href($data['cta_href'])
-        : ($actions->primaryAnchor ? '#'.$actions->primaryAnchor : null);
+    $typed = filled($data['cta_label'] ?? null) && filled($data['cta_href'] ?? null);
+    $buttons = $actions->buttons('hero');
 @endphp
 <section class="hero {{ $image ? '' : 'hero--plain' }}" id="top">
     @if ($image)
@@ -38,27 +32,35 @@
             <p class="hero__eyebrow">{{ $data['eyebrow'] }}</p>
         @endif
 
-        <h1>{{ $data['headline'] ?? $site->name }}</h1>
+        {{-- Escaped, then given its line breaks back: this is display type set
+             at 76px, and where a line turns is a decision the business makes,
+             not the browser. Never markup — the text is theirs to type. --}}
+        <h1>{!! nl2br(e($data['headline'] ?? $site->name)) !!}</h1>
 
         @if (filled($data['subline'] ?? null))
             <p class="hero__subline">{{ $data['subline'] }}</p>
         @endif
 
-        @if ($ctaHref || $actions->whatsapp)
+        @if ($typed || $buttons !== [])
             <div class="hero__cta">
-                @if ($ctaHref)
-                    <a class="btn" href="{{ $ctaHref }}">{{ $ctaLabel }}</a>
+                @if ($typed)
+                    <a class="btn" href="{{ SafeLink::href($data['cta_href']) }}">{{ $data['cta_label'] }}</a>
                 @endif
 
-                {{-- Second, and never the accent one: WhatsApp is how most of
-                     this market actually answers, but it is a way of asking,
-                     not the thing being asked for. --}}
-                @if ($actions->whatsapp)
-                    <a class="btn btn--light" href="{{ $actions->whatsapp }}" target="_blank" rel="noopener">
-                        @include('sites.partials.action-icon', ['action' => 'whatsapp', 'class' => 'btn__icon'])
-                        WhatsApp
+                {{-- The enquiry button is the filled one wherever it appears;
+                     everything else is quieter, because a screen with two
+                     equally loud buttons has asked the visitor to choose
+                     between them. --}}
+                @foreach ($buttons as $button)
+                    <a class="btn {{ $button->isPrimary() && ! $typed ? '' : 'btn--light' }} {{ $button->deviceClass() }}"
+                       href="{{ $button->href }}"
+                       @if ($button->external) target="_blank" rel="noopener" @endif>
+                        @if ($button->icon)
+                            @include('sites.partials.action-icon', ['action' => $button->icon, 'class' => 'btn__icon'])
+                        @endif
+                        {{ $button->label }}
                     </a>
-                @endif
+                @endforeach
             </div>
         @endif
     </div>
