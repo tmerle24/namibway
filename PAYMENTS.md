@@ -299,28 +299,59 @@ Realities to design around rather than discover:
   a business location, so **Stripe is not the provider** — not for us, and Stripe
   Connect cannot onboard a Namibian connected account either, so an automatic
   split to the lodge is not on the table under any arrangement.
-- **So the real provider is a decision that has not been made**, and it is
-  commercial before it is technical: a merchant account with a Namibian bank
-  (FNB, Bank Windhoek, Standard Bank Namibia all offer e-commerce acquiring),
-  or a gateway operating in the region — DPO Pay, Peach, PayGate, Ozow, Netcash,
-  PayToday. **Treat every name in that list as a candidate to verify, not a fact:
-  availability, fees and settlement terms in Namibia specifically all need
-  checking with the provider.** What matters for the code is that this list
-  exists at all — a provider abstraction whose only implementation is one
-  gateway will not survive contact with it.
-- **Paystack, checked 2026-08-12 and implemented anyway.** It was raised as the
-  likely choice, so it is worth writing down what it can and cannot do.
-  Paystack's merchant countries are Nigeria, Ghana, Kenya, South Africa and
-  Côte d'Ivoire, with Egypt and Rwanda more recent — **Namibia is not among
-  them**, so a Namibian entity cannot open an account. This is the same wall
-  Stripe presented, for the same reason, and it does not go away by asking
-  differently. The route that *does* work is a **South African entity settling
-  in ZAR**; NAD is pegged 1:1 to ZAR under the Common Monetary Area, so a
-  Namibian folio charged in rand is an identity rather than a conversion
-  anybody has to trust. Whether to have such an entity is a decision about the
-  company. `PaystackProvider` exists so that decision is cheap either way —
-  it is one class behind the interface, and the demo provider remains the
-  default until a real merchant account exists.
+### The candidates, checked 2026-08-12
+
+The list used to say "treat every name here as a candidate to verify, not a
+fact". They have now been verified, and the answer was not close.
+
+| Candidate | Namibian merchants | Settles NAD | Public API | Verdict |
+|---|---|---|---|---|
+| **DPO Pay by Network** | ✅ yes, team in Windhoek | ✅ billed **and** settled in NAD | ✅ XML v6, `createToken` / `verifyToken` / `refundToken`, hosted page | **The one to use.** Implemented. |
+| PayGate | — | — | — | Absorbed into the same group as DPO. Not a separate choice. |
+| Peach Payments | ❌ live in South Africa, Kenya, Mauritius | — | ✅ good REST | Namibia is an *announced intention*, not an account anybody can open. **Worth watching for a second reason: ResRequest already integrates it**, and ResRequest is the dominant PMS in this market. |
+| Ozow | ❌ South African bank accounts only | ZAR | ✅ | Instant EFT is a South African rail. Not applicable. |
+| Netcash | ❌ South Africa | ZAR | ✅ | Its Instant EFT *is* Ozow. Same answer. |
+| PayToday | ✅ Namibian, run by Nedbank Namibia | NAD | ⚠️ WooCommerce plugin; no public API docs found | A wallet, not a card acquirer. A good *additional* method to ask them about once there is a merchant relationship. |
+| FNB / Bank Windhoek / Standard Bank Namibia | ✅ e-commerce acquiring exists | NAD | ❌ not publicly documented, normally behind a gateway | A banking conversation, not an integration. Likely ends up pointing at a gateway anyway. |
+| Paystack | ❌ Nigeria, Ghana, Kenya, South Africa, Côte d'Ivoire (Egypt, Rwanda newer) | ❌ | ✅ | Same wall as Stripe. Usable only through a South African entity settling in ZAR. Implemented, not recommended. |
+
+**So the recommendation is DPO Pay**, and what remains is commercial: apply for a
+merchant account, get the fee schedule, and get the `verifyToken` result-code
+table — see below. Nothing about that is a code decision; `DpoProvider` is one
+class behind the interface and the demo provider stays the default until an
+account exists.
+
+**Two things to settle with DPO before go-live**, both written into
+`DpoProvider` where somebody will find them:
+
+1. **The verifyToken result codes.** `000` is documented as "Transaction Paid"
+   and is the only code treated as final. Everything else is reported as *still
+   pending*, deliberately: a code guessed to mean "declined" writes off a
+   payment that may have arrived, and the guest is the one who finds out. The
+   genuine failures go in `payments.providers.dpo.failure_codes` once known.
+2. **`ServiceType`.** It is configured per DPO account and there is no universal
+   value; a wrong one is rejected at `createToken`.
+
+Two design consequences worth stating, because they are not obvious:
+
+- **DPO's notification is not signed.** So it settles nothing by itself — it
+  only tells the application an attempt is worth asking about, and `verifyToken`
+  decides. That is why `PaymentGateway::settle()` always calls `capture()`
+  whatever a callback said. It is also the right shape for a signed webhook, so
+  the two providers need no special cases between them.
+- **NAD needs no conversion.** DPO settles it, so a Namibian folio is charged in
+  Namibian dollars and none of the currency-peg machinery is reached. That
+  machinery exists for the Paystack-shaped case and is tested there.
+
+**Paystack, for the record.** It was raised as the likely choice, so what it can
+and cannot do is written down rather than left as a shrug. Its merchant
+countries do not include Namibia, so a Namibian entity cannot open an account —
+the same wall Stripe presented, for the same reason, and it does not go away by
+asking differently. The route that *does* work is a **South African entity
+settling in ZAR**; NAD is pegged 1:1 to ZAR under the Common Monetary Area, so a
+Namibian folio charged in rand is an identity rather than a conversion anybody
+has to trust. Whether to have such an entity is a decision about the company.
+`PaystackProvider` exists so that decision is cheap either way.
 - **Therefore build against a `DemoProvider` first, and mean it.** The
   requirement (2026-08-12) is that the whole flow works end to end in a demo
   before any real provider is chosen: authorise, capture, fail, refund, and the

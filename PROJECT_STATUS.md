@@ -653,6 +653,46 @@ have moved before it can be tested. `SettlementBalance` already says what is owe
 stay and in which direction; what is missing is the run that aggregates it, the statement a
 partner reads, and the record of a transfer having happened.
 
+### 2026-08-12 — DPO Pay, because it is the only candidate that covers Namibia
+
+The provider question from slice 5 is answered as far as code can answer it. Every name in
+`PAYMENTS.md` §5 was checked, and one of them stands up:
+
+- **DPO Pay by Network** operates in Namibia with a team in Windhoek and **bills and
+  settles in NAD**, with one documented public API (`createToken` / `verifyToken` /
+  `refundToken` plus a hosted page). **Implemented** as `DpoProvider`.
+- **PayGate** has been absorbed into the same group — not a separate choice.
+- **Peach Payments** is live in South Africa, Kenya and Mauritius; Namibia is an announced
+  intention, not an account anybody can open. Worth watching for a second reason:
+  **ResRequest already integrates it**, and ResRequest is the dominant PMS in this market.
+- **Ozow** and **Netcash** are South African bank-to-bank rails — Instant EFT works only
+  with South African bank accounts, and Netcash's *is* Ozow.
+- **PayToday** is genuinely Namibian and run by Nedbank Namibia, but it is a wallet with a
+  plugin rather than a documented API. A method to add later, not a card acquirer.
+- **FNB / Bank Windhoek / Standard Bank Namibia** do e-commerce acquiring through a
+  relationship, usually behind a gateway. A banking conversation, not an integration.
+- **Paystack** stays implemented but is not the recommendation — no Namibian merchant
+  account, so it needs a South African entity settling in ZAR.
+
+**Two things that need DPO on the phone, not a commit**, both written where somebody will
+find them. The `verifyToken` result-code table: `000` is documented as "Transaction Paid"
+and is the only code treated as final — **everything else is reported as still pending, on
+purpose**, because a code guessed to mean "declined" writes off a payment that may have
+arrived and the guest is the one who finds out. The genuine failures go into
+`payments.providers.dpo.failure_codes` once known. And `ServiceType`, which is configured
+per DPO account.
+
+**One design change came out of it, and it is an improvement.** DPO's notification is not
+signed, so it cannot settle anything by itself — it only says an attempt is worth asking
+about. `PaymentGateway::settle()` therefore **always** calls `capture()` whatever a callback
+said, which replaces a confusing three-way ternary and is the right shape for a signed
+webhook too. A gateway body can now never set an amount, which is the difference between a
+payment and a forged one. An attempt that stays open records what the gateway said, so a
+pending payment is a state somebody can read rather than a dead end.
+
+NAD needs no conversion through DPO, so the currency-peg machinery is untouched by it — it
+exists for the Paystack-shaped case and is tested there.
+
 ### Parked on 2026-08-11 — and built on 2026-08-11 and 2026-08-12
 
 > **Superseded, kept for the reasoning.** Everything in this section was written as

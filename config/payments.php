@@ -72,25 +72,75 @@ return [
     | and the asynchronous callback — be demonstrated and tested before any
     | commercial arrangement is made (PAYMENTS.md § 5).
     |
-    | **On Paystack specifically.** It does not support Namibia as a merchant
-    | country: Nigeria, Ghana, Kenya, South Africa and Côte d'Ivoire, with
-    | Egypt and Rwanda more recent. NamibWay being a Namibian company therefore
-    | rules it out the same way it rules out Stripe. The workable route is a
-    | South African entity settling in ZAR, which is a decision about the
-    | company rather than about code — the implementation exists so that
-    | decision is cheap either way.
+    | **The candidates, checked 2026-08-12.** PAYMENTS.md § 5 has the detail;
+    | the short version is that only one of them covers Namibia:
     |
-    | Other candidates named in PAYMENTS.md § 5 and still unverified: DPO Pay,
-    | Peach, PayGate, Ozow, Netcash, PayToday, and e-commerce acquiring from
-    | FNB, Bank Windhoek or Standard Bank Namibia. Each is a new class
-    | implementing PaymentProvider and an entry here; nothing above the
-    | interface changes.
+    | - **DPO Pay by Network** — operates in Namibia with a team in Windhoek,
+    |   bills and settles in **NAD**, one documented public API. Implemented,
+    |   and the one to use once a merchant account exists.
+    | - **PayGate** — absorbed into the same group.
+    | - **Peach Payments** — live in South Africa, Kenya and Mauritius. Namibia
+    |   is an announced intention rather than an account anybody can open.
+    | - **Ozow / Netcash** — South African bank-to-bank rails; Instant EFT works
+    |   only with South African bank accounts.
+    | - **PayToday** — Namibian, run by Nedbank Namibia, but a wallet with a
+    |   plugin rather than a documented API. A method to add, not an acquirer.
+    | - **FNB / Bank Windhoek / Standard Bank Namibia** — e-commerce acquiring
+    |   exists, through a relationship and usually behind a gateway. A
+    |   conversation, not an integration.
+    | - **Paystack** — implemented, but it does **not** support Namibia as a
+    |   merchant country (Nigeria, Ghana, Kenya, South Africa, Côte d'Ivoire;
+    |   Egypt and Rwanda newer). Usable only through a South African entity
+    |   settling in ZAR, which is a decision about the company.
+    |
+    | Each is a class implementing PaymentProvider and an entry below; nothing
+    | above the interface changes.
     |
     */
 
     'default_provider' => env('PAYMENTS_PROVIDER', 'demo'),
 
     'providers' => [
+        'dpo' => [
+            // From the DPO merchant portal. It is the whole of the
+            // authentication — DPO carries it inside the request body rather
+            // than in a header, so it never appears in a URL or a log line.
+            'company_token' => env('DPO_COMPANY_TOKEN'),
+            'base_url' => env('DPO_BASE_URL', 'https://secure.3gdirectpay.com'),
+
+            // Configured per DPO account; there is no universal value, and a
+            // wrong one is rejected at createToken rather than silently.
+            'service_type' => env('DPO_SERVICE_TYPE'),
+
+            // How long a payment link stays alive, in hours. A link that lives
+            // forever is a room held forever behind an attempt nobody will
+            // finish.
+            'link_hours' => (int) env('DPO_LINK_HOURS', 48),
+
+            // NAD first, which is the point: a Namibian folio needs no
+            // conversion at all, so none of the peg machinery below is
+            // reached.
+            'currencies' => ['NAD', 'ZAR', 'USD', 'EUR', 'GBP'],
+
+            /*
+             * verifyToken result codes that mean the attempt is over and
+             * unpaid.
+             *
+             * **Empty on purpose, and it must stay empty until somebody has
+             * the code table from DPO.** `000` is documented as "Transaction
+             * Paid" and is the only code the provider treats as final;
+             * everything else is reported as still pending. That is the safe
+             * direction — a code guessed to mean "declined" writes off a
+             * payment that may have arrived, and the guest is the one who
+             * finds out.
+             *
+             * Ask DPO for the verifyToken codes, then list the genuine
+             * failures here. This is also where a reviewer can see at a glance
+             * which codes we claim to understand.
+             */
+            'failure_codes' => [],
+        ],
+
         'paystack' => [
             'secret_key' => env('PAYSTACK_SECRET_KEY'),
             'public_key' => env('PAYSTACK_PUBLIC_KEY'),

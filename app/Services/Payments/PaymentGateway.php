@@ -114,6 +114,29 @@ class PaymentGateway
         });
     }
 
+    /**
+     * Keep what the gateway said about an attempt we could not settle.
+     *
+     * "We asked and it is still not paid" is a real state and a common one —
+     * a guest who has opened the page and not finished, a bank that has not
+     * answered. Somebody will be looking at it when a guest insists they paid.
+     */
+    private function noteOutcome(PaymentIntent $intent, ?string $message): PaymentIntent
+    {
+        if ($message === null) {
+            return $intent;
+        }
+
+        return MoneyWriteGuard::allow(function () use ($intent, $message): PaymentIntent {
+            $intent->meta = array_merge($intent->meta ?? [], [
+                'outcome_message' => $message,
+            ]);
+            $intent->save();
+
+            return $intent;
+        });
+    }
+
     /** Where to send the guest. Read off the intent so a reused one still works. */
     public function redirectUrlFor(PaymentIntent $intent): ?string
     {
@@ -137,16 +160,30 @@ class PaymentGateway
 
         $provider = $this->providers->make($intent->provider);
 
-        // The provider is asked even when a callback already told us, because
-        // a webhook body is a claim and `capture()` is the gateway's own
-        // record. The passed outcome is what decides whether it is worth
-        // asking at all.
-        $result = $outcome !== null && ! $outcome->status->isOpen()
-            ? $provider->capture($intent)
-            : ($outcome ?? $provider->capture($intent));
+        /*
+         * The gateway is always asked, whatever a callback said.
+         *
+         * A callback tells us *when* to look; `capture()` is what tells us
+         * what happened. That split is not caution for its own sake — it is
+         * the only arrangement that works across the gateways we might
+         * actually use. One of them signs its webhook and still tells you to
+         * verify afterwards; another has no signed notification at all and
+         * expects the verify on the guest's return. A design that believed the
+         * body would be wrong for the first and unsafe for the second.
+         *
+         * It also means a webhook can never set an amount, which is the
+         * difference between a payment and a forged one.
+         */
+        $result = $provider->capture($intent);
 
         if ($result->status->isOpen()) {
-            return $intent;
+            // Nothing to record on the folio, but what the gateway said is
+            // kept: "we asked and it is still not paid, and here is why" is
+            // exactly what somebody debugging a missing payment needs, and an
+            // attempt that sat open with no explanation would be a dead end.
+            // The capture message wins over the callback's — it is the
+            // authoritative one.
+            return $this->noteOutcome($intent, $result->message ?? $outcome?->message);
         }
 
         return DB::transaction(function () use ($intent, $result): PaymentIntent {

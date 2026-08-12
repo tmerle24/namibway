@@ -30,6 +30,7 @@ class PaymentProviderFactory
     {
         return match ($key) {
             'demo' => new DemoProvider,
+            'dpo' => $this->makeDpo(),
             'paystack' => $this->makePaystack(),
             default => throw new InvalidArgumentException(
                 "Unknown payment provider [{$key}]. Configured in config/payments.php."
@@ -46,8 +47,25 @@ class PaymentProviderFactory
     {
         return [
             'demo' => (new DemoProvider)->label(),
-            'paystack' => 'Paystack',
+            'dpo' => 'DPO Pay (Namibia, settles NAD)',
+            'paystack' => 'Paystack (no Namibian merchant account)',
         ];
+    }
+
+    private function makeDpo(): DpoProvider
+    {
+        $token = (string) config('payments.providers.dpo.company_token', '');
+
+        if ($token === '') {
+            throw new InvalidArgumentException(
+                'DPO Pay is selected but DPO_COMPANY_TOKEN is not set. It comes from the DPO merchant portal.'
+            );
+        }
+
+        return new DpoProvider(new DpoClient(
+            companyToken: $token,
+            baseUrl: (string) config('payments.providers.dpo.base_url', 'https://secure.3gdirectpay.com'),
+        ));
     }
 
     private function makePaystack(): PaystackProvider
