@@ -6,6 +6,7 @@ use App\Enums\InquiryStatus;
 use App\Enums\ListingType;
 use App\Enums\PaymentPurpose;
 use App\Mail\GuestBookingConfirmed;
+use App\Mail\GuestPaymentRequest;
 use App\Models\BookableUnit;
 use App\Models\Inquiry;
 use App\Models\Listing;
@@ -81,8 +82,10 @@ class ConfirmWithPaymentTest extends TestCase
                 && $mail->partnerMessage === 'See you in September.';
         });
 
-        // One mail, not two.
-        Mail::assertQueuedCount(1);
+        // One mail to the guest, not two. Counted per mailable rather than in
+        // total: creating the request already sent the partner theirs.
+        Mail::assertQueued(GuestBookingConfirmed::class, 1);
+        Mail::assertNotQueued(GuestPaymentRequest::class);
     }
 
     public function test_it_asks_for_the_deposit_and_not_the_whole_stay(): void
@@ -129,7 +132,7 @@ class ConfirmWithPaymentTest extends TestCase
 
         $this->assertFalse($outcome->handled);
         $this->assertSame(0, PaymentIntent::count());
-        Mail::assertNothingQueued();
+        Mail::assertNotQueued(GuestBookingConfirmed::class);
     }
 
     /**
