@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Sites;
 
+use App\Mail\EnquiryCopy;
+use App\Mail\PartnerConfirmationRequest;
 use App\Models\Inquiry;
 use App\Models\Listing;
 use App\Models\Site;
@@ -10,6 +12,7 @@ use App\Models\SitePage;
 use App\Sites\Blocks\EnquiryBlock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
@@ -144,13 +147,60 @@ class SiteEnquiryTest extends TestCase
         $this->assertStringNotContainsString('evil.example', (string) $response->headers->get('location'));
     }
 
-    public function test_a_listing_that_takes_no_enquiries_has_no_form_and_no_endpoint(): void
+    /**
+     * The form is for every business, not only the ones selling through our
+     * booking system. `accepts_inquiries` used to gate it, which left a partner
+     * on somebody else's PMS with a website nobody could write to.
+     */
+    public function test_the_form_is_there_even_where_the_listing_takes_no_online_bookings(): void
     {
-        $listing = $this->listing(['accepts_inquiries' => false]);
+        $listing = Listing::factory()->create(['accepts_inquiries' => false]);
         $site = $this->siteFor($listing);
 
-        $this->get($site->publicUrl())->assertDontSee('name="check_in"', false);
+        $this->get($site->publicUrl())->assertSee('name="check_in"', false);
 
-        $this->post("/_sites/{$site->slug}/enquiry", $this->payload())->assertNotFound();
+        $this->post("/_sites/{$site->slug}/enquiry", $this->payload())->assertRedirect();
+
+        $this->assertSame(1, Inquiry::count());
+    }
+
+    /**
+     * Confirm and decline work off the inquiry, never off a connector, so there
+     * was never a reason to send a partner without one a mail with nothing to
+     * press. They used to get "please reply to the guest yourself", which left
+     * the request with no recorded outcome.
+     */
+    public function test_the_business_gets_the_two_buttons_whatever_it_books_with(): void
+    {
+        Mail::fake();
+
+        $listing = $this->listing(['contact_email' => 'owner@example.com']);
+        $site = $this->siteFor($listing);
+
+        $this->post("/_sites/{$site->slug}/enquiry", $this->payload())->assertRedirect();
+
+        Mail::assertQueued(
+            PartnerConfirmationRequest::class,
+            fn (PartnerConfirmationRequest $mail): bool => $mail->hasTo('owner@example.com')
+        );
+    }
+
+    /**
+     * Not a confirmation — the business has not answered yet. A receipt, so
+     * somebody who filled in a form on a small lodge's website has something to
+     * chase with.
+     */
+    public function test_the_person_asking_gets_their_own_copy_at_once(): void
+    {
+        Mail::fake();
+
+        $site = $this->siteFor($this->listing());
+
+        $this->post("/_sites/{$site->slug}/enquiry", $this->payload())->assertRedirect();
+
+        Mail::assertQueued(
+            EnquiryCopy::class,
+            fn (EnquiryCopy $mail): bool => $mail->hasTo('anna@example.com')
+        );
     }
 }

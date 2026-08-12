@@ -156,10 +156,13 @@ class SiteController
     {
         return match ($block->type) {
             'booking' => $booking !== null,
-            // An enquiry with nowhere to go is worse than no form: it needs a
-            // listing behind the site, and that listing has to be taking
-            // requests at all.
-            'enquiry' => $site->sourceListing !== null && $site->sourceListing->accepts_inquiries,
+            // Every business gets the form. `accepts_inquiries` used to gate it
+            // as well, which meant a partner who does not sell through our
+            // booking system had no way to be contacted from their own website
+            // — the opposite of the point. What still gates it is somewhere for
+            // the enquiry to go: an `Inquiry` belongs to a listing, so a site
+            // built for a business we hold no listing for has no form yet.
+            'enquiry' => $site->sourceListing !== null,
             'location' => filled($site->address) || (filled($site->latitude) && filled($site->longitude)),
             'contact' => filled($site->contact_email) || filled($site->contact_phone) || filled($site->whatsapp),
             default => $block->isFilled(),
