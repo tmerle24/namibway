@@ -9,9 +9,9 @@
 <x-mail::table>
 | | |
 |---|---|
-| **Business** | {{ $partner?->name ?? '—' }} |
-| **Email** | {{ $partner?->email ?? '—' }} |
-| **Phone** | {{ $partner?->phone ?? '—' }} |
+| **Business** | {{ $partner->name }} |
+| **Email** | {{ $partner->email ?? '—' }} |
+| **Phone** | {{ $partner->phone ?? '—' }} |
 | **Ordered** | {{ $subscription->requested_at?->format('D, d M Y H:i') ?? '—' }} |
 </x-mail::table>
 

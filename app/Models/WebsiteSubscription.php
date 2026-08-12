@@ -25,7 +25,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $suspended_at
  * @property Carbon|null $cancelled_at
  * @property string|null $note
- * @property-read Partner|null $partner
+ * @property-read Partner $partner
  */
 class WebsiteSubscription extends Model
 {

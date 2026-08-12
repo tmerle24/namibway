@@ -26,7 +26,9 @@ class WebsiteOrdered extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        $partner = $this->subscription->partner?->name ?? 'A partner';
+        // The relation is not nullable: the subscription is deleted with its
+        // partner (see the migration's cascade).
+        $partner = $this->subscription->partner->name;
 
         return new Envelope(subject: "Website ordered: {$partner}");
     }
