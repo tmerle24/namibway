@@ -41,14 +41,28 @@ class HighlightIcon
         return [
             'wifi' => ['wi-?fi', 'internet', 'wireless'],
             'pool' => ['pool', 'swimming'],
-            'restaurant' => ['restaurant', 'dining', 'dinner', 'lunch', 'meals?', 'cuisine', 'kitchen'],
+            // "self-catering" is a kind of accommodation, not a kitchen that
+            // cooks for you, so it is kept out of this one and listed under
+            // 'bed' — which is further down, hence the lookbehind rather than
+            // an ordering trick.
+            'restaurant' => [
+                'restaurant', 'dining', 'dinner', 'lunch', '(?<!self-)(?<!self )catering',
+                'meals?', 'cuisine', 'kitchen', 'buffet', 'a ?la carte',
+            ],
             'breakfast' => ['breakfast', 'coffee', 'tea'],
             'bar' => ['bar', 'drinks?', 'wine', 'sundowners?'],
-            'fire' => ['braai', 'barbecue', 'bbq', 'boma', 'fire ?place', 'campfire'],
+            'fire' => ['braai', 'barbecue', 'bbq', 'boma', 'lapa', 'fire ?place', 'fireside', 'camp ?fires?'],
             // Before 'bed', so "family rooms" is about who it is for rather
             // than what is in it.
             'family' => ['family', 'families', 'children', 'kids', 'child-?friendly'],
-            'bed' => ['rooms?', 'suites?', 'chalets?', 'beds?', 'accommodation', 'en-?suite'],
+            // Camping is its own kind of stay, and before 'bed' because a
+            // "tented camp" has beds in it.
+            'tent' => ['camping', 'camp ?sites?', 'tents?', 'tented', 'glamping'],
+            'bed' => [
+                'lodges?', 'guest ?houses?', 'rooms?', 'suites?', 'chalets?',
+                'bungalows?', 'cottages?', 'villas?', 'apartments?',
+                'self[ -]?catering', 'accommodation', 'en-?suite', 'beds?',
+            ],
             'shower' => ['bathrooms?', 'showers?', 'bath'],
             'snowflake' => ['air ?con\w*', 'a/c', 'climate', 'cooling'],
             'car' => ['parking', 'garage', 'transfers?', 'shuttle', 'airport'],

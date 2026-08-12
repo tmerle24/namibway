@@ -47,6 +47,45 @@ class HighlightIconTest extends TestCase
     }
 
     /**
+     * The three that a real site produced and the first version missed: the
+     * accommodation word this market actually uses, the catering word, and a
+     * camp fire written as two words when only the compound was listed. Nought
+     * out of three meant the whole column went undrawn — which is the
+     * all-or-nothing rule working correctly on a vocabulary that was too small.
+     */
+    public function test_it_knows_the_words_a_namibian_lodge_writes(): void
+    {
+        $expected = [
+            'lodge' => 'bed',
+            'catering' => 'restaurant',
+            'camp fire' => 'fire',
+            'Guest house' => 'bed',
+            'Camping' => 'tent',
+            'Tented camp' => 'tent',
+            'Boma dinners' => 'fire',
+            'Lapa' => 'fire',
+            'Buffet dinner' => 'restaurant',
+        ];
+
+        foreach ($expected as $phrase => $icon) {
+            $this->assertSame($icon, HighlightIcon::for($phrase), $phrase);
+        }
+
+        $this->assertTrue(HighlightIcon::worthDrawing(['lodge', 'catering', 'camp fire']));
+    }
+
+    /**
+     * Self-catering is a kind of accommodation, not a kitchen that cooks for
+     * you — the one place these two vocabularies collide.
+     */
+    public function test_self_catering_is_a_bed_and_not_a_restaurant(): void
+    {
+        $this->assertSame('bed', HighlightIcon::for('Self-catering chalets'));
+        $this->assertSame('bed', HighlightIcon::for('self catering'));
+        $this->assertSame('restaurant', HighlightIcon::for('Catering for groups'));
+    }
+
+    /**
      * A generic mark beside "Trophy hunting" says nothing and costs the whole
      * set its credibility, so nothing is the answer.
      */
