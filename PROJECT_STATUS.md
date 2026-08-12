@@ -835,20 +835,27 @@ What stands between here and that is no longer software of this kind:
    allotment or the manual concierge check — with other lodges taken on first. What that
    leaves to build is the allotment marker and its release deadline; see "Questions to
    answer before building" above.
-3. **Money owed** — designed 2026-08-12 in `PAYMENTS.md`, none of it built. Costing is
-   thorough and the reservation carries the entire debit side; there is no credit side at
-   all — no payment record, no invoice, no invoice number. Decided at the same time: we
-   offer three settlement models rather than picking one (partner collects and we invoice
-   commission; we collect everything and pay out net; deposit to us and the balance at the
-   property — the last is the default, because a deposit set at the commission means no
-   money has to move between us and the partner). Recording a payment is identical under
-   all three; only who collects differs. Also decided: the settlement model is not a
-   separate setting but is picked by the deposit share (0 % → agency, 100 % → merchant,
-   between → split); commission is ours to set and the deposit is the partner's, both
-   resolving listing → partner → platform setting → default; and NamibWay being a
-   Namibian company rules Stripe out entirely, so slice 5 builds a demo provider that
-   fully works and the real gateway is a later configuration step. `PAYMENTS_BUILD.md`
-   turns all of it into six slices with acceptance criteria.
+3. **Money that has actually moved** — all six slices of `PAYMENTS_BUILD.md` are built
+   (see the dated sections above): the ledger, the invoice, commission and deposit rates,
+   the three settlement models, the provider abstraction with a working demo, and the
+   booking-only / full operating mode. So the sentence this entry used to carry — that the
+   reservation held the whole debit side and there was no credit side at all — is no longer
+   true. What is left is what code cannot finish on its own:
+
+   - **Payouts and partner statements**, `PAYMENTS.md` §6 step 6, the one piece of the
+     design not built. `SettlementBalance` already says what is owed on a stay and in which
+     direction; missing are the run that aggregates it, the statement a partner reads, and
+     the record of a transfer having happened. It is deliberately last: it wants real money
+     to have moved before it can be tested against anything.
+   - **A live gateway account.** `DpoProvider` is implemented and DPO Pay is the only
+     candidate that bills and settles in NAD, but nothing has run against a real merchant
+     account, and two things need DPO on the phone rather than a commit — the `ServiceType`
+     for the account, and the `verifyToken` failure codes that go into
+     `payments.providers.dpo.failure_codes`. Until they are known, `000` is the only code
+     treated as final and everything else is reported as still pending, on purpose.
+   - **Whether there is a South African entity.** Paystack works and is implemented, but a
+     Namibian company cannot hold an account — that route needs a ZA entity settling in
+     ZAR. A company decision, not a build task, and not made.
 4. **Room-level assignment**, for a lodge that assigns real rooms rather than room types.
    Deliberately not modelled, and the first thing a real desk is likely to ask for.
 5. **The API as the system's second front door** — decided 2026-08-12, written up as
