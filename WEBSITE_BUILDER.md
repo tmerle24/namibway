@@ -1,6 +1,14 @@
 # Business-Owner Website Builder — Concept Brief
 
-**Status:** Concept phase. **No production code** is written in this pass.
+**Status:** Historical. This was the commissioning brief and it is kept for the constraints
+it sets, which still hold. It is **not** a description of the system — slice 1 shipped
+2026-08-12 and `PROJECT_STATUS.md` → Workstream B is the live record, including where a
+decision here was later reversed (booking on a customer's site is an enquiry plus a payment
+link the business sends, not a checkout). The line below is the brief's own opening and
+described the pass that produced it.
+
+**Status at the time of writing:** Concept phase. **No production code** is written in this
+pass.
 
 > **About this file.** This is the commissioning brief for Workstream B in
 > `PROJECT_STATUS.md` — the website builder behind the N$ 399/month offer. It was written

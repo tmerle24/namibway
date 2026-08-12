@@ -34,7 +34,7 @@ Three business lines now exist, and only the first has software behind it:
 | Line | State |
 |---|---|
 | **Travel platform** (namibway.com) | In production. Kaia interview → trip plan → booking requests. The flagship is the trip plan — see `TRAVEL_PLAN.md`. |
-| **Websites for Namibian businesses** | **Since 2026-08-12 a generated site is real and viewable** — content model, block library, one template, the public renderer and `sites:generate`. No editor, no customer live yet. Workstream B below. |
+| **Websites for Namibian businesses** | **Since 2026-08-12 a generated site is real, viewable and sellable** — content model, block library, one template, the public renderer, `sites:generate`, an enquiry form that reaches the business, legal pages, and a customer's own domain issued without anybody touching nginx. What is still missing is the **content editor**: the frame is editable from either panel, the blocks are not. No customer live yet. Workstream B below. |
 | **Custom software / booking system** | Sold as a proposal to NWR. **Since 2026-08-12 the lodge-facing product exists** — a lodge can price, sell, block, check a guest in, read its morning board, take money against a stay and issue a numbered invoice, and a tour operator can sell a seat on a departure. No partner is connected and no merchant account exists, so the online payment flow runs on the demo provider. Workstream A below. |
 
 Marketing material for all three lives in `marketing/` and is downloadable from the
@@ -1054,7 +1054,8 @@ Decisions worth knowing before the next slice:
   from `RoomOffers` — a direct service call, not our own `/api/v1`, which is
   token-authenticated, has no booking endpoint, and answers availability out of the
   partner's connector rather than our calendar. The block quotes and then hands over to
-  namibway.com.
+  namibway.com — **which is what the booking decision below reverses**: the handover
+  becomes the enquiry form on the same page, and the business sends a payment link.
 
 ### Added 2026-08-12 — the enquiry form, the legal foot, the burger
 
@@ -1151,11 +1152,34 @@ through the same actions the admin uses (`EditHeroAction`, `EditLegalTextAction`
 `EditSiteLogoAction`) — the moment the two copies diverge, "the customer can also edit it
 themselves" turns into two products with one price.
 
-Still to do here: the confirm-by-email path — the owner accepting from the mail rather
-than us ticking the box for them — and our own website-terms page, which
-`config('sites.terms_url')` is waiting for.
-
 ### Next up, in the order it was asked for
+
+- **The editor — the content itself, in both panels.** Everything editable today is the
+  frame: the hero lines, the logo, the typography, the legal text, the domain. The content
+  is not. The fourteen block types are written once by `sites:generate` and can then be
+  touched by nobody, so a wrong photograph or a typo in the generated prose is fixable
+  only by a rebuild from the listing — which is to say not at all, since a rebuild leaves
+  edited fields alone and there are none. It is also what a business with no listing needs,
+  and roughly half of them have none: `sites:generate --name` produces an empty frame today
+  and nothing can fill it.
+
+  The shape: blocks added, reordered, switched on and off and edited from the Website tab,
+  with each type's form derived from its `BlockDefinition` so the editor and the renderer
+  cannot drift; images chosen from the site's own `site_images`; pages created. And **the
+  same actions in the partner panel**, the way `EditHeroAction`, `EditSiteLogoAction` and
+  `EditLegalTextAction` are already one implementation serving both places. The owner gets
+  the editor, not a cut-down copy of it — what differs is scope and permission, never the
+  fields. The moment there is an admin version and a customer version of a piece of
+  content, "the customer can also edit it themselves" is two products at one price.
+
+- **Our website terms, and the business confirming from the mail.**
+  `config('sites.terms_url')` is empty, so the foot of every site and the publish
+  confirmation both link to nothing; the page gets written, and maintained in the admin
+  rather than in a config string. And the confirmation is ticked by us on the business's
+  behalf today — `terms_accepted_by` is typed into a box in our panel, which records what
+  we were told rather than what they did. The business confirms its own legal pages and
+  our terms through a signed link in a mail, the pattern `routes/partner.php` already uses
+  for confirm and decline.
 
 - ~~**The custom domain, entered in the admin, and nginx following by itself.**~~
   **Built 2026-08-12.** The shape below is what was built, unchanged: an admin field
@@ -1202,24 +1226,37 @@ than us ticking the box for them — and our own website-terms page, which
 Every question this section listed as open has now been answered. Recorded here in the
 form they were given, with the consequence each one has for the build.
 
-- **Booking stays on the customer's site.** The guest never leaves it. Pressing "book"
-  opens a NamibWay login/register modal — the shape of a Google sign-in — and once it
-  closes the guest is connected and the booking completes in place.
+- **Booking on the customer's site is the enquiry, and the payment is a link the business
+  sends.** This supersedes the answer first recorded here the same day, which had the
+  guest signing in to NamibWay from the tenant site through an OAuth-shaped popup so that
+  a booking could complete in place. That is not being built.
 
-  **The hard part is not the modal, it is the cookie.** A customer's site runs on its
-  own host, and once we register their own domain it is a different registrable domain
-  entirely — `bakkie-repairs.com.na` cannot read a namibway.com session cookie, and no
-  `SESSION_DOMAIN` setting changes that. So this is not "add a login form to the tenant
-  site": it needs the shape OAuth uses — a popup or redirect to namibway.com, which
-  hands back a short-lived token the tenant site exchanges for its own session. Design
-  that before building the modal. It also means tenant hosts stop being entirely
-  session-free, which is a real cost against the byte budget and should be paid only on
-  the pages that need it.
+  What replaces it: the guest picks dates, sees the live quote out of `RoomOffers`, and
+  presses a button that fills in the enquiry form **on the page they are already on**.
+  From there it is the pipeline that already exists — the `Inquiry`, the mail to the
+  business with the signed confirm and decline links, the copy to the guest. The business
+  then decides how it wants to be paid and sends a payment link, by hand or triggered off
+  the confirmation.
 
-  This also settles the `ActiveRequestGate` question by implication: a guest booking the
-  one property whose site they are on is not the flooding case that gate exists to stop,
-  so that booking does not run through it. Write down where the boundary is before the
-  first one is taken.
+  Worth being precise about, because the earlier note recorded "cross-domain" as the hard
+  part: this is not a problem now solved, it is one no longer had. There was never a CORS
+  question — CORS governs a page reading another host's response with JavaScript, and
+  nothing on these pages does that. The obstacle was the session cookie, and a cookie is
+  only needed because a *login* was in the design. Take the login out and the tenant site
+  stays exactly what it is: no session, no CSRF token, no token exchange, no second host
+  in the byte budget. It settles the `ActiveRequestGate` question by not raising it — an
+  enquiry from a business's own website already runs outside that gate.
+
+  What it costs, plainly: the platform does not touch the money, so nothing automatic can
+  be built on top of it — no commission taken at the point of sale, no cancellation window
+  we enforce, and the terms attached to the payment link are the business's own. That is
+  the trade accepted for a booking flow that can go live without a payment provider for
+  Namibia existing, which question 7 below still has no answer to.
+
+  One code consequence to carry into the next slice: the booking block ends today in
+  "Request these dates" pointing at `url('/listings/'.$slug)`
+  (`App\Sites\Rendering\BookingPanelData::bookingUrl()`), which sends the guest off the
+  customer's site to namibway.com — the opposite of this decision.
 
 - **Both edit.** The customer can edit their own site, and we offer to do it for them as
   part of the monthly fee. Same fields, same tables, different surface and different
