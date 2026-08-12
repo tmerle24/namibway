@@ -4,6 +4,7 @@ namespace App\Filament\Partner\Resources;
 
 use App\Enums\InquiryStatus;
 use App\Filament\Partner\Resources\InquiryResource\Pages;
+use App\Filament\Partner\Support\InquiryDecisions;
 use App\Models\Inquiry;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -114,6 +115,7 @@ class InquiryResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                ...InquiryDecisions::tableActions(),
             ])
             ->defaultSort('created_at', 'desc');
     }

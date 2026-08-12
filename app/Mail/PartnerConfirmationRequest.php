@@ -19,10 +19,23 @@ class PartnerConfirmationRequest extends Mailable implements ShouldQueue
 
     public readonly string $cancelUrl;
 
+    /**
+     * Confirm and ask for the deposit in one press. It opens a page rather than
+     * acting on arrival — see PartnerController::showConfirmWithPayment — which
+     * is also where the property can add a message to the guest.
+     */
+    public readonly string $confirmWithPaymentUrl;
+
     public function __construct(public readonly Inquiry $inquiry)
     {
         $this->confirmUrl = URL::signedRoute(
             'partner.inquiries.confirm',
+            ['inquiry' => $inquiry->id],
+            now()->addDays(3),
+        );
+
+        $this->confirmWithPaymentUrl = URL::signedRoute(
+            'partner.inquiries.confirm-with-payment',
             ['inquiry' => $inquiry->id],
             now()->addDays(3),
         );

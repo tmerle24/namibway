@@ -14,7 +14,17 @@ class GuestBookingConfirmed extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public readonly Inquiry $inquiry) {}
+    /**
+     * @param  string|null  $paymentUrl  Where the guest pays their deposit, where the
+     *                                   property asked for it in the same click.
+     * @param  string|null  $partnerMessage  What the property wanted to say alongside.
+     *                                       Shown as their words, not ours.
+     */
+    public function __construct(
+        public readonly Inquiry $inquiry,
+        public readonly ?string $paymentUrl = null,
+        public readonly ?string $partnerMessage = null,
+    ) {}
 
     public function envelope(): Envelope
     {
