@@ -168,14 +168,12 @@ class SiteNavigationTest extends TestCase
         $this->assertMatchesRegularExpression('/\.nav__links a \{[^}]*white-space: nowrap/s', $css);
     }
 
-    public function test_a_long_name_steps_down_rather_than_wrapping(): void
+    public function test_a_long_name_is_set_smaller_rather_than_wrapping(): void
     {
         $short = $this->siteWith(['about' => ['heading' => 'About us', 'body' => 'Words.']]);
         $short->update(['name' => 'Dune Edge']);
 
-        // On the class attribute, not the bare name: the inline stylesheet
-        // carries both size classes on every page.
-        $this->get($short->publicUrl())->assertDontSee('class="nav__name nav__name--', false);
+        $this->get($short->publicUrl())->assertSee('--brand-size: 20px', false);
 
         $long = Site::factory()->create(['name' => 'Ongombo West #56 Hunting Safari', 'slug' => 'long-name']);
         SitePage::factory()->create(['site_id' => $long->id, 'title' => $long->name]);
@@ -186,7 +184,7 @@ class SiteNavigationTest extends TestCase
             'sort' => 0,
         ]);
 
-        $this->get($long->publicUrl())->assertSee('class="nav__name nav__name--longer"', false);
+        $this->get($long->publicUrl())->assertSee('--brand-size: 18px', false);
     }
 
     /**

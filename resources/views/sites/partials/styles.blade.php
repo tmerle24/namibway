@@ -41,8 +41,12 @@
         --bone: #E4E0D8;
         --accent: {{ $accent }};
 
-        --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif;
-        --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        /* Chosen per site — see App\Sites\Typography for the list and for why
+           every option is a stack the reader already has rather than a webfont. */
+        --font-display: {!! \App\Sites\Typography::displayStack($site) !!};
+        --font-body: {!! \App\Sites\Typography::bodyStack($site) !!};
+        --font-brand: {!! \App\Sites\Typography::brandStack($site) !!};
+        --brand-size: {{ \App\Sites\Typography::brandSize($site) }}px;
 
         --s1: 4px; --s2: 8px; --s3: 12px; --s4: 20px; --s5: 32px;
         --s6: 48px; --s7: 72px; --s8: 112px;
@@ -92,18 +96,19 @@
     }
     .nav__name {
         display: flex; align-items: center;
-        font-family: var(--font-display); font-weight: 700;
-        font-size: 20px; letter-spacing: -.01em;
+        /* Its own face and its own size, both settable per site. The default
+           face is the body one, not the display one: an editorial serif at this
+           size over an arbitrary photograph reads thin rather than
+           characterful. The size is computed from the length of the name unless
+           somebody has said otherwise — the bar has exactly one line for it. */
+        font-family: var(--font-brand); font-weight: 700;
+        font-size: var(--brand-size); letter-spacing: -.01em;
         text-decoration: none; margin-right: auto;
         color: #fff; transition: color .3s ease, opacity .3s ease;
         /* One line, always — see the bar's fixed height above. min-width:0 is
            what lets a flex item shrink below the width of its own text. */
         min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    /* A long name gets smaller type rather than an ellipsis. The class is set
-       in the template from the name's length, because CSS cannot ask. */
-    .nav__name--long { font-size: 16px; }
-    .nav__name--longer { font-size: 14px; letter-spacing: 0; }
     /* A name over a photograph needs its own shadow to stay readable — the
        hero's gradient is built for text much further down the frame. */
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__name { text-shadow: 0 1px 12px rgba(0,0,0,.55); }

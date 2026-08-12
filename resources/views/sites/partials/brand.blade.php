@@ -7,17 +7,13 @@
      * of this page on the site itself, back to the site from a legal page.
      *
      * The bar has a fixed height (see the stylesheet), so the name is one line
-     * whatever happens: two size steps first, then the ellipsis as a backstop.
+     * whatever happens. Its size is a custom property the stylesheet sets from
+     * App\Sites\Typography — computed from the length of the name, or whatever
+     * the business chose instead — with the ellipsis as the backstop.
      */
     $logo = $site->logoUrl(400);
-    $length = mb_strlen($site->name);
-    $nameClass = match (true) {
-        $length > 30 => 'nav__name--longer',
-        $length > 20 => 'nav__name--long',
-        default => '',
-    };
 @endphp
-<a class="nav__name {{ $nameClass }}" href="{{ $href }}">
+<a class="nav__name" href="{{ $href }}">
     @if ($logo)
         <img src="{{ $logo }}" alt="{{ $site->name }}" class="nav__logo">
     @else

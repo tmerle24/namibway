@@ -89,6 +89,8 @@ class WebsiteTab
 
                     EditSiteLogoAction::make(),
 
+                    EditTypographyAction::make(),
+
                     EditLegalTextAction::make(),
 
                     Action::make('build_website')
