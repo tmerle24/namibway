@@ -1,0 +1,406 @@
+/*
+ * Shared print styles for the NamibWay concept documents.
+ *
+ * These are the multi-page explainers — one per product line — as opposed to the
+ * two-page flyers. They are read on a screen at least as often as they are printed,
+ * and they are handed to a co-founder, a partner and an investor, so the same page
+ * has to survive all three readings.
+ *
+ * This file is layered ON TOP of flyer-base.css and does not repeat it. That is the
+ * whole point: the design tokens, `.page`, the section heading, the checklist, the
+ * step row, the sand blocks and the contact strip all come from there, so the
+ * documents and the flyers cannot drift into two brands. Link both, in that order.
+ *
+ * The build is the same: `node marketing/build-flyer.mjs`, which rewrites the inline
+ * `@page` rule per variant. A page that overflows is clipped in silence — see the
+ * measuring snippet in marketing/README.md, and run it per page CHILD, not per page.
+ */
+
+/* ---------------- cover ---------------- */
+
+.cover {
+    background: var(--brown);
+    background-image: var(--hero-photo);
+    background-size: cover;
+    background-position: center;
+    color: var(--cream);
+    padding: calc(var(--bleed) + 20mm) var(--pad) calc(var(--bleed) + 14mm);
+    justify-content: flex-start;
+}
+/* Sits between an optional photograph and the text, exactly as the flyer hero does. */
+.cover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, rgba(46, 27, 16, .95) 0%, rgba(46, 27, 16, .9) 55%, rgba(59, 36, 24, .78) 100%);
+}
+.cover > * { position: relative; }
+
+/* Sized and placed so an arc of the mark crosses the empty middle of the cover
+   rather than sitting in a corner as a disc — at this opacity a closed circle
+   reads as a smudge, an arc reads as a watermark. */
+.cover .compass {
+    position: absolute;
+    width: 215mm;
+    right: -72mm;
+    bottom: -62mm;
+    opacity: .11;
+}
+/* `align-self` and `width` are load-bearing, not tidying. Unlike the flyer hero,
+   which is an ordinary block, the cover IS the flex column that `.page` declares —
+   so a bare `<img>` is a flex item and stretches to the full column width, which
+   overrides the intrinsic aspect ratio and squashes the wordmark. Anything else
+   dropped straight into a cover needs the same treatment. */
+.cover .logo {
+    height: 13mm;
+    width: auto;
+    align-self: flex-start;
+    margin-bottom: 30mm;
+}
+.cover .eyebrow { color: var(--mark); margin-bottom: 6mm; }
+
+.cover h1 {
+    font-size: 34pt;
+    line-height: 1.12;
+    color: #FFF8EC;
+    max-width: 150mm;
+    margin-bottom: 9mm;
+}
+.cover .standfirst {
+    font-size: 11.5pt;
+    line-height: 1.62;
+    color: #DDCCB2;
+    max-width: 140mm;
+}
+.cover .standfirst strong { color: var(--cream); font-weight: normal; }
+
+/* Pushed to the foot of the cover: what the reader needs before page 2 — who it is
+   for, and what the three status marks mean. Every claim in the document carries one. */
+.cover .cover-foot {
+    margin-top: auto;
+    padding-top: 10mm;
+    border-top: 1px solid rgba(226, 171, 108, .38);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10mm;
+}
+.cover .cover-foot .for {
+    font-size: 8.6pt;
+    line-height: 1.6;
+    color: #C9B79B;
+    max-width: 118mm;
+}
+.cover .cover-foot .for strong {
+    display: block;
+    font-size: 7.6pt;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--mark);
+    font-weight: bold;
+    margin-bottom: 3.5mm;
+}
+.cover .cover-foot img {
+    height: 24mm;
+    width: auto;
+    flex: 0 0 auto;
+    opacity: .95;
+}
+
+/* One line per mark, chips in a column of their own width so the descriptions
+   line up. Set as prose it does not work: a chip is taller than a line of text,
+   so inline chips crash into the line above and the key becomes the least legible
+   thing on the page — which for a legend is the whole failure. */
+.cover .key {
+    list-style: none;
+    margin: 0 0 3mm;
+    padding: 0;
+}
+.cover .key li {
+    display: flex;
+    gap: 4mm;
+    align-items: baseline;
+    padding-bottom: 2.2mm;
+}
+.cover .key .chip {
+    flex: 0 0 24mm;
+    text-align: center;
+}
+/* The chips are drawn for a pale page, where "running" is the solid brown one.
+   On the cover's brown ground that solid disappears into the background and the
+   most important mark becomes the least visible, so it inverts here. */
+.cover .key .chip.running { background: var(--mark); color: var(--brown); }
+.cover .key .chip.designed { border-color: #8A7C63; color: #C9B79B; }
+.cover .cover-foot .note { font-size: 8.2pt; line-height: 1.5; color: #A8977C; }
+
+/* ---------------- inner page frame ---------------- */
+
+/* A document page runs denser than a flyer back page — several sections, a figure
+   and two or three boxes — so it takes its own slightly tighter section rhythm
+   rather than the shared 9 mm. Worth a couple of millimetres a page, which is the
+   difference between the tightest pages having a safety margin and not. */
+.doc-body .section { margin-bottom: 7.5mm; }
+/* flyer-base.css zeroes the last one so leftover space collects as air above the
+   foot instead of pushing it over the trim edge. That rule and this one have equal
+   specificity, so without repeating it here the line above silently undoes it and
+   every page gains 7.5 mm at the bottom. */
+.doc-body .section:last-child { margin-bottom: 0; }
+
+.doc-body {
+    flex: 1;
+    padding: 7mm var(--pad) 0;
+    /* Trailing space collects above the foot rather than pushing it off the trim
+       edge — the same arrangement the flyer back page uses.
+       Careful: this is a flex item, so its automatic minimum size is its content.
+       Overlong copy therefore does NOT overflow this box — it pushes `.doc-foot`
+       past the trim edge instead, where `.page`'s overflow: hidden eats it in
+       silence. The per-child scrollHeight snippet in marketing/README.md cannot
+       see that; measure the foot's position as well. See "Measuring" there. */
+}
+
+.doc-foot {
+    padding: 4mm var(--pad) calc(var(--bleed) + 6mm);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8mm;
+    font-size: 7.2pt;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-top: 1px solid var(--rule);
+    margin: 5mm var(--pad) 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+.doc-foot .pageno {
+    font-family: var(--serif);
+    font-size: 11pt;
+    letter-spacing: 0;
+    color: var(--gold);
+}
+
+/* The page's own title, above its sections. Distinct from `.section > h2`, which is
+   the gold rule used for a block inside a page. */
+.doc-body > h1 {
+    font-size: 19.5pt;
+    line-height: 1.16;
+    margin-bottom: 4mm;
+    max-width: 162mm;
+}
+.doc-body > .lead {
+    font-size: 10pt;
+    line-height: 1.58;
+    color: var(--muted);
+    max-width: 168mm;
+    margin-bottom: 7mm;
+}
+.doc-body > .lead strong { color: var(--ink); font-weight: normal; }
+
+/* ---------------- status marks ---------------- */
+
+/* Three states, and the difference between them is the difference between what we
+   may say to a partner and what we may not. Distinguishable in monochrome on
+   purpose: filled, outlined, dashed — never by colour alone. */
+.chip {
+    display: inline-block;
+    font-size: 6.6pt;
+    font-weight: bold;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: 1.1mm 2.2mm;
+    border-radius: 1mm;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.chip.running { background: var(--brown); color: var(--cream); }
+.chip.built { background: var(--sand); color: var(--brown); border: 1px solid var(--gold); }
+.chip.designed { background: none; color: var(--muted); border: 1px dashed var(--muted); }
+
+h1 .chip, h2 .chip, h3 .chip { margin-left: 3mm; position: relative; top: -1mm; }
+
+.chip-key { display: flex; gap: 7mm; flex-wrap: wrap; }
+.chip-key div { font-size: 8pt; line-height: 1.5; color: var(--muted); }
+.chip-key .chip { margin-right: 2mm; }
+
+/* ---------------- explanation boxes ---------------- */
+
+.callout {
+    background: var(--sand);
+    border-left: 1.6mm solid var(--gold);
+    padding: 5mm 6mm;
+    margin: 6mm 0;
+    break-inside: avoid;
+}
+.callout h4 {
+    font-family: var(--sans);
+    font-size: 7.6pt;
+    font-weight: bold;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0 0 3mm;
+}
+.callout p { font-size: 8.8pt; line-height: 1.58; color: var(--muted); }
+.callout p + p { margin-top: 3mm; }
+.callout strong { color: var(--ink); font-weight: bold; }
+
+.callout.dark { background: var(--brown); border-left-color: var(--mark); }
+.callout.dark h4 { color: var(--mark); }
+.callout.dark p { color: #DDCCB2; }
+.callout.dark strong { color: #FFF8EC; }
+
+/* The one box every document ends on: what we deliberately do not claim. Reads as a
+   warning, and it is meant to — it is also the most persuasive page in the pack. */
+.callout.honest { background: var(--paper); border: 1px solid var(--gold); border-left-width: 1.6mm; }
+
+/* ---------------- figures ---------------- */
+
+figure { margin: 0 0 6mm; break-inside: avoid; }
+figure svg { display: block; width: 100%; height: auto; }
+figcaption {
+    font-size: 7.8pt;
+    line-height: 1.5;
+    color: var(--muted);
+    margin-top: 3mm;
+    padding-left: 3mm;
+    border-left: 1px solid var(--rule);
+    max-width: 165mm;
+}
+figcaption strong { color: var(--ink); font-weight: bold; }
+
+/* ---------------- diagram grammar ----------------
+ *
+ * Diagrams are inline SVG — no library, no external file, so they print at the
+ * printer's resolution and survive being emailed. Everything is styled from here
+ * through classes rather than from presentation attributes, so a palette change
+ * reaches every diagram in every document.
+ *
+ * Draw at a viewBox 600 units wide for a full-column figure. At the 180 mm that
+ * column is, one unit is 0.3 mm, so a font-size of 11 units renders at about 9.3 pt.
+ * Keep labels at or above 9 units or they will not survive a photocopier.
+ */
+
+.dg { font-family: var(--sans); }
+.dg .box { fill: var(--sand); stroke: var(--rule); stroke-width: 1; }
+.dg .box-line { fill: var(--paper); stroke: var(--gold); stroke-width: 1.2; }
+.dg .box-dark { fill: var(--brown); stroke: none; }
+.dg .box-amber { fill: var(--amber); stroke: none; }
+.dg .box-ghost { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
+
+.dg text { fill: var(--ink); }
+.dg .th { font-size: 12px; font-weight: bold; }
+.dg .t { font-size: 10.5px; }
+.dg .tm { font-size: 9.2px; fill: var(--muted); }
+.dg .tn { font-family: var(--serif); font-size: 15px; fill: var(--gold); }
+.dg .on-dark { fill: var(--cream); }
+.dg .on-dark-m { fill: #C9B79B; }
+.dg .on-amber { fill: #fff; }
+.dg .eyebrow-t {
+    font-size: 8.4px;
+    font-weight: bold;
+    letter-spacing: 1.3px;
+    fill: var(--gold);
+}
+
+.dg .flow { stroke: var(--gold); stroke-width: 1.6; fill: none; }
+.dg .flow-soft { stroke: var(--muted); stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; }
+.dg .rule-h { stroke: var(--rule); stroke-width: 1; }
+.dg .tick { stroke: var(--gold); stroke-width: 1.4; fill: none; }
+
+/* ---------------- feature grids ---------------- */
+
+/* The list of what the thing actually does. Three columns of short entries reads
+   faster than prose and is what a reader photographs. */
+.features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6mm 7mm;
+}
+.features.two { grid-template-columns: repeat(2, 1fr); }
+.features.four { grid-template-columns: repeat(4, 1fr); }
+.features.four h3 { font-size: 8.4pt; }
+.features.four p { font-size: 7.8pt; line-height: 1.45; }
+.feature { break-inside: avoid; }
+.feature h3 {
+    font-family: var(--sans);
+    font-size: 8.8pt;
+    font-weight: bold;
+    line-height: 1.3;
+    color: var(--ink);
+    margin-bottom: 2mm;
+    padding-top: 2.5mm;
+    border-top: 1.2pt solid var(--gold);
+}
+.feature p { font-size: 8.2pt; line-height: 1.5; color: var(--muted); }
+
+/* One feature raised out of the grid, for the argument the page is actually making. */
+.headline-feature {
+    background: var(--brown);
+    color: var(--cream);
+    padding: 7mm 8mm;
+    margin-bottom: 7mm;
+    break-inside: avoid;
+}
+.headline-feature h3 { font-size: 14pt; line-height: 1.25; color: #FFF8EC; margin-bottom: 3.5mm; }
+.headline-feature p { font-size: 9.2pt; line-height: 1.58; color: #DDCCB2; max-width: 155mm; }
+
+/* The three sibling papers referenced at the end of each document. Three across in
+   the height two would take, because those pages are the tightest in the set. */
+.blocks.three { grid-template-columns: repeat(3, 1fr); }
+.blocks.three .block { padding: 5mm 5.5mm; }
+.blocks.three .block h3 { font-size: 10pt; margin-bottom: 3mm; }
+.blocks.three .block p { font-size: 8.2pt; line-height: 1.48; }
+
+/* ---------------- small tables ---------------- */
+
+table.facts { width: 100%; border-collapse: collapse; }
+table.facts th, table.facts td {
+    text-align: left;
+    padding: 2.7mm 4mm 2.7mm 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    font-size: 8.4pt;
+    line-height: 1.45;
+    color: var(--muted);
+}
+table.facts thead th {
+    font-size: 7.2pt;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    font-weight: bold;
+    color: var(--brown);
+    border-bottom: 1.2pt solid var(--gold);
+    padding-bottom: 2.2mm;
+}
+table.facts td:first-child, table.facts th:first-child { color: var(--ink); width: 26%; }
+table.facts td strong { color: var(--ink); font-weight: bold; }
+table.facts tr:last-child td { border-bottom: none; }
+
+/* ---------------- closing ---------------- */
+
+.doc-close {
+    background: var(--amber);
+    color: #fff;
+    padding: 9mm var(--pad) calc(var(--bleed) + 9mm);
+    display: flex;
+    align-items: center;
+    gap: 12mm;
+}
+.doc-close h2 { font-size: 16pt; line-height: 1.22; margin-bottom: 3.5mm; }
+.doc-close p { font-size: 9.4pt; line-height: 1.55; color: #FDECD8; max-width: 112mm; }
+.doc-close .qr {
+    flex: 0 0 auto;
+    background: #fff;
+    padding: 3mm;
+    width: 31mm;
+    text-align: center;
+}
+.doc-close .qr img { width: 25mm; height: 25mm; display: block; }
+.doc-close .qr span {
+    display: block;
+    margin-top: 2mm;
+    font-size: 6.6pt;
+    letter-spacing: .05em;
+    color: var(--brown);
+}
