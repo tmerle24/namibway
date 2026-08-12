@@ -42,7 +42,7 @@ class WebsiteTab
                     ->content(fn (?Listing $record): string => match (true) {
                         $record === null => '—',
                         self::siteFor($record) === null => 'No website yet.',
-                        self::siteFor($record)?->isPublished() === true => 'Published — live at its own address and indexable.',
+                        self::siteFor($record)->isPublished() => 'Published — live at its own address and indexable.',
                         default => 'Draft — opens at its own address, but tells search engines to ignore it.',
                     }),
 
