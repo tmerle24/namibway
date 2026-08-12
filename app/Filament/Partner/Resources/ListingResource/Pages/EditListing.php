@@ -9,6 +9,7 @@ use App\Filament\Support\CreateWebsiteAction;
 use App\Filament\Support\EditHeroAction;
 use App\Filament\Support\EditLegalTextAction;
 use App\Filament\Support\EditSiteLogoAction;
+use App\Filament\Support\EditTypographyAction;
 use App\Filament\Support\ViewListingAction;
 use App\Models\Listing;
 use App\Services\Enrichment\OsmLocationFinder;
@@ -52,6 +53,7 @@ class EditListing extends EditRecord
             // asking us.
             EditHeroAction::header(),
             EditSiteLogoAction::header(),
+            EditTypographyAction::header(),
             EditLegalTextAction::header(),
             Actions\LocaleSwitcher::make(),
             Actions\Action::make('back')

@@ -33,6 +33,10 @@ use Illuminate\Support\Str;
  * @property string $draft_token
  * @property Carbon|null $published_at
  * @property string $accent
+ * @property string|null $font_display
+ * @property string|null $font_body
+ * @property string|null $brand_font
+ * @property int|null $brand_size
  * @property string|null $logo_key
  * @property string $default_locale
  * @property string|null $contact_email
@@ -65,6 +69,10 @@ class Site extends Model
         'draft_token',
         'published_at',
         'accent',
+        'font_display',
+        'font_body',
+        'brand_font',
+        'brand_size',
         'logo_key',
         'default_locale',
         'contact_email',
@@ -106,6 +114,7 @@ class Site extends Model
         'terms_accepted_at' => 'datetime',
         'social_links' => 'array',
         'imported' => 'array',
+        'brand_size' => 'integer',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
     ];
