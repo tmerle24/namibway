@@ -17,7 +17,7 @@ use Throwable;
  * One filed document: an uploaded file, or a page written in the admin panel.
  *
  * @property int $id
- * @property int $document_category_id
+ * @property int|null $document_category_id
  * @property DocumentKind $kind
  * @property string $title
  * @property string|null $description
@@ -33,7 +33,7 @@ use Throwable;
  * @property string|null $editor_name
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
- * @property-read DocumentCategory $category
+ * @property-read DocumentCategory|null $category
  * @property-read Collection<int, Note> $notes
  */
 class Document extends Model
