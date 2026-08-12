@@ -47,7 +47,7 @@
 
     @include('sites.partials.styles')
 </head>
-<body>
+<body id="top">
     <script>document.documentElement.classList.add('js');</script>
 
     @include('sites.partials.nav', ['hasHero' => $hero !== null])

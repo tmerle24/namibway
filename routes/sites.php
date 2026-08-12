@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Sites\SiteController;
+use App\Http\Controllers\Sites\SiteEnquiryController;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -23,3 +25,14 @@ Route::get($prefix.'/{slug}/{page?}', [SiteController::class, 'path'])
     ->where('slug', '[a-z0-9-]+')
     ->where('page', '[a-z0-9-]+')
     ->name('sites.preview');
+
+// The enquiry form posts here, from a site's own host as much as from the path
+// fallback. Throttled rather than tokened: these pages carry no session, and an
+// unauthenticated enquiry is not an action worth a cookie on every reader. See
+// SiteEnquiryController.
+// SubstituteBindings is named explicitly because the `sites` group is empty on
+// purpose; without it {site:slug} arrives as a string and the controller is
+// handed a blank model.
+Route::post($prefix.'/{site:slug}/enquiry', SiteEnquiryController::class)
+    ->middleware(['throttle:10,1', SubstituteBindings::class])
+    ->name('sites.enquiry');

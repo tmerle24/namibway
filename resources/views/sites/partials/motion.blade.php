@@ -22,6 +22,36 @@
             onScroll();
         }
 
+        // The burger. Both it and its panel arrive hidden, so this script is
+        // what makes the control exist at all — a page with JavaScript off gets
+        // no button that cannot do anything, and loses nothing, because the
+        // sections it links to are simply further down the same page.
+        var burger = document.getElementById('nav-burger');
+        var panel = document.getElementById('nav-panel');
+
+        if (burger && panel) {
+            burger.hidden = false;
+
+            var setOpen = function (open) {
+                burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+                panel.hidden = !open;
+            };
+
+            burger.addEventListener('click', function () {
+                setOpen(burger.getAttribute('aria-expanded') !== 'true');
+            });
+
+            // Every link closes it: the target is on this page, so leaving the
+            // panel open would cover what the visitor just asked to see.
+            panel.addEventListener('click', function (event) {
+                if (event.target.tagName === 'A') setOpen(false);
+            });
+
+            addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') setOpen(false);
+            });
+        }
+
         var targets = document.querySelectorAll('.reveal');
 
         if (!('IntersectionObserver' in window)) {

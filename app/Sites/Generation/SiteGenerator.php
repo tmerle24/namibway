@@ -3,6 +3,7 @@
 namespace App\Sites\Generation;
 
 use App\Enums\BusinessType;
+use App\Enums\ListingType;
 use App\Enums\SiteStatus;
 use App\Enums\VehicleCategory;
 use App\Models\Listing;
@@ -11,6 +12,8 @@ use App\Models\SiteBlock;
 use App\Models\SiteImage;
 use App\Models\SitePage;
 use App\Sites\BlockRegistry;
+use App\Sites\Blocks\EnquiryBlock;
+use App\Sites\LegalText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -73,6 +76,10 @@ class SiteGenerator
             $images = $this->importImages($site, $listing, $import, $force);
 
             $this->writeSiteFields($site, $this->siteFieldsFrom($listing), $force);
+            // After the fields above, not with them: the legal text quotes the
+            // address and the contact email, so it has to be written from a
+            // site that already has them.
+            $this->writeSiteFields($site, $this->legalFieldsFrom($site), $force);
             $this->writeBlocks($site, $this->payloadsFrom($listing, $import, $images));
 
             return $site->refresh();
@@ -88,6 +95,7 @@ class SiteGenerator
         return DB::transaction(function () use ($name, $type): Site {
             $site = $this->create($name, $type, null);
 
+            $this->writeSiteFields($site, $this->legalFieldsFrom($site));
             $this->writeBlocks($site, []);
 
             return $site->refresh();
@@ -153,6 +161,24 @@ class SiteGenerator
     }
 
     /**
+     * The first version of the three texts the business owns and then edits.
+     *
+     * Written like any other generated field, which means a rebuild keeps a
+     * version the business has changed. See App\Sites\LegalText for why the
+     * system writes these at all when it writes no other legal wording.
+     *
+     * @return array<string, mixed>
+     */
+    private function legalFieldsFrom(Site $site): array
+    {
+        return [
+            'legal_copyright' => $site->name,
+            'legal_privacy' => LegalText::defaultPrivacy($site),
+            'legal_imprint' => LegalText::defaultImprint($site),
+        ];
+    }
+
+    /**
      * @return array<int, SiteImage>
      */
     private function importImages(Site $site, Listing $listing, ListingImport $import, bool $force): array
@@ -212,6 +238,15 @@ class SiteGenerator
             'gallery' => [
                 'heading' => null,
                 'image_ids' => array_map(fn (SiteImage $image) => $image->id, $gallery),
+            ],
+            'enquiry' => [
+                'heading' => 'Request availability',
+                'intro' => null,
+                // A lodge is asked for an arrival and a departure; an activity
+                // or a restaurant for a date and a time. See EnquiryBlock.
+                'mode' => $listing->type === ListingType::Accommodation
+                    ? EnquiryBlock::MODE_STAY
+                    : EnquiryBlock::MODE_VISIT,
             ],
             'opening_hours' => [
                 'heading' => 'Opening hours',

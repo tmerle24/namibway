@@ -84,11 +84,21 @@
         width: 100%; max-width: var(--container); margin: 0 auto;
     }
     .nav__name {
-        font-family: var(--font-display);
+        display: flex; align-items: center;
+        font-family: var(--font-display); font-weight: 700;
         font-size: 20px; letter-spacing: -.01em;
         text-decoration: none; margin-right: auto;
-        color: #fff; transition: color .3s ease;
+        color: #fff; transition: color .3s ease, opacity .3s ease;
     }
+    /* Over a hero the name is already set in type a few lines below, so the
+       mark waits until that hero has gone past. Under `.js` only: the class
+       that brings it back is added by script, and without one the name must
+       simply be there. */
+    .js .nav__name--defer { opacity: 0; pointer-events: none; }
+    .js .nav.is-scrolled .nav__name--defer { opacity: 1; pointer-events: auto; }
+    /* An owner's mark is whatever shape it is, so it is bounded by height and
+       left to find its own width. */
+    .nav__logo { height: 36px; width: auto; max-width: 200px; object-fit: contain; display: block; }
     .nav__links { display: none; gap: var(--s4); align-items: center; }
     .nav__links a {
         font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
@@ -105,7 +115,43 @@
     .nav--solid .nav__name { color: var(--ink); }
     .nav--solid .nav__links a { color: var(--slate); }
 
-    @media (min-width: 800px) { .nav__links { display: flex; } }
+    /* The burger and its panel. Both are unhidden by the script, so a page
+       without JavaScript shows neither a dead button nor an open list. */
+    .nav__burger {
+        display: flex; flex-direction: column; justify-content: center; gap: 5px;
+        width: 40px; height: 40px; padding: 0 8px;
+        background: none; border: 0; cursor: pointer;
+    }
+    .nav__burger span {
+        display: block; height: 2px; border-radius: 2px; background: #fff;
+        transition: transform .25s ease, opacity .2s ease, background-color .3s ease;
+    }
+    .nav.is-scrolled .nav__burger span, .nav--solid .nav__burger span { background: var(--ink); }
+    .nav__burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav__burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+    .nav__burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .nav__panel {
+        display: grid; gap: var(--s1);
+        background: var(--salt); box-shadow: 0 12px 24px rgba(0,0,0,.12);
+        padding: var(--s3) var(--s4) var(--s4);
+        border-top: 1px solid var(--bone);
+    }
+    .nav__panel[hidden] { display: none; }
+    .nav__panel a {
+        display: block; padding: var(--s3) 0;
+        font-size: 15px; letter-spacing: .06em; text-transform: uppercase;
+        text-decoration: none; color: var(--ink);
+        border-bottom: 1px solid var(--bone);
+    }
+    .nav__panel a:last-child { border-bottom: 0; }
+
+    /* Wide enough for the bar to carry the links itself: the burger and its
+       panel go away entirely, whatever state the script left them in. */
+    @media (min-width: 800px) {
+        .nav__links { display: flex; }
+        .nav__burger, .nav__panel { display: none !important; }
+    }
 
     /* ---- Buttons ----------------------------------------------------- */
 
@@ -291,6 +337,19 @@
     .offer__price { text-align: right; white-space: nowrap; }
     .offer__price strong { font-size: 20px; font-variant-numeric: tabular-nums; }
 
+    /* ---- Enquiry form -------------------------------------------------- */
+
+    .enquiry { background: #fff; border: 1px solid var(--bone); padding: var(--s5); }
+    .enquiry__form { display: grid; gap: var(--s4); }
+    .enquiry__row { display: grid; gap: var(--s4); grid-template-columns: 1fr 1fr; }
+    .enquiry__row > * { min-width: 0; }
+    .enquiry__submit { width: 100%; }
+    .enquiry__sent { font-size: 18px; }
+    .enquiry__failed { margin-bottom: var(--s4); padding: var(--s3); border-left: 3px solid var(--accent); background: #fff; font-size: 15px; }
+    /* Off-screen rather than display:none — some bots skip hidden inputs and
+       fill in everything else, which would defeat the point of having one. */
+    .enquiry__trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
     /* ---- Contact and footer ------------------------------------------- */
 
     .channels { display: grid; gap: var(--s4); }
@@ -313,6 +372,15 @@
         font-size: 13px; color: rgba(255,255,255,.5);
         display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4);
     }
+    /* Pushed to the end of the strip on a wide screen, so the business's own
+       particulars read first and ours is a footnote. */
+    .foot__powered { margin-left: auto; }
+
+    /* ---- Legal pages --------------------------------------------------- */
+
+    .wrap--narrow { max-width: 760px; }
+    .section--legal { padding: var(--s7) 0 var(--s6); }
+    .section--legal h1 { font-family: var(--font-display); font-size: 34px; margin: 0 0 var(--s5); }
 
     /* ---- Motion -------------------------------------------------------
        Enhancement only: every element below is fully visible without the

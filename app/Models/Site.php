@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BusinessType;
 use App\Enums\SiteStatus;
+use App\Support\MediaUrl;
 use Database\Factories\SiteFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -31,6 +33,7 @@ use Illuminate\Support\Str;
  * @property string $draft_token
  * @property Carbon|null $published_at
  * @property string $accent
+ * @property string|null $logo_key
  * @property string $default_locale
  * @property string|null $contact_email
  * @property string|null $contact_phone
@@ -39,6 +42,11 @@ use Illuminate\Support\Str;
  * @property string|null $latitude
  * @property string|null $longitude
  * @property array<string, string>|null $social_links
+ * @property string|null $legal_privacy
+ * @property string|null $legal_imprint
+ * @property string|null $legal_copyright
+ * @property Carbon|null $terms_accepted_at
+ * @property string|null $terms_accepted_by
  * @property array<string, mixed>|null $imported
  */
 class Site extends Model
@@ -57,6 +65,7 @@ class Site extends Model
         'draft_token',
         'published_at',
         'accent',
+        'logo_key',
         'default_locale',
         'contact_email',
         'contact_phone',
@@ -65,6 +74,11 @@ class Site extends Model
         'latitude',
         'longitude',
         'social_links',
+        'legal_privacy',
+        'legal_imprint',
+        'legal_copyright',
+        'terms_accepted_at',
+        'terms_accepted_by',
         'imported',
     ];
 
@@ -89,6 +103,7 @@ class Site extends Model
         'business_type' => BusinessType::class,
         'status' => SiteStatus::class,
         'published_at' => 'datetime',
+        'terms_accepted_at' => 'datetime',
         'social_links' => 'array',
         'imported' => 'array',
         'latitude' => 'decimal:7',
@@ -178,11 +193,42 @@ class Site extends Model
      */
     public function publicUrl(): string
     {
-        if ($this->isPublished() && filled($this->host)) {
-            return 'https://'.$this->host;
+        return $this->pageUrl();
+    }
+
+    /**
+     * The owner's mark, sized for the slot it goes in — or null, in which case
+     * the name is set in type instead. Root-relative like every other image on
+     * these pages; see SiteImage::thumb().
+     */
+    public function logoUrl(int $width = 400): ?string
+    {
+        if (blank($this->logo_key)) {
+            return null;
         }
 
-        $path = '/'.trim((string) config('sites.path_prefix', '_sites'), '/').'/'.$this->slug;
+        $url = Storage::disk('r2')->url((string) $this->logo_key);
+
+        return MediaUrl::thumb($url, $width) ?? $url;
+    }
+
+    /**
+     * The address of one page of this site — the home page when given nothing.
+     *
+     * Subpages have to go through here rather than be concatenated onto
+     * publicUrl(), because a draft is read at `?preview=<token>` and appending
+     * a path after the query string produces an address that resolves to
+     * nothing.
+     */
+    public function pageUrl(?string $pageSlug = null): string
+    {
+        $suffix = filled($pageSlug) ? '/'.ltrim((string) $pageSlug, '/') : '';
+
+        if ($this->isPublished() && filled($this->host)) {
+            return 'https://'.$this->host.$suffix;
+        }
+
+        $path = '/'.trim((string) config('sites.path_prefix', '_sites'), '/').'/'.$this->slug.$suffix;
 
         return url($path).($this->isPublished() ? '' : '?preview='.$this->draft_token);
     }

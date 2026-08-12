@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Http\Controllers\Sites\SiteController;
+use App\Http\Controllers\Sites\SiteEnquiryController;
 use App\Sites\SiteResolver;
 use Closure;
 use Illuminate\Http\Request;
@@ -47,9 +48,15 @@ class ResolveSiteHost
             return $next($request);
         }
 
-        // Slice 1 serves pages and nothing else. A form post arriving on a site
-        // host has nowhere to go yet, and answering it with the travel
-        // platform's routes would be worse than not answering.
+        // The enquiry form is the one thing that posts. Everything else on a
+        // site host is a page, and a stray POST is answered with a 404 rather
+        // than falling through to the travel platform's routes.
+        if ($request->isMethod('POST')) {
+            abort_unless(trim($request->path(), '/') === 'enquiry', 404);
+
+            return app(SiteEnquiryController::class)($request, $site);
+        }
+
         abort_unless($request->isMethodSafe(), 404);
 
         // Resolved here rather than injected, so that a travel-platform request
