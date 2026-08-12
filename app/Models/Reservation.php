@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\FolioStatus;
 use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Models\Concerns\GuardsInventoryWrites;
@@ -35,6 +36,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property float|null $total_amount
  * @property float|null $quoted_amount
  * @property float|null $charges_amount
+ * @property float $paid_amount
+ * @property FolioStatus $payment_status
  * @property string|null $price_override_reason
  * @property string|null $over_capacity_note
  * @property int|null $price_overridden_by
@@ -72,6 +75,8 @@ class Reservation extends Model
         'promotion_code',
         'discount_amount',
         'charges_amount',
+        'paid_amount',
+        'payment_status',
         'price_override_reason',
         'price_overridden_by',
         'price_overridden_at',
@@ -94,6 +99,8 @@ class Reservation extends Model
         'quoted_amount' => 'float',
         'discount_amount' => 'float',
         'charges_amount' => 'float',
+        'paid_amount' => 'float',
+        'payment_status' => FolioStatus::class,
         'price_overridden_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
@@ -183,6 +190,18 @@ class Reservation extends Model
     public function stayAmount(): float
     {
         return round(($this->total_amount ?? 0.0) - ($this->charges_amount ?? 0.0), 2);
+    }
+
+    /**
+     * The money that has moved against this stay, oldest first — the credit
+     * side of the folio. `paid_amount` beside it is the same thing summed and
+     * written down, which is what every screen reads instead of this.
+     *
+     * @return HasMany<Payment, $this>
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class)->orderBy('received_at')->orderBy('id');
     }
 
     /**

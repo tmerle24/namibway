@@ -178,6 +178,11 @@
                                     <th>Departure</th>
                                     <th>Nights</th>
                                     <th>Status</th>
+                                    {{-- Money is collected when a guest is
+                                         standing there, so the number belongs
+                                         on the list somebody works down at the
+                                         counter rather than one screen away. --}}
+                                    <th>Outstanding</th>
                                     <th>Reference</th>
                                 </tr>
                             </thead>
@@ -221,6 +226,19 @@
                                             <span class="nw-badge nw-badge--{{ $reservation->status->color() }}">
                                                 {{ $reservation->status->label() }}
                                             </span>
+                                        </td>
+                                        {{-- Read off the stay, not summed here:
+                                             `paid_amount` is written down by
+                                             PaymentRecorder so this board and
+                                             the stay drawer cannot disagree. --}}
+                                        <td class="nw-num">
+                                            @if ($reservation->total_amount === null)
+                                                <span class="nw-hint">No price</span>
+                                            @elseif ($reservation->payment_status->isSettled())
+                                                <span class="nw-hint">Paid</span>
+                                            @else
+                                                {{ Money::format($reservation->total_amount - $reservation->paid_amount, $reservation->currency) }}
+                                            @endif
                                         </td>
                                         <td class="nw-num nw-hint">
                                             {{ $reservation->reference }}

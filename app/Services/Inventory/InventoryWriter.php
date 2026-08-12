@@ -2,6 +2,7 @@
 
 namespace App\Services\Inventory;
 
+use App\Enums\FolioStatus;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
@@ -496,6 +497,30 @@ class InventoryWriter
 
         return InventoryWriteGuard::allow(function () use ($reservation, $to) {
             $reservation->status = $to;
+            $reservation->save();
+
+            return $reservation;
+        });
+    }
+
+    /**
+     * Write what has been paid against a stay onto the stay.
+     *
+     * The odd one out in this class, and deliberately so. A folio total is not
+     * inventory — but it lives on the reservations table, and "the reservations
+     * table is written here and nowhere else" is a rule worth more than the
+     * tidiness of keeping money out of an inventory writer. This is the same
+     * arrangement StayPromoter uses: the caller decides, this writes.
+     *
+     * The decision is entirely PaymentRecorder's, which is why nothing is
+     * computed here. Passing already-decided values keeps one answer to "what
+     * does this stay owe" rather than two that can drift.
+     */
+    public function recordFolio(Reservation $reservation, float $paidAmount, FolioStatus $status): Reservation
+    {
+        return InventoryWriteGuard::allow(function () use ($reservation, $paidAmount, $status) {
+            $reservation->paid_amount = $paidAmount;
+            $reservation->payment_status = $status;
             $reservation->save();
 
             return $reservation;

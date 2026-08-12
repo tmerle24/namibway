@@ -3,6 +3,7 @@
 namespace App\Filament\Partner\Pages;
 
 use App\Filament\Partner\Pages\Concerns\EditsInventory;
+use App\Filament\Partner\Pages\Concerns\RecordsPayments;
 use App\Filament\Partner\Pages\Concerns\ShowsReservationDetail;
 use App\Filament\Partner\Support\SelectedProperty;
 use App\Models\Listing;
@@ -33,6 +34,7 @@ class ArrivalsDepartures extends Page implements HasForms
 {
     use EditsInventory;
     use InteractsWithForms;
+    use RecordsPayments;
     use ShowsReservationDetail;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrow-right-on-rectangle';

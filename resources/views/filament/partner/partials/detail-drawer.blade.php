@@ -145,6 +145,129 @@
                 @endif
 
                 {{--
+                    The money side, directly under the price it answers.
+
+                    The reservation *is* the folio — there is no separate
+                    document to open, and the balance is the number a desk
+                    reads out at check-out, so it is the largest thing here
+                    rather than the last row of a table.
+
+                    A stay with no price and no payments shows nothing at all:
+                    a table of zeroes reads as a bug rather than as "nothing
+                    has happened yet".
+                --}}
+                @php($folio = $this->folio())
+
+                @if ($folio && ! $folio->isEmpty())
+                    <div class="nw-subhead">Money</div>
+
+                    <dl class="nw-facts">
+                        <dt>Paid</dt>
+                        <dd class="nw-num">
+                            {{ Money::format($folio->paid(), $folio->currency()) }}
+                            {{-- Named only when the two differ: a property
+                                 chasing a transfer needs to know how much of
+                                 this is still somebody's word. --}}
+                            @if (Money::cents($folio->paid()) !== Money::cents($folio->cleared()))
+                                <span class="nw-hint">
+                                    ({{ Money::format($folio->cleared(), $folio->currency()) }} confirmed)
+                                </span>
+                            @endif
+                        </dd>
+
+                        <dt>{{ ($folio->balance() ?? 0) < 0 ? 'Owed back' : 'Outstanding' }}</dt>
+                        <dd class="nw-num">
+                            @if ($folio->balance() === null)
+                                <span class="nw-hint">No price yet</span>
+                            @else
+                                {{ Money::format(abs($folio->balance()), $folio->currency()) }}
+                            @endif
+                            <span class="nw-badge nw-badge--{{ $folio->status()->color() }}">
+                                {{ $folio->status()->label() }}
+                            </span>
+                        </dd>
+                    </dl>
+
+                    @if ($folio->payments->isNotEmpty())
+                        <table class="nw-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>How</th>
+                                    <th>To</th>
+                                    <th>Reference</th>
+                                    <th>Amount</th>
+                                    <th>State</th>
+                                    <th class="nw-noprint"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($folio->payments as $payment)
+                                    <tr>
+                                        <td class="nw-num">{{ $payment->received_at->isoFormat('D MMM YYYY') }}</td>
+                                        <td>
+                                            {{ $payment->method->label() }}
+                                            @if ($payment->isReversal())
+                                                <div class="nw-hint">Correction</div>
+                                            @elseif ($payment->isRefund())
+                                                <div class="nw-hint">Refund</div>
+                                            @endif
+                                        </td>
+                                        <td>{{ $payment->collected_by->label() }}</td>
+                                        <td class="nw-hint">
+                                            {{ $payment->reference ?: '—' }}
+                                            {{-- What the guest actually handed
+                                                 over, where that was not the
+                                                 property's own currency. --}}
+                                            @if ($payment->foreignAmountLabel())
+                                                <div>{{ $payment->foreignAmountLabel() }}</div>
+                                            @endif
+                                        </td>
+                                        <td class="nw-num">{{ Money::format($payment->amount, $payment->currency) }}</td>
+                                        <td>
+                                            <span class="nw-badge nw-badge--{{ $payment->status->color() }}">
+                                                {{ $payment->status->label() }}
+                                            </span>
+                                        </td>
+                                        {{-- Only a line that can still change
+                                             offers anything. A corrected or
+                                             failed row is history. --}}
+                                        <td class="nw-noprint">
+                                            @if (! $payment->isReversal() && $payment->reversal === null && $payment->status->countsTowardsBalance())
+                                                <button
+                                                    type="button"
+                                                    class="nw-table__link"
+                                                    wire:click="selectPayment({{ $payment->id }})"
+                                                >
+                                                    {{ $this->selectedPaymentId === $payment->id ? 'Selected' : 'Select' }}
+                                                </button>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+
+                        @if ($this->selectedPaymentId !== null)
+                            <div class="nw-drawer__actions nw-noprint">
+                                {{ $this->clearPaymentAction }}
+                                {{ $this->failPaymentAction }}
+                                {{ $this->reversePaymentAction }}
+                            </div>
+                        @endif
+                    @endif
+                @endif
+
+                <div class="nw-drawer__actions nw-noprint">
+                    {{ $this->recordPaymentAction }}
+
+                    {{-- Nothing to give back before anything has come in. --}}
+                    @if ($folio && Money::cents($folio->paid()) > 0)
+                        {{ $this->recordRefundAction }}
+                    @endif
+                </div>
+
+                {{--
                     More people than the room sleeps, and what the desk said it
                     was doing about it. Kept beside the booking rather than in
                     the running log because whoever makes the room up has to

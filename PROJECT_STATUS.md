@@ -406,6 +406,46 @@ whichever the database returned last silently became the day. That class of bug 
 *plausible* wrong number on a screen nobody looks at twice — is the reason these guards get
 written.
 
+### 2026-08-12 — the ledger (money, slice 1 of 6)
+
+**The credit side exists.** `PAYMENTS_BUILD.md` slice 1 is built: `payments` holds one row
+per money movement against a stay, and `reservations` carries `paid_amount` and
+`payment_status` as stored results. The complaint that started `PAYMENTS.md` — the system
+could not say whether a stay had been paid — is answered, and answered without a payment
+provider, because a lodge desk takes cash today.
+
+**One write path, enforced the way inventory's is.** `App\Services\Payments\PaymentRecorder`
+is the only thing that writes money; `PaymentWriteGuard` catches Eloquent saves at runtime
+and `PaymentWritePathTest` refuses query-builder writes from anywhere else by scanning the
+source. Deliberately a copy of the inventory pattern rather than a second shape for the same
+rule. The one place the two paths meet is the folio total: the reservations table stays
+written by `InventoryWriter` alone, so the recorder decides the numbers and calls
+`InventoryWriter::recordFolio()` to write them — the same arrangement `StayPromoter` has.
+
+**Nothing is ever edited.** A refund is a negative row on the same folio, a mistake is a
+*reversal* that points at the row it corrects and leaves both, and the only field that
+changes after creation is the status — `recorded → cleared` is a fact arriving late rather
+than a fact being rewritten. Refund and reversal are kept distinguishable on purpose: "did
+we give that money back, or did we never have it?" has two different answers to an
+accountant.
+
+**Two decisions worth recording.** A `recorded` payment counts towards the balance, and only
+a `failed` one stops counting — a desk handed cash is not waiting for a bank, and a stay that
+reads unpaid because nobody ticked a second box is a stay somebody gets asked to pay twice.
+And a stay nobody has priced yet has *no* balance rather than a zero one: `FolioStatus`
+answers it as part-paid the moment money arrives, which puts it on the unpaid list where
+somebody prices it.
+
+**Every comparison is in cents** (`Money::cents()`), never on the floats the decimal columns
+cast to. The one-cent-short test is the guardrail's own test.
+
+**On the screens.** The stay drawer both lodge screens open gained a Money block — paid, what
+of that is confirmed, the balance, the lines, and buttons to record a payment, record a
+refund, correct a line or mark a transfer as arrived. The arrivals board gained an
+Outstanding column, and there is a new **Unpaid** page listing everything at the property
+that is not square, soonest arrival first. A cancelled stay keeps its folio and appears
+there — a forfeited deposit is exactly the case a system without a folio gets wrong.
+
 ### Parked on 2026-08-11 — and built on 2026-08-11 and 2026-08-12
 
 > **Superseded, kept for the reasoning.** Everything in this section was written as
