@@ -23,7 +23,13 @@
                 this.desk = ! this.desk;
 
                 if (this.desk) {
-                    this.$el.requestFullscreen?.()?.catch(() => {});
+                    /*
+                     * Alpine's $el in an x-on handler refers to the element
+                     * the handler is on (the button), not the x-data root.
+                     * Walk up to the actual container so requestFullscreen()
+                     * targets the whole calendar wrapper, not just the button.
+                     */
+                    this.$el.closest('.nw-lodge')?.requestFullscreen?.()?.catch(() => {});
                 } else if (document.fullscreenElement) {
                     document.exitFullscreen?.()?.catch(() => {});
                 }
