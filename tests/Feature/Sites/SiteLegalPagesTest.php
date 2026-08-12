@@ -107,4 +107,32 @@ class SiteLegalPagesTest extends TestCase
             ->assertOk()
             ->assertDontSee('/privacy');
     }
+
+    /**
+     * One flex line put the copyright, both legal links and "Powered by
+     * NamibWay" in the same row, which on a phone reflowed into a ragged block
+     * with ours stranded on its own. Two rows, copyright last.
+     */
+    public function test_the_foot_is_two_rows_with_the_copyright_last(): void
+    {
+        $site = $this->site();
+
+        $html = $this->get($site->publicUrl())->assertOk()->getContent();
+
+        $this->assertIsString($html);
+        $this->assertStringContainsString('foot__row', $html);
+        $this->assertStringContainsString('foot__row--copy', $html);
+
+        // Searched from the footer onwards: both class names also appear in the
+        // inline stylesheet above, in the other order.
+        $foot = strpos($html, '<footer');
+        $this->assertIsInt($foot);
+
+        $links = strpos($html, 'foot__powered', $foot);
+        $copy = strpos($html, 'foot__row--copy', $foot);
+
+        $this->assertIsInt($links);
+        $this->assertIsInt($copy);
+        $this->assertLessThan($copy, $links, 'the copyright should come after the links');
+    }
 }

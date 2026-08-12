@@ -7,7 +7,7 @@
      * for a block that was switched off because there was nothing to put in it
      * would be a link to nothing.
      *
-     * Below 800px the same list is a panel behind a burger. It is not a
+     * Below 1024px the same list is a panel behind a burger. It is not a
      * separate menu: one array renders twice, so a link can never be in one and
      * missing from the other.
      */
@@ -50,21 +50,10 @@
         $items[] = $booking;
     }
 
-    $logo = $site->logoUrl(400);
 @endphp
 <header class="nav {{ $hasHero ? '' : 'nav--solid' }}" id="nav">
     <div class="nav__inner">
-        {{-- Always there. It was briefly held back over a hero, on the grounds
-             that the name is set twice in the same photograph — but a header
-             with nothing in it is the worse of the two problems, and this is
-             where a visitor looks to find out whose site they are on. --}}
-        <a class="nav__name" href="#top">
-            @if ($logo)
-                <img src="{{ $logo }}" alt="{{ $site->name }}" class="nav__logo">
-            @else
-                {{ $site->name }}
-            @endif
-        </a>
+        @include('sites.partials.brand', ['href' => '#top'])
 
         @if ($items !== [])
             <nav class="nav__links">

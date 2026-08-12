@@ -715,10 +715,31 @@ Three things the sites were sold as having and did not.
   the site's display face instead. And over a hero the bar's name now **waits until the
   hero has scrolled past**, because it was being set twice in the same photograph.
 
-The owner edits their own legal text and logo from the partner panel, through the same
-actions the admin uses (`EditLegalTextAction`, `EditSiteLogoAction`) — the moment the two
-copies diverge, "the customer can also edit it themselves" turns into two products with
-one price.
+- **The opening screen no longer repeats the name** (`App\Sites\HeroLines`). The bar
+  carries the business's name and the hero used to carry it again four lines below, which
+  on a draft shown to a prospect reads as a fault rather than as emphasis. The hero gets a
+  short line true of the category instead — picked by a hash of the slug, so it is stable
+  across rebuilds but not the same for every lodge in the country. A slogan is the
+  business's to write and we do not invent one; every line is meant to be replaced, and
+  `EditHeroAction` is where the headline, the paragraph under it and whether the town
+  shows at all are changed, from either panel.
+
+- **The bar has a fixed height, and that is load-bearing.** The hero is pulled up under it
+  by exactly -64px, so anything that made the bar taller left a strip of page background
+  above the photograph — measured at 834px the bar was 90px and the strip 26px, from the
+  name wrapping to two lines and the menu wrapping beside it. `height` rather than
+  `min-height`, `nowrap` on the name and the links, two size steps for a long name, and
+  the burger threshold moved to 1024px. Do not reintroduce anything that lets the bar grow
+  without changing the hero's margin in the same breath.
+
+- **An open menu takes the bar off its photograph colours** (`.nav.is-open`, set by the
+  page's own script), with the transition suppressed for that state — a 300ms fade left
+  the name white on cream for exactly as long as it takes to notice.
+
+The owner edits their own opening screen, legal text and logo from the partner panel,
+through the same actions the admin uses (`EditHeroAction`, `EditLegalTextAction`,
+`EditSiteLogoAction`) — the moment the two copies diverge, "the customer can also edit it
+themselves" turns into two products with one price.
 
 Still to do here: the confirm-by-email path — the owner accepting from the mail rather
 than us ticking the box for them — and our own website-terms page, which
