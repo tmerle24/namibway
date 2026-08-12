@@ -88,12 +88,23 @@ body:has(.kaia-page) {
     height: 60%;
     display: block;
 }
+/* DeadTree.vue, sized from out here — it takes no props. Its viewBox is
+   148x110, so width and height have to keep that ratio or the tree squashes.
+   Narrow screens get a smaller one: the chat panel takes the full width
+   there and a full-size tree crowds it. */
 .kaia-page .hero svg.hero-tree {
     position: absolute;
     bottom: 0;
-    left: 10%;
-    width: 78px;
-    height: 105px;
+    left: 8%;
+    width: 148px;
+    height: 110px;
+}
+@media (max-width: 768px) {
+    .kaia-page .hero svg.hero-tree {
+        left: 4%;
+        width: 111px;
+        height: 82px;
+    }
 }
 .kaia-page .hero-content {
     position: relative;

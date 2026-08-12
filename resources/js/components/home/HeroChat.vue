@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { SpeechRecognition as NativeSpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import DeadTree from '@/components/DeadTree.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import { formatPrice } from '@/lib/currency';
 import { sendKaiaMessage } from '@/lib/kaia-client';
@@ -531,43 +532,13 @@ async function retryLastMessage() {
                 fill="#8C4A15"
             />
         </svg>
-        <!-- A Deadvlei-style dead camel thorn tree — bare, gnarled branches
-             with no foliage, the classic silhouette of Namibia's most
-             photographed landmark. Its own SVG with a normal
-             (aspect-ratio-preserving) viewBox, separate from hero-bg above:
-             hero-bg deliberately stretches non-uniformly to fill the hero
-             at any height, which is fine for the abstract dune shapes but
-             warps a recognizable silhouette like this into a squashed mess
-             whenever the hero gets much taller than its 340-unit viewBox
-             (e.g. the mobile full-height state). -->
-        <svg class="hero-tree" viewBox="0 0 100 135" aria-hidden="true">
-            <g
-                transform="translate(50,130)"
-                fill="none"
-                stroke="#1c130c"
-                stroke-linecap="round"
-            >
-                <path d="M0 0 C -2 -22 3 -45 -1 -68" stroke-width="7" />
-                <path
-                    d="M-1 -68 C -12 -78 -22 -82 -27 -92"
-                    stroke-width="4.5"
-                />
-                <path
-                    d="M-27 -92 C -33 -100 -42 -104 -46 -112"
-                    stroke-width="2.5"
-                />
-                <path
-                    d="M-27 -92 C -24 -102 -22 -110 -18 -118"
-                    stroke-width="2.5"
-                />
-                <path d="M-1 -68 C 6 -80 8 -90 3 -100" stroke-width="4.5" />
-                <path d="M3 -100 C 8 -108 16 -112 20 -120" stroke-width="2.5" />
-                <path d="M3 -100 C 0 -110 2 -118 -3 -126" stroke-width="2.5" />
-                <path d="M-1 -68 C 10 -74 20 -76 27 -86" stroke-width="4" />
-                <path d="M27 -86 C 33 -92 40 -94 46 -100" stroke-width="2.2" />
-                <path d="M27 -86 C 30 -95 35 -100 33 -108" stroke-width="2.2" />
-            </g>
-        </svg>
+        <!-- Kept out of the hero-bg SVG above on purpose: hero-bg stretches
+             non-uniformly to fill the hero at any height, which is fine for
+             the abstract dune shapes but would squash a recognisable
+             silhouette like this whenever the hero gets much taller than its
+             340-unit viewBox (e.g. the mobile full-height state). DeadTree
+             keeps its own aspect-ratio-preserving viewBox. -->
+        <DeadTree class="hero-tree" />
         <div class="hero-content">
             <div class="hero-head">
                 <h1>{{ t('hero.title') }}</h1>
