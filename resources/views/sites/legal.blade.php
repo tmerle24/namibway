@@ -21,7 +21,7 @@
 
     <header class="nav nav--solid" id="nav">
         <div class="nav__inner">
-            <a class="nav__name" href="{{ $site->pageUrl() }}">{{ $site->name }}</a>
+            @include('sites.partials.brand', ['href' => $site->pageUrl()])
             <nav class="nav__links">
                 <a href="{{ $site->pageUrl() }}">Back to the site</a>
             </nav>

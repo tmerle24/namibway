@@ -13,6 +13,7 @@ use App\Models\SiteImage;
 use App\Models\SitePage;
 use App\Sites\BlockRegistry;
 use App\Sites\Blocks\EnquiryBlock;
+use App\Sites\HeroLines;
 use App\Sites\LegalText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -80,7 +81,7 @@ class SiteGenerator
             // address and the contact email, so it has to be written from a
             // site that already has them.
             $this->writeSiteFields($site, $this->legalFieldsFrom($site), $force);
-            $this->writeBlocks($site, $this->payloadsFrom($listing, $import, $images));
+            $this->writeBlocks($site, $this->payloadsFrom($site, $listing, $import, $images));
 
             return $site->refresh();
         });
@@ -210,7 +211,7 @@ class SiteGenerator
      * @param  array<int, SiteImage>  $images
      * @return array<string, array<string, mixed>>
      */
-    private function payloadsFrom(Listing $listing, ListingImport $import, array $images): array
+    private function payloadsFrom(Site $site, Listing $listing, ListingImport $import, array $images): array
     {
         $hero = $images[0] ?? null;
         $gallery = array_slice($images, 1, 12);
@@ -224,7 +225,11 @@ class SiteGenerator
             'hero' => [
                 'image_id' => $hero?->id,
                 'eyebrow' => $this->fit($listing->city?->name, 60, 'hero eyebrow'),
-                'headline' => $this->fit((string) $listing->name, 120, 'hero headline'),
+                // Not the name: the bar already carries it, and setting it
+                // twice on the first screen reads as a fault rather than as
+                // emphasis. See App\Sites\HeroLines — and it is the first thing
+                // the Website tab lets anybody change.
+                'headline' => HeroLines::for($this->businessTypeFor($listing), $site->slug),
                 'subline' => $this->fit($short, 240, 'hero subline'),
                 'cta_label' => null,
                 'cta_href' => null,

@@ -12,29 +12,37 @@
     $data = $data ?? [];
     $terms = LegalText::termsUrl();
 @endphp
+{{-- Two rows rather than one wrapping one. Everything in a single flex line
+     reflowed on a phone into a ragged block with "Powered by NamibWay" stranded
+     on its own — so the links are their own row and the copyright is last,
+     which is where a copyright belongs anyway. --}}
 <div class="foot__legal">
-    <span>&copy; {{ now()->year }} {{ LegalText::copyright($site) }}</span>
+    <div class="foot__row">
+        @foreach (LegalText::pages() as $slug => $label)
+            <a href="{{ $site->pageUrl($slug) }}">{{ $label }}</a>
+        @endforeach
 
-    @if (filled($data['registration'] ?? null))
-        <span>{{ $data['registration'] }}</span>
-    @endif
+        @foreach ($data['links'] ?? [] as $link)
+            <a href="{{ SafeLink::href($link['href']) }}">{{ $link['label'] }}</a>
+        @endforeach
 
-    @if (filled($data['responsible_person'] ?? null))
-        <span>Responsible: {{ $data['responsible_person'] }}</span>
-    @endif
+        {{-- Ours, not theirs, and it says so. A line at the bottom of every
+             site we build is the only advertising this product does. --}}
+        <span class="foot__powered">
+            Powered by <a href="https://namibway.com" target="_blank" rel="noopener">NamibWay</a>@if ($terms)
+                · <a href="{{ SafeLink::href($terms) }}" target="_blank" rel="noopener">Website terms</a>@endif
+        </span>
+    </div>
 
-    @foreach (LegalText::pages() as $slug => $label)
-        <a href="{{ $site->pageUrl($slug) }}">{{ $label }}</a>
-    @endforeach
+    <div class="foot__row foot__row--copy">
+        <span>&copy; {{ now()->year }} {{ LegalText::copyright($site) }}</span>
 
-    @foreach ($data['links'] ?? [] as $link)
-        <a href="{{ SafeLink::href($link['href']) }}">{{ $link['label'] }}</a>
-    @endforeach
+        @if (filled($data['registration'] ?? null))
+            <span>{{ $data['registration'] }}</span>
+        @endif
 
-    {{-- Ours, not theirs, and it says so. A line at the bottom of every site we
-         build is the only advertising this product does. --}}
-    <span class="foot__powered">
-        Powered by <a href="https://namibway.com" target="_blank" rel="noopener">NamibWay</a>@if ($terms)
-            · <a href="{{ SafeLink::href($terms) }}" target="_blank" rel="noopener">Website terms</a>@endif
-    </span>
+        @if (filled($data['responsible_person'] ?? null))
+            <span>Responsible: {{ $data['responsible_person'] }}</span>
+        @endif
+    </div>
 </div>

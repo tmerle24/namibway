@@ -78,9 +78,16 @@
         background: transparent;
         transition: background-color .3s ease, box-shadow .3s ease;
     }
+    /* Height, not min-height, and this is load-bearing rather than tidy.
+       The hero is pulled up under this bar by exactly -64px, so anything that
+       makes the bar taller — a long name wrapping to two lines, a menu wrapping
+       at tablet width — leaves a strip of page background above the photograph.
+       Measured at 834px it was 90px tall and the strip was 26px. A fixed height
+       makes that arithmetic true at every width instead of most of them; the
+       rules below are what keep the content inside it. */
     .nav__inner {
         display: flex; align-items: center; gap: var(--s4);
-        min-height: 64px; padding: var(--s3) var(--s4);
+        height: 64px; overflow: hidden; padding: var(--s3) var(--s4);
         width: 100%; max-width: var(--container); margin: 0 auto;
     }
     .nav__name {
@@ -89,24 +96,40 @@
         font-size: 20px; letter-spacing: -.01em;
         text-decoration: none; margin-right: auto;
         color: #fff; transition: color .3s ease, opacity .3s ease;
+        /* One line, always — see the bar's fixed height above. min-width:0 is
+           what lets a flex item shrink below the width of its own text. */
+        min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    /* A long name gets smaller type rather than an ellipsis. The class is set
+       in the template from the name's length, because CSS cannot ask. */
+    .nav__name--long { font-size: 16px; }
+    .nav__name--longer { font-size: 14px; letter-spacing: 0; }
     /* A name over a photograph needs its own shadow to stay readable — the
        hero's gradient is built for text much further down the frame. */
-    .nav:not(.is-scrolled):not(.nav--solid) .nav__name { text-shadow: 0 1px 12px rgba(0,0,0,.55); }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__name { text-shadow: 0 1px 12px rgba(0,0,0,.55); }
     /* An owner's mark is whatever shape it is, so it is bounded by height and
        left to find its own width. */
     .nav__logo { height: 36px; width: auto; max-width: 200px; object-fit: contain; display: block; }
-    .nav__links { display: none; gap: var(--s4); align-items: center; }
+    /* nowrap: a menu item breaking across two lines was the other half of what
+       made the bar taller than the hero's negative margin. */
+    .nav__links { display: none; gap: var(--s4); align-items: center; flex-wrap: nowrap; }
     .nav__links a {
         font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
         text-decoration: none; color: rgba(255,255,255,.82);
-        transition: color .2s ease;
+        white-space: nowrap; transition: color .2s ease;
     }
     .nav__links a:hover { color: #fff; }
-    .nav.is-scrolled { background: var(--salt); box-shadow: 0 1px 0 var(--bone); }
-    .nav.is-scrolled .nav__name { color: var(--ink); }
-    .nav.is-scrolled .nav__links a { color: var(--slate); }
-    .nav.is-scrolled .nav__links a:hover { color: var(--ink); }
+    /* An open menu panel is a cream sheet directly under the bar, so the bar
+       has to leave its over-a-photograph colours at the same moment — white on
+       cream is not a state anybody should be able to reach. */
+    .nav.is-scrolled, .nav.is-open { background: var(--salt); box-shadow: 0 1px 0 var(--bone); }
+    /* Instant for the menu, unlike the scroll state. The panel appears in one
+       frame, so a 300ms colour fade would leave the name white on cream for
+       exactly as long as it takes to be noticed. */
+    .nav.is-open, .nav.is-open .nav__name, .nav.is-open .nav__burger span { transition: none; }
+    .nav.is-scrolled .nav__name, .nav.is-open .nav__name { color: var(--ink); }
+    .nav.is-scrolled .nav__links a, .nav.is-open .nav__links a { color: var(--slate); }
+    .nav.is-scrolled .nav__links a:hover, .nav.is-open .nav__links a:hover { color: var(--ink); }
     /* No hero: the bar sits on the page ground from the first pixel. */
     .nav--solid { background: var(--salt); box-shadow: 0 1px 0 var(--bone); }
     .nav--solid .nav__name { color: var(--ink); }
@@ -123,7 +146,9 @@
         display: block; height: 2px; border-radius: 2px; background: #fff;
         transition: transform .25s ease, opacity .2s ease, background-color .3s ease;
     }
-    .nav.is-scrolled .nav__burger span, .nav--solid .nav__burger span { background: var(--ink); }
+    .nav.is-scrolled .nav__burger span,
+    .nav.is-open .nav__burger span,
+    .nav--solid .nav__burger span { background: var(--ink); }
     .nav__burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
     .nav__burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
     .nav__burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
@@ -144,8 +169,11 @@
     .nav__panel a:last-child { border-bottom: 0; }
 
     /* Wide enough for the bar to carry the links itself: the burger and its
-       panel go away entirely, whatever state the script left them in. */
-    @media (min-width: 800px) {
+       panel go away entirely, whatever state the script left them in.
+       1024 rather than 800, because a long business name beside six items is
+       what wrapped at tablet width — and clipping a menu is worse than a
+       burger a little further up the range. */
+    @media (min-width: 1024px) {
         .nav__links { display: flex; }
         .nav__burger, .nav__panel { display: none !important; }
     }
@@ -367,11 +395,14 @@
         margin-top: var(--s5); padding-top: var(--s4);
         border-top: 1px solid rgba(255,255,255,.14);
         font-size: 13px; color: rgba(255,255,255,.5);
-        display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4);
+        display: grid; gap: var(--s3);
     }
-    /* Pushed to the end of the strip on a wide screen, so the business's own
-       particulars read first and ours is a footnote. */
-    .foot__powered { margin-left: auto; }
+    .foot__row { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); }
+    /* Last, and quieter than the links above it. */
+    .foot__row--copy { color: rgba(255,255,255,.38); }
+    /* Pushed to the end of its own row on a wide screen, so the business's own
+       pages read first and ours is a footnote. */
+    @media (min-width: 720px) { .foot__powered { margin-left: auto; } }
 
     /* ---- Legal pages --------------------------------------------------- */
 

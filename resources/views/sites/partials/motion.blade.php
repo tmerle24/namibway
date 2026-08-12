@@ -35,6 +35,9 @@
             var setOpen = function (open) {
                 burger.setAttribute('aria-expanded', open ? 'true' : 'false');
                 panel.hidden = !open;
+                // The panel is a cream sheet under the bar, so the bar has to
+                // stop being white-on-a-photograph at the same instant.
+                if (nav) nav.classList.toggle('is-open', open);
             };
 
             burger.addEventListener('click', function () {
