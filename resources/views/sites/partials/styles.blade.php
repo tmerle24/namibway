@@ -90,12 +90,9 @@
         text-decoration: none; margin-right: auto;
         color: #fff; transition: color .3s ease, opacity .3s ease;
     }
-    /* Over a hero the name is already set in type a few lines below, so the
-       mark waits until that hero has gone past. Under `.js` only: the class
-       that brings it back is added by script, and without one the name must
-       simply be there. */
-    .js .nav__name--defer { opacity: 0; pointer-events: none; }
-    .js .nav.is-scrolled .nav__name--defer { opacity: 1; pointer-events: auto; }
+    /* A name over a photograph needs its own shadow to stay readable — the
+       hero's gradient is built for text much further down the frame. */
+    .nav:not(.is-scrolled):not(.nav--solid) .nav__name { text-shadow: 0 1px 12px rgba(0,0,0,.55); }
     /* An owner's mark is whatever shape it is, so it is bounded by height and
        left to find its own width. */
     .nav__logo { height: 36px; width: auto; max-width: 200px; object-fit: contain; display: block; }

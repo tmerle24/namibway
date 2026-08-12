@@ -54,12 +54,11 @@
 @endphp
 <header class="nav {{ $hasHero ? '' : 'nav--solid' }}" id="nav">
     <div class="nav__inner">
-        {{-- Over a hero the name is set twice — once here and once in type
-             three lines below it — so the mark holds itself back until the
-             hero has scrolled past. Only under `.js`, because the class that
-             brings it back is added by script: without one it is simply
-             always there. --}}
-        <a class="nav__name {{ $hasHero ? 'nav__name--defer' : '' }}" href="#top">
+        {{-- Always there. It was briefly held back over a hero, on the grounds
+             that the name is set twice in the same photograph — but a header
+             with nothing in it is the worse of the two problems, and this is
+             where a visitor looks to find out whose site they are on. --}}
+        <a class="nav__name" href="#top">
             @if ($logo)
                 <img src="{{ $logo }}" alt="{{ $site->name }}" class="nav__logo">
             @else
