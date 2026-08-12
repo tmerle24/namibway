@@ -169,7 +169,7 @@ class EditPagesAction
             $slug = $isHome ? '' : self::slug($entry['slug'] ?? null, $title);
 
             if (! $isHome) {
-                self::assertUsable($slug, $slugs);
+                self::assertUsable($slug, self::typed($entry['slug'] ?? null), $slugs);
                 $slugs[] = $slug;
             }
 
@@ -216,15 +216,28 @@ class EditPagesAction
         return $slug !== '' ? $slug : Str::slug($title);
     }
 
+    /** The address exactly as it was typed, for the reserved-name check below. */
+    private static function typed(mixed $given): string
+    {
+        return is_string($given) ? strtolower(trim($given)) : '';
+    }
+
     /**
+     * The slug alone is not enough to judge by. `Str::slug` turns `robots.txt`
+     * into `robots-txt`, which collides with nothing — but somebody who typed
+     * `robots.txt` meant the file, and quietly giving them a page at a
+     * different address is the kind of helpfulness nobody thanks you for. So
+     * both the slug and what was typed are checked.
+     *
      * @param  array<int, string>  $taken
      */
-    private static function assertUsable(string $slug, array $taken): void
+    private static function assertUsable(string $slug, string $typed, array $taken): void
     {
         $refusal = match (true) {
             $slug === '' => 'A page needs an address. Give it a title with letters in it, or type one.',
-            in_array($slug, self::RESERVED, true) => '"'.$slug.'" is answered by the site itself, so a '
-                .'page there would never be seen. Pick another address.',
+            in_array($slug, self::RESERVED, true),
+            in_array($typed, self::RESERVED, true) => '"'.($typed !== '' ? $typed : $slug).'" is answered '
+                .'by the site itself, so a page there would never be seen. Pick another address.',
             LegalText::isLegalPage($slug) => '"'.$slug.'" is one of the legal pages, which are written '
                 .'under Legal pages rather than as a page here.',
             in_array($slug, $taken, true) => 'Two pages cannot share the address "/'.$slug.'".',
