@@ -143,4 +143,25 @@ return [
 
     'media_prefix' => 'sites',
 
+    /*
+    |--------------------------------------------------------------------------
+    | Publishing a site that leans on Google Places photographs
+    |--------------------------------------------------------------------------
+    |
+    | Off by default, and the default is the cautious reading rather than the
+    | obvious one. Those photographs are publishable on namibway.com under
+    | Google's terms and they expire (google_photos_expire_at) — neither is true
+    | of a website we have told a customer is theirs to keep if they leave. So
+    | the gate refuses them at publication while still allowing them on a draft,
+    | which is where they earn their keep: winning the meeting.
+    |
+    | It is a switch and not a rule because it is a commercial judgement, not a
+    | technical one, and it is not the code's to make. Turning it on publishes
+    | Google's photography on a customer's own site; if that is the trade you
+    | want, this is where you say so.
+    |
+    */
+
+    'allow_google_photos_when_published' => (bool) env('SITES_ALLOW_GOOGLE_PHOTOS', false),
+
 ];
