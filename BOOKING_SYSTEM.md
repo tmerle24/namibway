@@ -883,13 +883,18 @@ Naming these matters as much as the plan, because a disabled button is a claim:
 Channel synchronisation, iCal, room-level assignment (a reservation holds room
 types and quantities, never a named room), housekeeping, and tax reporting.
 
-**Folio and payments used to be on that list and came off it on 2026-08-12.** A
-booking system that cannot say whether a stay has been paid is not one, and this
-one cannot: the reservation carries the whole debit side (`total_amount`,
-`charges_amount`, `discount_amount`, `currency`) and there is no credit side at
-all — no payment record, no invoice, no invoice number. The design, including the
-three settlement models we offer partners rather than picking one, is
-`PAYMENTS.md`. Nothing of it is built.
+**Folio and payments used to be on that list, came off it on 2026-08-12, and were
+built the same day.** A booking system that cannot say whether a stay has been
+paid is not one, and this one could not: the reservation carried the whole debit
+side (`total_amount`, `charges_amount`, `discount_amount`, `currency`) and there
+was no credit side at all. There is now — `payments` holds one row per movement of
+money, `reservations` carries `paid_amount` and `payment_status` as stored
+results, invoices have numbers, and all six slices of `PAYMENTS_BUILD.md` are
+worked through, including the three settlement models we offer partners rather
+than picking one. The design is `PAYMENTS.md`; what it still describes and nobody
+has built is §6 step 6, **payouts and partner statements**, which wants real money
+to have moved before it can be tested. `DpoProvider` is implemented and has never
+run against a real merchant account.
 
 Channel synchronisation deserves one word of precision, because §8 looks like it
 contradicts this line and does not: what is out of scope is *us* pushing rates
