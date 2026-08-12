@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Enums\SettlementType;
 use App\Models\City;
 use App\Models\Region;
+use Database\Factories\Concerns\UniqueAcrossTheRun;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -13,6 +14,8 @@ use Illuminate\Support\Str;
  */
 class CityFactory extends Factory
 {
+    use UniqueAcrossTheRun;
+
     protected $model = City::class;
 
     /**
@@ -20,7 +23,10 @@ class CityFactory extends Factory
      */
     public function definition(): array
     {
-        $name = fake()->unique()->city();
+        // The slug is a unique column and rows committed by the concurrency
+        // suites outlive faker's memory of what it handed out — see
+        // UniqueAcrossTheRun.
+        $name = $this->neverSeenBefore(fake()->city());
 
         return [
             'region_id' => Region::factory(),
