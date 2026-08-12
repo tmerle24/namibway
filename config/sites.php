@@ -185,4 +185,21 @@ return [
 
     'terms_url' => env('SITES_TERMS_URL', ''),
 
+    /*
+    |---------------------------------------------------------------------------
+    | The address a customer points their own domain at
+    |---------------------------------------------------------------------------
+    |
+    | The public IPv4 of this server. It is shown to the customer in the copy
+    | and paste instructions, and it is what an A record is compared against
+    | before we try to issue a certificate.
+    |
+    | Empty disables the whole custom-domain flow rather than guessing: an A
+    | record checked against nothing would either pass everything or fail
+    | everything, and both are worse than saying it is not configured.
+    |
+    */
+
+    'server_ip' => env('SITES_SERVER_IP', ''),
+
 ];

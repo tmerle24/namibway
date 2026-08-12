@@ -22,6 +22,13 @@ Schedule::command('backup:monitor')->dailyAt('04:00')->onOneServer();
 // backlog clears — the underlying query is a fast no-op — so it's fine to leave
 // running nightly as a safety net for new listings that slip through with an
 // address but no coordinates.
+// A customer changes an A record once and then waits, so what matters is
+// noticing within minutes rather than the next morning. The command only
+// looks DNS up and writes down what it saw — issuing the certificate and
+// touching nginx happen outside the application entirely. See
+// DEPLOYMENT.md, "Custom domains".
+Schedule::command('sites:check-domains')->everyFiveMinutes()->withoutOverlapping();
+
 Schedule::command('namibway:backfill-listing-coordinates')->dailyAt('01:30')->onOneServer()->withoutOverlapping();
 
 // withoutOverlapping isn't used elsewhere in this file, but two concurrent

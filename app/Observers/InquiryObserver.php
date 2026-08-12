@@ -5,7 +5,7 @@ namespace App\Observers;
 use App\Enums\ConnectorType;
 use App\Enums\InquiryStatus;
 use App\Jobs\ProcessInquiry;
-use App\Mail\NewInquiryReceived;
+use App\Mail\PartnerConfirmationRequest;
 use App\Models\Inquiry;
 use Illuminate\Support\Facades\Mail;
 
@@ -50,10 +50,21 @@ class InquiryObserver
             return;
         }
 
-        $partnerEmail = $inquiry->listing?->partner?->email;
+        // Everyone else gets the mail with the two buttons in it, not just a
+        // notification. A partner who does not sell through our booking system
+        // used to receive "please reply to the guest yourself" and nothing to
+        // press, which left the request with no recorded outcome and the guest
+        // with no answer from us. Confirm and decline work off the inquiry
+        // rather than off a connector, so there was never a reason to withhold
+        // them — see App\Services\Booking\InquiryDecisionService.
+        //
+        // The listing's own address is the fallback, because a business whose
+        // website is asking for enquiries has to receive them even where we
+        // never recorded a partner contact.
+        $recipient = $inquiry->listing?->partner?->email ?: $inquiry->listing?->contact_email;
 
-        if ($partnerEmail) {
-            Mail::to($partnerEmail)->send(new NewInquiryReceived($inquiry));
+        if ($recipient) {
+            Mail::to($recipient)->send(new PartnerConfirmationRequest($inquiry));
         }
     }
 }

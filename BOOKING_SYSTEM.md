@@ -887,16 +887,15 @@ types and quantities, never a named room), housekeeping, and tax reporting.
 built the same day.** A booking system that cannot say whether a stay has been
 paid is not one, and this one could not: the reservation carried the whole debit
 side (`total_amount`, `charges_amount`, `discount_amount`, `currency`) and there
-was no credit side at all — no payment record, no invoice, no invoice number.
-There is now: a folio on every stay, payments in any method with reversals and
-refunds, gapless per-property invoice numbering with credit notes as the only
-correction, commission and deposit resolved per listing/partner/platform, the
-three settlement models, and an online payment flow behind a provider interface.
-The design is `PAYMENTS.md`; the rules that must survive a later change are in
-`CLAUDE.md` → "The money side". **What is still missing is payouts and partner
-statements** — the run that aggregates what is owed, the statement a partner
-reads, and the record of a transfer having happened. That one needs real money to
-have moved before it can be tested at all.
+was no credit side at all. There is now — `payments` holds one row per movement of
+money, `reservations` carries `paid_amount` and `payment_status` as stored
+results, invoices have numbers, and all six slices of `PAYMENTS_BUILD.md` are
+worked through, including the three settlement models we offer partners rather
+than picking one. The design is `PAYMENTS.md`; what it still describes and nobody
+has built is §6 step 6, **payouts and partner statements**, which wants real money
+to have moved before it can be tested. `DpoProvider` is implemented and has never
+run against a real merchant account. The rules that must survive a later change to
+any of it are collected in `CLAUDE.md` → "The money side".
 
 Channel synchronisation deserves one word of precision, because §8 looks like it
 contradicts this line and does not: what is out of scope is *us* pushing rates

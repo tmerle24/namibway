@@ -7,6 +7,7 @@ use App\Filament\Partner\Pages\Concerns\EditsInventory;
 use App\Filament\Partner\Pages\Concerns\IssuesInvoices;
 use App\Filament\Partner\Pages\Concerns\RecordsPayments;
 use App\Filament\Partner\Pages\Concerns\ShowsReservationDetail;
+use App\Filament\Partner\Support\CalendarPreferences;
 use App\Filament\Partner\Support\SelectedProperty;
 use App\Models\Listing;
 use App\Models\RatePlan;
@@ -42,6 +43,10 @@ use Livewire\Attributes\Url;
  * the hour axis down the page, its departures across it (DayGrid). A property
  * that sells only nights never sees it: DayGrid returns null where there is no
  * timetable, so the screen is exactly the one it had before.
+ *
+ * Which reading is showing is remembered between visits (CalendarPreferences),
+ * so an operator who works the week view opens on the week view. The date is
+ * not: the calendar always lands on today.
  */
 class OccupancyCalendar extends Page implements HasForms
 {
@@ -81,6 +86,9 @@ class OccupancyCalendar extends Page implements HasForms
     /**
      * How much is on screen. In the URL with the rest, because "September on
      * the month view" is the whole address of what somebody is looking at.
+     *
+     * Null here does not mean "month" — it means nothing was asked for, and
+     * mount() then fills in what this operator last chose.
      */
     #[Url(as: 'range')]
     public ?string $range = null;
@@ -96,6 +104,31 @@ class OccupancyCalendar extends Page implements HasForms
     public static function canAccess(): bool
     {
         return filled(auth()->user()?->partner_id);
+    }
+
+    /**
+     * Open the calendar the way this operator left it.
+     *
+     * Only what the query string did not already say: a link is an address and
+     * still wins, and #[Url] has filled these in by the time this runs. What is
+     * restored is the *reading* — range, resolution, rate plan — and never the
+     * date, which stays today. See CalendarPreferences.
+     */
+    public function mount(): void
+    {
+        $preferences = app(CalendarPreferences::class);
+
+        $this->range ??= $preferences->range()?->value;
+        $this->resolution ??= $preferences->resolution();
+
+        $property = $this->property();
+        $storedRatePlan = $property === null ? null : $preferences->ratePlanId($property);
+
+        if ($this->ratePlanId === null && $storedRatePlan !== null) {
+            // Resolved rather than taken: a plan deleted since it was last
+            // looked at falls back to the default, like any other stale id.
+            $this->ratePlanId = $this->ratePlan($storedRatePlan)?->id;
+        }
     }
 
     /**
@@ -141,6 +174,8 @@ class OccupancyCalendar extends Page implements HasForms
         $this->range = CalendarRange::parse($range)->value;
         $this->from = $this->range()->start($anchor)->toDateString();
         $this->closeReservation();
+
+        app(CalendarPreferences::class)->rememberRange($this->range());
     }
 
     /**
@@ -165,6 +200,8 @@ class OccupancyCalendar extends Page implements HasForms
     public function showResolution(int $minutes): void
     {
         $this->resolution = in_array($minutes, DayGrid::RESOLUTIONS, true) ? $minutes : null;
+
+        app(CalendarPreferences::class)->rememberResolution($this->resolution);
     }
 
     /** Show another product's rates. Nothing else about the grid changes. */
@@ -172,6 +209,12 @@ class OccupancyCalendar extends Page implements HasForms
     {
         $this->ratePlanId = $this->ratePlan($ratePlanId)?->id;
         $this->closeReservation();
+
+        $property = $this->property();
+
+        if ($property !== null) {
+            app(CalendarPreferences::class)->rememberRatePlan($property, $this->ratePlanId);
+        }
     }
 
     public function range(): CalendarRange

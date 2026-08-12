@@ -91,6 +91,8 @@ class WebsiteTab
 
                     EditTypographyAction::make(),
 
+                    EditCustomDomainAction::make(),
+
                     EditLegalTextAction::make(),
 
                     Action::make('build_website')

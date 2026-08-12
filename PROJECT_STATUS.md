@@ -702,6 +702,26 @@ pending payment is a state somebody can read rather than a dead end.
 NAD needs no conversion through DPO, so the currency-peg machinery is untouched by it — it
 exists for the Paystack-shaped case and is tested there.
 
+### 2026-08-12 — the calendar opens the way it was left, and a desk mode
+
+Two small things, both asked for by the same observation: the calendar is not a page
+somebody visits, it is a screen somebody works at all day.
+
+**It remembers how it is read.** The range, the day-view resolution and the rate plan being
+shown are stored on the account — `users.panel_preferences`, read and written through
+`CalendarPreferences` — so a lodge that works the week view opens on the week view. Three
+rules keep it honest: the **date is never remembered** — a calendar opens on today, the way
+a diary does; a **link never rewrites a preference**, so the query string still wins for the
+page it addresses but a colleague's link leaves your own calendar alone; and the **rate plan
+is per property**, since plans belong to one. The same store took over the property switcher
+from the session, which used to forget which of NWR's twenty camps somebody works at every
+time the session expired.
+
+**Desk mode** is a button that fills the screen with the calendar — the reception screen,
+where the sidebar, topbar and breadcrumbs are furniture. It asks for native fullscreen and
+does not depend on getting it: the CSS state alone is a complete desk mode, which is what a
+reception iPad gets, since iOS Safari has no element fullscreen at all.
+
 ### 2026-08-12 — a payments guide, and the three bugs a screenshot found
 
 Two pieces of finishing work on the money side, both worth recording because of what
@@ -866,16 +886,33 @@ What stands between here and that is no longer software of this kind:
    allotment or the manual concierge check — with other lodges taken on first. What that
    leaves to build is the allotment marker and its release deadline; see "Questions to
    answer before building" above.
-3. ~~**Money owed** — designed 2026-08-12 in `PAYMENTS.md`, none of it built.~~ **Built
-   2026-08-12**, all six slices of `PAYMENTS_BUILD.md` plus DPO — see the dated entries
-   below. The credit side exists: a folio on every stay, payments and reversals, gapless
-   invoice numbering, the two rates, the three settlement models and an online payment
-   flow behind a provider interface. What is left of this item is the part that cannot be
-   written without a bank: **payouts and partner statements** (step 6 of `PAYMENTS.md`
-   § 6) — the run that aggregates what `SettlementBalance` already computes per stay, the
-   statement a partner reads, and the record of a transfer having happened. Two commercial
-   answers are also still missing and are cheap to give: exactly when commission counts as
-   earned, and payment terms under the agency model.
+3. **Money that has actually moved** — all six slices of `PAYMENTS_BUILD.md` are built
+   (see the dated sections above): the ledger, the invoice, commission and deposit rates,
+   the three settlement models, the provider abstraction with a working demo, and the
+   booking-only / full operating mode. So the sentence this entry used to carry — that the
+   reservation held the whole debit side and there was no credit side at all — is no longer
+   true. What is left is what code cannot finish on its own:
+
+   - **Payouts and partner statements**, `PAYMENTS.md` §6 step 6, the one piece of the
+     design not built. `SettlementBalance` already says what is owed on a stay and in which
+     direction; missing are the run that aggregates it, the statement a partner reads, and
+     the record of a transfer having happened. It is deliberately last: it wants real money
+     to have moved before it can be tested against anything.
+   - **A live gateway account.** `DpoProvider` is implemented and DPO Pay is the only
+     candidate that bills and settles in NAD, but nothing has run against a real merchant
+     account, and two things need DPO on the phone rather than a commit — the `ServiceType`
+     for the account, and the `verifyToken` failure codes that go into
+     `payments.providers.dpo.failure_codes`. Until they are known, `000` is the only code
+     treated as final and everything else is reported as still pending, on purpose.
+   - **Whether there is a South African entity.** Paystack works and is implemented, but a
+     Namibian company cannot hold an account — that route needs a ZA entity settling in
+     ZAR. A company decision, not a build task, and not made.
+   - **Two commercial answers**, both cheap to give and both left open by
+     `PAYMENTS_BUILD.md` § D: exactly when commission counts as earned — at confirmation,
+     at the cancellation deadline, or after check-in, and what a no-show earns — and
+     payment terms under the agency model, including what happens to a partner who does
+     not pay a commission invoice. Neither blocks code; both are things a partner is told
+     up front, so they are needed before the first one is signed.
 4. **Room-level assignment**, for a lodge that assigns real rooms rather than room types.
    Deliberately not modelled, and the first thing a real desk is likely to ask for.
 5. **The API as the system's second front door** — decided 2026-08-12, written up as
@@ -886,6 +923,32 @@ What stands between here and that is no longer software of this kind:
    *partner's* connector rather than reading our own calendar — so for exactly the
    properties whose inventory we hold, the public API is the least informed reader we
    have. Nothing about it is built.
+6. **Staff accounts under a partner — asked for 2026-08-12, nothing built.** A listing
+   partner has to be able to create accounts for their own people, with less access than
+   their own. Today `users.partner_id` *is* the entire authorisation model: a user either
+   operates everything their partner owns — every property, every rate, every booking,
+   every customer record — or has no panel at all. There is no role, no permission and no
+   per-property scope anywhere in `PartnerPanelProvider` or the page-level `canAccess()`
+   checks, which all read `filled(partner_id)`.
+
+   That is exactly wrong for the shape of the customers we are selling to. Reception takes
+   bookings and reads the arrivals board; it has no business editing next season's rates,
+   switching the property live, or reading another camp's guest history. NWR makes the
+   per-property half unavoidable on its own: twenty camps under one partner, and a person
+   works at one of them.
+
+   What has to be decided before it is built, in the order the decisions constrain each
+   other: whether the unit of access is a **role** (a small fixed set — owner, manager,
+   reception — which is what an operator can actually reason about) or a permission
+   matrix (which nobody will configure correctly); whether an account is scoped to
+   **certain properties** of the partner as well as to a role, which the NWR case says
+   yes to; who may create and disable accounts, and how an invited person sets a password
+   (the `ClaimInviteService` flow is the pattern already in the repo); and what happens to
+   the **audit trail** — `notes` and the reservation already freeze an author name beside
+   an account id, so "who changed this rate" becomes answerable and should be, rather than
+   being retrofitted later. Related: the trip plan is heading for the same problem from
+   the traveller's side (collaborative plans with read-only and write access, CLAUDE.md
+   → "Current focus"), and it would be a waste to invent two vocabularies for one idea.
 
 Two smaller things are named rather than left implicit, both from
 `BOOKING_BEYOND_ROOMS.md`: ~~renaming the sellable unit away from `room_type`~~ (§3.2 —
@@ -1094,8 +1157,23 @@ than us ticking the box for them — and our own website-terms page, which
 
 ### Next up, in the order it was asked for
 
-- **The custom domain, entered in the admin, and nginx following by itself.**
-  Decided 2026-08-12, deliberately deferred. A site's own domain is one field away
+- ~~**The custom domain, entered in the admin, and nginx following by itself.**~~
+  **Built 2026-08-12.** The shape below is what was built, unchanged: an admin field
+  with copy-and-paste DNS instructions (`EditCustomDomainAction`), a five-minute
+  `sites:check-domains` that only ever resolves an A record and writes down what it saw,
+  `sites:pending-certificates` as the read-only handover, and a root-side reconciler on a
+  systemd timer that issues the certificate, writes the vhost atomically and reports back
+  through `sites:domain-live`. `DEPLOYMENT.md` → "Custom domains" carries the script.
+
+  Three decisions inside it worth not relitigating: **both `@` and `www` must resolve**
+  before a certificate is attempted, because one covering half of what the customer hands
+  out fails in front of a guest instead of here; **a live domain is never re-checked**, so
+  a momentary DNS failure cannot take a website off the air that nothing in the
+  application could put back; and **the subdomain is permanent**, because it is what the
+  draft was reviewed on and what still answers when somebody lets their registration
+  lapse.
+
+  The original note, kept because the reasoning is the reason for the split: A site's own domain is one field away
   today (`sites.host`), but a wildcard certificate does not cover somebody's own
   `.com.na` — each one needs its own certificate and its own `server_name`.
 

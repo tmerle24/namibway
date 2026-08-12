@@ -95,6 +95,12 @@
         cursor: progress;
     }
 
+    .nw-btn__icon {
+        width: 0.95rem;
+        height: 0.95rem;
+        flex: none;
+    }
+
     /* The row of things you can do to whatever the drawer is showing. Wraps,
        because a stay early in its life offers more moves than a late one and
        the drawer is narrow on a tablet. */
@@ -995,6 +1001,42 @@
         font-weight: 600;
         color: var(--nw-text);
         line-height: 1.1;
+    }
+
+    /* ---------- desk mode ---------- */
+
+    /* The calendar over everything else — the screen at reception, where the
+       panel's sidebar, topbar and breadcrumbs are furniture nobody is looking
+       at and every centimetre they take is a night off the grid.
+
+       Two mechanisms, deliberately. The class alone is a complete desk mode:
+       fixed over the viewport, above the panel chrome. Native fullscreen is
+       asked for on top of it and takes the browser's own chrome away as well,
+       but it is not required — iOS Safari has no element fullscreen at all,
+       and a reception iPad is exactly where this is wanted. So the button
+       never depends on it having worked. */
+    .nw-lodge--desk {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        overflow: auto;
+        padding: 1rem;
+        background: rgb(var(--gray-100, 243 244 246));
+    }
+
+    .dark .nw-lodge--desk {
+        background: rgb(var(--gray-950, 3 7 18));
+    }
+
+    /* The ceilings above are drawn against a page that has a topbar, a heading
+       and a footer over it. Desk mode has none of that, so the grid gets the
+       height back. */
+    .nw-lodge--desk .nw-cal__viewport {
+        max-height: calc(100vh - 11rem);
+    }
+
+    .nw-lodge--desk .nw-day__viewport {
+        max-height: calc(100vh - 14rem);
     }
 
     /* ---------- print ---------- */

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
@@ -23,6 +24,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $email
  * @property bool $is_admin
  * @property string|null $preferred_currency
+ * @property array<string, mixed>|null $panel_preferences
  * @property int|null $partner_id
  * @property string|null $provider
  * @property string|null $provider_id
@@ -56,7 +58,45 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
             'two_factor_confirmed_at' => 'datetime',
             'is_admin' => 'boolean',
             'last_login_at' => 'datetime',
+            'panel_preferences' => 'array',
         ];
+    }
+
+    /**
+     * How this person likes to look at a screen — the view they left a page on,
+     * so they do not have to set it again tomorrow.
+     *
+     * Deliberately not fillable and not a form field: these are written by the
+     * screens themselves as somebody uses them, never posted.
+     */
+    public function preference(string $key, mixed $default = null): mixed
+    {
+        return Arr::get($this->panel_preferences ?? [], $key, $default);
+    }
+
+    /**
+     * Remember a choice. Null forgets it, so a screen can be put back to
+     * working out its own default rather than being pinned to a stale one.
+     *
+     * Writes only on an actual change: the toolbar buttons that call this are
+     * mostly pressed on the option already showing.
+     */
+    public function rememberPreference(string $key, mixed $value): void
+    {
+        $preferences = $this->panel_preferences ?? [];
+
+        if (Arr::get($preferences, $key) === $value) {
+            return;
+        }
+
+        if ($value === null) {
+            Arr::forget($preferences, $key);
+        } else {
+            Arr::set($preferences, $key, $value);
+        }
+
+        $this->panel_preferences = $preferences;
+        $this->save();
     }
 
     public function canAccessPanel(Panel $panel): bool
