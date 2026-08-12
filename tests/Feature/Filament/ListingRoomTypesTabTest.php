@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Filament;
 
+use App\Enums\ListingType;
 use App\Filament\Partner\Resources\ListingResource as PartnerListingResource;
 use App\Filament\Resources\ListingResource;
 use App\Filament\Resources\ListingResource\Pages\EditListing;
@@ -58,7 +59,7 @@ class ListingRoomTypesTabTest extends TestCase
      */
     public function test_a_departure_entered_on_a_new_room_type_saves_with_it(): void
     {
-        [$user, $listing] = $this->adminAndProperty();
+        [$user, $listing] = $this->adminAndProperty(ListingType::Activity);
 
         Livewire::actingAs($user)
             ->test(EditListing::class, ['record' => $listing->getRouteKey()])
@@ -121,14 +122,23 @@ class ListingRoomTypesTabTest extends TestCase
     /**
      * @return array{0: User, 1: Listing}
      */
-    private function adminAndProperty(): array
+    private function adminAndProperty(ListingType $type = ListingType::Accommodation): array
     {
         return [
             User::factory()->create(['is_admin' => true]),
-            // Coordinates on purpose: EditListing::mutateFormDataBeforeSave
-            // geocodes a listing that has none, and a test has no business
-            // reaching Nominatim.
-            Listing::factory()->create(['latitude' => -22.57, 'longitude' => 17.08]),
+            Listing::factory()->create([
+                // Pinned, not left to the factory's random ListingType: saving
+                // the form validates the whole record, and a listing that came
+                // out as a vehicle fails on the vehicle_category the factory
+                // does not set — a room-types test that passes three times in
+                // four. This is what turned main red after #150.
+                'type' => $type,
+                // Coordinates on purpose: EditListing::mutateFormDataBeforeSave
+                // geocodes a listing that has none, and a test has no business
+                // reaching Nominatim.
+                'latitude' => -22.57,
+                'longitude' => 17.08,
+            ]),
         ];
     }
 
