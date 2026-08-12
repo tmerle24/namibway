@@ -27,13 +27,15 @@
 already hold about the business. Nothing is public yet — this link is private, and
 the page tells search engines to ignore it until you say otherwise.</p>
 
-{{-- The colour is repeated inline on purpose. Mail clients routinely apply
-     their own `a { color }` after the document's stylesheet, which is how this
-     button rendered as blue-on-brown and unreadable in Gmail. Inline styles are
-     the only ones that reliably survive. --}}
+{{-- The colour is stated three times: in the class, inline on the anchor, and
+     again on a span inside it. That is not belt and braces, it is what Gmail
+     needs. It restyles `a` after the document's stylesheet *and* after the
+     anchor's own inline colour — the button rendered blue on brown twice
+     before this. A span inside the anchor is the one element it leaves
+     alone. --}}
 <p><a class="cta" href="{{ $url }}"
-      style="display:inline-block;margin:24px 0;padding:14px 28px;background:#b45309;color:#ffffff;text-decoration:none;border-radius:6px;font-size:16px">Look
-        at the draft</a></p>
+      style="display:inline-block;margin:24px 0;padding:14px 28px;background:#b45309;color:#ffffff;text-decoration:none;border-radius:6px;font-size:16px"><span
+            style="color:#ffffff;text-decoration:none">Look at the draft</span></a></p>
 
 @if ($gaps !== [] || $empty !== [])
     <h2>What we could not fill in</h2>
