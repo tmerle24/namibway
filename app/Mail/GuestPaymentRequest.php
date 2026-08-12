@@ -30,7 +30,9 @@ class GuestPaymentRequest extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        $property = $this->intent->reservation?->listing?->name ?? config('app.name');
+        // The stay may be gone; its listing cannot be, so only the first hop
+        // is nullsafe.
+        $property = $this->intent->reservation?->listing->name ?? config('app.name');
 
         return new Envelope(
             subject: "Payment request: {$property}",
