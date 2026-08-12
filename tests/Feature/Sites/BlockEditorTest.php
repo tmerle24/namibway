@@ -182,8 +182,10 @@ class BlockEditorTest extends TestCase
      */
     private function write(Site $site, array $state): void
     {
+        $page = $site->pages()->where('is_home', true)->sole();
+
         $method = new ReflectionMethod(EditBlocksAction::class, 'write');
         $method->setAccessible(true);
-        $method->invoke(null, $site, $state);
+        $method->invoke(null, $page, $state);
     }
 }

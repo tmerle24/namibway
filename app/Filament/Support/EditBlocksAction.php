@@ -67,8 +67,35 @@ class EditBlocksAction
                 .'without showing it, and add what is missing.')
             ->modalSubmitActionLabel('Save')
             ->modalWidth('5xl')
-            ->fillForm(fn (?Listing $record): array => ['blocks' => self::state($record)])
+            ->fillForm(function (?Listing $record): array {
+                $site = $record === null ? null : self::siteFor($record);
+
+                if ($site === null) {
+                    return ['page_id' => null, 'blocks' => []];
+                }
+
+                $page = self::page($site);
+
+                return ['page_id' => $page->id, 'blocks' => self::stateFor($page)];
+            })
             ->form(fn (?Listing $record): array => [
+                // Which page is being edited. One site had one page until pages
+                // could be created; now the editor has to say which, and
+                // switching reloads the bands under it rather than opening a
+                // second modal.
+                Forms\Components\Select::make('page_id')
+                    ->label('Page')
+                    ->options(fn (): array => self::pageOptions($record))
+                    ->native(false)
+                    ->selectablePlaceholder(false)
+                    ->live()
+                    ->visible(fn (): bool => count(self::pageOptions($record)) > 1)
+                    ->afterStateUpdated(function ($state, Forms\Set $set) use ($record): void {
+                        $page = self::pageById($record, is_numeric($state) ? (int) $state : null);
+
+                        $set('blocks', $page === null ? [] : self::stateFor($page));
+                    }),
+
                 Forms\Components\Builder::make('blocks')
                     ->hiddenLabel()
                     ->blocks(self::blocksFor($record))
@@ -79,13 +106,13 @@ class EditBlocksAction
                     ->addActionLabel('Add a band'),
             ])
             ->action(function (?Listing $record, array $data): void {
-                $site = $record === null ? null : self::siteFor($record);
+                $page = self::pageById($record, is_numeric($data['page_id'] ?? null) ? (int) $data['page_id'] : null);
 
-                if ($site === null) {
+                if ($page === null) {
                     return;
                 }
 
-                self::write($site, is_array($data['blocks'] ?? null) ? $data['blocks'] : []);
+                self::write($page, is_array($data['blocks'] ?? null) ? $data['blocks'] : []);
             });
     }
 
@@ -100,6 +127,53 @@ class EditBlocksAction
     }
 
     /**
+     * The pages this site has, for the picker. Keyed by id and labelled the way
+     * the menu labels them.
+     *
+     * @return array<int, string>
+     */
+    private static function pageOptions(?Listing $record): array
+    {
+        $site = $record === null ? null : self::siteFor($record);
+
+        if ($site === null) {
+            return [];
+        }
+
+        return $site->pages()
+            ->where('locale', $site->default_locale)
+            ->orderByDesc('is_home')
+            ->orderBy('sort')
+            ->get()
+            ->mapWithKeys(fn (SitePage $page): array => [
+                $page->id => ($page->title ?: 'Untitled').($page->is_home ? ' (front page)' : ' — /'.$page->slug),
+            ])
+            ->all();
+    }
+
+    /**
+     * A page of this site by id, and never anybody else's — the id travels
+     * through a form field, so it is checked against the site rather than
+     * trusted.
+     */
+    private static function pageById(?Listing $record, ?int $id): ?SitePage
+    {
+        $site = $record === null ? null : self::siteFor($record);
+
+        if ($site === null) {
+            return null;
+        }
+
+        if ($id === null) {
+            return self::page($site);
+        }
+
+        $page = $site->pages()->whereKey($id)->first();
+
+        return $page instanceof SitePage ? $page : self::page($site);
+    }
+
+    /**
      * The page as the builder wants it: one entry per block, in stored order.
      *
      * `is_enabled` rides inside the payload here and is taken back out on the
@@ -109,15 +183,9 @@ class EditBlocksAction
      *
      * @return array<int, array<string, mixed>>
      */
-    private static function state(?Listing $record): array
+    private static function stateFor(SitePage $page): array
     {
-        $site = $record === null ? null : self::siteFor($record);
-
-        if ($site === null) {
-            return [];
-        }
-
-        return self::page($site)->blocks()->orderBy('sort')->get()
+        return $page->blocks()->orderBy('sort')->get()
             ->map(fn (SiteBlock $block): array => [
                 'type' => $block->type,
                 'data' => ($block->data ?? []) + ['is_enabled' => $block->is_enabled],
@@ -128,9 +196,8 @@ class EditBlocksAction
     /**
      * @param  array<int, mixed>  $state
      */
-    private static function write(Site $site, array $state): void
+    private static function write(SitePage $page, array $state): void
     {
-        $page = self::page($site);
         $seen = [];
         $sort = 0;
 
