@@ -33,6 +33,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property PaymentStatus $status
  * @property string|null $reference
  * @property int|null $reverses_payment_id
+ * @property int|null $payment_intent_id
  * @property int|null $recorded_by
  * @property string|null $note
  * @property-read Reservation|null $reservation
@@ -54,6 +55,7 @@ class Payment extends Model
         'status',
         'reference',
         'reverses_payment_id',
+        'payment_intent_id',
         'recorded_by',
         'note',
     ];
@@ -95,6 +97,17 @@ class Payment extends Model
     public function reversal(): HasOne
     {
         return $this->hasOne(Payment::class, 'reverses_payment_id');
+    }
+
+    /**
+     * The provider attempt this came from, where it came from one. Null for
+     * every payment taken at a desk, which is most of them.
+     *
+     * @return BelongsTo<PaymentIntent, $this>
+     */
+    public function paymentIntent(): BelongsTo
+    {
+        return $this->belongsTo(PaymentIntent::class);
     }
 
     /**

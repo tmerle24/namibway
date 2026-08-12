@@ -266,6 +266,12 @@
                         {{ $this->recordRefundAction }}
                     @endif
 
+                    {{-- Only where a deposit was actually worked out. Asking a
+                         guest for nothing is not a thing to offer. --}}
+                    @if (($reservation->deposit_amount ?? 0) > 0)
+                        {{ $this->requestDepositAction }}
+                    @endif
+
                     {{-- Only where there is a price to invoice. Issuing takes a
                          number that cannot be given back, so the button is not
                          offered on a stay nobody has priced. --}}

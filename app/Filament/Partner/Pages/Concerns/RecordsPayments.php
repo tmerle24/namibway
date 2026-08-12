@@ -4,12 +4,14 @@ namespace App\Filament\Partner\Pages\Concerns;
 
 use App\Enums\PaymentCollector;
 use App\Enums\PaymentMethod;
+use App\Enums\PaymentPurpose;
 use App\Models\Listing;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Services\Payments\DTOs\FolioStatement;
 use App\Services\Payments\DTOs\PaymentRequest;
 use App\Services\Payments\Folio;
+use App\Services\Payments\PaymentGateway;
 use App\Services\Payments\PaymentRecorder;
 use App\Support\Money;
 use Filament\Actions\Action;
@@ -23,6 +25,7 @@ use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\HtmlString;
 use InvalidArgumentException;
 use Throwable;
 
@@ -73,6 +76,58 @@ trait RecordsPayments
             ->fillForm(fn (): array => $this->paymentPrefill())
             ->form(fn (): array => $this->paymentForm(refund: false))
             ->action(fn (array $data) => $this->writePayment($data, refund: false));
+    }
+
+    /**
+     * Ask the guest for the deposit through a payment provider.
+     *
+     * The link is shown rather than mailed, because who sends it and with what
+     * words is a conversation a property is already having — and a "send" that
+     * silently mails a guest from a screen a desk is exploring is the wrong
+     * kind of surprise. Mailing it is a later, deliberate feature.
+     */
+    public function requestDepositAction(): Action
+    {
+        return Action::make('requestDeposit')
+            ->label('Ask for the deposit')
+            ->icon('heroicon-m-link')
+            ->color('gray')
+            ->modalHeading('Payment link for this booking')
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Close')
+            ->modalContent(fn (): HtmlString => $this->depositLinkHtml())
+            ->action(fn () => null);
+    }
+
+    /**
+     * Creates the attempt if there is not already an open one, and shows the
+     * link. Reusing an open attempt matters: a guest who is sent two links has
+     * two ways to pay the same deposit, and the property reconciles the mess.
+     */
+    private function depositLinkHtml(): HtmlString
+    {
+        $reservation = $this->selectedReservation();
+
+        if ($reservation === null) {
+            return new HtmlString('');
+        }
+
+        try {
+            $intent = app(PaymentGateway::class)->start($reservation, PaymentPurpose::Deposit);
+        } catch (InvalidArgumentException $refusal) {
+            return new HtmlString('<p style="color: rgb(185 28 28);">'.e($refusal->getMessage()).'</p>');
+        }
+
+        $url = app(PaymentGateway::class)->redirectUrlFor($intent) ?? route('payments.checkout', $intent);
+
+        return new HtmlString(
+            '<p style="margin-bottom: .5rem;">'
+            .e(Money::format($intent->amount, $intent->currency)).' — '
+            .e($intent->purpose->label()).', '.e($intent->status->label()).'.'
+            .'</p>'
+            .'<p style="word-break: break-all;"><a href="'.e($url).'" target="_blank" rel="noopener">'.e($url).'</a></p>'
+            .'<p style="opacity: .7; margin-top: .5rem;">Send this to the guest. It records the payment against this stay automatically.</p>'
+        );
     }
 
     public function recordRefundAction(): Action

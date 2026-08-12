@@ -491,5 +491,28 @@
     },
     "errors": {
         "bookingFailed": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+    },
+    "payments": {
+        "heading": "Sichere Zahlung",
+        "for": "Für",
+        "amount": "Betrag",
+        "chargedIn": "Abgerechnet in {currency} zu {rate} je {base} — der Namibia-Dollar ist an den Rand gekoppelt.",
+        "pay": "Jetzt bezahlen",
+        "decline": "Abgelehnte Karte simulieren",
+        "abandon": "Ohne Zahlung verlassen",
+        "demoNotice": "Dies ist eine Demonstration. Es wird keine Karte abgefragt und kein Geld bewegt.",
+        "paidTitle": "Vielen Dank — Ihre Zahlung war erfolgreich",
+        "paidBody": "Wir haben sie Ihrer Buchung zugeordnet. Die Unterkunft sieht sie ebenfalls.",
+        "failedTitle": "Die Zahlung ist fehlgeschlagen",
+        "failedBody": "Es wurde nichts abgebucht. Sie können es erneut versuchen oder direkt bei der Unterkunft bezahlen.",
+        "abandonedTitle": "Sie haben ohne Zahlung abgebrochen",
+        "abandonedBody": "Ihre Buchung bleibt unverändert. Der Zahlungslink funktioniert weiterhin.",
+        "pendingTitle": "Wir warten noch auf Ihre Bank",
+        "pendingBody": "Das kann einen Moment dauern. Laden Sie die Seite neu oder kehren Sie in Kürze zu diesem Link zurück.",
+        "booking": "Buchung",
+        "stay": "Aufenthalt",
+        "paidSoFar": "Bisher bezahlt",
+        "stillToPay": "Noch zu zahlen",
+        "tryAgain": "Erneut versuchen"
     }
 }

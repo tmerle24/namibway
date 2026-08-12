@@ -3,6 +3,8 @@
 namespace App\Services\Demo;
 
 use App\Enums\BlockReason;
+use App\Enums\PaymentCollector;
+use App\Enums\PaymentMethod;
 use App\Enums\ReservationSource;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
@@ -17,7 +19,10 @@ use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\InventoryWriter;
+use App\Services\Payments\DTOs\PaymentRequest;
+use App\Services\Payments\PaymentRecorder;
 use App\Support\CountrySettings;
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -61,7 +66,10 @@ class DemoTenantBuilder
     /** Days of history before today, so the calendar does not start abruptly. */
     private const LOOKBACK_DAYS = 14;
 
-    public function __construct(private readonly InventoryWriter $writer) {}
+    public function __construct(
+        private readonly InventoryWriter $writer,
+        private readonly PaymentRecorder $payments,
+    ) {}
 
     /**
      * Create or rebuild the demo tenant for one source listing.
@@ -500,11 +508,52 @@ class DemoTenantBuilder
                 }
 
                 $this->advanceLifecycle($reservation, $today, $night, $checkOut);
+                $this->settleSomeOf($reservation, $today, $checkOut);
                 $created++;
             }
         }
 
         return $created;
+    }
+
+    /**
+     * Money against some of the invented stays, so a prospect opening the demo
+     * sees a folio with something in it rather than a column of zeroes.
+     *
+     * Deliberately *not* all of them. A lodge's real screen has stays that are
+     * paid, part paid and untouched, and the unpaid list is only worth looking
+     * at if it has rows. A demo where everything is settled shows a feature
+     * nobody can see working.
+     *
+     * A past stay is paid in full at the desk; a future one has a deposit
+     * against it, which is the shape the split settlement model produces. Both
+     * go through PaymentRecorder like every other payment — the demo has no
+     * shortcut, because a shortcut here would be a second write path.
+     */
+    private function settleSomeOf(Reservation $reservation, Carbon $today, Carbon $checkOut): void
+    {
+        if ($reservation->total_amount === null || mt_rand(1, 4) === 1) {
+            return;
+        }
+
+        $paid = $checkOut->lte($today);
+
+        $amount = $paid
+            ? (float) $reservation->total_amount
+            : (float) ($reservation->deposit_amount ?? 0.0);
+
+        if (Money::cents($amount) <= 0) {
+            return;
+        }
+
+        $this->payments->record(new PaymentRequest(
+            reservation: $reservation,
+            amount: $amount,
+            method: $paid ? PaymentMethod::Card : PaymentMethod::Online,
+            collectedBy: $paid ? PaymentCollector::Partner : PaymentCollector::NamibWay,
+            receivedAt: $paid ? $checkOut : $reservation->created_at,
+            note: $paid ? 'Settled at check-out.' : 'Deposit paid online.',
+        ));
     }
 
     private function advanceLifecycle(Reservation $reservation, Carbon $today, Carbon $checkIn, Carbon $checkOut): void

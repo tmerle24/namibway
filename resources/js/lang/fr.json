@@ -357,5 +357,28 @@
             ],
             "cta": "Parcourir les annonces ↓"
         }
+    },
+    "payments": {
+        "heading": "Paiement sécurisé",
+        "for": "Pour",
+        "amount": "Montant",
+        "chargedIn": "Débité en {currency} au taux de {rate} pour {base} — le dollar namibien est indexé sur le rand.",
+        "pay": "Payer maintenant",
+        "decline": "Simuler une carte refusée",
+        "abandon": "Partir sans payer",
+        "demoNotice": "Ceci est une démonstration. Aucune carte n'est demandée et aucun argent ne circule.",
+        "paidTitle": "Merci — votre paiement a été accepté",
+        "paidBody": "Nous l'avons enregistré sur votre réservation. L'établissement le voit également.",
+        "failedTitle": "Ce paiement n'a pas abouti",
+        "failedBody": "Rien n'a été débité. Vous pouvez réessayer ou payer directement l'établissement.",
+        "abandonedTitle": "Vous êtes parti sans payer",
+        "abandonedBody": "Votre réservation est inchangée. Le lien de paiement fonctionne toujours.",
+        "pendingTitle": "Nous attendons encore votre banque",
+        "pendingBody": "Cela peut prendre un instant. Actualisez la page ou revenez sur ce lien sous peu.",
+        "booking": "Réservation",
+        "stay": "Séjour",
+        "paidSoFar": "Déjà payé",
+        "stillToPay": "Reste à payer",
+        "tryAgain": "Réessayer"
     }
 }

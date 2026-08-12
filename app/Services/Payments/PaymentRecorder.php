@@ -74,6 +74,7 @@ class PaymentRecorder
                 'collected_by' => $request->collectedBy,
                 'status' => $request->initialStatus(),
                 'reference' => $request->reference,
+                'payment_intent_id' => $request->paymentIntentId,
                 'recorded_by' => $request->recordedBy,
                 'note' => $request->note,
             ]));

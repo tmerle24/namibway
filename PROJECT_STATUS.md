@@ -575,6 +575,57 @@ invoice for commission instead; with it, zero is allowed and skips the floor, be
 arrangement has deliberately gone below it. Both panels state which model the current
 deposit means, live, next to the field — the consequence belongs where the choice is made.
 
+### 2026-08-12 — the provider abstraction, a working demo, and Paystack (money, slice 5 of 6)
+
+**The whole flow works with no merchant account.** `DemoProvider` implements the
+`PaymentProvider` interface entirely in-process — authorise, capture, decline, refund and
+the asynchronous callback — with a hosted checkout page inside the app carrying **pay**,
+**decline** and **abandon** buttons. Two things it does deliberately awkwardly, because a
+demo that always succeeds instantly teaches the wrong shape: it fires its callback
+*before* redirecting the guest back, and it can deliver the same callback twice.
+
+**`payment_intents` is money we asked for; `payments` is money that moved.** That line is
+the answer to what a declined payment produces — **no ledger row**. A guest who mistypes a
+card three times leaves three attempts and no folio noise. `PaymentStatus::Failed` still
+exists for the different case: an EFT somebody recorded as received that the bank did not
+honour. Money believed to have moved and money that never started moving are different
+facts.
+
+**Idempotency is a unique index, not a check.** `payments.payment_intent_id` is unique, so
+a repeated webhook, or a guest returning while one is in flight, cannot credit twice — the
+same discipline `reservations.inquiry_id` uses.
+
+**Nothing above the interface names a gateway**, and there is a test that greps the whole
+of `app/` to prove it, excluding only `Services/Payments/Providers` and `config/payments.php`.
+
+**Paystack is implemented, and the caveat is written into the class.** It does **not**
+support Namibia as a merchant country (Nigeria, Ghana, Kenya, South Africa, Côte d'Ivoire;
+Egypt and Rwanda newer), so a Namibian entity cannot hold an account — the same wall Stripe
+presented. The workable route is a **South African entity settling in ZAR**, which is why
+the currency handling is load-bearing rather than decoration: a NAD folio is charged in ZAR
+at the Common Monetary Area's 1:1 peg, and the intent stores what was owed, what was
+charged and the rate, so a refund returns the money that was taken. Whether to have such an
+entity is a company decision and has not been made.
+
+Security worth naming: the webhook signature is verified against the **raw** body (HMAC
+SHA-512 — re-encoding JSON changes bytes, which is the classic way a check silently never
+matches), an unverified or uninteresting event is a **200** so the gateway keeps
+delivering, and the amount is never read from a callback — `transaction/verify` is asked
+directly. A test asserts that a verify response quoting a different amount does not change
+what is recorded.
+
+**The demo tenant now shows money.** `booking:demo-tenant` settles about three quarters of
+its invented stays — past ones paid in full at the desk, future ones with a deposit — so a
+prospect opens a folio with something in it and an unpaid list with rows. Through
+`PaymentRecorder` like everything else; the demo gets no shortcut, because a shortcut here
+would be a second write path.
+
+Traveller-facing copy for the payment pages lives in `resources/js/lang/*.json` with the
+rest, read server-side by `App\Support\UiTranslations` — the pages are standalone Blade
+rather than Inertia, because a guest arrives at them from an email or a gateway redirect
+and booting the whole traveller app to say "your deposit is paid" would be slower and tie a
+page a *payment provider* redirects to to the front-end build.
+
 ### Parked on 2026-08-11 — and built on 2026-08-11 and 2026-08-12
 
 > **Superseded, kept for the reasoning.** Everything in this section was written as

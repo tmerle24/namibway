@@ -36,6 +36,12 @@ class PaymentRequest
         public readonly ?string $reference = null,
         public readonly ?int $recordedBy = null,
         public readonly ?string $note = null,
+        /**
+         * The provider attempt this came from, where it came from one. The
+         * column is unique, which is what makes a gateway delivering the same
+         * callback twice harmless.
+         */
+        public readonly ?int $paymentIntentId = null,
     ) {
         $this->receivedAt = $receivedAt === null
             ? Carbon::now()
