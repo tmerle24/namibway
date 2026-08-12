@@ -173,6 +173,30 @@ final class SiteActions
     }
 
     /**
+     * The enquiry button the bar shows once the page has scrolled.
+     *
+     * The opening screen carries this button and then scrolls away with it, and
+     * from that moment the visitor has nothing to press without scrolling back
+     * or finding the burger. So the bar picks it up — on a wide screen in place
+     * of the menu item it duplicates, and on a burger-width screen simply
+     * beside the burger.
+     *
+     * Not shown where the business has *placed* the enquiry button in the menu:
+     * they asked for it there from the first pixel, and two of the same button
+     * in one bar is not what anybody meant. A phone gets nothing either — the
+     * strip at the foot of the screen is already carrying it, and the bar up
+     * there has a name and a burger and no room.
+     */
+    public function scrollButton(): ?ActionButton
+    {
+        $button = $this->buttons['enquiry'] ?? null;
+
+        return $button !== null && $this->placement->visibility('enquiry', 'menu') === null
+            ? $button
+            : null;
+    }
+
+    /**
      * Which screens an area has any button on — 'both', 'phone', 'desktop', or
      * null for none at all.
      *

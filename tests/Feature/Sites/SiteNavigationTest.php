@@ -131,8 +131,13 @@ class SiteNavigationTest extends TestCase
             'hasHero' => true,
         ])->render();
 
-        $this->assertStringContainsString('Home', $html);
-        $this->assertStringNotContainsString('Book now', $html);
+        $links = substr($html, (int) strpos($html, '<nav class="nav__links">'));
+        $links = substr($links, 0, (int) strpos($links, '</nav>'));
+
+        $this->assertStringContainsString('Home', $links);
+        // Not as a menu item. It is in the bar as the button the scroll brings
+        // in — see SiteActionButtonsTest — which is a different thing.
+        $this->assertStringNotContainsString('Book now', $links);
         // Five bands plus the one that says where you are, and no more: the bar
         // has a fixed height the hero is pulled up under by exactly that many
         // pixels.

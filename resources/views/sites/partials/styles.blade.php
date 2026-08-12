@@ -200,6 +200,25 @@
        every property it sets. */
     .nav .nav__cta { flex: none; padding: 9px 16px; font-size: 12px; }
 
+    /* The enquiry button that arrives with the scroll.
+       It is in the markup from the first byte and hidden, rather than inserted
+       by the script: a button that appears by being unhidden costs one repaint,
+       and one built in JavaScript costs a layout of the whole bar at the exact
+       moment somebody is scrolling.
+
+       640px is where the bar is wide enough to carry a button beside the
+       burger. Below it the strip at the foot of the screen already has this
+       button, and the bar has a name and a burger and no room for a third
+       thing. */
+    .nav .nav__cta--scroll { display: none; }
+    @media (min-width: 640px) {
+        .nav.is-scrolled .nav__cta--scroll { display: inline-block; }
+        /* And the menu item it stands in for goes, so the same words are not in
+           the bar twice. It is the last item (see the partial), so what the eye
+           sees is that item turning into a button. */
+        .nav.is-scrolled .nav__links .nav__link--action { display: none; }
+    }
+
     /* Wide enough for the bar to carry the links itself: the burger and its
        panel go away entirely, whatever state the script left them in.
        1100, and the number is measured rather than chosen. Six menu items take
