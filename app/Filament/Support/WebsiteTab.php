@@ -87,6 +87,8 @@ class WebsiteTab
                 Forms\Components\Actions::make([
                     EditBlocksAction::make(),
 
+                    EditPagesAction::make(),
+
                     EditSiteImagesAction::make(),
 
                     EditHeroAction::make(),

@@ -1232,10 +1232,8 @@ Four decisions worth not rediscovering:
 Rebuild protection needed nothing new: `sites.imported.blocks` already records what
 generation wrote, so an edited block is left alone by the next `sites:generate` for free.
 
-**One thing this deliberately does not do**, worth naming rather than discovering: pages are
-still not creatable — `site_pages` exists so a second page and a second language are inserts
-rather than migrations, but the editor works on the home page and nothing makes another one.
-It also shipped without a picture *upload*, which was closed the same day (below).
+It shipped without a picture *upload* and without a way to make a second page. Both were
+closed the same day (below).
 
 ### Built 2026-08-12 — uploading pictures
 
@@ -1259,6 +1257,39 @@ Three decisions inside it:
   The row goes and **the object stays**: deleting bytes out of a shared bucket on a form
   submit is the kind of thing that is only ever discovered later, and `photos:audit-r2` is
   what collects what nothing references any more.
+
+### Built 2026-08-12 — more than one page
+
+`EditPagesAction`, on the Website tab and in the owner's own panel: add, rename, reorder and
+remove pages. The renderer could always serve them — `SiteController` resolves a slug against
+`site_pages` and the route already carried `{page?}` — but nothing could make a second one,
+so every site was a single scrolling page whether or not that suited the business. A guest
+house is fine that way; a tour operator with eight itineraries is not. The content editor
+gained a page picker rather than a second modal: switching reloads the bands under it.
+
+What is enforced, rather than left to care:
+
+- **The front page cannot be removed and cannot be moved off the root.** It is what answers
+  at the root of the domain, what the draft link points at and what `sites:generate` writes
+  into. Its title is editable, its slug is not, and a saved state that had somehow lost it
+  leaves it standing.
+- **A slug the site answers itself is refused** — `privacy` and `legal` are rendered from the
+  site record rather than from a page, and `robots.txt`, `sitemap.xml` and `enquiry` are
+  answered before any page is looked up. A page at one of those addresses would save and then
+  never appear, which is worse than being told no. Two pages sharing an address are refused
+  for the same reason.
+- **A removed page takes its blocks with it.** They are its content and belong nowhere else.
+
+**The menu is capped at six, pages included, and that is load-bearing.** The bar has a fixed
+height and the hero is pulled up under it by exactly that many pixels, so a menu allowed to
+grow leaves a strip of page background above the photograph — which happened once already and
+is why the cap has a test of its own now. Pages come first and the current page's anchors
+fill what is left: getting to another page matters more than jumping within this one, and a
+visitor who cannot see the other pages cannot know they exist. Links go through
+`Site::pageUrl()`, so a draft keeps its `?preview=` token rather than sending whoever is
+reviewing it to a 404.
+
+The sitemap needed nothing: it already walked every page of the site's default locale.
 
 ### Next up, in the order it was asked for
 
