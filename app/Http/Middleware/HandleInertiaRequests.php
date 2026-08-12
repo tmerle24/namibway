@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Services\Currency\ExchangeRateService;
 use App\Support\MediaUrl;
+use App\Support\NativeApp;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -53,7 +54,10 @@ class HandleInertiaRequests extends Middleware
             // Deployment config, not per-request state — the frontend needs it
             // because only a component knows how wide its own image slot is.
             'mediaTransforms' => MediaUrl::clientConfig(),
-            'socialProviders' => SocialAuthController::configured(),
+            // Empty inside the native shells: an OAuth redirect leaves the
+            // WebView for the system browser, so the traveller ends up signed
+            // in somewhere other than the app they started in.
+            'socialProviders' => NativeApp::isRequest($request) ? [] : SocialAuthController::configured(),
         ];
     }
 }

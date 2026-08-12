@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { useIsApp } from '@/composables/useIsApp';
 import social from '@/routes/auth/social';
 
 withDefaults(
@@ -14,10 +15,20 @@ withDefaults(
 
 const page = usePage();
 
+// Inside the iOS/Android shell an OAuth redirect hands the WebView over to the
+// system browser, and the traveller finishes signing in outside the app they
+// started in. The server already withholds the providers when it can tell
+// (App\Support\NativeApp), but a shell built before the user-agent marker
+// existed looks like an ordinary browser to it — so this is the check that
+// covers those installs. A PWA is not affected: same window, same session.
+const isApp = useIsApp();
+
 // Shared from HandleInertiaRequests: only the providers that have credentials.
 // An unconfigured provider is not a button that looks broken, it is no button.
-const providers = computed<string[]>(
-    () => (page.props.socialProviders as string[] | undefined) ?? [],
+const providers = computed<string[]>(() =>
+    isApp.value
+        ? []
+        : ((page.props.socialProviders as string[] | undefined) ?? []),
 );
 
 // Written out rather than interpolated: Tailwind scans the source for literal

@@ -10,6 +10,12 @@ const config: CapacitorConfig = {
     appId: 'com.namibway.app',
     appName: 'NamibWay',
     webDir: 'ios-shell',
+    // Lets the server tell a shell request apart from a browser or PWA one —
+    // App\Support\NativeApp matches on this string. Needed because the WebView
+    // loads namibway.com over plain HTTPS, so nothing else marks it as the app.
+    // Only takes effect in a shell built after this line; the client-side
+    // fallback in resources/js/composables/useIsApp.ts covers older builds.
+    appendUserAgent: 'NamibWayApp',
     server: {
         // Without this, Capacitor treats navigation to namibway.com as external (it
         // only matches the app's own id/origin by default) and hands it off to the

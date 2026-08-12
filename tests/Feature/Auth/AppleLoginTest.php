@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Support\NativeApp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Socialite\Facades\Socialite;
@@ -117,6 +118,36 @@ class AppleLoginTest extends TestCase
         $this->get(route('login'))->assertInertia(
             fn (AssertableInertia $page) => $page->where('socialProviders', ['google', 'apple']),
         );
+    }
+
+    /**
+     * An OAuth redirect inside the shells' WebView is handed to the system
+     * browser, so the traveller would finish signing in outside the app.
+     */
+    public function test_the_native_shells_are_offered_no_social_login(): void
+    {
+        config([
+            'services.google.client_id' => 'google-client-id',
+            'services.apple.client_id' => 'com.namibway.web',
+        ]);
+
+        $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 '.NativeApp::USER_AGENT_MARKER)
+            ->get(route('login'))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('socialProviders', []));
+    }
+
+    public function test_a_browser_that_merely_mentions_apple_is_not_the_app(): void
+    {
+        config([
+            'services.google.client_id' => 'google-client-id',
+            'services.facebook.client_id' => null,
+            'services.apple.client_id' => 'com.namibway.web',
+        ]);
+
+        // Every Safari and Chrome user agent on earth contains "AppleWebKit".
+        $this->withHeader('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Safari/537.36')
+            ->get(route('login'))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('socialProviders', ['google', 'apple']));
     }
 
     public function test_no_providers_at_all_means_no_block(): void

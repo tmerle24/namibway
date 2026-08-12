@@ -6,7 +6,17 @@ meaningful to bundle from `public/build` for offline use. Instead the native she
 small bootstrap page first:
 
 - `capacitor.config.ts` — no `server.url`; `webDir` (`ios-shell/`) is the app's real entry
-  point. Shared by both platforms.
+  point. Shared by both platforms. `appendUserAgent: 'NamibWayApp'` is how the server
+  recognises a shell request at all: the WebView loads namibway.com over ordinary HTTPS,
+  so without the marker an app request is indistinguishable from Safari. Read by
+  `App\Support\NativeApp`, mirrored client-side in `resources/js/composables/useIsApp.ts`
+  because a shell built before the marker existed still reports a plain browser UA.
+  **Changing this string breaks both**, and only a rebuilt shell carries it.
+
+  The first thing it decides: social login (Google/Facebook/Apple) is not offered inside
+  the shells. An OAuth redirect leaves the WebView for the system browser, so the traveller
+  would finish signing in outside the app they started in. The PWA is unaffected — it runs
+  in the browser's own engine and comes back to the same window.
 - `ios-shell/index.html` — on launch, probes for a live connection to `namibway.com`
   (`fetch(..., {mode: 'no-cors'})` with a 6s timeout) and only then navigates the WebView
   there via `location.replace`. If the probe fails, it shows a branded "No internet
