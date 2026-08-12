@@ -10,9 +10,11 @@ use App\Jobs\GenerateSiteJob;
 use App\Mail\SiteReady;
 use App\Models\Listing;
 use App\Models\Site;
+use App\Models\User;
 use App\Sites\BlockRegistry;
 use App\Sites\Generation\SiteGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -124,6 +126,46 @@ class SiteGeneratorTest extends TestCase
         $this->assertContains('about', array_column($generator->report()->kept, 'field'));
     }
 
+    /**
+     * The bug that produced sites with no pictures at all while the listing
+     * page showed them perfectly well.
+     *
+     * The image column holds several shapes — a bare key, an absolute URL built
+     * by a scraper from whatever the bucket was called that day, a legacy path
+     * on the old public disk. The first version only handled the ones it could
+     * turn into a bucket key and silently skipped the rest.
+     */
+    public function test_a_photograph_that_is_not_a_bucket_key_is_fetched_instead(): void
+    {
+        Http::fake(['*' => Http::response('bytes', 200, ['Content-Type' => 'image/jpeg'])]);
+
+        $listing = Listing::factory()->create([
+            'image' => 'https://cdn.example.com/photos/hero.jpg',
+            'photos_source' => ContentSource::Partner,
+        ]);
+
+        $site = (new SiteGenerator)->fromListing($listing);
+
+        $this->assertSame(1, $site->images()->count());
+        Storage::disk('r2')->assertExists((string) $site->images()->first()?->key);
+    }
+
+    public function test_something_that_is_not_an_image_is_refused_and_reported(): void
+    {
+        Http::fake(['*' => Http::response('<html>not found</html>', 200, ['Content-Type' => 'text/html'])]);
+
+        $listing = Listing::factory()->create([
+            'image' => 'https://cdn.example.com/photos/gone.jpg',
+            'photos_source' => ContentSource::Partner,
+        ]);
+
+        $generator = new SiteGenerator;
+        $site = $generator->fromListing($listing);
+
+        $this->assertSame(0, $site->images()->count());
+        $this->assertNotEmpty($generator->report()->skipped);
+    }
+
     public function test_re_running_does_not_copy_the_photographs_again(): void
     {
         Storage::disk('r2')->put('listings/source/hero.jpg', 'bytes');
@@ -233,7 +275,9 @@ class SiteGeneratorTest extends TestCase
 
         $listing = Listing::factory()->create(['name' => 'Katutura Hardware']);
 
-        (new GenerateSiteJob($listing, 'charnette@example.com'))->handle();
+        $user = User::factory()->create();
+
+        (new GenerateSiteJob($listing, $user->id))->handle();
 
         $site = Site::where('source_listing_id', $listing->id)->first();
 
@@ -245,6 +289,11 @@ class SiteGeneratorTest extends TestCase
         // mail server having a bad minute should retry on its own, not fail the
         // job that just built the website.
         Mail::assertQueued(SiteReady::class, fn (SiteReady $mail): bool => $mail->site->is($site));
+
+        // The panel has to say so too. The mail alone was the bug: a button
+        // reported success, the job skipped every photograph, and nothing
+        // where the person was looking said anything.
+        $this->assertSame(1, $user->notifications()->count());
     }
 
     public function test_the_one_click_job_sends_no_mail_when_nobody_is_waiting(): void

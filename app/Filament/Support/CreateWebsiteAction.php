@@ -161,11 +161,11 @@ class CreateWebsiteAction
                 ? 'Build it'
                 : 'Refresh it')
             ->action(function (Listing $record): void {
-                GenerateSiteJob::dispatch($record, self::notifyAddress($record));
+                GenerateSiteJob::dispatch($record, auth()->id());
 
                 Notification::make()
                     ->title('Building the website')
-                    ->body('It takes a minute. We will email the link when it is ready.')
+                    ->body('It takes a minute. The bell up here will say how it went, and the details go to your email.')
                     ->success()
                     ->send();
             });
@@ -174,20 +174,5 @@ class CreateWebsiteAction
     private static function siteFor(Listing $listing): ?Site
     {
         return Site::where('source_listing_id', $listing->id)->first();
-    }
-
-    /**
-     * Who hears about it.
-     *
-     * Whoever pressed the button, because they are the one waiting for it. Not
-     * the partner's own address: an admin building a draft to show a business
-     * that has not agreed to anything yet must not have that email land on the
-     * business's desk.
-     */
-    private static function notifyAddress(Listing $listing): ?string
-    {
-        $email = auth()->user()?->email;
-
-        return is_string($email) && $email !== '' ? $email : null;
     }
 }

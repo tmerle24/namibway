@@ -30,6 +30,12 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
+            // A queued job that can partly fail needs somewhere to say so —
+            // see the notifications migration. Polling is off: these arrive
+            // while somebody is already looking at the panel, and a background
+            // request every few seconds on every open tab is a poor trade for
+            // seeing it a minute sooner.
+            ->databaseNotifications()
             ->path('admin')
             ->login()
             ->brandLogo(asset('images/namibway-logo-dark.png'))
