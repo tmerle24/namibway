@@ -38,6 +38,11 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property int|null $promotion_id
  * @property string|null $promotion_code
  * @property float|null $discount_amount
+ * @property float|null $commission_rate
+ * @property float|null $commission_base
+ * @property float|null $commission_amount
+ * @property float|null $deposit_rate
+ * @property float|null $deposit_amount
  * @property float|null $charges_amount
  * @property float $paid_amount
  * @property FolioStatus $payment_status
@@ -80,6 +85,11 @@ class Reservation extends Model
         'charges_amount',
         'paid_amount',
         'payment_status',
+        'commission_rate',
+        'commission_base',
+        'commission_amount',
+        'deposit_rate',
+        'deposit_amount',
         'price_override_reason',
         'price_overridden_by',
         'price_overridden_at',
@@ -104,6 +114,11 @@ class Reservation extends Model
         'charges_amount' => 'float',
         'paid_amount' => 'float',
         'payment_status' => FolioStatus::class,
+        'commission_rate' => 'float',
+        'commission_base' => 'float',
+        'commission_amount' => 'float',
+        'deposit_rate' => 'float',
+        'deposit_amount' => 'float',
         'price_overridden_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];

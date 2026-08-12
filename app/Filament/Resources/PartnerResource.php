@@ -8,6 +8,7 @@ use App\Filament\Support\MessagesColumn;
 use App\Http\Controllers\Controller;
 use App\Models\Partner;
 use App\Models\PartnerMessage;
+use App\Models\PaymentSettings;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -131,6 +132,37 @@ class PartnerResource extends Resource
                             ])
                             ->columns(2),
 
+                        Forms\Components\Tabs\Tab::make('Commission and deposit')
+                            ->icon('heroicon-o-banknotes')
+                            ->schema([
+                                Forms\Components\Placeholder::make('rate_chain')
+                                    ->label('How these resolve')
+                                    ->columnSpanFull()
+                                    ->content('Most specific wins: a listing’s own rate, then this partner’s, then the platform default under Settings → Commission and deposits. Leave a field empty to follow the level above.'),
+
+                                Forms\Components\TextInput::make('commission_rate')
+                                    ->label('Commission')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->suffix('%')
+                                    ->placeholder(fn (): string => static::platformRateLabel('commission'))
+                                    // Only ever here and on the listing. The
+                                    // partner panel has no field for this at
+                                    // all, by design — PAYMENTS.md § 2a.
+                                    ->helperText('Ours to set. The partner can see what they pay and cannot change it.'),
+
+                                Forms\Components\TextInput::make('deposit_rate')
+                                    ->label('Deposit')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->suffix('%')
+                                    ->placeholder(fn (): string => static::platformRateLabel('deposit'))
+                                    ->helperText('The partner’s to choose within the range we allow — set one here only where it was negotiated.'),
+                            ])
+                            ->columns(2),
+
                         Forms\Components\Tabs\Tab::make('Booking system / API')
                             ->icon('heroicon-o-link')
                             ->schema([
@@ -166,6 +198,23 @@ class PartnerResource extends Resource
                             ]),
                     ]),
             ]);
+    }
+
+    /**
+     * The number an empty field will fall through to, shown as its
+     * placeholder.
+     *
+     * A blank box that silently means "5%" is a blank box somebody fills in
+     * with 5 to be safe — and then the platform rate stops moving them when it
+     * changes, which is the whole point of the chain.
+     */
+    protected static function platformRateLabel(string $which): string
+    {
+        $settings = PaymentSettings::current();
+
+        $rate = $which === 'commission' ? $settings->commission_rate : $settings->deposit_rate;
+
+        return rtrim(rtrim(number_format($rate, 3, '.', ''), '0'), '.').'% (platform default)';
     }
 
     public static function table(Table $table): Table

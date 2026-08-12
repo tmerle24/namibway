@@ -489,6 +489,47 @@ it" and not "edit", because there is no edit.
 exception), because it now guards invoices too and a third copy of the same class for the
 next money table is how one rule quietly becomes three.
 
+### 2026-08-12 — the two rates and where they are set (money, slice 3 of 6)
+
+**Commission is ours, the deposit is the partner's**, and both resolve the same way:
+`listing override → partner override → platform setting → config default`, with **null
+meaning inherit**. Deliberately the rule the availability calendar already uses for its
+sparse overrides — nothing has to be written to say "unchanged", and changing the
+platform rate moves everybody who has not negotiated separately.
+
+**The platform rates live in a settings row, not in `config/`.** `/admin` → Settings →
+**Commission and deposits**, following `MessageSettings` + `MessagingSettings`. These are
+commercial terms rather than configuration: they change when a conversation with a
+partner changes, and needing a deploy for that means they get changed in a hurry by
+whoever can deploy, or not at all. `config/payments.php` stays as what the row is seeded
+from and the fallback before it exists.
+
+**The deposit floor follows the commission** unless it is set explicitly — stored as a
+null meaning "the commission rate" rather than as a copied number, so it keeps following.
+That floor is where model C nets to exactly zero between us and the partner, which is the
+cheapest arrangement that exists for both sides and therefore worth making the natural
+landing spot rather than a coincidence.
+
+**Both rates and their amounts are frozen onto the reservation** when it is taken —
+`commission_rate`, `commission_base`, `commission_amount`, `deposit_rate`,
+`deposit_amount`. A rate without its amount is half an answer ("5% of what?" is the first
+thing a partner asks), and the base is a number nobody can reconstruct once the charges
+have moved. Changing a platform rate next season must not rewrite what we earned last
+season; a test asserts exactly that, and asserts that the *next* booking does get the new
+rate — the freeze is about the past, not a refusal to ever change.
+
+**The commission base is the stay before tax and levy.** An added VAT was never in the
+stay amount; an *included* one is, and is taken back out. A property's own conservancy fee
+is a `ChargeKind::Fee` and stays in the base, because it is revenue rather than somebody
+else's money passing through. Charging commission on the government's VAT and the NTB's
+levy is indefensible in front of an operator, and `ChargeKind` is what makes that
+expressible rather than a guess.
+
+**The partner panel edits the deposit and only the deposit.** The commission appears
+there as a statement of what they pay, never as an input — and the guarantee is not that
+the field is hidden but that `commission_rate` is not in that form's schema at all, so
+posting it writes nothing. That is the test, rather than "the input is not rendered".
+
 ### Parked on 2026-08-11 — and built on 2026-08-11 and 2026-08-12
 
 > **Superseded, kept for the reasoning.** Everything in this section was written as

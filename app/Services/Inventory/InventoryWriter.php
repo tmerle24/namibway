@@ -2,6 +2,7 @@
 
 namespace App\Services\Inventory;
 
+use App\Enums\ChargeKind;
 use App\Enums\FolioStatus;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
@@ -28,8 +29,10 @@ use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\DTOs\Quote;
+use App\Services\Payments\RateResolver;
 use App\Services\Pricing\ChargeableStay;
 use App\Services\Pricing\ChargeCalculator;
+use App\Services\Pricing\ComputedCharge;
 use App\Services\Pricing\PromotionFinder;
 use App\Services\Pricing\PromotionMatch;
 use App\Services\Pricing\StaySummary;
@@ -83,6 +86,7 @@ class InventoryWriter
         private readonly PromotionFinder $promotions = new PromotionFinder,
         private readonly CustomerDirectory $customers = new CustomerDirectory,
         private readonly ChargeCalculator $charges = new ChargeCalculator,
+        private readonly RateResolver $rates = new RateResolver,
     ) {}
 
     /**
@@ -208,6 +212,20 @@ class InventoryWriter
             $added = $this->charges->addedTotal($charges);
             $charged = round($stayAmount + $added, 2);
 
+            // What we earn and what the guest is asked for up front, resolved
+            // now and written down. Never recomputed afterwards: changing a
+            // platform rate next season must not rewrite what we earned last
+            // season, which is the same rule the price follows and the reason
+            // the columns exist at all.
+            $rates = $this->rates->for($request->listing);
+
+            // The commission base is the stay **before** tax and levy
+            // (PAYMENTS.md §3). Added taxes are not in $stayAmount to begin
+            // with; an *included* one is, so it is taken back out here.
+            // Charging commission on the government's VAT and the NTB's levy
+            // is indefensible in front of an operator.
+            $commissionBase = round($stayAmount - $this->includedTaxAndLevy($charges), 2);
+
             $reservation = new Reservation([
                 'reference' => $this->generateReference(),
                 'listing_id' => $request->listing->id,
@@ -253,6 +271,18 @@ class InventoryWriter
                 // would also break promoting a request taken before any of
                 // this existed.
                 'over_capacity_note' => $request->overCapacityNote,
+                // Both rates and both amounts, frozen. A rate without its
+                // amount is half an answer — "5% of what?" is the first thing
+                // a partner asks — and the base is a number nobody can
+                // reconstruct once the charges have moved.
+                'commission_rate' => $rates->commissionRate,
+                'commission_base' => $commissionBase,
+                'commission_amount' => $rates->commissionOn($commissionBase),
+                'deposit_rate' => $rates->depositRate,
+                // A share of the whole folio, tax included: a deposit is a
+                // commitment signal and a cash-flow arrangement, not a share
+                // of revenue, so its base differs from the commission's.
+                'deposit_amount' => $rates->depositOn($charged),
                 'notes' => $request->notes,
                 'created_by' => $request->createdBy,
             ]);
@@ -330,6 +360,30 @@ class InventoryWriter
         }
 
         return $reservation;
+    }
+
+    /**
+     * The tax and levy already inside the stay price.
+     *
+     * Only the *included* ones: an added tax was never part of the stay amount
+     * to begin with, so subtracting it would take it off twice. `ChargeKind` is
+     * what makes this expressible — a property's own conservancy fee is a `Fee`
+     * and stays in the commission base, because it is the property's revenue
+     * rather than somebody else's money passing through.
+     *
+     * @param  array<int, ComputedCharge>  $charges
+     */
+    private function includedTaxAndLevy(array $charges): float
+    {
+        $total = 0.0;
+
+        foreach ($charges as $charge) {
+            if ($charge->isIncluded && in_array($charge->kind, [ChargeKind::Tax, ChargeKind::Levy], true)) {
+                $total += $charge->amount;
+            }
+        }
+
+        return round($total, 2);
     }
 
     /**
