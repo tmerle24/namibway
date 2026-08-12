@@ -69,7 +69,15 @@ class CreateWebsiteAction
      */
     public static function visit(string $name = 'visit_website'): Action
     {
-        return self::configureVisit(Action::make($name))->label('');
+        // Switched off rather than hidden, which is the opposite of the header
+        // variant below and deliberately so. A row action that appears only on
+        // some rows changes how many icons that row has, and every column after
+        // it moves — so a table of listings stops lining up and the eye has to
+        // re-find each column on every row. Reserving the space costs one grey
+        // icon; not reserving it costs the table's alignment.
+        return self::configureVisit(Action::make($name))
+            ->label('')
+            ->disabled(fn (Listing $record): bool => self::siteFor($record) === null);
     }
 
     /**
@@ -84,7 +92,11 @@ class CreateWebsiteAction
      */
     public static function visitHeader(string $name = 'visit_website'): PageAction
     {
-        return self::configureVisit(PageAction::make($name))->label('Open website');
+        // Hidden when there is nothing to open. A page header has no columns to
+        // keep in line, and a dead button next to Save is just noise.
+        return self::configureVisit(PageAction::make($name))
+            ->label('Open website')
+            ->visible(fn (Listing $record): bool => self::siteFor($record) !== null);
     }
 
     public static function make(string $name = 'create_website'): Action
@@ -108,10 +120,15 @@ class CreateWebsiteAction
         return $action
             ->icon('heroicon-o-arrow-top-right-on-square')
             ->color('gray')
-            ->visible(fn (Listing $record): bool => self::siteFor($record) !== null)
-            ->tooltip(fn (Listing $record): string => self::siteFor($record)?->isPublished() === true
-                ? 'Open the website'
-                : 'Open the private draft — this link works without a password, so treat it like one')
+            ->tooltip(function (Listing $record): string {
+                $site = self::siteFor($record);
+
+                return match (true) {
+                    $site === null => 'No website for this listing yet',
+                    $site->isPublished() => 'Open the website',
+                    default => 'Open the private draft — this link works without a password, so treat it like one',
+                };
+            })
             ->url(fn (Listing $record): ?string => self::siteFor($record)?->publicUrl())
             ->openUrlInNewTab();
     }
@@ -144,11 +161,11 @@ class CreateWebsiteAction
                 ? 'Build it'
                 : 'Refresh it')
             ->action(function (Listing $record): void {
-                GenerateSiteJob::dispatch($record, self::notifyAddress($record));
+                GenerateSiteJob::dispatch($record, auth()->id());
 
                 Notification::make()
                     ->title('Building the website')
-                    ->body('It takes a minute. We will email the link when it is ready.')
+                    ->body('It takes a minute. The bell up here will say how it went, and the details go to your email.')
                     ->success()
                     ->send();
             });
@@ -157,20 +174,5 @@ class CreateWebsiteAction
     private static function siteFor(Listing $listing): ?Site
     {
         return Site::where('source_listing_id', $listing->id)->first();
-    }
-
-    /**
-     * Who hears about it.
-     *
-     * Whoever pressed the button, because they are the one waiting for it. Not
-     * the partner's own address: an admin building a draft to show a business
-     * that has not agreed to anything yet must not have that email land on the
-     * business's desk.
-     */
-    private static function notifyAddress(Listing $listing): ?string
-    {
-        $email = auth()->user()?->email;
-
-        return is_string($email) && $email !== '' ? $email : null;
     }
 }

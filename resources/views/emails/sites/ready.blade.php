@@ -11,7 +11,7 @@
         ul { line-height: 1.7; padding-left: 20px; }
         .cta {
             display: inline-block; margin: 24px 0; padding: 14px 28px;
-            background: #b45309; color: #fff; text-decoration: none;
+            background: #b45309; color: #ffffff !important; text-decoration: none;
             border-radius: 6px; font-size: 16px;
         }
         .footer { margin-top: 40px; font-size: 13px; color: #666; border-top: 1px solid #e5e5e5; padding-top: 20px; }
@@ -27,7 +27,13 @@
 already hold about the business. Nothing is public yet — this link is private, and
 the page tells search engines to ignore it until you say otherwise.</p>
 
-<p><a class="cta" href="{{ $url }}">Look at the draft</a></p>
+{{-- The colour is repeated inline on purpose. Mail clients routinely apply
+     their own `a { color }` after the document's stylesheet, which is how this
+     button rendered as blue-on-brown and unreadable in Gmail. Inline styles are
+     the only ones that reliably survive. --}}
+<p><a class="cta" href="{{ $url }}"
+      style="display:inline-block;margin:24px 0;padding:14px 28px;background:#b45309;color:#ffffff;text-decoration:none;border-radius:6px;font-size:16px">Look
+        at the draft</a></p>
 
 @if ($gaps !== [] || $empty !== [])
     <h2>What we could not fill in</h2>

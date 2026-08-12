@@ -3,8 +3,10 @@
 namespace App\Sites\Generation;
 
 use App\Enums\ContentSource;
+use App\Http\Controllers\Controller;
 use App\Models\Site;
 use App\Models\SiteImage;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
@@ -35,6 +37,9 @@ use Throwable;
  */
 class ImageImporter
 {
+    /** Bigger than any photograph belongs on a page built for a slow connection. */
+    private const MAX_BYTES = 12 * 1024 * 1024;
+
     public function __construct(private readonly GenerationReport $report) {}
 
     /**
@@ -66,33 +71,29 @@ class ImageImporter
             return null;
         }
 
-        $sourceKey = $this->bucketKey($value);
-
-        if ($sourceKey === null) {
-            $this->report->skip(
-                'photo',
-                $this->isUnsplash($value)
-                    ? 'stock placeholder, not the business\'s own photograph'
-                    : 'stored outside our bucket, nothing to copy'
-            );
+        if ($this->isUnsplash($value)) {
+            $this->report->skip('photo', 'stock placeholder, not the business\'s own photograph');
 
             return null;
         }
 
-        $disk = Storage::disk('r2');
-        $targetKey = $site->mediaPrefix().'/'.Str::random(8).'-'.basename($sourceKey);
+        $targetKey = $site->mediaPrefix().'/'.Str::random(8).'-'.$this->filename($value);
 
-        try {
-            if (! $disk->exists($sourceKey)) {
-                $this->report->skip('photo', 'the stored file is missing from the bucket');
-
-                return null;
-            }
-
-            $disk->copy($sourceKey, $targetKey);
-        } catch (Throwable) {
-            $this->report->skip('photo', 'the bucket refused the copy');
-
+        // Two ways in, and the second is why this works at all. A copy inside
+        // the bucket is free and instant, so it is tried first — but it needs
+        // the stored value to resolve to a key that exists, and this column
+        // holds at least four shapes: a bare key from the Excel importer, an
+        // absolute URL built by a scraper from whatever CLOUDFLARE_R2_URL said
+        // that day, a legacy path on the old public disk, and an operator's own
+        // website. Classifying them was how the first version got it wrong and
+        // produced sites with no pictures while the listing page showed them
+        // perfectly well.
+        //
+        // So the fallback is to fetch it over HTTP from the same URL the
+        // listing page renders — Controller::resolveMediaUrl is the app's own
+        // answer to "where does this actually live", and if that URL works for
+        // a traveller it works for us.
+        if (! $this->copyWithinBucket($value, $targetKey) && ! $this->fetch($value, $targetKey)) {
             return null;
         }
 
@@ -113,6 +114,80 @@ class ImageImporter
         ]);
     }
 
+    /** The cheap path: the object is already in our bucket, so copy it there. */
+    private function copyWithinBucket(string $value, string $targetKey): bool
+    {
+        $sourceKey = $this->bucketKey($value);
+
+        if ($sourceKey === null) {
+            return false;
+        }
+
+        try {
+            $disk = Storage::disk('r2');
+
+            if (! $disk->exists($sourceKey)) {
+                return false;
+            }
+
+            $disk->copy($sourceKey, $targetKey);
+
+            return true;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * The fallback: download it from wherever the listing page gets it.
+     *
+     * Bounded on purpose. A response that is not an image, or is implausibly
+     * large, is somebody's error page or somebody's raw camera file, and
+     * neither belongs on a page sold as loading over a weak connection.
+     */
+    private function fetch(string $value, string $targetKey): bool
+    {
+        try {
+            $url = Controller::resolveMediaUrl($value);
+
+            if (str_starts_with($url, '/')) {
+                $url = rtrim((string) config('app.url'), '/').$url;
+            }
+
+            $response = Http::timeout(20)->get($url);
+
+            if (! $response->successful()) {
+                $this->report->skip('photo', "the stored photograph could not be fetched (HTTP {$response->status()})");
+
+                return false;
+            }
+
+            $type = (string) $response->header('Content-Type');
+
+            if (! str_starts_with($type, 'image/')) {
+                $this->report->skip('photo', 'what is stored at that address is not an image');
+
+                return false;
+            }
+
+            $body = $response->body();
+
+            if (strlen($body) > self::MAX_BYTES) {
+                $this->report->skip('photo', 'the photograph is larger than '.(self::MAX_BYTES / 1024 / 1024).' MB');
+
+                return false;
+            }
+
+            Storage::disk('r2')->put($targetKey, $body);
+
+            return true;
+        } catch (Throwable) {
+            $this->report->skip('photo', 'the stored photograph could not be fetched');
+
+            return false;
+        }
+    }
+
     /**
      * The bucket key behind a stored image value, or null where there is not
      * one we may copy.
@@ -131,6 +206,17 @@ class ImageImporter
         }
 
         return null;
+    }
+
+    /** A sane filename for the copy, whatever shape the source took. */
+    private function filename(string $value): string
+    {
+        $path = (string) (parse_url($value, PHP_URL_PATH) ?: $value);
+        $name = basename($path);
+
+        return preg_match('/\.(jpe?g|png|webp|gif|avif)$/i', $name) === 1
+            ? $name
+            : ($name === '' ? 'photo.jpg' : $name.'.jpg');
     }
 
     private function isUnsplash(string $value): bool
