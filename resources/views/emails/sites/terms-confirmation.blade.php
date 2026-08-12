@@ -17,11 +17,10 @@ Look at the website
 
 **What you are confirming.** That the content is right, that the pictures on it are yours or
 yours to publish, and that you accept the privacy notice and legal notice we have prepared
-for the site@if ($termsUrl), along with the {{ config('app.name') }} website terms@endif.
-All of it can be changed afterwards — nothing here is fixed for ever.
+for the site. All of it can be changed afterwards — nothing here is fixed for ever.
 
 @if ($termsUrl)
-The website terms are here: [{{ $termsUrl }}]({{ $termsUrl }})
+You also accept the {{ config('app.name') }} website terms: [{{ $termsUrl }}]({{ $termsUrl }})
 @endif
 
 <x-mail::button :url="$confirmUrl" color="success">

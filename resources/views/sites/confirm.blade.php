@@ -63,11 +63,21 @@
         </p>
 
         <h2>What you are confirming</h2>
+        {{-- Never open a directive straight after a word: Blade's own regex
+             requires a non-word character before the @, so `below@if` is left
+             as text while the matching `@endif` is compiled — which is an
+             unbalanced if and a view that will not compile. --}}
         <p>
             That the content is right, that the pictures are yours or yours to publish, and that you
-            accept the two pages below@if ($termsUrl), along with the
-            <a href="{{ $termsUrl }}">{{ config('app.name') }} website terms</a>@endif.
+            accept the two pages below.
         </p>
+
+        @if ($termsUrl)
+            <p>
+                You also accept the
+                <a href="{{ $termsUrl }}">{{ config('app.name') }} website terms</a>.
+            </p>
+        @endif
 
         <h2>Privacy</h2>
         <div class="doc">{{ $privacy }}</div>
