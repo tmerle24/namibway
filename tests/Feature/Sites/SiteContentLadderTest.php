@@ -106,6 +106,12 @@ class SiteContentLadderTest extends TestCase
 
     public function test_google_photographs_are_for_prospecting_and_block_publication(): void
     {
+        // The switch that decides this defaults to allowing publication now —
+        // see config/sites.php, a commercial call rather than a technical one.
+        // The rule it turns off still has to work, because turning it back on
+        // is the plan once real customers are on real sites.
+        config(['sites.allow_google_photos_when_published' => false]);
+
         $listing = $this->listingWithPhoto(['photos_source' => ContentSource::GooglePlaces]);
 
         $site = (new SiteGenerator)->fromListing($listing);
@@ -123,8 +129,29 @@ class SiteContentLadderTest extends TestCase
         $gate->publish($site->refresh());
     }
 
+    /**
+     * The other side of the same switch: with it on, a prospecting photograph
+     * is not a reason to refuse, and the site goes live with it.
+     */
+    public function test_the_switch_lets_a_prospecting_photograph_be_published(): void
+    {
+        config(['sites.allow_google_photos_when_published' => true]);
+
+        $listing = $this->listingWithPhoto(['photos_source' => ContentSource::GooglePlaces]);
+
+        $site = (new SiteGenerator)->fromListing($listing);
+
+        $this->assertSame([], (new PublishGate)->blockers($site));
+
+        (new PublishGate)->publish($site->refresh());
+
+        $this->assertTrue($site->refresh()->isPublished());
+    }
+
     public function test_publishing_succeeds_and_clears_unused_prospect_images(): void
     {
+        config(['sites.allow_google_photos_when_published' => false]);
+
         $listing = $this->listingWithPhoto(['photos_source' => ContentSource::GooglePlaces]);
 
         $site = (new SiteGenerator)->fromListing($listing);
