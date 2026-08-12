@@ -40,9 +40,21 @@
         // reading as a list. The panel is not so constrained, but the two have
         // to agree, so the cap is shared.
         if (in_array($navBlock->type, $navTypes, true) && count($items) < 5) {
-            $items[] = ['anchor' => 's'.$n, 'label' => $label];
+            // The band the enquiry button points at is marked as it is
+            // collected, and moved to the end below. It is the one item in this
+            // list that is an action rather than a place, and once the page has
+            // scrolled it is the one that becomes a button — both of which want
+            // it at the end of the row rather than in the middle of it.
+            $items[] = [
+                'anchor' => 's'.$n,
+                'label' => $label,
+                'action' => $navBlock->type === 'enquiry',
+            ];
         }
     }
+
+    // "Request availability" after "Get in touch", not before it.
+    usort($items, fn (array $a, array $b): int => (int) ($a['action'] ?? false) <=> (int) ($b['action'] ?? false));
 
     // Six is the whole menu: five items plus the one that says where you are.
     // It is not a matter of taste — the bar has a fixed height that the hero is
@@ -94,6 +106,7 @@
             <nav class="nav__links">
                 @foreach ($items as $item)
                     <a href="{{ $item['href'] ?? '#'.$item['anchor'] }}"
+                       @if ($item['action'] ?? false) class="nav__link--action" @endif
                        @if ($item['current'] ?? false) aria-current="page" @endif>{{ $item['label'] }}</a>
                 @endforeach
             </nav>
@@ -104,6 +117,16 @@
                href="{{ $button->href }}"
                @if ($button->external) target="_blank" rel="noopener" @endif>{{ $button->label }}</a>
         @endforeach
+
+        {{-- The enquiry button, once the opening screen has scrolled away with
+             the one that was on it. Wide screens swap it for the menu item it
+             duplicates; a burger-width screen has no menu item to swap, so it
+             simply appears beside the burger. Hidden until then by the
+             stylesheet — it is in the markup from the first byte, so it costs
+             no layout when it arrives. --}}
+        @if ($scrollButton = $actions->scrollButton())
+            <a class="btn nav__cta nav__cta--scroll" href="{{ $scrollButton->href }}">{{ $scrollButton->label }}</a>
+        @endif
 
         @if ($items !== [])
             {{-- Only ever shown by the script that can close it again. A burger

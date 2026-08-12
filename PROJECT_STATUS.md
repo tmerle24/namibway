@@ -1400,6 +1400,29 @@ What is worth knowing later:
   hand-broken name is short, so the automatic sizing wants to set it larger — and two lines
   of 22px are 53px in a bar that leaves 48. Capped, after measuring it clip.
 
+### Built 2026-08-13 — the button the scroll brings in
+
+Three notes off a screenshot of the live site, all the same shape. The opening screen
+carries the enquiry button and then scrolls away with it, and from that moment the visitor
+has nothing to press without scrolling back or opening the burger. So:
+
+- **The bar picks it up once the page has scrolled.** On a wide screen it swaps for the
+  menu item that says the same thing, so what the eye sees is that item turning into a
+  button; on a burger-width screen there is no item to swap and it simply appears beside
+  the burger. Below 640px nothing appears — the strip at the foot of the screen is already
+  carrying it and the bar has a name and a burger and no room for a third thing.
+- **It is in the markup from the first byte and hidden**, rather than built by the script.
+  A button that appears by being unhidden costs one repaint; one built in JavaScript costs
+  a layout of the whole bar at the exact moment somebody is scrolling.
+- **`is-scrolled` is now put on every page**, not only the ones with a hero to scroll off.
+  It used to mean "the bar is over the page rather than over a photograph"; it now also
+  brings in a button, which is wanted wherever the opening screen has gone.
+- **The enquiry item is last in the menu** — "Request availability" after "Get in touch" —
+  because it is the one item that is an action rather than a place, and because that is
+  where it turns into a button.
+- A business that has *placed* the enquiry button in the menu keeps it there from the first
+  pixel and gets no second one.
+
 ### Built 2026-08-13 — the subscription, and a button to order one
 
 The create-website button in the partner panel had been switched off since the day it was

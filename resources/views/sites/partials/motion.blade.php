@@ -14,7 +14,13 @@
     (function () {
         var nav = document.getElementById('nav');
 
-        if (nav && !nav.classList.contains('nav--solid')) {
+        // On every page, not only the ones with a hero to scroll off. The class
+        // used to mean "the bar is over the page rather than over a
+        // photograph", which a page with no hero never needs — but it now also
+        // brings in the enquiry button, and that is wanted wherever the opening
+        // screen has gone. On a solid bar the colour rules are already what
+        // this would set, so there is nothing to undo.
+        if (nav) {
             var onScroll = function () {
                 nav.classList.toggle('is-scrolled', window.scrollY > 40);
             };

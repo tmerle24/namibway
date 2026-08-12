@@ -151,11 +151,77 @@ class SiteActionButtonsTest extends TestCase
         }
     }
 
-    public function test_the_menu_carries_no_button_until_somebody_asks_for_one(): void
+    public function test_the_menu_carries_no_standing_button_until_somebody_asks_for_one(): void
     {
         $markup = $this->fetch($this->lodgeTakingEnquiries());
+        $header = substr($markup, 0, (int) strpos($markup, '</header>'));
 
-        $this->assertStringNotContainsString('nav__cta', $markup);
+        // The only button in the bar is the one the scroll brings in, and it
+        // arrives hidden.
+        $this->assertSame(1, substr_count($header, 'class="btn nav__cta'));
+        $this->assertStringContainsString('nav__cta--scroll', $header);
+    }
+
+    /**
+     * The opening screen carries the enquiry button and then scrolls away with
+     * it. From that moment the bar has it — swapped for the menu item that says
+     * the same thing on a wide screen, and simply beside the burger where there
+     * is no menu to swap.
+     */
+    public function test_the_bar_picks_up_the_enquiry_button_once_the_page_has_scrolled(): void
+    {
+        $html = $this->get($this->lodgeTakingEnquiries()->publicUrl())->assertOk()->getContent();
+
+        $this->assertIsString($html);
+        $markup = $this->markup($html);
+
+        // The button, and the menu item it stands in for, both present and
+        // marked — the stylesheet swaps them, so both have to be there.
+        $this->assertMatchesRegularExpression('/nav__cta nav__cta--scroll"\s+href="#s3">Ask us/', $markup);
+        $this->assertStringContainsString('class="nav__link--action"', $markup);
+
+        // Hidden until the bar has the class the scroll puts on it, and only
+        // wide enough for a button beside the burger.
+        $this->assertStringContainsString('.nav .nav__cta--scroll { display: none; }', $html);
+        $this->assertStringContainsString('.nav.is-scrolled .nav__cta--scroll { display: inline-block; }', $html);
+        $this->assertStringContainsString('.nav.is-scrolled .nav__links .nav__link--action { display: none; }', $html);
+        // And the class itself is put on by every page, not only the ones with
+        // a hero — a page with no hero has an opening screen that scrolls away
+        // just the same.
+        $this->assertMatchesRegularExpression('/if \(nav\) \{\s*var onScroll/', $html);
+    }
+
+    /**
+     * "Request availability" after "Get in touch": the one item in the menu
+     * that is an action rather than a place goes at the end of the row, which
+     * is where it turns into a button.
+     */
+    public function test_the_enquiry_item_is_the_last_thing_in_the_menu(): void
+    {
+        $markup = $this->fetch($this->lodgeTakingEnquiries());
+        $links = substr($markup, (int) strpos($markup, '<nav class="nav__links">'));
+        $links = substr($links, 0, (int) strpos($links, '</nav>'));
+
+        preg_match_all('/>([^<>]+)<\/a>/', $links, $matches);
+        $labels = array_map(trim(...), $matches[1]);
+
+        $this->assertSame('Ask us', end($labels));
+        $this->assertContains('Find us', $labels);
+    }
+
+    /**
+     * A business that asked for the button in the menu gets it from the first
+     * pixel, and not twice.
+     */
+    public function test_a_placed_menu_button_replaces_the_one_the_scroll_would_bring(): void
+    {
+        $site = $this->lodgeTakingEnquiries();
+        $site->update(['action_buttons' => ['enquiry' => ['places' => ['menu.desktop']]]]);
+
+        $header = substr($this->fetch($site), 0, (int) strpos($this->fetch($site), '</header>'));
+
+        $this->assertStringNotContainsString('nav__cta--scroll', $header);
+        $this->assertSame(1, substr_count($header, 'class="btn nav__cta'));
     }
 
     public function test_a_button_placed_in_the_menu_appears_there_on_the_screen_it_was_placed_on(): void
