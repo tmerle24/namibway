@@ -26,7 +26,12 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('type');
             $table->morphs('notifiable');
-            $table->text('data');
+            // `jsonb`, not the `text` Laravel's own stub writes. Filament's
+            // notification bell queries `data->>'format'`, and Postgres has no
+            // `->>` operator on text — the panel 500s on every page the moment
+            // the bell is switched on. The stock stub is written for MySQL,
+            // where it happens not to matter.
+            $table->jsonb('data');
             $table->timestamp('read_at')->nullable();
             $table->timestamps();
         });

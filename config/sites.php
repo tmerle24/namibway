@@ -143,4 +143,29 @@ return [
 
     'media_prefix' => 'sites',
 
+    /*
+    |--------------------------------------------------------------------------
+    | Publishing a site that leans on Google Places photographs
+    |--------------------------------------------------------------------------
+    |
+    | **On by default, decided 2026-08-12.** The cautious reading was the other
+    | way round and it was costing time at the wrong end of the project: there
+    | is no customer to protect until there is a customer, and a draft nobody
+    | can show wins none.
+    |
+    | The trade it accepts, so that nobody has to rediscover it: Google's
+    | photographs are publishable on namibway.com under Google's terms and they
+    | expire (google_photos_expire_at), neither of which is true of a site we
+    | have told a customer is theirs to keep if they leave. Set this to false
+    | once real customers are on real sites, and the images stay marked
+    | `prospect_only` in the meantime so the question can be asked again by
+    | query rather than by memory.
+    |
+    | Nothing about `directory` content changes here. That is not ours to
+    | publish anywhere, draft included, and it is not a switch.
+    |
+    */
+
+    'allow_google_photos_when_published' => (bool) env('SITES_ALLOW_GOOGLE_PHOTOS', true),
+
 ];
