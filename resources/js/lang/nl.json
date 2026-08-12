@@ -357,5 +357,28 @@
             ],
             "cta": "Bekijk aanbod ↓"
         }
+    },
+    "payments": {
+        "heading": "Veilige betaling",
+        "for": "Voor",
+        "amount": "Bedrag",
+        "chargedIn": "In rekening gebracht in {currency} tegen {rate} per {base} — de Namibische dollar is gekoppeld aan de rand.",
+        "pay": "Nu betalen",
+        "decline": "Een geweigerde kaart simuleren",
+        "abandon": "Vertrekken zonder te betalen",
+        "demoNotice": "Dit is een demonstratie. Er wordt geen kaart gevraagd en er gaat geen geld heen.",
+        "paidTitle": "Bedankt — uw betaling is gelukt",
+        "paidBody": "We hebben deze aan uw boeking gekoppeld. De accommodatie ziet het ook.",
+        "failedTitle": "Die betaling is niet gelukt",
+        "failedBody": "Er is niets afgeschreven. U kunt het opnieuw proberen of rechtstreeks bij de accommodatie betalen.",
+        "abandonedTitle": "U bent vertrokken zonder te betalen",
+        "abandonedBody": "Uw boeking is ongewijzigd. De betaallink werkt nog steeds.",
+        "pendingTitle": "We wachten nog op uw bank",
+        "pendingBody": "Dit kan even duren. Ververs de pagina of kom straks terug naar deze link.",
+        "booking": "Boeking",
+        "stay": "Verblijf",
+        "paidSoFar": "Tot nu toe betaald",
+        "stillToPay": "Nog te betalen",
+        "tryAgain": "Opnieuw proberen"
     }
 }

@@ -7,10 +7,13 @@ use App\Http\Controllers\DashboardBookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\InvoiceDownloadController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\ListingsPartnerHandbookPdfController;
 use App\Http\Controllers\MarketingMaterialDownloadController;
 use App\Http\Controllers\PartnerApiGuideController;
+use App\Http\Controllers\PaymentCheckoutController;
+use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\SavedPlanController;
 use App\Http\Controllers\ThumbnailController;
 use App\Http\Controllers\TripController;
@@ -61,6 +64,28 @@ Route::get('admin/workbooks/{token}', WorkbookDownloadController::class)
 Route::get('admin/documents/{document}/file', DocumentDownloadController::class)
     ->middleware('auth')
     ->name('documents.download');
+
+/*
+ * Paying a booking.
+ *
+ * No authentication, deliberately: the reference in the URL is a long random
+ * string and is what identifies the attempt, the same arrangement the saved-plan
+ * tokens use. A payment link mailed to a guest cannot demand they hold an
+ * account — booking is behind one, paying an already-issued request is not.
+ *
+ * The checkout page belongs to the demo provider and 404s for anything else; a
+ * real gateway hosts its own.
+ */
+Route::get('pay/{intent}', [PaymentCheckoutController::class, 'show'])->name('payments.checkout');
+Route::post('pay/{intent}', [PaymentCheckoutController::class, 'decide'])->name('payments.decide');
+Route::get('pay/{intent}/done', PaymentReturnController::class)->name('payments.return');
+
+// Invoices are rendered on demand from their frozen snapshot rather than
+// stored, so this route is the only way to the document and its check is the
+// access rule — see InvoiceDownloadController.
+Route::get('invoices/{invoice}/pdf', InvoiceDownloadController::class)
+    ->middleware('auth')
+    ->name('invoices.pdf');
 
 Route::post('currency', [CurrencyController::class, 'update'])
     ->middleware('throttle:30,1')

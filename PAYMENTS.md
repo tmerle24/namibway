@@ -1,14 +1,20 @@
 # Money: folio, payments, invoice, and who collects
 
-Commissioned 2026-08-12. Nothing in this document is built yet.
+Commissioned 2026-08-12. **Built 2026-08-12** — slices 1 to 6 of
+`PAYMENTS_BUILD.md`; only step 6 of §6 below (payouts and partner statements)
+is outstanding, and it is the one that needs real money to have moved before it
+can be tested at all.
+
+Read the rest of this document as the design it still is. Where the build
+departed from it or answered something it left open, the section says so.
 
 This is the companion to `BOOKING_SYSTEM.md`, which deliberately excluded folio
 and payments (§7) while the calendar was being built. That exclusion is now
 lifted. A booking system that cannot say whether a stay has been paid is not a
-booking system, and today's cannot: the reservation carries `total_amount`,
-`charges_amount`, `discount_amount` and `currency` — the whole debit side — and
-there is no credit side at all. No payment record, no invoice, no invoice
-number.
+booking system, and the one described here could not: the reservation carried
+`total_amount`, `charges_amount`, `discount_amount` and `currency` — the whole
+debit side — and there was no credit side at all. No payment record, no
+invoice, no invoice number. All three exist now.
 
 Read `BOOKING_SYSTEM.md` first for the calendar and the reservation; this
 document starts where a confirmed stay does.
@@ -293,15 +299,59 @@ Realities to design around rather than discover:
   a business location, so **Stripe is not the provider** — not for us, and Stripe
   Connect cannot onboard a Namibian connected account either, so an automatic
   split to the lodge is not on the table under any arrangement.
-- **So the real provider is a decision that has not been made**, and it is
-  commercial before it is technical: a merchant account with a Namibian bank
-  (FNB, Bank Windhoek, Standard Bank Namibia all offer e-commerce acquiring),
-  or a gateway operating in the region — DPO Pay, Peach, PayGate, Ozow, Netcash,
-  PayToday. **Treat every name in that list as a candidate to verify, not a fact:
-  availability, fees and settlement terms in Namibia specifically all need
-  checking with the provider.** What matters for the code is that this list
-  exists at all — a provider abstraction whose only implementation is one
-  gateway will not survive contact with it.
+### The candidates, checked 2026-08-12
+
+The list used to say "treat every name here as a candidate to verify, not a
+fact". They have now been verified, and the answer was not close.
+
+| Candidate | Namibian merchants | Settles NAD | Public API | Verdict |
+|---|---|---|---|---|
+| **DPO Pay by Network** | ✅ yes, team in Windhoek | ✅ billed **and** settled in NAD | ✅ XML v6, `createToken` / `verifyToken` / `refundToken`, hosted page | **The one to use.** Implemented. |
+| PayGate | — | — | — | Absorbed into the same group as DPO. Not a separate choice. |
+| Peach Payments | ❌ live in South Africa, Kenya, Mauritius | — | ✅ good REST | Namibia is an *announced intention*, not an account anybody can open. **Worth watching for a second reason: ResRequest already integrates it**, and ResRequest is the dominant PMS in this market. |
+| Ozow | ❌ South African bank accounts only | ZAR | ✅ | Instant EFT is a South African rail. Not applicable. |
+| Netcash | ❌ South Africa | ZAR | ✅ | Its Instant EFT *is* Ozow. Same answer. |
+| PayToday | ✅ Namibian, run by Nedbank Namibia | NAD | ⚠️ WooCommerce plugin; no public API docs found | A wallet, not a card acquirer. A good *additional* method to ask them about once there is a merchant relationship. |
+| FNB / Bank Windhoek / Standard Bank Namibia | ✅ e-commerce acquiring exists | NAD | ❌ not publicly documented, normally behind a gateway | A banking conversation, not an integration. Likely ends up pointing at a gateway anyway. |
+| Paystack | ❌ Nigeria, Ghana, Kenya, South Africa, Côte d'Ivoire (Egypt, Rwanda newer) | ❌ | ✅ | Same wall as Stripe. Usable only through a South African entity settling in ZAR. Implemented, not recommended. |
+
+**So the recommendation is DPO Pay**, and what remains is commercial: apply for a
+merchant account, get the fee schedule, and get the `verifyToken` result-code
+table — see below. Nothing about that is a code decision; `DpoProvider` is one
+class behind the interface and the demo provider stays the default until an
+account exists.
+
+**Two things to settle with DPO before go-live**, both written into
+`DpoProvider` where somebody will find them:
+
+1. **The verifyToken result codes.** `000` is documented as "Transaction Paid"
+   and is the only code treated as final. Everything else is reported as *still
+   pending*, deliberately: a code guessed to mean "declined" writes off a
+   payment that may have arrived, and the guest is the one who finds out. The
+   genuine failures go in `payments.providers.dpo.failure_codes` once known.
+2. **`ServiceType`.** It is configured per DPO account and there is no universal
+   value; a wrong one is rejected at `createToken`.
+
+Two design consequences worth stating, because they are not obvious:
+
+- **DPO's notification is not signed.** So it settles nothing by itself — it
+  only tells the application an attempt is worth asking about, and `verifyToken`
+  decides. That is why `PaymentGateway::settle()` always calls `capture()`
+  whatever a callback said. It is also the right shape for a signed webhook, so
+  the two providers need no special cases between them.
+- **NAD needs no conversion.** DPO settles it, so a Namibian folio is charged in
+  Namibian dollars and none of the currency-peg machinery is reached. That
+  machinery exists for the Paystack-shaped case and is tested there.
+
+**Paystack, for the record.** It was raised as the likely choice, so what it can
+and cannot do is written down rather than left as a shrug. Its merchant
+countries do not include Namibia, so a Namibian entity cannot open an account —
+the same wall Stripe presented, for the same reason, and it does not go away by
+asking differently. The route that *does* work is a **South African entity
+settling in ZAR**; NAD is pegged 1:1 to ZAR under the Common Monetary Area, so a
+Namibian folio charged in rand is an identity rather than a conversion anybody
+has to trust. Whether to have such an entity is a decision about the company.
+`PaystackProvider` exists so that decision is cheap either way.
 - **Therefore build against a `DemoProvider` first, and mean it.** The
   requirement (2026-08-12) is that the whole flow works end to end in a demo
   before any real provider is chosen: authorise, capture, fail, refund, and the
@@ -329,30 +379,57 @@ The order matters: each step is useful on its own, and none of them commits us t
 a settlement model we have not chosen yet. `PAYMENTS_BUILD.md` turns this into a
 brief that can be worked through slice by slice.
 
-1. **Folio + payments + balance.** Record what is owed and what was paid, by any
+1. ✅ **Folio + payments + balance.** Record what is owed and what was paid, by any
    method, from the partner panel. Immediately useful with no PSP at all, because
    a desk takes cash today. This is also the smallest thing that answers the
    complaint that started this document.
-2. **Invoice.** Numbered, immutable, VAT-correct, PDF, with a credit note for
+2. ✅ **Invoice.** Numbered, immutable, VAT-correct, PDF, with a credit note for
    corrections.
-3. **The two rates and where they are set** — §2a's resolution chain, the
+3. ✅ **The two rates and where they are set** — §2a's resolution chain, the
    platform settings page, the partner and listing overrides, and both rates
    frozen onto the reservation when it is taken.
-4. **Settlement model per partner** — the deposit share picks it, the three
+4. ✅ **Settlement model per partner** — the deposit share picks it, the three
    strategies, the commission earned as a stored result, and the 0 % unlock with
    its consequence shown where it is chosen.
-5. **The provider abstraction and a demo provider that fully works** — authorise,
+5. ✅ **The provider abstraction and a demo provider that fully works** — authorise,
    capture, fail, refund, asynchronous callback, all simulated, wired into the
-   demo tenant so the flow can be shown before a real gateway exists.
-6. **Payouts and partner statements** — what models B and C owe the partner, and
+   demo tenant so the flow can be shown before a real gateway exists. Paystack
+   is implemented alongside it; the demo stays the default.
+6. ⬜ **Payouts and partner statements** — what models B and C owe the partner, and
    what model A claims from them. Last, because it is the only part that needs
-   real money to have moved before it can be tested at all.
+   real money to have moved before it can be tested at all. `SettlementBalance`
+   already answers *what* is owed on one stay and in which direction; what is
+   missing is the run that aggregates it, the statement a partner reads, and the
+   record of a transfer having happened.
 
-An honest note on sequencing: steps 1 through 5 are ordinary work and can be done
-now — the demo provider is precisely what makes step 5 possible without a bank
-account. Step 6, and swapping the demo provider for a real one, need a real
+An honest note on sequencing: steps 1 through 5 are ordinary work and were done
+in a day — the demo provider is precisely what makes step 5 possible without a
+bank account. Step 6, and swapping the demo provider for a real one, need a real
 entity, a real merchant account and a real partner, and no amount of code
 substitutes for them.
+
+## What the build decided that this document left open
+
+Recorded here rather than only in commit messages, because these are the answers
+somebody will look for next:
+
+- **A declined payment produces no `payments` row.** `payment_intents` is money
+  we asked for; `payments` is money that moved. `PaymentStatus::Failed` is for
+  the other case — an EFT recorded as received that the bank did not honour.
+- **A `recorded` payment counts towards the balance**; only a `failed` one stops
+  counting. A desk handed cash is not waiting for a bank.
+- **A stay nobody has priced yet has no balance**, not a zero one, and money
+  against it reads as part-paid — which is what puts it on the unpaid list.
+- **No stored invoice PDF.** The frozen line snapshot is the document; the PDF is
+  a derivative rendered on demand through an authorised route. An invoice names a
+  guest and says what they paid, and the media bucket is public.
+- **Commission is earned at confirmation**, reversed by a plain cancellation and
+  kept by a late one or a no-show. This is a *default*, not the answer to
+  `PAYMENTS_BUILD.md` § D — see `App\Services\Payments\CommissionPolicy`, which
+  exists so the answer changes one file.
+- **A NAD folio is charged in ZAR** where the gateway cannot settle NAD, at the
+  Common Monetary Area peg, with all three currency facts stored on the intent so
+  a refund returns the money that was taken.
 
 ---
 

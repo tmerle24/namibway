@@ -99,10 +99,14 @@ class Listing extends Model
         'enriched_by',
         'verified_at',
         'last_enriched_at',
+        'commission_rate',
+        'deposit_rate',
     ];
 
     protected $casts = [
         'type' => ListingType::class,
+        'commission_rate' => 'float',
+        'deposit_rate' => 'float',
         'vehicle_category' => VehicleCategory::class,
         'vehicle_class' => VehicleClass::class,
         'gallery' => 'array',

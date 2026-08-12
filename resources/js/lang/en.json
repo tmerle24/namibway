@@ -577,5 +577,28 @@
             ],
             "cta": "Browse listings ↓"
         }
+    },
+    "payments": {
+        "heading": "Secure payment",
+        "for": "For",
+        "amount": "Amount",
+        "chargedIn": "Charged in {currency} at {rate} per {base} — Namibia's dollar is pegged to the rand.",
+        "pay": "Pay now",
+        "decline": "Simulate a declined card",
+        "abandon": "Leave without paying",
+        "demoNotice": "This is a demonstration. No card is asked for and no money moves.",
+        "paidTitle": "Thank you — your payment went through",
+        "paidBody": "We have recorded it against your booking. The property can see it too.",
+        "failedTitle": "That payment did not go through",
+        "failedBody": "Nothing has been charged. You can try again, or pay the property directly.",
+        "abandonedTitle": "You left without paying",
+        "abandonedBody": "Your booking is unchanged. The payment link still works if you want to come back to it.",
+        "pendingTitle": "We are still waiting on your bank",
+        "pendingBody": "This can take a moment. Refresh the page, or come back to this link shortly.",
+        "booking": "Booking",
+        "stay": "Stay",
+        "paidSoFar": "Paid so far",
+        "stillToPay": "Still to pay",
+        "tryAgain": "Try again"
     }
 }

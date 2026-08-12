@@ -357,5 +357,28 @@
             ],
             "cta": "Ver alojamientos ↓"
         }
+    },
+    "payments": {
+        "heading": "Pago seguro",
+        "for": "Para",
+        "amount": "Importe",
+        "chargedIn": "Cobrado en {currency} a {rate} por {base} — el dólar namibio está vinculado al rand.",
+        "pay": "Pagar ahora",
+        "decline": "Simular una tarjeta rechazada",
+        "abandon": "Salir sin pagar",
+        "demoNotice": "Esto es una demostración. No se pide ninguna tarjeta y no se mueve dinero.",
+        "paidTitle": "Gracias — su pago se ha realizado",
+        "paidBody": "Lo hemos registrado en su reserva. El alojamiento también puede verlo.",
+        "failedTitle": "Ese pago no se ha realizado",
+        "failedBody": "No se ha cobrado nada. Puede intentarlo de nuevo o pagar directamente al alojamiento.",
+        "abandonedTitle": "Ha salido sin pagar",
+        "abandonedBody": "Su reserva no ha cambiado. El enlace de pago sigue funcionando.",
+        "pendingTitle": "Todavía estamos esperando a su banco",
+        "pendingBody": "Esto puede tardar un momento. Actualice la página o vuelva a este enlace en breve.",
+        "booking": "Reserva",
+        "stay": "Estancia",
+        "paidSoFar": "Pagado hasta ahora",
+        "stillToPay": "Pendiente de pago",
+        "tryAgain": "Intentar de nuevo"
     }
 }

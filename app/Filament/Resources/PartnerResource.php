@@ -3,11 +3,14 @@
 namespace App\Filament\Resources;
 
 use App\Enums\ConnectorType;
+use App\Enums\OperatingMode;
+use App\Enums\SettlementModel;
 use App\Filament\Resources\PartnerResource\Pages;
 use App\Filament\Support\MessagesColumn;
 use App\Http\Controllers\Controller;
 use App\Models\Partner;
 use App\Models\PartnerMessage;
+use App\Models\PaymentSettings;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -106,6 +109,20 @@ class PartnerResource extends Resource
                                         default => 'Not live — every confirmation goes to the NamibWay team mailbox, tagged with the property name.',
                                     }),
 
+                                Forms\Components\Select::make('operating_mode')
+                                    ->label('What they bought')
+                                    ->options(collect(OperatingMode::cases())
+                                        ->mapWithKeys(fn (OperatingMode $mode) => [$mode->value => $mode->label()])
+                                        ->all())
+                                    ->default(OperatingMode::Full->value)
+                                    ->required()
+                                    ->live()
+                                    ->columnSpanFull()
+                                    // Ours to set, like the live switch above:
+                                    // it is what the partner is paying for.
+                                    ->helperText(fn (Get $get): string => (OperatingMode::tryFrom((string) $get('operating_mode')) ?? OperatingMode::Full)->description()
+                                        .' Changing this hides or shows screens and changes nothing that is stored — a partner can be upgraded at any time.'),
+
                                 Forms\Components\Toggle::make('booking_enabled')
                                     ->label('Bookings are live')
                                     ->helperText('Switching this on means real guests receive real mail in NamibWay’s name. It is ours to decide, not the partner’s.')
@@ -128,6 +145,52 @@ class PartnerResource extends Resource
                                     ->maxLength(255)
                                     ->helperText('Where everything goes while test mode is on. Empty falls back to the team mailbox.')
                                     ->visible(fn (Get $get): bool => (bool) $get('booking_demo_mode')),
+                            ])
+                            ->columns(2),
+
+                        Forms\Components\Tabs\Tab::make('Commission and deposit')
+                            ->icon('heroicon-o-banknotes')
+                            ->schema([
+                                Forms\Components\Placeholder::make('rate_chain')
+                                    ->label('How these resolve')
+                                    ->columnSpanFull()
+                                    ->content('Most specific wins: a listing’s own rate, then this partner’s, then the platform default under Settings → Commission and deposits. Leave a field empty to follow the level above.'),
+
+                                Forms\Components\TextInput::make('commission_rate')
+                                    ->label('Commission')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->suffix('%')
+                                    ->placeholder(fn (): string => static::platformRateLabel('commission'))
+                                    // Only ever here and on the listing. The
+                                    // partner panel has no field for this at
+                                    // all, by design — PAYMENTS.md § 2a.
+                                    ->helperText('Ours to set. The partner can see what they pay and cannot change it.'),
+
+                                Forms\Components\TextInput::make('deposit_rate')
+                                    ->label('Deposit')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->suffix('%')
+                                    ->placeholder(fn (): string => static::platformRateLabel('deposit'))
+                                    ->helperText('The partner’s to choose within the range we allow — set one here only where it was negotiated.')
+                                    ->live(),
+
+                                Forms\Components\Toggle::make('allow_zero_deposit')
+                                    ->label('May collect no deposit at all')
+                                    ->columnSpanFull()
+                                    ->live()
+                                    // The consequence is stated where the
+                                    // choice is made, not discovered a month
+                                    // later — PAYMENTS.md § 2.
+                                    ->helperText('Switching this on lets the partner set a 0% deposit, which puts them on the agency model: we collect nothing from their guests and invoice them for commission afterwards. That is the only arrangement where our money depends on somebody else paying an invoice, and the only lever we have is switching their bookings off.'),
+
+                                Forms\Components\Placeholder::make('settlement_model')
+                                    ->label('Which arrangement that is')
+                                    ->columnSpanFull()
+                                    ->content(fn (Get $get): string => static::settlementLabel($get('deposit_rate'))),
                             ])
                             ->columns(2),
 
@@ -166,6 +229,41 @@ class PartnerResource extends Resource
                             ]),
                     ]),
             ]);
+    }
+
+    /**
+     * The number an empty field will fall through to, shown as its
+     * placeholder.
+     *
+     * A blank box that silently means "5%" is a blank box somebody fills in
+     * with 5 to be safe — and then the platform rate stops moving them when it
+     * changes, which is the whole point of the chain.
+     */
+    protected static function platformRateLabel(string $which): string
+    {
+        $settings = PaymentSettings::current();
+
+        $rate = $which === 'commission' ? $settings->commission_rate : $settings->deposit_rate;
+
+        return rtrim(rtrim(number_format($rate, 3, '.', ''), '0'), '.').'% (platform default)';
+    }
+
+    /**
+     * The settlement model this deposit means, said out loud.
+     *
+     * Derived and never stored — see App\Enums\SettlementModel. Showing it
+     * here is what makes "one number, three behaviours" legible instead of
+     * something the reader has to know.
+     */
+    protected static function settlementLabel(mixed $depositRate): string
+    {
+        $rate = blank($depositRate)
+            ? PaymentSettings::current()->deposit_rate
+            : (float) $depositRate;
+
+        $model = SettlementModel::forDepositRate($rate);
+
+        return $model->label().' — '.$model->description();
     }
 
     public static function table(Table $table): Table

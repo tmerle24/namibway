@@ -36,4 +36,33 @@ class Money
     {
         return self::symbol($currency).' '.number_format($amount, 0);
     }
+
+    /**
+     * An amount as a whole number of cents.
+     *
+     * Every decision about money — is this stay paid, does this reversal net
+     * to zero, does the folio balance — is made on these integers and never on
+     * the floats. The columns are decimal(12,2) and the house convention casts
+     * them to float in PHP, which is fine for carrying a value around and
+     * wrong for comparing two of them: a stay that shows as unpaid because of
+     * a 0.00000001 difference is the kind of bug a guest finds at check-out.
+     *
+     * round() before the cast, not after: (int) 4.999999 is 4.
+     */
+    public static function cents(float $amount): int
+    {
+        return (int) round($amount * 100);
+    }
+
+    /** Whether two amounts are the same money. */
+    public static function equals(float $a, float $b): bool
+    {
+        return self::cents($a) === self::cents($b);
+    }
+
+    /** The amount a whole number of cents represents. */
+    public static function fromCents(int $cents): float
+    {
+        return round($cents / 100, 2);
+    }
 }

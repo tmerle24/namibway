@@ -5,6 +5,7 @@ namespace App\Filament\Partner\Resources;
 use App\Enums\AmenityScope;
 use App\Enums\ListingType;
 use App\Enums\PriceUnit;
+use App\Enums\SettlementModel;
 use App\Enums\VehicleCategory;
 use App\Enums\VehicleClass;
 use App\Filament\Partner\Resources\ListingResource\Pages;
@@ -15,8 +16,10 @@ use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
 use App\Models\Amenity;
 use App\Models\Listing;
+use App\Services\Payments\RateResolver;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -233,6 +236,62 @@ class ListingResource extends Resource
                     ])
                     ->columns(2),
 
+                /*
+                 * The deposit is the partner's number and the commission is
+                 * ours — PAYMENTS.md § 2a. So the commission appears here as a
+                 * *statement*, never as a field: there is no input to post to,
+                 * and `commission_rate` is not in this form's schema at all,
+                 * which is what makes a crafted request as useless as the UI.
+                 */
+                Forms\Components\Section::make('Deposit and commission')
+                    ->description('What your guests pay up front, and what NamibWay earns on a booking.')
+                    ->schema([
+                        Forms\Components\TextInput::make('deposit_rate')
+                            ->label('Deposit')
+                            ->numeric()
+                            ->suffix('%')
+                            ->live(onBlur: true)
+                            ->placeholder(fn (?Listing $record): string => static::inheritedDepositLabel($record))
+                            ->helperText(fn (?Listing $record): string => 'Leave empty to use your account’s deposit. '
+                                .'The lowest you can set is '.static::formatRate(static::floorFor($record)).'%.')
+                            ->rules([
+                                fn (?Listing $record) => function (string $attribute, mixed $value, callable $fail) use ($record): void {
+                                    if (blank($value)) {
+                                        return;
+                                    }
+
+                                    $partner = $record?->partner;
+
+                                    if ($partner === null) {
+                                        return;
+                                    }
+
+                                    // Server-side, and the same call the API
+                                    // would make: a min() on the input is a
+                                    // hint, not a rule.
+                                    $refusal = app(RateResolver::class)->refuseDeposit($partner, (float) $value);
+
+                                    if ($refusal !== null) {
+                                        $fail($refusal);
+                                    }
+                                },
+                            ]),
+
+                        Forms\Components\Placeholder::make('commission_rate_display')
+                            ->label('NamibWay commission')
+                            ->content(fn (?Listing $record): string => static::commissionLabel($record)),
+
+                        // What this deposit *means*, stated where it is chosen
+                        // rather than discovered a month later — PAYMENTS.md
+                        // § 2. Live on the field above, so a property typing 0
+                        // reads the consequence as they type it.
+                        Forms\Components\Placeholder::make('settlement_model_display')
+                            ->label('How the money will flow')
+                            ->columnSpanFull()
+                            ->content(fn (?Listing $record, Get $get): string => static::settlementLabel($record, $get('deposit_rate'))),
+                    ])
+                    ->columns(2),
+
                 Forms\Components\Tabs::make('booking_connector_tabs')
                     ->tabs([
                         Forms\Components\Tabs\Tab::make('Booking system')
@@ -241,6 +300,69 @@ class ListingResource extends Resource
                     ])
                     ->columnSpanFull(),
             ]);
+    }
+
+    /** What an empty deposit field falls through to. */
+    protected static function inheritedDepositLabel(?Listing $record): string
+    {
+        if ($record === null) {
+            return '';
+        }
+
+        return static::formatRate(app(RateResolver::class)->for($record)->depositRate).'%';
+    }
+
+    /**
+     * What this property pays us, said plainly. A partner may of course see
+     * it; they simply do not set it.
+     */
+    protected static function commissionLabel(?Listing $record): string
+    {
+        if ($record === null) {
+            return '';
+        }
+
+        $rates = app(RateResolver::class)->for($record);
+
+        return static::formatRate($rates->commissionRate).'% of the stay, before VAT and the tourism levy.';
+    }
+
+    /**
+     * The arrangement this deposit puts the property in, in their words.
+     *
+     * Derived, never stored — see App\Enums\SettlementModel. The point of
+     * showing it is that "0%" and "we will invoice you for commission, with
+     * payment terms" are the same decision, and only one of them is obvious
+     * from a number in a box.
+     */
+    protected static function settlementLabel(?Listing $record, mixed $typedRate): string
+    {
+        if ($record === null) {
+            return '';
+        }
+
+        $rate = blank($typedRate)
+            ? app(RateResolver::class)->for($record)->depositRate
+            : (float) $typedRate;
+
+        $model = SettlementModel::forDepositRate($rate);
+
+        return $model->description();
+    }
+
+    protected static function floorFor(?Listing $record): float
+    {
+        if ($record === null) {
+            return (float) config('payments.commission_rate', 5.0);
+        }
+
+        return app(RateResolver::class)->for($record)->minimumDepositRate;
+    }
+
+    /** 15 rather than 15.000. */
+    protected static function formatRate(float $rate): string
+    {
+        return rtrim(rtrim(number_format($rate, 3, '.', ''), '0'), '.');
     }
 
     public static function table(Table $table): Table

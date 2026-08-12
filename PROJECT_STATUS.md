@@ -406,6 +406,293 @@ whichever the database returned last silently became the day. That class of bug 
 *plausible* wrong number on a screen nobody looks at twice — is the reason these guards get
 written.
 
+### 2026-08-12 — the ledger (money, slice 1 of 6)
+
+**The credit side exists.** `PAYMENTS_BUILD.md` slice 1 is built: `payments` holds one row
+per money movement against a stay, and `reservations` carries `paid_amount` and
+`payment_status` as stored results. The complaint that started `PAYMENTS.md` — the system
+could not say whether a stay had been paid — is answered, and answered without a payment
+provider, because a lodge desk takes cash today.
+
+**One write path, enforced the way inventory's is.** `App\Services\Payments\PaymentRecorder`
+is the only thing that writes money; `PaymentWriteGuard` catches Eloquent saves at runtime
+and `PaymentWritePathTest` refuses query-builder writes from anywhere else by scanning the
+source. Deliberately a copy of the inventory pattern rather than a second shape for the same
+rule. The one place the two paths meet is the folio total: the reservations table stays
+written by `InventoryWriter` alone, so the recorder decides the numbers and calls
+`InventoryWriter::recordFolio()` to write them — the same arrangement `StayPromoter` has.
+
+**Nothing is ever edited.** A refund is a negative row on the same folio, a mistake is a
+*reversal* that points at the row it corrects and leaves both, and the only field that
+changes after creation is the status — `recorded → cleared` is a fact arriving late rather
+than a fact being rewritten. Refund and reversal are kept distinguishable on purpose: "did
+we give that money back, or did we never have it?" has two different answers to an
+accountant.
+
+**Two decisions worth recording.** A `recorded` payment counts towards the balance, and only
+a `failed` one stops counting — a desk handed cash is not waiting for a bank, and a stay that
+reads unpaid because nobody ticked a second box is a stay somebody gets asked to pay twice.
+And a stay nobody has priced yet has *no* balance rather than a zero one: `FolioStatus`
+answers it as part-paid the moment money arrives, which puts it on the unpaid list where
+somebody prices it.
+
+**Every comparison is in cents** (`Money::cents()`), never on the floats the decimal columns
+cast to. The one-cent-short test is the guardrail's own test.
+
+**On the screens.** The stay drawer both lodge screens open gained a Money block — paid, what
+of that is confirmed, the balance, the lines, and buttons to record a payment, record a
+refund, correct a line or mark a transfer as arrived. The arrivals board gained an
+Outstanding column, and there is a new **Unpaid** page listing everything at the property
+that is not square, soonest arrival first. A cancelled stay keeps its folio and appears
+there — a forfeited deposit is exactly the case a system without a folio gets wrong.
+
+### 2026-08-12 — the invoice (money, slice 2 of 6)
+
+**There is now a legal document, not a PDF export.** `invoices` holds it: a number,
+an issuer, a kind, and a **frozen JSON snapshot of the lines as issued**. Nothing reads
+back through to `reservation_nights` or `reservation_charges` afterwards, which is what
+lets a property rename a rate plan or change its VAT rate without rewriting last
+season's paperwork. The same "stored as a result" rule the price already follows,
+applied one level up.
+
+**Numbering is gapless per series and year, and that is a locked counter row.**
+`invoice_sequences` is read with `SELECT … FOR UPDATE` inside the issuing transaction.
+Both obvious alternatives are wrong and wrong invisibly: `max(number) + 1` hands two
+simultaneous check-outs the same number, and an auto-increment does not give a number
+back when a transaction rolls back — and a hole in the run is the first thing an auditor
+asks about, because the innocent and the fraudulent explanations look identical.
+`InvoiceNumberingConcurrencyTest` forks six real processes to prove it, and was verified
+by mutation: removing `lockForUpdate()` makes it fail on the unique index.
+
+**An issued invoice cannot be changed.** The model refuses updates and deletes outright
+— tested from *inside* the write path, because the write guard only stops code that
+never meant to write money and this has to stop the writer too. A mistake is a **credit
+note**: its own number, pointing at the invoice it corrects, every line negated so the
+VAT reversal is visible rather than a lump sum, and the pair nets to the corrected
+amount.
+
+**One decision that departs from the brief, and why.** `PAYMENTS_BUILD.md` named a PDF
+path column; there is none. The snapshot *is* the document and the PDF is a derivative
+rendered on demand, exactly as thumbnails are derivatives of an original. Two reasons
+this codebase has already learned: an invoice names a guest and what they paid, and our
+media bucket is public with no per-object visibility — the trap the Documents store was
+built to avoid; and a stored file is a second copy that can drift from an immutable row.
+`/invoices/{invoice}/pdf` is therefore the only way to the document, and its check is the
+access rule. Invoice numbers are sequential by design, so that check is load-bearing:
+without it one property could read every other property's takings by counting upwards.
+
+**On the screens.** Issue an invoice from the stay drawer, see what has been issued
+against the stay, open the PDF, and credit one that was wrong. The button says "credit
+it" and not "edit", because there is no edit.
+
+**Renamed while here.** `PaymentWriteGuard` → `MoneyWriteGuard` (with its trait and
+exception), because it now guards invoices too and a third copy of the same class for the
+next money table is how one rule quietly becomes three.
+
+### 2026-08-12 — the two rates and where they are set (money, slice 3 of 6)
+
+**Commission is ours, the deposit is the partner's**, and both resolve the same way:
+`listing override → partner override → platform setting → config default`, with **null
+meaning inherit**. Deliberately the rule the availability calendar already uses for its
+sparse overrides — nothing has to be written to say "unchanged", and changing the
+platform rate moves everybody who has not negotiated separately.
+
+**The platform rates live in a settings row, not in `config/`.** `/admin` → Settings →
+**Commission and deposits**, following `MessageSettings` + `MessagingSettings`. These are
+commercial terms rather than configuration: they change when a conversation with a
+partner changes, and needing a deploy for that means they get changed in a hurry by
+whoever can deploy, or not at all. `config/payments.php` stays as what the row is seeded
+from and the fallback before it exists.
+
+**The deposit floor follows the commission** unless it is set explicitly — stored as a
+null meaning "the commission rate" rather than as a copied number, so it keeps following.
+That floor is where model C nets to exactly zero between us and the partner, which is the
+cheapest arrangement that exists for both sides and therefore worth making the natural
+landing spot rather than a coincidence.
+
+**Both rates and their amounts are frozen onto the reservation** when it is taken —
+`commission_rate`, `commission_base`, `commission_amount`, `deposit_rate`,
+`deposit_amount`. A rate without its amount is half an answer ("5% of what?" is the first
+thing a partner asks), and the base is a number nobody can reconstruct once the charges
+have moved. Changing a platform rate next season must not rewrite what we earned last
+season; a test asserts exactly that, and asserts that the *next* booking does get the new
+rate — the freeze is about the past, not a refusal to ever change.
+
+**The commission base is the stay before tax and levy.** An added VAT was never in the
+stay amount; an *included* one is, and is taken back out. A property's own conservancy fee
+is a `ChargeKind::Fee` and stays in the base, because it is revenue rather than somebody
+else's money passing through. Charging commission on the government's VAT and the NTB's
+levy is indefensible in front of an operator, and `ChargeKind` is what makes that
+expressible rather than a guess.
+
+**The partner panel edits the deposit and only the deposit.** The commission appears
+there as a statement of what they pay, never as an input — and the guarantee is not that
+the field is hidden but that `commission_rate` is not in that form's schema at all, so
+posting it writes nothing. That is the test, rather than "the input is not rendered".
+
+### 2026-08-12 — the three settlement models (money, slice 4 of 6)
+
+**One number, three behaviours, and no way to contradict yourself.**
+`App\Enums\SettlementModel` is *derived* from the effective deposit share — 0 % → agency,
+100 % → merchant, anything between → split — and there is deliberately **no
+`settlement_model` column anywhere**. A test asserts that across `partners`, `listings`,
+`reservations` and `payment_settings`, because storing the model as well as the deposit is
+what would make "merchant model, we collect nothing" configurable.
+
+**A strategy class per model, answering exactly three questions** (`SettlementStrategy`):
+what we ask the guest for now, what is owed between us and the partner afterwards, and who
+issues the guest's invoice. The narrowness is the design — the folio, the payments, the
+invoice and the commission calculation are identical in all three, so anything wider would
+be a place for three models to drift into three answers about what we earn.
+
+**A stay resolves its model from its own frozen deposit rate**, not from the property's
+current one, so a statement about last season still adds up after a renegotiation.
+
+**The balance between us and a partner is one signed number**, not an amount plus a
+direction — because the interesting case is *zero*, and "zero, owed by nobody" would need a
+third direction. At a deposit equal to the commission, `SettlementBalance::isSettled()` is
+true and nothing has to move: no payout run, no statement, no reconciliation. That case has
+its own test, because it is the one the default exists for.
+
+**Commission is earned once and reversed on cancellation.** `commission_earned_at` is a
+timestamp rather than a flag, so "what did we earn in March" is stable. A plain
+cancellation clears it and *keeps the amount*, so the record of what the booking would have
+earned survives; a late cancellation and a no-show keep it earned, because the guest was
+charged and the room was held — earning nothing there would be us absorbing the property's
+penalty.
+
+> ⚠️ **Still a § D question.** *Precisely* when commission is earned — at confirmation, at
+> the cancellation deadline, or after check-in — and what a no-show earns are commercial
+> decisions that have not been made. What is implemented is the reading of `PAYMENTS.md`
+> § 3 that needs no scheduler: **earned at confirmation**. The rule lives alone in
+> `App\Services\Payments\CommissionPolicy` precisely so the answer changes one file. The
+> "cancellation window has closed" reading needs a nightly sweep and is worth building once
+> the business has answered.
+
+**0 % is a permission, not a number.** `partners.allow_zero_deposit`, admin-only. Without
+it the deposit is refused with a sentence explaining that collecting nothing means we
+invoice for commission instead; with it, zero is allowed and skips the floor, because that
+arrangement has deliberately gone below it. Both panels state which model the current
+deposit means, live, next to the field — the consequence belongs where the choice is made.
+
+### 2026-08-12 — the provider abstraction, a working demo, and Paystack (money, slice 5 of 6)
+
+**The whole flow works with no merchant account.** `DemoProvider` implements the
+`PaymentProvider` interface entirely in-process — authorise, capture, decline, refund and
+the asynchronous callback — with a hosted checkout page inside the app carrying **pay**,
+**decline** and **abandon** buttons. Two things it does deliberately awkwardly, because a
+demo that always succeeds instantly teaches the wrong shape: it fires its callback
+*before* redirecting the guest back, and it can deliver the same callback twice.
+
+**`payment_intents` is money we asked for; `payments` is money that moved.** That line is
+the answer to what a declined payment produces — **no ledger row**. A guest who mistypes a
+card three times leaves three attempts and no folio noise. `PaymentStatus::Failed` still
+exists for the different case: an EFT somebody recorded as received that the bank did not
+honour. Money believed to have moved and money that never started moving are different
+facts.
+
+**Idempotency is a unique index, not a check.** `payments.payment_intent_id` is unique, so
+a repeated webhook, or a guest returning while one is in flight, cannot credit twice — the
+same discipline `reservations.inquiry_id` uses.
+
+**Nothing above the interface names a gateway**, and there is a test that greps the whole
+of `app/` to prove it, excluding only `Services/Payments/Providers` and `config/payments.php`.
+
+**Paystack is implemented, and the caveat is written into the class.** It does **not**
+support Namibia as a merchant country (Nigeria, Ghana, Kenya, South Africa, Côte d'Ivoire;
+Egypt and Rwanda newer), so a Namibian entity cannot hold an account — the same wall Stripe
+presented. The workable route is a **South African entity settling in ZAR**, which is why
+the currency handling is load-bearing rather than decoration: a NAD folio is charged in ZAR
+at the Common Monetary Area's 1:1 peg, and the intent stores what was owed, what was
+charged and the rate, so a refund returns the money that was taken. Whether to have such an
+entity is a company decision and has not been made.
+
+Security worth naming: the webhook signature is verified against the **raw** body (HMAC
+SHA-512 — re-encoding JSON changes bytes, which is the classic way a check silently never
+matches), an unverified or uninteresting event is a **200** so the gateway keeps
+delivering, and the amount is never read from a callback — `transaction/verify` is asked
+directly. A test asserts that a verify response quoting a different amount does not change
+what is recorded.
+
+**The demo tenant now shows money.** `booking:demo-tenant` settles about three quarters of
+its invented stays — past ones paid in full at the desk, future ones with a deposit — so a
+prospect opens a folio with something in it and an unpaid list with rows. Through
+`PaymentRecorder` like everything else; the demo gets no shortcut, because a shortcut here
+would be a second write path.
+
+Traveller-facing copy for the payment pages lives in `resources/js/lang/*.json` with the
+rest, read server-side by `App\Support\UiTranslations` — the pages are standalone Blade
+rather than Inertia, because a guest arrives at them from an email or a gateway redirect
+and booting the whole traveller app to say "your deposit is paid" would be slower and tie a
+page a *payment provider* redirects to to the front-end build.
+
+### 2026-08-12 — booking system or PMS, chosen at setup (money, slice 6 of 6)
+
+`Partner.operating_mode` — `booking_only` or `full` — set when the account is created and
+changeable by us in `/admin`. A booking-only property keeps rates, availability, bookings,
+the calendar, the folio and the unpaid list; what it does not get is the **desk**: the
+arrivals board and the check-in / check-out buttons, which are the only two front-desk
+features that exist today.
+
+**The rule that keeps this from being a second product**: the mode decides what a partner
+*sees*, never how anything is recorded. Three tests hold it — a booking-only partner sees
+no desk navigation and cannot move a stay even by calling the action directly; a full one
+can; and the load-bearing one, that a **booking-only partner still has a folio, payment
+records and an invoice**. Plus a source scan asserting that nothing under `app/Services`
+reads `operating_mode` at all. The moment a service does, upgrading a partner becomes a
+migration and two partners on one server stop being comparable — the "two systems" problem
+this workstream exists to avoid, reintroduced from the inside.
+
+Defaulting to `full` is deliberate: every partner that exists today already has the
+arrivals board, and a migration that silently took a working screen away would be a product
+change delivered as a schema change.
+
+**With this, `PAYMENTS_BUILD.md` is worked through.** Step 6 of `PAYMENTS.md` §6 — payouts
+and partner statements — is the only piece left, and it is the one that needs real money to
+have moved before it can be tested. `SettlementBalance` already says what is owed on one
+stay and in which direction; what is missing is the run that aggregates it, the statement a
+partner reads, and the record of a transfer having happened.
+
+### 2026-08-12 — DPO Pay, because it is the only candidate that covers Namibia
+
+The provider question from slice 5 is answered as far as code can answer it. Every name in
+`PAYMENTS.md` §5 was checked, and one of them stands up:
+
+- **DPO Pay by Network** operates in Namibia with a team in Windhoek and **bills and
+  settles in NAD**, with one documented public API (`createToken` / `verifyToken` /
+  `refundToken` plus a hosted page). **Implemented** as `DpoProvider`.
+- **PayGate** has been absorbed into the same group — not a separate choice.
+- **Peach Payments** is live in South Africa, Kenya and Mauritius; Namibia is an announced
+  intention, not an account anybody can open. Worth watching for a second reason:
+  **ResRequest already integrates it**, and ResRequest is the dominant PMS in this market.
+- **Ozow** and **Netcash** are South African bank-to-bank rails — Instant EFT works only
+  with South African bank accounts, and Netcash's *is* Ozow.
+- **PayToday** is genuinely Namibian and run by Nedbank Namibia, but it is a wallet with a
+  plugin rather than a documented API. A method to add later, not a card acquirer.
+- **FNB / Bank Windhoek / Standard Bank Namibia** do e-commerce acquiring through a
+  relationship, usually behind a gateway. A banking conversation, not an integration.
+- **Paystack** stays implemented but is not the recommendation — no Namibian merchant
+  account, so it needs a South African entity settling in ZAR.
+
+**Two things that need DPO on the phone, not a commit**, both written where somebody will
+find them. The `verifyToken` result-code table: `000` is documented as "Transaction Paid"
+and is the only code treated as final — **everything else is reported as still pending, on
+purpose**, because a code guessed to mean "declined" writes off a payment that may have
+arrived and the guest is the one who finds out. The genuine failures go into
+`payments.providers.dpo.failure_codes` once known. And `ServiceType`, which is configured
+per DPO account.
+
+**One design change came out of it, and it is an improvement.** DPO's notification is not
+signed, so it cannot settle anything by itself — it only says an attempt is worth asking
+about. `PaymentGateway::settle()` therefore **always** calls `capture()` whatever a callback
+said, which replaces a confusing three-way ternary and is the right shape for a signed
+webhook too. A gateway body can now never set an amount, which is the difference between a
+payment and a forged one. An attempt that stays open records what the gateway said, so a
+pending payment is a state somebody can read rather than a dead end.
+
+NAD needs no conversion through DPO, so the currency-peg machinery is untouched by it — it
+exists for the Paystack-shaped case and is tested there.
+
 ### Parked on 2026-08-11 — and built on 2026-08-11 and 2026-08-12
 
 > **Superseded, kept for the reasoning.** Everything in this section was written as

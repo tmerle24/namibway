@@ -2,6 +2,8 @@
 
 namespace App\Services\Inventory;
 
+use App\Enums\ChargeKind;
+use App\Enums\FolioStatus;
 use App\Enums\StayStatus;
 use App\Exceptions\Inventory\InventoryUnavailableException;
 use App\Exceptions\Inventory\StayRuleViolationException;
@@ -27,8 +29,11 @@ use App\Services\Inventory\DTOs\BlockRequest;
 use App\Services\Inventory\DTOs\BookingLine;
 use App\Services\Inventory\DTOs\BookingRequest;
 use App\Services\Inventory\DTOs\Quote;
+use App\Services\Payments\CommissionPolicy;
+use App\Services\Payments\RateResolver;
 use App\Services\Pricing\ChargeableStay;
 use App\Services\Pricing\ChargeCalculator;
+use App\Services\Pricing\ComputedCharge;
 use App\Services\Pricing\PromotionFinder;
 use App\Services\Pricing\PromotionMatch;
 use App\Services\Pricing\StaySummary;
@@ -82,6 +87,8 @@ class InventoryWriter
         private readonly PromotionFinder $promotions = new PromotionFinder,
         private readonly CustomerDirectory $customers = new CustomerDirectory,
         private readonly ChargeCalculator $charges = new ChargeCalculator,
+        private readonly RateResolver $rates = new RateResolver,
+        private readonly CommissionPolicy $commission = new CommissionPolicy,
     ) {}
 
     /**
@@ -207,6 +214,20 @@ class InventoryWriter
             $added = $this->charges->addedTotal($charges);
             $charged = round($stayAmount + $added, 2);
 
+            // What we earn and what the guest is asked for up front, resolved
+            // now and written down. Never recomputed afterwards: changing a
+            // platform rate next season must not rewrite what we earned last
+            // season, which is the same rule the price follows and the reason
+            // the columns exist at all.
+            $rates = $this->rates->for($request->listing);
+
+            // The commission base is the stay **before** tax and levy
+            // (PAYMENTS.md §3). Added taxes are not in $stayAmount to begin
+            // with; an *included* one is, so it is taken back out here.
+            // Charging commission on the government's VAT and the NTB's levy
+            // is indefensible in front of an operator.
+            $commissionBase = round($stayAmount - $this->includedTaxAndLevy($charges), 2);
+
             $reservation = new Reservation([
                 'reference' => $this->generateReference(),
                 'listing_id' => $request->listing->id,
@@ -252,6 +273,22 @@ class InventoryWriter
                 // would also break promoting a request taken before any of
                 // this existed.
                 'over_capacity_note' => $request->overCapacityNote,
+                // Both rates and both amounts, frozen. A rate without its
+                // amount is half an answer — "5% of what?" is the first thing
+                // a partner asks — and the base is a number nobody can
+                // reconstruct once the charges have moved.
+                'commission_rate' => $rates->commissionRate,
+                'commission_base' => $commissionBase,
+                'commission_amount' => $rates->commissionOn($commissionBase),
+                'deposit_rate' => $rates->depositRate,
+                // A share of the whole folio, tax included: a deposit is a
+                // commitment signal and a cash-flow arrangement, not a share
+                // of revenue, so its base differs from the commission's.
+                'deposit_amount' => $rates->depositOn($charged),
+                // A confirmed booking is a sale and has earned us something; a
+                // provisional hold is still a question. CommissionPolicy owns
+                // that rule so every screen reads one answer.
+                'commission_earned_at' => $this->commission->isEarnedIn($request->status) ? now() : null,
                 'notes' => $request->notes,
                 'created_by' => $request->createdBy,
             ]);
@@ -329,6 +366,30 @@ class InventoryWriter
         }
 
         return $reservation;
+    }
+
+    /**
+     * The tax and levy already inside the stay price.
+     *
+     * Only the *included* ones: an added tax was never part of the stay amount
+     * to begin with, so subtracting it would take it off twice. `ChargeKind` is
+     * what makes this expressible — a property's own conservancy fee is a `Fee`
+     * and stays in the commission base, because it is the property's revenue
+     * rather than somebody else's money passing through.
+     *
+     * @param  array<int, ComputedCharge>  $charges
+     */
+    private function includedTaxAndLevy(array $charges): float
+    {
+        $total = 0.0;
+
+        foreach ($charges as $charge) {
+            if ($charge->isIncluded && in_array($charge->kind, [ChargeKind::Tax, ChargeKind::Levy], true)) {
+                $total += $charge->amount;
+            }
+        }
+
+        return round($total, 2);
     }
 
     /**
@@ -462,6 +523,17 @@ class InventoryWriter
             $reservation->status = $isLate ? StayStatus::CancelledLate : StayStatus::Cancelled;
             $reservation->cancelled_at = now();
             $reservation->cancellation_reason = $reason;
+
+            // A plain cancellation takes our commission back; a late one does
+            // not, because the guest was charged a penalty and earning nothing
+            // on it would be us absorbing the property's. The amount stays on
+            // the row either way — only the timestamp moves, so the record of
+            // what the booking would have earned survives. See
+            // App\Services\Payments\CommissionPolicy.
+            $reservation->commission_earned_at = $this->commission->isEarnedIn($reservation->status)
+                ? ($reservation->commission_earned_at ?? now())
+                : null;
+
             $reservation->save();
 
             return $reservation;
@@ -496,6 +568,40 @@ class InventoryWriter
 
         return InventoryWriteGuard::allow(function () use ($reservation, $to) {
             $reservation->status = $to;
+
+            // A provisional hold becoming confirmed is the moment a question
+            // becomes a sale, so it is the moment we have earned something.
+            // Set once and never moved forward by a later transition: what we
+            // earned in March should not become April's number because the
+            // guest checked in.
+            if ($this->commission->isEarnedIn($to) && $reservation->commission_earned_at === null) {
+                $reservation->commission_earned_at = now();
+            }
+
+            $reservation->save();
+
+            return $reservation;
+        });
+    }
+
+    /**
+     * Write what has been paid against a stay onto the stay.
+     *
+     * The odd one out in this class, and deliberately so. A folio total is not
+     * inventory — but it lives on the reservations table, and "the reservations
+     * table is written here and nowhere else" is a rule worth more than the
+     * tidiness of keeping money out of an inventory writer. This is the same
+     * arrangement StayPromoter uses: the caller decides, this writes.
+     *
+     * The decision is entirely PaymentRecorder's, which is why nothing is
+     * computed here. Passing already-decided values keeps one answer to "what
+     * does this stay owe" rather than two that can drift.
+     */
+    public function recordFolio(Reservation $reservation, float $paidAmount, FolioStatus $status): Reservation
+    {
+        return InventoryWriteGuard::allow(function () use ($reservation, $paidAmount, $status) {
+            $reservation->paid_amount = $paidAmount;
+            $reservation->payment_status = $status;
             $reservation->save();
 
             return $reservation;
