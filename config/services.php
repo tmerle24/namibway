@@ -47,6 +47,20 @@ return [
         'redirect' => env('FACEBOOK_REDIRECT_URI'),
     ],
 
+    // Apple has no static client secret: it is a short-lived ES256 JWT signed
+    // with the .p8 key, which socialiteproviders/apple mints per request from
+    // team_id + key_id + private_key. So client_secret stays empty and there
+    // is nothing to rotate.
+    'apple' => [
+        'client_id' => env('APPLE_CLIENT_ID'),
+        'client_secret' => '',
+        'redirect' => env('APPLE_REDIRECT_URI'),
+        'team_id' => env('APPLE_TEAM_ID'),
+        'key_id' => env('APPLE_KEY_ID'),
+        // Absolute path to the .p8, or the key itself as plain text.
+        'private_key' => env('APPLE_PRIVATE_KEY'),
+    ],
+
     'anthropic' => [
         'api_key' => env('ANTHROPIC_API_KEY'),
     ],

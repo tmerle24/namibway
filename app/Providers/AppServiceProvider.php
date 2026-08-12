@@ -28,6 +28,8 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use SocialiteProviders\Apple\Provider as AppleProvider;
+use SocialiteProviders\Manager\SocialiteWasCalled;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -64,6 +66,12 @@ class AppServiceProvider extends ServiceProvider
             if ($event->user instanceof User) {
                 $event->user->forceFill(['last_login_at' => now()])->save();
             }
+        });
+
+        // Socialite ships no Apple driver; socialiteproviders/apple adds one and
+        // announces itself through this event.
+        Event::listen(function (SocialiteWasCalled $event) {
+            $event->extendSocialite('apple', AppleProvider::class);
         });
 
         // Backup notification mails must be English regardless of config('app.locale')

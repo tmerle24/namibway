@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\Auth\SocialAuthController;
 use App\Services\Currency\ExchangeRateService;
 use App\Support\MediaUrl;
 use Illuminate\Http\Request;
@@ -52,6 +53,7 @@ class HandleInertiaRequests extends Middleware
             // Deployment config, not per-request state — the frontend needs it
             // because only a component knows how wide its own image slot is.
             'mediaTransforms' => MediaUrl::clientConfig(),
+            'socialProviders' => SocialAuthController::configured(),
         ];
     }
 }

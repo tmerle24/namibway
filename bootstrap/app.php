@@ -50,6 +50,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'locale', 'currency']);
 
+        // Sign in with Apple posts its callback from appleid.apple.com, so it
+        // carries no CSRF token of ours. The request is still authenticated:
+        // the code is exchanged server-side and the identity comes from a JWT
+        // Apple signed. See SocialAuthController for why this flow is stateless.
+        $middleware->validateCsrfTokens(except: ['auth/apple/callback']);
+
         // Before route matching, because the travel platform's routes carry no
         // host constraint and would otherwise answer on a customer's domain.
         // Costs one cached array lookup while no site has a host, which is the

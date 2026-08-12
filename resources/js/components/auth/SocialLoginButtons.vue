@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import social from '@/routes/auth/social';
 
 withDefaults(
@@ -9,10 +11,31 @@ withDefaults(
         label: 'Or continue with',
     },
 );
+
+const page = usePage();
+
+// Shared from HandleInertiaRequests: only the providers that have credentials.
+// An unconfigured provider is not a button that looks broken, it is no button.
+const providers = computed<string[]>(
+    () => (page.props.socialProviders as string[] | undefined) ?? [],
+);
+
+// Written out rather than interpolated: Tailwind scans the source for literal
+// class names, so a constructed `sm:grid-cols-${n}` produces no CSS at all.
+const columns = computed(() => {
+    switch (providers.value.length) {
+        case 1:
+            return '';
+        case 2:
+            return 'sm:grid-cols-2';
+        default:
+            return 'sm:grid-cols-3';
+    }
+});
 </script>
 
 <template>
-    <div class="flex flex-col gap-4">
+    <div v-if="providers.length > 0" class="flex flex-col gap-4">
         <div class="relative flex items-center">
             <span class="w-full border-t" />
             <span
@@ -21,8 +44,9 @@ withDefaults(
                 {{ label }}
             </span>
         </div>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 gap-3" :class="columns">
             <a
+                v-if="providers.includes('google')"
                 :href="social.redirect.url('google')"
                 class="inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground"
             >
@@ -47,6 +71,7 @@ withDefaults(
                 Google
             </a>
             <a
+                v-if="providers.includes('facebook')"
                 :href="social.redirect.url('facebook')"
                 class="inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground"
             >
@@ -57,6 +82,19 @@ withDefaults(
                     />
                 </svg>
                 Facebook
+            </a>
+            <a
+                v-if="providers.includes('apple')"
+                :href="social.redirect.url('apple')"
+                class="inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+                <svg class="size-4" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                        fill="currentColor"
+                        d="M17.05 12.04c-.03-2.73 2.23-4.04 2.33-4.1-1.27-1.86-3.25-2.12-3.96-2.15-1.69-.17-3.29 1-4.15 1-.85 0-2.17-.98-3.57-.95-1.84.03-3.53 1.07-4.48 2.71-1.91 3.32-.49 8.23 1.37 10.92.91 1.32 2 2.8 3.43 2.74 1.38-.06 1.9-.89 3.57-.89 1.66 0 2.14.89 3.6.86 1.49-.02 2.43-1.34 3.34-2.66 1.05-1.53 1.48-3.01 1.51-3.09-.03-.01-2.9-1.11-2.93-4.41M14.3 4.01c.75-.91 1.26-2.18 1.12-3.44-1.08.04-2.39.72-3.17 1.63-.7.8-1.31 2.09-1.15 3.32 1.21.09 2.44-.61 3.2-1.51"
+                    />
+                </svg>
+                Apple
             </a>
         </div>
     </div>
