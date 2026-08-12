@@ -1232,12 +1232,33 @@ Four decisions worth not rediscovering:
 Rebuild protection needed nothing new: `sites.imported.blocks` already records what
 generation wrote, so an edited block is left alone by the next `sites:generate` for free.
 
-**Two things this deliberately does not do**, both worth naming rather than discovering:
-pages are still not creatable — `site_pages` exists so a second page and a second language
-are inserts rather than migrations, but the editor works on the home page and nothing makes
-another one. And there is no picture *upload* here: a band chooses from the site's own
-`site_images`, which are put there by generation. A customer with no listing therefore has
-an editor with an empty picture list, which is the next gap in this workstream.
+**One thing this deliberately does not do**, worth naming rather than discovering: pages are
+still not creatable — `site_pages` exists so a second page and a second language are inserts
+rather than migrations, but the editor works on the home page and nothing makes another one.
+It also shipped without a picture *upload*, which was closed the same day (below).
+
+### Built 2026-08-12 — uploading pictures
+
+`EditSiteImagesAction`, on the Website tab and in the owner's own panel: upload, describe,
+reorder, remove. It closes the gap the editor shipped with — a band chooses a picture from
+the site's own `site_images` by id, and until now the only thing that could create one of
+those rows was generation. A customer with no listing therefore had an editor with an empty
+picture list, which is half the customers on the flyer.
+
+Three decisions inside it:
+
+- **An uploaded picture is `ContentSource::Partner` and not `prospect_only`.** Somebody put
+  it there on the business's behalf, which is the top of the content ladder — unlike a
+  Google Places photograph, which is publishable on namibway.com under Google's terms, is
+  not ours to hand a customer, and blocks publication (`PublishGate`). The modal says the
+  condition out loud: only pictures the business owns or has the right to publish.
+- **A saved row is updated, never replaced.** The blocks point at pictures by id, so a save
+  that recreated rows would quietly empty every band that used one.
+- **Removing a picture takes it out of the bands that used it** — `image_id` cleared,
+  `image_ids` filtered — because a band pointing at a picture that is gone renders a gap.
+  The row goes and **the object stays**: deleting bytes out of a shared bucket on a form
+  submit is the kind of thing that is only ever discovered later, and `photos:audit-r2` is
+  what collects what nothing references any more.
 
 ### Next up, in the order it was asked for
 

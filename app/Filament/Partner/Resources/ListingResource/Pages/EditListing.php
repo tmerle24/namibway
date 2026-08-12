@@ -9,6 +9,7 @@ use App\Filament\Support\CreateWebsiteAction;
 use App\Filament\Support\EditBlocksAction;
 use App\Filament\Support\EditHeroAction;
 use App\Filament\Support\EditLegalTextAction;
+use App\Filament\Support\EditSiteImagesAction;
 use App\Filament\Support\EditSiteLogoAction;
 use App\Filament\Support\EditTypographyAction;
 use App\Filament\Support\ViewListingAction;
@@ -53,6 +54,7 @@ class EditListing extends EditRecord
             // all of it is the owner's, not ours, so the owner sets it here
             // rather than by asking us.
             EditBlocksAction::header(),
+            EditSiteImagesAction::header(),
             EditHeroAction::header(),
             EditSiteLogoAction::header(),
             EditTypographyAction::header(),
