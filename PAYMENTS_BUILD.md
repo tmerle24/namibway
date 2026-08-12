@@ -5,7 +5,21 @@ live in `PAYMENTS.md`; this file is the *how* — the slices, what each one has 
 prove before it counts as done, the decisions that are already made and must not
 be re-opened, and the points where the work has to stop and ask.
 
-Nothing here is built yet. Every slice below starts from an empty table.
+**Worked through on 2026-08-12.** All six slices are built, plus a seventh thing
+this brief did not ask for and the work turned up: `DpoProvider`, because DPO Pay
+by Network is the only candidate in `PAYMENTS.md` § 5 that actually operates in
+Namibia. The file is kept as written — a brief that quietly becomes a changelog
+stops being usable as either — so read the slices below as *what each one had to
+prove*, and `PROJECT_STATUS.md`'s dated entries for what came out of them.
+
+Two parts of it are still live rather than historical: § B's guardrails, which
+are the rules any later change to this code has to keep, and § D's "stop and
+ask" list, which is the set of commercial decisions the build deliberately did
+not make. Two of those are still unanswered and are now the oldest open items on
+the money side — exactly when commission counts as earned, and payment terms
+under the agency model.
+
+Everything below this line is as commissioned.
 
 ---
 

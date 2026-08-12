@@ -16,9 +16,11 @@ stale is worse than none, because the next session will trust it.
 > `Inquiry` → `Reservation` bridge, and taxes and fees. Two things this file recorded
 > as unbuilt are built: the pricing model it said blocked everything, and the
 > traveller-facing picker now reads the lodge's own calendar. On top of that sits the
-> work of 2026-08-12: time inside a day (departures), and both of the open bugs
-> `BOOKING_SYSTEM.md` had recorded. Sections 2 and 3 below carry the detail and the
-> dated corrections.
+> work of 2026-08-12: time inside a day (departures), both of the open bugs
+> `BOOKING_SYSTEM.md` had recorded, and **the whole money side** — all six slices of
+> `PAYMENTS_BUILD.md` plus a DPO Pay provider, a payments guide for staff in `/admin`,
+> and the three bugs a phone-width screenshot found afterwards. Sections 2 and 3 below
+> carry the detail and the dated corrections.
 
 ---
 
@@ -33,7 +35,7 @@ Three business lines now exist, and only the first has software behind it:
 |---|---|
 | **Travel platform** (namibway.com) | In production. Kaia interview → trip plan → booking requests. The flagship is the trip plan — see `TRAVEL_PLAN.md`. |
 | **Websites for Namibian businesses** | **Since 2026-08-12 a generated site is real and viewable** — content model, block library, one template, the public renderer and `sites:generate`. No editor, no customer live yet. Workstream B below. |
-| **Custom software / booking system** | Sold as a proposal to NWR. **Since 2026-08-12 the lodge-facing product exists** — a lodge can price, sell, block, check a guest in and read its morning board, and a tour operator can sell a seat on a departure. No partner is connected. Workstream A below. |
+| **Custom software / booking system** | Sold as a proposal to NWR. **Since 2026-08-12 the lodge-facing product exists** — a lodge can price, sell, block, check a guest in, read its morning board, take money against a stay and issue a numbered invoice, and a tour operator can sell a seat on a departure. No partner is connected and no merchant account exists, so the online payment flow runs on the demo provider. Workstream A below. |
 
 Marketing material for all three lives in `marketing/` and is downloadable from the
 admin panel under **Documentation → Marketing material**. `marketing/README.md`
@@ -106,6 +108,13 @@ build rather than a UI on top of what exists.
   pages (occupancy calendar, arrivals board, rates and availability, getting started).
   A lodge can price, block, take a walk-in, move a guest through the day, look a customer
   up by name or phone, and read its own morning board.
+- **There is a credit side now. Added 2026-08-12.** The bullets above were written when a
+  reservation carried only what a stay *owed*. It now also carries what has been paid
+  (`paid_amount`, `payment_status`, both stored as results), and `payments`, `invoices` and
+  `payment_intents` exist beside it. Two consequences for anything designed against the
+  older list: **money is written through `PaymentRecorder` only**, the same discipline as
+  `InventoryWriter`, and **who collects the money is derived from the deposit share**
+  rather than stored, so there is no settlement-model column to read.
 - **Connectors exist and none are validated.** `ResConnect`, `NightsBridge`, `HopeCloud`,
   `Nwr`, `Native`, `Wetu`, plus manual. Not one has run against a real partner account.
   `NwrConnector` is deliberately a concierge stub: NWR has no API, so availability always
@@ -693,6 +702,48 @@ pending payment is a state somebody can read rather than a dead end.
 NAD needs no conversion through DPO, so the currency-peg machinery is untouched by it — it
 exists for the Paystack-shaped case and is tested there.
 
+### 2026-08-12 — a payments guide, and the three bugs a screenshot found
+
+Two pieces of finishing work on the money side, both worth recording because of what
+they say about how this gets checked.
+
+**The guide.** `/admin` → Documentation → **Payments Guide** — one page written for the
+person operating the panel and for the person explaining it to a lodge owner, at the
+same time, because they ask the same questions in a different order and two pages would
+drift. It carries how money moves, the three models, who owns which rate, a numbered
+setup procedure that says who does each step and where, the gateway configuration that
+lives in no panel at all (`PAYMENTS_PROVIDER`, `DPO_COMPANY_TOKEN` and friends), the
+day-to-day actions at a desk, and the claims we may not make. `PaymentsGuideTest`
+asserts the *sentences*, not the layout — a page that renders and has quietly lost the
+line about VAT is worse than one that fails, because somebody reads what is left and
+answers a partner wrongly.
+
+**Then the panel was opened at 375 px, which is a step `PAYMENTS_BUILD.md` § E asks for
+and which found three real bugs that the whole test suite did not:**
+
+1. **Wide tables were cut off, silently.** Nothing overflowed, nothing scrolled sideways,
+   no element was missing — an ancestor clipped the right-hand columns. The stay drawer
+   lost the payment State and the Select button; the unpaid list lost **Outstanding**, the
+   one number that page exists for. It looked like a table with fewer columns. Every
+   `.nw-table` now sits in a `.nw-scroll`, which goes back to `visible` in print so the
+   arrivals board still prints whole.
+2. **A reversal reported a negative confirmed figure.** Reversals were written as cleared
+   whatever they undid — true of the correction, false of the money. A reversal now takes
+   the status of the row it reverses.
+3. **Every booking at a property with VAT claimed its price had been overridden.**
+   `priceWasOverridden()` compared the total against the quote, and those carry different
+   things. It now compares the stay against the quote less any discount, in cents.
+
+The lesson is the one § E already stated and this makes concrete: **a money screen that
+has only been asserted has not been checked.** All three were invisible to a test that
+reads the DOM, and two of them printed a wrong number to a lodge owner's face.
+
+A fourth thing came out of the same push: a long-standing CI flake, where factory-made
+region and city names relied on faker's per-test `unique()` memory to satisfy a
+database-wide constraint, while the two `DatabaseTruncation` suites commit rows that
+outlive that memory. Names are now unique by construction. It failed once every few
+weeks in a test about taxes, which is the worst kind of failure to debug.
+
 ### Parked on 2026-08-11 — and built on 2026-08-11 and 2026-08-12
 
 > **Superseded, kept for the reasoning.** Everything in this section was written as
@@ -815,20 +866,16 @@ What stands between here and that is no longer software of this kind:
    allotment or the manual concierge check — with other lodges taken on first. What that
    leaves to build is the allotment marker and its release deadline; see "Questions to
    answer before building" above.
-3. **Money owed** — designed 2026-08-12 in `PAYMENTS.md`, none of it built. Costing is
-   thorough and the reservation carries the entire debit side; there is no credit side at
-   all — no payment record, no invoice, no invoice number. Decided at the same time: we
-   offer three settlement models rather than picking one (partner collects and we invoice
-   commission; we collect everything and pay out net; deposit to us and the balance at the
-   property — the last is the default, because a deposit set at the commission means no
-   money has to move between us and the partner). Recording a payment is identical under
-   all three; only who collects differs. Also decided: the settlement model is not a
-   separate setting but is picked by the deposit share (0 % → agency, 100 % → merchant,
-   between → split); commission is ours to set and the deposit is the partner's, both
-   resolving listing → partner → platform setting → default; and NamibWay being a
-   Namibian company rules Stripe out entirely, so slice 5 builds a demo provider that
-   fully works and the real gateway is a later configuration step. `PAYMENTS_BUILD.md`
-   turns all of it into six slices with acceptance criteria.
+3. ~~**Money owed** — designed 2026-08-12 in `PAYMENTS.md`, none of it built.~~ **Built
+   2026-08-12**, all six slices of `PAYMENTS_BUILD.md` plus DPO — see the dated entries
+   below. The credit side exists: a folio on every stay, payments and reversals, gapless
+   invoice numbering, the two rates, the three settlement models and an online payment
+   flow behind a provider interface. What is left of this item is the part that cannot be
+   written without a bank: **payouts and partner statements** (step 6 of `PAYMENTS.md`
+   § 6) — the run that aggregates what `SettlementBalance` already computes per stay, the
+   statement a partner reads, and the record of a transfer having happened. Two commercial
+   answers are also still missing and are cheap to give: exactly when commission counts as
+   earned, and payment terms under the agency model.
 4. **Room-level assignment**, for a lodge that assigns real rooms rather than room types.
    Deliberately not modelled, and the first thing a real desk is likely to ask for.
 5. **The API as the system's second front door** — decided 2026-08-12, written up as
@@ -1166,10 +1213,21 @@ Nothing below is blocking today's work, but each one changes what gets built:
 6. ~~Websites: does the customer ever edit, or is it always us?~~ **Answered 2026-08-12**
    — both. Admin editor first, customer editor after; same fields, never two versions of
    a piece of content.
-7. **Websites: how is N$ 399/month actually collected in Namibia?** Still open, and now
-   the only one on this list that is. Stripe is out for this market, so a provider has to
-   be found; manual invoicing bridges the gap and the subscription state machine gets
-   built against it regardless. See §4.
-8. ~~Both: is the website builder allowed to read from `Listing`, or are the two kept
-   apart?~~ **Answered by the build** — a listing seeds a site once, by copying, and is
-   never read at render time.
+7. **Websites: how is N$ 399/month actually collected in Namibia?** **Half answered
+   2026-08-12.** The *provider* question is settled as far as code can settle it — DPO Pay
+   by Network operates in Namibia and settles in NAD, and `DpoProvider` is built and
+   configured by env. What is still open is the commercial half: a merchant account needs
+   NamibWay's Namibian entity, and a monthly N$ 399 is a **recurring** charge, which is a
+   different thing from the one-off payment the booking system takes — DPO's recurring
+   support has to be asked about rather than assumed. Manual invoicing still bridges the
+   gap and the subscription state machine gets built against it regardless. See §4.
+8. **Money: when is commission earned, exactly** — at confirmation, at the cancellation
+   deadline, or after check-in — and what does a no-show earn? Added 2026-08-12 from
+   `PAYMENTS_BUILD.md` § D. There is a sensible default in the code; the answer is
+   commercial and is one of the things a partner is told up front.
+9. **Money: payment terms under the agency model**, and what happens to a partner who does
+   not pay a commission invoice. The only technical lever is `Partner.booking_enabled`,
+   and pulling it is a business decision, not a feature.
+10. ~~Both: is the website builder allowed to read from `Listing`, or are the two kept
+    apart?~~ **Answered by the build** — a listing seeds a site once, by copying, and is
+    never read at render time.

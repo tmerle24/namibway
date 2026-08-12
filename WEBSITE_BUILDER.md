@@ -258,6 +258,23 @@ website layer on top.
 
 ### Payment boundary — parallel session
 
+> **Updated 2026-08-12 — that parallel session has landed.** The payment system is no
+> longer in motion: `app/Services/Payments` exists, `PAYMENTS.md` describes it, and the
+> guide staff read is **Documentation → Payments Guide** in `/admin`. So the sentences
+> below about "state in motion" no longer apply — read the real classes. What does still
+> apply is the boundary itself: **the website builder does not change payment code.** It
+> states what it needs and the money side provides it.
+>
+> Two things a builder session should know before writing that contract down. One-off
+> booking payments are built and go through `PaymentGateway` and a `PaymentProvider`
+> (`demo`, `dpo`, `paystack`); **recurring billing for the N$ 399 subscription is not** —
+> that is a genuinely new requirement on the money side, not a configuration of the
+> existing one, and DPO's recurring support is unverified. Second, every payment is
+> recorded against a **reservation folio** today. A website subscription has no
+> reservation, so either the ledger grows a second kind of thing to be paid or the
+> subscription is invoiced outside it — an open design question, and the first one the
+> contract has to answer.
+
 **The payment system is being worked on at the same time in another session. Payment code
 is neither written nor changed here.**
 

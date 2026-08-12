@@ -883,13 +883,20 @@ Naming these matters as much as the plan, because a disabled button is a claim:
 Channel synchronisation, iCal, room-level assignment (a reservation holds room
 types and quantities, never a named room), housekeeping, and tax reporting.
 
-**Folio and payments used to be on that list and came off it on 2026-08-12.** A
-booking system that cannot say whether a stay has been paid is not one, and this
-one cannot: the reservation carries the whole debit side (`total_amount`,
-`charges_amount`, `discount_amount`, `currency`) and there is no credit side at
-all — no payment record, no invoice, no invoice number. The design, including the
-three settlement models we offer partners rather than picking one, is
-`PAYMENTS.md`. Nothing of it is built.
+**Folio and payments used to be on that list, came off it on 2026-08-12, and were
+built the same day.** A booking system that cannot say whether a stay has been
+paid is not one, and this one could not: the reservation carried the whole debit
+side (`total_amount`, `charges_amount`, `discount_amount`, `currency`) and there
+was no credit side at all — no payment record, no invoice, no invoice number.
+There is now: a folio on every stay, payments in any method with reversals and
+refunds, gapless per-property invoice numbering with credit notes as the only
+correction, commission and deposit resolved per listing/partner/platform, the
+three settlement models, and an online payment flow behind a provider interface.
+The design is `PAYMENTS.md`; the rules that must survive a later change are in
+`CLAUDE.md` → "The money side". **What is still missing is payouts and partner
+statements** — the run that aggregates what is owed, the statement a partner
+reads, and the record of a transfer having happened. That one needs real money to
+have moved before it can be tested at all.
 
 Channel synchronisation deserves one word of precision, because §8 looks like it
 contradicts this line and does not: what is out of scope is *us* pushing rates
@@ -1030,9 +1037,12 @@ who is not a browser:
   section and it is genuinely open — worth deciding against a real counterparty's
   documentation rather than in the abstract.
 - **How commission and payment ride along.** A booking taken through a channel
-  has a different money path than one taken on namibway.com, and there is no
-  payments model in the codebase at all today. Named here only so it is not
-  discovered late.
+  has a different money path than one taken on namibway.com. **Updated
+  2026-08-12:** there is a payments model now, and it already answers half of
+  this — commission and deposit resolve per listing and partner, and who collects
+  is derived from the deposit share rather than stored. What it does not answer is
+  a *third* party in the chain: an outside seller taking its own margin is neither
+  us nor the property, and `SettlementBalance` knows about two sides only.
 
 `api.namibway.com` itself is server-side and outside the application — a DNS
 record at OVH (namibway.com's DNS is not at Cloudflare), a certificate, an nginx
