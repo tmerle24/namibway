@@ -85,58 +85,7 @@ class WebsiteTab
                     }),
 
                 Forms\Components\Actions::make([
-                    Action::make('edit_legal')
-                        ->label('Privacy, legal notice & copyright')
-                        ->icon('heroicon-o-scale')
-                        ->color('gray')
-                        ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null)
-                        ->modalDescription('These three belong to the business, not to us. We write the first '
-                            .'version so the site is publishable; correct anything that is wrong for them.')
-                        ->modalSubmitActionLabel('Save')
-                        ->fillForm(function (?Listing $record): array {
-                            $site = $record === null ? null : self::siteFor($record);
-
-                            if ($site === null) {
-                                return [];
-                            }
-
-                            return [
-                                'legal_copyright' => LegalText::copyright($site),
-                                'legal_privacy' => LegalText::privacy($site),
-                                'legal_imprint' => LegalText::imprint($site),
-                            ];
-                        })
-                        ->form([
-                            Forms\Components\TextInput::make('legal_copyright')
-                                ->label('Copyright line')
-                                ->helperText('Shown at the foot of every page after the year.')
-                                ->maxLength(255),
-
-                            Forms\Components\Textarea::make('legal_privacy')
-                                ->label('Privacy')
-                                ->helperText('Plain text. A blank line starts a new paragraph.')
-                                ->rows(12),
-
-                            Forms\Components\Textarea::make('legal_imprint')
-                                ->label('Legal notice')
-                                ->helperText('Who is behind the site, and who is responsible for what.')
-                                ->rows(12),
-                        ])
-                        ->action(function (?Listing $record, array $data): void {
-                            $site = $record === null ? null : self::siteFor($record);
-
-                            if ($site === null) {
-                                return;
-                            }
-
-                            $site->fill([
-                                'legal_copyright' => $data['legal_copyright'] ?? null,
-                                'legal_privacy' => $data['legal_privacy'] ?? null,
-                                'legal_imprint' => $data['legal_imprint'] ?? null,
-                            ])->save();
-
-                            Notification::make()->title('Saved')->success()->send();
-                        }),
+                    EditLegalTextAction::make(),
 
                     Action::make('build_website')
                         ->label(fn (?Listing $record): string => $record !== null && self::siteFor($record) !== null
