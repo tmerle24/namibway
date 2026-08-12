@@ -79,9 +79,10 @@ class WebsiteTab
 
                         return $site->terms_accepted_at === null
                             ? 'We have written the first version of Privacy, the legal notice and the copyright line. '
-                                .'The business confirms them — and accepts our website terms — when the site is published.'
+                                .'Send them to the business to confirm — the site publishes itself when they do.'
                             : 'Confirmed by '.($site->terms_accepted_by ?: 'the business')
-                                .' on '.$site->terms_accepted_at->format('j M Y').'.';
+                                .' on '.$site->terms_accepted_at->format('j M Y')
+                                .($site->terms_version ? ', against terms '.$site->terms_version : '').'.';
                     }),
 
                 Forms\Components\Actions::make([
@@ -102,6 +103,8 @@ class WebsiteTab
                     EditCustomDomainAction::make(),
 
                     EditLegalTextAction::make(),
+
+                    SendTermsConfirmationAction::make(),
 
                     Action::make('build_website')
                         ->label(fn (?Listing $record): string => $record !== null && self::siteFor($record) !== null

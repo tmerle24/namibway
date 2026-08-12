@@ -15,8 +15,10 @@ use App\Http\Controllers\PartnerApiGuideController;
 use App\Http\Controllers\PaymentCheckoutController;
 use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\SavedPlanController;
+use App\Http\Controllers\SiteTermsController;
 use App\Http\Controllers\ThumbnailController;
 use App\Http\Controllers\TripController;
+use App\Http\Controllers\WebsiteTermsController;
 use App\Http\Controllers\WorkbookDownloadController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -170,6 +172,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('dashboard/bookings/{inquiry}/decline', [DashboardBookingController::class, 'decline'])
         ->name('dashboard.bookings.decline');
 });
+
+/*
+| Our own terms for the website product, linked from the foot of every customer
+| site. A plain page rather than an Inertia one: those readers arrive from a
+| host that ships none of the travel platform.
+*/
+Route::get('website-terms', WebsiteTermsController::class)->name('website.terms');
+
+/*
+| The business confirming its own website, from a link in an email. Two routes
+| on one URI: a signature covers the address and not the method, so the page the
+| GET renders posts its form straight back to the address it was reached at. The
+| GET only shows — a mail client that prefetches links must not be able to
+| publish somebody's website by opening the message.
+*/
+Route::get('sites/{site}/confirm', [SiteTermsController::class, 'show'])
+    ->name('sites.terms.confirm')
+    ->middleware('signed');
+
+Route::post('sites/{site}/confirm', [SiteTermsController::class, 'confirm'])
+    ->name('sites.terms.confirm.send')
+    ->middleware('signed');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
