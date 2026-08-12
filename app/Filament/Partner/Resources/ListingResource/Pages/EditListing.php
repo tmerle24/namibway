@@ -14,6 +14,7 @@ use App\Filament\Support\EditPagesAction;
 use App\Filament\Support\EditSiteImagesAction;
 use App\Filament\Support\EditSiteLogoAction;
 use App\Filament\Support\EditTypographyAction;
+use App\Filament\Support\OrderWebsiteAction;
 use App\Filament\Support\ViewListingAction;
 use App\Models\Listing;
 use App\Services\Enrichment\OsmLocationFinder;
@@ -49,8 +50,10 @@ class EditListing extends EditRecord
         return $this->withFormActions([
             ViewListingAction::header(),
             // The link, but not the build button: that one is switched off for
-            // owners until the subscription exists, and a disabled button in a
-            // page header reads as broken rather than as forthcoming.
+            // owners until the subscription is active, and a disabled button in
+            // a page header reads as broken rather than as forthcoming. The
+            // order button is what an owner without one presses instead.
+            OrderWebsiteAction::header(),
             CreateWebsiteAction::visitHeader(),
             // The content, the opening screen, the logo and the legal pages:
             // all of it is the owner's, not ours, so the owner sets it here

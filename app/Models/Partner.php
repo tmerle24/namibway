@@ -7,6 +7,7 @@ use App\Enums\OperatingMode;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Spatie\Translatable\HasTranslations;
 
@@ -136,6 +137,32 @@ class Partner extends Model
         // has one — a wrong answer in the direction that looks like a bug
         // report from a customer.
         return ($this->operating_mode ?? OperatingMode::Full)->runsFrontDesk();
+    }
+
+    /**
+     * The subscription to the website product, where there is one.
+     *
+     * A partner subscribes, not a listing: the fee buys the business a website,
+     * and a partner with two lodges is one customer.
+     *
+     * @return HasOne<WebsiteSubscription, $this>
+     */
+    public function websiteSubscription(): HasOne
+    {
+        return $this->hasOne(WebsiteSubscription::class);
+    }
+
+    /**
+     * Whether this partner may have a website built.
+     *
+     * The one question the rest of the application asks about a subscription,
+     * and the one that must be asked *behind* a button and not only on it — a
+     * disabled control is what an owner should see and never what the platform
+     * relies on.
+     */
+    public function hasWebsiteEntitlement(): bool
+    {
+        return $this->websiteSubscription?->isEntitled() === true;
     }
 
     /**

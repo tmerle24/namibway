@@ -1360,13 +1360,49 @@ What is worth knowing later:
   in the same stylesheet, and at equal specificity the later rule wins — so the selector is
   deliberately `.nav .nav__cta`.
 
+### Built 2026-08-13 — the subscription, and a button to order one
+
+The create-website button in the partner panel had been switched off since the day it was
+written, with a tooltip saying to talk to us. That is a dead end on a screen: it tells
+somebody the product exists and gives them nothing to press. Now there is an **Order a
+website** button beside it, and the lock opens by itself when the subscription is active.
+
+- **An order is a request, not a purchase.** There is no payment provider for this market,
+  billing runs by invoice, and a person at NamibWay decides they are a customer. So ordering
+  creates a `requested` subscription, mails the team, and says plainly to the owner that
+  nothing has been charged.
+- **Four states and no more** (`SubscriptionStatus`): requested, active, suspended,
+  cancelled. Only *active* entitles anything. Suspending takes the entitlement away and
+  leaves the website exactly as it is — the content is theirs, and holding it hostage over
+  an invoice is not the product.
+- **Nothing in it names a price, a currency or a gateway**, and a test asserts that of the
+  columns. The price is a property of the offer and not of one customer; a column here would
+  be a per-customer price nobody decided to have, and the first discount typed into it
+  becomes a commitment nobody remembers making. Whatever a provider needs later is its own
+  table, keyed to this one.
+- **One subscription per partner**, as a unique index rather than as care: the fee buys the
+  business a website, a partner with two lodges is one customer, and a second row would make
+  "are they entitled?" a question with two answers. Ordering twice returns the same row.
+- **The check is behind the button as well as on it.** A partner reaches the build action
+  through a Livewire call from their own browser, and a disabled attribute is something the
+  browser was asked to render rather than something it can be held to. The admin is
+  deliberately not subject to it — we build drafts for prospects who have subscribed to
+  nothing, which is how the product is sold.
+- **`activated_at` is written once.** A subscription switched back on is the same customer,
+  and the date they became one does not move.
+
+Billing is still a person reading Settings → Website Subscriptions, invoicing the new ones
+and pressing Activate. That is the decision this was built against: the state machine now,
+the collection behind it once a provider for this market exists.
+
 ### Next up, in the order it was asked for
 
-- **The subscription gates the owner's button.** The create-website action exists in the
-  partner panel and is switched off (`CreateWebsiteAction::locked()`), because nothing
-  yet knows whether a customer is paying. When the state machine lands, the entitlement
-  check goes *behind* the action as well as on it — a greyed-out button is what an owner
-  should see, and not what the platform should rely on.
+- **Collecting the money.** A provider that onboards a Namibian entity and settles in NAD,
+  plugged in behind the subscription rather than into it. Until then a person invoices and
+  presses Activate, which is what the state machine was built to allow.
+- **Multilingual sites** — EN, DE, NL, FR, ES. `site_pages.locale` is the foundation and not
+  the feature: there is no switcher, no per-locale routing, and the renderer reads
+  `default_locale` and nothing else.
 
 ### Decided 2026-08-12 — the answers slice 2 builds against
 

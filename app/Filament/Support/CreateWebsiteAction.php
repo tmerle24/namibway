@@ -34,25 +34,36 @@ use Filament\Tables\Actions\Action;
 class CreateWebsiteAction
 {
     /**
-     * The owner's own copy of the button — visible, and switched off.
+     * The owner's own copy of the button — visible, and shut until they are a
+     * customer.
      *
      * Deliberately not hidden. The whole point of it being there is that the
      * owner sees a website is one click away; hiding it would sell nothing and
-     * explain nothing. What holds it shut is the subscription, which does not
-     * exist yet — there is no provider for this market and billing runs by
-     * invoice in the meantime.
+     * explain nothing. What holds it shut is the subscription: it was shut for
+     * everybody while none existed, and since 2026-08-13 it opens for a partner
+     * whose subscription is active.
      *
-     * **This is a lock on a door, not a wall.** When the subscription state
-     * machine lands, the entitlement check belongs behind the action as well as
-     * on it — a disabled button is the right thing for an owner to see, and the
-     * wrong thing to rely on.
+     * **This is a lock on a door, not a wall.** The same question is asked
+     * again inside the action (see configureCreate) — a disabled button is the
+     * right thing for an owner to see and the wrong thing to rely on, since a
+     * Livewire call arrives from the browser and the browser is not ours.
      */
     public static function locked(string $name = 'create_website'): Action
     {
         return self::make($name)
-            ->disabled()
-            ->color('gray')
-            ->tooltip('Included once your website subscription starts — talk to us and we switch it on.');
+            ->disabled(fn (Listing $record): bool => ! self::entitled($record))
+            ->color(fn (Listing $record): string => self::entitled($record)
+                ? (self::siteFor($record) === null ? 'success' : 'gray')
+                : 'gray')
+            ->tooltip(fn (Listing $record): ?string => self::entitled($record)
+                ? null
+                : 'Included once your website subscription starts. Order one above and we invoice you.');
+    }
+
+    /** Whether this listing's business may have a website built. */
+    private static function entitled(Listing $listing): bool
+    {
+        return $listing->partner?->hasWebsiteEntitlement() === true;
     }
 
     /**
@@ -161,6 +172,25 @@ class CreateWebsiteAction
                 ? 'Build it'
                 : 'Refresh it')
             ->action(function (Listing $record): void {
+                // The lock again, behind the door this time. A partner reaches
+                // this through a Livewire call from their own browser, and a
+                // disabled attribute is a thing the browser was asked to
+                // render, not a thing it can be held to. The admin is not
+                // subject to it: we build drafts for prospects who have
+                // subscribed to nothing, which is how the product is sold.
+                $user = auth()->user();
+
+                if ($user?->partner_id !== null && ! self::entitled($record)) {
+                    Notification::make()
+                        ->title('Not built')
+                        ->body('A website comes with the subscription. Order one and we will invoice you.')
+                        ->danger()
+                        ->persistent()
+                        ->send();
+
+                    return;
+                }
+
                 // auth()->id() is int|string|null — string for anything keyed by
                 // UUID, which this application is not, but the signature does
                 // not know that.
