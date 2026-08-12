@@ -6,17 +6,20 @@ use App\Models\Listing;
 use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Models\SitePage;
+use App\Sites\ActionButtons;
 use App\Sites\Blocks\EnquiryBlock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Book, call, WhatsApp — the three things a visitor is ever asked to do.
+ * The action buttons: enquire, WhatsApp, call, and one the business writes
+ * itself — each placed in the menu bar, the opening screen or the strip at the
+ * foot of the screen, separately for a phone and for a desktop.
  *
- * What has to hold: the booking button is not a menu item hidden behind a
- * burger on the surface most visitors arrive on; the phone-sized layout offers
- * all three where a thumb already is; and each one is switchable off, on by
- * default, without taking the business's contact details off the page with it.
+ * What has to hold: the defaults are the ones that were asked for, a placement
+ * for something that does not exist never renders a broken button, a button
+ * meant for one screen carries the class that hides it on the other, and the
+ * strip makes room for itself exactly where it is shown.
  */
 class SiteActionButtonsTest extends TestCase
 {
@@ -49,6 +52,11 @@ class SiteActionButtonsTest extends TestCase
         return $site;
     }
 
+    /**
+     * Hero, about, contact — the shape of nearly every generated site: no
+     * booking band (that needs sellable inventory) and no enquiry form (that
+     * needs a listing).
+     */
     private function lodge(array $attributes = []): Site
     {
         return $this->siteWith([
@@ -60,14 +68,13 @@ class SiteActionButtonsTest extends TestCase
 
     /**
      * The same lodge with somewhere for an enquiry to go. The form renders only
-     * where we hold a listing — an `Inquiry` belongs to one — so this is what a
-     * site with a real primary action looks like.
+     * where we hold a listing — an `Inquiry` belongs to one.
      */
-    private function lodgeTakingEnquiries(): Site
+    private function lodgeTakingEnquiries(array $attributes = []): Site
     {
         $listing = Listing::factory()->create(['accepts_inquiries' => true]);
 
-        $site = $this->lodge(['source_listing_id' => $listing->id]);
+        $site = $this->lodge($attributes + ['source_listing_id' => $listing->id]);
 
         SiteBlock::create([
             'site_page_id' => (int) $site->pages()->value('id'),
@@ -101,77 +108,84 @@ class SiteActionButtonsTest extends TestCase
         return $this->markup($html);
     }
 
-    /**
-     * Just the strip at the foot of the page — it holds anchors and nothing
-     * else, so the first closing div is its own.
-     */
+    /** Just the strip at the foot of the page — it holds anchors and nothing else. */
     private function actionBar(string $markup): string
     {
-        $start = strpos($markup, '<div class="bar">');
+        $start = strpos($markup, '<div class="bar ');
+
+        return $start === false ? '' : substr($markup, $start, (int) strpos($markup, '</div>', $start) - $start);
+    }
+
+    private function hero(string $markup): string
+    {
+        $start = strpos($markup, 'hero__cta');
 
         return $start === false ? '' : substr($markup, $start, (int) strpos($markup, '</div>', $start) - $start);
     }
 
     /**
-     * The regression this was built for: booking was the last link in the menu,
-     * so on a phone the one thing the site exists to do was behind a burger.
+     * The defaults, in one test, because they are the product decision this
+     * whole thing exists to express: enquiry under the headline on a desktop
+     * and at the foot of the screen on a phone, WhatsApp and the telephone at
+     * the foot of a phone screen, the business's own button on the opening
+     * screen everywhere, and nothing at all in the menu.
      */
-    public function test_the_booking_button_is_a_button_in_the_bar_not_a_menu_item(): void
+    public function test_the_defaults_are_the_ones_that_were_asked_for(): void
     {
-        $markup = $this->fetch($this->lodge());
+        $buttons = ActionButtons::for(Site::factory()->make());
 
-        $this->assertStringContainsString('class="btn nav__cta"', $markup);
+        $this->assertSame('desktop', $buttons->visibility('enquiry', 'hero'));
+        $this->assertSame('phone', $buttons->visibility('enquiry', 'footer'));
+        $this->assertNull($buttons->visibility('enquiry', 'menu'));
 
-        // In the bar itself, ahead of the burger — not inside the panel the
-        // burger opens, which is where it used to be hiding.
-        $panel = substr($markup, (int) strpos($markup, 'id="nav-panel"'));
+        $this->assertSame('phone', $buttons->visibility('whatsapp', 'footer'));
+        $this->assertNull($buttons->visibility('whatsapp', 'hero'));
 
-        $this->assertMatchesRegularExpression('/nav__cta.*?<button class="nav__burger"/s', $markup);
-        $this->assertStringNotContainsString('nav__cta', $panel);
+        $this->assertSame('phone', $buttons->visibility('call', 'footer'));
+
+        $this->assertSame('both', $buttons->visibility('custom', 'hero'));
+        $this->assertNull($buttons->visibility('custom', 'footer'));
+
+        foreach (ActionButtons::ACTIONS as $action) {
+            $this->assertNull($buttons->visibility($action, 'menu'), $action.' should not be in the menu');
+        }
     }
 
-    /**
-     * Most sites have no booking block — it renders only where the property has
-     * sellable inventory with us. The button still has somewhere to go.
-     */
-    public function test_the_primary_action_falls_back_from_booking_to_the_contact_section(): void
+    public function test_the_menu_carries_no_button_until_somebody_asks_for_one(): void
     {
-        $site = $this->lodge();
+        $markup = $this->fetch($this->lodgeTakingEnquiries());
 
-        // Blocks: about is s1, contact is s2. No booking, no enquiry.
-        $this->get($site->publicUrl())->assertOk()->assertSee('href="#s2"', false);
+        $this->assertStringNotContainsString('nav__cta', $markup);
     }
 
-    public function test_the_hero_offers_the_action_and_whatsapp_without_anybody_typing_one_in(): void
+    public function test_a_button_placed_in_the_menu_appears_there_on_the_screen_it_was_placed_on(): void
     {
-        $markup = $this->fetch($this->lodge());
+        $site = $this->lodgeTakingEnquiries();
+        $site->update(['action_buttons' => ['enquiry' => ['places' => ['menu.desktop']]]]);
 
-        // Generation leaves cta_label/cta_href empty, so before this the first
-        // screen had no button at all.
-        $this->assertMatchesRegularExpression('/hero__cta.*?class="btn"/s', $markup);
-        $this->assertStringContainsString('https://wa.me/264810000000', $markup);
-        $this->assertStringContainsString('btn btn--light', $markup);
+        $markup = $this->fetch($site);
+        $header = substr($markup, 0, (int) strpos($markup, '</header>'));
+
+        $this->assertStringContainsString('nav__cta', $header);
+        // The class that hides it on a phone — the page is rendered once and
+        // the stylesheet decides, since the server cannot know the screen.
+        $this->assertMatchesRegularExpression('/nav__cta[^"]*at-desktop/', $header);
     }
 
-    public function test_a_hero_cta_the_owner_typed_wins_over_the_derived_one(): void
+    public function test_the_opening_screen_leads_with_enquire_on_a_desktop_and_the_custom_button_on_both(): void
     {
-        $site = $this->siteWith([
-            'hero' => [
-                'headline' => 'Where the desert begins',
-                'cta_label' => 'See the rooms',
-                'cta_href' => 'https://example.com/rooms',
-            ],
-            'about' => ['heading' => 'About us', 'body' => 'Words.'],
-            'contact' => ['heading' => 'Find us'],
-        ]);
+        $hero = $this->hero($this->fetch($this->lodgeTakingEnquiries()));
 
-        $this->get($site->publicUrl())
-            ->assertOk()
-            ->assertSee('See the rooms')
-            ->assertSee('https://example.com/rooms', false);
+        // Enquire: desktop only, and the filled button wherever it appears.
+        $this->assertMatchesRegularExpression('/class="btn\s+at-desktop"[^>]*>\s*Ask us/s', $hero);
+        // The business's own button, defaulting to the About band, on both.
+        $this->assertMatchesRegularExpression('/btn--light[^"]*"\s+href="#s1"/', $hero);
+        $this->assertStringContainsString('About us', $hero);
+        // WhatsApp is not on the opening screen by default.
+        $this->assertStringNotContainsString('wa.me', $hero);
     }
 
-    public function test_the_action_bar_carries_all_three_and_makes_room_for_itself(): void
+    public function test_the_strip_carries_call_whatsapp_and_enquire_on_a_phone(): void
     {
         $markup = $this->fetch($this->lodgeTakingEnquiries());
         $bar = $this->actionBar($markup);
@@ -179,105 +193,201 @@ class SiteActionButtonsTest extends TestCase
         $this->assertStringContainsString('href="tel:+26464400000"', $bar);
         $this->assertStringContainsString('https://wa.me/264810000000', $bar);
         $this->assertStringContainsString('bar__item--primary', $bar);
-        // Fixed to the bottom of the screen, so the last thing on the page
-        // needs the height taking out of the flow — the spacer, not padding on
-        // the body, so the two can never exist without each other.
-        $this->assertStringContainsString('<div class="bar__spacer" aria-hidden="true"></div>', $markup);
+
+        // The strip itself is a phone thing by default, so both it and the
+        // space it takes out of the flow are hidden on a desktop.
+        $this->assertStringContainsString('<div class="bar at-phone">', $markup);
+        $this->assertStringContainsString('<div class="bar__spacer at-phone" aria-hidden="true"></div>', $markup);
+    }
+
+    public function test_a_strip_placed_on_a_desktop_too_is_shown_on_both(): void
+    {
+        $site = $this->lodgeTakingEnquiries();
+        $site->update(['action_buttons' => [
+            'call' => ['places' => ['footer.phone', 'footer.desktop']],
+            'enquiry' => ['places' => ['footer.phone']],
+        ]]);
+
+        $markup = $this->fetch($site);
+
+        // The strip is on every screen because one of its buttons is; the
+        // buttons themselves still say which screen they are for.
+        $this->assertStringContainsString('<div class="bar ">', $markup);
+        $this->assertMatchesRegularExpression('/bar__item[^"]*"\s+href="tel:/', $markup);
+        $this->assertMatchesRegularExpression('/bar__item--primary\s+at-phone/', $markup);
+    }
+
+    public function test_a_site_that_placed_nothing_at_the_foot_gets_no_strip(): void
+    {
+        $site = $this->lodge();
+        $site->update(['action_buttons' => [
+            'enquiry' => ['places' => ['hero.desktop']],
+            'whatsapp' => ['places' => []],
+            'call' => ['places' => []],
+            'custom' => ['places' => ['hero.phone', 'hero.desktop']],
+        ]]);
+
+        $markup = $this->fetch($site);
+
+        $this->assertStringNotContainsString('<div class="bar ', $markup);
+        $this->assertStringNotContainsString('bar__spacer', $markup);
     }
 
     /**
-     * A third button meaning "the same two things, further down the page" is
-     * noise on the surface with least room for it. The bar at the top and the
-     * hero still offer it — there it is the only action on the screen.
+     * A button that opens WhatsApp on nobody is worse than no button, and that
+     * must not depend on somebody remembering to switch it off.
      */
-    public function test_a_contact_only_primary_stays_out_of_the_strip_beside_call_and_whatsapp(): void
+    public function test_a_placement_for_something_that_does_not_exist_renders_nothing(): void
     {
-        $markup = $this->fetch($this->lodge());
+        $site = $this->lodge(['whatsapp' => null, 'contact_phone' => null]);
+        $site->update(['action_buttons' => [
+            'whatsapp' => ['places' => ['hero.phone', 'hero.desktop', 'footer.phone']],
+            'call' => ['places' => ['footer.phone']],
+        ]]);
 
-        $this->assertStringNotContainsString('bar__item--primary', $this->actionBar($markup));
-        $this->assertStringContainsString('class="btn nav__cta"', $markup);
-        $this->assertMatchesRegularExpression('/hero__cta.*?>Contact</s', $markup);
+        $markup = $this->fetch($site);
+
+        $this->assertStringNotContainsString('wa.me', $markup);
+        $this->assertStringNotContainsString('href="tel:', $markup);
     }
 
-    public function test_a_contact_only_primary_is_in_the_strip_when_it_is_the_only_action(): void
+    public function test_the_enquiry_button_falls_back_to_the_contact_band_and_is_labelled_for_a_button(): void
     {
-        $markup = $this->fetch($this->lodge(['contact_phone' => null, 'whatsapp' => null]));
+        // No booking band and no enquiry form: the contact band is what is
+        // left, and "Find us" on a button reads as directions.
+        $hero = $this->hero($this->fetch($this->lodge()));
 
-        $this->assertStringContainsString('bar__item--primary', $this->actionBar($markup));
+        $this->assertStringNotContainsString('Find us', $hero);
     }
 
-    public function test_a_site_with_no_number_and_nothing_to_book_gets_no_action_bar(): void
+    public function test_a_label_the_business_wrote_wins_over_the_derived_one(): void
     {
-        $site = $this->siteWith([
-            'hero' => ['headline' => 'Dune Edge Lodge'],
-        ], ['contact_phone' => null, 'whatsapp' => null]);
+        $site = $this->lodgeTakingEnquiries();
+        $site->update(['action_buttons' => [
+            'enquiry' => ['places' => ['hero.phone', 'hero.desktop'], 'label' => 'Book a hunt'],
+        ]]);
 
-        $this->assertStringNotContainsString('<div class="bar">', $this->fetch($site));
+        $this->assertStringContainsString('Book a hunt', $this->hero($this->fetch($site)));
     }
 
-    public function test_every_button_is_on_by_default(): void
+    public function test_the_custom_button_takes_a_label_and_a_link_of_its_own(): void
     {
-        $site = Site::factory()->create();
+        $site = $this->lodge();
+        $site->update(['action_buttons' => [
+            'custom' => ['places' => ['hero.phone', 'hero.desktop'], 'label' => 'The lodge', 'href' => 'https://example.com/lodge'],
+        ]]);
 
-        $this->assertTrue($site->show_book_button);
-        $this->assertTrue($site->show_call_button);
-        $this->assertTrue($site->show_whatsapp_button);
+        $hero = $this->hero($this->fetch($site));
+
+        $this->assertStringContainsString('The lodge', $hero);
+        $this->assertStringContainsString('https://example.com/lodge', $hero);
+        // It leaves the site, so it opens in its own tab and does not hand the
+        // referrer a window handle.
+        $this->assertStringContainsString('rel="noopener"', $hero);
     }
 
-    public function test_switching_the_call_button_off_keeps_the_number_on_the_page(): void
+    /**
+     * `javascript:` and `data:` both run in the page's own origin, on a domain
+     * we host under our own certificate. The custom button is the one field
+     * where a typed string could become code.
+     */
+    public function test_a_custom_link_that_could_run_code_is_refused(): void
     {
-        $markup = $this->fetch($this->lodge(['show_call_button' => false]));
+        $site = $this->lodge();
+        $site->update(['action_buttons' => [
+            'custom' => ['places' => ['hero.desktop'], 'href' => 'javascript:alert(1)'],
+        ]]);
 
-        $this->assertStringNotContainsString('href="tel:', $this->actionBar($markup));
-        // The contact section still lists it, and still dials. Switching a
-        // button off is a decision about buttons, not about publishing a
-        // number.
-        $this->assertStringContainsString('+264 64 400 000', $markup);
-        $this->assertStringContainsString('href="tel:+26464400000"', $markup);
+        $markup = $this->fetch($site);
+
+        $this->assertStringNotContainsString('javascript:', $markup);
     }
 
-    public function test_switching_the_whatsapp_button_off_takes_it_off_the_hero_and_the_contact_section(): void
-    {
-        $markup = $this->fetch($this->lodge(['show_whatsapp_button' => false]));
-
-        $this->assertStringNotContainsString('btn btn--light', $markup);
-        $this->assertStringNotContainsString('Message us on WhatsApp', $markup);
-        $this->assertStringNotContainsString('wa.me', $this->actionBar($markup));
-        // The number itself stays, as a contact detail.
-        $this->assertStringContainsString('+264 81 000 0000', $markup);
-    }
-
-    public function test_switching_the_booking_button_off_removes_it_everywhere_at_once(): void
-    {
-        $markup = $this->fetch($this->lodge(['show_book_button' => false]));
-
-        $this->assertStringNotContainsString('nav__cta', $markup);
-        $this->assertStringNotContainsString('bar__item--primary', $markup);
-        // The other two are untouched, and the strip is still there for them.
-        $this->assertStringContainsString('<div class="bar">', $markup);
-    }
-
-    public function test_a_booking_heading_too_long_for_a_button_falls_back_to_a_short_label(): void
+    public function test_a_site_with_no_about_band_and_no_link_has_no_custom_button(): void
     {
         $site = $this->siteWith([
             'hero' => ['headline' => 'Where the desert begins'],
-            'enquiry' => ['heading' => 'Request availability', 'mode' => 'stay'],
+            'contact' => ['heading' => 'Find us'],
         ]);
 
-        // The enquiry block renders only for a site built from a listing, so
-        // the label is asserted on the partial rather than through the page.
-        $page = $site->pages()->first();
+        $this->assertStringNotContainsString('About us', $this->fetch($site));
+    }
 
-        $html = view('sites.partials.nav', [
-            'site' => $site,
-            'page' => $page,
-            'blocks' => $page->renderableBlocks()->get(),
-            'hasHero' => true,
-        ])->render();
+    /** Unknown places are dropped rather than carried into the renderer. */
+    public function test_a_placement_that_is_not_a_place_is_thrown_away(): void
+    {
+        $config = ActionButtons::normalise([
+            'enquiry' => ['places' => ['footer.tablet', 'hero.desktop', 'nonsense']],
+            'nonsense' => ['places' => ['hero.phone']],
+        ]);
 
-        // The section's own heading stays what the owner wrote — it is the
-        // button that cannot be a sentence.
-        $this->assertStringContainsString('class="btn nav__cta" href="#s1">Enquire</a>', $html);
-        $this->assertStringContainsString('>Request availability</a>', $html);
+        $this->assertSame(['hero.desktop'], $config['enquiry']['places']);
+        $this->assertArrayNotHasKey('nonsense', $config);
+        // An action the payload does not mention keeps its default rather than
+        // silently losing its buttons.
+        $this->assertSame(['footer.phone'], $config['call']['places']);
+    }
+
+    public function test_the_headline_breaks_where_the_business_broke_it(): void
+    {
+        $site = $this->siteWith([
+            'hero' => ['headline' => "Worth getting\nup for"],
+        ]);
+
+        $markup = $this->fetch($site);
+
+        $this->assertStringContainsString("Worth getting<br />\nup for", $markup);
+    }
+
+    public function test_the_bar_shows_the_short_name_where_there_is_one_and_breaks_where_it_says(): void
+    {
+        $site = $this->lodge();
+        $site->update([
+            'name' => 'Ongombo West #56 Hunting Safari',
+            'brand_name' => "Ongombo West #56\nHunting Safari",
+        ]);
+        $site->pages()->update(['title' => null]);
+
+        $markup = $this->fetch($site);
+
+        $this->assertStringContainsString("Ongombo West #56<br />\nHunting Safari", $markup);
+        // The full name is still what the page is called: a line break belongs
+        // in the bar and nowhere else.
+        $this->assertStringContainsString('<title>Ongombo West #56 Hunting Safari</title>', $markup);
+    }
+
+    /**
+     * The size is worked out from the longest line, not the whole string —
+     * which is the point of being able to break it by hand.
+     */
+    public function test_a_hand_broken_name_is_set_at_the_size_its_longest_line_needs(): void
+    {
+        $site = $this->lodge();
+        $site->update(['name' => 'Ongombo West #56 Hunting Safari']);
+
+        $this->get($site->publicUrl())->assertSee('--brand-size: 17px', false);
+
+        $site->update(['brand_name' => "Ongombo West #56\nHunting Safari"]);
+
+        $this->get($site->publicUrl())->assertSee('--brand-size: 20px', false);
+    }
+
+    /**
+     * And held down to what two lines can be. The bar leaves a name 48px, which
+     * at a line height of 1.2 is 20px a line — a hand-broken name is short
+     * enough for the steps above to ask for 22px, and two lines of that are
+     * 53px, which the bar clips. Found by measuring, the moment the first
+     * hand-broken name went in.
+     */
+    public function test_a_hand_broken_name_is_never_set_too_large_for_two_lines(): void
+    {
+        $site = $this->lodge();
+        $site->update(['name' => 'Dune Edge', 'brand_name' => null]);
+
+        $this->get($site->publicUrl())->assertSee('--brand-size: 22px; } }', false);
+
+        $site->update(['brand_name' => "Dune\nEdge"]);
+
+        $this->get($site->publicUrl())->assertSee('--brand-size: 20px; } }', false);
     }
 }

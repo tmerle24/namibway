@@ -39,12 +39,14 @@
                 @endif
             </div>
 
-            {{-- The button follows the site's switch; the line above it does
-                 not. Switching the WhatsApp button off is a decision about
-                 buttons, not about whether the number is published. --}}
-            @if ($actions->whatsapp)
+            {{-- Not one of the placed action buttons: those are the menu, the
+                 opening screen and the strip at the foot of the page. This is
+                 the contact band doing its own job, and a contact band that
+                 lists a WhatsApp number without offering to open it is asking
+                 somebody to copy a phone number by hand. --}}
+            @if ($whatsapp)
                 <p style="margin-top: var(--s5)">
-                    <a class="btn" href="{{ $actions->whatsapp }}" target="_blank" rel="noopener">Message us on WhatsApp</a>
+                    <a class="btn" href="{{ $whatsapp }}" target="_blank" rel="noopener">Message us on WhatsApp</a>
                 </p>
             @endif
         </div>

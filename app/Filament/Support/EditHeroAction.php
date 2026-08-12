@@ -73,11 +73,12 @@ class EditHeroAction
                 ];
             })
             ->form([
-                Forms\Components\TextInput::make('headline')
+                Forms\Components\Textarea::make('headline')
                     ->label('Headline')
+                    ->rows(2)
                     ->helperText('Set in the largest type on the page. Deliberately not the business\'s '
                         .'name — that is already in the bar above it, and saying it twice on one screen '
-                        .'reads as a fault.')
+                        .'reads as a fault. Press Enter to break the line where you want it broken.')
                     ->maxLength(120)
                     ->required(),
 
