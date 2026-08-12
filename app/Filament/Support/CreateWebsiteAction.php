@@ -161,7 +161,12 @@ class CreateWebsiteAction
                 ? 'Build it'
                 : 'Refresh it')
             ->action(function (Listing $record): void {
-                GenerateSiteJob::dispatch($record, auth()->id());
+                // auth()->id() is int|string|null — string for anything keyed by
+                // UUID, which this application is not, but the signature does
+                // not know that.
+                $userId = auth()->id();
+
+                GenerateSiteJob::dispatch($record, is_numeric($userId) ? (int) $userId : null);
 
                 Notification::make()
                     ->title('Building the website')
