@@ -1,0 +1,131 @@
+<?php
+
+namespace Tests\Feature\Sites;
+
+use App\Models\Site;
+use App\Models\SiteBlock;
+use App\Models\SitePage;
+use App\Sites\HighlightIcon;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+/**
+ * The line marks above the highlights.
+ *
+ * Highlights are short phrases — a lodge's own, or its amenity list — and they
+ * render as a column of headings that reads as a list of tags. A mark above
+ * each one turns that into a feature of the page, but only under two rules:
+ * nothing is drawn when nothing is recognised, and the marks are all-or-nothing
+ * across the column.
+ */
+class HighlightIconTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_it_recognises_the_phrases_these_businesses_actually_use(): void
+    {
+        $expected = [
+            'Wi-Fi in every room' => 'wifi',
+            'Swimming pool' => 'pool',
+            'Air conditioning' => 'snowflake',
+            'A/C' => 'snowflake',
+            'Airport transfer' => 'car',
+            'Guided dune walks' => 'boot',
+            'Dinner cooked on the coals' => 'restaurant',
+            'Game drives' => 'jeep',
+            '4x4 self-drive' => 'jeep',
+            'Braai facilities' => 'fire',
+            'Sundowners at the waterhole' => 'bar',
+            'Stargazing' => 'star',
+            'Family rooms' => 'family',
+            'Credit cards accepted' => 'card',
+        ];
+
+        foreach ($expected as $phrase => $icon) {
+            $this->assertSame($icon, HighlightIcon::for($phrase), $phrase);
+        }
+    }
+
+    /**
+     * A generic mark beside "Trophy hunting" says nothing and costs the whole
+     * set its credibility, so nothing is the answer.
+     */
+    public function test_an_unrecognised_phrase_gets_no_mark(): void
+    {
+        $this->assertNull(HighlightIcon::for('Trophy hunting'));
+        $this->assertNull(HighlightIcon::for('Something nobody else offers'));
+    }
+
+    /**
+     * The reason every pattern is anchored on word boundaries.
+     */
+    public function test_a_word_inside_another_word_is_not_a_match(): void
+    {
+        $this->assertNotSame('bar', HighlightIcon::for('Harbour views'));
+        $this->assertNull(HighlightIcon::for('Space for events'));
+    }
+
+    public function test_the_marks_are_all_or_nothing_across_a_column(): void
+    {
+        $this->assertTrue(HighlightIcon::worthDrawing([
+            'Wi-Fi', 'Swimming pool', 'Restaurant', 'Airport transfer',
+        ]));
+
+        $this->assertFalse(HighlightIcon::worthDrawing([
+            'Trophy hunting', 'Space for events', 'Something else', 'Wi-Fi',
+        ]));
+
+        $this->assertFalse(HighlightIcon::worthDrawing([]));
+    }
+
+    /**
+     * A key the matcher can return with no `@case` to draw it is an empty
+     * `<svg>` on somebody's page.
+     */
+    public function test_every_mark_the_matcher_can_choose_can_be_drawn(): void
+    {
+        $partial = file_get_contents(resource_path('views/sites/partials/icon.blade.php'));
+
+        $this->assertIsString($partial);
+
+        foreach (HighlightIcon::keys() as $key) {
+            $this->assertStringContainsString('@case(\''.$key.'\')', $partial, $key.' has no drawing');
+        }
+    }
+
+    public function test_a_recognised_column_is_drawn_and_an_unrecognised_one_is_not(): void
+    {
+        $drawn = $this->siteWithHighlights('drawn', [
+            'Wi-Fi', 'Swimming pool', 'Guided dune walks', 'Braai facilities',
+        ]);
+
+        $this->get($drawn->publicUrl())->assertSee('class="card__icon"', false);
+
+        $bare = $this->siteWithHighlights('bare', [
+            'Trophy hunting', 'Space for events', 'Something else', 'And another',
+        ]);
+
+        $this->get($bare->publicUrl())->assertDontSee('class="card__icon"', false);
+    }
+
+    /**
+     * @param  array<int, string>  $titles
+     */
+    private function siteWithHighlights(string $slug, array $titles): Site
+    {
+        $site = Site::factory()->create(['slug' => $slug]);
+        $page = SitePage::factory()->create(['site_id' => $site->id, 'title' => $site->name]);
+
+        SiteBlock::create([
+            'site_page_id' => $page->id,
+            'type' => 'highlights',
+            'data' => [
+                'heading' => 'What we offer',
+                'items' => array_map(fn (string $title): array => ['title' => $title, 'text' => null], $titles),
+            ],
+            'sort' => 0,
+        ]);
+
+        return $site;
+    }
+}

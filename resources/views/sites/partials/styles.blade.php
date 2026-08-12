@@ -310,6 +310,14 @@
     @media (min-width: 980px) { .cards--3 { grid-template-columns: repeat(3, 1fr); } }
     .card { border-top: 1px solid var(--bone); padding-top: var(--s4); }
     .card p { margin: 0; color: var(--slate); font-size: 16px; }
+    /* The one place the accent carries a shape rather than a line. Single
+       colour on purpose: a set of line marks in the site's own accent reads as
+       part of the design, and the same set in filled colour reads as a stock
+       icon pack somebody dropped in. */
+    .card__icon { color: var(--accent); margin-bottom: var(--s3); height: 24px; }
+    /* The gap a card gets when its own phrase matched nothing, so one unlit
+       card in a lit row keeps its heading on the same line as the others. */
+    .card__icon--none { visibility: hidden; }
 
     /* ---- Gallery ------------------------------------------------------ */
 
