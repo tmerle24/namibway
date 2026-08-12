@@ -20,7 +20,7 @@ DATE=$(date +%Y-%m-%d)
 TMPFILE=$(mktemp /tmp/namibway_backup_XXXXXX.sql.gz)
 
 env_get() {
-    grep -m1 "^${1}=" "$ENV_FILE" | cut -d= -f2- | tr -d '"' | tr -d "'"
+    grep -m1 "^${1}=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'" || true
 }
 
 DB_HOST=$(env_get DB_HOST);     DB_HOST=${DB_HOST:-127.0.0.1}

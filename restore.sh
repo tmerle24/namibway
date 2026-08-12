@@ -13,7 +13,7 @@ ENV_FILE="$APP_DIR/.env"
 PREFIX="namibway/db"
 
 env_get() {
-    grep -m1 "^${1}=" "$ENV_FILE" | cut -d= -f2- | tr -d '"' | tr -d "'"
+    grep -m1 "^${1}=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'" || true
 }
 
 DB_HOST=$(env_get DB_HOST);     DB_HOST=${DB_HOST:-127.0.0.1}
