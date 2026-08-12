@@ -598,149 +598,164 @@ class ListingResource extends Resource
                         $livewire->redirect(WorkbookDownload::link($path, 'listings-template.xlsx'));
                     }),
             ])
+            // Grouped, and the grouping is the point. Four of the actions below
+            // appear only for some listings — an owner link needs a partner, the
+            // Wetu import needs a Wetu connector — so rendering them inline gave
+            // each row a different number of icons and moved every column after
+            // them. A table whose columns do not line up costs a moment on every
+            // single row. The group is one cell wide whatever is inside it.
+            //
+            // Edit and the website buttons stay outside it: those are the ones
+            // used often enough that a second click would be felt, and all three
+            // are now present on every row.
             ->actions([
                 Tables\Actions\EditAction::make(),
                 CreateWebsiteAction::make(),
                 CreateWebsiteAction::visit(),
-                Tables\Actions\Action::make('view_frontend')
-                    ->label('')
-                    ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->color('gray')
-                    ->tooltip(fn (Listing $record): string => $record->is_published
-                        ? 'View on namibway.com'
-                        : 'Preview draft on namibway.com (not published yet — visible to admins only)')
-                    ->url(fn (Listing $record): string => route('listings.show', $record->slug))
-                    ->openUrlInNewTab(),
-                Tables\Actions\Action::make('copy_owner_link')
-                    ->label('')
-                    ->icon('heroicon-o-clipboard-document')
-                    ->color('gray')
-                    ->tooltip('Copy the owner preview/edit/publish link (same one the claim-invite email sends)')
-                    ->visible(fn (Listing $record): bool => $record->partner !== null)
-                    ->modalHeading('Owner Link')
-                    ->form([
-                        Forms\Components\TextInput::make('link')
-                            ->label('Owner preview/edit/publish link')
-                            ->readOnly()
-                            ->default(function (Listing $record, ClaimInviteService $inviter): string {
-                                $partner = $record->partner;
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('view_frontend')
+                        ->label('')
+                        ->icon('heroicon-o-arrow-top-right-on-square')
+                        ->color('gray')
+                        ->tooltip(fn (Listing $record): string => $record->is_published
+                            ? 'View on namibway.com'
+                            : 'Preview draft on namibway.com (not published yet — visible to admins only)')
+                        ->url(fn (Listing $record): string => route('listings.show', $record->slug))
+                        ->openUrlInNewTab(),
+                    Tables\Actions\Action::make('copy_owner_link')
+                        ->label('')
+                        ->icon('heroicon-o-clipboard-document')
+                        ->color('gray')
+                        ->tooltip('Copy the owner preview/edit/publish link (same one the claim-invite email sends)')
+                        ->visible(fn (Listing $record): bool => $record->partner !== null)
+                        ->modalHeading('Owner Link')
+                        ->form([
+                            Forms\Components\TextInput::make('link')
+                                ->label('Owner preview/edit/publish link')
+                                ->readOnly()
+                                ->default(function (Listing $record, ClaimInviteService $inviter): string {
+                                    $partner = $record->partner;
 
-                                if (! $partner instanceof Partner) {
-                                    return '';
-                                }
+                                    if (! $partner instanceof Partner) {
+                                        return '';
+                                    }
 
-                                if (blank($partner->claim_token)) {
-                                    $partner->update(['claim_token' => Str::random(48)]);
-                                }
+                                    if (blank($partner->claim_token)) {
+                                        $partner->update(['claim_token' => Str::random(48)]);
+                                    }
 
-                                return $inviter->listingUrl($record, $partner);
-                            })
-                            ->helperText('Works without an account — opens the same draft preview, edit page, and publish flow the owner gets.'),
-                    ])
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Close'),
-                Tables\Actions\Action::make('import_wetu')
-                    ->label('Import from Wetu')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->color('info')
-                    ->visible(fn (Listing $record): bool => $record->partner?->connector_type === ConnectorType::Wetu)
-                    ->requiresConfirmation()
-                    ->modalHeading('Import content from Wetu')
-                    ->modalDescription('This will overwrite the name, description, highlights, region, and coordinates with data from Wetu. Existing images are not replaced.')
-                    ->action(function (Listing $record): void {
-                        $partner = $record->partner;
+                                    return $inviter->listingUrl($record, $partner);
+                                })
+                                ->helperText('Works without an account — opens the same draft preview, edit page, and publish flow the owner gets.'),
+                        ])
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Close'),
+                    Tables\Actions\Action::make('import_wetu')
+                        ->label('Import from Wetu')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('info')
+                        ->visible(fn (Listing $record): bool => $record->partner?->connector_type === ConnectorType::Wetu)
+                        ->requiresConfirmation()
+                        ->modalHeading('Import content from Wetu')
+                        ->modalDescription('This will overwrite the name, description, highlights, region, and coordinates with data from Wetu. Existing images are not replaced.')
+                        ->action(function (Listing $record): void {
+                            $partner = $record->partner;
 
-                        if (! $partner instanceof Partner) {
-                            Notification::make()->title('No partner linked to this listing.')->danger()->send();
-
-                            return;
-                        }
-
-                        try {
-                            $wetuId = $record->wetu_id;
-
-                            if (blank($wetuId)) {
-                                Notification::make()->title('This listing has no Wetu property ID configured.')->danger()->send();
+                            if (! $partner instanceof Partner) {
+                                Notification::make()->title('No partner linked to this listing.')->danger()->send();
 
                                 return;
                             }
 
-                            $content = ConnectorFactory::makeContent($partner)->fetchPropertyContent($wetuId);
+                            try {
+                                $wetuId = $record->wetu_id;
 
-                            // $content->region (a free-text string from Wetu) has no reliable
-                            // match against a City — city_id is left for an admin to assign
-                            // manually, same as any other Wetu-imported listing.
-                            $record->update(array_filter([
-                                'name' => $content->name ?: null,
-                                'description' => $content->description,
-                                'highlights' => $content->highlights ?: null,
-                                'latitude' => $content->latitude,
-                                'longitude' => $content->longitude,
-                            ], fn ($v) => $v !== null));
+                                if (blank($wetuId)) {
+                                    Notification::make()->title('This listing has no Wetu property ID configured.')->danger()->send();
 
-                            Notification::make()
-                                ->title('Content imported from Wetu')
-                                ->body("Imported: {$content->name}")
-                                ->success()
-                                ->send();
+                                    return;
+                                }
 
-                        } catch (\Throwable $e) {
-                            Notification::make()
-                                ->title('Wetu import failed')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-                Tables\Actions\Action::make('test_connector')
-                    ->label('Test connector')
-                    ->icon('heroicon-o-signal')
-                    ->color('info')
-                    ->visible(fn (Listing $record): bool => in_array(
-                        $record->partner?->connector_type,
-                        [ConnectorType::ResConnect, ConnectorType::NightsBridge, ConnectorType::HopeCloud],
-                        true
-                    ) && filled($record->connector_property_code))
-                    ->action(function (Listing $record): void {
-                        $partner = $record->partner;
+                                $content = ConnectorFactory::makeContent($partner)->fetchPropertyContent($wetuId);
 
-                        if (! $partner instanceof Partner) {
-                            Notification::make()->title('No partner linked to this listing.')->danger()->send();
+                                // $content->region (a free-text string from Wetu) has no reliable
+                                // match against a City — city_id is left for an admin to assign
+                                // manually, same as any other Wetu-imported listing.
+                                $record->update(array_filter([
+                                    'name' => $content->name ?: null,
+                                    'description' => $content->description,
+                                    'highlights' => $content->highlights ?: null,
+                                    'latitude' => $content->latitude,
+                                    'longitude' => $content->longitude,
+                                ], fn ($v) => $v !== null));
 
-                            return;
-                        }
-
-                        try {
-                            $connector = ConnectorFactory::makeBooking($partner);
-
-                            $response = $connector->checkAvailability(new AvailabilityRequest(
-                                propertyCode: $record->connector_property_code ?? '',
-                                checkIn: now()->addDays(30),
-                                checkOut: now()->addDays(31),
-                                adults: 2,
-                            ));
-
-                            if ($response->available) {
                                 Notification::make()
-                                    ->title('Connector reachable')
-                                    ->body(count($response->roomTypes).' room type(s) returned for a test date 30 days out — this listing is correctly connected.')
+                                    ->title('Content imported from Wetu')
+                                    ->body("Imported: {$content->name}")
                                     ->success()
                                     ->send();
-                            } else {
+
+                            } catch (\Throwable $e) {
                                 Notification::make()
-                                    ->title('Connected, but no test availability')
-                                    ->body(($response->error ?? 'No rooms for the test dates.').' The connection itself worked — this can be normal.')
-                                    ->warning()
+                                    ->title('Wetu import failed')
+                                    ->body($e->getMessage())
+                                    ->danger()
                                     ->send();
                             }
-                        } catch (\Throwable $e) {
-                            Notification::make()
-                                ->title('Connector test failed')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
+                        }),
+                    Tables\Actions\Action::make('test_connector')
+                        ->label('Test connector')
+                        ->icon('heroicon-o-signal')
+                        ->color('info')
+                        ->visible(fn (Listing $record): bool => in_array(
+                            $record->partner?->connector_type,
+                            [ConnectorType::ResConnect, ConnectorType::NightsBridge, ConnectorType::HopeCloud],
+                            true
+                        ) && filled($record->connector_property_code))
+                        ->action(function (Listing $record): void {
+                            $partner = $record->partner;
+
+                            if (! $partner instanceof Partner) {
+                                Notification::make()->title('No partner linked to this listing.')->danger()->send();
+
+                                return;
+                            }
+
+                            try {
+                                $connector = ConnectorFactory::makeBooking($partner);
+
+                                $response = $connector->checkAvailability(new AvailabilityRequest(
+                                    propertyCode: $record->connector_property_code ?? '',
+                                    checkIn: now()->addDays(30),
+                                    checkOut: now()->addDays(31),
+                                    adults: 2,
+                                ));
+
+                                if ($response->available) {
+                                    Notification::make()
+                                        ->title('Connector reachable')
+                                        ->body(count($response->roomTypes).' room type(s) returned for a test date 30 days out — this listing is correctly connected.')
+                                        ->success()
+                                        ->send();
+                                } else {
+                                    Notification::make()
+                                        ->title('Connected, but no test availability')
+                                        ->body(($response->error ?? 'No rooms for the test dates.').' The connection itself worked — this can be normal.')
+                                        ->warning()
+                                        ->send();
+                                }
+                            } catch (\Throwable $e) {
+                                Notification::make()
+                                    ->title('Connector test failed')
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+                ])
+                    ->label('More')
+                    ->icon('heroicon-o-ellipsis-horizontal')
+                    ->color('gray'),
             ], position: ActionsPosition::BeforeColumns)
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
