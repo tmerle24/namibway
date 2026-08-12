@@ -17,6 +17,7 @@ use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\CreateWebsiteAction;
 use App\Filament\Support\MessagesColumn;
 use App\Filament\Support\PipelineImageResolver;
+use App\Filament\Support\WebsiteTab;
 use App\Filament\Support\WorkbookDownload;
 use App\Http\Controllers\Controller;
 use App\Models\Amenity;
@@ -380,6 +381,8 @@ class ListingResource extends Resource
                         Forms\Components\Tabs\Tab::make('Booking system / API')
                             ->icon('heroicon-o-link')
                             ->schema(BookingConnectorSchema::schema()),
+
+                        WebsiteTab::make(),
 
                         Forms\Components\Tabs\Tab::make('Visibility')
                             ->icon('heroicon-o-eye')
