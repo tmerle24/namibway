@@ -46,7 +46,9 @@
         --font-display: {!! \App\Sites\Typography::displayStack($site) !!};
         --font-body: {!! \App\Sites\Typography::bodyStack($site) !!};
         --font-brand: {!! \App\Sites\Typography::brandStack($site) !!};
-        --brand-size: {{ \App\Sites\Typography::brandSize($site) }}px;
+        /* Mobile first: the wide-screen size is raised in a media query below,
+           because a phone and a laptop cannot share one number here. */
+        --brand-size: {{ \App\Sites\Typography::brandSizeMobile($site) }}px;
 
         --s1: 4px; --s2: 8px; --s3: 12px; --s4: 20px; --s5: 32px;
         --s6: 48px; --s7: 72px; --s8: 112px;
@@ -84,31 +86,44 @@
     }
     /* Height, not min-height, and this is load-bearing rather than tidy.
        The hero is pulled up under this bar by exactly -64px, so anything that
-       makes the bar taller — a long name wrapping to two lines, a menu wrapping
-       at tablet width — leaves a strip of page background above the photograph.
-       Measured at 834px it was 90px tall and the strip was 26px. A fixed height
-       makes that arithmetic true at every width instead of most of them; the
-       rules below are what keep the content inside it. */
+       makes the bar taller — a name wrapping, a menu wrapping at tablet width —
+       leaves a strip of page background above the photograph. Measured at 834px
+       it was 90px tall and the strip was 26px. A fixed height makes that
+       arithmetic true at every width instead of most of them; the rules below
+       are what keep the content inside it, wrapping included. */
     .nav__inner {
         display: flex; align-items: center; gap: var(--s4);
-        height: 64px; overflow: hidden; padding: var(--s3) var(--s4);
+        /* 8px of vertical padding rather than 12: the bar's outside height is
+           what the hero's negative margin cancels and must not change, but the
+           room inside it is what a wrapped name has to live in. 48px fits two
+           lines at any size this bar offers. */
+        height: 64px; overflow: hidden; padding: var(--s2) var(--s4);
         width: 100%; max-width: var(--container); margin: 0 auto;
     }
     .nav__name {
-        display: flex; align-items: center;
         /* Its own face and its own size, both settable per site. The default
            face is the body one, not the display one: an editorial serif at this
            size over an arbitrary photograph reads thin rather than
            characterful. The size is computed from the length of the name unless
-           somebody has said otherwise — the bar has exactly one line for it. */
+           somebody has said otherwise. */
         font-family: var(--font-brand); font-weight: 700;
-        font-size: var(--brand-size); letter-spacing: -.01em;
+        font-size: var(--brand-size); letter-spacing: -.01em; line-height: 1.2;
         text-decoration: none; margin-right: auto;
         color: #fff; transition: color .3s ease, opacity .3s ease;
-        /* One line, always — see the bar's fixed height above. min-width:0 is
-           what lets a flex item shrink below the width of its own text. */
-        min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        /* Wraps to a second line rather than being cut. It used to be one line
+           with an ellipsis, which failed twice over: on a phone there is only
+           about 250px beside the burger and a real name needs 350, and
+           `text-overflow` does nothing on a flex container anyway — so the name
+           was severed mid-word with no ellipsis to say so, and
+           "…Hunting Safari" became "…Hunting Safa".
+           Two lines, clamped, and they fit inside the bar's 48px. */
+        min-width: 0; white-space: normal; overflow: hidden;
+        display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
     }
+    /* A logo is one object and wants centring, not line boxes. */
+    .nav__name--logo { display: flex; align-items: center; }
+    /* Wide enough for the bar to be three times the width it is on a phone. */
+    @media (min-width: 640px) { :root { --brand-size: {{ \App\Sites\Typography::brandSize($site) }}px; } }
     /* A name over a photograph needs its own shadow to stay readable — the
        hero's gradient is built for text much further down the frame. */
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__name { text-shadow: 0 1px 12px rgba(0,0,0,.55); }
@@ -175,10 +190,11 @@
 
     /* Wide enough for the bar to carry the links itself: the burger and its
        panel go away entirely, whatever state the script left them in.
-       1024 rather than 800, because a long business name beside six items is
-       what wrapped at tablet width — and clipping a menu is worse than a
-       burger a little further up the range. */
-    @media (min-width: 1024px) {
+       1100, and the number is measured rather than chosen. Six menu items take
+       about 600px, so at 1024 a 31-character name has 348px and only fits on
+       one line at 17px — too small for a laptop. At 1100 it has 424px and fits
+       at 20px. Below this the burger gives the name the whole bar. */
+    @media (min-width: 1100px) {
         .nav__links { display: flex; }
         .nav__burger, .nav__panel { display: none !important; }
     }
@@ -313,13 +329,24 @@
     .cards { display: grid; gap: var(--s5); }
     @media (min-width: 640px) { .cards { grid-template-columns: repeat(2, 1fr); } }
     @media (min-width: 980px) { .cards--3 { grid-template-columns: repeat(3, 1fr); } }
-    .card { border-top: 1px solid var(--bone); padding-top: var(--s4); }
+    /* On one column the icon sits beside the words: stacked, it left a card's
+       whole width empty to the right of a 24px mark. Once the cards are in
+       columns there is no width to waste and the mark goes back on top. */
+    .card {
+        border-top: 1px solid var(--bone); padding-top: var(--s4);
+        display: flex; align-items: baseline; gap: var(--s3);
+    }
     .card p { margin: 0; color: var(--slate); font-size: 16px; }
+    .card__body { min-width: 0; }
+    @media (min-width: 640px) {
+        .card { display: block; }
+    }
     /* The one place the accent carries a shape rather than a line. Single
        colour on purpose: a set of line marks in the site's own accent reads as
        part of the design, and the same set in filled colour reads as a stock
        icon pack somebody dropped in. */
-    .card__icon { color: var(--accent); margin-bottom: var(--s3); height: 24px; }
+    .card__icon { color: var(--accent); height: 24px; flex: none; }
+    @media (min-width: 640px) { .card__icon { margin-bottom: var(--s3); } }
     /* The gap a card gets when its own phrase matched nothing, so one unlit
        card in a lit row keeps its heading on the same line as the others. */
     .card__icon--none { visibility: hidden; }

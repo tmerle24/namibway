@@ -1019,6 +1019,19 @@ Three things the sites were sold as having and did not.
   the burger threshold moved to 1024px. Do not reintroduce anything that lets the bar grow
   without changing the hero's margin in the same breath.
 
+- **The name wraps rather than being cut, and is sized per screen.** A regression
+  worth recording: it was one line with an ellipsis, which on a phone left about 250px
+  for a name needing 350 — and `text-overflow` does nothing on a flex container, so
+  "Ongombo West #56 Hunting Safari" was severed mid-word into "…Hunting Safa" with
+  nothing to signal it. It now wraps to two lines *inside* the bar's fixed height (the
+  vertical padding dropped from 12px to 8px to make the room), and the size is computed
+  separately for phones and wide screens, both overridable. The burger breakpoint moved
+  to 1100px for the same reason: six menu items take ~600px, so at 1024 a long name has
+  348px and only fits on one line at 17px, which is undersized for a laptop.
+
+  The lesson for anything else in this bar: **measure at 320–414px, not just at
+  desktop widths.** The clipping was invisible at every width the first change checked.
+
 - **An open menu takes the bar off its photograph colours** (`.nav.is-open`, set by the
   page's own script), with the transition suppressed for that state — a 300ms fade left
   the name white on cream for exactly as long as it takes to notice.

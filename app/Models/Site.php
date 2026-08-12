@@ -37,6 +37,7 @@ use Illuminate\Support\Str;
  * @property string|null $font_body
  * @property string|null $brand_font
  * @property int|null $brand_size
+ * @property int|null $brand_size_mobile
  * @property string|null $logo_key
  * @property string $default_locale
  * @property string|null $contact_email
@@ -73,6 +74,7 @@ class Site extends Model
         'font_body',
         'brand_font',
         'brand_size',
+        'brand_size_mobile',
         'logo_key',
         'default_locale',
         'contact_email',
@@ -115,6 +117,7 @@ class Site extends Model
         'social_links' => 'array',
         'imported' => 'array',
         'brand_size' => 'integer',
+        'brand_size_mobile' => 'integer',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
     ];

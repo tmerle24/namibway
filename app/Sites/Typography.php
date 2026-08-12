@@ -18,12 +18,13 @@ use App\Models\Site;
  *
  * ## Why the name has its own size
  *
- * The bar is a fixed height so the hero can be pulled up under it, which means
- * the business's name has exactly one line to live on. Set too large it is
- * clipped; set too small it disappears against a photograph. So the size is
- * computed from the length of the name by default — and overridable, because a
- * name is a piece of branding and nobody should have to accept our arithmetic
- * about it.
+ * The bar is a fixed height so the hero can be pulled up under it, and inside
+ * that height the name gets at most two lines. Set too small it disappears
+ * against a photograph; set too large it wraps where it did not need to. So the
+ * size is computed from the length of the name by default — separately for a
+ * phone and for a wide screen, because one number cannot serve a 360px bar and
+ * a 1280px one — and every part of it is overridable, because a name is a piece
+ * of branding and nobody should have to accept our arithmetic about it.
  */
 class Typography
 {
@@ -120,7 +121,8 @@ class Typography
             '' => 'Automatic — from the length of the name',
             '14' => '14px',
             '16' => '16px',
-            '18' => '18px (the usual answer)',
+            '17' => '17px',
+            '18' => '18px',
             '20' => '20px',
             '22' => '22px',
             '24' => '24px',
@@ -128,12 +130,12 @@ class Typography
     }
 
     /**
-     * How large the name is set, in pixels.
+     * How large the name is set on a wide screen, in pixels.
      *
-     * Automatic unless somebody said otherwise. The steps are the widths the
-     * bar can actually give a name: it has one line, and beside a six-item menu
-     * on a laptop there is not much of it. Erring small is deliberate — a name
-     * one step smaller than ideal still reads, and a clipped one does not.
+     * A phone and a laptop cannot share one number. The size that keeps a long
+     * name readable beside a burger on a 360px screen is visibly undersized on
+     * a laptop, where the same bar is three times as wide — so there are two,
+     * and the stylesheet switches between them at 640px.
      */
     public static function brandSize(Site $site): int
     {
@@ -141,12 +143,38 @@ class Typography
             return $site->brand_size;
         }
 
-        // Calibrated against a real one: "Ongombo West #56 Hunting Safari" is
-        // 30 characters and wants 18px — smaller than that and it disappears
-        // into the photograph, larger and it crowds a six-item menu.
         return match (true) {
-            mb_strlen($site->name) > 36 => 16,
-            mb_strlen($site->name) > 24 => 18,
+            mb_strlen($site->name) > 36 => 18,
+            mb_strlen($site->name) > 24 => 20,
+            default => 22,
+        };
+    }
+
+    /**
+     * And how large on a phone.
+     *
+     * Measured rather than guessed: "Ongombo West #56 Hunting Safari" set at
+     * 18px needs about 350px, and beside the burger on a 360px screen there are
+     * 252. No size in this range keeps a name that long on one line, which is
+     * why the bar lets it wrap to a second rather than cutting it. These steps
+     * decide how often that happens, not whether the name survives.
+     */
+    public static function brandSizeMobile(Site $site): int
+    {
+        if ($site->brand_size_mobile !== null) {
+            return $site->brand_size_mobile;
+        }
+
+        // An explicit desktop size with no mobile one steps down by two rather
+        // than being taken literally: somebody who chose 22 for a laptop did
+        // not choose 22 for a phone, and a floor of 14 keeps it legible.
+        if ($site->brand_size !== null) {
+            return max(14, $site->brand_size - 2);
+        }
+
+        return match (true) {
+            mb_strlen($site->name) > 36 => 15,
+            mb_strlen($site->name) > 24 => 17,
             default => 20,
         };
     }

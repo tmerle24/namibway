@@ -167,4 +167,23 @@ class HighlightIconTest extends TestCase
 
         return $site;
     }
+
+    /**
+     * On one column the mark sits beside the words. Stacked, a 24px icon left a
+     * card's whole width empty to its right, which on a phone is most of the
+     * screen. Once the cards are in columns there is no width to waste and the
+     * mark goes back on top.
+     */
+    public function test_the_mark_sits_beside_the_words_on_one_column(): void
+    {
+        $site = $this->siteWithHighlights('rowed', ['Wi-Fi', 'Swimming pool', 'Braai facilities']);
+
+        $html = $this->get($site->publicUrl())->assertOk()->getContent();
+
+        $this->assertIsString($html);
+        // The words are wrapped so the icon has something to sit next to.
+        $this->assertStringContainsString('class="card__body"', $html);
+        $this->assertMatchesRegularExpression('/\.card \{[^}]*display: flex/s', $html);
+        $this->assertMatchesRegularExpression('/min-width: 640px\)[^@]*\.card \{ display: block/s', $html);
+    }
 }

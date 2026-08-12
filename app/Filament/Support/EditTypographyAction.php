@@ -68,6 +68,7 @@ class EditTypographyAction
                     'font_body' => $site->font_body ?? Typography::DEFAULT_BODY,
                     'brand_font' => $site->brand_font,
                     'brand_size' => (string) ($site->brand_size ?? ''),
+                    'brand_size_mobile' => (string) ($site->brand_size_mobile ?? ''),
                 ];
             })
             ->form([
@@ -91,10 +92,16 @@ class EditTypographyAction
                         .'photograph. A plain, slightly heavy face usually wins here.'),
 
                 Forms\Components\Select::make('brand_size')
-                    ->label('Size of the name')
+                    ->label('Size of the name — wide screens')
                     ->options(Typography::brandSizeOptions())
-                    ->helperText('Automatic sizes it by how long the name is, which is what keeps a long '
-                        .'one from being cut off beside a full menu. Override it if you would rather.'),
+                    ->helperText('Automatic sizes it by how long the name is.'),
+
+                Forms\Components\Select::make('brand_size_mobile')
+                    ->label('Size of the name — phones')
+                    ->options(Typography::brandSizeOptions())
+                    ->helperText('Its own setting, because a phone gives the name about a quarter of the '
+                        .'width a laptop does. Left automatic it steps down from the wide-screen size. A '
+                        .'name too long for one line wraps to a second rather than being cut.'),
             ])
             ->action(function (?Listing $record, array $data): void {
                 $site = $record === null ? null : self::siteFor($record);
@@ -104,6 +111,7 @@ class EditTypographyAction
                 }
 
                 $size = trim((string) ($data['brand_size'] ?? ''));
+                $mobile = trim((string) ($data['brand_size_mobile'] ?? ''));
 
                 $site->fill([
                     'font_display' => $data['font_display'] ?? null,
@@ -113,6 +121,7 @@ class EditTypographyAction
                     // null rather than as a value somebody has to keep correct.
                     'brand_font' => filled($data['brand_font'] ?? null) ? $data['brand_font'] : null,
                     'brand_size' => $size === '' ? null : (int) $size,
+                    'brand_size_mobile' => $mobile === '' ? null : (int) $mobile,
                 ])->save();
 
                 Notification::make()->title('Saved')->success()->send();
