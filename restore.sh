@@ -1,193 +1,115 @@
 #!/bin/bash
-# restore.sh — Stellt NamibWay nach einem Totalausfall auf einem neuen Server wieder her.
-#
-# Gegenstück zu deploy.sh: deploy.sh bringt den Code auf einen Server, setzt aber ein
-# bereits befülltes .env voraus. Genau das (.env mit allen Secrets + der DB-Dump) liegt
-# nirgends in Git — nur verschlüsselt im nächtlichen Backup auf R2 (config/backup.php,
-# Schedule in routes/console.php). Dieses Skript holt beides zurück und übergibt dann
-# an deploy.sh für den Rest (Composer, npm, Migrationen, Caches).
-#
-# Was dieses Skript NICHT automatisiert (siehe DEPLOYMENT.md "Disaster Recovery"):
-#   - PostgreSQL/Redis-Installation, nginx-Vhost + SSL-Zertifikat, Supervisor-Config
-#     für Horizon. Das sind Infrastruktur-Entscheidungen (DNS, Zertifikate), die man
-#     nicht blind aus einem alten Server-Snapshot replizieren sollte — DEPLOYMENT.md
-#     hat die Schritte dafür bereits dokumentiert.
-#
-# Voraussetzungen auf der Maschine, die dieses Skript ausführt (im Regelfall der neue
-# Server selbst, per SSH):
-#   - aws-cli   (S3-kompatibler Zugriff auf den R2-Backup-Bucket)
-#   - 7z        (p7zip-full — zum Entschlüsseln des AES-256-verschlüsselten Backup-Zips;
-#                das normale `unzip` beherrscht kein AES-256)
-#   - psql-Client, falls die DB direkt aus diesem Skript restauriert werden soll
+# restore.sh — Datenbank-Wiederherstellung aus Cloudflare R2
 #
 # Verwendung:
-#   bash restore.sh
+#   bash restore.sh                  — stellt das neueste Backup wieder her
+#   bash restore.sh 2026-08-10       — stellt ein bestimmtes Datum wieder her
+#   bash restore.sh --list           — listet verfügbare Backups
 #
-# Fragt alle Zugangsdaten interaktiv ab (nichts wird als Kommandozeilen-Argument
-# übergeben, damit nichts in der Shell-History landet). Wer automatisieren will, kann
-# die unten abgefragten Variablen vorher exportieren (R2_ACCESS_KEY, R2_SECRET_KEY,
-# R2_ENDPOINT, R2_BACKUP_BUCKET, BACKUP_ARCHIVE_PASSWORD, APP_DIR, DB_HOST, DB_PORT,
-# DB_DATABASE, DB_USERNAME, DB_PASSWORD) — das Skript fragt dann nicht erneut nach.
-#
-set -e
+set -euo pipefail
 
-# aws-cli v2.13+ schickt bei `s3 cp`/`sync`/`mv` standardmäßig zusätzliche
-# Request-Checksum-Header, die Cloudflare R2s S3-kompatible API mit einem
-# blanken 400 beim HeadObject-Preflight ablehnt — `aws s3api`-Aufrufe sind
-# davon nicht betroffen. Live bestätigt 2026-08-04 (siehe
-# restore-listing-city-ids.sh, das denselben Download-Schritt macht); REQUEST
-# allein reichte bei einem erneuten Versuch am Folgetag nicht aus, deshalb
-# beide Richtungen deaktiviert.
-export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
-export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+APP_DIR="/var/www/namibway"
+ENV_FILE="$APP_DIR/.env"
+PREFIX="namibway/db"
 
-# R2 akzeptiert als "Region" nur seine eigenen Jurisdiction-Hints (wnam/enam/
-# weur/eeur/apac/oc/auto) — ohne expliziten Wert greift aws-cli sonst auf
-# AWS_DEFAULT_REGION/~/.aws/config der Maschine zurück (z.B. eine echte
-# AWS-Region für etwas anderes wie SES), was R2 dann ablehnt. "auto" ist R2s
-# eigener Catch-all und immer gültig.
-export AWS_DEFAULT_REGION=auto
-
-APP_NAME_IN_BACKUP="NamibWay"   # muss zu APP_NAME in der geretteten .env passen (config/backup.php: backup.name)
-APP_DIR="${APP_DIR:-/var/www/namibway}"
-WORK_DIR="$(mktemp -d)"
-
-prompt_if_empty() {
-    # $1 = Variablenname, $2 = Prompt-Text, $3 = "silent" für Passwort-Eingabe ohne Echo
-    local var_name="$1" prompt_text="$2" silent="$3"
-    if [ -z "${!var_name}" ]; then
-        if [ "$silent" = "silent" ]; then
-            read -r -s -p "$prompt_text: " value
-            echo ""
-        else
-            read -r -p "$prompt_text: " value
-        fi
-        export "$var_name"="$value"
-    fi
+env_get() {
+    grep -m1 "^${1}=" "$ENV_FILE" | cut -d= -f2- | tr -d '"' | tr -d "'"
 }
 
-echo "═══ NamibWay Disaster Recovery ═══"
-echo "Lädt das letzte verschlüsselte Backup aus R2, stellt .env + DB wieder her."
-echo ""
+DB_HOST=$(env_get DB_HOST);     DB_HOST=${DB_HOST:-127.0.0.1}
+DB_PORT=$(env_get DB_PORT);     DB_PORT=${DB_PORT:-5432}
+DB_DATABASE=$(env_get DB_DATABASE)
+DB_USERNAME=$(env_get DB_USERNAME)
+DB_PASSWORD=$(env_get DB_PASSWORD)
 
-for bin in aws 7z; do
-    command -v "$bin" >/dev/null 2>&1 || { echo "❌ '$bin' fehlt — bitte installieren, siehe Kommentar am Skriptanfang."; exit 1; }
-done
+BUCKET=$(env_get CLOUDFLARE_R2_BACKUP_BUCKET); BUCKET=${BUCKET:-namibway-backups}
+R2_KEY=$(env_get CLOUDFLARE_R2_BACKUP_ACCESS_KEY_ID)
+R2_KEY=${R2_KEY:-$(env_get CLOUDFLARE_R2_ACCESS_KEY_ID)}
+R2_SECRET=$(env_get CLOUDFLARE_R2_BACKUP_SECRET_ACCESS_KEY)
+R2_SECRET=${R2_SECRET:-$(env_get CLOUDFLARE_R2_SECRET_ACCESS_KEY)}
+R2_ENDPOINT=$(env_get CLOUDFLARE_R2_ENDPOINT)
 
-# ── 1/6 Zugangsdaten abfragen ───────────────────────────────────────
-prompt_if_empty R2_ACCESS_KEY        "R2 Backup Access Key ID"
-prompt_if_empty R2_SECRET_KEY        "R2 Backup Secret Access Key" silent
-prompt_if_empty R2_ENDPOINT          "R2 Endpoint (z.B. https://<account-id>.r2.cloudflarestorage.com)"
-prompt_if_empty R2_BACKUP_BUCKET     "R2 Backup-Bucket-Name (z.B. namibway-backups)"
-prompt_if_empty BACKUP_ARCHIVE_PASSWORD "Backup-Archiv-Passwort (BACKUP_ARCHIVE_PASSWORD)" silent
+s3() {
+    AWS_ACCESS_KEY_ID="$R2_KEY" \
+    AWS_SECRET_ACCESS_KEY="$R2_SECRET" \
+    aws s3 "$@" --endpoint-url "$R2_ENDPOINT" --region auto
+}
 
-export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY"
-export AWS_SECRET_ACCESS_KEY="$R2_SECRET_KEY"
-
-# ── 2/6 Neuestes Backup finden + herunterladen ──────────────────────
-echo ""
-echo "═══ 2/6 Suche neuestes Backup unter s3://$R2_BACKUP_BUCKET/$APP_NAME_IN_BACKUP/ ═══"
-LATEST_KEY=$(aws s3api list-objects-v2 \
-    --endpoint-url "$R2_ENDPOINT" \
-    --bucket "$R2_BACKUP_BUCKET" \
-    --prefix "${APP_NAME_IN_BACKUP}/" \
-    --query 'reverse(sort_by(Contents, &LastModified))[0].Key' \
-    --output text)
-
-if [ -z "$LATEST_KEY" ] || [ "$LATEST_KEY" = "None" ]; then
-    echo "❌ Kein Backup unter diesem Prefix gefunden. Bucket/Prefix/Zugangsdaten prüfen."
-    exit 1
+if [[ "${1:-}" == "--list" ]]; then
+    echo "Verfügbare Backups:"
+    s3 ls "s3://$BUCKET/$PREFIX/" \
+        | awk '{print $1, $2, $3, $4}' \
+        | grep -E '[0-9]{4}-[0-9]{2}-[0-9]{2}\.sql\.gz$' \
+        | sort -r
+    exit 0
 fi
-echo "  → Neuestes Backup: $LATEST_KEY"
 
-aws s3 cp "s3://$R2_BACKUP_BUCKET/$LATEST_KEY" "$WORK_DIR/backup.zip" --endpoint-url "$R2_ENDPOINT"
-
-# ── 3/6 Entschlüsseln + entpacken ───────────────────────────────────
-echo "═══ 3/6 Entpacke (AES-256-verschlüsselt) ═══"
-7z x -p"$BACKUP_ARCHIVE_PASSWORD" -o"$WORK_DIR/extracted" "$WORK_DIR/backup.zip" >/dev/null
-
-ENV_FILE=$(find "$WORK_DIR/extracted" -type f -name ".env" | head -n1)
-DB_DUMP=$(find "$WORK_DIR/extracted" -type d -name "db-dumps" -exec find {} -type f \; | head -n1)
-# Nur ein Sicherheitsnetz für Dateien, die vor dem Wechsel auf disk('r2') lokal
-# hochgeladen wurden (siehe config/backup.php) — kann im Backup fehlen, wenn es nie
-# etwas Lokales gab, das ist kein Fehler.
-PUBLIC_STORAGE_DIR=$(find "$WORK_DIR/extracted" -type d -path "*/storage/app/public" | head -n1)
-
-if [ -z "$ENV_FILE" ]; then
-    echo "❌ Keine .env im Backup gefunden — Backup ist älter als der Wechsel auf 'backup:run' ohne --only-db?"
-    exit 1
-fi
-if [ -z "$DB_DUMP" ]; then
-    echo "❌ Kein DB-Dump im Backup gefunden."
-    exit 1
-fi
-echo "  → .env gefunden: $ENV_FILE"
-echo "  → DB-Dump gefunden: $DB_DUMP"
-if [ -n "$PUBLIC_STORAGE_DIR" ]; then
-    echo "  → storage/app/public gefunden: $PUBLIC_STORAGE_DIR"
+if [[ -n "${1:-}" ]]; then
+    TARGET_DATE="$1"
+    KEY="$TARGET_DATE.sql.gz"
 else
-    echo "  → Kein storage/app/public im Backup (nichts Lokales zu restaurieren, ok)."
+    KEY=$(s3 ls "s3://$BUCKET/$PREFIX/" \
+        | awk '{print $4}' \
+        | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}\.sql\.gz$' \
+        | sort -r | head -1)
+    TARGET_DATE="${KEY%.sql.gz}"
 fi
 
-# ── 4/6 .env an Ort und Stelle bringen ──────────────────────────────
-echo "═══ 4/6 .env nach $APP_DIR/.env ═══"
-mkdir -p "$APP_DIR"
-if [ -f "$APP_DIR/.env" ]; then
-    echo "  ⚠ $APP_DIR/.env existiert bereits — wird nach .env.bak-restore gesichert."
-    cp "$APP_DIR/.env" "$APP_DIR/.env.bak-restore"
+if [[ -z "$KEY" ]]; then
+    echo "FEHLER: Kein Backup gefunden." >&2
+    exit 1
 fi
-cp "$ENV_FILE" "$APP_DIR/.env"
-echo "  → Geschrieben. APP_URL/DB_HOST ggf. anpassen, falls sich Hostname/Netzwerk auf dem neuen Server ändern."
-
-if [ -n "$PUBLIC_STORAGE_DIR" ]; then
-    echo "  → Stelle storage/app/public wieder her (lokale Uploads von vor dem r2-Wechsel)."
-    mkdir -p "$APP_DIR/storage/app"
-    cp -r "$PUBLIC_STORAGE_DIR" "$APP_DIR/storage/app/public"
-fi
-
-# ── 5/6 Datenbank restaurieren ───────────────────────────────────────
-echo "═══ 5/6 Datenbank restaurieren ═══"
-# Aus der geretteten .env vorbelegen, damit man nicht alles doppelt eintippen muss.
-DEFAULT_DB_HOST=$(grep -m1 '^DB_HOST=' "$ENV_FILE" | cut -d= -f2-)
-DEFAULT_DB_PORT=$(grep -m1 '^DB_PORT=' "$ENV_FILE" | cut -d= -f2-)
-DEFAULT_DB_DATABASE=$(grep -m1 '^DB_DATABASE=' "$ENV_FILE" | cut -d= -f2-)
-DEFAULT_DB_USERNAME=$(grep -m1 '^DB_USERNAME=' "$ENV_FILE" | cut -d= -f2-)
-
-prompt_if_empty DB_HOST     "DB Host [$DEFAULT_DB_HOST]"
-DB_HOST="${DB_HOST:-$DEFAULT_DB_HOST}"
-prompt_if_empty DB_PORT     "DB Port [$DEFAULT_DB_PORT]"
-DB_PORT="${DB_PORT:-$DEFAULT_DB_PORT}"
-prompt_if_empty DB_DATABASE "DB Name [$DEFAULT_DB_DATABASE]"
-DB_DATABASE="${DB_DATABASE:-$DEFAULT_DB_DATABASE}"
-prompt_if_empty DB_USERNAME "DB User [$DEFAULT_DB_USERNAME]"
-DB_USERNAME="${DB_USERNAME:-$DEFAULT_DB_USERNAME}"
-prompt_if_empty DB_PASSWORD "DB Passwort" silent
-
-echo "  Voraussetzung: PostgreSQL läuft bereits und Datenbank/User '$DB_DATABASE'/'$DB_USERNAME'"
-echo "  existieren schon (siehe DEPLOYMENT.md Schritt 'PostgreSQL + Redis installieren' /"
-echo "  'Datenbank + Benutzer anlegen', falls noch nicht geschehen)."
-read -r -p "  Jetzt restaurieren? [y/N] " CONFIRM_RESTORE
-if [ "$CONFIRM_RESTORE" = "y" ] || [ "$CONFIRM_RESTORE" = "Y" ]; then
-    case "$DB_DUMP" in
-        *.gz)  GUNZIP_CMD="gunzip -c" ;;
-        *)     GUNZIP_CMD="cat" ;;
-    esac
-    PGPASSWORD="$DB_PASSWORD" bash -c "$GUNZIP_CMD '$DB_DUMP' | psql -h '$DB_HOST' -p '$DB_PORT' -U '$DB_USERNAME' -d '$DB_DATABASE'"
-    echo "  → DB restauriert."
-else
-    echo "  → Übersprungen. Dump liegt weiterhin unter: $DB_DUMP"
-fi
-
-# ── 6/6 Aufräumen + nächste Schritte ────────────────────────────────
-rm -rf "$WORK_DIR"
 
 echo ""
-echo "✅ .env + DB sind wiederhergestellt."
+echo "╔══════════════════════════════════════════════════════════╗"
+echo "║               NAMIBWAY — DATENBANK-RESTORE               ║"
+echo "╠══════════════════════════════════════════════════════════╣"
+echo "║  Backup:    $KEY"
+echo "║  Datenbank: $DB_DATABASE auf $DB_HOST:$DB_PORT"
+echo "║                                                          ║"
+echo "║  ACHTUNG: Die bestehende Datenbank wird VOLLSTÄNDIG      ║"
+echo "║  überschrieben. Diese Aktion kann nicht rückgängig       ║"
+echo "║  gemacht werden.                                         ║"
+echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
-echo "Nächste Schritte:"
-echo "  1. Falls auf diesem Server noch nicht geschehen: PostgreSQL/Redis installieren,"
-echo "     nginx-Vhost + SSL, Supervisor-Config für Horizon — siehe DEPLOYMENT.md."
-echo "  2. bash deploy.sh   (klont main falls nötig, Composer, npm-Build, Migrationen,"
-echo "     Caches, Supervisor-Neustart — findet jetzt ein befülltes .env vor)."
-echo "  3. APP_URL / DB_HOST in $APP_DIR/.env prüfen, falls sich Hostname oder DB-Standort"
-echo "     gegenüber dem alten Server geändert haben, dann: php artisan config:cache"
+read -rp "Jetzt wiederherstellen? Tippe 'ja' zum Bestätigen: " CONFIRM
+if [[ "$CONFIRM" != "ja" ]]; then
+    echo "Abgebrochen."
+    exit 0
+fi
+
+TMPFILE=$(mktemp /tmp/namibway_restore_XXXXXX.sql.gz)
+trap 'rm -f "$TMPFILE"' EXIT
+
+echo ""
+echo "[1/4] Lade Backup herunter: $KEY"
+s3 cp "s3://$BUCKET/$PREFIX/$KEY" "$TMPFILE"
+echo "      $(du -sh "$TMPFILE" | cut -f1) heruntergeladen"
+
+echo "[2/4] Wartungsmodus aktivieren"
+php "$APP_DIR/artisan" down --retry=5 2>/dev/null || true
+
+echo "[3/4] Datenbank wiederherstellen"
+export PGPASSWORD="$DB_PASSWORD"
+
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME" postgres <<SQL
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = '$DB_DATABASE' AND pid <> pg_backend_pid();
+
+DROP DATABASE IF EXISTS "$DB_DATABASE";
+CREATE DATABASE "$DB_DATABASE" OWNER "$DB_USERNAME";
+SQL
+
+gunzip -c "$TMPFILE" | psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME" "$DB_DATABASE"
+echo "      Datenbank wiederhergestellt."
+
+echo "[4/4] App-Cache leeren und Worker neu starten"
+php "$APP_DIR/artisan" optimize:clear
+php "$APP_DIR/artisan" migrate --force
+supervisorctl restart namibway-horizon:* 2>/dev/null || true
+php "$APP_DIR/artisan" up
+
+echo ""
+echo "✓ Wiederherstellung abgeschlossen (Backup: $TARGET_DATE)"
+echo "  Bitte die App kurz durchtesten bevor du sie wieder freigibst."
