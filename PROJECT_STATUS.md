@@ -764,6 +764,48 @@ database-wide constraint, while the two `DatabaseTruncation` suites commit rows 
 outlive that memory. Names are now unique by construction. It failed once every few
 weeks in a test about taxes, which is the worst kind of failure to debug.
 
+### 2026-08-12 — confirm and ask for the deposit, in one press
+
+The gap between "a request arrives" and "the guest has paid" was two systems that did not
+touch: the partner answered the request from an email, and the payment link lived on a
+screen in the panel that only existed once the request had become a stay. A property that
+wanted a deposit had to confirm, find the booking, open the drawer, copy a URL and write
+their own email. That is now one button.
+
+- **A third button in the partner's email** — "Confirm & ask for the deposit". It **opens
+  a page rather than acting on arrival**, which the other two do not need: a mail client
+  that prefetches links must not be able to confirm a booking and take money by opening
+  the message. The page is also where the property writes an optional message to the
+  guest, before anything is sent.
+- **One email to the guest, not two.** The confirmation carries the payment button and the
+  partner's words. A confirmation followed seconds later by a separate "and here is a
+  link" is a system talking to itself. So `InquiryDecisionService` now promotes the stay
+  *before* it writes to the guest — the other way round from how it was first built —
+  because a payment link can only be attached to a stay that exists.
+- **Asking for money can fail where confirming cannot**, so the result is carried back
+  instead of swallowed (`ConfirmationOutcome`). An unpriced stay, or a request that could
+  not go on the calendar, leaves the confirmation standing and the guest told — and the
+  partner reads what happened rather than wondering. The partner's message still goes: it
+  was written to a person, not to the payment provider.
+- **The same three decisions in the panel** (`App\Filament\Partner\Support\InquiryDecisions`,
+  on the request list and the request page), through the same service, so the guest gets
+  the same mail whichever surface was used. Until now the booking panel could *read* a
+  request and not answer one.
+- **"Ask for the deposit" on an existing stay now sends** — with an optional message —
+  instead of only showing a URL to copy. Copying it is still there for a property that
+  would rather write their own. The old note said mailing it was "a later, deliberate
+  feature"; it was right about the words and wrong about the sending, which left every
+  desk pasting a link into their own mail client.
+- `PaymentGateway::linkFor()` is the one call for "ask for money and give me the address",
+  and it **throws instead of falling back to our own demo checkout** when a provider
+  returns no redirect URL. That fallback was in the panel and was wrong: for a real
+  provider that route is a 404 by design, and a page that takes a "pay" click without
+  taking money is the last thing to hand a guest.
+
+Not in this: the payment link is a link to *our* checkout, so this is the platform
+collecting. A partner on somebody else's PMS whose request never becomes a stay still
+answers the guest and sends their own link — see Workstream B's booking decision.
+
 ### Parked on 2026-08-11 — and built on 2026-08-11 and 2026-08-12
 
 > **Superseded, kept for the reasoning.** Everything in this section was written as
