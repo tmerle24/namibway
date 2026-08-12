@@ -4,18 +4,20 @@ namespace App\Filament\Partner\Support;
 
 use App\Enums\ListingType;
 use App\Models\Listing;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
 
 /**
  * Which property the partner panel is currently looking at.
  *
  * NWR is one Partner with roughly twenty camps, so "the partner's inventory"
- * is not one calendar. The choice is remembered in the session so it survives
- * navigation, but the session is **never trusted**: every read re-resolves the
- * id against the listings this user's partner actually owns, so an id typed
- * into a session by hand selects nothing rather than someone else's lodge.
+ * is not one calendar. The choice is remembered on the account rather than in
+ * the session — somebody who works one camp works it every morning, and a
+ * session that expires overnight would put them back on whichever camp sorts
+ * first. What is stored is **never trusted**: every read re-resolves the id
+ * against the listings this user's partner actually owns, so a stale or
+ * hand-edited id selects nothing rather than someone else's lodge.
  *
  * Only accommodation listings are properties. The lodge-facing screens read
  * room types, and an activity or a vehicle has none — offering them in the
@@ -30,7 +32,7 @@ use Illuminate\Support\Facades\Session;
  */
 class SelectedProperty
 {
-    public const SESSION_KEY = 'partner.selected_property_id';
+    public const PREFERENCE_KEY = 'partner.selected_property_id';
 
     /** @var Collection<int, Listing>|null */
     private ?Collection $options = null;
@@ -83,7 +85,7 @@ class SelectedProperty
 
         $this->resolved = true;
         $options = $this->options();
-        $stored = Session::get(self::SESSION_KEY);
+        $stored = $this->user()?->preference(self::PREFERENCE_KEY);
 
         $this->current = (is_numeric($stored) ? $options->firstWhere('id', (int) $stored) : null)
             ?? $options->first();
@@ -94,22 +96,25 @@ class SelectedProperty
     /**
      * Remember a choice. An id the partner does not own is not an error worth
      * throwing over — it selects nothing and the fallback applies — but it is
-     * never written to the session.
+     * never written to the account.
      */
     public function select(?int $listingId): ?Listing
     {
         $chosen = $listingId === null ? null : $this->options()->firstWhere('id', $listingId);
 
-        if ($chosen === null) {
-            Session::forget(self::SESSION_KEY);
-        } else {
-            Session::put(self::SESSION_KEY, $chosen->id);
-        }
+        $this->user()?->rememberPreference(self::PREFERENCE_KEY, $chosen?->id);
 
         $this->resolved = false;
         $this->current = null;
 
         return $this->current();
+    }
+
+    private function user(): ?User
+    {
+        $user = Auth::user();
+
+        return $user instanceof User ? $user : null;
     }
 
     /** Whether the switcher is worth showing at all. */
