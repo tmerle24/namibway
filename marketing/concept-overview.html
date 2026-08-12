@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en-GB" data-variant="print">
+<head>
+<meta charset="utf-8">
+<title>NamibWay — the whole picture</title>
+
+<!--
+  ==========================================================================
+  Concept document 0 of 3 — the overview the other three hang off.
+  A4, seven pages: cover, five explaining pages, and a page that closes.
+
+  Build:   node marketing/build-flyer.mjs   (builds every piece in marketing/)
+           node marketing/build-flyer.mjs concept-overview   (just this one)
+  Check:   node marketing/check-pages.mjs concept-overview
+
+  This is the paper to hand somebody first. The other three go one level down
+  into a single product line; this one answers "what is the company, why do
+  these three things belong together, and where does the money come from" —
+  which is what a co-founder, a board and an investor ask before anything
+  else. It is numbered 0 rather than 4 for that reason, and the set is
+  described as "the overview and three deep-dives" everywhere it is named.
+
+  EDIT: marked spots —
+    1. EDIT: price — N$ 399/month, page 5. It also appears twice in
+       concept-websites.html and twice in flyer-websites-a4.html. A proposal
+       until somebody signs it off; move all five together.
+    2. EDIT: phone — a phone line in the contact strip, off by default
+    3. EDIT: hero photo — --hero-photo, empty until we own an image
+
+  Claims discipline (marketing/README.md is the authority). This paper is the
+  one most likely to be read by somebody deciding whether to put money in, so
+  it is also the one where an invented number would do the most damage:
+    * NO traveller counts, booking volumes, revenue, growth or projections of
+      any kind. There are none, and page 6 says so rather than leaving a gap
+      somebody fills in with an assumption.
+    * NO commission percentage and NO price for the booking system — both
+      pending sign-off.
+    * NO named partner, customer, testimonial or logo. None exist.
+    * NO claim of funding, a grant or an application. Sector funding is named
+      as an intention on page 5 and must stay phrased as one.
+    * Connectors are "designed to connect to", never "integrated with".
+    * "Built to settle in Namibian dollars", never "we take card payments".
+
+  A page that overflows is clipped in silence. Run check-pages.mjs — the
+  per-child snippet in the README cannot see the failure these pages have.
+  ==========================================================================
+-->
+
+<link rel="stylesheet" href="flyer-base.css">
+<link rel="stylesheet" href="document-base.css">
+<style>
+/* The build script rewrites the next line for the screen variant. */
+@page { size: 216mm 303mm; margin: 0; } /* PAGESIZE */
+</style>
+</head>
+
+<body>
+
+<!-- ============================== COVER ============================== -->
+<section class="page cover">
+
+    <img class="compass" src="assets/compass-on-brown.svg" alt="">
+    <img class="logo" src="../public/images/namibway-logo-light.png" alt="NamibWay">
+
+    <p class="eyebrow">Concept paper — the overview</p>
+
+    <h1>One platform. Three ways a Namibian business gets sold on it.</h1>
+
+    <p class="standfirst">
+        NamibWay is a travel platform where a traveller talks to an AI companion and gets
+        one finished, bookable itinerary. Underneath it sits a booking system a lodge can
+        run its whole property on, and beside it a website service for businesses that have
+        never had one. <strong>They are not three companies — they are one catalogue, one
+        booking substrate and one ledger, sold three ways</strong>, and each one makes the
+        other two easier to sell.
+    </p>
+
+    <div class="cover-foot">
+        <div class="for">
+            <strong>How to read the status marks</strong>
+            <ul class="key">
+                <li><span class="chip running">Running</span> in production today</li>
+                <li><span class="chip built">Built</span> built and tested, never yet run with a live partner, a customer or real money</li>
+                <li><span class="chip designed">Designed</span> decided, not built</li>
+            </ul>
+            <p class="note">Page 6 is the list of things this document deliberately does not claim.</p>
+        </div>
+        <img src="assets/built-in-namibia-stamp-light-1024.png" alt="Built in Namibia">
+    </div>
+
+</section>
+
+<!-- ============================== PAGE 2 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>The whole picture — what the company is</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>Three product lines, one platform underneath</h1>
+
+        <p class="lead">
+            Each line has its own buyer and its own reason to exist, and each one is a
+            complete product on its own. What makes them one company rather than three is
+            everything below the line: <strong>the same catalogue, the same availability and
+            pricing engine, the same ledger, the same infrastructure.</strong>
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="Three product lines above a shared platform of catalogue, booking, money and infrastructure.">
+                <defs>
+                    <marker id="o-ar" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#B9812E"></path>
+                    </marker>
+                </defs>
+
+                <text class="eyebrow-t" x="0" y="10">WHAT WE SELL, AND TO WHOM</text>
+
+                <rect class="box-dark" x="0" y="20" width="192" height="94"></rect>
+                <text class="th on-dark" x="14" y="42">Travel platform</text>
+                <text class="tm on-dark-m" x="14" y="58">namibway.com · web, iOS, Android</text>
+                <text class="tm on-dark-m" x="14" y="80">Travellers plan and book.<tspan x="14" dy="13">Lodges, guides and restaurants</tspan><tspan x="14" dy="13">are listed free.</tspan></text>
+
+                <rect class="box-dark" x="204" y="20" width="192" height="94"></rect>
+                <text class="th on-dark" x="218" y="42">Booking system</text>
+                <text class="tm on-dark-m" x="218" y="58">The property's own operation</text>
+                <text class="tm on-dark-m" x="218" y="80">A lodge prices, sells, checks in,<tspan x="218" dy="13">takes money and invoices —</tspan><tspan x="218" dy="13">all its business, not only ours.</tspan></text>
+
+                <rect class="box-dark" x="408" y="20" width="192" height="94"></rect>
+                <text class="th on-dark" x="422" y="42">Websites</text>
+                <text class="tm on-dark-m" x="422" y="58">Any Namibian business</text>
+                <text class="tm on-dark-m" x="422" y="80">A generated site on a monthly<tspan x="422" dy="13">fee — with live availability</tspan><tspan x="422" dy="13">where there is something to sell.</tspan></text>
+
+                <path class="flow" marker-end="url(#o-ar)" d="M 96 118 L 96 140"></path>
+                <path class="flow" marker-end="url(#o-ar)" d="M 300 118 L 300 140"></path>
+                <path class="flow" marker-end="url(#o-ar)" d="M 504 118 L 504 140"></path>
+
+                <rect class="box-line" x="0" y="144" width="600" height="118"></rect>
+                <text class="eyebrow-t" x="14" y="164">ONE PLATFORM — BUILT ONCE, PAID FOR ONCE, USED BY ALL THREE</text>
+
+                <rect class="box" x="14" y="176" width="138" height="34"></rect>
+                <text class="t" x="26" y="192" style="font-weight:bold">The catalogue</text>
+                <!-- SVG text does not wrap and the checker cannot see it overflow its
+                     box, so keep these labels under about 28 characters. -->
+                <text class="tm" x="26" y="204">Who exists, where, verified</text>
+
+                <rect class="box" x="162" y="176" width="138" height="34"></rect>
+                <text class="t" x="174" y="192" style="font-weight:bold">Availability &amp; price</text>
+                <text class="tm" x="174" y="204">One calendar, one answer</text>
+
+                <rect class="box" x="310" y="176" width="138" height="34"></rect>
+                <text class="t" x="322" y="192" style="font-weight:bold">The ledger</text>
+                <text class="tm" x="322" y="204">Folio, payments, invoices</text>
+
+                <rect class="box" x="458" y="176" width="128" height="34"></rect>
+                <text class="t" x="470" y="192" style="font-weight:bold">Identity</text>
+                <text class="tm" x="470" y="204">Travellers, partners, staff</text>
+
+                <rect class="box" x="14" y="218" width="138" height="34"></rect>
+                <text class="t" x="26" y="234" style="font-weight:bold">Media</text>
+                <text class="tm" x="26" y="246">Stored once, sized on demand</text>
+
+                <rect class="box" x="162" y="218" width="138" height="34"></rect>
+                <text class="t" x="174" y="234" style="font-weight:bold">Five languages</text>
+                <text class="tm" x="174" y="246">EN · DE · NL · FR · ES</text>
+
+                <rect class="box" x="310" y="218" width="138" height="34"></rect>
+                <text class="t" x="322" y="234" style="font-weight:bold">Mail &amp; documents</text>
+                <text class="tm" x="322" y="246">Signed links, PDFs, the API</text>
+
+                <rect class="box" x="458" y="218" width="128" height="34"></rect>
+                <text class="t" x="470" y="234" style="font-weight:bold">Operations</text>
+                <text class="tm" x="470" y="246">Hosting, backups, deploys</text>
+            </svg>
+            <figcaption>
+                The reason this matters commercially: <strong>the second and third product
+                lines cost a fraction of what they would as separate businesses</strong>,
+                because the expensive half — the catalogue, the calendar, the ledger, the
+                infrastructure — was already built and is already paid for.
+            </figcaption>
+        </figure>
+
+        <section class="section">
+            <h2>Who says yes, and why</h2>
+            <div class="features">
+                <article class="feature">
+                    <h3>The traveller</h3>
+                    <p>Because planning Namibia is a research project — a dozen properties, two thousand kilometres, and an order of stops that either works or ruins the holiday. They get one finished plan instead of 400 search results, free, without an account.</p>
+                </article>
+                <article class="feature">
+                    <h3>The lodge</h3>
+                    <p>Because the listing is free and the requests come from travellers who have already committed to dates. Whether they then run their property here is a separate decision, taken later and priced separately.</p>
+                </article>
+                <article class="feature">
+                    <h3>The business owner</h3>
+                    <p>Because a website has always meant a quote, a project and somebody who disappears afterwards. One monthly fee, a site in about a week, and changes done when they send a message.</p>
+                </article>
+            </div>
+        </section>
+
+        <div class="callout">
+            <h4>Why this is one codebase and one deploy</h4>
+            <p>
+                Media storage, image sizing, five languages, PDF generation, mail, backups,
+                authentication and the deploy pipeline were solved once for the travel
+                platform. A separate stack for the booking system or the websites would mean
+                re-solving every one of them, and then operating three of everything.
+                <strong>That is the difference between a second product line taking weeks and
+                taking quarters</strong> — and, for a small team, the difference between
+                shipping it and not.
+            </p>
+            <p>
+                The three lines share infrastructure, not schema. The website content, the
+                booking records and the travel catalogue are separate tables with separate
+                rules, for reasons the individual papers set out.
+            </p>
+        </div>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — the whole picture</span>
+        <span class="pageno">2</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 3 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>The whole picture — why the three belong together</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>Each line makes the next one easier to sell</h1>
+
+        <p class="lead">
+            A travel platform with no partners is a directory. A booking system with no
+            demand behind it is software somebody has to be talked into. A website business
+            is a low-margin grind on its own. <strong>Put together, each one answers the
+            objection the next one runs into.</strong>
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 216" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="A loop: travellers plan, partners receive committed requests, partners join, they run their inventory here, their own site sells too, the catalogue improves.">
+                <defs>
+                    <marker id="o2-ar" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#B9812E"></path>
+                    </marker>
+                </defs>
+
+                <rect class="box" x="0" y="20" width="136" height="72"></rect>
+                <text class="tn" x="12" y="40">1</text>
+                <text class="th" x="34" y="40">A trip plan</text>
+                <text class="tm" x="12" y="60">A traveller gets an itinerary<tspan x="12" dy="13">good enough to act on,</tspan><tspan x="12" dy="13">free and without an account.</tspan></text>
+
+                <rect class="box" x="155" y="20" width="136" height="72"></rect>
+                <text class="tn" x="167" y="40">2</text>
+                <text class="th" x="189" y="40">A real request</text>
+                <text class="tm" x="167" y="60">One committed traveller,<tspan x="167" dy="13">firm dates, one open</tspan><tspan x="167" dy="13">pipeline — not an enquiry blast.</tspan></text>
+
+                <rect class="box-amber" x="310" y="20" width="136" height="72"></rect>
+                <text class="tn" x="322" y="40" style="fill:#fff">3</text>
+                <text class="th on-amber" x="344" y="40">A partner joins</text>
+                <text class="tm on-amber" x="322" y="60" style="fill:#FDECD8">The listing is free, so the<tspan x="322" dy="13">only question is whether the</tspan><tspan x="322" dy="13">requests are worth answering.</tspan></text>
+
+                <rect class="box-dark" x="465" y="20" width="135" height="72"></rect>
+                <text class="tn" x="477" y="40">4</text>
+                <text class="th on-dark" x="499" y="40">They run on it</text>
+                <text class="tm on-dark-m" x="477" y="60">Their calendar, their rates,<tspan x="477" dy="13">their desk, their invoices —</tspan><tspan x="477" dy="13">and their own website too.</tspan></text>
+
+                <path class="flow" marker-end="url(#o2-ar)" d="M 138 56 L 151 56"></path>
+                <path class="flow" marker-end="url(#o2-ar)" d="M 293 56 L 306 56"></path>
+                <path class="flow" marker-end="url(#o2-ar)" d="M 448 56 L 461 56"></path>
+
+                <path class="flow" marker-end="url(#o2-ar)" d="M 532 96 L 532 122 L 68 122 L 68 148"></path>
+                <text class="t" x="300" y="116" text-anchor="middle" style="font-weight:bold">real inventory · real rates · real photographs · real availability</text>
+
+                <rect class="box-line" x="0" y="152" width="600" height="56"></rect>
+                <text class="th" x="14" y="174">Which makes the next trip plan better</text>
+                <text class="tm" x="14" y="192">A property whose rooms, seasons and prices live here can be planned around, quoted accurately and booked —</text>
+                <text class="tm" x="14" y="204">so the plan a traveller gets improves every time a partner joins, without anybody writing more code.</text>
+            </svg>
+            <figcaption>
+                The loop is also the sales argument to a lodge, and it is the honest one:
+                <strong>we are not asking them to move their business to us — we are asking
+                them to answer requests from travellers who have already committed.</strong>
+                Everything after step 3 is optional and priced separately.
+            </figcaption>
+        </figure>
+
+        <div class="callout">
+            <h4>The one thing that would break it</h4>
+            <p>
+                An AI planner can generate a hundred itineraries an hour, and if each one
+                sends a request to twelve lodges the partners stop answering within a month.
+                <strong>That is why the request governance is a core mechanic and not a
+                setting</strong> — one open pipeline per traveller, an account and firm dates
+                before anything reaches a partner, and a room held on the real calendar while
+                they decide.
+            </p>
+        </div>
+
+        <section class="section">
+            <h2>The two arguments this arrangement makes</h2>
+            <div class="blocks even">
+                <article class="block">
+                    <h3>Why a lodge listens at all</h3>
+                    <p>
+                        Not "move your business to us". The listing is free, the requests are
+                        governed, and the property keeps whatever system it runs today. The
+                        booking system is offered afterwards, as a pilot on one property for
+                        one season, alongside what they already have.
+                    </p>
+                    <p>
+                        Every step is separately refusable, and nothing costs them anything
+                        until a guest has booked.
+                    </p>
+                </article>
+                <article class="block dark">
+                    <h3>Why a website customer is worth having anyway</h3>
+                    <p>
+                        Most of them will never book a room — they are restaurants, workshops
+                        and shops. That is fine: the subscription pays for itself, and the
+                        kit is the same one either way.
+                    </p>
+                    <p>
+                        But the ones who <em>do</em> have rooms or seats sell them through our
+                        booking system on their own site — a direct booking rather than a
+                        portal one. <strong>Worth more to the lodge than a listing, and more
+                        to us than a subscription.</strong>
+                    </p>
+                </article>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — the whole picture</span>
+        <span class="pageno">3</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 4 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>The whole picture — where things actually stand</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>What is running, what is built, what is only decided</h1>
+
+        <p class="lead">
+            This is the page the rest of the set exists to make checkable. The platform is
+            live in production and deploys itself from a green build; the partner side is
+            pre-launch. <strong>Nothing below is aspiration — the middle column is the
+            uncomfortable one, and it is printed at the same size as the left.</strong>
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 246" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="Three columns: what runs in production, what is built but unproven, and what is decided but not built.">
+                <rect class="box-dark" x="0" y="0" width="192" height="26"></rect>
+                <text class="eyebrow-t" x="12" y="17" style="fill:#E2AB6C">RUNNING IN PRODUCTION</text>
+                <rect class="box" x="0" y="26" width="192" height="220"></rect>
+                <text class="t" x="12" y="46">The trip planner and the plan</text>
+                <text class="t" x="12" y="66">The listing catalogue, with</text>
+                <text class="t" x="12" y="80">rights checked per field</text>
+                <text class="t" x="12" y="100">Booking requests and the</text>
+                <text class="t" x="12" y="114">one-pipeline rule</text>
+                <text class="t" x="12" y="134">Occupancy calendar, seasons,</text>
+                <text class="t" x="12" y="148">rate plans, restrictions</text>
+                <text class="t" x="12" y="168">The desk: walk-ins, arrivals,</text>
+                <text class="t" x="12" y="182">check-in, blocks</text>
+                <text class="t" x="12" y="202">Folio, payments, refunds,</text>
+                <text class="t" x="12" y="216">numbered invoices</text>
+                <text class="t" x="12" y="236">Backups, monitoring, deploys</text>
+
+                <rect class="box-line" x="204" y="0" width="192" height="26" style="fill:#B45309;stroke:none"></rect>
+                <text class="eyebrow-t" x="216" y="17" style="fill:#fff">BUILT, NEVER PROVEN LIVE</text>
+                <rect class="box" x="204" y="26" width="192" height="220"></rect>
+                <text class="t" x="216" y="46">Online card payment, end to</text>
+                <text class="t" x="216" y="60">end — no merchant account</text>
+                <text class="t" x="216" y="80">Connectors for the systems</text>
+                <text class="t" x="216" y="94">this market runs on — not one</text>
+                <text class="t" x="216" y="108">has met a real account</text>
+                <text class="t" x="216" y="128">The website builder, sites,</text>
+                <text class="t" x="216" y="142">domains and certificates —</text>
+                <text class="t" x="216" y="156">no paying customer yet</text>
+                <text class="t" x="216" y="176">Live availability on a</text>
+                <text class="t" x="216" y="190">customer's own website</text>
+                <text class="tm" x="216" y="220" style="font-style:italic">This column is where the risk</text>
+                <text class="tm" x="216" y="232" style="font-style:italic">is, and naming it is the point.</text>
+
+                <rect class="box" x="408" y="0" width="192" height="26" style="fill:none;stroke:#6B6350;stroke-dasharray:4 3"></rect>
+                <text class="eyebrow-t" x="420" y="17" style="fill:#6B6350">DECIDED, NOT BUILT</text>
+                <rect class="box-ghost" x="408" y="26" width="192" height="220"></rect>
+                <text class="t" x="420" y="46">Payouts and partner</text>
+                <text class="t" x="420" y="60">statements</text>
+                <text class="t" x="420" y="80">Collaborative trip plans —</text>
+                <text class="t" x="420" y="94">co-planners, comments,</text>
+                <text class="t" x="420" y="108">a log of who changed what</text>
+                <text class="t" x="420" y="128">Staged booking confirmations</text>
+                <text class="t" x="420" y="148">Room-level assignment</text>
+                <text class="t" x="420" y="168">Staff accounts under a</text>
+                <text class="t" x="420" y="182">partner, with roles</text>
+                <text class="t" x="420" y="202">The on-trip companion</text>
+                <text class="t" x="420" y="222">The website subscription</text>
+                <text class="t" x="420" y="236">state machine</text>
+            </svg>
+        </figure>
+
+        <div class="callout dark">
+            <h4>The four things no amount of code finishes</h4>
+            <p>
+                <strong>A real partner on the other end.</strong> Every connector is written
+                against documented behaviour, and the first live integration will turn up
+                surprises. Nothing else here can be de-risked without it.
+                <strong>A merchant account</strong>, which needs the Namibian entity.
+                <strong>A recurring payment method</strong> for the website subscription,
+                which is a different thing from the one-off booking payment.
+                And <strong>a handful of commercial decisions</strong> — the commission rate,
+                the price of the booking system, exactly when commission is earned. None of
+                them blocks code; all of them are things a partner is told up front.
+            </p>
+        </div>
+
+        <section class="section">
+            <h2>The order things get proved in</h2>
+            <div class="steps">
+                <article class="step">
+                    <span class="n">1</span>
+                    <h3>One property, live</h3>
+                    <p>
+                        A real lodge running its calendar, rates and bookings here for a
+                        season. This is the one that moves the most items out of the middle
+                        column, and nothing substitutes for it.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">2</span>
+                    <h3>One real payment</h3>
+                    <p>
+                        A merchant account, and a guest's card settling in Namibian dollars.
+                        Everything above that point is built; this is the entity and the bank,
+                        not the software.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">3</span>
+                    <h3>One paying website</h3>
+                    <p>
+                        A customer on their own domain, invoiced and renewed — including a
+                        change request, because that is the part of the offer that has to be
+                        cheap to honour.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">4</span>
+                    <h3>One live connector</h3>
+                    <p>
+                        A property's existing system talking to ours. Deliberately last: it is
+                        the least controllable, and the other three prove more per unit of
+                        effort.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — the whole picture</span>
+        <span class="pageno">4</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 5 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>The whole picture — where the money comes from</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>The core is free, and we earn when a partner does</h1>
+
+        <p class="lead">
+            A listing costs nothing and stays free. So does receiving booking requests, and
+            so does the calendar underneath them. <strong>We are only paid when a booking is
+            confirmed, or when a partner takes something extra</strong> — which is the
+            argument that gets us in the door in a market where every operator has been
+            charged for a portal listing that produced nothing.
+        </p>
+
+        <section class="section">
+            <h2>The lines, and what is settled about each</h2>
+            <table class="facts">
+                <thead>
+                    <tr><th>Line</th><th>Who pays, and for what</th><th>Where it stands</th></tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>Commission</td>
+                    <td>The partner, on a <strong>confirmed booking only</strong>. Modelled deliberately below what the international portals charge, and never charged on the government's VAT or the tourism levy.</td>
+                    <td>The mechanism runs. <strong>The rate is not published</strong> until it is signed off, and no partner has been quoted one.</td>
+                </tr>
+                <tr>
+                    <td>Booking system</td>
+                    <td>A property that wants to run its whole operation here, not only the bookings we send it. Hosted, backed up and supported by us.</td>
+                    <td>The software runs. <strong>There is no price yet</strong> — the material offers to quote and names no figure.</td>
+                </tr>
+                <!-- EDIT: price — also on the websites paper (twice) and the websites flyer (twice). -->
+                <tr>
+                    <td>Websites</td>
+                    <td>Any Namibian business, monthly, covering build, hosting, domain and changes. <strong>N$&nbsp;399 a month</strong>, cancellable at any time.</td>
+                    <td>Sites are real; nobody is paying yet. The price is a proposal, and collection is by invoice until a recurring method exists.</td>
+                </tr>
+                <tr>
+                    <td>Featured placement</td>
+                    <td>A partner paying to be surfaced more prominently on the travel platform.</td>
+                    <td><span class="chip designed">Designed</span> Named as an intention. Nothing is built and nothing is sold.</td>
+                </tr>
+                <tr>
+                    <td>After-sales</td>
+                    <td>Travellers, on the road — equipment, guides, extras.</td>
+                    <td><span class="chip designed">Designed</span> Deliberately deferred. Not in this year's plan.</td>
+                </tr>
+                <tr>
+                    <td>Sector funding</td>
+                    <td>Tourism-sector and development programmes, for a platform built and operated in Namibia.</td>
+                    <td>An avenue we intend to pursue. <strong>Nothing has been applied for and nothing granted.</strong></td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <div class="callout">
+            <h4>What it costs us to serve a traveller</h4>
+            <p>
+                Worth stating because it is the question an AI product usually cannot answer.
+                A complete planning session costs us <strong>roughly USD 0.15 to 0.50 in
+                model calls</strong> — our own estimate — against a commission on a
+                multi-thousand-dollar trip. That is not an accident of a cheap model: the
+                catalogue is assembled in code and handed over in a single call, so the cost
+                per plan is fixed rather than open-ended. Where cost pressure actually lives
+                is bulk content enrichment, which runs behind a hard daily spending cap that
+                a bug cannot exceed.
+            </p>
+        </div>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — the whole picture</span>
+        <span class="pageno">5</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 6 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>The whole picture — how it is built, and what we do not claim</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>Built here, operated here, and meant to travel</h1>
+
+        <div class="features four" style="margin-bottom:7mm">
+            <article class="feature">
+                <h3>Standards, not inventions</h3>
+                <p>The availability and rate model is the one every channel manager in this market already speaks. Where we deviate, it is written down and argued.</p>
+            </article>
+            <article class="feature">
+                <h3>Guards, not good intentions</h3>
+                <p>Money and inventory each have exactly one write path, enforced at runtime and by tests that fail the build. Spending caps exist because a bug once cost real money.</p>
+            </article>
+            <article class="feature">
+                <h3>Built for this connection</h3>
+                <p>Camps on satellite links, guests on weak mobile networks. Pages are measured against a byte budget, and screens are built for a laptop at a reception desk.</p>
+            </article>
+            <article class="feature">
+                <h3>Operated, not just shipped</h3>
+                <p>A green build deploys itself. Encrypted backups nightly to off-site storage, with a documented path back from total server loss.</p>
+            </article>
+        </div>
+
+        <div class="callout dark">
+            <h4>Namibia first, not Namibia only</h4>
+            <p>
+                The concept is built to move to other African countries, and that is a
+                constraint on today's code rather than a slide: country-specific facts —
+                currency, dial codes, tax, time zone, cancellation windows — are resolved from
+                the data rather than written into the logic, and the places where Namibia
+                <em>is</em> still assumed are listed in the repository so nobody has to find
+                them by accident. <strong>We are not building multi-country abstractions
+                today. We are declining to paint ourselves into a corner.</strong>
+            </p>
+        </div>
+
+        <section class="section">
+            <h2>What exists around the three lines <span class="chip running">Running</span></h2>
+            <ul class="checklist">
+                <li><strong>Web, iOS and Android</strong>, and an installable web app</li>
+                <li><strong>Five languages</strong> — English first, everything falls back to it</li>
+                <li><strong>An admin panel</strong> for the team, and a separate one for partners</li>
+                <li><strong>A documented public API</strong> for other systems to read</li>
+                <li><strong>A shared partner mailbox</strong>, polled and filed automatically</li>
+                <li><strong>Signed one-click links</strong>, so a partner never needs a login</li>
+                <li><strong>Nightly encrypted backups</strong> off-site, monitored</li>
+                <li><strong>A green build deploys itself</strong>; a red one cannot</li>
+                <li><strong>A filing cabinet</strong> for the team's own documents, access-controlled</li>
+                <li><strong>Print material</strong> built from source, downloadable in the panel</li>
+            </ul>
+        </section>
+
+        <div class="callout honest">
+            <h4>What this document does not claim</h4>
+            <p>
+                <strong>No traveller numbers, booking volumes, revenue or projections.</strong>
+                The platform is live and the partner side is pre-launch. There is nothing yet
+                worth quoting, and a figure invented for a document is the one thing that ends
+                a conversation with somebody who checks.
+            </p>
+            <p>
+                <strong>No named partner, customer, testimonial or logo</strong>, because none
+                exists. <strong>No commission percentage and no price for the booking
+                system</strong>, both pending sign-off. <strong>No validated connector</strong>
+                — we say "designed to connect to". <strong>No card payment taken in
+                anger</strong> — "built to settle in Namibian dollars" is the claim.
+                <strong>No funding claimed, applied for or granted.</strong>
+            </p>
+            <p>
+                And nothing about a named competitor's reliability. The availability problems
+                that motivated this platform are real; naming anybody in print is a fight we
+                do not need.
+            </p>
+        </div>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — the whole picture</span>
+        <span class="pageno">6</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 7 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>The whole picture — the rest of the set</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>Three papers go one level down</h1>
+
+        <p class="lead">
+            Each takes one product line and explains how it actually works — the design
+            decisions, the diagrams, and the same status marks used here. They are written to
+            be read on their own, in any order.
+        </p>
+
+        <section class="section">
+            <div class="blocks three">
+                <article class="block">
+                    <h3>Kaia Trip Planning &amp; Listings</h3>
+                    <p>
+                        How a plan is made and why the model is never the source of a fact.
+                        The account line, the one-active-request rule that protects partners,
+                        and the ladder that decides what may be published.
+                    </p>
+                </article>
+                <article class="block">
+                    <h3>Booking &amp; Payment</h3>
+                    <p>
+                        The occupancy calendar and how the last room is protected from being
+                        sold twice. How a night is priced the way this market quotes. The
+                        folio, the gapless invoice, and the three settlement models.
+                    </p>
+                </article>
+                <article class="block">
+                    <h3>Websites</h3>
+                    <p>
+                        Why the sites are generated rather than hand-built, why the website
+                        owns its own content instead of reading a listing, and what an owner
+                        deliberately cannot do.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <div class="callout">
+            <h4>If you only read one more page</h4>
+            <p>
+                Read the closing page of whichever paper covers what you are being asked to
+                decide about. Each one ends on what we do not claim, and
+                <strong>that page is a better guide to what is real here than any of the ones
+                before it.</strong>
+            </p>
+        </div>
+
+        <section class="section">
+            <h2>What we would ask for</h2>
+            <div class="steps three">
+                <article class="step">
+                    <span class="n">1</span>
+                    <h3>A property to run</h3>
+                    <p>
+                        One lodge, one season, alongside whatever they use today. That is the
+                        single thing that turns the middle column on page 4 into the left one.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">2</span>
+                    <h3>A business that needs a website</h3>
+                    <p>
+                        We will generate a draft and show it — no charge, no obligation, and
+                        nothing published until the owner says yes.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">3</span>
+                    <h3>An hour, and a hard question</h3>
+                    <p>
+                        We would rather be caught out now than in front of a guest. Plan a
+                        trip on namibway.com and try to break it.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="doc-close">
+        <div>
+            <h2>The smartest way to experience Namibia</h2>
+            <p>
+                Built in Namibia, operated from Namibia, and meant to be judged on a working
+                system rather than on a document. Everything described in this set can be
+                shown running, on real software, in about an hour.
+            </p>
+        </div>
+        <div class="qr">
+            <img src="assets/qr-namibway-com.svg" alt="">
+            <span>NAMIBWAY.COM</span>
+        </div>
+    </footer>
+
+</section>
+
+</body>
+</html>

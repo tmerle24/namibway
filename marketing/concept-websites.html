@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="en-GB" data-variant="print">
+<head>
+<meta charset="utf-8">
+<title>NamibWay — Websites for Namibian businesses</title>
+
+<!--
+  ==========================================================================
+  Concept document 3 of 3 — the website builder.
+  A4, seven pages: cover, five explaining pages, and a page that closes.
+
+  Build:   node marketing/build-flyer.mjs   (builds every piece in marketing/)
+           node marketing/build-flyer.mjs concept-websites   (just this one)
+
+  Audience: the co-founder prospecting with it, a business owner deciding,
+  and an investor asking why a website business belongs next to a travel
+  platform. The answer to the last one is on page 3 and page 6 — the sites
+  are a distribution channel for the booking system, not a side business.
+
+  EDIT: marked spots —
+    1. EDIT: price — N$ 399/month appears TWICE (cover and page 2). Both have
+       to move together, and it is a proposal until somebody signs it off.
+       It also appears twice in flyer-websites-a4.html — check all four.
+    2. EDIT: phone — a phone line in the contact strip, off by default
+    3. EDIT: hero photo — --hero-photo, empty until we own an image
+
+  Claims discipline (marketing/README.md is the authority):
+    * NO LIVE CUSTOMER WEBSITE EXISTS. Nobody is paying for one yet, so
+      there is no site to name, screenshot or link to, and no testimonial.
+      Page 7 says so in as many words — do not remove it.
+    * We can set a business up on Google Maps and a Google Business Profile.
+      We can NEVER promise where it ranks in search, and no sentence here
+      may imply it.
+    * A site can show live availability and prices, but the guest finishes
+      the booking on namibway.com today. "Book through NamibWay" stays in
+      that sentence until the in-place flow is built.
+    * The five languages are a decision plus a database column, not a
+      feature. They carry the DESIGNED chip and must keep it.
+
+  A page that overflows is clipped in silence — `.page` is overflow: hidden.
+  Measure per page CHILD after any copy change; the snippet is in
+  marketing/README.md.
+  ==========================================================================
+-->
+
+<link rel="stylesheet" href="flyer-base.css">
+<link rel="stylesheet" href="document-base.css">
+<style>
+/* The build script rewrites the next line for the screen variant. */
+@page { size: 216mm 303mm; margin: 0; } /* PAGESIZE */
+</style>
+</head>
+
+<body>
+
+<!-- ============================== COVER ============================== -->
+<section class="page cover">
+
+    <img class="compass" src="assets/compass-on-brown.svg" alt="">
+    <img class="logo" src="../public/images/namibway-logo-light.png" alt="NamibWay">
+
+    <p class="eyebrow">Concept paper — three of three</p>
+
+    <!-- EDIT: price — this figure appears again on page 2. Move both. -->
+    <h1>A website worth showing people, for N$&nbsp;399 a month.</h1>
+
+    <p class="standfirst">
+        Most Namibian businesses have a Facebook page and no website, because a website has
+        always meant a quote, a project and a person who disappears. We generate the site
+        instead of building it by hand — <strong>one price covering the build, the hosting,
+        the domain and the changes afterwards</strong> — and where the business has rooms or
+        seats to sell, its own site shows live availability and prices from our booking
+        system.
+    </p>
+
+    <div class="cover-foot">
+        <div class="for">
+            <strong>How to read the status marks</strong>
+            <ul class="key">
+                <li><span class="chip running">Running</span> in production today</li>
+                <li><span class="chip built">Built</span> built and tested, no paying customer on it yet</li>
+                <li><span class="chip designed">Designed</span> decided, not built</li>
+            </ul>
+            <p class="note">This is the youngest of the three product lines, and the marks are correspondingly mixed.</p>
+        </div>
+        <img src="assets/built-in-namibia-stamp-light-1024.png" alt="Built in Namibia">
+    </div>
+
+</section>
+
+<!-- ============================== PAGE 2 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Websites — the offer</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>Generated, not hand-built — which is the only way the price works</h1>
+
+        <p class="lead">
+            At N$&nbsp;399 a month a bespoke site per customer does not survive the margin,
+            and everybody who has tried ends up either charging five times as much or
+            abandoning the customer after launch. <strong>So the product is a small kit of
+            very good standard modules, assembled automatically</strong> — and the quality of
+            that one template is the product, not the number of options in it.
+        </p>
+
+        <div class="headline-feature">
+            <h3>The owner makes no design decision, and gets a finished site anyway</h3>
+            <p>
+                Sticky navigation, a full-bleed hero, alternating image-and-text sections,
+                prices, opening hours, a map, an enquiry form and a proper legal footer — laid
+                out in the order that suits the kind of business. Nothing to choose, nothing
+                to configure, nothing left half-finished.
+            </p>
+        </div>
+
+        <div class="callout">
+            <h4>Why not just install WordPress for each customer</h4>
+            <p>
+                It was the obvious answer and it was rejected deliberately. A WordPress per
+                owner is far more functionality than the purpose needs, a permanent security
+                exposure across dozens of instances, and an update treadmill that costs more
+                per month than we charge. <strong>Its flexibility is exactly what makes it
+                expensive to operate.</strong> Our kit is the opposite trade — the owner
+                cannot introduce code of any kind, so the restriction that makes the price
+                possible is the same one that makes it safe (page 5).
+            </p>
+        </div>
+
+        <section class="section">
+            <h2>What one monthly fee covers</h2>
+            <div class="features">
+                <article class="feature">
+                    <h3>The site itself</h3>
+                    <p>Designed, built, filled in with the business's own words and photographs, and live on a real address.</p>
+                </article>
+                <article class="feature">
+                    <h3>The domain</h3>
+                    <p>We register it and we renew it. The customer keeps it if they leave — it is theirs, not a hostage.</p>
+                </article>
+                <article class="feature">
+                    <h3>Hosting and certificates</h3>
+                    <p>The same infrastructure the travel platform runs on, with the security certificate issued and renewed without anybody asking.</p>
+                </article>
+                <article class="feature">
+                    <h3>Changes afterwards</h3>
+                    <p>New prices, new photographs, a changed opening time — a message to us and it is done. The owner can also do it themselves.</p>
+                </article>
+                <article class="feature">
+                    <h3>Findable</h3>
+                    <p>Set up on Google Maps and a Google Business Profile. Where anyone ranks in a search result is not something we will promise.</p>
+                </article>
+                <article class="feature">
+                    <h3>No lock-in</h3>
+                    <p>Cancellable at any time, no contract term. Content and domain belong to the business.</p>
+                </article>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — websites for Namibian businesses</span>
+        <span class="pageno">2</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 3 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Websites — how it sits next to the platform</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>The website owns its content. Full stop.</h1>
+
+        <p class="lead">
+            The tempting design reads the website live out of the business's listing on the
+            travel platform — one source of truth, no duplication. We deliberately did not do
+            that, and the reasoning is worth reading, because it is the decision the whole
+            product line rests on.
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="Listings and booking tightly coupled as the free core; the website module independent, importing once and reading availability live.">
+                <defs>
+                    <marker id="w-ar" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#B9812E"></path>
+                    </marker>
+                </defs>
+
+                <rect class="box-ghost" x="0" y="20" width="270" height="164"></rect>
+                <text class="eyebrow-t" x="14" y="14">THE FREE CORE — TIGHTLY COUPLED, ON PURPOSE</text>
+
+                <rect class="box" x="20" y="42" width="230" height="54"></rect>
+                <text class="th" x="34" y="64">Listings</text>
+                <text class="tm" x="34" y="80">Who exists, where they are, what they offer</text>
+
+                <rect class="box" x="20" y="112" width="230" height="54"></rect>
+                <text class="th" x="34" y="134">Booking</text>
+                <text class="tm" x="34" y="150">Availability, prices, reservations, the folio</text>
+
+                <line class="flow" x1="135" y1="96" x2="135" y2="112"></line>
+
+                <rect class="box-dark" x="330" y="20" width="270" height="164"></rect>
+                <text class="eyebrow-t" x="344" y="14" style="fill:#B9812E">THE WEBSITE — A MODULE OF ITS OWN</text>
+                <text class="th on-dark" x="344" y="48">Its own tables. Its own content.</text>
+                <text class="th on-dark" x="344" y="66">Its own photographs.</text>
+                <text class="tm on-dark-m" x="344" y="92">It works with no listing behind it and no<tspan x="344" dy="14">booking system behind it. Both are optional</tspan><tspan x="344" dy="14">suppliers, never prerequisites.</tspan></text>
+                <text class="tm on-dark-m" x="344" y="150">What the owner publishes is entirely what<tspan x="344" dy="14">they typed into structured fields.</tspan></text>
+
+                <!-- import arrow -->
+                <path class="flow" marker-end="url(#w-ar)" d="M 254 62 L 324 62"></path>
+                <text class="tm" x="258" y="52" style="font-weight:bold">imported once, at creation</text>
+
+                <!-- live read arrow -->
+                <path class="flow" marker-end="url(#w-ar)" d="M 254 138 L 324 138"></path>
+                <text class="tm" x="258" y="128" style="font-weight:bold">read live, never copied</text>
+
+                <rect class="box" x="0" y="200" width="292" height="46"></rect>
+                <text class="th" x="14" y="220" style="font-size:10.5px">Text and pictures: copied, then owned</text>
+                <text class="tm" x="14" y="236">Later listing changes do not propagate either way.</text>
+
+                <rect class="box" x="308" y="200" width="292" height="46"></rect>
+                <text class="th" x="322" y="220" style="font-size:10.5px">Availability and price: never copied</text>
+                <text class="tm" x="322" y="236">A cached price is a booking taken at the wrong one.</text>
+            </svg>
+            <figcaption>
+                Two different couplings on purpose. Content is <strong>imported once and then
+                belongs to the website</strong>; availability and prices are
+                <strong>read live every time and never stored here</strong>, because a stale
+                copy of a price is a booking somebody has to honour.
+            </figcaption>
+        </figure>
+
+        <section class="section">
+            <h2>Three reasons it is built this way</h2>
+            <table class="facts">
+                <tbody>
+                <tr>
+                    <td>Customers with no listing</td>
+                    <td>A workshop or a shop will never have one. If the website read from a listing it would have no source for them at all, and two separate data paths would be double the build and double the testing for one product.</td>
+                </tr>
+                <tr>
+                    <td>The ownership promise</td>
+                    <td>We tell a customer the website and its content are theirs. Content read live out of somebody else's record — and disappearing when that record does — is not theirs, whatever the contract says. The architecture has to make the promise true.</td>
+                </tr>
+                <tr>
+                    <td>Rights on every field</td>
+                    <td>The travel platform tracks where each description and each photograph came from. Only material we may actually hand over is imported: third-party directory content is never copied, and material we hold for our own prospecting is marked and <strong>blocks publication</strong> until it is replaced.</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <div class="callout dark">
+            <h4>Which is also why it is not only for lodges</h4>
+            <p>
+                The kit is sold just as happily to a restaurant, a workshop or a shop with
+                nothing tourism-bookable about it. <strong>A customer with no listing on the
+                travel platform is an equally ranked main case</strong>, and gets the same kit
+                starting from empty blocks rather than a cut-down version.
+            </p>
+        </div>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — websites for Namibian businesses</span>
+        <span class="pageno">3</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 4 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Websites — from nothing to live</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>One click makes a real site, in seconds</h1>
+
+        <p class="lead">
+            Not a template preview and not a wireframe — a complete, responsive website with
+            the business's own name, words, photographs, address, map and opening hours
+            already in it, ready to be corrected rather than ready to be started.
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 210" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="Six steps from generating a site to a custom domain going live.">
+                <defs>
+                    <marker id="w2-ar" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#B9812E"></path>
+                    </marker>
+                </defs>
+
+                <rect class="box" x="0" y="16" width="186" height="76"></rect>
+                <text class="tn" x="14" y="38">1</text>
+                <text class="th" x="42" y="38">Generate</text>
+                <text class="tm" x="14" y="58">From a listing, or empty with just a<tspan x="14" dy="13">name and a business type. It reports</tspan><tspan x="14" dy="13">what it left blank, and why.</tspan></text>
+
+                <rect class="box" x="207" y="16" width="186" height="76"></rect>
+                <text class="tn" x="221" y="38">2</text>
+                <text class="th" x="249" y="38">Correct it</text>
+                <text class="tm" x="221" y="58">Opening screen, wording, logo, legal<tspan x="221" dy="13">text and photographs — by us, or by</tspan><tspan x="221" dy="13">the owner. Same fields, one version.</tspan></text>
+
+                <rect class="box" x="414" y="16" width="186" height="76"></rect>
+                <text class="tn" x="428" y="38">3</text>
+                <text class="th" x="456" y="38">Review</text>
+                <text class="tm" x="428" y="58">On a private preview address before<tspan x="428" dy="13">any domain exists, so a draft can be</tspan><tspan x="428" dy="13">shown without being findable.</tspan></text>
+
+                <rect class="box" x="0" y="112" width="186" height="76"></rect>
+                <text class="tn" x="14" y="134">4</text>
+                <text class="th" x="42" y="134">Publish</text>
+                <text class="tm" x="14" y="154">The owner confirms the legal pages<tspan x="14" dy="13">and that the content is theirs to</tspan><tspan x="14" dy="13">publish. Both are recorded.</tspan></text>
+
+                <rect class="box" x="207" y="112" width="186" height="76"></rect>
+                <text class="tn" x="221" y="134">5</text>
+                <text class="th" x="249" y="134">Live on a subdomain</text>
+                <text class="tm" x="221" y="154">Immediately, and permanently — it is<tspan x="221" dy="13">what the draft was reviewed on and</tspan><tspan x="221" dy="13">what still answers years later.</tspan></text>
+
+                <rect class="box-amber" x="414" y="112" width="186" height="76"></rect>
+                <text class="tn" x="428" y="134" style="fill:#fff">6</text>
+                <text class="th on-amber" x="456" y="134">Their own domain</text>
+                <text class="tm on-amber" x="428" y="154" style="fill:#FDECD8">We register it, watch for it pointing<tspan x="428" dy="13">at us, and the certificate is issued</tspan><tspan x="428" dy="13">and the site moves across by itself.</tspan></text>
+
+                <path class="flow" marker-end="url(#w2-ar)" d="M 188 54 L 203 54"></path>
+                <path class="flow" marker-end="url(#w2-ar)" d="M 395 54 L 410 54"></path>
+                <path class="flow" marker-end="url(#w2-ar)" d="M 507 94 L 507 104 L 93 104 L 93 108"></path>
+                <path class="flow" marker-end="url(#w2-ar)" d="M 188 150 L 203 150"></path>
+                <path class="flow" marker-end="url(#w2-ar)" d="M 395 150 L 410 150"></path>
+
+                <text class="tm" x="0" y="206">Step 1 takes seconds. Step 6 takes as long as the internet takes to agree the domain has moved — and the subdomain works throughout.</text>
+            </svg>
+            <figcaption>
+                Re-running the generator <strong>refreshes what it wrote and never touches
+                what has been edited since</strong> — so a site can be regenerated without
+                losing a word anybody typed.
+            </figcaption>
+        </figure>
+
+        <section class="section">
+            <h2>The kit <span class="chip built">Built</span></h2>
+            <p style="font-size:8.8pt;line-height:1.55;color:var(--muted);margin-bottom:5mm">
+                Twelve module types, assembled in the order that suits the business. A module
+                with no content behind it does not appear as an empty box — it simply is not
+                there, and the panel says it needs filling.
+            </p>
+            <ul class="checklist">
+                <li><strong>Opening screen</strong> — full-bleed photograph, a line, a call to action</li>
+                <li><strong>Sticky navigation</strong> — and a proper menu on a phone</li>
+                <li><strong>Introduction</strong> — what this place is, in the owner's words</li>
+                <li><strong>Image and text sections</strong>, alternating</li>
+                <li><strong>Gallery</strong> — the business's own photographs</li>
+                <li><strong>Highlights</strong> — what makes it worth the drive</li>
+                <li><strong>Rooms, units or vehicles</strong> — with prices</li>
+                <li><strong>Facilities</strong>, and <strong>opening hours</strong></li>
+                <li><strong>Map and directions</strong>, <strong>contact</strong> and social media</li>
+                <li><strong>Enquiry form</strong> — which reaches the owner, not a void</li>
+                <li><strong>Booking</strong> — live availability, where there is something to sell</li>
+                <li><strong>Legal footer</strong> — privacy, legal notice, copyright</li>
+            </ul>
+        </section>
+
+        <div class="callout dark">
+            <h4>Fast enough to feel expensive</h4>
+            <p>
+                The target is a phone on a weak Namibian mobile network, so speed is an
+                architectural decision rather than an optimisation afterwards. The sites carry
+                <strong>no front-end framework at all</strong> — server-rendered, inlined
+                styles, about fifteen lines of JavaScript, images sized on demand, and fully
+                readable with scripting switched off. A page carrying <em>every</em> module at
+                once measures around 18 KB against a ceiling of 60 KB, and a test fails the
+                build if that ceiling is crossed.
+            </p>
+        </div>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — websites for Namibian businesses</span>
+        <span class="pageno">4</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 5 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Websites — domains, safety and the legal foot</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>Hosting other people's businesses is a responsibility, not a hosting bill</h1>
+
+        <p class="lead">
+            Dozens of small sites on one server, each one somebody's livelihood, each one
+            carrying content we did not write. Two things follow: <strong>the owner must not
+            be able to introduce code</strong>, and <strong>the part of the system that can
+            take the server down must not be reachable from the part that serves web
+            requests.</strong>
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 176" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="The application only observes DNS; a separate privileged process issues certificates.">
+                <defs>
+                    <marker id="w3-ar" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#B9812E"></path>
+                    </marker>
+                </defs>
+
+                <text class="eyebrow-t" x="0" y="10">A CUSTOMER'S OWN DOMAIN GOING LIVE</text>
+
+                <rect class="box" x="0" y="22" width="272" height="112"></rect>
+                <text class="th" x="14" y="44">The application</text>
+                <text class="tm" x="14" y="62">Takes the domain from an admin field,<tspan x="14" dy="13">hands over copy-and-paste DNS</tspan><tspan x="14" dy="13">instructions, then every five minutes</tspan><tspan x="14" dy="13">asks one question: does this name point</tspan><tspan x="14" dy="13">at us yet? It writes down what it saw.</tspan></text>
+                <text class="tm" x="14" y="128" style="font-weight:bold">It can observe. It cannot act.</text>
+
+                <line x1="292" y1="18" x2="292" y2="140" stroke="#B9812E" stroke-width="2" stroke-dasharray="6 4"></line>
+                <text class="eyebrow-t" x="292" y="152" text-anchor="middle">THE WALL</text>
+
+                <rect class="box-dark" x="312" y="22" width="288" height="112"></rect>
+                <text class="th on-dark" x="326" y="44">A separate privileged process</text>
+                <text class="tm on-dark-m" x="326" y="62">Asks the application which domains are<tspan x="326" dy="13">ready, issues the certificate, writes the</tspan><tspan x="326" dy="13">web-server configuration in one atomic</tspan><tspan x="326" dy="13">step, reloads, and reports back.</tspan></text>
+                <text class="tm on-dark-m" x="326" y="128" style="font-weight:bold">It runs on a timer, not on a request.</text>
+
+                <path class="flow" marker-end="url(#w3-ar)" d="M 274 78 L 308 78"></path>
+                <text class="tm" x="0" y="168">A web process allowed to run certificate tooling and rewrite server configuration is a web process with root. One bad configuration file takes every site down.</text>
+            </svg>
+            <figcaption>
+                Both the customer's bare domain and its <em>www</em> form have to resolve
+                before a certificate is attempted — a certificate covering half of what the
+                customer prints on a business card fails in front of a guest instead of here.
+                And <strong>a domain that is already live is never re-checked</strong>, so a
+                momentary DNS hiccup cannot take a website off the air.
+            </figcaption>
+        </figure>
+
+        <div class="blocks even" style="margin-bottom:7mm">
+            <article class="block">
+                <h3>What an owner cannot do <span class="chip running">Running</span></h3>
+                <p>
+                    No free HTML block, no script, no iframe, no third-party embed, no file
+                    upload other than an image that is checked. Formatted text is filtered
+                    against a list of permitted markup on the server. A paste out of a word
+                    processor cannot put anything executable on their own site.
+                </p>
+                <p>
+                    That restriction is not a limitation we apologise for. It is the reason one
+                    person can safely operate a hundred of these.
+                </p>
+            </article>
+            <article class="block dark">
+                <h3>The legal foot <span class="chip built">Built</span></h3>
+                <p>
+                    Privacy, legal notice and copyright line on every site. We write the first
+                    version and the business owns and edits all three, then confirms them when
+                    the site is published.
+                </p>
+                <p>
+                    The system does not generate legal advice. What it generates is a factual
+                    description of <em>how this website works</em> — what the form collects,
+                    where it goes, that there is no tracking — which we can state because we
+                    built it. Everything about the business itself comes off their own record,
+                    so a missing address produces a shorter page rather than an invented one.
+                </p>
+            </article>
+        </div>
+
+        <div class="callout">
+            <h4>Where the liability line is drawn</h4>
+            <p>
+                <strong>The customer answers for the content; we answer for the hosting and
+                the technology.</strong> The technical side already supports that line rather
+                than merely asserting it: because the owner cannot introduce code, everything
+                they publish is exactly what they typed into structured fields — and who
+                published what, and when, is recorded. There is a route for complaints and a
+                way to take a site or a single element offline at short notice.
+            </p>
+        </div>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — websites for Namibian businesses</span>
+        <span class="pageno">5</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 6 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Websites — selling from the customer's own site</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>The part no template shop can offer</h1>
+
+        <p class="lead">
+            A lodge's own website normally shows a contact form and a promise to reply. If the
+            business runs on our booking system, <strong>its own site can show what is
+            genuinely free tonight and what it costs</strong> — read live from the same
+            calendar the front desk works in, never a copy.
+        </p>
+
+        <section class="section">
+            <h2>What a site can do with the booking system behind it</h2>
+            <table class="facts">
+                <tbody>
+                <tr>
+                    <td>Live availability and prices <span class="chip built">Built</span></td>
+                    <td>Read directly from the property's own calendar and rate plan, with the season, the occupancy rules and the taxes included. Never cached, because a cached price is a booking somebody has to honour at the wrong number.</td>
+                </tr>
+                <tr>
+                    <td>The enquiry form <span class="chip built">Built</span></td>
+                    <td>Creates a real request in the same pipeline the travel platform uses — so the owner gets the mail with one-click confirm and decline links, and the visitor gets an answer either way. An accommodation is asked for arrival and departure; a restaurant or an activity for a date and a time.</td>
+                </tr>
+                <tr>
+                    <td>Finishing the booking <span class="chip built">Built</span></td>
+                    <td>The site quotes, and the guest completes the booking on namibway.com. That hand-over is what exists today and it is what we say, not more.</td>
+                </tr>
+                <tr>
+                    <td>Booking without leaving <span class="chip designed">Designed</span></td>
+                    <td>Decided and not built: the guest stays on the business's own site throughout, with a sign-in that works across two different domains. That is a real piece of engineering, not a button, and it is named here rather than implied.</td>
+                </tr>
+                <tr>
+                    <td>Five languages <span class="chip designed">Designed</span></td>
+                    <td>Decided — English, German, Dutch, French and Spanish, matching the travel platform. Today the sites carry the database structure for a second language and nothing else: no switcher, no per-language address. The foundation, not the feature.</td>
+                </tr>
+                <tr>
+                    <td>The subscription <span class="chip designed">Designed</span></td>
+                    <td>The states below are decided; collection is manual invoicing until a recurring payment method exists in this market. The owner's own create-a-website button stays locked until something knows whether a customer is paying.</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 132" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="Subscription states from trial through active, payment failed, grace and suspended to cancelled.">
+                <defs>
+                    <marker id="w4-ar" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#B9812E"></path>
+                    </marker>
+                </defs>
+
+                <text class="eyebrow-t" x="0" y="10">THE SUBSCRIPTION, AND WHAT HAPPENS TO THE LIVE SITE IN EACH STATE — DESIGNED, NOT BUILT</text>
+
+                <rect class="box" x="0" y="22" width="106" height="44"></rect>
+                <text class="th" x="12" y="42">Trial</text>
+                <text class="tm" x="12" y="58">Site live</text>
+
+                <rect class="box-dark" x="124" y="22" width="106" height="44"></rect>
+                <text class="th on-dark" x="136" y="42">Active</text>
+                <text class="tm on-dark-m" x="136" y="58">Site live</text>
+
+                <rect class="box" x="248" y="22" width="106" height="44"></rect>
+                <text class="th" x="260" y="42">Payment failed</text>
+                <text class="tm" x="260" y="58">Site live</text>
+
+                <rect class="box" x="372" y="22" width="106" height="44"></rect>
+                <text class="th" x="384" y="42">Grace</text>
+                <text class="tm" x="384" y="58">Site live, owner told</text>
+
+                <rect class="box-ghost" x="496" y="22" width="104" height="44"></rect>
+                <text class="th" x="508" y="42">Suspended</text>
+                <text class="tm" x="508" y="58">Notice page</text>
+
+                <path class="flow" marker-end="url(#w4-ar)" d="M 108 44 L 120 44"></path>
+                <path class="flow" marker-end="url(#w4-ar)" d="M 232 44 L 244 44"></path>
+                <path class="flow" marker-end="url(#w4-ar)" d="M 356 44 L 368 44"></path>
+                <path class="flow" marker-end="url(#w4-ar)" d="M 480 44 L 492 44"></path>
+                <path class="flow-soft" marker-end="url(#w4-ar)" d="M 548 20 L 548 8 L 177 8 L 177 18"></path>
+                <text class="tm" x="360" y="6" text-anchor="end">paid — reactivated, unchanged</text>
+
+                <text class="tm" x="0" y="90">A confirmed booking is never affected by the subscription behind the website it came from. The booking lives in the booking system, and the</text>
+                <text class="tm" x="0" y="104">business keeps its calendar, its guests and its invoices whatever happens to the website — those are the free core, and they are not the thing being paid for.</text>
+                <text class="tm" x="0" y="126" style="font-style:italic">The subscription price lives in configuration, never in the code that decides these states — so a change of price, a special arrangement or a tier is a setting.</text>
+            </svg>
+        </figure>
+
+        <div class="callout">
+            <h4>Why a travel platform is selling websites at all</h4>
+            <p>
+                Because a lodge's own website is where its direct bookings happen, and a
+                direct booking that runs on our booking system is worth more to both sides
+                than a portal listing. <strong>The website line is a distribution channel for
+                the booking system</strong> — sold on its own merits to businesses that will
+                never book anything, and sold as one continuous offer to those that will.
+            </p>
+        </div>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — websites for Namibian businesses</span>
+        <span class="pageno">6</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 7 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Websites — what we do not claim</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>What we will not tell you</h1>
+
+        <div class="callout honest">
+            <h4>The limits, printed next to the claims</h4>
+            <p>
+                <strong>There is no live customer website.</strong> The system generates real
+                sites on real domains with real certificates, and nobody is paying for one
+                yet — so there is no customer to name, no site to link to and no testimonial
+                to quote. Anything showing what a site looks like is our own work.
+            </p>
+            <p>
+                <strong>We cannot promise where anyone ranks in search.</strong> Setting a
+                business up on Google Maps and a Google Business Profile is a real and useful
+                thing to have done. It is not the same as being found first, and any supplier
+                who promises you that is selling you something else.
+            </p>
+            <p>
+                <strong>The monthly price is a proposal until it is signed off</strong>, and
+                there is no recurring card billing yet — the fee is invoiced by hand until a
+                method exists for this market. <strong>Five languages are decided, not
+                delivered</strong>, and a guest today finishes a booking on namibway.com.
+            </p>
+        </div>
+
+        <section class="section">
+            <h2>What is actually running <span class="chip running">Running</span></h2>
+            <ul class="checklist">
+                <li>Generated sites from a listing, <strong>or from nothing at all</strong></li>
+                <li>Twelve module types and one template, server-rendered</li>
+                <li>Around <strong>18 KB</strong> for a page carrying every module</li>
+                <li>Readable with JavaScript switched off</li>
+                <li>An enquiry form that reaches the owner by mail</li>
+                <li>Privacy, legal notice and copyright pages</li>
+                <li>A private preview address for drafts</li>
+                <li>Customer domains, with the certificate issued automatically</li>
+                <li>Live availability and prices from the booking system</li>
+                <li>Editing by us <strong>and</strong> by the owner, on the same fields</li>
+                <li>Photographs sized on demand for the device asking</li>
+                <li>Rights checks that <strong>refuse to publish</strong> borrowed material</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>The rest of this set</h2>
+            <div class="blocks three">
+                <article class="block dark">
+                    <h3>The whole picture</h3>
+                    <p>
+                        The overview: three product lines on one shared platform, how each
+                        makes the next easier to sell, where the money comes from, and an
+                        honest map of what runs and what does not.
+                    </p>
+                </article>
+                <article class="block">
+                    <h3>Kaia Trip Planning &amp; Listings</h3>
+                    <p>
+                        The travel platform: a conversational planner that produces one
+                        bookable itinerary, and the rule that stops partners being flooded
+                        with speculative requests.
+                    </p>
+                </article>
+                <article class="block">
+                    <h3>Booking &amp; Payment</h3>
+                    <p>
+                        The lodge-facing system a website's booking module reads from: the
+                        occupancy calendar, rate plans, the folio, payments and numbered
+                        invoices.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="doc-close">
+        <div>
+            <h2>Send us a business that needs a website</h2>
+            <p>
+                We will generate a draft for them and show it — no charge, no obligation, and
+                nothing published until the owner has seen it and said yes. That is the whole
+                sales process, and it is deliberately shorter than a quote.
+            </p>
+        </div>
+        <div class="qr">
+            <img src="assets/qr-namibway-com.svg" alt="">
+            <span>NAMIBWAY.COM</span>
+        </div>
+    </footer>
+
+</section>
+
+</body>
+</html>

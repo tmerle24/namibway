@@ -1,11 +1,17 @@
 #!/usr/bin/env node
 /**
- * Renders the A4 flyers to print-ready PDFs with headless Chromium.
+ * Renders the A4 print material to print-ready PDFs with headless Chromium.
  *
- *   node marketing/build-flyer.mjs              # all flyers
+ *   node marketing/build-flyer.mjs              # everything
  *   node marketing/build-flyer.mjs websites     # only ones whose name matches
  *
- * Each flyer produces two variants:
+ * Two kinds of piece are built by the same loop, because they are the same design
+ * and differ only in length: the two-page flyers, and the multi-page concept
+ * documents that explain one product line each. The script name is historical —
+ * it predates the documents, and renaming it would break every note that says how
+ * to rebuild a flyer.
+ *
+ * Each piece produces two variants:
  *   *-print.pdf   216 x 303 mm — A4 plus 3 mm bleed on every side, no crop marks.
  *                 This is what online print shops ask for. Full-bleed elements
  *                 (the brown bands, the amber call to action) run into the bleed.
@@ -23,10 +29,17 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, 'out');
 
-const FLYERS = [
+const PIECES = [
+    // Flyers — two pages, front and back.
     { source: 'flyer-partners-a4.html', out: 'namibway-partner-flyer-a4' },
     { source: 'flyer-websites-a4.html', out: 'namibway-websites-flyer-a4' },
     { source: 'flyer-booking-system-a4.html', out: 'namibway-booking-system-flyer-a4' },
+
+    // Concept documents — the overview, then one per product line.
+    { source: 'concept-overview.html', out: 'namibway-concept-overview-a4' },
+    { source: 'concept-kaia-trip-planning.html', out: 'namibway-concept-kaia-trip-planning-a4' },
+    { source: 'concept-booking-payment.html', out: 'namibway-concept-booking-payment-a4' },
+    { source: 'concept-websites.html', out: 'namibway-concept-websites-a4' },
 ];
 
 const VARIANTS = [
@@ -52,10 +65,10 @@ if (!chrome) {
 
 const pageRule = /@page \{[^}]*\} \/\* PAGESIZE \*\//;
 const filter = process.argv[2];
-const selected = filter ? FLYERS.filter((f) => f.source.includes(filter)) : FLYERS;
+const selected = filter ? PIECES.filter((f) => f.source.includes(filter)) : PIECES;
 
 if (selected.length === 0) {
-    console.error(`No flyer matches "${filter}".`);
+    console.error(`Nothing matches "${filter}".`);
     process.exit(1);
 }
 

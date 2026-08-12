@@ -12,7 +12,40 @@ which currently means a booking system.
 | Websites | Namibian business owners with no website, for the co-founder to prospect with | `flyer-websites-a4.html` |
 | Booking system | Namibia Wildlife Resorts — a leave-behind for a meeting, not a counter hand-out | `flyer-booking-system-a4.html` |
 
-Each builds two PDFs into `out/`:
+## The concept papers
+
+A flyer argues; a concept paper explains. These are the multi-page A4 documents for
+somebody who has already said "tell me how it actually works" — the co-founder, a
+partner weighing us up, an investor. Same design system as the flyers, same build,
+same claims discipline; they are just longer and carry diagrams.
+
+**Hand over the overview first.** The other three go one level down into a single
+product line and are written to be read on their own, in any order.
+
+| Paper | What it covers | Source |
+|---|---|---|
+| The whole picture | Three lines on one platform and why that is one company; the loop where each line sells the next; where the money comes from; what runs, what is built but unproven, what is only decided | `concept-overview.html` |
+| Kaia trip planning & listings | How a plan is made and why the model is never the source of a fact; the account line; the one-active-request rule; the content-source ladder | `concept-kaia-trip-planning.html` |
+| Booking & payment | The hourglass, the occupancy calendar, how a night is priced, the folio and the gapless invoice, the three settlement models | `concept-booking-payment.html` |
+| Websites | Why generated rather than hand-built, why the website owns its own content, the one-click flow, what an owner cannot do | `concept-websites.html` |
+
+Two conventions run through all four and are not decoration:
+
+- **Every capability carries a status chip** — `Running` (in production), `Built`
+  (built and tested, never run against a live partner or real money) or `Designed`
+  (decided, not built). Promoting a chip means the thing it describes changed. This
+  is what makes the papers safe to hand to somebody who will check them.
+- **Each ends on a page saying what we do not claim**, drawn from "Claims we may not
+  make" below. That page is the most persuasive one in the pack and it is the first
+  thing that will be cut by somebody who has not read this paragraph. Do not.
+
+They cross-reference each other by name, so renaming one means editing the other three.
+The monthly website price appears in the overview as well as in the websites paper and
+the websites flyer — five places in total, and they have to move together.
+
+## Building and checking
+
+Each piece builds two PDFs into `out/`:
 
 - `*-print.pdf` — 216 × 303 mm, that is A4 plus 3 mm bleed on all four sides, no crop
   marks. This is the file for a print shop. The brown bands and the amber call to
@@ -33,20 +66,68 @@ adding a piece means adding an entry there as well as building it.
 The PDFs are committed, so a deploy ships whatever is in the repo — if you rebuild
 them, commit the result or the admin panel keeps handing out the old ones.
 
-## Building
+### Building
 
 ```
-node marketing/build-flyer.mjs            # all three
-node marketing/build-flyer.mjs websites   # just the one whose filename matches
+node marketing/build-flyer.mjs            # everything, flyers and papers
+node marketing/build-flyer.mjs websites   # just the ones whose filename matches
 ```
 
 No npm dependencies — it drives Chromium's `--print-to-pdf`, which honours the CSS
-`@page` size, and rewrites that one rule per variant.
+`@page` size, and rewrites that one rule per variant. The script is still called
+`build-flyer.mjs` because renaming it would break every note that says how to rebuild
+a flyer.
+
+### Checking
+
+```
+node marketing/check-pages.mjs            # everything
+node marketing/check-pages.mjs concept    # just the ones whose filename matches
+```
+
+**Run this after any copy change, before rebuilding the PDFs.** It exits non-zero and
+names the page. It checks three things, all of which fail silently otherwise: nothing
+ends past the trim edge, nothing has more content than its own box, and no image is
+drawn off its own aspect ratio. Both variants, because they are not the same test —
+the screen variant is 6 mm shorter and therefore tighter vertically, the print variant
+has 3 mm less width on each side.
+
+It reports the slack left on each page. **Leave a few millimetres rather than fitting
+exactly**: font substitution on another machine moves this.
+
+The snippet below is what this replaces, and it is kept because it explains half the
+problem. **It is not sufficient on its own** — see the note after it.
 
 **A page that overflows is clipped silently**, because `.page` is `overflow: hidden`.
-After changing copy, check that each page's `scrollHeight` still equals its box height
-rather than trusting how the PDF looks in a viewer. The websites flyer already carries
-tighter spacing in its own `<style>` for exactly this reason.
+Check it after changing copy — and do not use the page's own `scrollHeight`, which
+lies here: `.page` is a flex column, so a back page that was clipping 9 mm still
+reported `scrollHeight === clientHeight`. What has to be measured is whether the
+page's direct children add up to more than the page:
+
+```js
+[...document.querySelectorAll('.page')].flatMap((p) =>
+    [...p.children]
+        .filter((c) => c.scrollHeight - c.clientHeight > 2)
+        .map((c) => `${c.className}: ${(c.scrollHeight - c.clientHeight) / 3.7795} mm cut off`),
+); // empty array = nothing is being clipped
+```
+
+Per *child*, not per page: `.page` is a flex column, so an overlong hero does not
+push the call to action past the trim edge — it gets squeezed instead, and the page
+reports a perfect fit while the hero quietly loses its last two lines. That is exactly
+how the seal band below was nearly shipped with 20 mm of the hero missing.
+
+**And that snippet still misses the failure the concept papers actually have.** On a
+document page `.doc-body` is `flex: 1`, so its automatic minimum size is its own
+content — overlong copy does not overflow that box at all, it pushes `.doc-foot` off
+the bottom of the page, where `overflow: hidden` eats it without a trace. Every child
+reports a perfect fit and the PDF is missing its page number and half a paragraph.
+That is why `check-pages.mjs` measures *position* as well as overflow, and why it is
+the thing to run rather than this snippet.
+
+Leave a few millimetres of slack rather than fitting exactly: font substitution on
+another machine moves this. All three flyers now carry tighter spacing in their own
+`<style>` blocks, and each says in a comment what to re-measure.
 
 Spots marked `EDIT:` in each file: the phone line in the contact strip (off everywhere,
 because there is no number that is answered yet), an optional hero photograph, the
@@ -60,18 +141,42 @@ the organisation name on the booking-system flyer.
 Round stamp — heavy double ring, **BUILT IN NAMIBIA** across the top, **NAMIBWAY**
 along the foot, star separators, the compass mark in the middle.
 
+There are two versions of it, and the printed material uses the second.
+
 | File | Use |
 |---|---|
-| `assets/built-in-namibia-seal.svg` | light grounds (paper, sand) — vector, use this for print |
+| `assets/built-in-namibia-stamp-1024.png` | **the one on the flyers** — inked, distressed, light grounds |
+| `assets/built-in-namibia-stamp-light-1024.png` | the same on the brown ground |
+| `assets/built-in-namibia-stamp-512.png` / `-light-512.png` | the same, smaller, for Canva, Word, signatures |
+| `assets/built-in-namibia-seal.svg` | the clean geometric version — vector, for anything that needs to scale |
 | `assets/built-in-namibia-seal-light.svg` | the brown ground — vector |
-| `assets/built-in-namibia-seal-1024.png` | transparent PNG for Canva, Word, social, signatures |
-| `assets/built-in-namibia-seal-512.png` | the same, smaller |
-| `assets/built-in-namibia-seal-light-1024.png` / `-512.png` | transparent PNGs of the light colourway |
+| `assets/built-in-namibia-seal-1024.png` / `-512.png` and the `-light-` pair | transparent PNGs of the vector version |
 
 Regenerate the two SVGs with `node marketing/build-seal.mjs`. The compass is lifted
-out of the brand mark at build time rather than redrawn, so the seal cannot drift out
-of step with the logo — change the logo, re-run, done. The PNGs are rasterised from
-the SVGs; redo them if the seal changes.
+out of the brand mark at build time rather than redrawn, so that version cannot drift
+out of step with the logo — change the logo, re-run, done. Those PNGs are rasterised
+from the SVGs; redo them if the seal changes.
+
+**The stamp is the exception to that, deliberately.** It is a raster, drawn rather
+than generated, because the ink texture is what makes it read as stamped and that
+does not survive being built out of the vector mark. So it *can* drift: if the compass
+in the logo ever changes, the stamp has to be redrawn, and nothing will warn you. It
+is kept at 1024 px, which is about 1000 dpi at the 24 mm it prints at.
+
+The source image had a cream background rather than transparency. The alpha channel is
+cut from the ink itself, so it composites on any ground:
+
+```
+convert stamp-source.png \
+  \( +clone -colorspace Gray -negate -level 8%,72% \) \
+  -alpha off -compose CopyOpacity -composite \
+  -fill '#3B2418' -colorize 100 \
+  -fuzz 0% -trim +repage -resize '1024x1024!' \
+  marketing/assets/built-in-namibia-stamp-1024.png
+```
+
+`-fill '#F3E7D3'` gives the light colourway; the final `!` forces the circle round,
+which it was about 4% short of being.
 
 This is meant to be reused, not redrawn: flyers, quotes, proposals, email signatures,
 the website footer, invoices.
@@ -89,16 +194,36 @@ which is a claim we should not make by accident. If we ever want that associatio
 honest route is to join the scheme and use their mark, not to imitate it. The phrase
 lives in one constant at the top of `build-seal.mjs` if this is ever revisited.
 
-### The landscape illustration
+### The lodge scene
 
-`assets/namibia-scene.svg` — sunset sky, ridge layers and a camel thorn, used behind
-the phone mock-up on the websites flyer.
+`assets/lodge-scene.svg` — dunes at sunset, a camel thorn, and a lodge with its lamps
+on. It is used **twice** on the websites flyer, and that is the point of it: full
+width behind the hero, and again inside the phone mock-up, so the phone reads as
+showing the place it is standing in.
 
-It is **drawn, not photographed**, and that is a stopgap, not a preference. We have no
-photograph whose rights are established: the images under `public/images/explore` are
-demo assets of unknown provenance and are 900 px wide, which is too small for print
-anyway. The flyer marks the slot `EDIT: hero photo` — swapping in a real photograph is
-a one-line change once we own one.
+It replaced a much thinner drawing (`namibia-scene.svg`, now deleted, in the history)
+that was rejected on 2026-08-12 for coming out an illegible brown smear at A4. Three
+things fixed it and are worth not undoing:
+
+- **Tonal range.** The foreground goes almost black. A drawing that lives entirely in
+  the middle of the range disappears under the hero's overlay and prints as mud.
+- **Flat fills, not gradients, on the ground.** Chrome's print-to-PDF renders a
+  gradient on those paths three shades too light and flattens the shape it is filling,
+  while a flat fill in the same place comes out exact. The sky is one gradient and it
+  does render — so test rather than assume, and test in Chrome: ImageMagick's own SVG
+  renderer drops the sky entirely and shows black.
+- **One line per `d`.** The same paths split across several lines came back with a
+  straight edge where a curve should be.
+
+**It is still a drawing, and a photograph should replace it.** We own no image whose
+rights are established: the files under `public/images/explore` are demo assets of
+unknown provenance and 900 px wide, too small for print. Swapping in a real
+photograph of a lodge in its landscape is two lines in `flyer-websites-a4.html`
+(`--hero-photo` and the `<img>` inside the phone), and both must point at the same
+picture. What is needed first is a picture we may use: one the co-founder or a partner
+took and has agreed we may print, or a stock licence bought for print. A partner's
+photograph on our own marketing is not covered by them being listed — that is a
+separate yes.
 
 ### Logos
 
@@ -125,7 +250,9 @@ bold font is to hand is not the logo, and it is what makes material look homemad
 | File | What it is |
 |---|---|
 | `partner-outreach-copy.md` | Copy for the partner line: the flyer text plus an A5 hand-out, an A6 leave-behind card, a phone talk track and an objection FAQ |
-| `flyer-base.css` | Shared print styles. All three flyers link it, so they stay one design |
+| `flyer-base.css` | Shared print styles. Every piece links it, so they stay one design |
+| `document-base.css` | Layered on top of `flyer-base.css` for the concept papers only — cover, running head, page numbers, explanation boxes, status chips, feature grids and the inline-SVG diagram grammar. It repeats nothing from the base file, deliberately |
+| `check-pages.mjs` | The clipping and distortion check described above |
 | `assets/` | QR code for namibway.com and the compass mark recoloured for the brown and sand grounds |
 | `claude-designer-prompt.md` | Ready-to-paste prompt if you would rather design a piece elsewhere, plus which brand files to attach and why the domain alone is not enough |
 
@@ -151,6 +278,33 @@ All of these are things the platform actually does today:
 - iOS and Android apps plus the web platform.
 - Listing removal within 24 hours on request.
 
+**Added 2026-08-12.** The booking system and the money side used to be things we
+described as coming. They run, so they may be sold — the list below is the same kind
+of claim as the ones above, not a roadmap:
+
+- An occupancy calendar per property: unit types down, nights across, units free and
+  the rate on every night, sold-out and off-sale visibly different.
+- Rates, seasons and stay restrictions written across a whole season in one pass.
+- Bookings taken at the desk — walk-in or telephone, several unit types at once,
+  priced from the calendar night by night, with a recorded override.
+- An arrivals and departures board for a date, printable, with what is outstanding.
+- Rooms taken off sale for maintenance or owner use, and released again.
+- A guest record per property, with a comment log, and the same for a stay.
+- A folio on every stay: nights, extras, paid, outstanding.
+- Payments and refunds recorded by any method, corrected by reversal — both lines
+  kept — and never edited.
+- Numbered invoices, gapless per property, VAT and tourism levy on their own lines,
+  credit notes as the only correction.
+- An online payment flow, built for a gateway that operates in Namibia and settles in
+  Namibian dollars. Say **built**, not **live** — see the claims we may not make.
+- Several properties under one login.
+- For a website customer who lets rooms: live availability and prices on their own
+  site, with the guest finishing the booking on namibway.com.
+
+The commercial framing of the money side is the three settlement models, and staff
+should read **Documentation → Payments Guide** in the admin panel before pitching
+them.
+
 ## Claims we may **not** make
 
 - **Traveller or booking volume of any kind.** No user counts, no "thousands of
@@ -165,6 +319,16 @@ All of these are things the platform actually does today:
   outreach handbook instructs staff not to quote rates on the phone, so a number on
   the flyer would contradict what our own people say. See the decision note in
   `partner-outreach-copy.md` §2.
+- **A price for the booking system**, for the same reason: there isn't one yet. The
+  material offers to quote and names no figure.
+- **That we take card payments today.** The whole flow is built and demonstrable, but
+  no merchant account has ever settled a real transaction. "Built to settle in
+  Namibian dollars" is the claim; "we accept cards" is not, and neither is anything
+  about when a partner gets paid out — payouts and partner statements are not built.
+- **A live customer website.** The website builder generates real sites on real
+  domains with real certificates, but nobody is paying for one yet, so there is no
+  customer to name, screenshot or link to. The phone mock-up on the websites flyer is
+  drawn for exactly this reason.
 - **Anything about a named competitor's reliability.** The availability problems that
   motivated this platform are real, but naming a state operator or a portal in print
   is a fight we do not need.
@@ -174,15 +338,25 @@ All of these are things the platform actually does today:
 **Websites.** We can set a business up on Google Maps and a Google Business Profile.
 We cannot promise where it ranks in search, and no flyer may imply it. The monthly
 price is a proposal until someone signs it off; it appears twice in
-`flyer-websites-a4.html` and both have to move together.
+`flyer-websites-a4.html` and both have to move together. The availability line on the
+back is bounded too: a site really can show live availability and prices, but the
+guest finishes the booking on namibway.com, so "book through NamibWay" stays in that
+sentence.
 
 **Booking system.** The list on the back is deliberately limited to what is running in
-production today. Two lines must not drift: no connector has ever been validated
-against a live partner account, so "adapters designed for" must never become
-"integrated with"; and no partner is connected, so there are no uptime, volume or
-customer figures to quote. Nothing in that flyer criticises the system the recipient
-runs today — the argument is the outcome, not their current supplier. Check the exact
+production today — which since 2026-08-12 is a great deal more than it was, and the
+length of that list is the argument the flyer makes. Three lines must not drift: no
+connector has ever been validated against a live partner account, so "adapters
+designed for" must never become "integrated with"; no partner is connected, so there
+are no uptime, volume or customer figures to quote; and no merchant account has
+settled a transaction, so "built to settle in Namibian dollars" must never become "we
+take card payments". Nothing in that flyer criticises the system the recipient runs
+today — the argument is the outcome, not their current supplier. Check the exact
 registered name and preferred short form of the organisation before printing.
+
+The closing line offers to set one of their camps up and show it running. That is the
+demo tenant below, and it runs on **example bookings** — the words are in the flyer,
+and they stay there.
 
 ## What the live demo actually shows
 

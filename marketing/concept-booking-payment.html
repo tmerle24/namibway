@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en-GB" data-variant="print">
+<head>
+<meta charset="utf-8">
+<title>NamibWay — Booking &amp; payment</title>
+
+<!--
+  ==========================================================================
+  Concept document 2 of 3 — the booking system and the money side.
+  A4, eight pages: cover, six explaining pages, and a page that closes.
+
+  Build:   node marketing/build-flyer.mjs   (builds every piece in marketing/)
+           node marketing/build-flyer.mjs concept-booking   (just this one)
+
+  Audience: a lodge owner or a state operator deciding whether to run their
+  property on this, the co-founder selling it, and an investor asking what
+  was actually built. It is the technically densest of the three papers on
+  purpose — the buyer for this one has been sold a booking system before.
+
+  EDIT: marked spots —
+    1. EDIT: phone — a phone line in the contact strip, off by default
+    2. EDIT: hero photo — --hero-photo, empty until we own an image
+
+  Three sentences in here must never drift, whatever else is edited (see
+  marketing/README.md, "Claims we may not make"):
+    * No connector has ever run against a live partner account. "Designed to
+      connect to", never "integrated with".
+    * No merchant account has ever settled a real transaction. "Built to
+      settle in Namibian dollars", never "we take card payments".
+    * Payouts and partner statements are NOT built and belong on no list
+      here. They are named as missing on page 7, and that is deliberate.
+    * No commission percentage and no price for the system, both pending
+      sign-off.
+
+  A page that overflows is clipped in silence — `.page` is overflow: hidden.
+  Measure per page CHILD after any copy change; the snippet is in
+  marketing/README.md.
+  ==========================================================================
+-->
+
+<link rel="stylesheet" href="flyer-base.css">
+<link rel="stylesheet" href="document-base.css">
+<style>
+/* The build script rewrites the next line for the screen variant. */
+@page { size: 216mm 303mm; margin: 0; } /* PAGESIZE */
+</style>
+</head>
+
+<body>
+
+<!-- ============================== COVER ============================== -->
+<section class="page cover">
+
+    <img class="compass" src="assets/compass-on-brown.svg" alt="">
+    <img class="logo" src="../public/images/namibway-logo-light.png" alt="NamibWay">
+
+    <p class="eyebrow">Concept paper — two of three</p>
+
+    <h1>One system, from the free room to the numbered invoice.</h1>
+
+    <p class="standfirst">
+        A booking system that a lodge operates itself: an occupancy calendar that tells the
+        truth, seasons and per-person tariffs the way this market actually quotes them,
+        walk-in bookings taken at the desk, a folio on every stay, and
+        <strong>invoices with no gaps in the numbering.</strong> Built on the same model
+        every channel manager in Southern Africa already speaks, so connecting one is a
+        mapping rather than a translation.
+    </p>
+
+    <div class="cover-foot">
+        <div class="for">
+            <strong>How to read the status marks</strong>
+            <ul class="key">
+                <li><span class="chip running">Running</span> in production today</li>
+                <li><span class="chip built">Built</span> built and tested, never yet run with a live partner or real money</li>
+                <li><span class="chip designed">Designed</span> decided, not built</li>
+            </ul>
+            <p class="note">The difference between the second mark and the third is the whole honesty of this paper.</p>
+        </div>
+        <img src="assets/built-in-namibia-stamp-light-1024.png" alt="Built in Namibia">
+    </div>
+
+</section>
+
+<!-- ============================== PAGE 2 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Booking &amp; payment — the shape of it</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>Model anything a lodge asks for, and still be operable by a receptionist</h1>
+
+        <p class="lead">
+            The usual way of resolving that is to make everything configurable — a rules
+            engine, prices as formulas, ninety settings — which reliably produces a system
+            nobody can operate. <strong>We went the other way: a very small core that never
+            changes, all the variety pushed to the edges, and the result frozen so nothing
+            downstream has to understand any of it.</strong>
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 246" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="An hourglass: many business models above, a tiny core, many consumers below.">
+                <text class="eyebrow-t" x="300" y="8" text-anchor="middle">EVERYTHING A PARTNER MIGHT ASK FOR</text>
+                <text class="t" x="300" y="28" text-anchor="middle">rate plans · seasons · per-person and per-unit tariffs · child age bands</text>
+                <text class="t" x="300" y="45" text-anchor="middle">board basis · resident, SADC and international rates · promotions · VAT</text>
+                <text class="t" x="300" y="62" text-anchor="middle">tourism levy · conservancy fees · agents · channels</text>
+
+                <path class="box" d="M 40 74 L 560 74 L 400 122 L 200 122 Z"></path>
+
+                <rect class="box-dark" x="200" y="122" width="200" height="66"></rect>
+                <text class="eyebrow-t" x="300" y="139" text-anchor="middle" style="fill:#E2AB6C">THE CORE</text>
+                <text class="t on-dark" x="300" y="156" text-anchor="middle">how many are free tonight</text>
+                <text class="t on-dark" x="300" y="171" text-anchor="middle">what the rules are</text>
+                <text class="t on-dark" x="300" y="186" text-anchor="middle" style="font-weight:bold">what it cost, as a result</text>
+
+                <path class="box" d="M 200 188 L 400 188 L 560 236 L 40 236 Z"></path>
+
+                <text class="t" x="300" y="207" text-anchor="middle">bookings · folio · invoices · reporting · accounting</text>
+                <text class="t" x="300" y="224" text-anchor="middle">connectors · channel managers · the public API</text>
+            </svg>
+            <figcaption>
+                <strong>The core knows no business models, only their results.</strong>
+                Everything above decides what a night costs; everything below reads a number
+                already decided and written down — which is what lets us say yes to an unusual
+                tariff without the rest of the system paying for it.
+            </figcaption>
+        </figure>
+
+        <div class="callout">
+            <h4>What "we can do that" means technically</h4>
+            <p>
+                A partner with a pricing scheme we have not seen before is
+                <strong>one new class</strong> — no change to the calendar or to availability,
+                no database migration, nothing to re-test downstream. Each scheme is a pure
+                calculation, so it can be checked against a table of worked examples. Without
+                that, "we support everything" would mean "we can verify nothing".
+            </p>
+        </div>
+
+        <section class="section">
+            <h2>Booking system or full PMS — chosen at setup <span class="chip running">Running</span></h2>
+            <div class="blocks even">
+                <article class="block">
+                    <h3>Booking only</h3>
+                    <p>
+                        Sell the room, take the request, keep the calendar, price the season,
+                        raise the invoice. For a property that runs its front desk somewhere
+                        else and does not want a second one.
+                    </p>
+                </article>
+                <article class="block dark">
+                    <h3>Full, with the desk</h3>
+                    <p>
+                        Additionally the working day: the arrivals and departures board and
+                        the movements a receptionist performs between breakfast and lunch.
+                        <em>One rule keeps this from becoming two products — the mode decides
+                        what a partner sees, never how anything is recorded.</em>
+                    </p>
+                </article>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — booking &amp; payment</span>
+        <span class="pageno">2</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 3 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Booking &amp; payment — the calendar</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>One screen that answers the only question a lodge asks all day</h1>
+
+        <p class="lead">
+            Unit types down, nights across, and in every cell the two numbers that matter:
+            <strong>how many are free, and what one costs tonight.</strong> Stays and blocks
+            are drawn on top as bars, so "sold out" and "taken off sale" are visibly different
+            rather than the same empty square.
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 208" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="An occupancy calendar: three unit types down, five nights across, with a stay bar and a maintenance block.">
+                <defs>
+                    <pattern id="b-hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                        <rect width="7" height="7" fill="#F5F0E3"></rect>
+                        <line x1="0" y1="0" x2="0" y2="7" stroke="#6B6350" stroke-width="1.6"></line>
+                    </pattern>
+                </defs>
+
+                <!-- date header -->
+                <text class="tm" x="128" y="14">Mon 14</text>
+                <text class="tm" x="222" y="14">Tue 15</text>
+                <text class="tm" x="316" y="14">Wed 16</text>
+                <text class="tm" x="410" y="14">Thu 17</text>
+                <text class="tm" x="504" y="14">Fri 18</text>
+                <line class="rule-h" x1="120" y1="20" x2="600" y2="20" style="stroke:#B9812E;stroke-width:1.2"></line>
+
+                <!-- row 1 -->
+                <text class="t" x="0" y="42" style="font-weight:bold">Standard chalet</text>
+                <text class="tm" x="0" y="56">6 units</text>
+                <rect class="box" x="120" y="26" width="94" height="48"></rect>
+                <rect class="box" x="214" y="26" width="94" height="48"></rect>
+                <rect class="box" x="308" y="26" width="94" height="48"></rect>
+                <rect class="box" x="402" y="26" width="94" height="48"></rect>
+                <rect class="box" x="496" y="26" width="94" height="48"></rect>
+                <text class="tn" x="128" y="44">4</text>
+                <text class="tn" x="222" y="44">2</text>
+                <text class="tn" x="316" y="44">2</text>
+                <text class="tn" x="410" y="44">3</text>
+                <text class="tn" x="504" y="44">5</text>
+                <text class="tm" x="128" y="68">N$ 2 100</text>
+                <text class="tm" x="222" y="68">N$ 2 400</text>
+                <text class="tm" x="316" y="68">N$ 2 400</text>
+                <text class="tm" x="410" y="68">N$ 2 400</text>
+                <text class="tm" x="504" y="68">N$ 2 100</text>
+                <rect class="box-dark" x="222" y="50" width="266" height="18" rx="2"></rect>
+                <text class="tm on-dark" x="230" y="63">Meyer · 2 rooms · dinner, bed &amp; breakfast</text>
+
+                <!-- row 2 -->
+                <text class="t" x="0" y="98" style="font-weight:bold">Family chalet</text>
+                <text class="tm" x="0" y="112">2 units</text>
+                <rect class="box" x="120" y="82" width="94" height="48"></rect>
+                <rect class="box" x="214" y="82" width="94" height="48"></rect>
+                <rect class="box" x="308" y="82" width="94" height="48"></rect>
+                <rect class="box" x="402" y="82" width="94" height="48"></rect>
+                <rect class="box" x="496" y="82" width="94" height="48"></rect>
+                <text class="tn" x="128" y="100">1</text>
+                <text class="tn" x="222" y="100">0</text>
+                <text class="tn" x="316" y="100">0</text>
+                <text class="tn" x="410" y="100">1</text>
+                <text class="tn" x="504" y="100">2</text>
+                <text class="tm" x="222" y="114" style="font-weight:bold;fill:#B45309">sold out</text>
+                <text class="tm" x="316" y="114" style="font-weight:bold;fill:#B45309">sold out</text>
+                <text class="tm" x="128" y="114">min 2 nights</text>
+                <text class="tm" x="410" y="114">N$ 3 600</text>
+                <text class="tm" x="504" y="114">N$ 3 200</text>
+
+                <!-- row 3 -->
+                <text class="t" x="0" y="154" style="font-weight:bold">Campsite</text>
+                <text class="tm" x="0" y="168">8 pitches</text>
+                <rect class="box" x="120" y="138" width="94" height="48"></rect>
+                <rect class="box" x="214" y="138" width="94" height="48"></rect>
+                <rect class="box" x="308" y="138" width="94" height="48"></rect>
+                <rect class="box" x="402" y="138" width="94" height="48"></rect>
+                <rect class="box" x="496" y="138" width="94" height="48"></rect>
+                <text class="tn" x="128" y="156">8</text>
+                <text class="tn" x="222" y="156">8</text>
+                <text class="tm" x="128" y="170">N$ 380</text>
+                <text class="tm" x="222" y="170">N$ 380</text>
+                <rect x="308" y="138" width="282" height="48" fill="url(#b-hatch)" stroke="#6B6350" stroke-width="1"></rect>
+                <text class="t" x="318" y="166" style="font-weight:bold">Off sale — ablutions rebuilt</text>
+
+                <text class="tm" x="0" y="202">Free units and the rate in every cell · restrictions as quiet markers · off sale drawn as a hatch, so it survives a monochrome print</text>
+            </svg>
+            <figcaption>
+                A hatch rather than a colour, so "off sale" survives a photocopier and a
+                colour-blind reader — and a block for maintenance or owner use is counted
+                apart from sales, so an occupancy figure never reports a closed room as sold.
+                <strong>Clicking a free cell opens a booking with that unit and that night
+                already filled in; a night with nothing left is inert</strong>, because a form
+                that could only refuse is a dead end.
+            </figcaption>
+        </figure>
+
+        <div class="callout dark">
+            <h4>The last room, and two people wanting it</h4>
+            <p>
+                Availability is a counter moved by the database itself, not a number the
+                application reads, thinks about and writes back. Of two bookings racing for
+                the last chalet, <strong>one changes a row and the other changes nothing</strong>
+                — and finds out immediately, rather than at check-in. Overbooking is almost
+                always this exact race, unhandled.
+            </p>
+        </div>
+
+        <section class="section">
+            <h2>What the calendar carries <span class="chip running">Running</span></h2>
+            <table class="facts">
+                <tbody>
+                <tr>
+                    <td>Inventory and rate per night</td>
+                    <td>One row per unit type per night carrying units, rate and stay rules. Nothing is written to say "unchanged" — a missing night follows the unit's default, which is what keeps a season cheap to set.</td>
+                </tr>
+                <tr>
+                    <td>Stay restrictions</td>
+                    <td>Minimum stay, closed to arrival, closed to departure — the industry's three, refused with the unit and the date named rather than as "unavailable".</td>
+                </tr>
+                <tr>
+                    <td>Seasons, set in one pass</td>
+                    <td>A date range, optionally narrowed to certain weekdays. An empty field means "leave this alone", so a weekend surcharge cannot silently clear a minimum stay.</td>
+                </tr>
+                <tr>
+                    <td>Time inside a day</td>
+                    <td>A unit may run a timetable, so a seat on an 08:00 departure is counted like a bed on a night. Properties that sell only nights never see it.</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — booking &amp; payment</span>
+        <span class="pageno">3</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 4 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Booking &amp; payment — what a night costs</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>Priced the way this market actually quotes</h1>
+
+        <p class="lead">
+            Namibian lodges price <strong>per person per night sharing</strong>, with a single
+            supplement, children in age bands, and dinner-bed-and-breakfast closer to the rule
+            than the exception. Campsites and self-catering units price per unit. A state
+            operator publishes resident, SADC and international tariffs side by side.
+            <strong>A system with one price per night cannot represent any of that</strong> —
+            so this one does not have one.
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 224" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="The pricing pipeline: rate, price, discount, charges, total, then frozen onto the booking.">
+                <defs>
+                    <marker id="p-ar" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#B9812E"></path>
+                    </marker>
+                </defs>
+
+                <text class="eyebrow-t" x="0" y="10">ONE DIRECTION ONLY — NOTHING DOWNSTREAM REACHES BACK</text>
+
+                <rect class="box" x="0" y="22" width="104" height="62"></rect>
+                <text class="th" x="12" y="44">The rate</text>
+                <text class="tm" x="12" y="60">From the calendar,<tspan x="12" dy="12">for that unit and</tspan><tspan x="12" dy="12">that night</tspan></text>
+
+                <rect class="box" x="124" y="22" width="104" height="62"></rect>
+                <text class="th" x="136" y="44">The price</text>
+                <text class="tm" x="136" y="60">Per unit, per person<tspan x="136" dy="12">sharing, or per</tspan><tspan x="136" dy="12">occupancy</tspan></text>
+
+                <rect class="box" x="248" y="22" width="104" height="62"></rect>
+                <text class="th" x="260" y="44">Discount</text>
+                <text class="tm" x="260" y="60">A percentage, an<tspan x="260" dy="12">amount, or stay</tspan><tspan x="260" dy="12">four pay three</tspan></text>
+
+                <rect class="box" x="372" y="22" width="104" height="62"></rect>
+                <text class="th" x="384" y="44">Charges</text>
+                <text class="tm" x="384" y="60">VAT, tourism levy,<tspan x="384" dy="12">park permit,</tspan><tspan x="384" dy="12">conservancy fee</tspan></text>
+
+                <rect class="box-amber" x="496" y="22" width="104" height="62"></rect>
+                <text class="th on-amber" x="508" y="44">The total</text>
+                <text class="tm on-amber" x="508" y="60" style="fill:#FDECD8">What the guest<tspan x="508" dy="12">is told, and what</tspan><tspan x="508" dy="12">the invoice says</tspan></text>
+
+                <path class="flow" marker-end="url(#p-ar)" d="M 106 53 L 120 53"></path>
+                <path class="flow" marker-end="url(#p-ar)" d="M 230 53 L 244 53"></path>
+                <path class="flow" marker-end="url(#p-ar)" d="M 354 53 L 368 53"></path>
+                <path class="flow" marker-end="url(#p-ar)" d="M 478 53 L 492 53"></path>
+
+                <path class="flow" marker-end="url(#p-ar)" d="M 548 86 L 548 116"></path>
+                <rect class="box-dark" x="0" y="120" width="600" height="60"></rect>
+                <text class="eyebrow-t" x="16" y="140" style="fill:#E2AB6C">FROZEN ONTO THE BOOKING, NIGHT BY NIGHT</text>
+                <text class="t on-dark" x="16" y="160">The amount per night, the rate plan's name, the board basis, every charge and its basis —</text>
+                <text class="t on-dark" x="16" y="174">recorded as they were at the moment the stay was written, and never recomputed.</text>
+
+                <text class="tm" x="0" y="200">A lodge raising its rate tomorrow does not make yesterday's booking more expensive. A VAT change in March leaves February's invoices</text>
+                <text class="tm" x="0" y="214">exactly as they were. A rate plan renamed in the winter does not rewrite what the summer sold.</text>
+            </svg>
+            <figcaption>
+                Charges apply <strong>to</strong> a finished price and can never reach back
+                into how it was calculated — so no product ever ends up knowing "15% VAT plus
+                a 2% levy". An included charge is <strong>extracted</strong> rather than
+                added, which is a different sum: 15% of 3 000 is 450, but the VAT already
+                inside 3 000 is 391.30.
+            </figcaption>
+        </figure>
+
+        <section class="section">
+            <h2>The pieces a lodge sets up <span class="chip running">Running</span></h2>
+            <div class="features">
+                <article class="feature">
+                    <h3>Rate plans</h3>
+                    <p>The product being sold: board basis, cancellation terms, and who it is for — public, resident, SADC, agent. The industry's own vocabulary, not ours.</p>
+                </article>
+                <article class="feature">
+                    <h3>Three pricing modes</h3>
+                    <p>Per unit, per occupancy, or per person sharing with a single supplement. Which one applies is a property of the rate plan, so one lodge can sell both.</p>
+                </article>
+                <article class="feature">
+                    <h3>Child age bands</h3>
+                    <p>Set per property rather than as a constant, because every lodge draws the lines somewhere different. They apply the same way under all three modes.</p>
+                </article>
+                <article class="feature">
+                    <h3>Promotions</h3>
+                    <p>Percentage, amount or free nights. They never stack, a typed code beats a larger public offer, and a code that does not work refuses the booking rather than quietly charging full price.</p>
+                </article>
+                <article class="feature">
+                    <h3>Taxes and levies</h3>
+                    <p>Four bases — a percentage, per person per night, per room per night, or once per booking — each either included in the rate or added on top.</p>
+                </article>
+                <article class="feature">
+                    <h3>Refusals a human can act on</h3>
+                    <p>"Only one of two standard chalets is free on 14 September", not "unavailable". A plan that prices by guests will not price a booking that names none.</p>
+                </article>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — booking &amp; payment</span>
+        <span class="pageno">4</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 5 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Booking &amp; payment — the money</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>A booking system that cannot say whether a stay has been paid is not one</h1>
+
+        <p class="lead">
+            Until August 2026 this one carried what a stay <em>owed</em> and nothing about what
+            had arrived. It now has both sides: a folio on every stay, one record per movement
+            of money whatever the method, and <strong>a real invoice rather than a PDF
+            export.</strong>
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="The folio: what the stay owes on one side, what has been paid on the other, and an invoice below.">
+                <text class="eyebrow-t" x="0" y="10">THE FOLIO — ONE STAY, BOTH SIDES</text>
+
+                <rect class="box" x="0" y="20" width="288" height="122"></rect>
+                <text class="th" x="14" y="42">What the stay owes</text>
+                <line class="rule-h" x1="14" y1="52" x2="274" y2="52"></line>
+                <text class="t" x="14" y="70">3 nights, priced night by night</text>
+                <text class="t" x="14" y="88">Extras posted to the stay</text>
+                <text class="t" x="14" y="106">VAT and tourism levy, on their own lines</text>
+                <text class="t" x="14" y="130" style="font-weight:bold">Total</text>
+
+                <rect class="box-line" x="312" y="20" width="288" height="122"></rect>
+                <text class="th" x="326" y="42">What has arrived</text>
+                <line class="rule-h" x1="326" y1="52" x2="586" y2="52"></line>
+                <text class="t" x="326" y="70">Deposit · card · cleared</text>
+                <text class="t" x="326" y="88">Balance · cash at the desk · recorded</text>
+                <text class="t" x="326" y="106" style="fill:#B45309">Refund · bank transfer · negative</text>
+                <text class="t" x="326" y="130" style="font-weight:bold">Paid, and what is left</text>
+
+                <rect class="box-dark" x="0" y="158" width="600" height="42"></rect>
+                <text class="th on-dark" x="14" y="176">The invoice</text>
+                <text class="tm on-dark-m" x="14" y="192">Numbered without gaps, per property, per year · the lines frozen as issued · corrected only by a credit note</text>
+
+                <text class="tm" x="0" y="220">Cash over the counter, a bank transfer, a card at the desk and an online payment are the same record with a different method —</text>
+                <text class="tm" x="0" y="232">which is why the ledger was built once and works for a lodge with no card facility at all.</text>
+            </svg>
+            <figcaption>
+                <strong>Recorded is not the same as cleared.</strong> A transfer a guest says
+                they have sent and a payment a gateway has confirmed are not the same
+                certainty, and the record says which — but a desk handed cash is not waiting
+                for a bank, so a recorded payment counts against the balance immediately.
+            </figcaption>
+        </figure>
+
+        <div class="callout">
+            <h4>Nothing is ever edited. This is the rule the rest hangs off.</h4>
+            <p>
+                A payment entered wrongly is <strong>reversed</strong> — a negative line
+                pointing back at the one it corrects, with both lines kept — and then entered
+                again. A refund is a negative payment on the same folio. Neither is a
+                deletion, because "we refunded N$ 2 400 on 14 September" is a fact somebody
+                may have to defend a year later, and <strong>"did we give that money back, or
+                did we never have it?" has two different answers to an accountant.</strong>
+            </p>
+        </div>
+
+        <div class="callout dark">
+            <h4>Why the invoice numbering is worth a paragraph</h4>
+            <p>
+                Invoice numbers are taken from a locked counter inside the transaction that
+                issues them. The two obvious alternatives are both wrong, and wrong invisibly:
+                counting the highest number and adding one hands two simultaneous check-outs
+                the same number, and a database auto-increment does not give a number back
+                when a transaction rolls back.
+            </p>
+            <p>
+                <strong>A hole in the run is the first thing an auditor asks about</strong>,
+                and the innocent and the fraudulent explanations look identical from the
+                outside. An issued invoice cannot be changed at all — the only correction is a
+                credit note referencing it, with every line negated so the VAT reversal is
+                visible rather than a lump sum.
+            </p>
+        </div>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — booking &amp; payment</span>
+        <span class="pageno">5</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 6 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Booking &amp; payment — who collects</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>Three ways to be paid, and the partner picks</h1>
+
+        <p class="lead">
+            Most platforms insist on one. We offer the industry's three, because partners
+            genuinely want different things and insisting would cost us the ones who want the
+            other. <strong>Recording money is identical in all three</strong> — the folio, the
+            payments, the invoice and the commission are the same — so only the direction and
+            timing of the net transfer change.
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 214" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="A dial from nought to one hundred per cent deposit, selecting agency, split or merchant settlement.">
+                <text class="eyebrow-t" x="0" y="10">ONE NUMBER PICKS THE MODEL — THE SHARE OF THE FOLIO WE COLLECT UP FRONT</text>
+
+                <line x1="20" y1="40" x2="580" y2="40" stroke="#B9812E" stroke-width="2"></line>
+                <circle cx="20" cy="40" r="6" fill="#3B2418"></circle>
+                <circle cx="220" cy="40" r="6" fill="#B45309"></circle>
+                <circle cx="580" cy="40" r="6" fill="#3B2418"></circle>
+                <text class="tm" x="20" y="28" text-anchor="middle">0 %</text>
+                <text class="tm" x="220" y="28" text-anchor="middle">deposit</text>
+                <text class="tm" x="580" y="28" text-anchor="middle">100 %</text>
+
+                <rect class="box" x="0" y="58" width="184" height="112"></rect>
+                <text class="th" x="14" y="80">Agency</text>
+                <text class="tm" x="14" y="96">The property is the merchant.<tspan x="14" dy="13">The guest pays them directly;</tspan><tspan x="14" dy="13">we touch no guest money and</tspan><tspan x="14" dy="13">invoice for commission after.</tspan></text>
+                <text class="tm" x="14" y="158" style="font-style:italic">Easiest to sell. The only one where<tspan x="14" dy="12">we carry collection risk.</tspan></text>
+
+                <rect class="box-amber" x="208" y="58" width="184" height="112"></rect>
+                <text class="th on-amber" x="222" y="80">Split — the default</text>
+                <text class="tm on-amber" x="222" y="96" style="fill:#FDECD8">A deposit online to us, the<tspan x="222" dy="13">balance at the property. Both</tspan><tspan x="222" dy="13">land on the same folio as two</tspan><tspan x="222" dy="13">payments with two recipients.</tspan></text>
+                <text class="tm on-amber" x="222" y="158" style="fill:#FDECD8;font-style:italic">Set the deposit at the commission<tspan x="222" dy="12">and no money moves between us.</tspan></text>
+
+                <rect class="box-dark" x="416" y="58" width="184" height="112"></rect>
+                <text class="th on-dark" x="430" y="80">Merchant</text>
+                <text class="tm on-dark-m" x="430" y="96">We are the merchant. The<tspan x="430" dy="13">guest pays us in full and we</tspan><tspan x="430" dy="13">pay the property out, less</tspan><tspan x="430" dy="13">commission, on an agreed</tspan><tspan x="430" dy="13">trigger.</tspan></text>
+                <text class="tm on-dark-m" x="430" y="158" style="font-style:italic">What a small lodge with no card<tspan x="430" dy="12">facility usually wants.</tspan></text>
+
+                <text class="tm" x="0" y="192">There is deliberately no "settlement model" setting anywhere. The model is read off the deposit share, every time, so a partner can never</text>
+                <text class="tm" x="0" y="206">end up configured as "merchant model, and we collect nothing" — a contradiction that is only possible if you store the answer twice.</text>
+            </svg>
+            <figcaption>
+                A stay resolves its model from <strong>its own deposit rate as it was when the
+                booking was taken</strong>, not the property's current one — so a statement
+                about last season still adds up after a renegotiation.
+            </figcaption>
+        </figure>
+
+        <section class="section">
+            <h2>Who sets which number</h2>
+            <table class="facts">
+                <tbody>
+                <tr>
+                    <td>Commission is ours <span class="chip running">Running</span></td>
+                    <td>Set by us, adjustable per partner and per property, and never an editable field in the partner panel — though a partner can always see what they pay. Modelled deliberately below what the international portals charge.</td>
+                </tr>
+                <tr>
+                    <td>The deposit is the partner's <span class="chip running">Running</span></td>
+                    <td>They choose it for their own property, within a range we allow. A floor follows the commission rate, because that is the point where nothing has to move between us at all.</td>
+                </tr>
+                <tr>
+                    <td>Zero is a permission, not a number <span class="chip running">Running</span></td>
+                    <td>Collecting nothing means we invoice for commission and carry the risk of it going unpaid, so it is unlocked per partner rather than typed. Both panels state, live, which model the current deposit means.</td>
+                </tr>
+                <tr>
+                    <td>Both rates frozen at booking <span class="chip running">Running</span></td>
+                    <td>The rate and the amount, on the stay. "5% of what?" is the first thing a partner asks, and the base is not reconstructable once the charges have moved.</td>
+                </tr>
+                <tr>
+                    <td>Commission never on tax <span class="chip running">Running</span></td>
+                    <td>The base is the stay before VAT and the tourism levy. Charging commission on the government's money is indefensible in front of an operator.</td>
+                </tr>
+                <tr>
+                    <td>Payouts and statements <span class="chip designed">Designed</span></td>
+                    <td><strong>Not built.</strong> What is owed on a single stay, and in which direction, is answered. The run that aggregates it, the statement a partner reads, and the record of a transfer having happened are not — they want real money to have moved first.</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — booking &amp; payment</span>
+        <span class="pageno">6</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 7 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Booking &amp; payment — the working day, and the limits</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>What a lodge does with it between breakfast and lunch</h1>
+
+        <div class="features" style="margin-bottom:8mm">
+            <article class="feature">
+                <h3>Walk-in and telephone bookings <span class="chip running">Running</span></h3>
+                <p>Several unit types at once under one guest, priced from the calendar night by night, with an override that is recorded as a discrepancy rather than hidden.</p>
+            </article>
+            <article class="feature">
+                <h3>The morning board <span class="chip running">Running</span></h3>
+                <p>Arrivals, departures and who is in house for one date, printable, with what is outstanding and the passenger list for a departure — because that sheet leaves the office.</p>
+            </article>
+            <article class="feature">
+                <h3>Moving a guest through the day <span class="chip running">Running</span></h3>
+                <p>Due in, in house, checked out, no show; cancelling puts the rooms back on sale. The buttons are generated from what the system will actually allow, so no screen offers a move that would be refused.</p>
+            </article>
+            <article class="feature">
+                <h3>An unpaid list <span class="chip running">Running</span></h3>
+                <p>Everything at the property that is not square, soonest arrival first. A cancelled stay with a forfeited deposit appears there — exactly the case a system without a folio gets wrong.</p>
+            </article>
+            <article class="feature">
+                <h3>A guest record <span class="chip running">Running</span></h3>
+                <p>Per property, matched on the account first and the email second, with a comment log. A group's twenty camps share their guests; another lodge keeps its own record of the same person.</p>
+            </article>
+            <article class="feature">
+                <h3>Several properties, one login <span class="chip running">Running</span></h3>
+                <p>Switched from the top bar, remembered per person. Built for an operator with twenty camps under one organisation, not retrofitted for one.</p>
+            </article>
+            <article class="feature">
+                <h3>Desk mode <span class="chip running">Running</span></h3>
+                <p>A button that fills a reception screen with the calendar and nothing else. Works on a tablet that will not give an application full screen at all.</p>
+            </article>
+            <article class="feature">
+                <h3>Online payment <span class="chip built">Built</span></h3>
+                <p>Deposit or balance, pay, decline, abandon and refund, end to end — against a gateway that operates in Namibia and settles in Namibian dollars. See the limits opposite.</p>
+            </article>
+            <article class="feature">
+                <h3>Room-level assignment <span class="chip designed">Designed</span></h3>
+                <p>Not built. The system holds unit types and quantities, never a named room. A lodge that assigns physical rooms needs this, and it is the first thing a real desk is likely to ask for.</p>
+            </article>
+        </div>
+
+        <div class="callout honest">
+            <h4>What we do not claim</h4>
+            <p>
+                <strong>No connector has ever run against a real partner account.</strong>
+                Adapters exist for the dominant lodge PMS in this market, for the common
+                channel manager, for the Namibian-specific package, and for a content-only
+                itinerary system — all written against documented behaviour. We say "designed
+                to connect to". The first real integration will turn up surprises, and we would
+                rather say so now.
+            </p>
+            <p>
+                <strong>No merchant account has ever settled a real transaction.</strong> The
+                whole payment flow is built and demonstrable, and the demonstration provider
+                needs no account and no internet — but nothing you see move is real money.
+                "Built to settle in Namibian dollars" is the claim. "We take card payments" is
+                not.
+            </p>
+            <p>
+                <strong>Payouts and partner statements do not exist</strong>, no housekeeping
+                or tax reporting exists, and there is no channel synchronisation, no calendar
+                feed and no live link to any other system. There is no button anywhere that
+                hints at one, because a disabled button is a claim.
+            </p>
+            <p>
+                <strong>And no volume figures.</strong> No partner is live, so there is no
+                uptime record, no booking count and no reference customer to name.
+            </p>
+        </div>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — booking &amp; payment</span>
+        <span class="pageno">7</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 8 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Booking &amp; payment — how a first property starts</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>A pilot on one property, alongside whatever you run today</h1>
+
+        <p class="lead">
+            We would rather be judged on a working system than on a document. So the ask is
+            deliberately small, and nothing about it requires switching anything off.
+        </p>
+
+        <section class="section">
+            <div class="steps">
+                <article class="step">
+                    <span class="n">1</span>
+                    <h3>See it on your own property</h3>
+                    <p>
+                        We set your lodge up on example bookings before the meeting and show it
+                        running. Real software, made-up data — and every screen says so.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">2</span>
+                    <h3>Agree the measures</h3>
+                    <p>
+                        What would make this a success and how it gets counted, in writing,
+                        before a line of work is done.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">3</span>
+                    <h3>One property, one season</h3>
+                    <p>
+                        We enter the units and the rates, train whoever takes the bookings, and
+                        run alongside what you use today. Your business never depends on us
+                        alone.
+                    </p>
+                </article>
+                <article class="step">
+                    <span class="n">4</span>
+                    <h3>Then decide</h3>
+                    <p>
+                        Look at what actually happened and extend it, change it, or stop.
+                        Nothing owed beyond the season.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <div class="callout">
+            <h4>Two things worth knowing before you agree to anything</h4>
+            <p>
+                <strong>Your data stays yours</strong> and can be exported in full at any
+                time. There is no lock-in beyond a notice period we agree in writing.
+            </p>
+            <p>
+                <strong>Running two systems for the same rooms will drift</strong>, and
+                pretending otherwise is how pilots fail. Either you give us a fixed allotment
+                of rooms per date that we may sell without asking — which the calendar already
+                expresses exactly, with a release deadline back to you — or we check with you
+                by hand, which is honest and which we already do. What we will not do is call
+                either of those an integration.
+            </p>
+        </div>
+
+        <section class="section">
+            <h2>Built and operated here</h2>
+            <div class="blocks even">
+                <article class="block">
+                    <h3>Same country, same time zone</h3>
+                    <p>
+                        On site within a day, and built for the connections your camps actually
+                        have rather than for a fibre line in Europe. We host it, back it up
+                        nightly to encrypted off-site storage, and answer the phone.
+                    </p>
+                </article>
+                <article class="block dark">
+                    <h3>Standards, not inventions</h3>
+                    <p>
+                        The availability, rate and inventory model is the one every channel
+                        manager in this market already speaks, so connecting one later is a
+                        mapping. Where we deviate, it is written down and argued.
+                    </p>
+                </article>
+            </div>
+            <p style="font-size:8.4pt;line-height:1.5;color:var(--muted);margin-top:4mm">
+                <strong style="color:var(--ink)">One of four papers.</strong> The others:
+                <em>The whole picture</em> — three product lines on one platform, and what is
+                not built — plus <em>Kaia Trip Planning</em> and <em>Websites</em>.
+            </p>
+        </section>
+
+    </div>
+
+    <footer class="doc-close">
+        <div>
+            <h2>Let us set up one of your camps</h2>
+            <p>
+                On example bookings, before you decide anything — an hour of your time and you
+                can see your own property priced, sold, checked in, paid and invoiced. The ask
+                after that is one property and one season.
+            </p>
+        </div>
+        <div class="qr">
+            <img src="assets/qr-namibway-com.svg" alt="">
+            <span>NAMIBWAY.COM</span>
+        </div>
+    </footer>
+
+</section>
+
+</body>
+</html>

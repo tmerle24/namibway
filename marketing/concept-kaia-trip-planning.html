@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en-GB" data-variant="print">
+<head>
+<meta charset="utf-8">
+<title>NamibWay — Kaia trip planning and the listing catalogue</title>
+
+<!--
+  ==========================================================================
+  Concept document 1 of 3 — Kaia trip planning & the NamibWay catalogue.
+  A4, seven pages: cover, five explaining pages, and a page that closes.
+
+  Build:   node marketing/build-flyer.mjs   (builds every piece in marketing/)
+           node marketing/build-flyer.mjs concept-kaia   (just this one)
+
+  Audience, in the order it was written for: the co-founder, a partner
+  deciding whether to be listed, and an investor asking what is actually
+  defensible here. Those three want the same facts in a different order, so
+  the document is arranged as one argument rather than three sections.
+
+  EDIT: marked spots —
+    1. EDIT: phone — a phone line in the contact strip, off by default
+    2. EDIT: hero photo — --hero-photo, empty until we own an image
+
+  Claims discipline (marketing/README.md is the authority, read it before
+  changing a sentence here):
+    * Every capability carries a status chip. RUNNING means in production
+      today, BUILT means built and never run against a live partner, and
+      DESIGNED means decided but not built. Do not promote a chip without
+      changing the thing it describes.
+    * No traveller numbers, no booking volumes, no named partners, no
+      testimonials, no commission percentage.
+    * Connectors are "designed to connect to", never "integrated with" —
+      not one has run against a real partner account.
+    * The model-cost figure is our own estimate and says so.
+
+  A page that overflows is clipped in silence — `.page` is overflow: hidden.
+  Measure per page CHILD after any copy change; the snippet is in
+  marketing/README.md.
+  ==========================================================================
+-->
+
+<link rel="stylesheet" href="flyer-base.css">
+<link rel="stylesheet" href="document-base.css">
+<style>
+/* The build script rewrites the next line for the screen variant. */
+@page { size: 216mm 303mm; margin: 0; } /* PAGESIZE */
+</style>
+</head>
+
+<body>
+
+<!-- ============================== COVER ============================== -->
+<section class="page cover">
+
+    <img class="compass" src="assets/compass-on-brown.svg" alt="">
+    <img class="logo" src="../public/images/namibway-logo-light.png" alt="NamibWay">
+
+    <p class="eyebrow">Concept paper — one of three</p>
+
+    <h1>Kaia plans the trip. The data keeps it honest.</h1>
+
+    <p class="standfirst">
+        Every travel site in this market shows you a filter, a list and 400 results.
+        NamibWay asks four questions and hands back <strong>one finished, bookable
+        itinerary</strong> — where to sleep, what to do, what to eat, what to drive and in
+        what order — with the driving hours and the room prices taken from maintained
+        data rather than from a language model's memory of Namibia.
+    </p>
+
+    <div class="cover-foot">
+        <div class="for">
+            <strong>How to read the status marks</strong>
+            <ul class="key">
+                <li><span class="chip running">Running</span> in production today</li>
+                <li><span class="chip built">Built</span> built and tested, never yet run with a live partner</li>
+                <li><span class="chip designed">Designed</span> decided, not built</li>
+            </ul>
+            <p class="note">Nothing in here is a roadmap item pretending to be a feature.</p>
+        </div>
+        <img src="assets/built-in-namibia-stamp-light-1024.png" alt="Built in Namibia">
+    </div>
+
+</section>
+
+<!-- ============================== PAGE 2 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Kaia trip planning — how a plan is made</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>A planner that does the work, not a search box that hands it back</h1>
+
+        <p class="lead">
+            Planning a Namibian self-drive is a research project: a dozen properties,
+            two thousand kilometres, gravel roads that take twice as long as they look,
+            and an order of stops that either works or ruins the holiday.
+            <strong>Kaia does that work in a conversation</strong> and produces a plan a
+            traveller can edit, share and book. The interesting part is not that it uses
+            an AI model — everyone will. It is <strong>which half of the job the model is
+            allowed to do.</strong>
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 232" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="Four stages: interview by the model, catalogue fetched in code, one plan call, then checks against maintained data.">
+                <defs>
+                    <marker id="k-ar" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#B9812E"></path>
+                    </marker>
+                </defs>
+
+                <!-- stage 1 -->
+                <rect class="box" x="0" y="26" width="132" height="112"></rect>
+                <rect class="box-dark" x="0" y="26" width="46" height="15"></rect>
+                <text class="t on-dark" x="9" y="37" style="font-size:9px;font-weight:bold;letter-spacing:1px">MODEL</text>
+                <text class="th" x="12" y="66">Interview</text>
+                <text class="tm" x="12" y="86">When, how long, who<tspan x="12" dy="13">with, what for, what</tspan><tspan x="12" dy="13">kind of holiday.</tspan></text>
+                <text class="tm" x="12" y="130" style="font-style:italic">Claude Haiku</text>
+
+                <!-- stage 2 -->
+                <rect class="box-line" x="156" y="26" width="132" height="112"></rect>
+                <rect class="box-amber" x="156" y="26" width="46" height="15"></rect>
+                <text class="t on-amber" x="165" y="37" style="font-size:9px;font-weight:bold;letter-spacing:1px">DATA</text>
+                <text class="th" x="168" y="66">Catalogue</text>
+                <text class="tm" x="168" y="86">Matching listings are<tspan x="168" dy="13">fetched in SQL. The</tspan><tspan x="168" dy="13">model never searches</tspan><tspan x="168" dy="13">and never invents one.</tspan></text>
+
+                <!-- stage 3 -->
+                <rect class="box" x="312" y="26" width="132" height="112"></rect>
+                <rect class="box-dark" x="312" y="26" width="46" height="15"></rect>
+                <text class="t on-dark" x="321" y="37" style="font-size:9px;font-weight:bold;letter-spacing:1px">MODEL</text>
+                <text class="th" x="324" y="66">The plan</text>
+                <text class="tm" x="324" y="86">One forced tool call<tspan x="324" dy="13">assembles the days out</tspan><tspan x="324" dy="13">of that catalogue.</tspan></text>
+                <text class="tm" x="324" y="130" style="font-style:italic">Exactly one round trip</text>
+
+                <!-- stage 4 -->
+                <rect class="box-line" x="468" y="26" width="132" height="112"></rect>
+                <rect class="box-amber" x="468" y="26" width="46" height="15"></rect>
+                <text class="t on-amber" x="477" y="37" style="font-size:9px;font-weight:bold;letter-spacing:1px">DATA</text>
+                <text class="th" x="480" y="66">Checked</text>
+                <text class="tm" x="480" y="86">Driving hours, route<tspan x="480" dy="13">shape, availability and</tspan><tspan x="480" dy="13">price come from our</tspan><tspan x="480" dy="13">own records.</tspan></text>
+
+                <!-- arrows -->
+                <path class="flow" marker-end="url(#k-ar)" d="M 134 82 L 152 82"></path>
+                <path class="flow" marker-end="url(#k-ar)" d="M 290 82 L 308 82"></path>
+                <path class="flow" marker-end="url(#k-ar)" d="M 446 82 L 464 82"></path>
+
+                <!-- result -->
+                <path class="flow" marker-end="url(#k-ar)" d="M 300 140 L 300 168"></path>
+                <rect class="box-dark" x="0" y="172" width="600" height="46"></rect>
+                <text class="th on-dark" x="18" y="199">One itinerary — stays, activities, restaurants, vehicle and route, priced and bookable</text>
+            </svg>
+            <figcaption>
+                <strong>The model writes the plan; it is never the source of a fact.</strong>
+                It is handed a catalogue rather than being allowed to look for one, and
+                everything it produces is measured against records we maintain.
+            </figcaption>
+        </figure>
+
+        <div class="callout">
+            <h4>Why one call and not a conversation loop</h4>
+            <p>
+                The obvious build lets the model search the catalogue over several rounds
+                until it is satisfied. We did that, and replaced it. The catalogue is now
+                assembled in code and handed over in a single forced tool call, so the
+                number of model round trips per plan is <strong>fixed at one</strong>.
+            </p>
+            <p>
+                Three things follow. It is fast enough to feel like an answer rather than a
+                job. It is <strong>predictable</strong> — a plan cannot wander off into a
+                property that does not exist, because the only properties in the request are
+                ours. And it is cheap: our own estimate is roughly
+                <strong>USD 0.15 to 0.50 of model cost for a complete planning session</strong>,
+                against a commission on a multi-thousand-dollar trip. Planning is not where
+                this business spends money.
+            </p>
+        </div>
+
+        <div class="callout dark">
+            <h4>Facts the model is never asked for</h4>
+            <p>
+                A language model will confidently tell you how long it takes to drive from
+                Sesriem to Swakopmund. In this market that answer is a wrecked afternoon or
+                a night drive on a gravel road, which is the one thing every safety briefing
+                in Namibia tells you not to do. So those answers do not come from it:
+            </p>
+            <p>
+                <strong>Driving times</strong> come from routing over real road geometry plus
+                a curated city-to-city dataset we maintain. <strong>The shape of a route</strong>
+                comes from curated classic routes that Kaia adapts, rather than being invented
+                from scratch. <strong>Availability and price</strong> come from the property's
+                own calendar and rate plan. The model arranges; it does not assert.
+            </p>
+        </div>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — Kaia trip planning &amp; the listing catalogue</span>
+        <span class="pageno">2</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 3 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Kaia trip planning — the plan itself</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>What comes back is a document you can argue with</h1>
+
+        <p class="lead">
+            A generated itinerary is only useful if the traveller can change it without
+            starting again. Every part of a NamibWay plan is editable in place, and the plan
+            re-prices and re-routes itself as it changes — <strong>no regeneration, no lost
+            work, no starting the conversation over.</strong>
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 288" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="Schematic of one stage of a trip plan and the controls attached to it.">
+                <defs>
+                    <marker id="k2-ar" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#6B6350"></path>
+                    </marker>
+                </defs>
+
+                <!-- the plan column -->
+                <rect class="box-line" x="0" y="0" width="286" height="288"></rect>
+
+                <rect class="box-dark" x="0" y="0" width="286" height="34"></rect>
+                <text class="th on-dark" x="14" y="16" style="font-size:11px">Days 4–6 · Sossusvlei</text>
+                <text class="tm on-dark-m" x="14" y="28">3 nights · 2 adults · self-drive</text>
+
+                <!-- stay -->
+                <rect class="box" x="14" y="48" width="258" height="58"></rect>
+                <rect class="box-amber" x="14" y="48" width="5" height="58"></rect>
+                <text class="th" x="28" y="68">Stay · Desert lodge</text>
+                <text class="tm" x="28" y="83">Double, dinner &amp; breakfast</text>
+                <text class="tm" x="28" y="97">3 nights · N$ — · taxes included</text>
+
+                <!-- day plan -->
+                <rect class="box" x="14" y="118" width="258" height="76"></rect>
+                <text class="eyebrow-t" x="28" y="134">THE DAY</text>
+                <text class="tm" x="28" y="152">05:00 · Dune 45 at sunrise · 4 h</text>
+                <text class="tm" x="28" y="167">13:00 · Sesriem Canyon walk · 2 h</text>
+                <text class="tm" x="28" y="182">19:30 · Dinner at the lodge</text>
+
+                <!-- drive -->
+                <rect class="box-ghost" x="14" y="206" width="258" height="38"></rect>
+                <text class="th" x="28" y="224" style="font-size:10.5px">Drive to Swakopmund</text>
+                <text class="tm" x="28" y="238">— hours on the road, from routing data</text>
+
+                <text class="tm" x="14" y="266">Map, day order and totals update with every change</text>
+                <line class="rule-h" x1="14" y1="252" x2="272" y2="252"></line>
+
+                <!-- annotations -->
+                <path class="flow-soft" marker-end="url(#k2-ar)" d="M 386 74 L 278 74"></path>
+                <text class="th" x="396" y="70">Swap anything</text>
+                <text class="tm" x="396" y="86">Every stay, activity, restaurant and<tspan x="396" dy="13">vehicle offers alternatives in place.</tspan></text>
+
+                <path class="flow-soft" marker-end="url(#k2-ar)" d="M 386 128 L 278 100"></path>
+                <text class="th" x="396" y="128">Pick the room, at the real price</text>
+                <text class="tm" x="396" y="144">Room types and prices come from the<tspan x="396" dy="13">property's own calendar and season.</tspan></text>
+
+                <path class="flow-soft" marker-end="url(#k2-ar)" d="M 386 194 L 278 160"></path>
+                <text class="th" x="396" y="194">Reshape the trip</text>
+                <text class="tm" x="396" y="210">Reorder days, add or drop a night,<tspan x="396" dy="13">change dates, party or budget.</tspan></text>
+
+                <path class="flow-soft" marker-end="url(#k2-ar)" d="M 386 252 L 278 226"></path>
+                <text class="th" x="396" y="252">Share it, or print it</text>
+                <text class="tm" x="396" y="268">A read-only link for the people coming<tspan x="396" dy="13">along, and a PDF for the glovebox.</tspan></text>
+            </svg>
+            <figcaption>
+                One stage of a plan. <strong>The quoted price is the price the property's own
+                calendar and rate plan produce</strong>, taxes and levies included — so what
+                the plan says and what the invoice later says are the same number.
+            </figcaption>
+        </figure>
+
+        <section class="section">
+            <h2>What the plan does today <span class="chip running">Running</span></h2>
+            <div class="features">
+                <article class="feature">
+                    <h3>Multi-part, not just beds</h3>
+                    <p>Accommodation, activities, restaurants and the vehicle in one itinerary, laid out day by day with times and durations.</p>
+                </article>
+                <article class="feature">
+                    <h3>A real map</h3>
+                    <p>The route drawn between stages, so the shape of the trip is visible rather than implied by a list of towns.</p>
+                </article>
+                <article class="feature">
+                    <h3>Alternatives everywhere</h3>
+                    <p>Each line offers a short list of substitutes drawn from the same catalogue and the same region, priced the same way.</p>
+                </article>
+                <article class="feature">
+                    <h3>Live room prices</h3>
+                    <p>Season, occupancy rules and taxes reach the traveller, and a stay that crosses a season boundary prices night by night.</p>
+                </article>
+                <article class="feature">
+                    <h3>Vehicle class and budget</h3>
+                    <p>The traveller picks the kind of vehicle and a daily budget, and both narrow and order what is offered.</p>
+                </article>
+                <article class="feature">
+                    <h3>Five languages</h3>
+                    <p>English, German, Dutch, French and Spanish across the platform, on web, iOS and Android.</p>
+                </article>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — Kaia trip planning &amp; the listing catalogue</span>
+        <span class="pageno">3</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 4 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Kaia trip planning — where the account line sits</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>Nothing stands between a stranger and a finished plan</h1>
+
+        <p class="lead">
+            The first impression of this product is the plan, so the plan costs nothing and
+            asks for nothing. An account is only required at the point where it starts to
+            matter who you are — <strong>when the plan becomes durable, shared, or real
+            money.</strong> That line is enforced on the server, not by hiding a button.
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="Three columns: no account, account required, and creator only.">
+                <!-- col 1 -->
+                <rect class="box" x="0" y="22" width="186" height="160"></rect>
+                <text class="eyebrow-t" x="16" y="46">NO ACCOUNT</text>
+                <text class="th" x="16" y="70">Get a plan and play with it</text>
+                <text class="tm" x="16" y="92">· The whole Kaia conversation<tspan x="16" dy="15">· Viewing the generated plan</tspan><tspan x="16" dy="15">· Swapping items, reordering days</tspan><tspan x="16" dy="15">· Changing dates, party, budget</tspan><tspan x="16" dy="15">· Autosave, and a link back to it</tspan></text>
+                <text class="tm" x="16" y="172" style="font-style:italic">Free, and deliberately frictionless</text>
+
+                <!-- col 2 -->
+                <rect class="box-line" x="207" y="22" width="186" height="160"></rect>
+                <text class="eyebrow-t" x="223" y="46">ACCOUNT REQUIRED</text>
+                <text class="th" x="223" y="70">Keep it, or share the work</text>
+                <text class="tm" x="223" y="92">· Saving a plan to your account<tspan x="223" dy="15">· Co-planning with fellow</tspan><tspan x="223" dy="15">&#160;&#160;travellers, who need identities</tspan><tspan x="223" dy="15">· Sending booking requests</tspan></text>
+                <text class="tm" x="223" y="172" style="font-style:italic">A person, so a change has an author</text>
+
+                <!-- col 3 -->
+                <rect class="box-dark" x="414" y="22" width="186" height="160"></rect>
+                <text class="eyebrow-t" x="430" y="46" style="fill:#E2AB6C">CREATOR ONLY</text>
+                <text class="th on-dark" x="430" y="70">Booking</text>
+                <text class="tm on-dark-m" x="430" y="92">Sharing a plan does not hand<tspan x="430" dy="15">over the ability to book it. One</tspan><tspan x="430" dy="15">trip, one responsible person —</tspan><tspan x="430" dy="15">which is what keeps the request</tspan><tspan x="430" dy="15">rule on the next page coherent.</tspan></text>
+
+                <text class="eyebrow-t" x="0" y="12">THE ACCOUNT LINE — ENFORCED SERVER-SIDE, NOT IN THE INTERFACE</text>
+            </svg>
+            <figcaption>
+                An anonymous request can only ever produce an <strong>unowned</strong> plan;
+                attaching one to an account is the single operation that sets an owner, and it
+                sits behind authentication. Booking resolves the creator from the plan's edit
+                token — <strong>a read-only share link is refused.</strong>
+            </figcaption>
+        </figure>
+
+        <div class="callout">
+            <h4>Sharing today <span class="chip running">Running</span></h4>
+            <p>
+                A plan has two links, not one. The <strong>share link is read-only</strong>
+                and renders the plan with no editing affordances at all; the edit link is the
+                one that can change it. If two people edit anyway, the second write is
+                <strong>rejected rather than silently overwriting</strong> the first — the
+                loser is told to reload instead of discovering the loss a week later.
+            </p>
+        </div>
+
+        <div class="callout honest">
+            <h4>Where this is going <span class="chip designed">Designed</span></h4>
+            <p>
+                A trip is rarely planned by one person, and the read-only link is only half of
+                that. The decided direction is a plan with <strong>participants</strong> —
+                people invited with read or write access — <strong>comments</strong> on
+                individual days and items with follow-ups and a resolved state, and a
+                <strong>log of who changed what</strong>. That last one is what makes shared
+                editing safe: without attribution, a co-planner's change is indistinguishable
+                from a bug.
+            </p>
+            <p>
+                This is a data-model step, not a toggle, and it is not built. It is named here
+                because it is the shape everything else in the plan is being built not to
+                block. The same is true of the step after it: once the trip starts, the plan
+                becomes the travelling document — which stage you are on today, what is
+                confirmed, and the after-sales layer hanging off that one idea of "where you
+                are". Also decided, also not built.
+            </p>
+        </div>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — Kaia trip planning &amp; the listing catalogue</span>
+        <span class="pageno">4</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 5 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Kaia trip planning — from plan to booking</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>The hard part is turning a plan into bookings without flooding anyone</h1>
+
+        <p class="lead">
+            An AI planner can generate a hundred itineraries an hour. If each one sends a
+            request to twelve lodges, the platform becomes a nuisance and the partners stop
+            answering. <strong>The governance around the request is as much of the product as
+            the plan is</strong>, and it is what a partner is actually being asked to trust.
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 258" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="A booking request passing a gate, holding inventory, and being confirmed or released.">
+                <defs>
+                    <marker id="k3-ar" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#B9812E"></path>
+                    </marker>
+                    <marker id="k3-arm" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#6B6350"></path>
+                    </marker>
+                </defs>
+
+                <rect class="box" x="0" y="30" width="118" height="66"></rect>
+                <text class="th" x="12" y="54">The plan</text>
+                <text class="tm" x="12" y="70">Account, name, email<tspan x="12" dy="13">and firm travel dates</tspan></text>
+
+                <rect class="box-amber" x="146" y="30" width="118" height="66"></rect>
+                <text class="th on-amber" x="158" y="54">One open request</text>
+                <text class="tm on-amber" x="158" y="70" style="fill:#FDECD8">A second pipeline is<tspan x="158" dy="13">refused, not queued</tspan></text>
+
+                <rect class="box" x="292" y="30" width="118" height="66"></rect>
+                <text class="th" x="304" y="54">The partner</text>
+                <text class="tm" x="304" y="70">An email with two<tspan x="304" dy="13">links. No login.</tspan></text>
+
+                <rect class="box-dark" x="438" y="30" width="162" height="66"></rect>
+                <text class="th on-dark" x="450" y="54">Confirmed</text>
+                <text class="tm on-dark-m" x="450" y="70">Becomes a real stay on the<tspan x="450" dy="13">property's own calendar</tspan></text>
+
+                <path class="flow" marker-end="url(#k3-ar)" d="M 120 63 L 142 63"></path>
+                <path class="flow" marker-end="url(#k3-ar)" d="M 266 63 L 288 63"></path>
+                <path class="flow" marker-end="url(#k3-ar)" d="M 412 63 L 434 63"></path>
+
+                <!-- the hold band -->
+                <rect class="box-line" x="292" y="122" width="308" height="56"></rect>
+                <text class="eyebrow-t" x="304" y="142">WHILE THE PARTNER DECIDES</text>
+                <text class="tm" x="304" y="160">The room is genuinely off sale — a provisional stay on the<tspan x="304" dy="13">calendar, not a note in our own database.</tspan></text>
+                <path class="flow-soft" d="M 351 98 L 351 118" marker-end="url(#k3-arm)"></path>
+
+                <!-- release path -->
+                <rect class="box-ghost" x="292" y="196" width="308" height="52"></rect>
+                <text class="th" x="304" y="216" style="font-size:10.5px">Declined, or nobody answers in time</text>
+                <text class="tm" x="304" y="233">The hold expires by itself, the room goes back on sale, and<tspan x="304" dy="13">the traveller is told rather than left waiting.</tspan></text>
+                <path class="flow-soft" d="M 351 178 L 351 192" marker-end="url(#k3-arm)"></path>
+
+                <text class="tm" x="0" y="142" style="font-style:italic">A property is never<tspan x="0" dy="13">asked to answer a</tspan><tspan x="0" dy="13">request the traveller</tspan><tspan x="0" dy="13">has not committed to.</tspan></text>
+            </svg>
+            <figcaption>
+                The rule a partner cares about, stated plainly: <strong>one traveller can have
+                one open booking pipeline at a time</strong>, and it costs them an account,
+                real contact details and firm dates to open it.
+            </figcaption>
+        </figure>
+
+        <section class="section">
+            <h2>What that is made of</h2>
+            <table class="facts">
+                <tbody>
+                <tr>
+                    <td>One open request <span class="chip running">Running</span></td>
+                    <td>Checked against the account <em>and</em> the submitted email address, so a second address is not a way around it. A shortlist sent to several properties at once counts as one pipeline, checked once.</td>
+                </tr>
+                <tr>
+                    <td>A commitment signal <span class="chip running">Running</span></td>
+                    <td>An account plus name, email and firm travel dates before anything reaches a partner. Deliberately no payment — the signal is identity and dates, not a card.</td>
+                </tr>
+                <tr>
+                    <td>Holds that release themselves <span class="chip running">Running</span></td>
+                    <td>Where we hold the inventory, a request takes a provisional stay on the calendar, so the room cannot be sold twice while the answer is pending — and it comes back automatically, with the guest told.</td>
+                </tr>
+                <tr>
+                    <td>One-click reply <span class="chip running">Running</span></td>
+                    <td>A signed confirm and decline link in the email. No account, no password, no training — or the same action from the partner dashboard, through identical logic.</td>
+                </tr>
+                <tr>
+                    <td>Request becomes stay <span class="chip running">Running</span></td>
+                    <td>A confirmation promotes the request into a stay on the property's calendar exactly once, guaranteed by the database — so a partner clicking twice cannot produce two bookings.</td>
+                </tr>
+                <tr>
+                    <td>Staged confirmations <span class="chip designed">Designed</span></td>
+                    <td>Lock the accommodation first, then layer activities and restaurants once the route is fixed. Decided, not built: today each request is handled independently.</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — Kaia trip planning &amp; the listing catalogue</span>
+        <span class="pageno">5</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 6 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Kaia trip planning — the catalogue underneath</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>A planner is only as good as the catalogue it plans from</h1>
+
+        <p class="lead">
+            The unglamorous half of this product is the content: who exists, where they
+            actually are, what they cost, what they look like, and <strong>whether we have the
+            right to publish any of it.</strong> That last question is answered per field and
+            per photograph, by the software, every time something is written.
+        </p>
+
+        <figure>
+            <svg class="dg" viewBox="0 0 600 176" xmlns="http://www.w3.org/2000/svg" role="img"
+                 aria-label="A ranking of content sources, with third-party directory content below a publishable line.">
+                <text class="eyebrow-t" x="0" y="10">WHAT MAY REPLACE WHAT — AND WHAT MAY NEVER BE PUBLISHED</text>
+
+                <rect class="box-dark" x="0" y="22" width="384" height="24"></rect>
+                <text class="t on-dark" x="12" y="38" style="font-weight:bold">The partner's own words and photographs</text>
+                <text class="tm" x="396" y="38">Beats everything</text>
+
+                <rect class="box-dark" x="0" y="50" width="316" height="24" style="opacity:.86"></rect>
+                <text class="t on-dark" x="12" y="66" style="font-weight:bold">Their own website, crawled</text>
+                <text class="tm" x="396" y="66">Beats what is below it</text>
+
+                <rect class="box" x="0" y="78" width="248" height="24"></rect>
+                <text class="t" x="12" y="94" style="font-weight:bold">Our own writing, generated from the facts</text>
+                <text class="tm" x="396" y="94">Replaces the two below</text>
+
+                <rect class="box" x="0" y="106" width="196" height="24"></rect>
+                <text class="t" x="12" y="122" style="font-weight:bold">Mapping and places data</text>
+                <text class="tm" x="396" y="122">A floor, not a source</text>
+
+                <line class="rule-h" x1="0" y1="138" x2="600" y2="138" style="stroke:#B9812E;stroke-width:1.4;stroke-dasharray:5 3"></line>
+                <text class="eyebrow-t" x="0" y="150">— PUBLISHABLE ABOVE THIS LINE —</text>
+
+                <rect class="box-ghost" x="0" y="152" width="120" height="22"></rect>
+                <text class="tm" x="12" y="167">Third-party directories</text>
+                <text class="tm" x="396" y="167">Internal reference only. Never published.</text>
+            </svg>
+            <figcaption>
+                A listing <strong>upgrades itself</strong>: when a partner claims it, or when
+                their own website is crawled, the better source replaces the weaker one.
+                Material from a third-party directory is kept for staff to work against and
+                <strong>is refused publication by the software</strong>, not by a policy
+                somebody has to remember.
+            </figcaption>
+        </figure>
+
+        <section class="section">
+            <h2>How the catalogue gets filled</h2>
+            <div class="features">
+                <article class="feature">
+                    <h3>Partners, free <span class="chip running">Running</span></h3>
+                    <p>A listing costs nothing and stays free. We earn a commission only on a confirmed booking, and a listing is removed within 24 hours on request.</p>
+                </article>
+                <article class="feature">
+                    <h3>Claim your listing <span class="chip running">Running</span></h3>
+                    <p>An owner takes over a researched listing through an invitation link, and from then on edits their own descriptions, photographs, rooms and rates.</p>
+                </article>
+                <article class="feature">
+                    <h3>Bulk capture in Excel <span class="chip running">Running</span></h3>
+                    <p>Export, edit, re-import with a dry-run diff before anything is written. An empty cell means "leave this alone"; only an explicit marker clears a field.</p>
+                </article>
+                <article class="feature">
+                    <h3>Photographs at scale <span class="chip running">Running</span></h3>
+                    <p>Originals in object storage, thumbnails generated on demand and cached, so image bytes never pass through the application and a slow connection still gets a page.</p>
+                </article>
+                <article class="feature">
+                    <h3>Enrichment, budgeted <span class="chip running">Running</span></h3>
+                    <p>Finding websites, extracting structured facts, writing descriptions and scoring completeness — behind a hard daily spending cap that cannot be exceeded by a bug.</p>
+                </article>
+                <article class="feature">
+                    <h3>Places, not just towns <span class="chip running">Running</span></h3>
+                    <p>Regions, cities, villages and curated destinations, with coordinates as the trusted locator — which is what lets a plan route between real points.</p>
+                </article>
+            </div>
+        </section>
+
+        <div class="callout">
+            <h4>Why this is defensible</h4>
+            <p>
+                Anyone can call a model. What is hard to copy is a maintained Namibian
+                catalogue with rights-checked content, real coordinates, real room types and
+                real prices, plus the driving dataset and the curated routes that keep a
+                generated plan physically possible. <strong>The model is the cheap part.</strong>
+            </p>
+        </div>
+
+    </div>
+
+    <footer class="doc-foot">
+        <span>NamibWay — Kaia trip planning &amp; the listing catalogue</span>
+        <span class="pageno">6</span>
+    </footer>
+
+</section>
+
+<!-- ============================== PAGE 7 ============================== -->
+<section class="page">
+
+    <header class="topstrip">
+        <img src="assets/compass-on-brown.svg" alt="">
+        <span>Kaia trip planning — what we do not claim</span>
+        <div class="rule"></div>
+    </header>
+
+    <div class="doc-body">
+
+        <h1>What we will not tell you</h1>
+
+        <p class="lead">
+            This document is meant to be usable in front of someone who will check it. So the
+            limits are printed next to the claims rather than left to be discovered.
+        </p>
+
+        <div class="callout honest">
+            <h4>Deliberately absent from this document</h4>
+            <p>
+                <strong>Traveller or booking numbers of any kind.</strong> The platform is live
+                and the partner side is pre-launch. There are no user counts, no "trips
+                planned" figures and no growth curves here, because there is nothing yet worth
+                quoting and a number invented for a document is the one thing that ends a
+                partner conversation.
+            </p>
+            <p>
+                <strong>No named partners, testimonials or logos.</strong> No partner is
+                connected yet, so there is nobody to quote and no mark we have the right to
+                print.
+            </p>
+            <p>
+                <strong>No validated connector integration.</strong> Adapters exist for the
+                systems this market runs on — the dominant lodge PMS, the common channel
+                manager, the Namibian-specific package, and a content-only itinerary system —
+                and <strong>not one has ever run against a real partner account.</strong> We
+                say "designed to connect to". We do not say "integrated with".
+            </p>
+            <p>
+                <strong>No commission percentage</strong> until that decision is signed off,
+                and no promise about where a business ranks in anyone's search results.
+            </p>
+        </div>
+
+        <div class="callout dark">
+            <h4>And the one that matters most to a partner</h4>
+            <p>
+                A property that lists with us is not agreeing to move its business. The
+                listing is free, the booking requests are governed by the rule on page 5, and
+                the partner keeps whatever system they run today. <strong>Everything on the
+                next two concept papers — the booking system and the websites — is something a
+                partner may take or leave.</strong>
+            </p>
+        </div>
+
+        <section class="section">
+            <h2>The rest of this set</h2>
+            <div class="blocks three">
+                <article class="block dark">
+                    <h3>The whole picture</h3>
+                    <p>
+                        The overview: three product lines on one shared platform, how each
+                        makes the next easier to sell, where the money comes from, and an
+                        honest map of what runs and what does not.
+                    </p>
+                </article>
+                <article class="block">
+                    <h3>Booking &amp; Payment</h3>
+                    <p>
+                        The lodge-facing system: an occupancy calendar, rate plans and seasons,
+                        bookings at the desk, a folio, numbered invoices, and the three
+                        settlement models we offer rather than picking one.
+                    </p>
+                </article>
+                <article class="block">
+                    <h3>Websites</h3>
+                    <p>
+                        A website for a Namibian business, generated rather than hand-built,
+                        on one monthly fee — with live availability from the booking system
+                        where there are rooms to sell.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="doc-close">
+        <div>
+            <h2>Come and break it</h2>
+            <p>
+                The fastest way to judge any of this is to plan a trip on namibway.com and try
+                to catch it out — a route that cannot be driven, a price that does not add up,
+                a plan that loses your changes. We would rather hear that from you than read
+                it in a review.
+            </p>
+        </div>
+        <div class="qr">
+            <img src="assets/qr-namibway-com.svg" alt="">
+            <span>NAMIBWAY.COM</span>
+        </div>
+    </footer>
+
+</section>
+
+</body>
+</html>
