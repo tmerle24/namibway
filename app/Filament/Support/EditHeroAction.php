@@ -65,7 +65,9 @@ class EditHeroAction
 
                 return [
                     'show_town' => filled($data['eyebrow'] ?? null),
-                    'eyebrow' => $data['eyebrow'] ?? $record?->city?->name,
+                    // $record cannot be null here: a null one produces a null
+                    // hero, and that returned above.
+                    'eyebrow' => $data['eyebrow'] ?? $record->city?->name,
                     'headline' => $data['headline'] ?? null,
                     'subline' => $data['subline'] ?? null,
                 ];
