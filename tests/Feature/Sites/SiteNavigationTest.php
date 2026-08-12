@@ -155,7 +155,11 @@ class SiteNavigationTest extends TestCase
 
         $this->get($site->publicUrl())
             ->assertSee('class="nav__logo"', false)
-            ->assertSee('alt="'.$site->name.'"', false);
+            // e(), because the factory's name is a real company name and some
+            // of them have an apostrophe in — "O'Hara-Cormier" is escaped in
+            // the attribute and was not in the expectation, which failed this
+            // test on the runs where faker happened to pick one.
+            ->assertSee('alt="'.e($site->name).'"', false);
     }
 
     /**
