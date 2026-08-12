@@ -84,11 +84,21 @@
         width: 100%; max-width: var(--container); margin: 0 auto;
     }
     .nav__name {
-        font-family: var(--font-display);
+        display: flex; align-items: center;
+        font-family: var(--font-display); font-weight: 700;
         font-size: 20px; letter-spacing: -.01em;
         text-decoration: none; margin-right: auto;
-        color: #fff; transition: color .3s ease;
+        color: #fff; transition: color .3s ease, opacity .3s ease;
     }
+    /* Over a hero the name is already set in type a few lines below, so the
+       mark waits until that hero has gone past. Under `.js` only: the class
+       that brings it back is added by script, and without one the name must
+       simply be there. */
+    .js .nav__name--defer { opacity: 0; pointer-events: none; }
+    .js .nav.is-scrolled .nav__name--defer { opacity: 1; pointer-events: auto; }
+    /* An owner's mark is whatever shape it is, so it is bounded by height and
+       left to find its own width. */
+    .nav__logo { height: 36px; width: auto; max-width: 200px; object-fit: contain; display: block; }
     .nav__links { display: none; gap: var(--s4); align-items: center; }
     .nav__links a {
         font-size: 13px; letter-spacing: .08em; text-transform: uppercase;

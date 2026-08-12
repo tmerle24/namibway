@@ -83,6 +83,66 @@ class SiteNavigationTest extends TestCase
             ->assertSee('id="nav-panel" hidden', false);
     }
 
+    public function test_home_is_the_first_item_and_points_at_the_top_of_the_page(): void
+    {
+        $site = $this->siteWith([
+            'about' => ['heading' => 'About us', 'body' => 'A lodge on the plains.'],
+        ]);
+
+        $this->get($site->publicUrl())
+            ->assertSee('Home')
+            ->assertSee('<body id="top">', false);
+    }
+
+    /**
+     * Booking is the thing the site exists to do, so it must not be the item
+     * that falls off the end when a business has a lot to say.
+     */
+    public function test_booking_keeps_its_place_in_a_crowded_menu(): void
+    {
+        $site = Site::factory()->create();
+        $page = SitePage::factory()->create(['site_id' => $site->id, 'title' => $site->name]);
+
+        $crowd = [
+            'about' => ['heading' => 'About us', 'body' => 'Words.'],
+            'highlights' => ['heading' => 'What we offer', 'items' => [['title' => 'Dune walks', 'text' => null]]],
+            'opening_hours' => ['heading' => 'Hours', 'days' => [['day' => 'Monday', 'hours' => '09:00–17:00']]],
+            'price_list' => ['heading' => 'Prices', 'items' => [['name' => 'Night', 'value' => 'N$ 1 200', 'note' => null]]],
+            'rich_text' => ['heading' => 'More', 'body' => 'Words.'],
+            'enquiry' => ['heading' => 'Request availability', 'mode' => 'stay'],
+        ];
+
+        $sort = 0;
+
+        foreach ($crowd as $type => $data) {
+            SiteBlock::create(['site_page_id' => $page->id, 'type' => $type, 'data' => $data, 'sort' => $sort++]);
+        }
+
+        $blocks = $page->renderableBlocks()->get()->push(
+            new SiteBlock(['type' => 'booking', 'data' => ['heading' => 'Book now']])
+        );
+
+        $html = view('sites.partials.nav', ['site' => $site, 'blocks' => $blocks, 'hasHero' => true])->render();
+
+        $this->assertStringContainsString('Book now', $html);
+        $this->assertStringContainsString('Home', $html);
+    }
+
+    public function test_a_logo_replaces_the_name_in_the_bar(): void
+    {
+        $site = $this->siteWith([
+            'about' => ['heading' => 'About us', 'body' => 'A lodge on the plains.'],
+        ]);
+
+        $this->get($site->publicUrl())->assertDontSee('nav__logo');
+
+        $site->update(['logo_key' => 'sites/logos/mark.png']);
+
+        $this->get($site->publicUrl())
+            ->assertSee('nav__logo', false)
+            ->assertSee('alt="'.$site->name.'"', false);
+    }
+
     public function test_a_site_with_nothing_to_link_to_has_no_burger(): void
     {
         $site = $this->siteWith([

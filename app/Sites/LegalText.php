@@ -93,7 +93,7 @@ class LegalText
                 .'(namibway.com), which processes enquiries on its behalf and under its instructions. Your web server '
                 .'requests are logged in the ordinary way that any website is served.',
 
-            "Your choices. You can ask what is held about you, ask for it to be corrected, or ask for it to be deleted, "
+            'Your choices. You can ask what is held about you, ask for it to be corrected, or ask for it to be deleted, '
                 ."by writing to {$contact}.",
         ];
 

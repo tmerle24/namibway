@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Support\MediaUrl;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -31,6 +33,7 @@ use Illuminate\Support\Str;
  * @property string $draft_token
  * @property Carbon|null $published_at
  * @property string $accent
+ * @property string|null $logo_key
  * @property string $default_locale
  * @property string|null $contact_email
  * @property string|null $contact_phone
@@ -62,6 +65,7 @@ class Site extends Model
         'draft_token',
         'published_at',
         'accent',
+        'logo_key',
         'default_locale',
         'contact_email',
         'contact_phone',
@@ -190,6 +194,22 @@ class Site extends Model
     public function publicUrl(): string
     {
         return $this->pageUrl();
+    }
+
+    /**
+     * The owner's mark, sized for the slot it goes in — or null, in which case
+     * the name is set in type instead. Root-relative like every other image on
+     * these pages; see SiteImage::thumb().
+     */
+    public function logoUrl(int $width = 400): ?string
+    {
+        if (blank($this->logo_key)) {
+            return null;
+        }
+
+        $url = Storage::disk('r2')->url((string) $this->logo_key);
+
+        return MediaUrl::thumb($url, $width) ?? $url;
     }
 
     /**

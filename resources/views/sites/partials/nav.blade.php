@@ -11,8 +11,9 @@
      * separate menu: one array renders twice, so a link can never be in one and
      * missing from the other.
      */
-    $navTypes = ['about', 'highlights', 'gallery', 'opening_hours', 'price_list', 'booking', 'enquiry', 'contact'];
+    $navTypes = ['about', 'highlights', 'gallery', 'opening_hours', 'price_list', 'enquiry', 'contact'];
     $items = [];
+    $booking = null;
     $n = 0;
 
     foreach ($blocks as $navBlock) {
@@ -20,20 +21,51 @@
             $n++;
         }
 
+        $label = $navBlock->data['heading'] ?? $navBlock->definition()?->label() ?? '';
+
+        // Booking is held aside rather than queued with the rest. It is the
+        // thing the site exists to do, so it cannot be the item that falls off
+        // the end when a business has a lot to say.
+        if ($navBlock->type === 'booking') {
+            $booking = ['anchor' => 's'.$n, 'label' => $label];
+
+            continue;
+        }
+
         // Five is where a bar this size stops reading as a menu and starts
-        // reading as a list. The panel is not so constrained, but they have to
-        // agree, so the cap is shared.
+        // reading as a list. The panel is not so constrained, but the two have
+        // to agree, so the cap is shared.
         if (in_array($navBlock->type, $navTypes, true) && count($items) < 5) {
-            $items[] = [
-                'anchor' => 's'.$n,
-                'label' => $navBlock->data['heading'] ?? $navBlock->definition()?->label() ?? '',
-            ];
+            $items[] = ['anchor' => 's'.$n, 'label' => $label];
         }
     }
+
+    // Home first, and only once there is somewhere else to go: a single-item
+    // menu reading "Home" on the page you are already on is furniture.
+    if ($items !== [] || $booking !== null) {
+        array_unshift($items, ['anchor' => 'top', 'label' => 'Home']);
+    }
+
+    if ($booking !== null) {
+        $items[] = $booking;
+    }
+
+    $logo = $site->logoUrl(400);
 @endphp
 <header class="nav {{ $hasHero ? '' : 'nav--solid' }}" id="nav">
     <div class="nav__inner">
-        <a class="nav__name" href="#top">{{ $site->name }}</a>
+        {{-- Over a hero the name is set twice — once here and once in type
+             three lines below it — so the mark holds itself back until the
+             hero has scrolled past. Only under `.js`, because the class that
+             brings it back is added by script: without one it is simply
+             always there. --}}
+        <a class="nav__name {{ $hasHero ? 'nav__name--defer' : '' }}" href="#top">
+            @if ($logo)
+                <img src="{{ $logo }}" alt="{{ $site->name }}" class="nav__logo">
+            @else
+                {{ $site->name }}
+            @endif
+        </a>
 
         @if ($items !== [])
             <nav class="nav__links">

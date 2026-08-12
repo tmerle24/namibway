@@ -85,6 +85,8 @@ class WebsiteTab
                     }),
 
                 Forms\Components\Actions::make([
+                    EditSiteLogoAction::make(),
+
                     EditLegalTextAction::make(),
 
                     Action::make('build_website')

@@ -7,6 +7,7 @@ use App\Filament\Partner\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\CreateWebsiteAction;
 use App\Filament\Support\EditLegalTextAction;
+use App\Filament\Support\EditSiteLogoAction;
 use App\Filament\Support\ViewListingAction;
 use App\Models\Listing;
 use App\Services\Enrichment\OsmLocationFinder;
@@ -45,8 +46,9 @@ class EditListing extends EditRecord
             // owners until the subscription exists, and a disabled button in a
             // page header reads as broken rather than as forthcoming.
             CreateWebsiteAction::visitHeader(),
-            // Privacy, the legal notice and the copyright line are the owner's,
-            // not ours, so the owner edits them here rather than by asking us.
+            // The logo, and the legal pages: both are the owner's, not ours, so
+            // the owner sets them here rather than by asking us.
+            EditSiteLogoAction::header(),
             EditLegalTextAction::header(),
             Actions\LocaleSwitcher::make(),
             Actions\Action::make('back')
