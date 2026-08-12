@@ -1014,18 +1014,26 @@
        asked for on top of it and takes the browser's own chrome away as well,
        but it is not required — iOS Safari has no element fullscreen at all,
        and a reception iPad is exactly where this is wanted. So the button
-       never depends on it having worked. */
+       never depends on it having worked.
+
+       The background is specified both as a plain hex fallback and as the
+       CSS-variable form so it works whether or not Filament has injected its
+       palette variables yet (fullscreen is granted asynchronously, and there
+       is a microtask window between the button click and the class being
+       stamped onto the element by Alpine's reactive update queue). */
     .nw-lodge--desk {
         position: fixed;
         inset: 0;
         z-index: 40;
         overflow: auto;
         padding: 1rem;
-        background: rgb(var(--gray-100, 243 244 246));
+        background: #f4f4f5;
+        background: rgb(var(--gray-100, 244 244 245));
     }
 
     .dark .nw-lodge--desk {
-        background: rgb(var(--gray-950, 3 7 18));
+        background: #09090b;
+        background: rgb(var(--gray-950, 9 9 11));
     }
 
     /* The ceilings above are drawn against a page that has a topbar, a heading
