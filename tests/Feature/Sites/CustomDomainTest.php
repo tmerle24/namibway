@@ -3,12 +3,14 @@
 namespace Tests\Feature\Sites;
 
 use App\Enums\DomainStatus;
+use App\Filament\Support\EditCustomDomainAction;
 use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Models\SitePage;
 use App\Sites\Domains\DnsChecker;
 use App\Sites\SiteResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use ReflectionMethod;
 use Tests\TestCase;
 
 /**
@@ -189,5 +191,56 @@ class CustomDomainTest extends TestCase
         $this->site(['custom_domain' => 'duneedge.test', 'domain_status' => DomainStatus::PendingDns]);
 
         $this->artisan('sites:check-domains')->assertFailed();
+    }
+
+    /**
+     * The screen exists to produce two lines somebody forwards to a business,
+     * so the two lines are what it must show — naming the domain being entered,
+     * and carrying the address rather than an instruction to go and configure
+     * one. It said the latter for a while, which is a screen answering a
+     * question nobody asked.
+     */
+    public function test_the_admin_is_given_the_two_records_to_send_on(): void
+    {
+        config(['sites.server_ip' => '51.210.44.12']);
+
+        $instructions = $this->renderInstructions('https://WWW.Dune-Edge.com.na/');
+
+        $this->assertStringContainsString('A    dune-edge.com.na', $instructions);
+        $this->assertStringContainsString('A    www.dune-edge.com.na', $instructions);
+        $this->assertStringContainsString('51.210.44.12', $instructions);
+
+        // The email warning is the one line here that prevents real damage.
+        $this->assertStringContainsString('MX', $instructions);
+    }
+
+    public function test_the_records_are_shown_before_a_domain_is_typed(): void
+    {
+        config(['sites.server_ip' => '51.210.44.12']);
+
+        $this->assertStringContainsString('A    yourdomain.com.na', $this->renderInstructions(null));
+    }
+
+    /**
+     * Without a configured address the block still stands, with the value
+     * column visibly empty and the reason underneath — a missing setting is
+     * ours to fix and must not replace what the screen is for.
+     */
+    public function test_a_missing_server_address_leaves_the_records_standing(): void
+    {
+        config(['sites.server_ip' => '', 'app.url' => 'http://localhost']);
+
+        $instructions = $this->renderInstructions('duneedge.com.na');
+
+        $this->assertStringContainsString('A    duneedge.com.na', $instructions);
+        $this->assertStringContainsString('SITES_SERVER_IP', $instructions);
+    }
+
+    private function renderInstructions(?string $typed): string
+    {
+        $method = new ReflectionMethod(EditCustomDomainAction::class, 'instructions');
+        $method->setAccessible(true);
+
+        return html_entity_decode($method->invoke(null, $typed)->toHtml());
     }
 }

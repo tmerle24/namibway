@@ -49,11 +49,16 @@ class EditCustomDomainAction
                     ->placeholder('example.com.na')
                     ->helperText('Without http:// and without www. Leave empty to remove it again.')
                     ->rule('regex:/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i')
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    // So the records below name the domain being typed rather
+                    // than an example of one.
+                    ->live(onBlur: true),
 
                 Forms\Components\Placeholder::make('dns_instructions')
                     ->label('Send this to the business')
-                    ->content(fn (?Listing $record): HtmlString => self::instructions($record)),
+                    ->content(fn (Forms\Get $get): HtmlString => self::instructions(
+                        is_string($get('custom_domain')) ? $get('custom_domain') : null
+                    )),
 
                 Forms\Components\Placeholder::make('domain_state')
                     ->label('Where it has got to')
@@ -66,9 +71,7 @@ class EditCustomDomainAction
                     return;
                 }
 
-                $domain = strtolower(trim((string) ($data['custom_domain'] ?? '')));
-                $domain = preg_replace('~^https?://~', '', $domain) ?? $domain;
-                $domain = preg_replace('~^www\.~', '', rtrim($domain, '/')) ?? $domain;
+                $domain = self::normalise((string) ($data['custom_domain'] ?? ''));
 
                 // Changing the domain restarts the whole state machine: a new
                 // name has different DNS and no certificate, and carrying the
@@ -95,37 +98,91 @@ class EditCustomDomainAction
     }
 
     /**
-     * The copy-and-paste part, written to be forwarded to somebody who has
-     * never seen a DNS panel.
+     * The two records, written the way a DNS panel asks for them.
+     *
+     * Always rendered, even with no address configured and no domain typed yet:
+     * somebody opening this needs to see what they will be sending, and a
+     * configuration note in place of the instructions is a screen that answers
+     * a question nobody asked.
      */
-    private static function instructions(?Listing $record): HtmlString
+    private static function instructions(?string $typed): HtmlString
     {
-        $site = $record === null ? null : self::siteFor($record);
-        $ip = DnsChecker::serverIp();
+        $ip = self::advertisedIp();
+        $domain = self::normalise((string) $typed) ?: 'yourdomain.com.na';
 
-        if ($ip === null) {
-            return new HtmlString(
-                '<p class="text-sm">Set <code>SITES_SERVER_IP</code> in the environment first — '
-                .'without it there is no address to give anybody.</p>'
-            );
-        }
+        $width = strlen($domain) + 8;
 
-        $domain = $site?->custom_domain ?: 'example.com.na';
-
-        $text = "To point {$domain} at your new website, add these two records at whoever you bought the "
-            ."domain from (the DNS or \"Zone\" section):\n\n"
-            ."    Type: A     Name: @      Value: {$ip}\n"
-            ."    Type: A     Name: www    Value: {$ip}\n\n"
-            ."If records of type A already exist for @ or www, change them rather than adding more.\n"
-            ."Leave every other record alone — in particular anything of type MX, which is your email.\n\n"
-            .'It can take a few hours to take effect. We check automatically and switch your site over '
-            .'the moment it does; there is nothing else you need to do.';
+        $records = 'A    '.str_pad($domain, $width).($ip ?? '<your server address>')."\n"
+            .'A    '.str_pad('www.'.$domain, $width).($ip ?? '<your server address>');
 
         return new HtmlString(
-            '<textarea readonly rows="12" class="w-full text-xs font-mono p-2 rounded border '
-            .'bg-gray-50 dark:bg-gray-900 dark:border-gray-700" onclick="this.select()">'
-            .e($text).'</textarea>'
+            '<p class="text-sm mb-2">Please add these entries to your DNS zone:</p>'
+            .'<pre class="text-xs font-mono whitespace-pre overflow-x-auto p-3 rounded-lg border '
+            .'bg-gray-50 border-gray-200 dark:bg-white/5 dark:border-white/10" '
+            .'onclick="window.getSelection().selectAllChildren(this)">'.e($records).'</pre>'
+            .'<p class="text-xs mt-2 opacity-70">If A records already exist for these names, change them '
+            .'rather than adding more. Leave everything else alone — in particular MX records, which are '
+            .'the email. It can take a few hours; we check automatically and switch the site over the '
+            .'moment it works.</p>'
+            .($ip === null
+                ? '<p class="text-xs mt-2 text-danger-600 dark:text-danger-400">No server address is '
+                    .'configured, so the value column is blank. Set <code>SITES_SERVER_IP</code> in the '
+                    .'environment.</p>'
+                : '')
         );
+    }
+
+    /**
+     * The address to put in front of a customer.
+     *
+     * `SITES_SERVER_IP` when it is set, and otherwise whatever this
+     * application's own hostname resolves to — which is this server, since
+     * namibway.com's DNS points straight at it with nothing in between.
+     *
+     * Display only, and deliberately not shared with `DnsChecker::serverIp()`,
+     * which decides whether a customer's domain has arrived. A guess is a fine
+     * thing to show an admin who is about to read it and send it on; it is not
+     * a thing to compare against, and putting a CDN's address behind a
+     * certificate request would fail in front of the customer. Set the variable
+     * and this is never reached.
+     */
+    private static function advertisedIp(): ?string
+    {
+        $configured = DnsChecker::serverIp();
+
+        if ($configured !== null) {
+            return $configured;
+        }
+
+        $host = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+        if (! is_string($host) || $host === '' || $host === 'localhost') {
+            return null;
+        }
+
+        $records = @dns_get_record($host, DNS_A);
+
+        if (! is_array($records)) {
+            return null;
+        }
+
+        foreach ($records as $record) {
+            if (isset($record['ip']) && is_string($record['ip'])) {
+                return $record['ip'];
+            }
+        }
+
+        return null;
+    }
+
+    /** The domain as it belongs in a zone: no scheme, no www, no trailing slash. */
+    private static function normalise(string $domain): string
+    {
+        $domain = strtolower(trim($domain));
+        $domain = preg_replace('~^https?://~', '', $domain) ?? $domain;
+        $domain = rtrim($domain, '/');
+
+        return preg_replace('~^www\.~', '', $domain) ?? $domain;
     }
 
     private static function state(?Listing $record): string

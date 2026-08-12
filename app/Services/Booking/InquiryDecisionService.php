@@ -9,6 +9,7 @@ use App\Mail\GuestBookingConfirmed;
 use App\Models\Inquiry;
 use App\Models\Reservation;
 use App\Services\Inventory\InventoryWriter;
+use App\Services\Payments\PaymentGateway;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use InvalidArgumentException;
@@ -26,24 +27,73 @@ class InquiryDecisionService
     /** @return bool false if the inquiry wasn't awaiting a decision (already handled elsewhere). */
     public function confirm(Inquiry $inquiry): bool
     {
+        return $this->settle($inquiry)->handled;
+    }
+
+    /**
+     * Confirm and ask for the deposit in the same movement.
+     *
+     * One click for the property and **one email for the guest**, not two: the
+     * confirmation carries the payment button and whatever the partner wanted
+     * to say alongside it. A separate "and now here is a link" mail arriving
+     * seconds later reads as a system talking to itself.
+     */
+    public function confirmAndRequestDeposit(Inquiry $inquiry, ?string $message = null): ConfirmationOutcome
+    {
+        return $this->settle($inquiry, askForDeposit: true, message: $message);
+    }
+
+    private function settle(Inquiry $inquiry, bool $askForDeposit = false, ?string $message = null): ConfirmationOutcome
+    {
         if ($inquiry->status !== InquiryStatus::OnRequest) {
-            return false;
+            return ConfirmationOutcome::alreadyHandled();
         }
 
         $inquiry->update(['status' => InquiryStatus::Confirmed]);
-        Mail::to($inquiry->email)->send(new GuestBookingConfirmed($inquiry));
 
         // The request is now a stay: it holds real inventory, it appears on the
         // arrivals board, and the property can work from it. Quietly, because a
         // calendar that cannot take it is the team's problem to fix and never a
-        // reason to undo a confirmation the guest has already been sent.
-        $this->promoter->promoteQuietly($inquiry->refresh());
+        // reason to undo a confirmation the guest is about to be sent.
+        //
+        // This runs before the guest's email rather than after it — which is
+        // the other way round from how it was first written — because a payment
+        // link can only be attached to a stay that exists.
+        $stay = $this->promoter->promoteQuietly($inquiry->refresh());
+
+        [$paymentUrl, $problem] = $askForDeposit ? $this->depositLink($stay) : [null, null];
+
+        // The partner's own words go out whether or not the link could be made:
+        // they wrote them to the guest, not to the payment provider.
+        Mail::to($inquiry->email)->send(new GuestBookingConfirmed($inquiry, $paymentUrl, $message));
 
         $this->notifyConnector($inquiry, 'confirm');
 
         Log::info("Inquiry [{$inquiry->id}] confirmed by partner");
 
-        return true;
+        return ConfirmationOutcome::confirmed($paymentUrl, $problem);
+    }
+
+    /**
+     * The link to ask this stay's guest for their deposit, or the reason there
+     * is none — in the words the person who pressed the button should read.
+     *
+     * @return array{0: string|null, 1: string|null}
+     */
+    private function depositLink(?Reservation $stay): array
+    {
+        if ($stay === null) {
+            return [null, 'The booking is confirmed and the guest has been told, but it could not be '
+                .'put on the calendar as a stay — so there was nothing to attach a payment to. '
+                .'We have been alerted and will sort it out.'];
+        }
+
+        try {
+            return [app(PaymentGateway::class)->linkFor($stay), null];
+        } catch (InvalidArgumentException $refusal) {
+            return [null, 'The booking is confirmed and the guest has been told, but no payment link '
+                .'went with it: '.lcfirst($refusal->getMessage())];
+        }
     }
 
     /** @return bool false if the inquiry wasn't awaiting a decision (already handled elsewhere). */

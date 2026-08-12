@@ -565,8 +565,10 @@
                                 <tr>
                                     <td class="mono">Ask for the deposit</td>
                                     <td><span class="who desk">Lodge desk</span></td>
-                                    <td>Produces a payment link to send the guest. Clicking it twice gives the same
-                                        link, not a second transaction. The payment records itself when it lands.</td>
+                                    <td>Produces a payment link, and emails it to the guest with an optional message
+                                        of your own &mdash; or copy it and send it your own way. Clicking it twice gives
+                                        the same link, not a second transaction. The payment records itself when it
+                                        lands.</td>
                                 </tr>
                                 <tr>
                                     <td class="mono">Issue an invoice</td>

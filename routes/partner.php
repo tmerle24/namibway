@@ -26,6 +26,23 @@ Route::get('/partner/inquiries/{inquiry}/cancel', [PartnerController::class, 'ca
     ->middleware('signed');
 
 /*
+| Confirm and ask for the deposit, from the same email.
+|
+| Two routes on one URI rather than a second signed link: a signature covers
+| the address, not the method, so the page the GET renders can post its form
+| straight back to the address it was reached at. The POST is what acts — the
+| GET only offers the optional message, because a partner who opens a link to
+| read it has not yet decided anything.
+*/
+Route::get('/partner/inquiries/{inquiry}/confirm-with-payment', [PartnerController::class, 'showConfirmWithPayment'])
+    ->name('partner.inquiries.confirm-with-payment')
+    ->middleware('signed');
+
+Route::post('/partner/inquiries/{inquiry}/confirm-with-payment', [PartnerController::class, 'confirmWithPayment'])
+    ->name('partner.inquiries.confirm-with-payment.send')
+    ->middleware('signed');
+
+/*
 | The demo sign-in link is the exception: it is generated at the moment it is
 | handed over, never stored, and it ends in the panel. Registering it on the
 | panel's own host means the session cookie is written there directly, so it

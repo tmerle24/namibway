@@ -1,6 +1,101 @@
 # Business-Owner Website Builder — Concept Brief
 
-**Status:** Concept phase. **No production code** is written in this pass.
+**Status:** Two documents in one file. The **live commission is the next section** — the
+content editor, which is what to build now. Everything after it is the original brief from
+the concept pass, kept for the constraints it sets, which still hold. That older half is
+**not** a description of the system: slice 1 shipped 2026-08-12 and `PROJECT_STATUS.md` →
+Workstream B is the live record, including where a decision here was later reversed
+(booking on a customer's site is an enquiry plus a payment link the business sends, not a
+checkout).
+
+---
+
+## Commission — the content editor (2026-08-12)
+
+### Read first
+
+- `CLAUDE.md` — the project rules. In particular: **everything that goes into the repository
+  is English** (code, comments, commit messages, UI copy, both Filament panels).
+- `PROJECT_STATUS.md` → Workstream B, "Next up, in the order it was asked for". The first
+  item there is this commission.
+- The rest of this file — the original brief. Historical, as above.
+
+### What exists
+
+- `Site`, `SitePage`, `SiteBlock`, `SiteImage`. The website owns its content; a listing is
+  an import source at creation time and nothing else.
+- Thirteen block types in `app/Sites/Blocks/`, registered in `App\Sites\BlockRegistry`. A
+  type is a class and a line — never a migration, never a column. The payload is JSON,
+  validated by `BlockDefinition::rules()`.
+- The renderer: server-side Blade under `resources/views/sites/`, inlined CSS, no Vue.
+- `App\Filament\Support\WebsiteTab`, with `EditHeroAction`, `EditSiteLogoAction`,
+  `EditTypographyAction`, `EditCustomDomainAction` and `EditLegalTextAction` already on it.
+  The pattern: `make()` returns the form action, `header()` the page action, and a shared
+  `configure()` holds the behaviour — **one implementation serving both panels**.
+
+### What is missing, and is the job
+
+Only the frame is editable today. The content is not: the blocks are written once by
+`sites:generate` and can then be changed by nobody. A typo in generated prose cannot be
+corrected, and a business with no listing gets an empty frame that nothing can fill —
+roughly half of them have no listing.
+
+Build:
+
+1. Blocks **added, reordered, switched on and off, and edited** from the Website tab.
+2. A form per block type, carrying that type's fields.
+3. Images chosen from the site's **own `SiteImage` rows** — never read from the listing.
+   That independence is what makes "you keep your content" true rather than a slogan.
+4. Pages created.
+5. **The same actions in the partner panel**, as the same implementation. What differs is
+   scope and permission, never the fields. The moment there is an admin version and a
+   customer version of a piece of content, it is two products at one price.
+
+### Already decided — do not relitigate
+
+- **The Filament fields do not go into the block classes.** `App\Sites\Blocks\*` is domain
+  code serving the public renderer; panel code does not belong there. Put them in a class
+  in the Filament layer instead (`App\Filament\Support\Sites\BlockForm` or similar) that
+  answers with the fields for a given type.
+- **Drift is prevented by a test, not by a note in a file.** Every type in `BlockRegistry`
+  must have a form, and every field name in a form must appear in that type's `rules()`.
+  Same shape as `MoneyWritePathTest` or `AdminNavigationTest`, where a test enforces the
+  rule rather than a sentence asking somebody to remember it.
+- **Booking on a customer's site is not a checkout.** The guest sends an enquiry, the
+  business answers through the existing confirm/decline mail and sends a payment link. No
+  login, no session, no cross-domain token exchange on a tenant host. Nothing in this
+  commission may move that.
+
+### Constraints a change here can break
+
+- **Validation goes through `BlockDefinition::rules()`.** Nothing writes a block without
+  passing them, and the editor is not an exception.
+- **No markup from outside** the rich-text path and its allow-list
+  (`Listing::sanitizeRichText`). An owner who cannot introduce code cannot introduce a
+  vulnerability into a page served under our own certificate.
+- **The byte budget stands:** 60 KB of delivered HTML including inlined CSS and JavaScript,
+  asserted by `SitePerformanceBudgetTest`.
+- **Rebuild protection already exists.** `sites.imported.blocks` records what generation
+  wrote; a block whose payload no longer matches is left alone by a later `sites:generate`.
+  An edited block therefore counts as edited with no extra bookkeeping — nothing to build,
+  but it must not be broken (`SiteGenerator`).
+- **Panel navigation is alphabetical** and enforced. Do not add `$navigationSort` to
+  anything inside a group.
+- The block library is deliberately small. A new type is not what is being asked for here.
+
+### How this is worked
+
+Own branch; `composer ci:check` before pushing (eslint, prettier, vue-tsc, pint, phpstan,
+`artisan test` — red CI means no deploy). Open a draft pull request and merge it once CI is
+green. Add a dated entry under Workstream B in `PROJECT_STATUS.md` when it is done.
+
+---
+
+The original brief follows. The line below is its own opening and described the pass that
+produced it.
+
+**Status at the time of writing:** Concept phase. **No production code** is written in this
+pass.
 
 > **About this file.** This is the commissioning brief for Workstream B in
 > `PROJECT_STATUS.md` — the website builder behind the N$ 399/month offer. It was written

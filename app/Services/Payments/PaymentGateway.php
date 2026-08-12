@@ -137,6 +137,38 @@ class PaymentGateway
         });
     }
 
+    /**
+     * Start an attempt and hand back the address to send the guest to.
+     *
+     * The one call anything wanting to *ask* for money needs — the partner
+     * panel, a confirmation that goes out with a payment link, and whatever
+     * asks next. It throws rather than returning null on both refusals a
+     * caller has to be able to tell a person about: nothing to ask for, and a
+     * provider that gave us nowhere to send them.
+     *
+     * That second case used to fall back to this application's own demo
+     * checkout. It is not a fallback: for a real provider that route is a 404
+     * by design, and a page that takes a "pay" click without taking money is
+     * the last thing to hand a guest.
+     */
+    public function linkFor(
+        Reservation $reservation,
+        PaymentPurpose $purpose = PaymentPurpose::Deposit,
+        ?float $amount = null,
+    ): string {
+        $intent = $this->start($reservation, $purpose, $amount);
+
+        $url = $this->redirectUrlFor($intent);
+
+        if ($url === null) {
+            throw new InvalidArgumentException(
+                'The payment provider did not give us a link to send. Try again in a moment, or take the payment at the desk.'
+            );
+        }
+
+        return $url;
+    }
+
     /** Where to send the guest. Read off the intent so a reused one still works. */
     public function redirectUrlFor(PaymentIntent $intent): ?string
     {

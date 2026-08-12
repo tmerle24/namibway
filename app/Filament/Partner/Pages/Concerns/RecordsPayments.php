@@ -3,10 +3,13 @@
 namespace App\Filament\Partner\Pages\Concerns;
 
 use App\Enums\PaymentCollector;
+use App\Enums\PaymentIntentStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentPurpose;
+use App\Mail\GuestPaymentRequest;
 use App\Models\Listing;
 use App\Models\Payment;
+use App\Models\PaymentIntent;
 use App\Models\Reservation;
 use App\Services\Payments\DTOs\FolioStatement;
 use App\Services\Payments\DTOs\PaymentRequest;
@@ -17,6 +20,7 @@ use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -25,6 +29,7 @@ use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
 use InvalidArgumentException;
 use Throwable;
@@ -46,6 +51,9 @@ trait RecordsPayments
 {
     /** Which payment a row-level action is about, set by the click. */
     public ?int $selectedPaymentId = null;
+
+    /** Why there is no payment link, when there is none. Set by depositLink(). */
+    protected ?string $depositRefusal = null;
 
     /** The stay the payment screens are about — the drawer's selection. */
     abstract public function selectedReservation(): ?Reservation;
@@ -81,10 +89,12 @@ trait RecordsPayments
     /**
      * Ask the guest for the deposit through a payment provider.
      *
-     * The link is shown rather than mailed, because who sends it and with what
-     * words is a conversation a property is already having — and a "send" that
-     * silently mails a guest from a screen a desk is exploring is the wrong
-     * kind of surprise. Mailing it is a later, deliberate feature.
+     * The link is shown *and* can be sent from here. It used to be shown only,
+     * on the reasoning that who sends it and with what words is a conversation
+     * the property is already having — which is right about the words and wrong
+     * about the sending, since it left every desk copying a URL into their own
+     * mail client. The words are the point of the message box; nothing goes out
+     * until the button is pressed.
      */
     public function requestDepositAction(): Action
     {
@@ -93,41 +103,125 @@ trait RecordsPayments
             ->icon('heroicon-m-link')
             ->color('gray')
             ->modalHeading('Payment link for this booking')
-            ->modalSubmitAction(false)
+            ->modalSubmitActionLabel('Email it to the guest')
             ->modalCancelActionLabel('Close')
-            ->modalContent(fn (): HtmlString => $this->depositLinkHtml())
-            ->action(fn () => null);
+            ->form(fn (): array => [
+                Placeholder::make('link')
+                    ->hiddenLabel()
+                    ->content(fn (): HtmlString => $this->depositLinkHtml()),
+
+                Textarea::make('message')
+                    ->label('A message for the guest')
+                    ->helperText('Optional. It goes out above the payment button, as your words.')
+                    ->rows(4)
+                    ->maxLength(2000)
+                    ->visible(fn (): bool => $this->depositLink() !== null),
+            ])
+            ->action(fn (array $data) => $this->emailDepositLink($data['message'] ?? null));
     }
 
     /**
-     * Creates the attempt if there is not already an open one, and shows the
-     * link. Reusing an open attempt matters: a guest who is sent two links has
-     * two ways to pay the same deposit, and the property reconciles the mess.
+     * The link to ask this stay's guest for a deposit, or null with the reason
+     * kept for the screen.
+     *
+     * Creates the attempt if there is not already an open one. Reusing an open
+     * attempt matters: a guest who is sent two links has two ways to pay the
+     * same deposit, and the property reconciles the mess.
      */
-    private function depositLinkHtml(): HtmlString
+    private function depositLink(): ?string
     {
         $reservation = $this->selectedReservation();
 
         if ($reservation === null) {
-            return new HtmlString('');
+            return null;
         }
 
         try {
-            $intent = app(PaymentGateway::class)->start($reservation, PaymentPurpose::Deposit);
+            return app(PaymentGateway::class)->linkFor($reservation, PaymentPurpose::Deposit);
         } catch (InvalidArgumentException $refusal) {
-            return new HtmlString('<p style="color: rgb(185 28 28);">'.e($refusal->getMessage()).'</p>');
+            $this->depositRefusal = $refusal->getMessage();
+
+            return null;
+        }
+    }
+
+    private function depositLinkHtml(): HtmlString
+    {
+        $url = $this->depositLink();
+
+        if ($url === null) {
+            return new HtmlString('<p style="color: rgb(185 28 28);">'.e((string) $this->depositRefusal).'</p>');
         }
 
-        $url = app(PaymentGateway::class)->redirectUrlFor($intent) ?? route('payments.checkout', $intent);
+        $intent = $this->openDepositIntent();
 
         return new HtmlString(
-            '<p style="margin-bottom: .5rem;">'
-            .e(Money::format($intent->amount, $intent->currency)).' — '
-            .e($intent->purpose->label()).', '.e($intent->status->label()).'.'
-            .'</p>'
+            ($intent === null ? '' : '<p style="margin-bottom: .5rem;">'
+                .e(Money::format($intent->amount, $intent->currency)).' — '
+                .e($intent->purpose->label()).', '.e($intent->status->label()).'.'
+                .'</p>')
             .'<p style="word-break: break-all;"><a href="'.e($url).'" target="_blank" rel="noopener">'.e($url).'</a></p>'
-            .'<p style="opacity: .7; margin-top: .5rem;">Send this to the guest. It records the payment against this stay automatically.</p>'
+            .'<p style="opacity: .7; margin-top: .5rem;">Send it below, or copy it into a message of your own. '
+            .'Either way it records the payment against this stay automatically.</p>'
         );
+    }
+
+    /** The attempt the link above belongs to, for the amount shown beside it. */
+    private function openDepositIntent(): ?PaymentIntent
+    {
+        $reservation = $this->selectedReservation();
+
+        if ($reservation === null) {
+            return null;
+        }
+
+        return PaymentIntent::query()
+            ->where('reservation_id', $reservation->id)
+            ->where('purpose', PaymentPurpose::Deposit->value)
+            ->where('status', PaymentIntentStatus::Pending->value)
+            ->latest('id')
+            ->first();
+    }
+
+    private function emailDepositLink(?string $message): void
+    {
+        $reservation = $this->selectedReservation();
+        $url = $this->depositLink();
+        $intent = $this->openDepositIntent();
+
+        if ($reservation === null || $url === null || $intent === null) {
+            Notification::make()
+                ->title('Nothing sent')
+                ->body($this->depositRefusal ?? 'There is no payment link to send.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        // A stay taken at the desk may genuinely have no email address — the
+        // field is optional there on purpose. Say so rather than failing.
+        if (blank($reservation->guest_email)) {
+            Notification::make()
+                ->title('No email address for this guest')
+                ->body('Copy the link above and send it however you are in touch with them.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        Mail::to((string) $reservation->guest_email)->send(new GuestPaymentRequest(
+            $intent,
+            $url,
+            filled($message) ? trim((string) $message) : null,
+        ));
+
+        Notification::make()
+            ->title('Sent to '.$reservation->guest_email)
+            ->body(Money::format($intent->amount, $intent->currency).' — '.strtolower($intent->purpose->label()).'.')
+            ->success()
+            ->send();
     }
 
     public function recordRefundAction(): Action

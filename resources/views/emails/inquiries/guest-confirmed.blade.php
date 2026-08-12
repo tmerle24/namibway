@@ -20,7 +20,25 @@ Great news — your booking at **{{ $inquiry->listing->name }}** has been confir
 @endif
 </x-mail::table>
 
+@if($partnerMessage)
+**A message from {{ $inquiry->listing->name }}:**
+
+{{ $partnerMessage }}
+@endif
+
+@if($paymentUrl)
+To secure it, {{ $inquiry->listing->name }} asks for a deposit. The button below opens a
+secure payment page — the amount due is shown there before anything is charged.
+
+<x-mail::button :url="$paymentUrl" color="success">
+Pay the deposit
+</x-mail::button>
+
+If the button does not work, copy this address into your browser:
+{{ $paymentUrl }}
+@else
 The property will be in touch shortly with further details.
+@endif
 
 Have an amazing trip to Namibia!
 
