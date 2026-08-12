@@ -148,6 +148,7 @@
                 <a href="#enquiries">Enquiries</a>
                 <a href="#booking">Booking</a>
                 <a href="#legal">Legal pages</a>
+                <a href="#domain">Their own domain</a>
                 <a href="#owner">What the owner changes</a>
                 <a href="#not-yet">What we do not offer yet</a>
                 <a href="#trouble">When something looks wrong</a>
@@ -360,6 +361,62 @@
                     </div>
                 </section>
 
+                <section class="card" id="domain">
+                    <div class="card-head">
+                        <h2>Their own domain</h2>
+                        <span class="badge live">Automatic</span>
+                    </div>
+                    <p class="card-sub">Every site gets a NamibWay subdomain the moment it is created, and
+                        keeps it forever. A business that owns a domain can point it here as well.</p>
+
+                    <div class="workflow">
+                        <div class="step">
+                            <span class="num">1</span>
+                            <h3>Enter the domain</h3>
+                            <p><strong>Website</strong> tab, <em>Own domain</em>. Type it without
+                                <code>http://</code> and without <code>www</code>.</p>
+                        </div>
+                        <div class="step">
+                            <span class="num">2</span>
+                            <h3>Send them the text</h3>
+                            <p>The same modal contains the instructions, with our server address already
+                                in it. Copy it and send it to whoever manages their domain.</p>
+                        </div>
+                        <div class="step">
+                            <span class="num">3</span>
+                            <h3>Wait</h3>
+                            <p>Nothing else to do. We check every five minutes, and the certificate and
+                                the server configuration happen by themselves once the DNS arrives.</p>
+                        </div>
+                    </div>
+
+                    <div class="fields" style="margin-top: 18px">
+                        <table class="fields-table">
+                            <thead><tr><th>What the tab says</th><th>What it means</th></tr></thead>
+                            <tbody>
+                                <tr><td><strong>Waiting for DNS</strong></td><td>Their side has not changed yet, or only half of it. <strong>Both</strong> <code>@</code> and <code>www</code> need an A record &mdash; a certificate covering only one of them fails in front of a guest rather than here.</td></tr>
+                                <tr><td><strong>DNS found</strong></td><td>Ours now. The certificate is issued within the hour, automatically.</td></tr>
+                                <tr><td><strong>Live</strong></td><td>The site answers on their domain, with <code>www</code> and without. The subdomain still works too.</td></tr>
+                                <tr><td><strong>Needs attention</strong></td><td>The message says what a machine saw. Usually propagation &mdash; visible to us but not yet to the certificate authority.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="note">
+                        <strong>Warn them about their email before they touch anything.</strong> Changing the
+                        wrong record in a DNS panel can take a company&rsquo;s email down. The instructions say
+                        it, but say it on the call too: change only the two records of type <code>A</code>,
+                        leave everything else alone, and in particular never touch anything of type
+                        <code>MX</code>.
+                    </div>
+
+                    <div class="note">
+                        <strong>The subdomain never goes away.</strong> It is what the draft was reviewed on,
+                        what old links point at, and what still answers on the day somebody forgets to renew
+                        their own registration. Do not tell a customer it will be replaced.
+                    </div>
+                </section>
+
                 <section class="card" id="owner">
                     <div class="card-head">
                         <h2>What the owner changes themselves</h2>
@@ -399,7 +456,6 @@
                         <table class="fields-table">
                             <thead><tr><th>Not yet</th><th>What we say instead</th></tr></thead>
                             <tbody>
-                                <tr><td><strong>Their own domain</strong></td><td>Today the site lives on a NamibWay subdomain. Their own domain is coming; do not take money for it yet.</td></tr>
                                 <tr><td><strong>Editing the whole site themselves</strong></td><td>They change the four things above; the rest is us. That is the offer, not a limitation to apologise for.</td></tr>
                                 <tr><td><strong>Booking completed on their own site</strong></td><td>See the booking section.</td></tr>
                                 <tr><td><strong>A language switcher</strong></td><td>The site is in one language today.</td></tr>

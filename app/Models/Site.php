@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BusinessType;
+use App\Enums\DomainStatus;
 use App\Enums\SiteStatus;
 use App\Support\MediaUrl;
 use Database\Factories\SiteFactory;
@@ -29,6 +30,10 @@ use Illuminate\Support\Str;
  * @property string $name
  * @property string $slug
  * @property string|null $host
+ * @property string|null $custom_domain
+ * @property DomainStatus|null $domain_status
+ * @property Carbon|null $domain_checked_at
+ * @property string|null $domain_message
  * @property SiteStatus $status
  * @property string $draft_token
  * @property Carbon|null $published_at
@@ -66,6 +71,10 @@ class Site extends Model
         'name',
         'slug',
         'host',
+        'custom_domain',
+        'domain_status',
+        'domain_checked_at',
+        'domain_message',
         'status',
         'draft_token',
         'published_at',
@@ -113,6 +122,8 @@ class Site extends Model
         'business_type' => BusinessType::class,
         'status' => SiteStatus::class,
         'published_at' => 'datetime',
+        'domain_status' => DomainStatus::class,
+        'domain_checked_at' => 'datetime',
         'terms_accepted_at' => 'datetime',
         'social_links' => 'array',
         'imported' => 'array',
@@ -236,6 +247,13 @@ class Site extends Model
     {
         $suffix = filled($pageSlug) ? '/'.ltrim((string) $pageSlug, '/') : '';
 
+        // Their own domain wins once it is actually live. Before that it has no
+        // certificate, so linking to it would hand somebody an address their
+        // browser refuses.
+        if ($this->isPublished() && $this->servesCustomDomain()) {
+            return 'https://'.$this->custom_domain.$suffix;
+        }
+
         if ($this->isPublished() && filled($this->host)) {
             return 'https://'.$this->host.$suffix;
         }
@@ -243,6 +261,12 @@ class Site extends Model
         $path = '/'.trim((string) config('sites.path_prefix', '_sites'), '/').'/'.$this->slug.$suffix;
 
         return url($path).($this->isPublished() ? '' : '?preview='.$this->draft_token);
+    }
+
+    /** Whether this site should be served on the customer's own domain yet. */
+    public function servesCustomDomain(): bool
+    {
+        return filled($this->custom_domain) && $this->domain_status?->isServable() === true;
     }
 
     /**
