@@ -48,6 +48,9 @@ use Illuminate\Support\Str;
  * @property string|null $contact_email
  * @property string|null $contact_phone
  * @property string|null $whatsapp
+ * @property bool $show_book_button
+ * @property bool $show_call_button
+ * @property bool $show_whatsapp_button
  * @property string|null $address
  * @property string|null $latitude
  * @property string|null $longitude
@@ -89,6 +92,9 @@ class Site extends Model
         'contact_email',
         'contact_phone',
         'whatsapp',
+        'show_book_button',
+        'show_call_button',
+        'show_whatsapp_button',
         'address',
         'latitude',
         'longitude',
@@ -110,12 +116,16 @@ class Site extends Model
      * against that instance failed. Defaults that anything reads back
      * immediately have to exist on both sides.
      *
-     * @var array<string, string>
+     * @var array<string, string|bool>
      */
     protected $attributes = [
         'status' => 'draft',
         'default_locale' => 'en',
         'accent' => 'copper',
+        // On unless the business asks otherwise — see the migration.
+        'show_book_button' => true,
+        'show_call_button' => true,
+        'show_whatsapp_button' => true,
     ];
 
     protected $casts = [
@@ -129,6 +139,9 @@ class Site extends Model
         'imported' => 'array',
         'brand_size' => 'integer',
         'brand_size_mobile' => 'integer',
+        'show_book_button' => 'boolean',
+        'show_call_button' => 'boolean',
+        'show_whatsapp_button' => 'boolean',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
     ];

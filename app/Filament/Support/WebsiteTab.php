@@ -97,6 +97,8 @@ class WebsiteTab
 
                     EditTypographyAction::make(),
 
+                    EditActionButtonsAction::make(),
+
                     EditCustomDomainAction::make(),
 
                     EditLegalTextAction::make(),
