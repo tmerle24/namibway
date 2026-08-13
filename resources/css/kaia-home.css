@@ -1264,7 +1264,7 @@ body:has(.kaia-page) {
     border: 1px solid var(--sand-dark);
     border-radius: 8px;
     padding: 8px 30px 8px 10px;
-    background: rgba(36, 28, 21, 0.02);
+    background: var(--sand);
 }
 /* Pin the item's kebab to the box's top-right corner, independent of the
    line-item text wrapping below it (a long lodge/activity name would
