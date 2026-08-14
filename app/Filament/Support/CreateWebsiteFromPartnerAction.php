@@ -52,7 +52,7 @@ class CreateWebsiteFromPartnerAction
             ->action(function (Partner $record, array $data): void {
                 $existing = self::siteFor($record);
 
-                $type = $existing?->business_type
+                $type = ($existing !== null ? $existing->business_type : null)
                     ?? (filled($record->business_type) ? BusinessType::from($record->business_type) : null)
                     ?? BusinessType::from($data['business_type']);
 
