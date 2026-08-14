@@ -150,7 +150,7 @@ class SiteGenerator
         $typeAccents = (array) config('sites.type_accents', []);
 
         return Site::create([
-            'partner_id' => $listing?->partner_id ?? $partner?->id,
+            'partner_id' => $listing !== null ? $listing->partner_id : $partner?->id,
             'source_listing_id' => $listing?->id,
             'business_type' => $type,
             'name' => $name,
