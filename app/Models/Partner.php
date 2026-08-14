@@ -16,7 +16,14 @@ use Spatie\Translatable\HasTranslations;
  * @property int|null $user_id
  * @property string $name
  * @property string|null $bio
+ * @property string|null $short_description
  * @property string|null $logo
+ * @property string|null $image
+ * @property array<int, string>|null $gallery
+ * @property string|null $business_type
+ * @property string|null $address
+ * @property float|null $latitude
+ * @property float|null $longitude
  * @property string|null $email
  * @property string|null $phone
  * @property string|null $website
@@ -52,7 +59,14 @@ class Partner extends Model
         'user_id',
         'name',
         'bio',
+        'short_description',
         'logo',
+        'image',
+        'gallery',
+        'business_type',
+        'address',
+        'latitude',
+        'longitude',
         'email',
         'phone',
         'website',
@@ -79,6 +93,9 @@ class Partner extends Model
     ];
 
     protected $casts = [
+        'gallery' => 'array',
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
         'connector_type' => ConnectorType::class,
         'connector_config' => 'encrypted:array',
         'claim_token_sent_at' => 'datetime',

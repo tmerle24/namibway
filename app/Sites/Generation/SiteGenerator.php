@@ -3,6 +3,7 @@
 namespace App\Sites\Generation;
 
 use App\Enums\BusinessType;
+use App\Enums\ContentSource;
 use App\Enums\ListingType;
 use App\Enums\SiteStatus;
 use App\Enums\VehicleCategory;
@@ -82,9 +83,11 @@ class SiteGenerator
                 $this->discardGeneratedContent($site);
             }
 
+            $images = $this->importPartnerImages($site, $partner, $force);
+
             $this->writeSiteFields($site, $this->siteFieldsFromPartner($partner), $force);
             $this->writeSiteFields($site, $this->legalFieldsFrom($site), $force);
-            $this->writeBlocks($site, $this->payloadsFromPartner($site, $partner));
+            $this->writeBlocks($site, $this->payloadsFromPartner($site, $partner, $images));
 
             return $site->refresh();
         });
@@ -193,23 +196,30 @@ class SiteGenerator
             'contact_email' => $partner->email,
             'contact_phone' => $partner->phone,
             'whatsapp' => $partner->phone,
+            'address' => $partner->address,
+            'latitude' => $partner->latitude,
+            'longitude' => $partner->longitude,
             'social_links' => $social ?: null,
         ], fn ($v) => filled($v));
     }
 
     /**
+     * @param  array<int, SiteImage>  $images
      * @return array<string, array<string, mixed>>
      */
-    private function payloadsFromPartner(Site $site, Partner $partner): array
+    private function payloadsFromPartner(Site $site, Partner $partner, array $images): array
     {
         $bio = $partner->getTranslation('bio', 'en', false) ?: null;
+        $short = filled($partner->short_description) ? $partner->short_description : null;
+        $hero = $images[0] ?? null;
+        $gallery = array_slice($images, 1, 12);
 
         return [
             'hero' => [
-                'image_id' => null,
+                'image_id' => $hero?->id,
                 'eyebrow' => null,
                 'headline' => HeroLines::for($site->business_type, $site->slug),
-                'subline' => $this->fit($bio, 240, 'hero subline'),
+                'subline' => $this->fit($short ?? $bio, 240, 'hero subline'),
                 'cta_label' => null,
                 'cta_href' => null,
             ],
@@ -217,7 +227,11 @@ class SiteGenerator
                 'eyebrow' => null,
                 'heading' => 'About us',
                 'body' => $this->fit($bio, 8000, 'about text'),
-                'image_id' => null,
+                'image_id' => $images[1]->id ?? null,
+            ],
+            'gallery' => [
+                'heading' => null,
+                'image_ids' => array_map(fn (SiteImage $image) => $image->id, $gallery),
             ],
             'enquiry' => [
                 'heading' => 'Get in touch',
@@ -225,6 +239,31 @@ class SiteGenerator
                 'mode' => EnquiryBlock::MODE_VISIT,
             ],
         ];
+    }
+
+    /**
+     * @return array<int, SiteImage>
+     */
+    private function importPartnerImages(Site $site, Partner $partner, bool $force): array
+    {
+        $existing = $site->images()->orderBy('sort')->get();
+
+        if ($existing->isNotEmpty() && ! $force) {
+            return $existing->all();
+        }
+
+        $keys = array_filter([
+            $partner->image,
+            ...((array) ($partner->gallery ?? [])),
+        ], fn ($v) => filled($v));
+
+        if ($keys === []) {
+            return [];
+        }
+
+        $importer = new ImageImporter($this->report);
+
+        return $importer->copyAll($site, $keys, ContentSource::Partner, $partner->name);
     }
 
     /**

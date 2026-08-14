@@ -30,12 +30,13 @@ class CreateWebsiteFromPartnerAction
                 : 'Rebuild website')
             ->icon('heroicon-o-globe-alt')
             ->color(fn (Partner $record): string => self::siteFor($record) === null ? 'success' : 'gray')
-            ->form(fn (Partner $record): array => self::siteFor($record) !== null ? [] : [
+            ->form(fn (Partner $record): array => (self::siteFor($record) !== null || filled($record->business_type)) ? [] : [
                 Select::make('business_type')
                     ->label('Business type')
                     ->options(BusinessType::class)
                     ->required()
-                    ->default(BusinessType::Retail->value),
+                    ->default(BusinessType::Retail->value)
+                    ->helperText('Set this once on the partner record to skip this question next time.'),
             ])
             ->modalHeading(fn (Partner $record): string => self::siteFor($record) === null
                 ? 'Create a website for '.$record->name
@@ -51,9 +52,9 @@ class CreateWebsiteFromPartnerAction
             ->action(function (Partner $record, array $data): void {
                 $existing = self::siteFor($record);
 
-                $type = $existing !== null
-                    ? $existing->business_type
-                    : BusinessType::from($data['business_type']);
+                $type = $existing?->business_type
+                    ?? (filled($record->business_type) ? BusinessType::from($record->business_type) : null)
+                    ?? BusinessType::from($data['business_type']);
 
                 $userId = auth()->id();
 
