@@ -7,6 +7,7 @@ use App\Enums\ListingType;
 use App\Enums\SiteStatus;
 use App\Enums\VehicleCategory;
 use App\Models\Listing;
+use App\Models\Partner;
 use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Models\SiteImage;
@@ -49,6 +50,44 @@ class SiteGenerator
     public function report(): GenerationReport
     {
         return $this->report;
+    }
+
+    /**
+     * Build (or refresh) a site seeded from a partner's own data.
+     *
+     * Used when the partner has no listing on the travel platform — a shop, a
+     * boutique, a workshop. The same block kit as a listing-sourced site, with
+     * the partner's name, contact details and bio as the starting point. Images
+     * are left for the customer to upload; there is nothing here we could copy.
+     */
+    public function fromPartner(Partner $partner, BusinessType $type, bool $force = false): Site
+    {
+        $existing = Site::where('partner_id', $partner->id)
+            ->whereNull('source_listing_id')
+            ->first();
+
+        if ($existing !== null) {
+            $this->guardForce($existing, $force);
+        }
+
+        return DB::transaction(function () use ($existing, $partner, $type, $force): Site {
+            $site = $existing ?? $this->create(
+                name: $partner->name,
+                type: $type,
+                listing: null,
+                partner: $partner,
+            );
+
+            if ($force) {
+                $this->discardGeneratedContent($site);
+            }
+
+            $this->writeSiteFields($site, $this->siteFieldsFromPartner($partner), $force);
+            $this->writeSiteFields($site, $this->legalFieldsFrom($site), $force);
+            $this->writeBlocks($site, $this->payloadsFromPartner($site, $partner));
+
+            return $site->refresh();
+        });
     }
 
     /**
@@ -103,7 +142,7 @@ class SiteGenerator
         });
     }
 
-    private function create(string $name, BusinessType $type, ?Listing $listing): Site
+    private function create(string $name, BusinessType $type, ?Listing $listing, ?Partner $partner = null): Site
     {
         $slug = $this->uniqueSlug($name);
 
@@ -111,7 +150,7 @@ class SiteGenerator
         $typeAccents = (array) config('sites.type_accents', []);
 
         return Site::create([
-            'partner_id' => $listing?->partner_id,
+            'partner_id' => $listing?->partner_id ?? $partner?->id,
             'source_listing_id' => $listing?->id,
             'business_type' => $type,
             'name' => $name,
@@ -138,6 +177,54 @@ class SiteGenerator
         }
 
         return BusinessType::fromListingType($listing->type);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function siteFieldsFromPartner(Partner $partner): array
+    {
+        $social = array_filter([
+            'instagram' => $partner->instagram,
+            'facebook' => $partner->facebook,
+        ], fn ($v) => filled($v));
+
+        return array_filter([
+            'contact_email' => $partner->email,
+            'contact_phone' => $partner->phone,
+            'whatsapp' => $partner->phone,
+            'social_links' => $social ?: null,
+        ], fn ($v) => filled($v));
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function payloadsFromPartner(Site $site, Partner $partner): array
+    {
+        $bio = $partner->getTranslation('bio', 'en', false) ?: null;
+
+        return [
+            'hero' => [
+                'image_id' => null,
+                'eyebrow' => null,
+                'headline' => HeroLines::for($site->business_type, $site->slug),
+                'subline' => $this->fit($bio, 240, 'hero subline'),
+                'cta_label' => null,
+                'cta_href' => null,
+            ],
+            'about' => [
+                'eyebrow' => null,
+                'heading' => 'About us',
+                'body' => $this->fit($bio, 8000, 'about text'),
+                'image_id' => null,
+            ],
+            'enquiry' => [
+                'heading' => 'Get in touch',
+                'intro' => null,
+                'mode' => EnquiryBlock::MODE_VISIT,
+            ],
+        ];
     }
 
     /**

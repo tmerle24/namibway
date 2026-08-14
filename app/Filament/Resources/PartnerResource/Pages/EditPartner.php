@@ -4,6 +4,7 @@ namespace App\Filament\Resources\PartnerResource\Pages;
 
 use App\Filament\Concerns\HasFormActionsInHeader;
 use App\Filament\Resources\PartnerResource;
+use App\Filament\Support\CreateWebsiteFromPartnerAction;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Resources\Pages\EditRecord\Concerns\Translatable;
@@ -19,6 +20,8 @@ class EditPartner extends EditRecord
     {
         return $this->withFormActions([
             Actions\LocaleSwitcher::make(),
+            CreateWebsiteFromPartnerAction::visit(),
+            CreateWebsiteFromPartnerAction::make(),
             Actions\DeleteAction::make(),
         ]);
     }
