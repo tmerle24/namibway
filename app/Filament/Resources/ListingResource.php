@@ -39,6 +39,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
+use Livewire\Component;
 
 class ListingResource extends Resource
 {
@@ -85,7 +86,14 @@ class ListingResource extends Resource
                                     ->createOptionForm([
                                         Forms\Components\TextInput::make('name')->required(),
                                         Forms\Components\TextInput::make('email')->email(),
-                                    ]),
+                                        Forms\Components\TextInput::make('phone'),
+                                    ])
+                                    ->createOptionAction(fn (Forms\Components\Actions\Action $action) => $action
+                                        ->label('Create new partner')
+                                        ->mountUsing(fn (Form $form, Component $livewire) => $form->fill([
+                                            'name' => data_get($livewire->data, 'name') ?? '',
+                                        ]))
+                                    ),
                                 Forms\Components\TextInput::make('wetu_id')
                                     ->label('Wetu property ID')
                                     ->placeholder('e.g. WETU-001')
@@ -139,8 +147,9 @@ class ListingResource extends Resource
                                         Forms\Components\TextInput::make('website')
                                             ->url()
                                             ->maxLength(255),
-                                        Forms\Components\TextInput::make('address')
+                                        Forms\Components\Textarea::make('address')
                                             ->maxLength(500)
+                                            ->rows(3)
                                             ->columnSpanFull(),
                                         Forms\Components\KeyValue::make('social_links')
                                             ->label('Social & further links')

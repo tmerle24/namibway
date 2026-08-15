@@ -163,6 +163,8 @@ class BlockForm
             'contact' => [
                 TextInput::make('heading')->label('Heading')->maxLength(120),
                 Textarea::make('intro')->label('A line above it')->rows(2)->maxLength(300),
+                Textarea::make('opening_hours')->label('Opening hours')->rows(3)->maxLength(600)
+                    ->helperText('Free text — one line per row, e.g. "Monday – Friday: 08:00 – 17:00".'),
                 Toggle::make('show_form')->label('Show the message form too'),
             ],
 

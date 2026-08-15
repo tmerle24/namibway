@@ -16,6 +16,10 @@
                 <p class="prose">{{ $data['intro'] }}</p>
             @endif
 
+            @if (filled($data['opening_hours'] ?? null))
+                <p class="prose" style="white-space: pre-line; margin-top: var(--s4)">{{ $data['opening_hours'] }}</p>
+            @endif
+
             <div class="channels" style="margin-top: var(--s5)">
                 @if (filled($site->contact_phone))
                     <div class="channel">

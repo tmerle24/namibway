@@ -123,8 +123,9 @@ class ListingResource extends Resource
                         Forms\Components\TextInput::make('website')
                             ->url()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('address')
+                        Forms\Components\Textarea::make('address')
                             ->maxLength(500)
+                            ->rows(3)
                             ->columnSpanFull()
                             ->helperText('Used to place this listing on the map automatically.'),
                     ])

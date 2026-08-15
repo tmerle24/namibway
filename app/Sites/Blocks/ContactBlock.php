@@ -32,6 +32,7 @@ class ContactBlock extends BlockDefinition
         return [
             'heading' => ['nullable', 'string', 'max:120'],
             'intro' => ['nullable', 'string', 'max:300'],
+            'opening_hours' => ['nullable', 'string', 'max:600'],
             'show_form' => ['boolean'],
         ];
     }
@@ -49,6 +50,6 @@ class ContactBlock extends BlockDefinition
      */
     public function defaults(): array
     {
-        return ['heading' => 'Get in touch', 'intro' => null, 'show_form' => false];
+        return ['heading' => 'Get in touch', 'intro' => null, 'opening_hours' => null, 'show_form' => false];
     }
 }
