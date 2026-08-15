@@ -387,9 +387,8 @@ class EnrichmentPipeline
 
         $updates['photos_source'] = ContentSource::GooglePlaces;
         $updates['photos_attribution'] = $result['attribution'];
-        $updates['google_photos_expire_at'] = now()->addDays(30);
 
-        $log[] = count($urls).' photo(s) imported from Google Places (cached until '.$updates['google_photos_expire_at']->toDateString().').';
+        $log[] = count($urls).' photo(s) imported from Google Places.';
     }
 
     /** @param list<string> $log */
