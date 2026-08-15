@@ -6,7 +6,6 @@ use App\Jobs\FetchGooglePlacesPhotoJob;
 use App\Models\Listing;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class FetchGooglePlacesPhotos extends Command
 {
@@ -28,8 +27,6 @@ class FetchGooglePlacesPhotos extends Command
         $limit = (int) $this->option('limit');
         $refreshDays = (int) $this->option('refresh-days');
         $dry = (bool) $this->option('dry-run');
-
-        $this->expireStalePhotos($dry);
 
         $listings = Listing::whereNull('image')
             ->where(function ($query) use ($refreshDays) {
@@ -81,66 +78,4 @@ class FetchGooglePlacesPhotos extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * Google's Maps Platform terms only permit temporarily caching Place Photos — past
-     * google_photos_expire_at we clear the cached copy (image/gallery/photos_source/
-     * photos_attribution) rather than keep serving a stale, out-of-window copy. That
-     * makes the listing "imageless" again, so the lookup below naturally re-fetches a
-     * fresh, compliant copy — this isn't a deletion, just a forced refresh.
-     */
-    private function expireStalePhotos(bool $dry): void
-    {
-        $expired = Listing::where('photos_source', 'google_places')
-            ->where('google_photos_expire_at', '<', now())
-            ->get(['id', 'name', 'image', 'gallery']);
-
-        if ($expired->isEmpty()) {
-            return;
-        }
-
-        if ($dry) {
-            $this->warn("DRY RUN — would expire {$expired->count()} listing(s)' cached Google Places photos: ".$expired->pluck('name')->implode(', '));
-
-            return;
-        }
-
-        // Clearing these columns previously left the actual R2 object behind forever —
-        // nothing else in the codebase ever deletes a listing photo, so every 30-day
-        // expiry cycle silently accumulated orphaned files. Delete the object itself
-        // here so expiry doesn't just hide the cost, it removes it.
-        $disk = Storage::disk('r2');
-        foreach ($expired as $listing) {
-            $paths = array_filter([
-                $this->r2PathFromUrl($listing->image),
-                ...array_map($this->r2PathFromUrl(...), $listing->gallery ?? []),
-            ]);
-
-            if ($paths !== []) {
-                $disk->delete(array_values($paths));
-            }
-        }
-
-        Listing::whereIn('id', $expired->pluck('id'))->update([
-            'image' => null,
-            'gallery' => null,
-            'photos_source' => null,
-            'photos_attribution' => null,
-            'google_photos_expire_at' => null,
-            'google_photos_checked_at' => null,
-        ]);
-
-        $this->info("Expired Google Places photos for {$expired->count()} listing(s) (past the 30-day caching window) — deleted from R2, will be re-fetched.");
-    }
-
-    /** Converts a stored R2 URL back to a disk-relative path; null if it isn't one (e.g. a legacy 'public'-disk path). */
-    private function r2PathFromUrl(?string $url): ?string
-    {
-        if (! $url) {
-            return null;
-        }
-
-        $base = rtrim(Storage::disk('r2')->url(''), '/').'/';
-
-        return str_starts_with($url, $base) ? substr($url, strlen($base)) : null;
-    }
 }

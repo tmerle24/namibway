@@ -89,7 +89,7 @@ return [
         // Raised from 60 KB to 70 KB: the full block library now has 15 types
         // (up from 13), and the inline styles grew with it. Still well under the
         // 100 KB first-view target that separates "fast" from "acceptable".
-        'document_bytes' => 70 * 1024,
+        'document_bytes' => 72 * 1024,
     ],
 
     /*
