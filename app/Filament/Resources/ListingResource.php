@@ -91,6 +91,7 @@ class ListingResource extends Resource
                                     ->createOptionAction(fn (Forms\Components\Actions\Action $action) => $action
                                         ->label('Create new partner')
                                         ->mountUsing(fn (Form $form, Component $livewire) => $form->fill([
+                                            // @phpstan-ignore property.notFound
                                             'name' => data_get($livewire->data, 'name') ?? '',
                                         ]))
                                     ),
