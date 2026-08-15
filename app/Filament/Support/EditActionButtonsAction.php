@@ -32,6 +32,7 @@ class EditActionButtonsAction
             .'details — whichever this site has. Leave the label empty to use the band\'s own heading.',
         'whatsapp' => 'Opens WhatsApp on the number under Contact. Shown only where there is one.',
         'call' => 'Dials the telephone number under Contact. Shown only where there is one.',
+        'map' => 'Opens Google Maps on the coordinates or address under Location. Shown only where there is one.',
         'custom' => 'The business\'s own button. Empty link means the About band on this page.',
     ];
 
@@ -39,6 +40,7 @@ class EditActionButtonsAction
         'enquiry' => 'Enquiry button',
         'whatsapp' => 'WhatsApp button',
         'call' => 'Call button',
+        'map' => 'Map button',
         'custom' => 'Your own button',
     ];
 

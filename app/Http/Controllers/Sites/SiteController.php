@@ -80,6 +80,10 @@ class SiteController
             return $this->legal($site, $pageSlug);
         }
 
+        if ($page === null && $pageSlug === 'about') {
+            return $this->about($request, $site);
+        }
+
         abort_if($page === null, 404);
 
         $stored = $page->renderableBlocks()->get()
@@ -131,6 +135,44 @@ class SiteController
             'accent' => $this->accent($site),
             'title' => LegalText::pages()[$slug],
             'body' => $slug === 'privacy' ? LegalText::privacy($site) : LegalText::imprint($site),
+        ]);
+
+        if (! $site->isPublished()) {
+            $response->header('X-Robots-Tag', 'noindex, nofollow');
+        }
+
+        return $response;
+    }
+
+    /**
+     * The full about text, on its own page.
+     *
+     * Reached at /about (or /_sites/{slug}/about for drafts) and linked from
+     * the story slideshow when the about block has 2+ paragraphs. The body is
+     * already sanitised by the purifier allow-list on save, so it renders as
+     * HTML directly. 404s when the site has no about block or no body text —
+     * the link in the slideshow is only shown when there is something here.
+     */
+    private function about(Request $request, Site $site): Response
+    {
+        $this->assertVisible($request, $site);
+
+        /** @var SiteBlock|null $block */
+        $block = $site->pages()
+            ->where('is_home', true)
+            ->first()
+            ?->blocks()
+            ->where('type', 'about')
+            ->where('is_enabled', true)
+            ->first();
+
+        abort_if($block === null || blank($block->data['body'] ?? null), 404);
+
+        $response = response()->view('sites.about', [
+            'site' => $site,
+            'accent' => $this->accent($site),
+            'title' => filled($block->data['heading'] ?? null) ? $block->data['heading'] : 'About us',
+            'body' => $block->data['body'],
         ]);
 
         if (! $site->isPublished()) {

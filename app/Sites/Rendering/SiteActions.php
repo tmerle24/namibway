@@ -49,6 +49,7 @@ final class SiteActions
         'about' => 'About us',
         'whatsapp' => 'WhatsApp',
         'call' => 'Call',
+        'map' => 'Map',
     ];
 
     /**
@@ -106,6 +107,17 @@ final class SiteActions
             );
         }
 
+        if ($mapUrl = self::mapsUrl($site)) {
+            $buttons['map'] = new ActionButton(
+                'map',
+                $placement->label('map') ?? self::LABELS['map'],
+                $mapUrl,
+                'both',
+                external: true,
+                icon: 'map',
+            );
+        }
+
         // The business's own button. It defaults to the About band, because
         // that is the one thing nearly every site has and the thing a visitor
         // on the opening screen most often wants next — but the label and the
@@ -148,7 +160,7 @@ final class SiteActions
     {
         $out = [];
         $order = $area === 'footer'
-            ? ['call', 'whatsapp', 'custom', 'enquiry']
+            ? ['call', 'whatsapp', 'map', 'custom', 'enquiry']
             : ActionButtons::ACTIONS;
 
         foreach ($order as $action) {
@@ -289,5 +301,20 @@ final class SiteActions
         $value = preg_replace('/[^\d+]/', '', (string) $phone) ?? '';
 
         return strlen(preg_replace('/\D+/', '', $value) ?? '') < 6 ? null : $value;
+    }
+
+    /**
+     * A Google Maps search URL, or null where the site has no location at all.
+     * Same approach as the location block: coordinates first, address as
+     * fallback, and nothing when there is nothing to navigate to.
+     */
+    private static function mapsUrl(Site $site): ?string
+    {
+        $coords = filled($site->latitude) && filled($site->longitude);
+        $query = $coords ? $site->latitude.','.$site->longitude : (string) $site->address;
+
+        return filled($query)
+            ? 'https://www.google.com/maps/search/?api=1&query='.urlencode($query)
+            : null;
     }
 }

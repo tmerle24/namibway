@@ -38,7 +38,7 @@ use App\Models\Site;
  */
 final class ActionButtons
 {
-    public const ACTIONS = ['enquiry', 'whatsapp', 'call', 'custom'];
+    public const ACTIONS = ['enquiry', 'whatsapp', 'call', 'map', 'custom'];
 
     public const AREAS = ['menu', 'hero', 'footer'];
 
@@ -75,6 +75,7 @@ final class ActionButtons
             'enquiry' => ['places' => ['hero.desktop', 'footer.phone'], 'label' => null, 'href' => null],
             'whatsapp' => ['places' => ['footer.phone'], 'label' => null, 'href' => null],
             'call' => ['places' => ['footer.phone'], 'label' => null, 'href' => null],
+            'map' => ['places' => ['footer.phone'], 'label' => null, 'href' => null],
             'custom' => ['places' => ['hero.phone', 'hero.desktop'], 'label' => null, 'href' => null],
         ];
     }

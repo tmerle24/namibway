@@ -94,6 +94,11 @@ class BlockForm
                 TextInput::make('heading')->label('Heading')->maxLength(120),
                 self::richText('body', 'The text'),
                 self::image('image_id', $site, 'Photograph beside it'),
+                Toggle::make('slideshow')
+                    ->label('Show as story slideshow')
+                    ->helperText('Long texts (2+ paragraphs) are shown one paragraph at a time. '
+                        .'A "Read the full story" link leads to the complete page.')
+                    ->default(true),
             ],
 
             'gallery' => [

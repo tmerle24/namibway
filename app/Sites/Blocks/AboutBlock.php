@@ -32,6 +32,7 @@ class AboutBlock extends BlockDefinition
             'heading' => ['nullable', 'string', 'max:120'],
             'body' => ['nullable', 'string', 'max:8000'],
             'image_id' => ['nullable', 'integer'],
+            'slideshow' => ['boolean'],
         ];
     }
 
@@ -50,6 +51,7 @@ class AboutBlock extends BlockDefinition
             'heading' => 'About us',
             'body' => null,
             'image_id' => null,
+            'slideshow' => true,
         ];
     }
 
