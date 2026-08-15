@@ -86,7 +86,10 @@ return [
     */
 
     'budget' => [
-        'document_bytes' => 60 * 1024,
+        // Raised from 60 KB to 70 KB: the full block library now has 15 types
+        // (up from 13), and the inline styles grew with it. Still well under the
+        // 100 KB first-view target that separates "fast" from "acceptable".
+        'document_bytes' => 70 * 1024,
     ],
 
     /*
