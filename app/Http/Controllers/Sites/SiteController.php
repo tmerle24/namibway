@@ -214,8 +214,9 @@ class SiteController
      * what they show does not live in the payload: booking depends on whether
      * the property has sellable inventory right now, and location and contact
      * render details held on the site.
+     *
+     * @param Collection<int, ShopProduct>|null $shopProducts
      */
-    /** @param Collection<int, ShopProduct>|null $shopProducts */
     private function shouldRender(SiteBlock $block, Site $site, ?BookingPanelData $booking, ?Collection $shopProducts = null): bool
     {
         return match ($block->type) {
