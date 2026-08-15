@@ -104,7 +104,7 @@ class ImportInstagramPhotosJob implements ShouldQueue
         ])->timeout(20)->get('https://www.instagram.com/');
 
         $csrf = '';
-        foreach (explode(';', $init->header('set-cookie') ?? '') as $part) {
+        foreach (explode(';', $init->header('set-cookie', '')) as $part) {
             if (str_contains($part, 'csrftoken=')) {
                 $csrf = trim(str_replace('csrftoken=', '', explode(';', trim($part))[0]));
                 break;
@@ -222,7 +222,8 @@ class ImportInstagramPhotosJob implements ShouldQueue
             return null;
         }
 
-        $path = parse_url($instagramUrl, PHP_URL_PATH) ?? $instagramUrl;
+        $rawPath = parse_url($instagramUrl, PHP_URL_PATH);
+        $path = is_string($rawPath) ? $rawPath : $instagramUrl;
         $username = trim($path, '/');
 
         // Strip any trailing query params if parse_url missed them.
