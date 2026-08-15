@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\BusinessType;
 use App\Enums\ConnectorType;
 use App\Enums\OperatingMode;
 use App\Enums\SettlementModel;
@@ -50,7 +51,13 @@ class PartnerResource extends Resource
                                 Forms\Components\TextInput::make('name')
                                     ->required()
                                     ->maxLength(255),
+                                Forms\Components\TextInput::make('short_description')
+                                    ->label('Short description')
+                                    ->maxLength(240)
+                                    ->helperText('One or two sentences — used as the hero subline on the website. Keep it short.')
+                                    ->columnSpanFull(),
                                 Forms\Components\Textarea::make('bio')
+                                    ->label('Full description')
                                     ->columnSpanFull(),
                                 Forms\Components\TextInput::make('email')
                                     ->email()
@@ -68,6 +75,48 @@ class PartnerResource extends Resource
                                 Forms\Components\TextInput::make('facebook')
                                     ->url()
                                     ->maxLength(255),
+                                Forms\Components\Section::make('Location')
+                                    ->columnSpanFull()
+                                    ->columns(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('address')
+                                            ->maxLength(255)
+                                            ->columnSpanFull(),
+                                        Forms\Components\TextInput::make('latitude')
+                                            ->numeric()
+                                            ->step(0.0000001),
+                                        Forms\Components\TextInput::make('longitude')
+                                            ->numeric()
+                                            ->step(0.0000001),
+                                    ]),
+                            ])
+                            ->columns(2),
+
+                        Forms\Components\Tabs\Tab::make('Website')
+                            ->icon('heroicon-o-globe-alt')
+                            ->schema([
+                                Forms\Components\Select::make('business_type')
+                                    ->label('Business type')
+                                    ->options(BusinessType::class)
+                                    ->helperText('Sets the starting block layout and colour. Required to generate a website from this partner record.')
+                                    ->columnSpanFull(),
+                                Forms\Components\FileUpload::make('image')
+                                    ->label('Hero image')
+                                    ->image()
+                                    ->disk('r2')
+                                    ->directory('partners')
+                                    ->imageEditor()
+                                    ->helperText('Main photograph — shown full-width at the top of the website.')
+                                    ->columnSpanFull(),
+                                Forms\Components\FileUpload::make('gallery')
+                                    ->label('Gallery')
+                                    ->image()
+                                    ->disk('r2')
+                                    ->directory('partners')
+                                    ->multiple()
+                                    ->reorderable()
+                                    ->helperText('Additional photographs. Drag to reorder.')
+                                    ->columnSpanFull(),
                             ])
                             ->columns(2),
 
