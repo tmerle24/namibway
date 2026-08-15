@@ -14,9 +14,9 @@ use App\Sites\Blocks\GalleryBlock;
 use App\Sites\Blocks\HeroBlock;
 use App\Sites\Blocks\HighlightsBlock;
 use App\Sites\Blocks\LocationBlock;
+use App\Sites\Blocks\MissionBlock;
 use App\Sites\Blocks\OpeningHoursBlock;
 use App\Sites\Blocks\PriceListBlock;
-use App\Sites\Blocks\MissionBlock;
 use App\Sites\Blocks\RichTextBlock;
 use App\Sites\Blocks\WhyChooseUsBlock;
 
