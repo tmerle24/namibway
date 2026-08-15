@@ -1,8 +1,5 @@
 {
     "preset": "laravel",
-    "finder": {
-        "not-path": ["app/Console/Commands/FetchGooglePlacesPhotos.php"]
-    },
     "rules": {
         "unary_operator_spaces": false,
         "phpdoc_align": false
