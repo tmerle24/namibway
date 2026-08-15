@@ -81,5 +81,12 @@
     @include('sites.partials.action-bar', ['actions' => $actions])
 
     @include('sites.partials.motion')
+
+    <div id="lb" class="lb" role="dialog" aria-modal="true" aria-label="Image viewer">
+        <button id="lb-close" class="lb__close" aria-label="Close">&#x2715;</button>
+        <button id="lb-prev" class="lb__nav lb__nav--prev" aria-label="Previous image">&#8592;</button>
+        <img id="lb-img" class="lb__img" src="" alt="">
+        <button id="lb-next" class="lb__nav lb__nav--next" aria-label="Next image">&#8594;</button>
+    </div>
 </body>
 </html>

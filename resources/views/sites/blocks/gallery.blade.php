@@ -20,6 +20,7 @@
                          would be paying for pixels nobody sees. --}}
                     <figure class="reveal">
                         <img src="{{ $photo->thumb(400) }}"
+                             data-lb="{{ $photo->thumb(1200) }}"
                              @if ($srcset = $photo->srcset(400)) srcset="{{ $srcset }}" @endif
                              sizes="(min-width: 860px) 33vw, 50vw"
                              alt="{{ $photo->alt ?? $site->name }}"

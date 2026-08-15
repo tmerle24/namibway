@@ -94,8 +94,9 @@
             </div>
 
             @if ($image)
-                <figure class="figure" style="margin:0">
+                <figure class="figure figure--lb" style="margin:0">
                     <img src="{{ $image->thumb(800) }}"
+                         data-lb="{{ $image->thumb(1200) }}"
                          @if ($srcset = $image->srcset(800)) srcset="{{ $srcset }}" @endif
                          sizes="(min-width: 860px) 50vw, 100vw"
                          alt="{{ $image->alt ?? $site->name }}"

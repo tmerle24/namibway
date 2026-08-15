@@ -85,5 +85,69 @@
         // the content is invisible with no way for the visitor to fix it.
 
         targets.forEach(function (target) { observer.observe(target); });
+
+        // Lightbox: open zoomable images in a full-screen overlay.
+        // Enhancement only — if the overlay markup is absent the loop below finds
+        // nothing and exits without error, so a server-side error in the partial
+        // cannot break the rest of the page.
+        (function () {
+            var lb   = document.getElementById('lb');
+            var img  = document.getElementById('lb-img');
+            var prev = document.getElementById('lb-prev');
+            var next = document.getElementById('lb-next');
+
+            if (!lb || !img) return;
+
+            // All images that opted in via data-lb, in document order.
+            var srcs = [];
+            var alts = [];
+
+            document.querySelectorAll('[data-lb]').forEach(function (el) {
+                var idx = srcs.length;
+                srcs.push(el.getAttribute('data-lb'));
+                alts.push(el.alt || '');
+                // The clickable area is the figure wrapping the img.
+                var trigger = el.closest('figure') || el;
+                trigger.addEventListener('click', function () { open(idx); });
+            });
+
+            var current = 0;
+
+            function open(idx) {
+                current = idx;
+                img.src = srcs[current];
+                img.alt = alts[current];
+                lb.classList.add('is-open');
+                document.body.style.overflow = 'hidden';
+                if (prev) prev.hidden = srcs.length <= 1;
+                if (next) next.hidden = srcs.length <= 1;
+                if (prev) prev.disabled = current === 0;
+                if (next) next.disabled = current === srcs.length - 1;
+            }
+
+            function close() {
+                lb.classList.remove('is-open');
+                document.body.style.overflow = '';
+                // Clear src so the browser releases memory; the image reloads on
+                // the next open, which is cheap because it comes from browser cache.
+                img.src = '';
+            }
+
+            var closeBtn = document.getElementById('lb-close');
+            if (closeBtn) closeBtn.addEventListener('click', close);
+
+            // Click on the dark backdrop (not the image itself) closes.
+            lb.addEventListener('click', function (e) { if (e.target === lb) close(); });
+
+            if (prev) prev.addEventListener('click', function () { if (current > 0) open(current - 1); });
+            if (next) next.addEventListener('click', function () { if (current < srcs.length - 1) open(current + 1); });
+
+            addEventListener('keydown', function (e) {
+                if (!lb.classList.contains('is-open')) return;
+                if (e.key === 'Escape') { close(); return; }
+                if (e.key === 'ArrowLeft'  && current > 0)               open(current - 1);
+                if (e.key === 'ArrowRight' && current < srcs.length - 1) open(current + 1);
+            });
+        })();
     })();
 </script>

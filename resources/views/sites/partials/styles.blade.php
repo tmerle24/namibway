@@ -402,8 +402,9 @@
         width: 100%; height: 100%; aspect-ratio: 1 / 1; object-fit: cover;
         transition: transform .5s ease;
     }
-    .grid-photos figure { margin: 0; overflow: hidden; }
+    .grid-photos figure { margin: 0; overflow: hidden; cursor: zoom-in; }
     .grid-photos figure:hover img { transform: scale(1.04); }
+    .figure--lb { cursor: zoom-in; }
 
     /* ---- Lists: hours, prices ----------------------------------------- */
 
@@ -541,6 +542,46 @@
     .wrap--narrow { max-width: 760px; }
     .section--legal { padding: var(--s7) 0 var(--s6); }
     .section--legal h1 { font-family: var(--font-display); font-size: 34px; margin: 0 0 var(--s5); }
+
+    /* ---- Lightbox ----------------------------------------------------- */
+
+    .lb {
+        display: none; position: fixed; inset: 0; z-index: 100;
+        background: rgba(10,11,13,.92); cursor: zoom-out;
+        align-items: center; justify-content: center;
+        padding: var(--s4);
+    }
+    .lb.is-open { display: flex; }
+    .lb__img {
+        max-width: 100%; max-height: 90vh;
+        object-fit: contain;
+        box-shadow: 0 24px 80px rgba(0,0,0,.6);
+        cursor: default;
+        border-radius: 2px;
+    }
+    .lb__close {
+        position: absolute; top: var(--s4); right: var(--s4);
+        width: 44px; height: 44px;
+        background: rgba(255,255,255,.12); border: 0; border-radius: 50%;
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 20px; line-height: 1;
+        transition: background .2s ease;
+    }
+    .lb__close:hover { background: rgba(255,255,255,.24); }
+    .lb__nav {
+        position: absolute; top: 50%; transform: translateY(-50%);
+        width: 44px; height: 44px;
+        background: rgba(255,255,255,.12); border: 0; border-radius: 50%;
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 20px; line-height: 1;
+        transition: background .2s ease;
+    }
+    .lb__nav:hover { background: rgba(255,255,255,.24); }
+    .lb__nav--prev { left: var(--s4); }
+    .lb__nav--next { right: var(--s4); }
+    .lb__nav[hidden] { display: none; }
+    .lb__nav:disabled { opacity: .3; cursor: default; }
+    .lb__nav:disabled:hover { background: rgba(255,255,255,.12); }
 
     /* ---- Motion -------------------------------------------------------
        Enhancement only: every element below is fully visible without the
