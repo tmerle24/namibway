@@ -174,7 +174,6 @@ class BlockForm
                     ->helperText('Products are managed separately in the shop admin.'),
             ],
 
-
             'location' => [
                 TextInput::make('heading')->label('Heading')->maxLength(120),
                 Textarea::make('directions_note')

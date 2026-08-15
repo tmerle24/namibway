@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 /**
  * Products on customer websites.
@@ -55,7 +56,7 @@ class ShopProductResource extends Resource
                     ->live(onBlur: true)
                     ->afterStateUpdated(function (Forms\Set $set, ?string $state, string $operation) {
                         if ($operation === 'create' && filled($state)) {
-                            $set('slug', \Illuminate\Support\Str::slug($state));
+                            $set('slug', Str::slug($state));
                         }
                     }),
 
