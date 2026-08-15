@@ -421,6 +421,13 @@
         color: var(--ink);
     }
     .note { margin-top: var(--s4); color: var(--slate); font-size: 15px; }
+    /* WhatsApp ordering on a price list */
+    .row__sel { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .row__sel .order-check { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); flex-shrink: 0; }
+    .order-qty { width: 46px; font: inherit; font-size: 14px; padding: 3px 6px; border: 1px solid var(--bone); border-radius: 2px; text-align: center; color: var(--ink); background: var(--salt); }
+    .order-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); margin-top: var(--s5); padding: var(--s3) var(--s4); background: var(--ink); border-radius: 4px; }
+    .order-bar__count { color: #fff; font-size: 15px; }
+    .order-bar__btn { white-space: nowrap; }
 
     /* ---- Booking ------------------------------------------------------ */
 
@@ -458,6 +465,10 @@
     /* Off-screen rather than display:none — some bots skip hidden inputs and
        fill in everything else, which would defeat the point of having one. */
     .enquiry__trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+    /* WhatsApp alternative below the enquiry form */
+    .enquiry__wa { display: flex; align-items: center; gap: var(--s4); padding-top: var(--s4); margin-top: var(--s2); border-top: 1px solid var(--bone); }
+    .enquiry__wa-or { color: var(--slate); font-size: 14px; white-space: nowrap; }
+    .enquiry__wa-btn { flex: 1; text-align: center; }
 
     /* ---- Contact and footer ------------------------------------------- */
 

@@ -132,6 +132,9 @@ class BlockForm
                         TextInput::make('price')->label('Price')->maxLength(40),
                     ]),
                 Textarea::make('note')->label('Anything to add')->rows(2)->maxLength(300),
+                Toggle::make('whatsapp_order')
+                    ->label('Let customers order via WhatsApp')
+                    ->helperText('Adds checkboxes to each line. Clicking the button opens WhatsApp with the selected items pre-filled. Requires a WhatsApp number on the site.'),
             ],
 
             'booking' => [

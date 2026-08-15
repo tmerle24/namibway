@@ -1,10 +1,12 @@
 @php
     use App\Sites\Blocks\EnquiryBlock;
+    use App\Sites\Rendering\SafeLink;
 
     $stay = ($data['mode'] ?? EnquiryBlock::MODE_STAY) === EnquiryBlock::MODE_STAY;
     $today = \Carbon\CarbonImmutable::today()->toDateString();
     $sent = request()->query('sent') === '1';
     $failed = request()->query('sent') === '0';
+    $waPhone = SafeLink::whatsapp($site->whatsapp);
 @endphp
 <section class="section section--tint" id="{{ $anchor }}">
     <div class="wrap">
@@ -101,6 +103,43 @@
 
                         <button class="btn enquiry__submit" type="submit">Send request</button>
                     </form>
+
+                    @if ($waPhone)
+                        <div class="enquiry__wa">
+                            <span class="enquiry__wa-or">or</span>
+                            <a class="btn btn--ghost enquiry__wa-btn" id="eq-wa-btn" href="{{ $waPhone }}" target="_blank" rel="noopener">WhatsApp</a>
+                        </div>
+                        <script>
+                        (function () {
+                            var btn = document.getElementById('eq-wa-btn');
+                            if (!btn) return;
+                            var waBase = {{ json_encode($waPhone) }};
+                            var siteName = {{ json_encode($site->name) }};
+                            var stay = {{ json_encode($stay) }};
+
+                            btn.addEventListener('click', function (e) {
+                                e.preventDefault();
+                                var name = (document.getElementById('eq-name').value || '').trim();
+                                var checkin = (document.getElementById('eq-in').value || '').trim();
+                                var checkout = stay ? (document.getElementById('eq-out').value || '').trim() : '';
+                                var time = !stay ? (document.getElementById('eq-time').value || '').trim() : '';
+                                var adults = (document.getElementById('eq-adults').value || '').trim();
+                                var children = (document.getElementById('eq-children').value || '0').trim();
+                                var message = (document.getElementById('eq-message').value || '').trim();
+
+                                var msg = 'Hello ' + siteName + ', I would like to enquire.';
+                                if (name) msg += '\n\nName: ' + name;
+                                if (checkin) msg += stay ? '\nArrival: ' + checkin : '\nDate: ' + checkin;
+                                if (checkout) msg += '\nDeparture: ' + checkout;
+                                if (time) msg += '\nTime: ' + time;
+                                if (adults) msg += '\nAdults: ' + adults + ', Children: ' + children;
+                                if (message) msg += '\n\n' + message;
+
+                                window.open(waBase + '?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+                            });
+                        }());
+                        </script>
+                    @endif
                 @endif
             </div>
         </div>

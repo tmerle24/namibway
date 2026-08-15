@@ -35,6 +35,7 @@ class PriceListBlock extends BlockDefinition
         return [
             'heading' => ['nullable', 'string', 'max:120'],
             'note' => ['nullable', 'string', 'max:300'],
+            'whatsapp_order' => ['boolean'],
             'items' => ['array', 'max:60'],
             'items.*.name' => ['required', 'string', 'max:120'],
             'items.*.description' => ['nullable', 'string', 'max:300'],
@@ -52,6 +53,6 @@ class PriceListBlock extends BlockDefinition
      */
     public function defaults(): array
     {
-        return ['heading' => 'Prices', 'note' => null, 'items' => []];
+        return ['heading' => 'Prices', 'note' => null, 'whatsapp_order' => false, 'items' => []];
     }
 }
