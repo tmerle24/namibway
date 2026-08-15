@@ -156,6 +156,18 @@ class BlockForm
                 self::richText('body', 'The text'),
             ],
 
+            'mission' => [
+                TextInput::make('heading')->label('Heading')->maxLength(120)
+                    ->placeholder('Our Mission'),
+                self::richText('body', 'The text'),
+            ],
+
+            'why_choose_us' => [
+                TextInput::make('heading')->label('Heading')->maxLength(120)
+                    ->placeholder('Why Choose Us?'),
+                self::richText('body', 'The text'),
+            ],
+
             'location' => [
                 TextInput::make('heading')->label('Heading')->maxLength(120),
                 Textarea::make('directions_note')

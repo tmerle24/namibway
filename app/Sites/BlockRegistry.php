@@ -16,12 +16,14 @@ use App\Sites\Blocks\HighlightsBlock;
 use App\Sites\Blocks\LocationBlock;
 use App\Sites\Blocks\OpeningHoursBlock;
 use App\Sites\Blocks\PriceListBlock;
+use App\Sites\Blocks\MissionBlock;
 use App\Sites\Blocks\RichTextBlock;
+use App\Sites\Blocks\WhyChooseUsBlock;
 
 /**
  * The whole block library, and the order each kind of business starts in.
  *
- * Twelve types. That number is a commitment, not a stage: the offer works
+ * Fifteen types. That number is a commitment, not a stage: the offer works
  * because one kit serves every customer, and the first per-customer block is
  * the moment the margin starts leaking. A new type has to earn its place across
  * several customers, and when it does it costs a class and a line here — never
@@ -40,6 +42,8 @@ class BlockRegistry
         BookingBlock::class,
         EnquiryBlock::class,
         RichTextBlock::class,
+        MissionBlock::class,
+        WhyChooseUsBlock::class,
         LocationBlock::class,
         ContactBlock::class,
         CtaBlock::class,
@@ -68,8 +72,8 @@ class BlockRegistry
         'activity' => ['hero', 'highlights', 'about', 'gallery', 'price_list', 'booking', 'enquiry', 'location', 'contact', 'footer'],
         'car_rental' => ['hero', 'highlights', 'price_list', 'about', 'booking', 'enquiry', 'location', 'contact', 'footer'],
         'tour_operator' => ['hero', 'highlights', 'about', 'gallery', 'price_list', 'booking', 'enquiry', 'contact', 'footer'],
-        'retail' => ['hero', 'about', 'opening_hours', 'gallery', 'price_list', 'enquiry', 'location', 'contact', 'footer'],
-        'service' => ['hero', 'highlights', 'about', 'opening_hours', 'price_list', 'enquiry', 'location', 'contact', 'footer'],
+        'retail' => ['hero', 'about', 'mission', 'why_choose_us', 'opening_hours', 'gallery', 'price_list', 'enquiry', 'location', 'contact', 'footer'],
+        'service' => ['hero', 'highlights', 'about', 'mission', 'why_choose_us', 'opening_hours', 'price_list', 'enquiry', 'location', 'contact', 'footer'],
     ];
 
     /** @var array<string, BlockDefinition>|null */
