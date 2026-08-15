@@ -168,6 +168,12 @@ class BlockForm
                 self::richText('body', 'The text'),
             ],
 
+            'shop' => [
+                TextInput::make('heading')->label('Section heading')->maxLength(120)
+                    ->placeholder('Shop')
+                    ->helperText('Products are managed separately in the shop admin.'),
+            ],
+
             'location' => [
                 TextInput::make('heading')->label('Heading')->maxLength(120),
                 Textarea::make('directions_note')

@@ -21,9 +21,9 @@ use Illuminate\Support\Facades\Route;
 
 $prefix = trim((string) config('sites.path_prefix', '_sites'), '/');
 
-Route::get($prefix.'/{slug}/{page?}', [SiteController::class, 'path'])
+Route::get($prefix.'/{slug}/{path?}', [SiteController::class, 'path'])
     ->where('slug', '[a-z0-9-]+')
-    ->where('page', '[a-z0-9-]+')
+    ->where('path', '[a-z0-9][a-z0-9/-]*')
     ->name('sites.preview');
 
 // The enquiry form posts here, from a site's own host as much as from the path
