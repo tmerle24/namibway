@@ -14,7 +14,6 @@ class FetchGooglePlacesPhotos extends Command
                             {--limit=5          : Max listings to look up in this run}
                             {--refresh-days=90  : Re-check listings whose last lookup is older than this many days}
                             {--dry-run           : List candidates without calling the API}';
-
     protected $description = 'Look up real photos for imageless listings via the Google Places API (Find Place + Place Details + Photo)';
 
     public function handle(): int
