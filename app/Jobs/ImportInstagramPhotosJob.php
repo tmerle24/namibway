@@ -104,7 +104,7 @@ class ImportInstagramPhotosJob implements ShouldQueue
         ])->timeout(20)->get('https://www.instagram.com/');
 
         $csrf = '';
-        foreach (explode(';', $init->header('set-cookie', '')) as $part) {
+        foreach (explode(';', $init->header('set-cookie')) as $part) {
             if (str_contains($part, 'csrftoken=')) {
                 $csrf = trim(str_replace('csrftoken=', '', explode(';', trim($part))[0]));
                 break;
