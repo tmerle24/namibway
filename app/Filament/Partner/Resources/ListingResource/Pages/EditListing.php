@@ -7,6 +7,7 @@ use App\Filament\Partner\Resources\ListingResource;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\CreateWebsiteAction;
 use App\Filament\Support\EditActionButtonsAction;
+use App\Filament\Support\EditContactChannelsAction;
 use App\Filament\Support\EditBlocksAction;
 use App\Filament\Support\EditHeroAction;
 use App\Filament\Support\EditLegalTextAction;
@@ -64,6 +65,7 @@ class EditListing extends EditRecord
             EditHeroAction::header(),
             EditSiteLogoAction::header(),
             EditTypographyAction::header(),
+            EditContactChannelsAction::header(),
             // Whether visitors are invited to call, message or book is the
             // business's decision, not ours — so the owner has the switches.
             EditActionButtonsAction::header(),
