@@ -86,10 +86,11 @@ return [
     */
 
     'budget' => [
-        // Raised from 60 KB to 70 KB: the full block library now has 15 types
-        // (up from 13), and the inline styles grew with it. Still well under the
-        // 100 KB first-view target that separates "fast" from "acceptable".
-        'document_bytes' => 72 * 1024,
+        // Raised from 72 KB to 76 KB: the motion.blade.php partial (scroll-reveal
+        // JS) is now inlined on every page, the inline styles grew with new block
+        // types (enquiry, shop), and the block library reached 16 types. Still well
+        // under the 100 KB first-view target that separates "fast" from "acceptable".
+        'document_bytes' => 76 * 1024,
     ],
 
     /*
