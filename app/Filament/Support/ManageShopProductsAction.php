@@ -7,6 +7,7 @@ use App\Enums\ShopProductStatus;
 use App\Jobs\ImportInstagramProductsJob;
 use App\Jobs\ImportProductsFromFileJob;
 use App\Models\Listing;
+use App\Models\Partner;
 use App\Models\ShopProduct;
 use App\Models\Site;
 use App\Models\SiteImage;
@@ -30,13 +31,13 @@ class ManageShopProductsAction
     public static function make(string $name = 'manage_products'): FormAction
     {
         return self::configure(FormAction::make($name))
-            ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null);
+            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null);
     }
 
     public static function header(string $name = 'manage_products'): PageAction
     {
         return self::configure(PageAction::make($name))
-            ->visible(fn (Listing $record): bool => self::siteFor($record) !== null);
+            ->visible(fn (Listing $record): bool => SiteResolver::for($record) !== null);
     }
 
     /**
@@ -59,8 +60,8 @@ class ManageShopProductsAction
             )
             ->modalSubmitActionLabel('Save')
             ->modalWidth('5xl')
-            ->fillForm(fn (?Listing $record): array => ['products' => self::state($record)])
-            ->form(fn (?Listing $record): array => [
+            ->fillForm(fn (Listing|Partner|null $record): array => ['products' => self::state($record)])
+            ->form(fn (Listing|Partner|null $record): array => [
                 Forms\Components\Actions::make([
                     FormAction::make('import_instagram')
                         ->label('Import from Instagram')
@@ -86,8 +87,8 @@ class ManageShopProductsAction
                             .'Existing products are not duplicated.'
                         )
                         ->modalSubmitActionLabel('Import')
-                        ->action(function (?Listing $record, array $data): void {
-                            $site = $record === null ? null : self::siteFor($record);
+                        ->action(function (Listing|Partner|null $record, array $data): void {
+                            $site = $record === null ? null : SiteResolver::for($record);
 
                             if ($site === null) {
                                 return;
@@ -139,8 +140,8 @@ class ManageShopProductsAction
                         ])
                         ->modalHeading('Import from a spreadsheet')
                         ->modalSubmitActionLabel('Import')
-                        ->action(function (?Listing $record, array $data): void {
-                            $site = $record === null ? null : self::siteFor($record);
+                        ->action(function (Listing|Partner|null $record, array $data): void {
+                            $site = $record === null ? null : SiteResolver::for($record);
 
                             if ($site === null) {
                                 return;
@@ -209,7 +210,7 @@ class ManageShopProductsAction
                                 ->label('Photo')
                                 ->image()
                                 ->disk('r2')
-                                ->directory(fn (?Listing $record): string => self::prefixFor($record))
+                                ->directory(fn (Listing|Partner|null $record): string => self::prefixFor($record))
                                 ->imageEditor()
                                 ->fetchFileInformation(false),
                         ]),
@@ -221,8 +222,8 @@ class ManageShopProductsAction
                             ->columnSpanFull(),
                     ]),
             ])
-            ->action(function (?Listing $record, array $data): void {
-                $site = $record === null ? null : self::siteFor($record);
+            ->action(function (Listing|Partner|null $record, array $data): void {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return;
@@ -235,9 +236,9 @@ class ManageShopProductsAction
     /**
      * @return array<int, array<string, mixed>>
      */
-    private static function state(?Listing $record): array
+    private static function state(Listing|Partner|null $record): array
     {
-        $site = $record === null ? null : self::siteFor($record);
+        $site = $record === null ? null : SiteResolver::for($record);
 
         if ($site === null) {
             return [];
@@ -398,15 +399,10 @@ class ManageShopProductsAction
         return $value === '' ? null : $value;
     }
 
-    private static function prefixFor(?Listing $record): string
+    private static function prefixFor(Listing|Partner|null $record): string
     {
-        $site = $record === null ? null : self::siteFor($record);
+        $site = $record === null ? null : SiteResolver::for($record);
 
         return $site === null ? 'sites' : $site->mediaPrefix();
-    }
-
-    private static function siteFor(Listing $listing): ?Site
-    {
-        return Site::where('source_listing_id', $listing->id)->first();
     }
 }
