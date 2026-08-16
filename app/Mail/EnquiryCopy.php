@@ -31,7 +31,7 @@ class EnquiryCopy extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your enquiry to '.$this->inquiry->listing->name,
+            subject: 'Your enquiry to '.$this->inquiry->sellerName(),
         );
     }
 

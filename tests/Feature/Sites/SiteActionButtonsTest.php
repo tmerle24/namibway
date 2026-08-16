@@ -7,7 +7,7 @@ use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Models\SitePage;
 use App\Sites\ActionButtons;
-use App\Sites\Blocks\EnquiryBlock;
+use App\Sites\Blocks\EnquiryFormType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -79,7 +79,7 @@ class SiteActionButtonsTest extends TestCase
         SiteBlock::create([
             'site_page_id' => (int) $site->pages()->value('id'),
             'type' => 'enquiry',
-            'data' => ['heading' => 'Ask us', 'mode' => EnquiryBlock::MODE_STAY],
+            'data' => ['heading' => 'Ask us', 'form_type' => EnquiryFormType::StayRequest->value],
             'sort' => 9,
         ]);
 

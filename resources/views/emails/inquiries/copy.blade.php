@@ -6,7 +6,7 @@
 <x-mail::message>
 # Thanks, {{ $inquiry->name }}
 
-We have passed your {{ $isOrder ? 'order' : 'enquiry' }} to **{{ $inquiry->listing->name }}**. They answer these
+We have passed your {{ $isOrder ? 'order' : 'enquiry' }} to **{{ $inquiry->sellerName() }}**. They answer these
 themselves, so the reply comes from them — usually within a day or two.
 
 This is your copy of what you sent:

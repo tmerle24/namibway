@@ -16,7 +16,9 @@ use Illuminate\Support\Str;
  * @property string $title
  * @property string $slug
  * @property string|null $description
- * @property string|null $price
+ * @property float|null $price
+ * @property string|null $price_text
+ * @property string $currency
  * @property string|null $category
  * @property ShopProductStatus $status
  * @property array<int, int> $image_ids
@@ -31,6 +33,8 @@ class ShopProduct extends Model
         'slug',
         'description',
         'price',
+        'price_text',
+        'currency',
         'category',
         'status',
         'image_ids',
@@ -40,6 +44,7 @@ class ShopProduct extends Model
 
     protected $casts = [
         'status' => ShopProductStatus::class,
+        'price' => 'float',
         'image_ids' => 'array',
         'sort' => 'integer',
     ];
@@ -63,6 +68,37 @@ class ShopProduct extends Model
     public function scopePublished(Builder $query): void
     {
         $query->where('status', ShopProductStatus::Published);
+    }
+
+    /**
+     * Products a visitor can actually put a quantity against.
+     *
+     * A price is what makes something orderable. Without one the product still
+     * appears in the shop — it is a catalogue as much as a till — but an order
+     * form cannot total it, so it is not offered with a stepper.
+     *
+     * @param  Builder<ShopProduct>  $query
+     */
+    public function scopeOrderable(Builder $query): void
+    {
+        $query->published()->whereNotNull('price');
+    }
+
+    /**
+     * What to print where the price goes.
+     *
+     * The number when there is one, the owner's own words otherwise — "from
+     * N$ 850", "Call for price". Never both: a figure and a sentence saying
+     * something different about the same product is how a shop loses an
+     * argument with a customer.
+     */
+    public function priceLabel(): ?string
+    {
+        if ($this->price !== null) {
+            return $this->currency.' '.number_format($this->price, 2);
+        }
+
+        return filled($this->price_text) ? $this->price_text : null;
     }
 
     /**

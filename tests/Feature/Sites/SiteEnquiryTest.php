@@ -12,6 +12,7 @@ use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Models\SitePage;
 use App\Sites\Blocks\EnquiryBlock;
+use App\Sites\Blocks\EnquiryFormType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
@@ -32,7 +33,7 @@ class SiteEnquiryTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function siteFor(Listing $listing, string $mode = EnquiryBlock::MODE_STAY): Site
+    private function siteFor(Listing $listing, EnquiryFormType $type = EnquiryFormType::StayRequest): Site
     {
         $site = Site::factory()->create([
             'source_listing_id' => $listing->id,
@@ -44,7 +45,7 @@ class SiteEnquiryTest extends TestCase
         SiteBlock::create([
             'site_page_id' => $page->id,
             'type' => 'enquiry',
-            'data' => ['heading' => 'Ask us', 'mode' => $mode],
+            'data' => ['heading' => 'Ask us', 'form_type' => $type->value, 'channel' => EnquiryBlock::CHANNEL_EMAIL],
             'sort' => 0,
         ]);
 
@@ -88,7 +89,7 @@ class SiteEnquiryTest extends TestCase
     public function test_a_visit_is_asked_for_a_time_and_never_a_departure(): void
     {
         $listing = $this->listing(['type' => ListingType::Restaurant]);
-        $site = $this->siteFor($listing, EnquiryBlock::MODE_VISIT);
+        $site = $this->siteFor($listing, EnquiryFormType::TableReservation);
 
         $this->get($site->publicUrl())
             ->assertSee('name="time"', false)
@@ -99,6 +100,7 @@ class SiteEnquiryTest extends TestCase
             'email' => 'dinner@example.com',
             'check_in' => Carbon::today()->addWeek()->toDateString(),
             'time' => '19:30',
+            'adults' => 2,
         ])->assertRedirect();
 
         $inquiry = Inquiry::sole();

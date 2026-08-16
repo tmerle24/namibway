@@ -29,7 +29,7 @@ class GuestBookingConfirmed extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Booking confirmed: {$this->inquiry->listing->name}",
+            subject: "Booking confirmed: {$this->inquiry->sellerName()}",
         );
     }
 

@@ -27,7 +27,7 @@ class StayPromotionFailed extends Mailable
     {
         return new Envelope(
             subject: 'Confirmed booking not on the calendar: '.$this->inquiry->name
-                .' at '.($this->inquiry->listing->name ?? 'a property'),
+                .' at '.$this->inquiry->sellerName(),
         );
     }
 

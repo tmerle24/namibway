@@ -3,12 +3,12 @@
 
 Hi {{ $inquiry->name }},
 
-Sorry — your booking request at **{{ $inquiry->listing->name }}** wasn't confirmed by the property in time, so we've released the hold on it.
+Sorry — your booking request at **{{ $inquiry->sellerName() }}** wasn't confirmed by the property in time, so we've released the hold on it.
 
 <x-mail::table>
 | | |
 |---|---|
-| **Property** | {{ $inquiry->listing->name }} |
+| **Property** | {{ $inquiry->sellerName() }} |
 | **Check-in** | {{ $inquiry->check_in?->format('D, d M Y') ?? $inquiry->travel_dates ?? '—' }} |
 | **Check-out** | {{ $inquiry->check_out?->format('D, d M Y') ?? '—' }} |
 </x-mail::table>

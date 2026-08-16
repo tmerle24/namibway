@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Sites;
 
-use App\Enums\InquiryKind;
-use App\Enums\ListingType;
 use App\Mail\EnquiryCopy;
-use App\Models\Listing;
+use App\Models\Inquiry;
 use App\Models\Site;
+use App\Models\SiteBlock;
+use App\Services\Booking\SiteOrder;
+use App\Sites\Blocks\EnquiryBlock;
+use App\Sites\Blocks\EnquiryFormType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -52,8 +54,18 @@ class SiteEnquiryController
     public function __invoke(Request $request, Site $site): RedirectResponse
     {
         $listing = $site->sourceListing;
+        $partner = $site->partner;
 
-        abort_if($listing === null, 404);
+        // A site must belong to somebody. A listing where there is one, the
+        // partner otherwise — a shop that never listed on the travel platform
+        // is asked for goods through its own website and has no listing at all,
+        // which used to be answered with a 404 for every enquiry it received.
+        abort_if($listing === null && $partner === null, 404);
+
+        // The type is the block's, never the browser's: the posted field only
+        // says which form the visitor was looking at, and a page that claims a
+        // type this site does not offer is answered with the one it does.
+        $type = $this->formType($site, $request);
 
         // A filled honeypot is answered exactly like a success, so the machine
         // that filled it learns nothing and stops retrying. Nothing is written.
@@ -61,17 +73,7 @@ class SiteEnquiryController
             return $this->back($request, true);
         }
 
-        $validator = Validator::make($request->all(), [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'check_in' => ['required', 'date', 'after_or_equal:today'],
-            'check_out' => ['nullable', 'date', 'after:check_in'],
-            'time' => ['nullable', 'date_format:H:i'],
-            'adults' => ['nullable', 'integer', 'min:1', 'max:20'],
-            'children' => ['nullable', 'integer', 'min:0', 'max:20'],
-            'message' => ['nullable', 'string', 'max:2000'],
-        ]);
+        $validator = Validator::make($request->all(), $this->rules($type));
 
         if ($validator->fails()) {
             return $this->back($request, false);
@@ -80,26 +82,45 @@ class SiteEnquiryController
         /** @var array<string, mixed> $validated */
         $validated = $validator->validated();
 
-        $inquiry = $listing->inquiries()->create([
+        // Priced before anything is written, so an order naming something that
+        // is no longer for sale fails as a rejected form rather than as a
+        // request the business cannot fill.
+        $order = $type->hasItems()
+            ? SiteOrder::price($site, $type, (array) ($validated['items'] ?? []))
+            : null;
+
+        if ($order !== null && $order->isEmpty()) {
+            return $this->back($request, false);
+        }
+
+        $inquiry = Inquiry::create([
+            'listing_id' => $listing?->id,
+            // Filled on every row, so "which business is this for?" is one
+            // column rather than a join through a listing that may be absent.
+            'partner_id' => $site->partner_id,
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
-            // A visit is a date and a time with no departure. The time used to
+            'kind' => $type->inquiryKind(),
+            'check_in' => $validated['check_in'] ?? null,
+            'check_out' => $validated['check_out'] ?? null,
+            // A table is a date and a time with no departure. The time used to
             // be folded into the free-text travel_dates here to avoid a
             // migration; namibway.com's own restaurant form is a second front
-            // door onto the same fact, so it has a column of its own now
-            // (`inquiries.arrival_time`) and the emails render it from there.
-            'kind' => $this->kind($listing, $validated),
-            'check_in' => $validated['check_in'],
-            'check_out' => $validated['check_out'] ?? null,
+            // door onto the same fact, so it has a column of its own now.
             'arrival_time' => $validated['time'] ?? null,
             'travel_dates' => $this->when($validated),
             // Both columns are NOT NULL with a default; passing null explicitly
             // overrides the default and fails, so the fallback lives here.
             'adults' => $validated['adults'] ?? 2,
             'children' => $validated['children'] ?? 0,
-            'message' => $validated['message'] ?? null,
+            // The delivery address rides in the message rather than in a column
+            // of its own: it is one line of prose the business reads, not a
+            // field anything queries or ships against yet.
+            'message' => $this->message($validated),
         ]);
+
+        $order?->attachTo($inquiry, $type);
 
         // The visitor's own receipt, at once. The business has not answered yet,
         // so this is deliberately not a confirmation — but somebody who filled
@@ -149,39 +170,114 @@ class SiteEnquiryController
     }
 
     /**
-     * What shape of request this is.
+     * Which form this site shows.
      *
-     * The block already draws itself two ways — arrival and departure for a
-     * stay, date and time for a visit (`App\Sites\Blocks\EnquiryBlock`) — and
-     * this is the same distinction reaching the row it writes. A restaurant's
-     * visit is a table booking; an activity's is still a booking request, which
-     * is what it was before this column existed.
-     *
-     * A site's own page never takes an order: it has no menu of ours to order
-     * from, and the enquiry block is one form, not a basket.
-     *
-     * @param  array<string, mixed>  $validated
+     * Read from the block, not from the POST. The hidden field in the form only
+     * records what the visitor was looking at; a page left open while the owner
+     * changed the type, or a hand-rolled request naming something else, both
+     * get the type the site actually offers.
      */
-    private function kind(Listing $listing, array $validated): InquiryKind
+    private function formType(Site $site, Request $request): EnquiryFormType
     {
-        return $listing->type === ListingType::Restaurant && filled($validated['time'] ?? null)
-            ? InquiryKind::TableReservation
-            : InquiryKind::Booking;
+        $block = $site->pages()
+            ->with('blocks')
+            ->get()
+            ->flatMap(fn ($page) => $page->blocks)
+            ->first(fn (SiteBlock $block): bool => $block->type === 'enquiry');
+
+        return $block === null
+            ? EnquiryFormType::Contact
+            : EnquiryBlock::formType($block->data);
+    }
+
+    /**
+     * What each form requires, and what it refuses.
+     *
+     * Same discipline as ListingController on namibway.com: the fields follow
+     * the shape of the request, so an order never carries a date nobody asked
+     * for and a contact message is never rejected for missing one.
+     *
+     * @return array<string, array<int, mixed>>
+     */
+    private function rules(EnquiryFormType $type): array
+    {
+        $contact = [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'message' => ['nullable', 'string', 'max:2000'],
+        ];
+
+        return match ($type) {
+            EnquiryFormType::Contact => $contact,
+
+            EnquiryFormType::StayRequest => [
+                ...$contact,
+                'check_in' => ['required', 'date', 'after_or_equal:today'],
+                'check_out' => ['required', 'date', 'after:check_in'],
+                'adults' => ['nullable', 'integer', 'min:1', 'max:20'],
+                'children' => ['nullable', 'integer', 'min:0', 'max:20'],
+            ],
+
+            EnquiryFormType::TableReservation => [
+                ...$contact,
+                'check_in' => ['required', 'date', 'after_or_equal:today'],
+                'time' => ['required', 'date_format:H:i'],
+                'adults' => ['required', 'integer', 'min:1', 'max:20'],
+                'children' => ['nullable', 'integer', 'min:0', 'max:20'],
+            ],
+
+            EnquiryFormType::RestaurantOrder => [
+                ...$contact,
+                'items' => ['required', 'array', 'min:1', 'max:60'],
+                'items.*' => ['integer', 'min:0', 'max:99'],
+            ],
+
+            EnquiryFormType::ProductOrder => [
+                ...$contact,
+                'items' => ['required', 'array', 'min:1', 'max:60'],
+                'items.*' => ['integer', 'min:0', 'max:99'],
+                'address' => ['required', 'string', 'max:500'],
+            ],
+        };
     }
 
     /**
      * The human-readable summary of when, for the partner screens that show
-     * this column. The time is no longer appended: it has its own column, and
-     * two copies of one fact is one too many.
+     * this column. Empty for anything with no dates at all.
      *
      * @param  array<string, mixed>  $validated
      */
-    private function when(array $validated): string
+    private function when(array $validated): ?string
     {
-        $date = (string) $validated['check_in'];
+        $date = $validated['check_in'] ?? null;
+
+        if (blank($date)) {
+            return null;
+        }
 
         return filled($validated['check_out'] ?? null)
             ? $date.' – '.$validated['check_out']
-            : $date;
+            : (string) $date;
+    }
+
+    /**
+     * The visitor's message, with the delivery address in front of it where the
+     * form collected one.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function message(array $validated): ?string
+    {
+        $message = $validated['message'] ?? null;
+        $address = $validated['address'] ?? null;
+
+        if (blank($address)) {
+            return $message;
+        }
+
+        return blank($message)
+            ? "Delivery address:\n".$address
+            : "Delivery address:\n".$address."\n\n".$message;
     }
 }

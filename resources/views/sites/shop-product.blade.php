@@ -83,8 +83,8 @@
 
                         <h1 class="product-detail__title">{{ $product->title }}</h1>
 
-                        @if (filled($product->price))
-                            <p class="product-detail__price">{{ $product->price }}</p>
+                        @if (filled($product->priceLabel()))
+                            <p class="product-detail__price">{{ $product->priceLabel() }}</p>
                         @endif
 
                         @if (filled($product->description))
@@ -147,8 +147,8 @@
                                             <span class="product-card__category">{{ $rel->category }}</span>
                                         @endif
                                         <h3 class="product-card__title">{{ $rel->title }}</h3>
-                                        @if (filled($rel->price))
-                                            <p class="product-card__price">{{ $rel->price }}</p>
+                                        @if (filled($rel->priceLabel()))
+                                            <p class="product-card__price">{{ $rel->priceLabel() }}</p>
                                         @endif
                                     </div>
                                 </a>

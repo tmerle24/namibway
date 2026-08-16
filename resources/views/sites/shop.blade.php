@@ -88,8 +88,8 @@
                                         <span class="product-card__category">{{ $product->category }}</span>
                                     @endif
                                     <h2 class="product-card__title">{{ $product->title }}</h2>
-                                    @if (filled($product->price))
-                                        <p class="product-card__price">{{ $product->price }}</p>
+                                    @if (filled($product->priceLabel()))
+                                        <p class="product-card__price">{{ $product->priceLabel() }}</p>
                                     @endif
                                 </div>
                             </a>

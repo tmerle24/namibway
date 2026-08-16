@@ -45,7 +45,9 @@ class ProcessInquiry implements ShouldQueue
             return;
         }
 
-        $propertyCode = $inquiry->listing->connector_property_code ?? '';
+        // The guard above reached the partner through the listing, so there is
+        // one by the time we get here.
+        $propertyCode = (string) ($inquiry->listing->connector_property_code ?? '');
         $inquiry->update(['status' => InquiryStatus::Processing]);
 
         $availResponse = $connector->checkAvailability(new AvailabilityRequest(
