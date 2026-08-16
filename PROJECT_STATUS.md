@@ -1541,6 +1541,14 @@ the form type was **stored once and never asked again**, and the form had **two 
 No migration: the correction happens at render, so it applies to every site already
 generated without a write, and it keeps applying when a business changes its mind again.
 
+**Followed the same day: the editor says why.** Degrading quietly is right in front of a
+visitor and useless to the owner — somebody picked "Restaurant order", pressed Save, and got
+a plain contact form with no explanation on any screen. `EnquiryBlock::unavailableReason()`
+answers it where the choice is made, naming the thing that is missing: the menu is empty,
+the switch is off on the listing, the shop has no priced products. A select that accepts a
+choice it will not honour has to say so. The heading field says its own rule too — one of
+the standard headings follows the form type, anything typed stays exactly as typed.
+
 ### Next up, in the order it was asked for
 
 - **Collecting the money.** A provider that onboards a Namibian entity and settles in NAD,

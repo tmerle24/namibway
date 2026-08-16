@@ -140,6 +140,50 @@ class EnquiryBlock extends BlockDefinition
     }
 
     /**
+     * Why this site cannot show the form that was picked, in the words of the
+     * person who picked it — or null when it can.
+     *
+     * `formTypeFor()` degrades quietly, which is right on a public page and
+     * wrong in the editor: somebody chose "Restaurant order", pressed Save, and
+     * got a plain contact form with no explanation anywhere. A select that
+     * accepts a choice it will not honour has to say so where the choice is
+     * made, and say what is missing.
+     */
+    public static function unavailableReason(Site $site, EnquiryFormType $type): ?string
+    {
+        $listing = $site->sourceListing;
+        $meanwhile = ' Until then the page shows a plain contact form.';
+
+        if ($type === EnquiryFormType::ProductOrder) {
+            return $site->shopProducts()->orderable()->exists()
+                ? null
+                : 'No products with a price yet — a product carrying only "Call for price" is shown but cannot be ordered. Add them under Products, or give the existing ones a price.';
+        }
+
+        if (! in_array($type, [EnquiryFormType::TableReservation, EnquiryFormType::RestaurantOrder], true)) {
+            return null;
+        }
+
+        if ($listing === null || $listing->type !== ListingType::Restaurant) {
+            return 'This site has no restaurant listing behind it, so there is no menu and no table to offer.'.$meanwhile;
+        }
+
+        if ($type === EnquiryFormType::TableReservation) {
+            return $listing->accepts_table_reservations
+                ? null
+                : 'Table reservations are switched off on the listing — switch "Takes table reservations online" on there first.'.$meanwhile;
+        }
+
+        if (! $listing->accepts_orders) {
+            return 'Online orders are switched off on the listing — switch "Takes orders online" on there first.'.$meanwhile;
+        }
+
+        return $listing->menuItems()->available()->exists()
+            ? null
+            : 'This restaurant has no menu items yet, and a switch over an empty menu is a promise the page cannot keep. Enter the dishes under Menu on the listing.'.$meanwhile;
+    }
+
+    /**
      * The heading above the form, and the same string in the menu.
      *
      * An owner who wrote their own keeps it. A heading that is only one of the

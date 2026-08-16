@@ -6,9 +6,11 @@ use App\Filament\Concerns\HasFormActionsInHeader;
 use App\Filament\Resources\PartnerResource;
 use App\Filament\Support\ImportInstagramPhotosAction;
 use App\Filament\Support\ManageShopProductsAction;
+use App\Models\Partner;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Resources\Pages\EditRecord\Concerns\Translatable;
+use Illuminate\Contracts\Support\Htmlable;
 
 class EditPartner extends EditRecord
 {
@@ -17,9 +19,12 @@ class EditPartner extends EditRecord
 
     protected static string $resource = PartnerResource::class;
 
-    public function getTitle(): string
+    public function getTitle(): string|Htmlable
     {
-        return $this->record->name;
+        /** @var Partner $record */
+        $record = $this->getRecord();
+
+        return $record->name;
     }
 
     protected function getHeaderActions(): array
