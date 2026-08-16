@@ -11,10 +11,15 @@ use App\Models\Partner;
 use App\Models\ShopProduct;
 use App\Models\Site;
 use App\Models\SiteImage;
+use App\Services\ShopProductDescriber;
 use Filament\Actions\Action as PageAction;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action as FormAction;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 
 /**
  * Manage shop products for a listing's website.
@@ -113,6 +118,180 @@ class ManageShopProductsAction
                                 ->title('Importing from Instagram')
                                 ->body('Running in the background — the bell will say how it went. '
                                     .'Reopen this window when it does to see the new products.')
+                                ->success()
+                                ->send();
+                        }),
+
+                    FormAction::make('import_photos')
+                        ->label('Upload Photos')
+                        ->icon('heroicon-o-arrow-up-tray')
+                        ->color('gray')
+                        ->modalHeading('Upload product photos')
+                        ->modalDescription(
+                            'Select one or more photos — each becomes a draft product. '.
+                            'Use the AI buttons to generate titles and descriptions from the images.'
+                        )
+                        ->modalSubmitActionLabel('Create products')
+                        ->form(fn (Listing|Partner|null $record): array => [
+                            Forms\Components\FileUpload::make('photos')
+                                ->label('Photos')
+                                ->multiple()
+                                ->image()
+                                ->disk('r2')
+                                ->directory(function () use ($record): string {
+                                    return SiteResolver::for($record)?->mediaPrefix() ?? 'sites';
+                                })
+                                ->fetchFileInformation(false)
+                                ->live()
+                                ->afterStateUpdated(function (?array $state, Get $get, Set $set): void {
+                                    $keys = array_values(array_filter($state ?? []));
+                                    $current = $get('upload_items') ?? [];
+                                    $existingKeys = array_column($current, 'image_key');
+
+                                    $items = $current;
+
+                                    foreach ($keys as $key) {
+                                        if (! in_array($key, $existingKeys, true)) {
+                                            $items[] = [
+                                                'image_key' => $key,
+                                                'title' => '',
+                                                'description' => '',
+                                                'price' => '',
+                                            ];
+                                        }
+                                    }
+
+                                    $set('upload_items', $items);
+                                }),
+
+                            Forms\Components\Actions::make([
+                                FormAction::make('ai_all')
+                                    ->label('AI: Fill all titles and descriptions')
+                                    ->icon('heroicon-o-sparkles')
+                                    ->color('primary')
+                                    ->hidden(fn (Get $get): bool => empty($get('upload_items')))
+                                    ->action(function (Get $get, Set $set): void {
+                                        $items = $get('upload_items') ?? [];
+
+                                        if ($items === []) {
+                                            return;
+                                        }
+
+                                        $urls = array_map(
+                                            fn (array $item): string => Storage::disk('r2')->url($item['image_key'] ?? ''),
+                                            $items
+                                        );
+
+                                        $results = app(ShopProductDescriber::class)->describeMany(array_values($urls));
+
+                                        $newItems = [];
+
+                                        foreach (array_values($items) as $i => $item) {
+                                            $newItems[] = array_merge($item, [
+                                                'title' => $results[$i]['title'] ?? ($item['title'] ?: ''),
+                                                'description' => $results[$i]['description'] ?? ($item['description'] ?: ''),
+                                            ]);
+                                        }
+
+                                        $set('upload_items', $newItems);
+                                    }),
+                            ]),
+
+                            Forms\Components\Repeater::make('upload_items')
+                                ->label('')
+                                ->addable(false)
+                                ->reorderableWithDragAndDrop(false)
+                                ->collapsible(false)
+                                ->deletable(true)
+                                ->columns(4)
+                                ->hidden(fn (Get $get): bool => empty($get('upload_items')))
+                                ->schema([
+                                    Forms\Components\Hidden::make('image_key'),
+
+                                    Forms\Components\Placeholder::make('_preview')
+                                        ->label('')
+                                        ->content(fn (Get $get): HtmlString => new HtmlString(
+                                            '<div class="aspect-square w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">'
+                                            .'<img src="'.e(Storage::disk('r2')->url($get('image_key') ?? '')).'" '
+                                            .'class="w-full h-full object-cover" loading="lazy" />'
+                                            .'</div>'
+                                        ))
+                                        ->columnSpan(1),
+
+                                    Forms\Components\Group::make([
+                                        Forms\Components\TextInput::make('title')
+                                            ->label('Title')
+                                            ->required()
+                                            ->placeholder('Product name'),
+
+                                        Forms\Components\Textarea::make('description')
+                                            ->label('Description')
+                                            ->rows(2)
+                                            ->placeholder('Short product description'),
+
+                                        Forms\Components\Group::make([
+                                            Forms\Components\TextInput::make('price')
+                                                ->label('Price')
+                                                ->placeholder('N$ 350'),
+
+                                            Forms\Components\Actions::make([
+                                                FormAction::make('ai_item')
+                                                    ->label('AI')
+                                                    ->icon('heroicon-o-sparkles')
+                                                    ->tooltip('Generate title and description from this image')
+                                                    ->action(function (Get $get, Set $set): void {
+                                                        $url = Storage::disk('r2')->url($get('image_key') ?? '');
+                                                        $result = app(ShopProductDescriber::class)->describe($url);
+                                                        $set('title', $result['title']);
+                                                        $set('description', $result['description']);
+                                                    }),
+                                            ])->verticallyAlignEnd(),
+                                        ])->columns(2),
+                                    ])->columnSpan(3),
+                                ]),
+                        ])
+                        ->action(function (Listing|Partner|null $record, array $data): void {
+                            $site = $record === null ? null : SiteResolver::for($record);
+
+                            if ($site === null) {
+                                return;
+                            }
+
+                            $maxSort = $site->shopProducts()->max('sort') ?? -1;
+                            $created = 0;
+
+                            foreach ($data['upload_items'] ?? [] as $item) {
+                                $imageKey = is_string($item['image_key'] ?? null) ? $item['image_key'] : null;
+                                $title = trim((string) ($item['title'] ?? ''));
+
+                                if ($imageKey === null || $title === '') {
+                                    continue;
+                                }
+
+                                $imageId = SiteImage::create([
+                                    'site_id' => $site->id,
+                                    'key' => $imageKey,
+                                    'content_source' => ContentSource::Partner,
+                                    'prospect_only' => false,
+                                    'sort' => 0,
+                                ])->id;
+
+                                ShopProduct::create([
+                                    'site_id' => $site->id,
+                                    'title' => mb_substr($title, 0, 255),
+                                    'description' => filled($item['description'] ?? null) ? trim((string) $item['description']) : null,
+                                    'price' => filled($item['price'] ?? null) ? mb_substr(trim((string) $item['price']), 0, 100) : null,
+                                    'status' => ShopProductStatus::Draft,
+                                    'image_ids' => [$imageId],
+                                    'sort' => ++$maxSort,
+                                ]);
+
+                                $created++;
+                            }
+
+                            Notification::make()
+                                ->title($created.' '.($created === 1 ? 'product' : 'products').' created')
+                                ->body('Set to Draft — reopen the Products window to review and publish.')
                                 ->success()
                                 ->send();
                         }),
