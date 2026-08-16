@@ -13,6 +13,7 @@ use App\Filament\Resources\ListingResource\RelationManagers as AdminRelationMana
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\CreateWebsiteAction;
 use App\Filament\Support\PipelineImageResolver;
+use App\Filament\Support\RestaurantChannelSchema;
 use App\Http\Controllers\Controller;
 use App\Models\Amenity;
 use App\Models\Listing;
@@ -227,6 +228,9 @@ class ListingResource extends Resource
                     ->schema([
                         Forms\Components\Toggle::make('accepts_inquiries')
                             ->label('Accept booking inquiries'),
+                        // The owner's own decision, and the panel they make it
+                        // in. Same two fields the team sees in /admin.
+                        ...RestaurantChannelSchema::schema(),
                         Forms\Components\Placeholder::make('content_synced_at')
                             ->label('Content last synced from Wetu')
                             ->content(fn (Listing $record): string => $record->content_synced_at

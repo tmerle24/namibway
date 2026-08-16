@@ -26,12 +26,14 @@ class RestaurantRequestTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function restaurant(): Listing
+    /** @param  array<string, mixed>  $attributes */
+    private function restaurant(array $attributes = []): Listing
     {
         return Listing::factory()->create([
             'type' => ListingType::Restaurant,
             'is_published' => true,
             'accepts_inquiries' => true,
+            ...$attributes,
         ]);
     }
 
@@ -237,6 +239,138 @@ class RestaurantRequestTest extends TestCase
         $this->assertSame(InquiryKind::Booking, $inquiry->kind);
         $this->assertSame(0, $inquiry->items()->count());
         $this->assertSame($checkIn, $inquiry->check_in?->toDateString());
+    }
+
+    public function test_a_restaurant_that_takes_no_orders_still_shows_its_menu(): void
+    {
+        Queue::fake();
+
+        $restaurant = $this->restaurant(['accepts_orders' => false]);
+        MenuItem::factory()->for($restaurant)->create(['name' => 'Oryx fillet']);
+
+        // The whole point of the switch: the card is published, and reading it
+        // is not the same as being able to order from it.
+        $this->get("/listings/{$restaurant->slug}")
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('can_order', false)
+                ->where('can_reserve_table', true)
+                ->has('menu', 1)
+                ->where('menu.0.items.0.name', 'Oryx fillet')
+            );
+    }
+
+    public function test_an_order_is_refused_when_the_restaurant_does_not_take_orders(): void
+    {
+        $restaurant = $this->restaurant(['accepts_orders' => false]);
+        $item = MenuItem::factory()->for($restaurant)->create();
+
+        // Switched off is a rule, not a hidden tab: the request falls back to
+        // the one channel that is open and is then refused on its own terms.
+        $this->actingAs(User::factory()->create())
+            ->post("/listings/{$restaurant->slug}/inquiries", [
+                ...$this->contact(),
+                'kind' => 'order',
+                'items' => [['menu_item_id' => $item->id, 'quantity' => 1]],
+            ])
+            ->assertSessionHasErrors(['check_in', 'arrival_time']);
+
+        $this->assertSame(0, Inquiry::count());
+    }
+
+    public function test_a_table_is_refused_when_the_restaurant_takes_no_reservations(): void
+    {
+        $restaurant = $this->restaurant(['accepts_table_reservations' => false]);
+        $item = MenuItem::factory()->for($restaurant)->create(['price' => 120.00]);
+
+        $this->actingAs(User::factory()->create())
+            ->post("/listings/{$restaurant->slug}/inquiries", [
+                ...$this->contact(),
+                'kind' => 'table_reservation',
+                'check_in' => now()->addWeek()->toDateString(),
+                'arrival_time' => '19:00',
+                'adults' => 2,
+            ])
+            ->assertSessionHasErrors('items');
+
+        $this->assertSame(0, Inquiry::count());
+
+        // Ordering, the one channel it does take, still works.
+        $this->actingAs(User::factory()->create())
+            ->post("/listings/{$restaurant->slug}/inquiries", [
+                'name' => 'Traveler', 'email' => 'other@example.com',
+                'kind' => 'order',
+                'items' => [['menu_item_id' => $item->id, 'quantity' => 1]],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(InquiryKind::Order, Inquiry::sole()->kind);
+    }
+
+    public function test_a_restaurant_with_both_channels_off_is_asked_for_nothing(): void
+    {
+        Queue::fake();
+
+        $restaurant = $this->restaurant([
+            'accepts_table_reservations' => false,
+            'accepts_orders' => false,
+        ]);
+        MenuItem::factory()->for($restaurant)->create();
+
+        $this->get("/listings/{$restaurant->slug}")
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('can_reserve_table', false)
+                ->where('can_order', false)
+                // The page says so through the same flag it has always used for
+                // "this listing is not accepting inquiries".
+                ->where('listing.accepts_inquiries', false)
+            );
+
+        // And the endpoint is closed, not merely unlinked.
+        $this->actingAs(User::factory()->create())
+            ->post("/listings/{$restaurant->slug}/inquiries", $this->contact())
+            ->assertNotFound();
+
+        $this->assertSame(0, Inquiry::count());
+    }
+
+    public function test_switching_orders_on_over_an_empty_menu_promises_nothing(): void
+    {
+        Queue::fake();
+
+        // A toggle switched on with nothing to order is a promise the page
+        // cannot keep, so it counts as off until a dish exists.
+        $restaurant = $this->restaurant(['accepts_orders' => true]);
+
+        $this->get("/listings/{$restaurant->slug}")
+            ->assertInertia(fn (Assert $page) => $page->where('can_order', false));
+    }
+
+    public function test_the_toggles_do_not_reach_a_listing_that_is_not_a_restaurant(): void
+    {
+        Queue::fake();
+
+        // The columns exist on every row and mean nothing outside a restaurant;
+        // a lodge with both switched off is still asked for a stay.
+        $lodge = Listing::factory()->create([
+            'type' => ListingType::Accommodation,
+            'is_published' => true,
+            'accepts_inquiries' => true,
+            'accepts_table_reservations' => false,
+            'accepts_orders' => false,
+        ]);
+
+        $this->get("/listings/{$lodge->slug}")
+            ->assertInertia(fn (Assert $page) => $page->where('listing.accepts_inquiries', true));
+
+        $this->actingAs(User::factory()->create())
+            ->post("/listings/{$lodge->slug}/inquiries", [
+                ...$this->contact(),
+                'check_in' => now()->addWeek()->toDateString(),
+                'check_out' => now()->addWeek()->addDays(2)->toDateString(),
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(InquiryKind::Booking, Inquiry::sole()->kind);
     }
 
     public function test_dinner_does_not_use_up_the_one_active_booking_request(): void

@@ -18,6 +18,7 @@ use App\Filament\Support\CreateWebsiteAction;
 use App\Filament\Support\MenuItemSchema;
 use App\Filament\Support\MessagesColumn;
 use App\Filament\Support\PipelineImageResolver;
+use App\Filament\Support\RestaurantChannelSchema;
 use App\Filament\Support\WebsiteTab;
 use App\Filament\Support\WorkbookDownload;
 use App\Http\Controllers\Controller;
@@ -453,6 +454,11 @@ class ListingResource extends Resource
                                     ->helperText('Shows the contact/inquiry form on the detail page')
                                     ->default(true)
                                     ->required(),
+                                // Restaurants only, because they are the only
+                                // listings asked for two different things. Both
+                                // sit under `accepts_inquiries`: switched off
+                                // above, these do nothing.
+                                ...RestaurantChannelSchema::schema(),
                             ])
                             ->columns(2),
                     ]),
