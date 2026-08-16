@@ -5,7 +5,6 @@ namespace App\Filament\Resources\PartnerResource\Pages;
 use App\Filament\Concerns\HasFormActionsInHeader;
 use App\Filament\Resources\PartnerResource;
 use App\Filament\Support\ImportInstagramPhotosAction;
-use App\Filament\Support\ManageShopProductsAction;
 use App\Models\Partner;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -32,7 +31,6 @@ class EditPartner extends EditRecord
         return $this->withFormActions([
             Actions\LocaleSwitcher::make(),
             ImportInstagramPhotosAction::make(),
-            ManageShopProductsAction::partnerHeader(),
             Actions\DeleteAction::make(),
         ]);
     }

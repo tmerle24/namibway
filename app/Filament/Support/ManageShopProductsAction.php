@@ -26,11 +26,21 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Throwable;
 
 /**
- * Manage shop products for a listing's website.
+ * Manage shop products for a listing's or partner's website.
+ *
+ * **This is the only place products are managed.** They belong to a site, and a
+ * site belongs to a listing or a partner, so they are edited where that link is
+ * — the Website tab — and nowhere else. There was briefly a second surface, a
+ * global Content → Shop Products resource, and it demonstrated exactly why one
+ * is the right number: when `shop_products.price` became a decimal column, the
+ * resource kept offering it as free text with `maxLength(100)`, so the same
+ * product had two editors that disagreed about what a price is. A screen far
+ * from the thing it edits is a screen nobody remembers to change.
  *
  * Follows the same two-variant pattern as EditSiteImagesAction — a FormAction
- * for the admin WebsiteTab and a PageAction for the partner listing header.
- * Both resolve the site via source_listing_id.
+ * for the admin WebsiteTab (mounted on both ListingResource and PartnerResource)
+ * and a PageAction for the partner panel's listing header, which has no tabs.
+ * Both resolve the site through SiteResolver.
  *
  * Import actions (Instagram, Excel/CSV) dispatch background jobs and notify
  * via the database bell; the repeater is for direct manual entry.
@@ -47,12 +57,6 @@ class ManageShopProductsAction
     {
         return self::configure(PageAction::make($name))
             ->visible(fn (Listing $record): bool => SiteResolver::for($record) !== null);
-    }
-
-    public static function partnerHeader(string $name = 'manage_products'): PageAction
-    {
-        return self::configure(PageAction::make($name))
-            ->visible(fn (Partner $record): bool => SiteResolver::for($record) !== null);
     }
 
     /**
