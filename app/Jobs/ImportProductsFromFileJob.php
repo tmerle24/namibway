@@ -85,7 +85,7 @@ class ImportProductsFromFileJob implements ShouldQueue
 
         foreach ($data['rows'] as $row) {
             $cells = $row['cells'];
-            $title = trim($this->cell($cells, $col['title'] ?? null));
+            $title = trim($this->cell($cells, $col['title']));
 
             if ($title === '') {
                 $skipped++;
