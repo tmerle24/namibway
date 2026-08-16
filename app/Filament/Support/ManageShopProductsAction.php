@@ -642,8 +642,10 @@ class ManageShopProductsAction
     {
         try {
             $filename = basename($tempKey);
-            $tempDir = config('livewire.temporary_file_upload.directory', 'livewire-tmp');
-            $tempDisk = config('livewire.temporary_file_upload.disk', 'local');
+            // Livewire sets these config keys to null to mean "use the default",
+            // so the config() fallback never fires — we must coalesce explicitly.
+            $tempDir = config('livewire.temporary_file_upload.directory') ?? 'livewire-tmp';
+            $tempDisk = config('livewire.temporary_file_upload.disk') ?? config('filesystems.default', 'local');
 
             $content = Storage::disk($tempDisk)->get($tempDir.'/'.$filename);
 
