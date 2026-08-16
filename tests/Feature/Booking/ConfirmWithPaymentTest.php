@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Booking;
 
+use App\Enums\InquiryKind;
 use App\Enums\InquiryStatus;
 use App\Enums\ListingType;
 use App\Enums\PaymentPurpose;
@@ -161,6 +162,33 @@ class ConfirmWithPaymentTest extends TestCase
 
         Mail::assertQueued(GuestBookingConfirmed::class, fn (GuestBookingConfirmed $mail): bool => $mail->partnerMessage === 'Bring a warm jacket.'
         );
+    }
+
+    /**
+     * A deposit is asked for against a stay, and an order never becomes one.
+     * The button used to be offered anyway — it confirmed the order and then
+     * told the business the confirmation "could not be put on the calendar" and
+     * that the team had been alerted, over a request that behaved normally.
+     *
+     * Taking money for an order is a real thing this will want. It needs a
+     * payment intent that hangs off a request rather than off a reservation,
+     * which the money side does not have; until it does, not offering the
+     * button is the honest answer.
+     */
+    public function test_an_order_is_never_offered_the_deposit_button(): void
+    {
+        $order = $this->inquiry([
+            'kind' => InquiryKind::Order,
+            'check_in' => null,
+            'check_out' => null,
+            'bookable_unit_code' => null,
+        ]);
+
+        $this->get($this->signedUrl($order))->assertNotFound();
+        $this->post($this->signedUrl($order), ['message' => 'Ready in 20 minutes.'])->assertNotFound();
+
+        $this->assertSame(InquiryStatus::OnRequest, $order->refresh()->status);
+        $this->assertSame(0, PaymentIntent::count());
     }
 
     public function test_an_unsigned_address_is_refused(): void

@@ -8,9 +8,12 @@ use App\Models\SiteBlock;
 use App\Models\SiteImage;
 use App\Models\SitePage;
 use App\Sites\BlockRegistry;
+use App\Sites\Blocks\EnquiryBlock;
+use App\Sites\Blocks\EnquiryFormType;
 use App\Sites\LegalText;
 use App\Sites\Rendering\BookingPanel;
 use App\Sites\Rendering\BookingPanelData;
+use App\Sites\Rendering\EnquiryItems;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
@@ -117,6 +120,15 @@ class SiteController
             ->filter(fn (SiteBlock $block) => $this->shouldRender($block, $site, $booking, $shopProducts))
             ->values();
 
+        // What the one contact form offers, resolved once here rather than
+        // queried from inside a view. The block decides the type; this decides
+        // where the priced rows come from.
+        $enquiryBlock = $stored->first(fn (SiteBlock $block) => $block->type === 'enquiry');
+        $enquiryType = $enquiryBlock === null
+            ? EnquiryFormType::StayRequest
+            : EnquiryBlock::formType($enquiryBlock->data);
+        $enquiryItems = EnquiryItems::for($site, $enquiryType);
+
         $productImageIds = $shopProducts->flatMap(fn (ShopProduct $p) => $p->image_ids ?? [])->all();
         $images = $this->images($site, $blocks->pluck('data')->all(), $productImageIds);
 
@@ -133,6 +145,8 @@ class SiteController
             // well as from the path fallback, and only one of those can use a
             // named route relative to itself.
             'enquiryAction' => route('sites.enquiry', $site->slug),
+            'enquiryType' => $enquiryType,
+            'enquiryItems' => $enquiryItems,
         ]);
 
         if (! $site->isPublished()) {
@@ -321,8 +335,8 @@ class SiteController
         }
 
         $query->when($sort === 'name', fn ($q) => $q->orderBy('title'))
-            ->when($sort === 'price_asc', fn ($q) => $q->orderBy('price'))
-            ->when($sort === 'price_desc', fn ($q) => $q->orderByDesc('price'))
+            ->when($sort === 'price_asc', fn ($q) => $q->orderByRaw('price asc nulls last'))
+            ->when($sort === 'price_desc', fn ($q) => $q->orderByRaw('price desc nulls last'))
             ->when(! in_array($sort, ['name', 'price_asc', 'price_desc']), fn ($q) => $q->orderBy('sort')->orderBy('id'));
 
         $products = $query->get();

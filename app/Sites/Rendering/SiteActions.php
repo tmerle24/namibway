@@ -5,6 +5,7 @@ namespace App\Sites\Rendering;
 use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Sites\ActionButtons;
+use App\Sites\Blocks\EnquiryBlock;
 
 /**
  * The buttons a page offers, resolved once and handed to the three places that
@@ -277,6 +278,29 @@ final class SiteActions
 
     private static function label(SiteBlock $block): string
     {
+        // The contact form says what it is for, and the button follows it: a
+        // site taking orders should not have a menu button reading "Enquire".
+        // The owner's own wording wins, then the type's short default — which
+        // is a different string from the heading above the form on purpose,
+        // because "Request availability" is right there and far too long here.
+        if ($block->type === 'enquiry') {
+            $typed = trim((string) ($block->data['button_label'] ?? ''));
+
+            if ($typed !== '') {
+                return $typed;
+            }
+
+            // Then the band's own heading, where it is short enough to be a
+            // button — a site headed "Ask us" has already chosen its word, and
+            // replacing it with a generic one would be this change taking
+            // something away rather than adding a default.
+            $heading = trim((string) ($block->data['heading'] ?? ''));
+
+            return $heading !== '' && mb_strlen($heading) <= self::MAX_DERIVED_LABEL
+                ? $heading
+                : EnquiryBlock::formType($block->data)->buttonLabel();
+        }
+
         $default = self::LABELS[$block->type] ?? self::LABELS['booking'];
 
         // Only where the heading is about the action. A contact band is

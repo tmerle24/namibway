@@ -21,7 +21,7 @@ class NewInquiryReceived extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "New inquiry: {$this->inquiry->listing->name}",
+            subject: "New inquiry: {$this->inquiry->sellerName()}",
         );
     }
 
@@ -30,7 +30,7 @@ class NewInquiryReceived extends Mailable implements ShouldQueue
         return new Content(
             markdown: 'emails.inquiries.new',
             with: [
-                'listingName' => $this->inquiry->listing->name,
+                'listingName' => $this->inquiry->sellerName(),
             ],
         );
     }

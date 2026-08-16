@@ -13,7 +13,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
- * @property int $listing_id
+ * @property int|null $listing_id
+ * @property int|null $partner_id
  * @property int|null $trip_id
  * @property int|null $user_id
  * @property InquiryKind $kind
@@ -35,6 +36,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $hold_expires_at
  * @property string|null $notes
  * @property-read Collection<int, InquiryItem> $items
+ * @property-read Listing|null $listing
+ * @property-read Partner|null $partner
  */
 class Inquiry extends Model
 {
@@ -42,6 +45,7 @@ class Inquiry extends Model
     // session, never from request input (see Trip's note on the same field).
     protected $fillable = [
         'listing_id',
+        'partner_id',
         'trip_id',
         'user_id',
         'kind',
@@ -98,6 +102,57 @@ class Inquiry extends Model
     public function listing(): BelongsTo
     {
         return $this->belongsTo(Listing::class);
+    }
+
+    /**
+     * The business being asked, where it is named directly rather than through
+     * a listing. Filled on every row, including listing-backed ones.
+     *
+     * @return BelongsTo<Partner, $this>
+     */
+    public function partner(): BelongsTo
+    {
+        return $this->belongsTo(Partner::class);
+    }
+
+    /**
+     * Who this request is for.
+     *
+     * A listing where there is one, the partner otherwise — a shop that never
+     * listed on the travel platform is asked for goods through its own website
+     * and has no listing to hang the request on. The database refuses a row
+     * that names neither, so this only returns null for an unsaved model.
+     */
+    public function seller(): Listing|Partner|null
+    {
+        return $this->listing ?? $this->partner;
+    }
+
+    /**
+     * What to call the business in a subject line, a table cell or a heading.
+     *
+     * One reader instead of `$inquiry->listing->name` in a dozen places, which
+     * is what used to fatal the moment a request had no listing.
+     */
+    public function sellerName(): string
+    {
+        $seller = $this->seller();
+
+        return $seller === null ? 'the business' : $seller->name;
+    }
+
+    /**
+     * Where a request to this business is answered.
+     *
+     * The partner's address first — it is the account that logs in and the one
+     * the confirm and decline links belong to. A listing's own contact address
+     * is the fallback for a property we hold but have never signed.
+     */
+    public function sellerEmail(): ?string
+    {
+        return $this->partner?->email
+            ?: $this->listing?->partner?->email
+            ?: $this->listing?->contact_email;
     }
 
     /**

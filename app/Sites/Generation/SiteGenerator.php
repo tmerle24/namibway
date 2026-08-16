@@ -15,6 +15,7 @@ use App\Models\SiteImage;
 use App\Models\SitePage;
 use App\Sites\BlockRegistry;
 use App\Sites\Blocks\EnquiryBlock;
+use App\Sites\Blocks\EnquiryFormType;
 use App\Sites\HeroLines;
 use App\Sites\LegalText;
 use Illuminate\Support\Facades\DB;
@@ -234,9 +235,14 @@ class SiteGenerator
                 'image_ids' => array_map(fn (SiteImage $image) => $image->id, $gallery),
             ],
             'enquiry' => [
-                'heading' => 'Get in touch',
+                'heading' => EnquiryFormType::Contact->heading(),
                 'intro' => null,
-                'mode' => EnquiryBlock::MODE_VISIT,
+                // A partner-only site has no listing behind it, so there is
+                // nothing to reserve and nothing on a menu. The owner picks a
+                // product order once the shop has priced products.
+                'form_type' => EnquiryFormType::Contact->value,
+                'channel' => EnquiryBlock::CHANNEL_EMAIL,
+                'button_label' => null,
             ],
         ];
     }
@@ -347,6 +353,14 @@ class SiteGenerator
         $hours = $import->openingHours($listing);
         $amenities = $import->amenities($listing);
 
+        // What the one contact form starts out as. A restaurant is asked for a
+        // table rather than a stay — the owner switches it to ordering once a
+        // menu is entered, which is a decision only they can make.
+        $enquiryType = match ($listing->type) {
+            ListingType::Restaurant => EnquiryFormType::TableReservation,
+            default => EnquiryFormType::StayRequest,
+        };
+
         $payloads = [
             'hero' => [
                 'image_id' => $hero?->id,
@@ -371,13 +385,14 @@ class SiteGenerator
                 'image_ids' => array_map(fn (SiteImage $image) => $image->id, $gallery),
             ],
             'enquiry' => [
-                'heading' => 'Request availability',
+                'heading' => $enquiryType->heading(),
                 'intro' => null,
-                // A lodge is asked for an arrival and a departure; an activity
-                // or a restaurant for a date and a time. See EnquiryBlock.
-                'mode' => $listing->type === ListingType::Accommodation
-                    ? EnquiryBlock::MODE_STAY
-                    : EnquiryBlock::MODE_VISIT,
+                // A lodge is asked for dates, a restaurant for a table,
+                // everything else for a stay-shaped request. The owner can
+                // change it — that is why it is a field and not a derivation.
+                'form_type' => $enquiryType->value,
+                'channel' => EnquiryBlock::CHANNEL_EMAIL,
+                'button_label' => null,
             ],
             'opening_hours' => [
                 'heading' => 'Opening hours',

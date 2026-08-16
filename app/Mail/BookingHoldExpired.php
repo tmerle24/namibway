@@ -19,7 +19,7 @@ class BookingHoldExpired extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Booking request expired: {$this->inquiry->listing->name}",
+            subject: "Booking request expired: {$this->inquiry->sellerName()}",
         );
     }
 

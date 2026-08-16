@@ -1458,11 +1458,69 @@ Billing is still a person reading Settings → Website Subscriptions, invoicing 
 and pressing Activate. That is the decision this was built against: the state machine now,
 the collection behind it once a provider for this market exists.
 
+### Built 2026-08-16 — one contact form per site, chosen by the owner
+
+The form on a customer's website used to have a `mode` of `stay` or `visit`, derived from
+the business type at generation and never changeable. That distinguished two of the five
+things these businesses actually ask their visitors for. It is now an
+`App\Sites\Blocks\EnquiryFormType` the owner picks: **contact**, **reservation request**,
+**table reservation**, **restaurant order**, **product order**.
+
+- **Exactly one per site, as a select and not as toggles.** A page offering a table booking
+  *and* a product order *and* a general contact form has not decided what it sells, and
+  every extra choice costs the visitor the one they wanted.
+- **The type is the block's, never the browser's.** The form posts a hidden `form_type`, and
+  the controller ignores it: it reads the block and validates against that. Which fields are
+  required — and which are dropped — follows from the type, so an order can never carry a
+  check-in nobody asked for. Same discipline as `ListingController` on namibway.com.
+- **Email or WhatsApp, never both.** One channel, chosen with the type. The form used to
+  render a submit button and a WhatsApp button side by side, which asks the visitor to pick
+  a medium before they have said anything.
+- **The menu button has its own label.** `SiteActions` derived it from the heading and
+  capped it at 14 characters, which is how "Request availability" became "Enquire" on every
+  site whether or not that was the word. There is a per-type default now
+  (`EnquiryFormType::buttonLabel()`) and a field the owner can override it in.
+- **The date range is one control on the page and two columns underneath.** Till asked for
+  the space-saving single field the listing search has; the confirmation mails and the
+  calendar are built on `check_in` / `check_out`, and free text would lose both.
+
+Three things underneath it that were not cosmetic:
+
+- **An inquiry can hang off a partner instead of a listing.** `inquiries.listing_id` was NOT
+  NULL and the enquiry controller 404'd a site without one — so a shop that never listed on
+  the travel platform, which is the case the product catalogue was written for, could
+  receive nothing at all. There is a nullable `partner_id`, a CHECK constraint that a row
+  names one or the other, and `Inquiry::seller()` / `sellerName()` / `sellerEmail()` as the
+  one reader. A dozen call sites read `$inquiry->listing->name` and fatalled the moment a
+  request had no listing; they read the seller now, mail views included.
+- **`shop_products.price` is a number.** It was free text, so an order could not be totalled
+  and the catalogue sorted "N$ 1 200" before "N$ 350". The old text survives as `price_text`
+  and is shown where there is no number — "Call for price" is a real thing a shop says — but
+  an unpriced product is not orderable, and the form does not offer it a quantity.
+- **The deposit button is gone from anything that is not a stay.** Confirming an order
+  offered "Confirm & ask for deposit", which confirmed it and then told the business the
+  confirmation "could not be put on the calendar" and that the team had been alerted, over a
+  request that behaved perfectly normally. Hidden in the panel, dropped from the mail, and
+  404 on the signed route, because a link already sent stays valid.
+
+**Not built: taking money for an order.** That is a payment intent hanging off a request
+rather than off a reservation, and the money side has no such thing — `payment_intents`,
+`payments`, the folio and the invoice are all keyed to a reservation. It is the same open
+question the subscription raised (see the payment-boundary note in `WEBSITE_BUILDER.md`):
+either the ledger grows a second kind of thing to be paid, or these are invoiced outside it.
+Until that is decided, not offering the button is the honest answer rather than offering one
+that fails.
+
 ### Next up, in the order it was asked for
 
 - **Collecting the money.** A provider that onboards a Namibian entity and settles in NAD,
   plugged in behind the subscription rather than into it. Until then a person invoices and
   presses Activate, which is what the state machine was built to allow.
+- **Paying for an order.** A restaurant order and a product order can be placed and priced;
+  neither can be paid for, because a payment intent is keyed to a reservation and an order
+  never becomes one. Decide whether the ledger takes a second kind of payable thing or these
+  are invoiced outside it, then the "send a payment link" button belongs in the partner
+  panel and in the confirmation mail.
 - **Multilingual sites** — EN, DE, NL, FR, ES. `site_pages.locale` is the foundation and not
   the feature: there is no switcher, no per-locale routing, and the renderer reads
   `default_locale` and nothing else.

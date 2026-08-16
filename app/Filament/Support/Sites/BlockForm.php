@@ -6,6 +6,7 @@ use App\Models\Site;
 use App\Models\SiteImage;
 use App\Sites\BlockRegistry;
 use App\Sites\Blocks\EnquiryBlock;
+use App\Sites\Blocks\EnquiryFormType;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Component;
@@ -15,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Get;
 
 /**
  * The fields behind each block type, for the panel.
@@ -143,15 +145,37 @@ class BlockForm
             ],
 
             'enquiry' => [
-                TextInput::make('heading')->label('Heading')->maxLength(120),
-                Textarea::make('intro')->label('A line above the form')->rows(2)->maxLength(300),
-                Select::make('mode')
-                    ->label('What the form asks for')
+                // One type, not a set of toggles. A page offering a table
+                // booking and a product order and a general contact form has
+                // not decided what it sells.
+                Select::make('form_type')
+                    ->label('What the form is for')
+                    ->options(EnquiryFormType::options())
+                    ->default(EnquiryFormType::StayRequest->value)
+                    ->native(false)
+                    ->live()
+                    ->helperText('An order form needs something to order — a menu on the listing, or products in the shop.'),
+                Select::make('channel')
+                    ->label('How it is answered')
                     ->options([
-                        EnquiryBlock::MODE_STAY => 'A stay — arrival and departure',
-                        EnquiryBlock::MODE_VISIT => 'A visit — a date and a time',
+                        EnquiryBlock::CHANNEL_EMAIL => 'By email — the form is sent to you',
+                        EnquiryBlock::CHANNEL_WHATSAPP => 'By WhatsApp — the form opens a message',
                     ])
-                    ->native(false),
+                    ->default(EnquiryBlock::CHANNEL_EMAIL)
+                    ->native(false)
+                    ->helperText('One or the other. Asking a visitor to choose a medium before they have said anything costs you the message.'),
+                TextInput::make('heading')
+                    ->label('Heading')
+                    ->maxLength(120)
+                    ->placeholder(fn (Get $get): string => EnquiryFormType::tryFrom((string) $get('form_type'))?->heading()
+                        ?? EnquiryFormType::StayRequest->heading()),
+                TextInput::make('button_label')
+                    ->label('Menu button')
+                    ->maxLength(24)
+                    ->helperText('What the button in the menu bar says. Short — it lands in a 96px button on a phone.')
+                    ->placeholder(fn (Get $get): string => EnquiryFormType::tryFrom((string) $get('form_type'))?->buttonLabel()
+                        ?? EnquiryFormType::StayRequest->buttonLabel()),
+                Textarea::make('intro')->label('A line above the form')->rows(2)->maxLength(300),
             ],
 
             'rich_text' => [

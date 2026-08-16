@@ -49,6 +49,8 @@ use Illuminate\Support\Str;
  * @property string|null $contact_phone
  * @property string|null $whatsapp
  * @property array<string, mixed>|null $action_buttons
+ * @property-read Listing|null $sourceListing A partner-only site has none.
+ * @property-read Partner|null $partner
  * @property string|null $brand_name
  * @property string|null $address
  * @property string|null $latitude

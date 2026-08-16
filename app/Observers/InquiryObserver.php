@@ -62,10 +62,11 @@ class InquiryObserver
         // rather than off a connector, so there was never a reason to withhold
         // them — see App\Services\Booking\InquiryDecisionService.
         //
-        // The listing's own address is the fallback, because a business whose
+        // Partner first, then the listing's own address — a business whose
         // website is asking for enquiries has to receive them even where we
-        // never recorded a partner contact.
-        $recipient = $inquiry->listing?->partner?->email ?: $inquiry->listing?->contact_email;
+        // never recorded a partner contact, and a shop that never listed with
+        // us has no listing to fall back to at all. See Inquiry::sellerEmail().
+        $recipient = $inquiry->sellerEmail();
 
         if ($recipient) {
             Mail::to($recipient)->send(new PartnerConfirmationRequest($inquiry));

@@ -32,7 +32,7 @@ class InquiryDecisions
                 ->label('Confirm & ask for deposit')
                 ->icon('heroicon-m-banknotes')
                 ->color('success')
-                ->visible(fn (Inquiry $record): bool => self::isOpen($record))
+                ->visible(fn (Inquiry $record): bool => self::canAskForDeposit($record))
                 ->modalHeading('Confirm and ask for the deposit')
                 ->modalDescription(self::description())
                 ->modalSubmitActionLabel('Confirm and send')
@@ -72,7 +72,7 @@ class InquiryDecisions
                 ->label('Confirm & ask for deposit')
                 ->icon('heroicon-m-banknotes')
                 ->color('success')
-                ->visible(fn (?Inquiry $record): bool => $record !== null && self::isOpen($record))
+                ->visible(fn (?Inquiry $record): bool => $record !== null && self::canAskForDeposit($record))
                 ->modalHeading('Confirm and ask for the deposit')
                 ->modalDescription(self::description())
                 ->modalSubmitActionLabel('Confirm and send')
@@ -102,6 +102,25 @@ class InquiryDecisions
     private static function isOpen(Inquiry $inquiry): bool
     {
         return $inquiry->status === InquiryStatus::OnRequest;
+    }
+
+    /**
+     * Whether "confirm and ask for the deposit" is a thing this request can do.
+     *
+     * A deposit is asked for against a stay, and only a stay-shaped request
+     * becomes one. Offering the button on a table booking or an order gave the
+     * property a persistent warning saying the confirmation "could not be put
+     * on the calendar" and that the team had been alerted — a frightening
+     * sentence about a request that behaved perfectly normally.
+     *
+     * Taking money for an order is a real thing this will want; it is a payment
+     * intent that hangs off a request rather than off a reservation, which the
+     * money side does not have yet. Until it does, the honest answer is not to
+     * offer the button.
+     */
+    private static function canAskForDeposit(Inquiry $inquiry): bool
+    {
+        return self::isOpen($inquiry) && $inquiry->kind->becomesAStay();
     }
 
     private static function description(): string

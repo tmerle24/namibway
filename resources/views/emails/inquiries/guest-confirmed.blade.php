@@ -13,12 +13,12 @@
 
 Hi {{ $inquiry->name }},
 
-Great news — your {{ $noun }} at **{{ $inquiry->listing->name }}** has been confirmed.
+Great news — your {{ $noun }} at **{{ $inquiry->sellerName() }}** has been confirmed.
 
 <x-mail::table>
 | | |
 |---|---|
-| **Property** | {{ $inquiry->listing->name }} |
+| **Property** | {{ $inquiry->sellerName() }} |
 @if($inquiry->connector_reference)
 | **Booking reference** | {{ $inquiry->connector_reference }} |
 @endif
@@ -30,13 +30,13 @@ Great news — your {{ $noun }} at **{{ $inquiry->listing->name }}** has been co
 <x-inquiry-details :inquiry="$inquiry" />
 
 @if($partnerMessage)
-**A message from {{ $inquiry->listing->name }}:**
+**A message from {{ $inquiry->sellerName() }}:**
 
 {{ $partnerMessage }}
 @endif
 
 @if($paymentUrl)
-To secure it, {{ $inquiry->listing->name }} asks for a deposit. The button below opens a
+To secure it, {{ $inquiry->sellerName() }} asks for a deposit. The button below opens a
 secure payment page — the amount due is shown there before anything is charged.
 
 <x-mail::button :url="$paymentUrl" color="success">

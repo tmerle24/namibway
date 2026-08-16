@@ -25,7 +25,9 @@ use Throwable;
  *
  * Recognised column headers (case-insensitive):
  *   title       — required; rows without one are skipped
- *   price       — free string ("N$ 350", "Call for price")
+ *   price       — a number where the cell holds one ("350", "N$ 1 200"); anything
+ *                 with a qualifier ("from N$ 850", "Call for price") is kept as
+ *                 `price_text` instead and is displayed but not orderable
  *   category    — free string
  *   description — longer text
  *   image_url   — downloaded and stored as a SiteImage; failures are skipped
@@ -99,7 +101,7 @@ class ImportProductsFromFileJob implements ShouldQueue
             ShopProduct::create([
                 'site_id' => $this->site->id,
                 'title' => mb_substr($title, 0, 255),
-                'price' => mb_substr($this->cell($cells, $col['price'] ?? null), 0, 100) ?: null,
+                ...$this->price($this->cell($cells, $col['price'] ?? null)),
                 'category' => mb_substr($this->cell($cells, $col['category'] ?? null), 0, 100) ?: null,
                 'description' => $this->cell($cells, $col['description'] ?? null) ?: null,
                 'status' => ShopProductStatus::Draft,
@@ -261,5 +263,31 @@ class ImportProductsFromFileJob implements ShouldQueue
     private function user(): ?User
     {
         return $this->userId === null ? null : User::find($this->userId);
+    }
+
+    /**
+     * A spreadsheet cell into the two price columns.
+     *
+     * A bare amount, optionally behind a currency mark, becomes the number an
+     * order is totalled from. Anything else is the owner saying something a
+     * decimal cannot carry — a range, a "from", a "call us" — and is kept
+     * verbatim as text, which shows in the shop and is not orderable.
+     *
+     * @return array{price: float|null, price_text: string|null}
+     */
+    private function price(string $cell): array
+    {
+        $text = trim($cell);
+
+        if ($text === '') {
+            return ['price' => null, 'price_text' => null];
+        }
+
+        $bare = preg_replace('/^(?:N\\$|R|\\$|€|£|ZAR|NAD|EUR|USD|GBP)\\s*/iu', '', $text) ?? $text;
+        $bare = str_replace([' ', "\u{00A0}", ','], ['', '', '.'], trim($bare));
+
+        return preg_match('/^\\d+(?:\\.\\d{1,2})?$/', $bare) === 1
+            ? ['price' => (float) $bare, 'price_text' => null]
+            : ['price' => null, 'price_text' => mb_substr($text, 0, 100)];
     }
 }

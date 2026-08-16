@@ -41,6 +41,8 @@ class PartnerController extends Controller
      */
     public function showConfirmWithPayment(Request $request, Inquiry $inquiry): Response
     {
+        $this->abortUnlessDepositable($inquiry);
+
         return Inertia::render('partner/ConfirmWithPayment', [
             'action' => $request->fullUrl(),
             'handled' => $inquiry->status !== InquiryStatus::OnRequest,
@@ -50,6 +52,8 @@ class PartnerController extends Controller
 
     public function confirmWithPayment(Request $request, Inquiry $inquiry): Response
     {
+        $this->abortUnlessDepositable($inquiry);
+
         $validated = $request->validate([
             'message' => ['nullable', 'string', 'max:2000'],
         ]);
@@ -72,6 +76,17 @@ class PartnerController extends Controller
                 : ($outcome->problem ?? 'Booking confirmed. The guest has been notified.'),
             'inquiry' => $this->summarise($inquiry->refresh()),
         ]);
+    }
+
+    /**
+     * A deposit belongs to a stay, so only a stay-shaped request can be asked
+     * for one. The mail no longer offers the button on a table booking or an
+     * order — this is here because a link that was already sent stays valid,
+     * and because a signed URL is a public address whatever the mail says.
+     */
+    private function abortUnlessDepositable(Inquiry $inquiry): void
+    {
+        abort_unless($inquiry->kind->becomesAStay(), 404);
     }
 
     public function cancel(Inquiry $inquiry): Response|RedirectResponse
@@ -102,7 +117,7 @@ class PartnerController extends Controller
         return [
             'id' => $inquiry->id,
             'guest_name' => $inquiry->name,
-            'listing_name' => $inquiry->listing->name,
+            'listing_name' => $inquiry->sellerName(),
             'check_in' => $inquiry->check_in?->toDateString(),
             'check_out' => $inquiry->check_out?->toDateString(),
             'connector_reference' => $inquiry->connector_reference,

@@ -188,10 +188,22 @@ class ManageShopProductsAction
                             ->columnSpanFull(),
 
                         Forms\Components\Grid::make(2)->schema([
+                            // A number, because an order is added up from it.
+                            // Leave it empty and the product still shows in the
+                            // shop — it just cannot be ordered with a quantity,
+                            // which is what `price_text` is for.
                             Forms\Components\TextInput::make('price')
                                 ->label('Price')
+                                ->helperText('A number. Orders are totalled from this.')
+                                ->numeric()
+                                ->minValue(0)
+                                ->placeholder('350'),
+
+                            Forms\Components\TextInput::make('price_text')
+                                ->label('Price as text')
+                                ->helperText('Used only when there is no number — "from N$ 850", "Call for price". Not orderable.')
                                 ->maxLength(100)
-                                ->placeholder('N$ 350'),
+                                ->placeholder('Call for price'),
 
                             Forms\Components\TextInput::make('category')
                                 ->label('Category')
@@ -258,6 +270,7 @@ class ManageShopProductsAction
                     'image_id' => $imageId,
                     'title' => $product->title,
                     'price' => $product->price,
+                    'price_text' => $product->price_text,
                     'category' => $product->category,
                     'status' => $product->status->value,
                     'image_key' => $imageKey,
@@ -290,7 +303,8 @@ class ManageShopProductsAction
 
             $attrs = [
                 'title' => trim((string) $entry['title']),
-                'price' => filled($entry['price'] ?? null) ? trim((string) $entry['price']) : null,
+                'price' => filled($entry['price'] ?? null) ? (float) $entry['price'] : null,
+                'price_text' => filled($entry['price_text'] ?? null) ? trim((string) $entry['price_text']) : null,
                 'category' => filled($entry['category'] ?? null) ? trim((string) $entry['category']) : null,
                 'status' => $status,
                 'image_ids' => $resolvedImageIds,
