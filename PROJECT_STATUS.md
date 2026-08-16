@@ -1511,6 +1511,36 @@ either the ledger grows a second kind of thing to be paid, or these are invoiced
 Until that is decided, not offering the button is the honest answer rather than offering one
 that fails.
 
+### Fixed 2026-08-16 — the site follows the restaurant's own switches, and names the form once
+
+Two faults found on a real site the same day, both of them the same mistake in two places:
+the form type was **stored once and never asked again**, and the form had **two names**.
+
+- **The block's type is corrected against the listing at render.**
+  `EnquiryBlock::formTypeFor()` is what every reader calls now — the page, the menu, the
+  buttons and the POST. A restaurant that has switched `accepts_orders` on and
+  `accepts_table_reservations` off is offered ordering, whatever the block says, because a
+  form the platform would refuse is a promise the page cannot keep. Only the two restaurant
+  types are corrected and only towards something the listing allows; a contact form, a stay
+  request or a product order is the owner saying what their page is for and is left alone.
+  Deliberately *not* gated on `accepts_inquiries` — that switch is about namibway.com, and a
+  business's own website is a second front door that stays open.
+  `SiteGenerator::restaurantFormType()` reads the same two switches at generation, so a new
+  site starts where an old one is corrected to.
+- **Neither switch on is a plain contact form**, not a broken booking one. Walk-ins are a
+  real way to run a restaurant. Ordering additionally needs a non-empty menu, the same rule
+  `Listing::requestKinds()` applies.
+- **One target, one name.** The menu item was labelled from the block's own heading while
+  the button beside it came from `SiteActions`, so a site read "Request availability" in the
+  menu and "Book a table" on the button — both scrolling to the same form. The nav asks
+  `SiteActions::enquiryLabel()` now. And a heading that is only one of the generated
+  defaults follows the resolved type (`EnquiryBlock::heading()`), so a restaurant switched
+  to ordering does not keep a band headed "Book a table" over a form asking for food. A
+  heading the owner wrote is never touched.
+
+No migration: the correction happens at render, so it applies to every site already
+generated without a write, and it keeps applying when a business changes its mind again.
+
 ### Next up, in the order it was asked for
 
 - **Collecting the money.** A provider that onboards a Namibian entity and settles in NAD,

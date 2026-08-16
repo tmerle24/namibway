@@ -2,6 +2,9 @@
 
 namespace App\Sites\Blocks;
 
+use App\Enums\ListingType;
+use App\Models\Site;
+
 /**
  * The contact form — the point of the whole page.
  *
@@ -81,6 +84,82 @@ class EnquiryBlock extends BlockDefinition
 
         return (is_string($value) ? EnquiryFormType::tryFrom($value) : null)
             ?? EnquiryFormType::StayRequest;
+    }
+
+    /**
+     * The form this site actually shows — the stored choice, corrected where the
+     * business has since said it does not take that.
+     *
+     * A restaurant says which of the two channels it sells online
+     * (`accepts_table_reservations`, `accepts_orders`, both on the listing and
+     * shown in both panels). The block's own `form_type` was set when the site
+     * was generated, from the business type and nothing else, and the migration
+     * off `mode` could do no better — so a restaurant that has since switched to
+     * ordering was still offering a table, and a form the platform would refuse
+     * is a promise the page cannot keep.
+     *
+     * Only the two restaurant types are corrected, and only towards something
+     * the listing allows. A `contact`, a stay request or a product order is the
+     * owner saying what their page is for, and none of those is a claim about
+     * this listing's booking channels.
+     *
+     * Deliberately **not** gated on `accepts_inquiries`: that switch is about
+     * namibway.com, and a business's own website is a second front door that
+     * stays open — see SiteEnquiryController.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function formTypeFor(Site $site, array $data): EnquiryFormType
+    {
+        $stored = self::formType($data);
+
+        if (! in_array($stored, [EnquiryFormType::TableReservation, EnquiryFormType::RestaurantOrder], true)) {
+            return $stored;
+        }
+
+        $listing = $site->sourceListing;
+
+        // No listing means no menu and no table to speak for, so an order form
+        // has nothing to offer and the honest fallback is a contact form.
+        if ($listing === null || $listing->type !== ListingType::Restaurant) {
+            return $stored === EnquiryFormType::RestaurantOrder ? EnquiryFormType::Contact : $stored;
+        }
+
+        // A switch over an empty menu is the same broken promise as a switch
+        // that is off — the same rule Listing::requestKinds() applies.
+        $takesOrders = $listing->accepts_orders && $listing->menuItems()->available()->exists();
+        $takesTables = (bool) $listing->accepts_table_reservations;
+
+        return match (true) {
+            $stored === EnquiryFormType::TableReservation && $takesTables => $stored,
+            $stored === EnquiryFormType::RestaurantOrder && $takesOrders => $stored,
+            $takesTables => EnquiryFormType::TableReservation,
+            $takesOrders => EnquiryFormType::RestaurantOrder,
+            default => EnquiryFormType::Contact,
+        };
+    }
+
+    /**
+     * The heading above the form, and the same string in the menu.
+     *
+     * An owner who wrote their own keeps it. A heading that is only one of the
+     * generated defaults follows the resolved type instead of being left behind
+     * — otherwise a restaurant switched to ordering keeps a band headed "Book a
+     * table" over a form asking for food.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function heading(EnquiryFormType $type, array $data): string
+    {
+        $heading = trim((string) ($data['heading'] ?? ''));
+
+        foreach (EnquiryFormType::cases() as $case) {
+            if ($heading === $case->heading()) {
+                return $type->heading();
+            }
+        }
+
+        return $heading !== '' ? $heading : $type->heading();
     }
 
     /**

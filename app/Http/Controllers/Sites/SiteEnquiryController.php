@@ -187,7 +187,7 @@ class SiteEnquiryController
 
         return $block === null
             ? EnquiryFormType::Contact
-            : EnquiryBlock::formType($block->data);
+            : EnquiryBlock::formTypeFor($site, $block->data);
     }
 
     /**
