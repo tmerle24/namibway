@@ -48,19 +48,44 @@ Never hardcode pixel widths in a query or DB column. Set them in the component.
 
 **Every Filament FileUpload goes through Livewire's temp storage first**, regardless of what `->disk()` you set. The file lands in `livewire-tmp/` on the `local` disk. On form submit, Filament moves it to the target disk. This has two consequences:
 
-### 1. `afterStateUpdated` receives temp keys, not R2 keys
+### 1. `afterStateUpdated` receives file objects, not keys
+
+This is the single thing that has cost the most time here. While the form is being
+edited, a Filament FileUpload's state is **an array keyed by a UUID Filament
+generates, whose values are live `TemporaryUploadedFile` objects** — not strings,
+not R2 keys, not filenames. The strings only appear later, after
+`saveUploadedFiles()` runs at dehydration time (`BaseFileUpload::setUp`).
 
 ```php
-// What afterStateUpdated gives you:
-$state = ['abc123.jpg'];   // just the filename, no livewire-tmp/ prefix
+// What afterStateUpdated actually gives you:
+$state = ['9f1c…-uuid' => TemporaryUploadedFile { … }];
 
-// What you need to read the file:
-$dir  = config('livewire.temporary_file_upload.directory', 'livewire-tmp');
-$disk = config('livewire.temporary_file_upload.disk', 'local');
-$content = Storage::disk($disk)->get($dir . '/' . basename($key));
+// So: iterate with keys, guard the type, and read through the object.
+foreach ($state ?? [] as $uuid => $file) {
+    if (! $file instanceof TemporaryUploadedFile) {
+        continue;                       // already a stored key
+    }
+    $content = $file->get();            // reads from the right disk + directory
+    $ext     = $file->getClientOriginalExtension();
+}
 ```
 
-Do NOT use `TemporaryUploadedFile::getRealPath()` on a key from `afterStateUpdated`. After deserialization the object's internal `$path` is only the filename, so `getRealPath()` builds the wrong filesystem path. Read the file manually via config-based disk + directory.
+Three traps, all of which have actually fired:
+
+- **`basename($file)` throws a `TypeError` on an object.** `TypeError` implements
+  `Throwable`, so a `catch (Throwable)` around the move swallows it and you get a
+  silent empty preview with nothing in the log. Never catch `Throwable` around
+  this without logging.
+- **Do not rebuild the temp path from config.**
+  `config('livewire.temporary_file_upload.disk', 'local')` returns **null**, not
+  `'local'` — Livewire ships that key explicitly set to `null` to mean "use the
+  default", and `config()`'s second argument only applies to *missing* keys.
+  `$file->get()` already knows the right disk and directory; use it.
+- **Do not use `TemporaryUploadedFile::getRealPath()`** on a value you
+  reconstructed yourself. Use the object handed to you.
+
+The UUID key is the only stable per-file identity across re-renders, so dedupe on
+it — the file object is not comparable and the client filename is not unique.
 
 ### 2. If you need a preview URL before submit, move to R2 immediately
 
@@ -68,27 +93,31 @@ Livewire's signed preview route (`livewire.preview-file`) exists but its URL exp
 
 ```php
 ->afterStateUpdated(function (?array $state, Get $get, Set $set) use ($record): void {
-    foreach (array_filter($state ?? []) as $tempKey) {
-        [$r2Key, $previewUrl] = self::moveTempToR2($tempKey, $site);
-        // Store r2Key + previewUrl in repeater state — NOT the temp key
+    foreach ($state ?? [] as $uuid => $file) {
+        if (! $file instanceof TemporaryUploadedFile) {
+            continue;
+        }
+        [$r2Key, $previewUrl] = self::moveTempToR2($file, $site);
+        // Store $uuid + r2Key + previewUrl in the repeater state
     }
 })
 
-private static function moveTempToR2(string $tempKey, Site $site): array
+private static function moveTempToR2(TemporaryUploadedFile $file, Site $site): array
 {
-    $filename = basename($tempKey);
-    $content  = Storage::disk(config('livewire.temporary_file_upload.disk', 'local'))
-        ->get(config('livewire.temporary_file_upload.directory', 'livewire-tmp').'/'.$filename);
+    $content = $file->get();
+    $ext     = strtolower($file->getClientOriginalExtension() ?: '') ?: 'jpg';
+    $r2Key   = $site->mediaPrefix().'/'.Str::random(20).'.'.$ext;
 
-    $ext   = strtolower(pathinfo($filename, PATHINFO_EXTENSION)) ?: 'jpg';
-    $r2Key = $site->mediaPrefix().'/'.Str::random(20).'.'.$ext;
     Storage::disk('r2')->put($r2Key, $content, 'public');
 
     return [$r2Key, Storage::disk('r2')->url($r2Key)];
 }
 ```
 
-Add `->dehydrated(false)` to the FileUpload so Filament does not also try to move the temp files on form submit (they are already on R2).
+Add both `->dehydrated(false)` and `->storeFiles(false)` to the FileUpload.
+`dehydrated(false)` keeps the raw state out of the submitted data;
+`storeFiles(false)` makes `saveUploadedFiles()` return early, so Filament does not
+upload the same file to R2 a second time on submit.
 
 ### 3. Orphan risk
 
@@ -138,5 +167,18 @@ Setting `CLOUDFLARE_R2_URL=https://cdn.namibway.com` while namibway.com's DNS is
 **2026-08-09 (near miss) — `photos:audit-r2 --delete-orphaned` nearly wiped the library**
 The command compared DB values against `Storage::disk('r2')->url($key)`. Scraper photos were stored as absolute URLs built from `CLOUDFLARE_R2_URL`; changing that variable made every referenced photo look orphaned. Fixed by matching on filename instead of full URL.
 
-**2026-08-16 — Bulk upload preview broken**
-`afterStateUpdated` gave bare filenames; code called `TemporaryUploadedFile::getRealPath()` which looked in the wrong directory (missing `livewire-tmp/` prefix) → `file_get_contents` failed silently → `[null, null]` → no preview. Also: `h-full` on `<img>` inside `aspect-ratio` div collapsed to 20 px (one line-height) because `aspect-ratio` does not establish a definite height for `h-full` children without absolute positioning.
+**2026-08-16 — Bulk upload preview broken, fixed three times before the cause was found**
+The state in `afterStateUpdated` was assumed to be strings. It is
+`[uuid => TemporaryUploadedFile]`. `basename()` on the object threw a `TypeError`,
+which `catch (Throwable)` swallowed without logging, so every attempt produced an
+empty preview and an empty log — and each fix was a new guess about *which* wrong
+string path was being read, rather than a check of what the state actually holds.
+
+Two lessons beyond the API detail. **A `catch (Throwable)` with no log turns a
+type error into a blank screen**, and a blank screen is not diagnosable. And when
+a fix does not work, read the framework source before writing the second one —
+`BaseFileUpload::setUp()` answers this in twenty lines.
+
+Separately, in the same feature: `h-full` on an `<img>` inside an `aspect-ratio`
+div collapsed to 20 px (one line-height), because `aspect-ratio` alone does not
+establish a definite height for `h-full` children. See the CSS section above.

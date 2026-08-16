@@ -18,9 +18,11 @@ use Filament\Forms\Components\Actions\Action as FormAction;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Throwable;
 
 /**
@@ -145,28 +147,36 @@ class ManageShopProductsAction
                                 })
                                 ->fetchFileInformation(false)
                                 ->dehydrated(false)
+                                ->storeFiles(false)
                                 ->live()
                                 ->afterStateUpdated(function (?array $state, Get $get, Set $set) use ($record): void {
                                     $site = SiteResolver::for($record);
-                                    $keys = array_values(array_filter($state ?? []));
                                     $current = $get('upload_items') ?? [];
                                     $existingTempKeys = array_column($current, 'temp_key');
 
                                     $items = $current;
 
-                                    foreach ($keys as $tempKey) {
-                                        if (in_array($tempKey, $existingTempKeys, true)) {
+                                    // Filament keys FileUpload state by a UUID it generates per
+                                    // file, and the value is a live TemporaryUploadedFile — not
+                                    // a string. The UUID is the only stable identity here, so it
+                                    // is what we dedupe on across re-renders.
+                                    foreach ($state ?? [] as $uuid => $file) {
+                                        if (! $file instanceof TemporaryUploadedFile) {
                                             continue;
                                         }
 
-                                        // Move from Livewire temp storage to R2 immediately so
-                                        // the preview URL is a real public R2 URL, not a temp path.
+                                        if (in_array($uuid, $existingTempKeys, true)) {
+                                            continue;
+                                        }
+
+                                        // Move to R2 immediately so the preview URL is a real
+                                        // public R2 URL, not a temp path we cannot serve.
                                         [$r2Key, $previewUrl] = $site !== null
-                                            ? self::moveTempToR2($tempKey, $site)
+                                            ? self::moveTempToR2($file, $site)
                                             : [null, null];
 
                                         $items[] = [
-                                            'temp_key' => $tempKey,
+                                            'temp_key' => $uuid,
                                             'image_key' => $r2Key,
                                             'preview_url' => $previewUrl ?? '',
                                             'title' => '',
@@ -625,40 +635,41 @@ class ManageShopProductsAction
 
     /**
      * Move a Livewire temporary upload to R2 immediately, so the preview URL
-     * is a real public R2 URL rather than a temp-storage path.
+     * is a real public R2 URL rather than a temp-storage path we cannot serve.
      *
-     * In afterStateUpdated, Filament gives us just the filename (e.g. "abc.jpg"),
-     * NOT the full temp path ("livewire-tmp/abc.jpg"). We build the correct path
-     * from the Livewire config rather than using TemporaryUploadedFile::getRealPath(),
-     * which would look in the wrong directory.
+     * Read the bytes through the file object's own `get()`. It knows which disk
+     * and directory Livewire is configured with; reconstructing that path here
+     * gets it wrong, because Livewire writes those config keys as null to mean
+     * "use the default" and `config(..., 'local')` then returns null, not the
+     * fallback.
      *
      * Leaves the temp file in place — Livewire's own cleanup removes it later.
-     * If the R2 write fails for any reason, returns [null, null] and the row
-     * renders without a preview rather than blowing up the upload flow.
+     * A failure is logged and returns [null, null]: the row renders without a
+     * preview instead of taking the whole upload down with it.
      *
      * @return array{0: string|null, 1: string|null}  [r2Key, publicUrl]
      */
-    private static function moveTempToR2(string $tempKey, Site $site): array
+    private static function moveTempToR2(TemporaryUploadedFile $file, Site $site): array
     {
         try {
-            $filename = basename($tempKey);
-            // Livewire sets these config keys to null to mean "use the default",
-            // so the config() fallback never fires — we must coalesce explicitly.
-            $tempDir = config('livewire.temporary_file_upload.directory') ?? 'livewire-tmp';
-            $tempDisk = config('livewire.temporary_file_upload.disk') ?? config('filesystems.default', 'local');
+            $content = $file->get();
 
-            $content = Storage::disk($tempDisk)->get($tempDir.'/'.$filename);
-
-            if ($content === null || $content === '') {
+            if (! is_string($content) || $content === '') {
                 return [null, null];
             }
 
-            $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION)) ?: 'jpg';
+            $ext = strtolower($file->getClientOriginalExtension() ?: '') ?: 'jpg';
             $r2Key = $site->mediaPrefix().'/'.Str::random(20).'.'.$ext;
             Storage::disk('r2')->put($r2Key, $content, 'public');
 
             return [$r2Key, Storage::disk('r2')->url($r2Key)];
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            Log::warning('Product photo upload: could not move temp file to R2', [
+                'site_id' => $site->id,
+                'file' => $file->getClientOriginalName(),
+                'error' => $e->getMessage(),
+            ]);
+
             return [null, null];
         }
     }
