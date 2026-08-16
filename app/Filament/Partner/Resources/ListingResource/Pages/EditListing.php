@@ -10,6 +10,7 @@ use App\Filament\Support\EditActionButtonsAction;
 use App\Filament\Support\EditBlocksAction;
 use App\Filament\Support\EditContactChannelsAction;
 use App\Filament\Support\EditHeroAction;
+use App\Filament\Support\ManageShopProductsAction;
 use App\Filament\Support\EditLegalTextAction;
 use App\Filament\Support\EditPagesAction;
 use App\Filament\Support\EditSiteImagesAction;
@@ -62,6 +63,7 @@ class EditListing extends EditRecord
             EditBlocksAction::header(),
             EditPagesAction::header(),
             EditSiteImagesAction::header(),
+            ManageShopProductsAction::header(),
             EditHeroAction::header(),
             EditSiteLogoAction::header(),
             EditTypographyAction::header(),

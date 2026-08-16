@@ -94,6 +94,8 @@ class WebsiteTab
 
                     EditSiteImagesAction::make(),
 
+                    ManageShopProductsAction::make(),
+
                     EditHeroAction::make(),
 
                     EditSiteLogoAction::make(),
