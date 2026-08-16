@@ -213,6 +213,7 @@ class ManageShopProductsAction
 
                             Forms\Components\Repeater::make('upload_items')
                                 ->label('')
+                                ->default([])
                                 ->addable(false)
                                 ->reorderableWithDragAndDrop(false)
                                 ->collapsible(false)
