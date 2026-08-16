@@ -427,6 +427,9 @@ class ListingResource extends Resource
     {
         return [
             AdminRelationManagers\BookableUnitsRelationManager::class,
+            // Only rendered for a restaurant — see the relation manager's own
+            // canViewForRecord(). A lodge never sees it.
+            AdminRelationManagers\MenuItemsRelationManager::class,
         ];
     }
 

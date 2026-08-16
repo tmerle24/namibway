@@ -40,7 +40,11 @@ class InquiryObserver
             ConnectorType::HopeCloud,
         ];
 
-        if (in_array($connectorType, $automatedTypes)) {
+        // A connector is asked "are these nights free?" — a question a table
+        // booking and a food order do not pose. Those go straight to the
+        // partner with the same confirm and decline buttons everything else
+        // gets; there is simply no availability call to make first.
+        if ($inquiry->kind->becomesAStay() && in_array($connectorType, $automatedTypes)) {
             ProcessInquiry::dispatch($inquiry);
 
             return;

@@ -14,6 +14,19 @@ use RuntimeException;
  */
 class StayNotPromotableException extends RuntimeException
 {
+    /**
+     * Not a failure at all, and the one case `StayPromoter` must not raise an
+     * alert for: a table booking and an order are real requests that a partner
+     * answers, and neither of them allocates nights on a calendar.
+     */
+    public static function notAStay(Inquiry $inquiry): self
+    {
+        return new self(
+            "Request #{$inquiry->id} is a ".$inquiry->kind->getLabel().', which does not '
+            .'become a stay on the calendar.'
+        );
+    }
+
     public static function withoutDates(Inquiry $inquiry): self
     {
         return new self(

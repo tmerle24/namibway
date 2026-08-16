@@ -15,6 +15,7 @@ use App\Filament\Resources\ListingResource\Pages;
 use App\Filament\Support\BookableUnitSchema;
 use App\Filament\Support\BookingConnectorSchema;
 use App\Filament\Support\CreateWebsiteAction;
+use App\Filament\Support\MenuItemSchema;
 use App\Filament\Support\MessagesColumn;
 use App\Filament\Support\PipelineImageResolver;
 use App\Filament\Support\WebsiteTab;
@@ -384,6 +385,48 @@ class ListingResource extends Resource
                                         ->modalHeading('Delete this room type?')
                                         ->modalDescription('Its calendar, rates and departures go with it once the listing is saved. Switching "Is active" off instead keeps the history and takes it off sale.'))
                                     ->schema(BookableUnitSchema::schema())
+                                    ->columns(2)
+                                    ->columnSpanFull(),
+                            ]),
+
+                        // Same frame as "Room types" above and for the same
+                        // reason, and shown to a restaurant only: everything
+                        // else has nothing to put in it, and a tab that is
+                        // always empty is one every lodge has to learn to skip.
+                        Forms\Components\Tabs\Tab::make('Menu')
+                            ->icon('heroicon-o-list-bullet')
+                            // One closure, not `->visible(…)->visibleOn('edit')`:
+                            // visibleOn() is implemented *as* visible(), so the
+                            // second call would silently replace the first and
+                            // show this tab on every lodge in the panel.
+                            ->visible(fn (Forms\Get $get, string $operation): bool => $operation === 'edit'
+                                && $get('type') === ListingType::Restaurant->value)
+                            ->badge(function (?Listing $record): ?string {
+                                $count = $record?->menuItems()->count() ?? 0;
+
+                                return $count > 0 ? (string) $count : null;
+                            })
+                            ->schema([
+                                Forms\Components\Repeater::make('menuItems')
+                                    ->relationship()
+                                    ->hiddenLabel()
+                                    ->addActionLabel('Add a menu item')
+                                    ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null)
+                                        ? trim($state['name'].(filled($state['category'] ?? null) ? " · {$state['category']}" : ''))
+                                        : null)
+                                    ->collapsible()
+                                    ->collapsed()
+                                    // A menu has an order and this one is
+                                    // written into `sort`, so the handle keeps
+                                    // its promise across a page load.
+                                    ->reorderable()
+                                    ->orderColumn('sort')
+                                    ->defaultItems(0)
+                                    ->deleteAction(fn (Forms\Components\Actions\Action $action): Forms\Components\Actions\Action => $action
+                                        ->requiresConfirmation()
+                                        ->modalHeading('Delete this menu item?')
+                                        ->modalDescription('Orders that already contain it keep their own record of the name and the price. Switching "On the menu" off instead takes it off sale and keeps it here.'))
+                                    ->schema(MenuItemSchema::schema())
                                     ->columns(2)
                                     ->columnSpanFull(),
                             ]),

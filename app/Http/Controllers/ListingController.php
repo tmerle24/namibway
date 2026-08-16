@@ -3,13 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ConnectorType;
+use App\Enums\InquiryKind;
+use App\Enums\ListingType;
 use App\Enums\PriceUnit;
 use App\Jobs\EnrichListingJob;
 use App\Models\BookableUnit;
 use App\Models\City;
 use App\Models\Listing;
+use App\Models\MenuItem;
 use App\Models\Review;
 use App\Services\Booking\ActiveRequestGate;
+use App\Services\Booking\MenuOrder;
 use App\Services\Booking\RoomOffer;
 use App\Services\Booking\RoomOffers;
 use App\Services\Enrichment\CoordinateTextParser;
@@ -20,6 +24,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -418,6 +423,12 @@ class ListingController extends Controller
                     'facebook' => $listing->partner->facebook,
                 ] : null,
             ],
+            // Only a restaurant has one, and only the items currently on sale
+            // reach the page: a dish the kitchen has switched off must not be
+            // orderable, and MenuOrder refuses it server-side anyway.
+            'menu' => $listing->type === ListingType::Restaurant
+                ? self::menuSections($listing)
+                : [],
             'reviews' => $reviews,
             'is_preview' => $isPreview,
             'can_publish' => $isAdmin || $isOwnerPreview,
@@ -425,6 +436,34 @@ class ListingController extends Controller
             'preview_token' => $isOwnerPreview ? $request->input('preview') : null,
             'claim_url' => self::claimUrl($listing, $isOwnerPreview),
         ]);
+    }
+
+    /**
+     * This restaurant's menu, grouped into its sections for the order tab.
+     *
+     * @return array<int, array{category: string, items: array<int, array<string, mixed>>}>
+     */
+    private static function menuSections(Listing $listing): array
+    {
+        $items = $listing->menuItems()->available()->get();
+
+        return collect(MenuItem::intoSections($items))
+            ->map(fn (array $section): array => [
+                'category' => $section['category'],
+                'items' => collect($section['items'])
+                    ->map(fn (MenuItem $item): array => [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'description' => $item->description,
+                        'price' => $item->price,
+                        'currency' => $item->currency,
+                        'image' => $item->image ? self::resolveMediaUrl($item->image) : null,
+                    ])
+                    ->values()
+                    ->all(),
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -840,34 +879,127 @@ class ListingController extends Controller
      * CLAUDE.md's account line. The route is behind `auth`; the traveler is
      * bounced to login with this listing as the intended URL rather than
      * filling in a form that would be rejected on submit.
+     *
+     * One endpoint, three shapes of request (`App\Enums\InquiryKind`). A
+     * restaurant asks for a table on a date at a time, or for food off its
+     * menu; everything else asks for a stay. Which fields are required — and
+     * which are refused — follows from the kind rather than from a listing type
+     * checked in six places.
      */
     public function storeInquiry(Request $request, Listing $listing): RedirectResponse
     {
         abort_unless($listing->is_published && $listing->accepts_inquiries, 404);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'travel_dates' => ['nullable', 'string', 'max:255'],
-            'check_in' => ['nullable', 'date', 'after_or_equal:today'],
-            'check_out' => ['nullable', 'date', 'after:check_in'],
-            'adults' => ['nullable', 'integer', 'min:1', 'max:20'],
-            'children' => ['nullable', 'integer', 'min:0', 'max:20'],
-            'message' => ['nullable', 'string', 'max:2000'],
-        ]);
+        $kind = self::inquiryKind($request, $listing);
+
+        $validated = $request->validate(self::inquiryRules($kind));
 
         $userId = $request->user()?->id;
 
-        if (ActiveRequestGate::blocks($userId, $validated['email'])) {
+        // Only a stay-shaped request joins the pipeline the gate rations — see
+        // ActiveRequestGate. A table and an order go to one business that can
+        // answer them today, and neither says anything about how many lodges
+        // are being asked to hold a room.
+        if ($kind->becomesAStay() && ActiveRequestGate::blocks($userId, $validated['email'])) {
             return back()->withErrors(['email' => ActiveRequestGate::message()]);
         }
 
-        $listing->inquiries()->create([...$validated, 'user_id' => $userId]);
+        // Priced before anything is written, so an order naming a dish that is
+        // no longer on the menu fails as a validation error on the form rather
+        // than as a request the kitchen cannot fill.
+        $order = $kind->hasItems()
+            ? MenuOrder::price($listing, $validated['items'])
+            : null;
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Inquiry sent.')]);
+        $inquiry = $listing->inquiries()->create([
+            ...Arr::except($validated, ['items']),
+            'kind' => $kind,
+            'user_id' => $userId,
+        ]);
+
+        $order?->attachTo($inquiry);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $kind === InquiryKind::Order ? __('Order sent.') : __('Inquiry sent.'),
+        ]);
 
         return back();
+    }
+
+    /**
+     * What this request is: whatever it says it is, but only a restaurant may
+     * say anything other than a booking.
+     *
+     * Unrecognised input is a booking rather than an error — the field is new,
+     * and the shape every listing had yesterday is the safe reading of a
+     * request that does not mention it.
+     */
+    private static function inquiryKind(Request $request, Listing $listing): InquiryKind
+    {
+        if ($listing->type !== ListingType::Restaurant) {
+            return InquiryKind::Booking;
+        }
+
+        $requested = $request->input('kind');
+        $kind = is_string($requested)
+            ? InquiryKind::tryFrom($requested) ?? InquiryKind::TableReservation
+            : InquiryKind::TableReservation;
+
+        // A restaurant with nothing on its menu cannot take an order, whatever
+        // the form claims. The page does not offer the tab in that case; this
+        // is what makes it true rather than merely hidden.
+        if ($kind === InquiryKind::Order && ! $listing->menuItems()->available()->exists()) {
+            return InquiryKind::TableReservation;
+        }
+
+        return $kind === InquiryKind::Booking ? InquiryKind::TableReservation : $kind;
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    private static function inquiryRules(InquiryKind $kind): array
+    {
+        $contact = [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'message' => ['nullable', 'string', 'max:2000'],
+        ];
+
+        return match ($kind) {
+            // Unchanged from before restaurants had a form of their own —
+            // every field optional, because a traveller who only knows
+            // "sometime in June" still has a request worth sending.
+            InquiryKind::Booking => [
+                ...$contact,
+                'travel_dates' => ['nullable', 'string', 'max:255'],
+                'check_in' => ['nullable', 'date', 'after_or_equal:today'],
+                'check_out' => ['nullable', 'date', 'after:check_in'],
+                'adults' => ['nullable', 'integer', 'min:1', 'max:20'],
+                'children' => ['nullable', 'integer', 'min:0', 'max:20'],
+            ],
+            // A table is required to say when. "Dinner sometime" is not a
+            // booking a restaurant can hold, and asking afterwards costs the
+            // partner an email the form could have saved them.
+            InquiryKind::TableReservation => [
+                ...$contact,
+                'check_in' => ['required', 'date', 'after_or_equal:today'],
+                'arrival_time' => ['required', 'date_format:H:i'],
+                'adults' => ['required', 'integer', 'min:1', 'max:20'],
+                'children' => ['nullable', 'integer', 'min:0', 'max:20'],
+            ],
+            // No dates, no times, no party size — the ask is the list. Anything
+            // else posted alongside it is dropped rather than stored, so a row
+            // never carries a check-in nobody asked for.
+            InquiryKind::Order => [
+                ...$contact,
+                'items' => ['required', 'array', 'min:1', 'max:60'],
+                'items.*.menu_item_id' => ['required', 'integer'],
+                'items.*.quantity' => ['required', 'integer', 'min:1', 'max:99'],
+            ],
+        };
     }
 
     public function storeReview(Request $request, Listing $listing): RedirectResponse

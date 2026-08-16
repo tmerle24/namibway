@@ -2,6 +2,7 @@
 
 namespace App\Services\Booking;
 
+use App\Enums\InquiryKind;
 use App\Enums\InquiryStatus;
 use App\Models\Inquiry;
 
@@ -18,6 +19,21 @@ use App\Models\Inquiry;
  * is the stronger identity — but the email still has to count too, because
  * every row created before this has no account behind it, and a traveler can
  * legitimately book under a contact address that isn't their login.
+ *
+ * ## What the rule is about, and what it therefore does not count
+ *
+ * The thing being rationed is the **booking pipeline** — a plan's worth of
+ * speculative requests going out to lodges who each have to answer one. A
+ * table booked for Thursday and a plate of food ordered from one restaurant are
+ * neither speculative nor a pipeline: they go to a single business that can
+ * answer immediately, and they say nothing about how many properties are being
+ * asked to hold a room.
+ *
+ * So a restaurant request neither blocks nor is blocked (`InquiryKind`'s
+ * `becomesAStay()`). Counting them would mean ordering dinner locked a traveller
+ * out of requesting anywhere to sleep until the kitchen replied, which is not a
+ * rule anybody wrote down — it would just be this gate's original assumption,
+ * that every request is a stay, outliving the day it stopped being true.
  */
 class ActiveRequestGate
 {
@@ -32,8 +48,14 @@ class ActiveRequestGate
             array_filter(InquiryStatus::cases(), fn (InquiryStatus $status) => $status->isActive())
         );
 
+        $pipelineKinds = array_map(
+            fn (InquiryKind $kind) => $kind->value,
+            array_filter(InquiryKind::cases(), fn (InquiryKind $kind) => $kind->becomesAStay())
+        );
+
         return Inquiry::query()
             ->whereIn('status', $activeStatuses)
+            ->whereIn('kind', $pipelineKinds)
             ->where(function ($query) use ($userId, $email) {
                 $query->where('email', $email);
 

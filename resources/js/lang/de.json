@@ -442,7 +442,21 @@
             "checkIn": "Anreise",
             "checkOut": "Abreise",
             "adults": "Erwachsene",
-            "children": "Kinder (unter 12)"
+            "children": "Kinder (unter 12)",
+            "modes": {
+                "table": "Tisch reservieren",
+                "order": "Essen bestellen"
+            },
+            "tableTitle": "Tisch reservieren",
+            "orderTitle": "Von der Karte bestellen",
+            "date": "Datum",
+            "time": "Uhrzeit",
+            "sendTable": "Tisch anfragen",
+            "sendOrder": "Bestellung senden",
+            "orderTotal": "Deine Bestellung ({count})",
+            "orderSuccess": "Bestellung gesendet! Das Restaurant bestätigt sie direkt.",
+            "add": "Ein {item} hinzufügen",
+            "remove": "Ein {item} entfernen"
         },
         "reviews": {
             "title": "Bewertungen",

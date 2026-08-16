@@ -507,7 +507,21 @@
             "checkIn": "Check-in",
             "checkOut": "Check-out",
             "adults": "Adults",
-            "children": "Children (under 12)"
+            "children": "Children (under 12)",
+            "modes": {
+                "table": "Reserve a table",
+                "order": "Order food"
+            },
+            "tableTitle": "Reserve a table",
+            "orderTitle": "Order from the menu",
+            "date": "Date",
+            "time": "Time",
+            "sendTable": "Request a table",
+            "sendOrder": "Send order",
+            "orderTotal": "Your order ({count})",
+            "orderSuccess": "Order sent! The restaurant will confirm it directly.",
+            "add": "Add one {item}",
+            "remove": "Remove one {item}"
         },
         "reviews": {
             "title": "Reviews",

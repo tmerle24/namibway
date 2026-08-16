@@ -283,7 +283,21 @@
             "checkIn": "Llegada",
             "checkOut": "Salida",
             "adults": "Adultos",
-            "children": "Niños (menores de 12)"
+            "children": "Niños (menores de 12)",
+            "modes": {
+                "table": "Reservar mesa",
+                "order": "Pedir comida"
+            },
+            "tableTitle": "Reservar mesa",
+            "orderTitle": "Pedir de la carta",
+            "date": "Fecha",
+            "time": "Hora",
+            "sendTable": "Solicitar mesa",
+            "sendOrder": "Enviar pedido",
+            "orderTotal": "Tu pedido ({count})",
+            "orderSuccess": "¡Pedido enviado! El restaurante lo confirmará directamente.",
+            "add": "Añadir un {item}",
+            "remove": "Quitar un {item}"
         },
         "reviews": {
             "title": "Valoraciones",

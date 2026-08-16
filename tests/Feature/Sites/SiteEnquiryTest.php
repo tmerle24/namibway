@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Sites;
 
+use App\Enums\InquiryKind;
+use App\Enums\ListingType;
 use App\Mail\EnquiryCopy;
 use App\Mail\PartnerConfirmationRequest;
 use App\Models\Inquiry;
@@ -85,7 +87,7 @@ class SiteEnquiryTest extends TestCase
 
     public function test_a_visit_is_asked_for_a_time_and_never_a_departure(): void
     {
-        $listing = $this->listing();
+        $listing = $this->listing(['type' => ListingType::Restaurant]);
         $site = $this->siteFor($listing, EnquiryBlock::MODE_VISIT);
 
         $this->get($site->publicUrl())
@@ -102,7 +104,13 @@ class SiteEnquiryTest extends TestCase
         $inquiry = Inquiry::sole();
 
         $this->assertNull($inquiry->check_out);
-        $this->assertStringContainsString('19:30', (string) $inquiry->travel_dates);
+
+        // The time used to be folded into the free-text travel_dates to avoid a
+        // migration. namibway.com's own restaurant form is a second front door
+        // onto the same fact, so it has a column now and both write it.
+        $this->assertSame('19:30', $inquiry->arrivalTimeLabel());
+        $this->assertStringNotContainsString('19:30', (string) $inquiry->travel_dates);
+        $this->assertSame(InquiryKind::TableReservation, $inquiry->kind);
     }
 
     public function test_a_filled_honeypot_is_answered_like_a_success_and_writes_nothing(): void

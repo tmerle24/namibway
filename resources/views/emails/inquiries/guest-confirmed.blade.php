@@ -1,24 +1,33 @@
+@php
+    use App\Enums\InquiryKind;
+
+    $isOrder = $inquiry->kind === InquiryKind::Order;
+    $noun = match ($inquiry->kind) {
+        InquiryKind::Order => 'order',
+        InquiryKind::TableReservation => 'table',
+        default => 'booking',
+    };
+@endphp
 <x-mail::message>
-# Your booking is confirmed!
+# Your {{ $noun }} is confirmed!
 
 Hi {{ $inquiry->name }},
 
-Great news — your booking at **{{ $inquiry->listing->name }}** has been confirmed.
+Great news — your {{ $noun }} at **{{ $inquiry->listing->name }}** has been confirmed.
 
 <x-mail::table>
 | | |
 |---|---|
 | **Property** | {{ $inquiry->listing->name }} |
-| **Check-in** | {{ $inquiry->check_in?->format('D, d M Y') ?? $inquiry->travel_dates ?? '—' }} |
-| **Check-out** | {{ $inquiry->check_out?->format('D, d M Y') ?? '—' }} |
-| **Guests** | {{ $inquiry->adults }} adult{{ $inquiry->adults !== 1 ? 's' : '' }}@if($inquiry->children > 0), {{ $inquiry->children }} child{{ $inquiry->children !== 1 ? 'ren' : '' }}@endif |
 @if($inquiry->connector_reference)
 | **Booking reference** | {{ $inquiry->connector_reference }} |
 @endif
-@if($inquiry->total_amount)
+@if($inquiry->total_amount && ! $isOrder)
 | **Total** | {{ number_format($inquiry->total_amount, 2) }} {{ $inquiry->currency ?? 'NAD' }} |
 @endif
 </x-mail::table>
+
+<x-inquiry-details :inquiry="$inquiry" />
 
 @if($partnerMessage)
 **A message from {{ $inquiry->listing->name }}:**

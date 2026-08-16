@@ -1,7 +1,17 @@
-<x-mail::message>
-# New booking request — action required
+@php
+    use App\Enums\InquiryKind;
 
-You have received a booking request via NamibWay that requires your confirmation.
+    $isOrder = $inquiry->kind === InquiryKind::Order;
+    $noun = match ($inquiry->kind) {
+        InquiryKind::Order => 'order',
+        InquiryKind::TableReservation => 'table booking',
+        default => 'booking request',
+    };
+@endphp
+<x-mail::message>
+# New {{ $noun }} — action required
+
+You have received a {{ $noun }} via NamibWay that requires your confirmation.
 
 <x-mail::table>
 | | |
@@ -10,16 +20,15 @@ You have received a booking request via NamibWay that requires your confirmation
 | **Email** | {{ $inquiry->email }} |
 | **Phone** | {{ $inquiry->phone ?? '—' }} |
 | **Property** | {{ $inquiry->listing->name }} |
-| **Check-in** | {{ $inquiry->check_in?->format('D, d M Y') ?? $inquiry->travel_dates ?? '—' }} |
-| **Check-out** | {{ $inquiry->check_out?->format('D, d M Y') ?? '—' }} |
-| **Guests** | {{ $inquiry->adults }} adult{{ $inquiry->adults !== 1 ? 's' : '' }}@if($inquiry->children > 0), {{ $inquiry->children }} child{{ $inquiry->children !== 1 ? 'ren' : '' }}@endif |
 @if($inquiry->connector_reference)
 | **Booking reference** | {{ $inquiry->connector_reference }} |
 @endif
-@if($inquiry->total_amount)
+@if($inquiry->total_amount && ! $isOrder)
 | **Total** | {{ number_format($inquiry->total_amount, 2) }} {{ $inquiry->currency ?? 'NAD' }} |
 @endif
 </x-mail::table>
+
+<x-inquiry-details :inquiry="$inquiry" />
 
 @if($inquiry->message)
 **Guest message:**
@@ -27,7 +36,7 @@ You have received a booking request via NamibWay that requires your confirmation
 {{ $inquiry->message }}
 @endif
 
-Please confirm or decline within **3 days**. After that, the booking will expire automatically.
+Please confirm or decline within **3 days**. After that, the {{ $noun }} will expire automatically.
 
 <x-mail::button :url="$confirmWithPaymentUrl" color="success">
 Confirm &amp; ask for the deposit
@@ -41,7 +50,7 @@ Confirm without asking for payment
 </x-mail::button>
 
 <x-mail::button :url="$cancelUrl" color="error">
-Decline booking
+Decline {{ $isOrder ? 'order' : 'booking' }}
 </x-mail::button>
 
 Thanks,<br>
