@@ -74,7 +74,7 @@ final class SiteActions
      */
     public static function for(Site $site, iterable $blocks): self
     {
-        $bands = self::bands($blocks);
+        $bands = self::bands($blocks, $site);
         $placement = ActionButtons::for($site);
         $buttons = [];
 
@@ -241,7 +241,7 @@ final class SiteActions
      * @param  iterable<int, SiteBlock>  $blocks
      * @return array<string, array{anchor: string, label: string}>
      */
-    private static function bands(iterable $blocks): array
+    private static function bands(iterable $blocks, Site $site): array
     {
         $found = [];
         $n = 0;
@@ -254,11 +254,32 @@ final class SiteActions
             $n++;
 
             if (in_array($block->type, [...self::PRIMARY, 'about'], true) && ! isset($found[$block->type])) {
-                $found[$block->type] = ['anchor' => 's'.$n, 'label' => self::label($block)];
+                $found[$block->type] = ['anchor' => 's'.$n, 'label' => self::label($block, $site)];
             }
         }
 
         return $found;
+    }
+
+    /**
+     * What the menu calls the contact form.
+     *
+     * The menu bar used to label the item with the band's own heading while the
+     * button beside it used this — so one site read "Request availability" in
+     * the menu and "Book a table" on the button, pointing at the same form. The
+     * nav asks here now, so there is one answer.
+     *
+     * @param  iterable<int, SiteBlock>  $blocks
+     */
+    public static function enquiryLabel(Site $site, iterable $blocks): ?string
+    {
+        foreach ($blocks as $block) {
+            if ($block->type === 'enquiry') {
+                return self::label($block, $site);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -276,7 +297,7 @@ final class SiteActions
         return null;
     }
 
-    private static function label(SiteBlock $block): string
+    private static function label(SiteBlock $block, Site $site): string
     {
         // The contact form says what it is for, and the button follows it: a
         // site taking orders should not have a menu button reading "Enquire".
@@ -293,12 +314,15 @@ final class SiteActions
             // Then the band's own heading, where it is short enough to be a
             // button — a site headed "Ask us" has already chosen its word, and
             // replacing it with a generic one would be this change taking
-            // something away rather than adding a default.
-            $heading = trim((string) ($block->data['heading'] ?? ''));
+            // something away rather than adding a default. Resolved rather than
+            // read raw, so a heading left over from a form type the business no
+            // longer offers does not outlive it.
+            $type = EnquiryBlock::formTypeFor($site, $block->data);
+            $heading = EnquiryBlock::heading($type, $block->data);
 
-            return $heading !== '' && mb_strlen($heading) <= self::MAX_DERIVED_LABEL
+            return mb_strlen($heading) <= self::MAX_DERIVED_LABEL
                 ? $heading
-                : EnquiryBlock::formType($block->data)->buttonLabel();
+                : $type->buttonLabel();
         }
 
         $default = self::LABELS[$block->type] ?? self::LABELS['booking'];

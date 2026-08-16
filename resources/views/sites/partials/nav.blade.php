@@ -34,7 +34,14 @@
             $n++;
         }
 
-        $label = $navBlock->data['heading'] ?? $navBlock->definition()?->label() ?? '';
+        // The contact form is named once, by SiteActions, because the same
+        // target is also a button — beside the menu, on the opening screen and
+        // in the strip at the foot. Reading the raw heading here gave one site
+        // a menu item saying "Request availability" next to a button saying
+        // "Book a table", both scrolling to the same form.
+        $label = $navBlock->type === 'enquiry'
+            ? \App\Sites\Rendering\SiteActions::enquiryLabel($site, [$navBlock])
+            : ($navBlock->data['heading'] ?? $navBlock->definition()?->label() ?? '');
 
         // Five is where a bar this size stops reading as a menu and starts
         // reading as a list. The panel is not so constrained, but the two have

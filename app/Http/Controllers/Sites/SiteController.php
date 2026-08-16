@@ -126,7 +126,7 @@ class SiteController
         $enquiryBlock = $stored->first(fn (SiteBlock $block) => $block->type === 'enquiry');
         $enquiryType = $enquiryBlock === null
             ? EnquiryFormType::StayRequest
-            : EnquiryBlock::formType($enquiryBlock->data);
+            : EnquiryBlock::formTypeFor($site, $enquiryBlock->data);
         $enquiryItems = EnquiryItems::for($site, $enquiryType);
 
         $productImageIds = $shopProducts->flatMap(fn (ShopProduct $p) => $p->image_ids ?? [])->all();

@@ -174,6 +174,25 @@ class SiteGenerator
      * businesses with different websites, and `vehicle_category` is what the
      * travel platform already uses to tell them apart.
      */
+    /**
+     * Which of the two a restaurant's form starts as.
+     *
+     * A table where it takes tables, ordering where it only takes orders, and a
+     * plain contact form where it takes neither online — walk-ins are a real
+     * way to run a restaurant, and a form promising a booking nobody accepts is
+     * worse than no form. `EnquiryBlock::formTypeFor()` applies the same rule at
+     * render time, for the sites generated before the switches existed and for
+     * a business that changes its mind afterwards.
+     */
+    private function restaurantFormType(Listing $listing): EnquiryFormType
+    {
+        return match (true) {
+            (bool) $listing->accepts_table_reservations => EnquiryFormType::TableReservation,
+            (bool) $listing->accepts_orders => EnquiryFormType::RestaurantOrder,
+            default => EnquiryFormType::Contact,
+        };
+    }
+
     private function businessTypeFor(Listing $listing): BusinessType
     {
         if ($listing->vehicle_category === VehicleCategory::GuidedTour) {
@@ -353,13 +372,13 @@ class SiteGenerator
         $hours = $import->openingHours($listing);
         $amenities = $import->amenities($listing);
 
-        // What the one contact form starts out as. A restaurant is asked for a
-        // table rather than a stay — the owner switches it to ordering once a
-        // menu is entered, which is a decision only they can make.
-        $enquiryType = match ($listing->type) {
-            ListingType::Restaurant => EnquiryFormType::TableReservation,
-            default => EnquiryFormType::StayRequest,
-        };
+        // What the one contact form starts out as. A restaurant is asked for
+        // whichever of the two it says it takes online — the same two switches
+        // the listing page reads, rather than a guess from the business type
+        // that then contradicts them.
+        $enquiryType = $listing->type === ListingType::Restaurant
+            ? $this->restaurantFormType($listing)
+            : EnquiryFormType::StayRequest;
 
         $payloads = [
             'hero' => [

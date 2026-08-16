@@ -3,7 +3,10 @@
     use App\Sites\Blocks\EnquiryFormType;
     use App\Sites\Rendering\SafeLink;
 
-    $type = EnquiryBlock::formType($data);
+    // Resolved by the controller and passed in — one answer per request, shared
+    // with the menu bar and the buttons, so a page cannot label one thing two
+    // ways. The fallback is for a block rendered outside that path.
+    $type = $enquiryType ?? EnquiryBlock::formTypeFor($site, $data);
     $channel = $data['channel'] ?? EnquiryBlock::CHANNEL_EMAIL;
     $today = \Carbon\CarbonImmutable::today()->toDateString();
     $sent = request()->query('sent') === '1';
@@ -23,7 +26,7 @@
 
         <div class="split reveal">
             <div>
-                <h2>{{ $data['heading'] ?? $type->heading() }}</h2>
+                <h2>{{ EnquiryBlock::heading($type, $data) }}</h2>
 
                 <p class="prose">
                     {{ $data['intro'] ?? 'Send your details straight to '.$site->name.' — no payment, no obligation.' }}

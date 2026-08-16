@@ -191,6 +191,86 @@ class SiteContactFormTest extends TestCase
         $this->assertSame(0, Inquiry::count());
     }
 
+    /**
+     * The restaurant's own two switches decide which of the two forms its site
+     * shows. They did not, before: the block's type was set once at generation
+     * from the business type, and the migration off the old `stay`/`visit` mode
+     * could do no better — so a restaurant that switched to ordering kept
+     * offering a table the platform would have refused.
+     */
+    public function test_a_restaurant_that_only_takes_orders_is_not_offering_a_table(): void
+    {
+        $restaurant = $this->restaurant();
+        $restaurant->update(['accepts_table_reservations' => false, 'accepts_orders' => true]);
+        MenuItem::factory()->for($restaurant)->create(['name' => 'Kapana plate', 'price' => 60.00]);
+
+        // The stale value every site generated before the switches existed
+        // carries.
+        $site = $this->siteFor(EnquiryFormType::TableReservation, $restaurant);
+
+        $this->get($site->publicUrl())
+            ->assertSee('Kapana plate')
+            ->assertDontSee('name="time"', false);
+
+        $this->post("/_sites/{$site->slug}/enquiry", [
+            ...$this->contact(),
+            'items' => [MenuItem::sole()->id => 2],
+        ])->assertRedirect();
+
+        $this->assertSame(InquiryKind::Order, Inquiry::sole()->kind);
+    }
+
+    /**
+     * A switch over an empty menu is a promise the page cannot keep — the same
+     * rule `Listing::requestKinds()` applies on namibway.com. With neither
+     * channel open the form is still there; it just stops claiming to book
+     * anything, because walk-ins are a real way to run a restaurant.
+     */
+    public function test_a_restaurant_that_takes_neither_online_gets_a_plain_contact_form(): void
+    {
+        $restaurant = $this->restaurant();
+        $restaurant->update(['accepts_table_reservations' => false, 'accepts_orders' => true]);
+
+        $site = $this->siteFor(EnquiryFormType::TableReservation, $restaurant);
+
+        $this->get($site->publicUrl())->assertDontSee('name="time"', false);
+
+        $this->post("/_sites/{$site->slug}/enquiry", [...$this->contact(), 'message' => 'Do you open Sundays?'])
+            ->assertRedirect();
+
+        $this->assertSame('Do you open Sundays?', Inquiry::sole()->message);
+    }
+
+    /**
+     * One target, one name. The menu item was labelled from the block's own
+     * heading while the button beside it came from `SiteActions`, so a site
+     * read "Request availability" in the menu and "Book a table" on the button
+     * — both scrolling to the same form.
+     */
+    public function test_the_menu_item_and_the_button_say_the_same_thing(): void
+    {
+        $restaurant = $this->restaurant();
+        $restaurant->update(['accepts_table_reservations' => false, 'accepts_orders' => true]);
+        MenuItem::factory()->for($restaurant)->create(['price' => 60.00]);
+
+        $site = $this->siteFor(EnquiryFormType::TableReservation, $restaurant);
+        SiteBlock::where('site_page_id', SitePage::sole()->id)
+            ->update(['data' => ['heading' => 'Request availability', 'form_type' => EnquiryFormType::TableReservation->value]]);
+
+        $page = $this->get($site->publicUrl());
+
+        $page->assertDontSee('Request availability')->assertDontSee('Book a table');
+
+        // Three places, one string: the menu bar, the burger panel that renders
+        // the same array, and the button the bar picks up once the opening
+        // screen has scrolled away.
+        $this->assertSame(
+            3,
+            substr_count((string) $page->getContent(), '>Order online</a>'),
+            'The menu item and the button pointing at it should carry the same label.'
+        );
+    }
+
     public function test_a_whatsapp_form_offers_no_second_way_to_send(): void
     {
         $site = $this->siteFor(
