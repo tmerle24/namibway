@@ -3,6 +3,7 @@
 namespace App\Filament\Support;
 
 use App\Models\Listing;
+use App\Models\Partner;
 use App\Models\Site;
 use App\Models\SitePage;
 use App\Sites\LegalText;
@@ -46,13 +47,13 @@ class EditPagesAction
     public static function make(string $name = 'edit_pages'): FormAction
     {
         return self::configure(FormAction::make($name))
-            ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null);
+            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null);
     }
 
     public static function header(string $name = 'edit_pages'): PageAction
     {
         return self::configure(PageAction::make($name))
-            ->visible(fn (Listing $record): bool => self::siteFor($record) !== null);
+            ->visible(fn (Listing $record): bool => SiteResolver::for($record) !== null);
     }
 
     /**
@@ -72,7 +73,7 @@ class EditPagesAction
                 .'say than a visitor will scroll through — then fill each one under Content.')
             ->modalSubmitActionLabel('Save')
             ->modalWidth('3xl')
-            ->fillForm(fn (?Listing $record): array => ['pages' => self::state($record)])
+            ->fillForm(fn (Listing|Partner|null $record): array => ['pages' => self::state($record)])
             ->form([
                 Forms\Components\Repeater::make('pages')
                     ->hiddenLabel()
@@ -105,8 +106,8 @@ class EditPagesAction
                                 : 'made from the title if left empty'),
                     ]),
             ])
-            ->action(function (?Listing $record, array $data): void {
-                $site = $record === null ? null : self::siteFor($record);
+            ->action(function (Listing|Partner|null $record, array $data): void {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return;
@@ -119,9 +120,9 @@ class EditPagesAction
     /**
      * @return array<int, array<string, mixed>>
      */
-    private static function state(?Listing $record): array
+    private static function state(Listing|Partner|null $record): array
     {
-        $site = $record === null ? null : self::siteFor($record);
+        $site = $record === null ? null : SiteResolver::for($record);
 
         if ($site === null) {
             return [];
@@ -251,10 +252,5 @@ class EditPagesAction
         Notification::make()->title('Not saved')->body($refusal)->danger()->persistent()->send();
 
         throw new Halt;
-    }
-
-    private static function siteFor(Listing $listing): ?Site
-    {
-        return Site::where('source_listing_id', $listing->id)->first();
     }
 }

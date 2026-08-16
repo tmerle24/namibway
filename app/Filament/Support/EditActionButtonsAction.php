@@ -3,7 +3,7 @@
 namespace App\Filament\Support;
 
 use App\Models\Listing;
-use App\Models\Site;
+use App\Models\Partner;
 use App\Sites\ActionButtons;
 use Filament\Actions\Action as PageAction;
 use Filament\Forms;
@@ -56,13 +56,13 @@ class EditActionButtonsAction
     public static function make(string $name = 'edit_action_buttons'): FormAction
     {
         return self::configure(FormAction::make($name))
-            ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null);
+            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null);
     }
 
     public static function header(string $name = 'edit_action_buttons'): PageAction
     {
         return self::configure(PageAction::make($name))
-            ->visible(fn (Listing $record): bool => self::siteFor($record) !== null);
+            ->visible(fn (Listing $record): bool => SiteResolver::for($record) !== null);
     }
 
     /**
@@ -83,8 +83,8 @@ class EditActionButtonsAction
                 .'with nothing to point at is never shown, whatever is ticked here.')
             ->modalSubmitActionLabel('Save')
             ->modalWidth('2xl')
-            ->fillForm(function (?Listing $record): array {
-                $site = $record === null ? null : self::siteFor($record);
+            ->fillForm(function (Listing|Partner|null $record): array {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return [];
@@ -104,8 +104,8 @@ class EditActionButtonsAction
                 return $data;
             })
             ->form(self::schema())
-            ->action(function (?Listing $record, array $data): void {
-                $site = $record === null ? null : self::siteFor($record);
+            ->action(function (Listing|Partner|null $record, array $data): void {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return;
@@ -173,10 +173,5 @@ class EditActionButtonsAction
         }
 
         return $sections;
-    }
-
-    private static function siteFor(Listing $listing): ?Site
-    {
-        return Site::where('source_listing_id', $listing->id)->first();
     }
 }

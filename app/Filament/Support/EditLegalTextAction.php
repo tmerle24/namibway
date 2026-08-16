@@ -3,7 +3,7 @@
 namespace App\Filament\Support;
 
 use App\Models\Listing;
-use App\Models\Site;
+use App\Models\Partner;
 use App\Sites\LegalText;
 use Filament\Actions\Action as PageAction;
 use Filament\Forms;
@@ -33,7 +33,7 @@ class EditLegalTextAction
     public static function make(string $name = 'edit_legal'): FormAction
     {
         return self::configure(FormAction::make($name))
-            ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null);
+            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null);
     }
 
     /**
@@ -43,7 +43,7 @@ class EditLegalTextAction
     public static function header(string $name = 'edit_legal'): PageAction
     {
         return self::configure(PageAction::make($name))
-            ->visible(fn (Listing $record): bool => self::siteFor($record) !== null);
+            ->visible(fn (Listing $record): bool => SiteResolver::for($record) !== null);
     }
 
     /**
@@ -65,8 +65,8 @@ class EditLegalTextAction
             // Filled from the defaults rather than from the columns, so the
             // editor always opens on the text the visitor is actually being
             // shown — never on an empty box above a page full of words.
-            ->fillForm(function (?Listing $record): array {
-                $site = $record === null ? null : self::siteFor($record);
+            ->fillForm(function (Listing|Partner|null $record): array {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return [];
@@ -94,8 +94,8 @@ class EditLegalTextAction
                     ->helperText('Who is behind the site, and who is responsible for what.')
                     ->rows(12),
             ])
-            ->action(function (?Listing $record, array $data): void {
-                $site = $record === null ? null : self::siteFor($record);
+            ->action(function (Listing|Partner|null $record, array $data): void {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return;
@@ -109,10 +109,5 @@ class EditLegalTextAction
 
                 Notification::make()->title('Saved')->success()->send();
             });
-    }
-
-    private static function siteFor(Listing $listing): ?Site
-    {
-        return Site::where('source_listing_id', $listing->id)->first();
     }
 }

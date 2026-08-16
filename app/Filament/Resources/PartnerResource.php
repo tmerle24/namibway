@@ -2,12 +2,12 @@
 
 namespace App\Filament\Resources;
 
-use App\Enums\BusinessType;
 use App\Enums\ConnectorType;
 use App\Enums\OperatingMode;
 use App\Enums\SettlementModel;
 use App\Filament\Resources\PartnerResource\Pages;
 use App\Filament\Support\MessagesColumn;
+use App\Filament\Support\WebsiteTab;
 use App\Http\Controllers\Controller;
 use App\Models\Partner;
 use App\Models\PartnerMessage;
@@ -89,36 +89,33 @@ class PartnerResource extends Resource
                                             ->numeric()
                                             ->step(0.0000001),
                                     ]),
+
+                                Forms\Components\Section::make('Source images for the website')
+                                    ->columnSpanFull()
+                                    ->columns(1)
+                                    ->description('These feed the website generator. After generating, edit the site\'s own pictures on the Website tab via Pictures.')
+                                    ->schema([
+                                        Forms\Components\FileUpload::make('image')
+                                            ->label('Hero image')
+                                            ->image()
+                                            ->disk('r2')
+                                            ->directory('partners')
+                                            ->imageEditor()
+                                            ->helperText('Main photograph — shown full-width at the top of the generated website.'),
+
+                                        Forms\Components\FileUpload::make('gallery')
+                                            ->label('Gallery')
+                                            ->image()
+                                            ->disk('r2')
+                                            ->directory('partners')
+                                            ->multiple()
+                                            ->reorderable()
+                                            ->helperText('Additional photographs. Drag to reorder.'),
+                                    ]),
                             ])
                             ->columns(2),
 
-                        Forms\Components\Tabs\Tab::make('Website')
-                            ->icon('heroicon-o-globe-alt')
-                            ->schema([
-                                Forms\Components\Select::make('business_type')
-                                    ->label('Business type')
-                                    ->options(BusinessType::class)
-                                    ->helperText('Sets the starting block layout and colour. Required to generate a website from this partner record.')
-                                    ->columnSpanFull(),
-                                Forms\Components\FileUpload::make('image')
-                                    ->label('Hero image')
-                                    ->image()
-                                    ->disk('r2')
-                                    ->directory('partners')
-                                    ->imageEditor()
-                                    ->helperText('Main photograph — shown full-width at the top of the website.')
-                                    ->columnSpanFull(),
-                                Forms\Components\FileUpload::make('gallery')
-                                    ->label('Gallery')
-                                    ->image()
-                                    ->disk('r2')
-                                    ->directory('partners')
-                                    ->multiple()
-                                    ->reorderable()
-                                    ->helperText('Additional photographs. Drag to reorder.')
-                                    ->columnSpanFull(),
-                            ])
-                            ->columns(2),
+                        WebsiteTab::make(),
 
                         Forms\Components\Tabs\Tab::make('Portal Access')
                             ->icon('heroicon-o-key')

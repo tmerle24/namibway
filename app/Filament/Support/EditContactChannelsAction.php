@@ -3,7 +3,7 @@
 namespace App\Filament\Support;
 
 use App\Models\Listing;
-use App\Models\Site;
+use App\Models\Partner;
 use Filament\Actions\Action as PageAction;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action as FormAction;
@@ -25,13 +25,13 @@ class EditContactChannelsAction
     public static function make(string $name = 'edit_contact_channels'): FormAction
     {
         return self::configure(FormAction::make($name))
-            ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null);
+            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null);
     }
 
     public static function header(string $name = 'edit_contact_channels'): PageAction
     {
         return self::configure(PageAction::make($name))
-            ->visible(fn (Listing $record): bool => self::siteFor($record) !== null);
+            ->visible(fn (Listing $record): bool => SiteResolver::for($record) !== null);
     }
 
     /**
@@ -49,8 +49,8 @@ class EditContactChannelsAction
             ->modalHeading('Contact channels')
             ->modalDescription('How a visitor can reach the business. WhatsApp and the call button link to these; the enquiry form sends here too.')
             ->modalSubmitActionLabel('Save')
-            ->fillForm(function (?Listing $record): array {
-                $site = $record === null ? null : self::siteFor($record);
+            ->fillForm(function (Listing|Partner|null $record): array {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 return [
                     'whatsapp' => $site?->whatsapp,
@@ -76,8 +76,8 @@ class EditContactChannelsAction
                     ->helperText('Shown in the Contact block.')
                     ->maxLength(255),
             ])
-            ->action(function (?Listing $record, array $data): void {
-                $site = $record === null ? null : self::siteFor($record);
+            ->action(function (Listing|Partner|null $record, array $data): void {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return;
@@ -91,10 +91,5 @@ class EditContactChannelsAction
 
                 Notification::make()->title('Saved')->success()->send();
             });
-    }
-
-    private static function siteFor(Listing $listing): ?Site
-    {
-        return Site::where('source_listing_id', $listing->id)->first();
     }
 }

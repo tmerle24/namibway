@@ -2,9 +2,12 @@
 
 namespace App\Filament\Support;
 
+use App\Enums\BusinessType;
 use App\Enums\SiteStatus;
+use App\Jobs\GenerateSiteFromPartnerJob;
 use App\Jobs\GenerateSiteJob;
 use App\Models\Listing;
+use App\Models\Partner;
 use App\Models\Site;
 use App\Sites\LegalText;
 use App\Sites\Publishing\CannotPublish;
@@ -15,18 +18,16 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\HtmlString;
 
 /**
- * Everything about this listing's website, on one tab.
+ * Everything about a listing's or partner's website, on one tab.
  *
- * It was spread across the page header, which is the wrong place: a header is
- * for what the page is, and this is a subject of its own — the same reason
- * Media and Booking already have tabs. Somebody looking after a customer's
- * website wants the state, the address and the three things they can do to it
- * in one place, not distributed across the furniture.
+ * Works for both Listing and Partner owners — the only difference is which
+ * foreign key ties the Site to its source and which generation job runs. All
+ * editing actions are identical once the Site is resolved, which is why they
+ * live in shared action classes (EditBlocksAction, EditHeroAction, etc.) and
+ * this tab just assembles them.
  *
- * The buttons here and the ones in the listings table do the same work through
- * the same code. Filament has three Action classes — table, page, form — which
- * is a good reason to keep the *behaviour* in one function each and let these
- * only choose the flavour.
+ * Pass a Listing or Partner record to make(); Filament injects the right
+ * model into every closure via its type hint.
  */
 class WebsiteTab
 {
@@ -34,24 +35,22 @@ class WebsiteTab
     {
         return Forms\Components\Tabs\Tab::make('Website')
             ->icon('heroicon-o-globe-alt')
-            // Nothing to show before the listing exists: a website is built
-            // from a record, and on the create form there is not one yet.
             ->visibleOn('edit')
             ->schema([
                 Forms\Components\Placeholder::make('website_state')
                     ->label('Status')
-                    ->content(fn (?Listing $record): string => match (true) {
+                    ->content(fn (Listing|Partner|null $record): string => match (true) {
                         $record === null => '—',
-                        self::siteFor($record) === null => 'No website yet.',
-                        self::siteFor($record)->isPublished() => 'Published — live at its own address and indexable.',
+                        SiteResolver::for($record) === null => 'No website yet.',
+                        SiteResolver::for($record)->isPublished() => 'Published — live at its own address and indexable.',
                         default => 'Draft — opens at its own address, but tells search engines to ignore it.',
                     }),
 
                 Forms\Components\Placeholder::make('website_address')
                     ->label('Address')
-                    ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null)
-                    ->content(function (?Listing $record): HtmlString {
-                        $site = $record === null ? null : self::siteFor($record);
+                    ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
+                    ->content(function (Listing|Partner|null $record): HtmlString {
+                        $site = $record === null ? null : SiteResolver::for($record);
 
                         if ($site === null) {
                             return new HtmlString('—');
@@ -69,9 +68,9 @@ class WebsiteTab
 
                 Forms\Components\Placeholder::make('website_terms')
                     ->label('Legal pages')
-                    ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null)
-                    ->content(function (?Listing $record): string {
-                        $site = $record === null ? null : self::siteFor($record);
+                    ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
+                    ->content(function (Listing|Partner|null $record): string {
+                        $site = $record === null ? null : SiteResolver::for($record);
 
                         if ($site === null) {
                             return '—';
@@ -111,22 +110,49 @@ class WebsiteTab
                     SendTermsConfirmationAction::make(),
 
                     Action::make('build_website')
-                        ->label(fn (?Listing $record): string => $record !== null && self::siteFor($record) !== null
-                            ? 'Rebuild from this listing'
+                        ->label(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record) !== null
+                            ? 'Rebuild from this '.($record instanceof Partner ? 'partner' : 'listing')
                             : 'Create website')
                         ->icon('heroicon-o-globe-alt')
-                        ->color(fn (?Listing $record): string => $record !== null && self::siteFor($record) !== null ? 'gray' : 'success')
+                        ->color(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record) !== null ? 'gray' : 'success')
                         ->requiresConfirmation()
-                        ->modalDescription('We build from this listing — its text, its photographs, its address. '
-                            .'Anything already edited on the website is left alone, and the bell reports what happened.')
-                        ->action(function (?Listing $record): void {
+                        ->modalDescription(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record) !== null
+                            ? 'We rebuild from this source — the text, photographs and address. '
+                                .'Anything already edited on the website is left alone, and the bell reports what happened.'
+                            : 'We build from this source — its text, its photographs, its address. '
+                                .'Nothing becomes public. A notification follows when the draft is ready.')
+                        // Partners without a business_type need one to generate — ask for it here
+                        // the first time, since it is not derivable from the record automatically.
+                        ->form(fn (Listing|Partner|null $record): array => (
+                            $record instanceof Partner
+                            && SiteResolver::for($record) === null
+                            && blank($record->business_type)
+                        ) ? [
+                            Forms\Components\Select::make('business_type')
+                                ->label('Business type')
+                                ->options(BusinessType::class)
+                                ->required()
+                                ->default(BusinessType::Retail->value)
+                                ->helperText('Set this once on the partner record to skip this question next time.'),
+                        ] : [])
+                        ->action(function (Listing|Partner|null $record, array $data): void {
                             if ($record === null) {
                                 return;
                             }
 
                             $userId = auth()->id();
+                            $userId = is_numeric($userId) ? (int) $userId : null;
 
-                            GenerateSiteJob::dispatch($record, is_numeric($userId) ? (int) $userId : null);
+                            if ($record instanceof Partner) {
+                                $existing = SiteResolver::for($record);
+                                $type = ($existing !== null ? $existing->business_type : null)
+                                    ?? (filled($record->business_type) ? BusinessType::from($record->business_type) : null)
+                                    ?? (isset($data['business_type']) ? BusinessType::from($data['business_type']) : BusinessType::Retail);
+
+                                GenerateSiteFromPartnerJob::dispatch($record, $type, $userId);
+                            } else {
+                                GenerateSiteJob::dispatch($record, $userId);
+                            }
 
                             Notification::make()
                                 ->title('Building the website')
@@ -136,24 +162,20 @@ class WebsiteTab
                         }),
 
                     Action::make('publish_website')
-                        ->label(fn (?Listing $record): string => $record !== null && self::siteFor($record)?->isPublished() === true
+                        ->label(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record)?->isPublished() === true
                             ? 'Unpublish'
                             : 'Publish')
                         ->icon('heroicon-o-rocket-launch')
-                        ->color(fn (?Listing $record): string => $record !== null && self::siteFor($record)?->isPublished() === true
+                        ->color(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record)?->isPublished() === true
                             ? 'danger'
                             : 'success')
-                        ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null)
+                        ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
                         ->requiresConfirmation()
-                        ->modalDescription(fn (?Listing $record): string => $record !== null && self::siteFor($record)?->isPublished() === true
+                        ->modalDescription(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record)?->isPublished() === true
                             ? 'It stops being indexable and goes back to being a draft.'
                             : 'It becomes indexable by search engines under this business\'s name. '
                                 .'Only do this once they have seen it and agreed.')
-                        // Publishing is the moment somebody's name goes on this,
-                        // so it is also the moment the legal pages and our own
-                        // terms have to have been agreed to. Recorded rather
-                        // than assumed: who confirmed, and when.
-                        ->form(fn (?Listing $record): array => $record !== null && self::siteFor($record)?->isPublished() === true
+                        ->form(fn (Listing|Partner|null $record): array => $record !== null && SiteResolver::for($record)?->isPublished() === true
                             ? []
                             : [
                                 Forms\Components\Checkbox::make('terms')
@@ -167,14 +189,14 @@ class WebsiteTab
                                     ->helperText('The person at the business who agreed — a name is enough.')
                                     ->maxLength(255),
                             ])
-                        ->action(fn (?Listing $record, array $data) => $record === null ? null : self::togglePublished($record, $data)),
+                        ->action(fn (Listing|Partner|null $record, array $data) => $record === null ? null : self::togglePublished($record, $data)),
 
                     Action::make('open_website')
                         ->label('Open')
                         ->icon('heroicon-o-arrow-top-right-on-square')
                         ->color('gray')
-                        ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null)
-                        ->url(fn (?Listing $record): ?string => $record === null ? null : self::siteFor($record)?->publicUrl())
+                        ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
+                        ->url(fn (Listing|Partner|null $record): ?string => $record === null ? null : SiteResolver::for($record)?->publicUrl())
                         ->openUrlInNewTab(),
                 ]),
             ]);
@@ -183,9 +205,9 @@ class WebsiteTab
     /**
      * @param  array<string, mixed>  $data
      */
-    private static function togglePublished(Listing $listing, array $data = []): void
+    private static function togglePublished(Listing|Partner $owner, array $data = []): void
     {
-        $site = self::siteFor($listing);
+        $site = SiteResolver::for($owner);
 
         if ($site === null) {
             return;
@@ -199,8 +221,6 @@ class WebsiteTab
             return;
         }
 
-        // Recorded before the attempt, so a publish blocked by the gate does
-        // not lose the confirmation that was just given.
         if ($site->terms_accepted_at === null) {
             $confirmedBy = trim((string) ($data['confirmed_by'] ?? ''));
 
@@ -224,10 +244,5 @@ class WebsiteTab
         }
 
         Notification::make()->title('Live')->body($site->refresh()->publicUrl())->success()->send();
-    }
-
-    private static function siteFor(Listing $listing): ?Site
-    {
-        return Site::where('source_listing_id', $listing->id)->first();
     }
 }

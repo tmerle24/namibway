@@ -4,7 +4,7 @@ namespace App\Filament\Support;
 
 use App\Enums\DomainStatus;
 use App\Models\Listing;
-use App\Models\Site;
+use App\Models\Partner;
 use App\Sites\Domains\DnsChecker;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action as FormAction;
@@ -33,13 +33,13 @@ class EditCustomDomainAction
             ->label('Own domain')
             ->icon('heroicon-o-link')
             ->color('gray')
-            ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null)
+            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
             ->modalHeading('Point the business\'s own domain here')
             ->modalDescription('Their subdomain keeps working either way — it is what old links and the '
                 .'draft address point at. This adds their domain alongside it.')
             ->modalSubmitActionLabel('Save')
-            ->fillForm(function (?Listing $record): array {
-                $site = $record === null ? null : self::siteFor($record);
+            ->fillForm(function (Listing|Partner|null $record): array {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 return $site === null ? [] : ['custom_domain' => $site->custom_domain];
             })
@@ -62,10 +62,10 @@ class EditCustomDomainAction
 
                 Forms\Components\Placeholder::make('domain_state')
                     ->label('Where it has got to')
-                    ->content(fn (?Listing $record): string => self::state($record)),
+                    ->content(fn (Listing|Partner|null $record): string => self::state($record)),
             ])
-            ->action(function (?Listing $record, array $data): void {
-                $site = $record === null ? null : self::siteFor($record);
+            ->action(function (Listing|Partner|null $record, array $data): void {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return;
@@ -185,9 +185,9 @@ class EditCustomDomainAction
         return preg_replace('~^www\.~', '', $domain) ?? $domain;
     }
 
-    private static function state(?Listing $record): string
+    private static function state(Listing|Partner|null $record): string
     {
-        $site = $record === null ? null : self::siteFor($record);
+        $site = $record === null ? null : SiteResolver::for($record);
 
         if ($site === null || blank($site->custom_domain)) {
             return 'No domain yet. The site is on its subdomain.';
@@ -202,10 +202,5 @@ class EditCustomDomainAction
             default => 'Waiting for their DNS'.($checked ? ' (last checked '.$checked.')' : '')
                 .'. '.($site->domain_message ?: ''),
         };
-    }
-
-    private static function siteFor(Listing $listing): ?Site
-    {
-        return Site::where('source_listing_id', $listing->id)->first();
     }
 }

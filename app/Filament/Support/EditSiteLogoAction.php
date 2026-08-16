@@ -3,7 +3,7 @@
 namespace App\Filament\Support;
 
 use App\Models\Listing;
-use App\Models\Site;
+use App\Models\Partner;
 use Filament\Actions\Action as PageAction;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action as FormAction;
@@ -27,13 +27,13 @@ class EditSiteLogoAction
     public static function make(string $name = 'edit_logo'): FormAction
     {
         return self::configure(FormAction::make($name))
-            ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null);
+            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null);
     }
 
     public static function header(string $name = 'edit_logo'): PageAction
     {
         return self::configure(PageAction::make($name))
-            ->visible(fn (Listing $record): bool => self::siteFor($record) !== null);
+            ->visible(fn (Listing $record): bool => SiteResolver::for($record) !== null);
     }
 
     /**
@@ -53,8 +53,8 @@ class EditSiteLogoAction
                 .'better answer. The name here is only for the bar: the full one stays on the page title '
                 .'and the legal notice.')
             ->modalSubmitActionLabel('Save')
-            ->fillForm(function (?Listing $record): array {
-                $site = $record === null ? null : self::siteFor($record);
+            ->fillForm(function (Listing|Partner|null $record): array {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 return $site === null ? [] : [
                     'logo_key' => $site->logo_key,
@@ -66,9 +66,9 @@ class EditSiteLogoAction
                     ->label('Name in the bar')
                     ->rows(2)
                     ->maxLength(120)
-                    ->placeholder(fn (?Listing $record): string => $record === null
+                    ->placeholder(fn (Listing|Partner|null $record): string => $record === null
                         ? ''
-                        : (string) (self::siteFor($record)->name ?? ''))
+                        : (string) (SiteResolver::for($record)->name ?? ''))
                     ->helperText('Empty uses the business\'s full name. A line break here is where the '
                         .'name breaks in the bar — which beats letting the browser choose, and is what '
                         .'turned "…Hunting / Safari" into two lines that read. Two lines is the maximum '
@@ -85,8 +85,8 @@ class EditSiteLogoAction
                     ->helperText('A wide mark reads best — it is fitted to the height of the bar. '
                         .'A transparent PNG or an SVG sits well over a photograph.'),
             ])
-            ->action(function (?Listing $record, array $data): void {
-                $site = $record === null ? null : self::siteFor($record);
+            ->action(function (Listing|Partner|null $record, array $data): void {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return;
@@ -104,10 +104,5 @@ class EditSiteLogoAction
 
                 Notification::make()->title('Saved')->success()->send();
             });
-    }
-
-    private static function siteFor(Listing $listing): ?Site
-    {
-        return Site::where('source_listing_id', $listing->id)->first();
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Filament\Support;
 
 use App\Models\Listing;
-use App\Models\Site;
+use App\Models\Partner;
 use App\Sites\Typography;
 use Filament\Actions\Action as PageAction;
 use Filament\Forms;
@@ -30,13 +30,13 @@ class EditTypographyAction
     public static function make(string $name = 'edit_typography'): FormAction
     {
         return self::configure(FormAction::make($name))
-            ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null);
+            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null);
     }
 
     public static function header(string $name = 'edit_typography'): PageAction
     {
         return self::configure(PageAction::make($name))
-            ->visible(fn (Listing $record): bool => self::siteFor($record) !== null);
+            ->visible(fn (Listing $record): bool => SiteResolver::for($record) !== null);
     }
 
     /**
@@ -56,8 +56,8 @@ class EditTypographyAction
                 .'Every face here is one the visitor already has, so the page never waits for a font to '
                 .'download.')
             ->modalSubmitActionLabel('Save')
-            ->fillForm(function (?Listing $record): array {
-                $site = $record === null ? null : self::siteFor($record);
+            ->fillForm(function (Listing|Partner|null $record): array {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return [];
@@ -104,7 +104,7 @@ class EditTypographyAction
                         .'name too long for one line wraps to a second rather than being cut.'),
             ])
             ->action(function (?Listing $record, array $data): void {
-                $site = $record === null ? null : self::siteFor($record);
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return;
@@ -126,10 +126,5 @@ class EditTypographyAction
 
                 Notification::make()->title('Saved')->success()->send();
             });
-    }
-
-    private static function siteFor(Listing $listing): ?Site
-    {
-        return Site::where('source_listing_id', $listing->id)->first();
     }
 }

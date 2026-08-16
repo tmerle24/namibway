@@ -3,7 +3,7 @@
 namespace App\Filament\Support;
 
 use App\Models\Listing;
-use App\Models\Site;
+use App\Models\Partner;
 use App\Models\SiteBlock;
 use Filament\Actions\Action as PageAction;
 use Filament\Forms;
@@ -29,7 +29,7 @@ class EditHeroAction
     public static function make(string $name = 'edit_hero'): FormAction
     {
         return self::configure(FormAction::make($name))
-            ->visible(fn (?Listing $record): bool => $record !== null && self::heroFor($record) !== null);
+            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && self::heroFor($record) !== null);
     }
 
     public static function header(string $name = 'edit_hero'): PageAction
@@ -54,7 +54,7 @@ class EditHeroAction
             ->modalDescription('The big line is ours, not the business\'s — we pick one that suits the '
                 .'category, because a slogan is theirs to write. Replace it with anything better.')
             ->modalSubmitActionLabel('Save')
-            ->fillForm(function (?Listing $record): array {
+            ->fillForm(function (Listing|Partner|null $record): array {
                 $hero = $record === null ? null : self::heroFor($record);
 
                 if ($hero === null) {
@@ -96,7 +96,7 @@ class EditHeroAction
                     ->maxLength(60)
                     ->visible(fn (Forms\Get $get): bool => (bool) $get('show_town')),
             ])
-            ->action(function (?Listing $record, array $data): void {
+            ->action(function (Listing|Partner|null $record, array $data): void {
                 $hero = $record === null ? null : self::heroFor($record);
 
                 if ($hero === null) {
@@ -117,9 +117,9 @@ class EditHeroAction
             });
     }
 
-    private static function heroFor(Listing $listing): ?SiteBlock
+    private static function heroFor(Listing|Partner $owner): ?SiteBlock
     {
-        $site = Site::where('source_listing_id', $listing->id)->first();
+        $site = SiteResolver::for($owner);
 
         if ($site === null) {
             return null;

@@ -4,6 +4,7 @@ namespace App\Filament\Support;
 
 use App\Filament\Support\Sites\BlockForm;
 use App\Models\Listing;
+use App\Models\Partner;
 use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Models\SitePage;
@@ -41,13 +42,13 @@ class EditBlocksAction
     public static function make(string $name = 'edit_blocks'): FormAction
     {
         return self::configure(FormAction::make($name))
-            ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null);
+            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null);
     }
 
     public static function header(string $name = 'edit_blocks'): PageAction
     {
         return self::configure(PageAction::make($name))
-            ->visible(fn (Listing $record): bool => self::siteFor($record) !== null);
+            ->visible(fn (Listing $record): bool => SiteResolver::for($record) !== null);
     }
 
     /**
@@ -67,8 +68,8 @@ class EditBlocksAction
                 .'without showing it, and add what is missing.')
             ->modalSubmitActionLabel('Save')
             ->modalWidth('5xl')
-            ->fillForm(function (?Listing $record): array {
-                $site = $record === null ? null : self::siteFor($record);
+            ->fillForm(function (Listing|Partner|null $record): array {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return ['page_id' => null, 'blocks' => []];
@@ -78,7 +79,7 @@ class EditBlocksAction
 
                 return ['page_id' => $page->id, 'blocks' => self::stateFor($page)];
             })
-            ->form(fn (?Listing $record): array => [
+            ->form(fn (Listing|Partner|null $record): array => [
                 // Which page is being edited. One site had one page until pages
                 // could be created; now the editor has to say which, and
                 // switching reloads the bands under it rather than opening a
@@ -105,7 +106,7 @@ class EditBlocksAction
                     ->blockNumbers(false)
                     ->addActionLabel('Add a band'),
             ])
-            ->action(function (?Listing $record, array $data): void {
+            ->action(function (Listing|Partner|null $record, array $data): void {
                 $page = self::pageById($record, is_numeric($data['page_id'] ?? null) ? (int) $data['page_id'] : null);
 
                 if ($page === null) {
@@ -119,9 +120,9 @@ class EditBlocksAction
     /**
      * @return array<int, Block>
      */
-    private static function blocksFor(?Listing $record): array
+    private static function blocksFor(Listing|Partner|null $record): array
     {
-        $site = $record === null ? null : self::siteFor($record);
+        $site = $record === null ? null : SiteResolver::for($record);
 
         return $site === null ? [] : BlockForm::builderBlocks($site);
     }
@@ -132,9 +133,9 @@ class EditBlocksAction
      *
      * @return array<int, string>
      */
-    private static function pageOptions(?Listing $record): array
+    private static function pageOptions(Listing|Partner|null $record): array
     {
-        $site = $record === null ? null : self::siteFor($record);
+        $site = $record === null ? null : SiteResolver::for($record);
 
         if ($site === null) {
             return [];
@@ -156,9 +157,9 @@ class EditBlocksAction
      * through a form field, so it is checked against the site rather than
      * trusted.
      */
-    private static function pageById(?Listing $record, ?int $id): ?SitePage
+    private static function pageById(Listing|Partner|null $record, ?int $id): ?SitePage
     {
-        $site = $record === null ? null : self::siteFor($record);
+        $site = $record === null ? null : SiteResolver::for($record);
 
         if ($site === null) {
             return null;
@@ -272,10 +273,5 @@ class EditBlocksAction
             ['locale' => $site->default_locale, 'slug' => ''],
             ['is_home' => true, 'title' => $site->name, 'sort' => 0],
         );
-    }
-
-    private static function siteFor(Listing $listing): ?Site
-    {
-        return Site::where('source_listing_id', $listing->id)->first();
     }
 }

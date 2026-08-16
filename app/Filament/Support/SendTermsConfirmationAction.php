@@ -4,7 +4,7 @@ namespace App\Filament\Support;
 
 use App\Mail\SiteTermsConfirmation;
 use App\Models\Listing;
-use App\Models\Site;
+use App\Models\Partner;
 use Filament\Forms\Components\Actions\Action as FormAction;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Mail;
@@ -26,23 +26,27 @@ class SendTermsConfirmationAction
             ->label('Ask the business to confirm')
             ->icon('heroicon-o-envelope')
             ->color('gray')
-            ->visible(fn (?Listing $record): bool => $record !== null
-                && self::siteFor($record) !== null
-                && self::siteFor($record)->terms_accepted_at === null)
+            ->visible(fn (Listing|Partner|null $record): bool => $record !== null
+                && SiteResolver::for($record) !== null
+                && SiteResolver::for($record)->terms_accepted_at === null)
             ->requiresConfirmation()
             ->modalHeading('Send them the website to confirm')
             ->modalDescription('They get a link to the site, the privacy and legal notices, our own '
                 .'terms where one is published, and a button that publishes it under their name.')
             ->modalSubmitActionLabel('Send it')
-            ->action(function (?Listing $record): void {
-                $site = $record === null ? null : self::siteFor($record);
+            ->action(function (Listing|Partner|null $record): void {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return;
                 }
 
                 // $record cannot be null here: $site was resolved from it above.
-                $to = $site->contact_email ?: $record->partner?->email ?: $record->contact_email;
+                $fallback = $record instanceof Listing
+                    ? $record->partner?->email
+                    : $record->email;
+
+                $to = $site->contact_email ?: $fallback;
 
                 if (blank($to)) {
                     Notification::make()
@@ -64,10 +68,5 @@ class SendTermsConfirmationAction
                     ->success()
                     ->send();
             });
-    }
-
-    private static function siteFor(Listing $listing): ?Site
-    {
-        return Site::where('source_listing_id', $listing->id)->first();
     }
 }

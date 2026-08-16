@@ -4,6 +4,7 @@ namespace App\Filament\Support;
 
 use App\Enums\ContentSource;
 use App\Models\Listing;
+use App\Models\Partner;
 use App\Models\Site;
 use App\Models\SiteImage;
 use Filament\Actions\Action as PageAction;
@@ -29,13 +30,13 @@ class EditSiteImagesAction
     public static function make(string $name = 'edit_images'): FormAction
     {
         return self::configure(FormAction::make($name))
-            ->visible(fn (?Listing $record): bool => $record !== null && self::siteFor($record) !== null);
+            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null);
     }
 
     public static function header(string $name = 'edit_images'): PageAction
     {
         return self::configure(PageAction::make($name))
-            ->visible(fn (Listing $record): bool => self::siteFor($record) !== null);
+            ->visible(fn (Listing $record): bool => SiteResolver::for($record) !== null);
     }
 
     /**
@@ -55,8 +56,8 @@ class EditSiteImagesAction
                 .'Only pictures the business owns or has the right to publish.')
             ->modalSubmitActionLabel('Save')
             ->modalWidth('4xl')
-            ->fillForm(fn (?Listing $record): array => ['images' => self::state($record)])
-            ->form(fn (?Listing $record): array => [
+            ->fillForm(fn (Listing|Partner|null $record): array => ['images' => self::state($record)])
+            ->form(fn (Listing|Partner|null $record): array => [
                 Forms\Components\Repeater::make('images')
                     ->hiddenLabel()
                     ->addActionLabel('Add a picture')
@@ -88,8 +89,8 @@ class EditSiteImagesAction
                                 .'does not load. A short description, not a caption.'),
                     ]),
             ])
-            ->action(function (?Listing $record, array $data): void {
-                $site = $record === null ? null : self::siteFor($record);
+            ->action(function (Listing|Partner|null $record, array $data): void {
+                $site = $record === null ? null : SiteResolver::for($record);
 
                 if ($site === null) {
                     return;
@@ -102,9 +103,9 @@ class EditSiteImagesAction
     /**
      * @return array<int, array<string, mixed>>
      */
-    private static function state(?Listing $record): array
+    private static function state(Listing|Partner|null $record): array
     {
-        $site = $record === null ? null : self::siteFor($record);
+        $site = $record === null ? null : SiteResolver::for($record);
 
         if ($site === null) {
             return [];
@@ -248,15 +249,10 @@ class EditSiteImagesAction
         return $value === '' ? null : $value;
     }
 
-    private static function prefixFor(?Listing $record): string
+    private static function prefixFor(Listing|Partner|null $record): string
     {
-        $site = $record === null ? null : self::siteFor($record);
+        $site = $record === null ? null : SiteResolver::for($record);
 
         return $site === null ? 'sites' : $site->mediaPrefix();
-    }
-
-    private static function siteFor(Listing $listing): ?Site
-    {
-        return Site::where('source_listing_id', $listing->id)->first();
     }
 }
