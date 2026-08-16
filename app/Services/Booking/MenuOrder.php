@@ -24,7 +24,7 @@ use Illuminate\Validation\ValidationException;
 class MenuOrder
 {
     /**
-     * @param  array<int, array{menu_item_id: int|string, quantity: int|string}>  $lines
+     * @param  array<int, array{menu_item_id?: int|string, quantity?: int|string}>  $lines
      *
      * @throws ValidationException when an item is not on this restaurant's menu
      */
@@ -116,7 +116,14 @@ class MenuOrder
      * client that built its payload from two places, and "two starters" is the
      * only reading of it that does not silently lose one.
      *
-     * @param  array<int, array{menu_item_id: int|string, quantity: int|string}>  $lines
+     * Both keys are declared optional because they genuinely are here: the
+     * controller's validation guarantees them, but this class is the write path
+     * for orders and is not obliged to trust its only current caller. A missing
+     * or zero value is dropped rather than trusted, which is also what makes an
+     * empty order fail as "choose at least one item" instead of as a total of
+     * nothing.
+     *
+     * @param  array<int, array{menu_item_id?: int|string, quantity?: int|string}>  $lines
      * @return array<int, int>
      */
     private static function collapse(array $lines): array

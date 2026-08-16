@@ -64,6 +64,22 @@ class Inquiry extends Model
         'notes',
     ];
 
+    /**
+     * A request is a booking request unless it says otherwise.
+     *
+     * The column carries the same default, but that one only applies once the
+     * row reaches the database — and the observer, the promoter and the emails
+     * all read `kind` off the *model*, including the instance handed straight
+     * to `created()`. Without this, every caller that does not name a kind
+     * (the shortlist batch, a plan's bookings) would hand those readers a null
+     * and fatal on the first `$inquiry->kind->…`.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'kind' => InquiryKind::Booking->value,
+    ];
+
     protected $casts = [
         'kind' => InquiryKind::class,
         'status' => InquiryStatus::class,

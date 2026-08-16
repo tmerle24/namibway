@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Services\Booking\StayPromoter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
@@ -50,6 +52,10 @@ class RestaurantRequestTest extends TestCase
 
     public function test_a_restaurant_page_is_sent_its_menu_in_reading_order(): void
     {
+        // Viewing a listing queues an enrichment run when one is due, which on
+        // the sync test queue would crawl the open internet.
+        Queue::fake();
+
         $restaurant = $this->restaurant();
 
         MenuItem::factory()->for($restaurant)->create(['name' => 'Malva pudding', 'category' => 'Desserts', 'sort' => 2]);
@@ -57,26 +63,30 @@ class RestaurantRequestTest extends TestCase
         MenuItem::factory()->for($restaurant)->create(['name' => 'Oryx fillet', 'category' => 'Mains', 'sort' => 1]);
         MenuItem::factory()->for($restaurant)->unavailable()->create(['name' => 'Sold out', 'category' => 'Mains', 'sort' => 1]);
 
-        $response = $this->get("/listings/{$restaurant->slug}");
-
-        $menu = $response->viewData('page')['props']['menu'];
-
-        // Sections in the order their first item appears, not alphabetically:
-        // a menu is written starters-first and sorting it would put Desserts
-        // above Mains on every restaurant in the country.
-        $this->assertSame(['Starters', 'Mains', 'Desserts'], array_column($menu, 'category'));
-
-        // Nothing the kitchen has switched off reaches the page.
-        $this->assertSame(['Oryx fillet'], array_column($menu[1]['items'], 'name'));
+        $this->get("/listings/{$restaurant->slug}")
+            ->assertInertia(fn (Assert $page) => $page
+                // Sections in the order their first item appears, not
+                // alphabetically: a menu is written starters-first, and sorting
+                // it would put Desserts above Mains on every restaurant in the
+                // country.
+                ->has('menu', 3)
+                ->where('menu.0.category', 'Starters')
+                ->where('menu.1.category', 'Mains')
+                ->where('menu.2.category', 'Desserts')
+                // Nothing the kitchen has switched off reaches the page.
+                ->has('menu.1.items', 1)
+                ->where('menu.1.items.0.name', 'Oryx fillet')
+            );
     }
 
     public function test_a_listing_that_is_not_a_restaurant_gets_no_menu(): void
     {
+        Queue::fake();
+
         $lodge = $this->lodge();
 
-        $response = $this->get("/listings/{$lodge->slug}");
-
-        $this->assertSame([], $response->viewData('page')['props']['menu']);
+        $this->get("/listings/{$lodge->slug}")
+            ->assertInertia(fn (Assert $page) => $page->where('menu', []));
     }
 
     public function test_a_table_reservation_records_its_date_and_time(): void
