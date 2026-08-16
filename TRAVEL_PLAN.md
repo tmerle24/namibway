@@ -147,6 +147,35 @@ gets built with this future use in mind rather than needing a rewrite.
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-16 — a restaurant says which channels it takes online
+
+Follow-up to the entry below, from the first question asked of it once it was
+live: *where do I switch this on and off?* Nowhere — both channels were derived,
+and both derivations conflated **having** something with **selling it over the
+internet**.
+
+- ✅ **`accepts_table_reservations` and `accepts_orders`** on `listings`, both
+  default true, both under `accepts_inquiries`, both meaningless outside a
+  restaurant. Shared between the panels as `RestaurantChannelSchema` — /admin's
+  Visibility tab and the partner panel's Settings section, the same arrangement
+  the room-type and menu schemas use.
+- ✅ **A menu has two jobs and only one of them is a commitment.** Entering a
+  card used to switch ordering on by itself, so a restaurant that wanted its
+  menu *shown* was made to take orders. With ordering off the card now renders
+  on the listing page as something to read — which is what makes the switch
+  worth having rather than just a way to hide work somebody did.
+- ✅ **`Listing::requestKinds()` is the single answer** to what a property may
+  be asked for. The page draws its tabs from it and the controller enforces the
+  same list on the POST, so a channel switched off is a rule rather than a
+  hidden tab. `storeBatchInquiry` filters on it too.
+- ✅ **Ordering additionally needs something to order.** A toggle switched on
+  over an empty menu counts as off; a promise the page cannot keep is not a
+  state worth having.
+- 6 request tests plus `RestaurantChannelTogglesTest`, which goes through
+  Livewire rather than calling the closure directly — the risk in a
+  `visible()` closure is never the logic, it is whether Filament's own
+  evaluation reaches it.
+
 ### 2026-08-16 — a restaurant is asked for a table or for dinner
 
 Until now every listing type was asked the same question — check-in, check-out,

@@ -299,6 +299,10 @@
             "add": "Añadir un {item}",
             "remove": "Quitar un {item}"
         },
+        "menu": {
+            "title": "Carta",
+            "readOnly": "A título informativo: este restaurante toma los pedidos en persona, no en línea."
+        },
         "reviews": {
             "title": "Valoraciones",
             "count": "{count} valoraciones",

@@ -299,6 +299,10 @@
             "add": "Eén {item} toevoegen",
             "remove": "Eén {item} verwijderen"
         },
+        "menu": {
+            "title": "Menukaart",
+            "readOnly": "Ter informatie — dit restaurant neemt bestellingen ter plaatse op, niet online."
+        },
         "reviews": {
             "title": "Beoordelingen",
             "count": "{count} beoordelingen",

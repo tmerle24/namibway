@@ -523,6 +523,10 @@
             "add": "Add one {item}",
             "remove": "Remove one {item}"
         },
+        "menu": {
+            "title": "Menu",
+            "readOnly": "For information — this restaurant takes orders in person, not online."
+        },
         "reviews": {
             "title": "Reviews",
             "count": "{count} reviews",

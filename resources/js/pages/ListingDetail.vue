@@ -138,8 +138,15 @@ interface MenuSection {
 
 const props = defineProps<{
     listing: Listing;
-    /** Empty for everything that is not a restaurant with a menu entered. */
+    /**
+     * Empty for everything that is not a restaurant with a menu entered. Sent
+     * whether or not the restaurant takes orders — a menu that is only being
+     * shown is exactly what the ordering switch is for.
+     */
     menu: MenuSection[];
+    /** What the property is willing to be asked for — Listing::requestKinds(). */
+    can_reserve_table: boolean;
+    can_order: boolean;
     reviews: Review[];
     is_preview?: boolean;
     can_publish?: boolean;
@@ -180,16 +187,29 @@ const showInquiryLogin = ref(false);
 
 const isRestaurant = computed(() => props.listing.type === 'restaurant');
 
-// A restaurant nobody has entered a menu for gets no order tab at all rather
-// than an empty one. The server enforces the same thing — see
-// ListingController::inquiryKind().
-const canOrder = computed(
-    () =>
-        isRestaurant.value &&
-        props.menu.some((section) => section.items.length > 0),
+// Both come from the server, which resolves them once from the property's own
+// switches and enforces the same list on the POST — see Listing::requestKinds().
+// The page never decides this for itself; a tab the server would refuse is a
+// tab that should not be drawn.
+const canReserveTable = computed(() => props.can_reserve_table);
+const canOrder = computed(() => props.can_order);
+
+// Only worth a tab strip when there really are two things to choose between.
+const hasBothChannels = computed(() => canReserveTable.value && canOrder.value);
+
+// The menu as something to read rather than order from — the state a
+// restaurant is in when it has published its card but does not take orders
+// online. With ordering on, the same items are in the panel with steppers
+// beside them, and printing them twice would just be twice.
+const showsMenuAsCard = computed(
+    () => isRestaurant.value && !canOrder.value && props.menu.length > 0,
 );
 
-const inquiryMode = ref<'table' | 'order'>('table');
+// Starts on whichever channel is open; with both open, a table is the more
+// common ask and goes first.
+const inquiryMode = ref<'table' | 'order'>(
+    props.can_reserve_table ? 'table' : 'order',
+);
 
 /** menu item id → how many. Absent means none; a stepper never goes below 0. */
 const orderQuantities = ref<Record<number, number>>({});
@@ -911,6 +931,43 @@ const socialLinks = computed(() =>
                         </ul>
                     </div>
 
+                    <!--
+                        The card, to read. Only when the restaurant does not
+                        take orders online — with ordering on, these same items
+                        are in the panel with a stepper beside each, and
+                        printing them twice would just be twice.
+                    -->
+                    <div v-if="showsMenuAsCard" class="menu-card">
+                        <h3>{{ t('listing.menu.title') }}</h3>
+                        <p class="menu-card-note">
+                            {{ t('listing.menu.readOnly') }}
+                        </p>
+                        <div
+                            v-for="section in props.menu"
+                            :key="section.category"
+                            class="menu-card-section"
+                        >
+                            <h4>{{ section.category }}</h4>
+                            <div
+                                v-for="item in section.items"
+                                :key="item.id"
+                                class="menu-card-item"
+                            >
+                                <div class="menu-card-item-text">
+                                    <strong>{{ item.name }}</strong>
+                                    <span
+                                        v-if="item.description"
+                                        class="menu-item-description"
+                                        >{{ item.description }}</span
+                                    >
+                                </div>
+                                <span class="menu-card-item-price">{{
+                                    formatPrice(item.price)
+                                }}</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div
                         v-if="
                             props.listing.partner ||
@@ -984,12 +1041,12 @@ const socialLinks = computed(() =>
                     <template v-if="props.listing.accepts_inquiries">
                         <h3>{{ inquiryTitle }}</h3>
                         <!--
-                            Two tabs only where there is genuinely a second
-                            thing to ask for. A restaurant with no menu entered
-                            shows the table form on its own, with no hint that
-                            something is missing.
+                            Two tabs only where there really are two things to
+                            choose between. A restaurant that takes only one of
+                            them — or has no menu entered — shows that one form
+                            on its own, with no hint that something is missing.
                         -->
-                        <div v-if="canOrder" class="inquiry-mode-tabs">
+                        <div v-if="hasBothChannels" class="inquiry-mode-tabs">
                             <button
                                 type="button"
                                 :class="{ active: inquiryMode === 'table' }"
@@ -1752,6 +1809,61 @@ const socialLinks = computed(() =>
     font-size: 14px;
     font-variant-numeric: tabular-nums;
     font-weight: 600;
+}
+
+/* The card as something to read, not to order from. Deliberately quieter than
+   the order picker: no borders per line, no controls, just the list. */
+.menu-card {
+    margin-top: 28px;
+}
+
+.menu-card h3 {
+    margin: 0 0 4px;
+}
+
+.menu-card-note {
+    margin: 0 0 18px;
+    font-size: 13px;
+    color: var(--ink-light, #5c5347);
+}
+
+.menu-card-section + .menu-card-section {
+    margin-top: 20px;
+}
+
+.menu-card-section h4 {
+    margin: 0 0 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--sand-dark, #d6c9b5);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-light, #5c5347);
+}
+
+.menu-card-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 7px 0;
+}
+
+.menu-card-item-text {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 15px;
+}
+
+.menu-card-item-price {
+    flex: none;
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--rust, #b45309);
 }
 
 .menu-total {

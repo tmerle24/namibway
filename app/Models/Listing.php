@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ConnectorType;
 use App\Enums\ContentSource;
+use App\Enums\InquiryKind;
 use App\Enums\ListingType;
 use App\Enums\PriceUnit;
 use App\Enums\VehicleCategory;
@@ -72,6 +73,8 @@ class Listing extends Model
         'is_homepage_pick',
         'is_published',
         'accepts_inquiries',
+        'accepts_table_reservations',
+        'accepts_orders',
         'source_url',
         'claim_status',
         'website',
@@ -130,6 +133,8 @@ class Listing extends Model
         'is_homepage_pick' => 'boolean',
         'is_published' => 'boolean',
         'accepts_inquiries' => 'boolean',
+        'accepts_table_reservations' => 'boolean',
+        'accepts_orders' => 'boolean',
         'scraped_at' => 'datetime',
         'og_scraped_at' => 'datetime',
         'content_synced_at' => 'datetime',
@@ -261,6 +266,55 @@ class Listing extends Model
     public function menuItems(): HasMany
     {
         return $this->hasMany(MenuItem::class)->orderBy('sort')->orderBy('id');
+    }
+
+    /**
+     * The shapes of request this property is willing to take online.
+     *
+     * One place, because four readers ask the same question and would
+     * otherwise each answer it slightly differently: the listing page decides
+     * which tabs to draw, the controller decides which kind a POST may claim,
+     * the panels show what the toggles are doing, and the tests assert it.
+     *
+     * Three rules, in order:
+     *
+     * - `accepts_inquiries` is above all of this. Off means the property is
+     *   asked for nothing, whatever the restaurant toggles say.
+     * - Anything that is not a restaurant is asked for a stay, full stop —
+     *   the two restaurant columns exist on every row but mean nothing there.
+     * - Ordering additionally needs something to order. A toggle switched on
+     *   over an empty menu is a promise the page cannot keep, so it counts as
+     *   off until a dish exists.
+     *
+     * @return array<int, InquiryKind>
+     */
+    public function requestKinds(): array
+    {
+        if (! $this->accepts_inquiries) {
+            return [];
+        }
+
+        if ($this->type !== ListingType::Restaurant) {
+            return [InquiryKind::Booking];
+        }
+
+        $kinds = [];
+
+        if ($this->accepts_table_reservations) {
+            $kinds[] = InquiryKind::TableReservation;
+        }
+
+        if ($this->accepts_orders && $this->menuItems()->available()->exists()) {
+            $kinds[] = InquiryKind::Order;
+        }
+
+        return $kinds;
+    }
+
+    /** Whether this property can be asked for anything at all right now. */
+    public function acceptsRequests(): bool
+    {
+        return $this->requestKinds() !== [];
     }
 
     /**

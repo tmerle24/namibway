@@ -370,6 +370,11 @@ class ListingController extends Controller
 
         $phone = app(PhoneNumberFormatter::class)->format($listing->phone);
 
+        // Resolved once: the page draws its tabs from this and the POST handler
+        // enforces the same list, so the two can never disagree about what this
+        // property is willing to be asked for.
+        $requestKinds = $listing->requestKinds();
+
         return Inertia::render('ListingDetail', [
             'listing' => [
                 'id' => $listing->id,
@@ -413,7 +418,10 @@ class ListingController extends Controller
                 'price_unit' => $listing->price_unit?->value,
                 'rating' => $listing->rating !== null ? (float) $listing->rating : null,
                 'rating_count' => $listing->rating_count,
-                'accepts_inquiries' => $listing->accepts_inquiries,
+                // "Can this property be asked for anything?" — not the raw
+                // column. A restaurant with both channels switched off has
+                // nothing to offer even though the column says yes.
+                'accepts_inquiries' => $listing->acceptsRequests(),
                 'contact_person' => $listing->contact_person,
                 'partner' => $listing->partner ? [
                     'name' => $listing->partner->name,
@@ -426,9 +434,15 @@ class ListingController extends Controller
             // Only a restaurant has one, and only the items currently on sale
             // reach the page: a dish the kitchen has switched off must not be
             // orderable, and MenuOrder refuses it server-side anyway.
+            //
+            // Sent whether or not the restaurant takes orders — a menu that is
+            // only being *shown* is the whole point of having a switch for
+            // ordering, so the page renders it as a card instead of a basket.
             'menu' => $listing->type === ListingType::Restaurant
                 ? self::menuSections($listing)
                 : [],
+            'can_reserve_table' => in_array(InquiryKind::TableReservation, $requestKinds, true),
+            'can_order' => in_array(InquiryKind::Order, $requestKinds, true),
             'reviews' => $reviews,
             'is_preview' => $isPreview,
             'can_publish' => $isAdmin || $isOwnerPreview,
@@ -888,7 +902,9 @@ class ListingController extends Controller
      */
     public function storeInquiry(Request $request, Listing $listing): RedirectResponse
     {
-        abort_unless($listing->is_published && $listing->accepts_inquiries, 404);
+        // A channel switched off is refused here, not merely hidden on the
+        // page: the tabs are a convenience and this is the rule.
+        abort_unless($listing->is_published && $listing->acceptsRequests(), 404);
 
         $kind = self::inquiryKind($request, $listing);
 
@@ -928,32 +944,29 @@ class ListingController extends Controller
     }
 
     /**
-     * What this request is: whatever it says it is, but only a restaurant may
-     * say anything other than a booking.
+     * What this request is: whatever it says it is, provided the property takes
+     * that kind of request at all (`Listing::requestKinds()`).
      *
-     * Unrecognised input is a booking rather than an error — the field is new,
-     * and the shape every listing had yesterday is the safe reading of a
-     * request that does not mention it.
+     * A kind the property does not offer falls back to the first one it does
+     * rather than being rejected outright. That is not leniency — the fallback
+     * then has to satisfy its own rules, so a request claiming `order` at a
+     * table-only restaurant becomes a table booking and is refused a moment
+     * later for having no date. What it avoids is a bare 404 for the one case
+     * that is neither an attack nor a mistake: a page that was open while the
+     * owner switched a channel off.
      */
     private static function inquiryKind(Request $request, Listing $listing): InquiryKind
     {
-        if ($listing->type !== ListingType::Restaurant) {
-            return InquiryKind::Booking;
-        }
+        $allowed = $listing->requestKinds();
+
+        // storeInquiry() has already aborted on an empty list; this is here so
+        // the method is safe to read on its own.
+        abort_if($allowed === [], 404);
 
         $requested = $request->input('kind');
-        $kind = is_string($requested)
-            ? InquiryKind::tryFrom($requested) ?? InquiryKind::TableReservation
-            : InquiryKind::TableReservation;
+        $kind = is_string($requested) ? InquiryKind::tryFrom($requested) : null;
 
-        // A restaurant with nothing on its menu cannot take an order, whatever
-        // the form claims. The page does not offer the tab in that case; this
-        // is what makes it true rather than merely hidden.
-        if ($kind === InquiryKind::Order && ! $listing->menuItems()->available()->exists()) {
-            return InquiryKind::TableReservation;
-        }
-
-        return $kind === InquiryKind::Booking ? InquiryKind::TableReservation : $kind;
+        return $kind !== null && in_array($kind, $allowed, true) ? $kind : $allowed[0];
     }
 
     /**
@@ -1053,7 +1066,12 @@ class ListingController extends Controller
             ->whereIn('id', $validated['listing_ids'])
             ->where('is_published', true)
             ->where('accepts_inquiries', true)
-            ->get();
+            ->get()
+            // The column is the cheap filter; this is the real question, and it
+            // is the one that catches a restaurant whose owner has switched off
+            // both of the things it could be asked for.
+            ->filter(fn (Listing $listing): bool => $listing->acceptsRequests())
+            ->values();
 
         if ($listings->isEmpty()) {
             return back()->withErrors([

@@ -458,6 +458,10 @@
             "add": "Ein {item} hinzufügen",
             "remove": "Ein {item} entfernen"
         },
+        "menu": {
+            "title": "Speisekarte",
+            "readOnly": "Zur Information — dieses Restaurant nimmt Bestellungen vor Ort entgegen, nicht online."
+        },
         "reviews": {
             "title": "Bewertungen",
             "count": "{count} Bewertungen",
