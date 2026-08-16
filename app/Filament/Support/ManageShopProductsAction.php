@@ -21,7 +21,6 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Throwable;
 
 /**
@@ -625,21 +624,35 @@ class ManageShopProductsAction
 
     /**
      * Move a Livewire temporary upload to R2 immediately, so the preview URL
-     * is a real public URL rather than a temp-storage path.
+     * is a real public R2 URL rather than a temp-storage path.
+     *
+     * In afterStateUpdated, Filament gives us just the filename (e.g. "abc.jpg"),
+     * NOT the full temp path ("livewire-tmp/abc.jpg"). We build the correct path
+     * from the Livewire config rather than using TemporaryUploadedFile::getRealPath(),
+     * which would look in the wrong directory.
      *
      * Leaves the temp file in place — Livewire's own cleanup removes it later.
      * If the R2 write fails for any reason, returns [null, null] and the row
-     * shows without a preview rather than blowing up the upload flow.
+     * renders without a preview rather than blowing up the upload flow.
      *
      * @return array{0: string|null, 1: string|null}  [r2Key, publicUrl]
      */
     private static function moveTempToR2(string $tempKey, Site $site): array
     {
         try {
-            $tmpFile = TemporaryUploadedFile::createFromLivewire($tempKey);
-            $ext = strtolower(pathinfo($tmpFile->getClientOriginalName(), PATHINFO_EXTENSION)) ?: 'jpg';
+            $filename = basename($tempKey);
+            $tempDir = config('livewire.temporary_file_upload.directory', 'livewire-tmp');
+            $tempDisk = config('livewire.temporary_file_upload.disk', 'local');
+
+            $content = Storage::disk($tempDisk)->get($tempDir.'/'.$filename);
+
+            if ($content === null || $content === '') {
+                return [null, null];
+            }
+
+            $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION)) ?: 'jpg';
             $r2Key = $site->mediaPrefix().'/'.Str::random(20).'.'.$ext;
-            Storage::disk('r2')->put($r2Key, file_get_contents($tmpFile->getRealPath()), 'public');
+            Storage::disk('r2')->put($r2Key, $content, 'public');
 
             return [$r2Key, Storage::disk('r2')->url($r2Key)];
         } catch (Throwable) {
