@@ -406,6 +406,69 @@
     .grid-photos figure:hover img { transform: scale(1.04); }
     .figure--lb { cursor: zoom-in; }
 
+    /* ---- Shop ---------------------------------------------------------- */
+
+    .shop-filters {
+        display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s5);
+        align-items: center;
+    }
+    .shop-filter {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px var(--s3); border-radius: 9999px;
+        border: 1px solid var(--bone); background: transparent;
+        font-size: 14px; color: var(--ink); text-decoration: none; cursor: pointer;
+        transition: background .15s, border-color .15s;
+    }
+    .shop-filter:hover,
+    .shop-filter--active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .shop-sort {
+        margin-left: auto;
+        font-size: 14px; color: var(--slate); background: transparent;
+        border: 1px solid var(--bone); border-radius: 6px;
+        padding: 6px var(--s3); cursor: pointer;
+    }
+    .grid-shop { display: grid; gap: var(--s4); grid-template-columns: repeat(2, 1fr); }
+    @media (min-width: 860px) { .grid-shop { grid-template-columns: repeat(3, 1fr); gap: var(--s5); } }
+    .product-card {
+        display: flex; flex-direction: column; text-decoration: none; color: inherit;
+        border-radius: 4px; overflow: hidden; border: 1px solid var(--bone);
+        transition: box-shadow .2s;
+    }
+    .product-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+    .product-card__img {
+        aspect-ratio: 1 / 1; overflow: hidden; background: var(--bone);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .product-card__img img {
+        width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease;
+    }
+    .product-card:hover .product-card__img img { transform: scale(1.04); }
+    .product-card__img--empty { color: var(--slate); font-size: 32px; }
+    .product-card__body { padding: var(--s3) var(--s4); flex: 1; display: flex; flex-direction: column; }
+    .product-card__category {
+        font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+        color: var(--accent); margin-bottom: 6px;
+    }
+    .product-card__title { font-size: 16px; font-weight: 500; margin: 0 0 6px; line-height: 1.3; }
+    .product-card__price { font-size: 15px; color: var(--slate); margin-top: auto; padding-top: 6px; }
+    .shop-more { text-align: center; margin-top: var(--s5); }
+
+    /* Product detail */
+    .product-detail { display: grid; gap: var(--s6); }
+    @media (min-width: 760px) { .product-detail { grid-template-columns: 1fr 1fr; } }
+    .product-detail__images { display: flex; flex-direction: column; gap: var(--s3); }
+    .product-detail__main-img { aspect-ratio: 1/1; overflow: hidden; background: var(--bone); border-radius: 4px; }
+    .product-detail__main-img img { width: 100%; height: 100%; object-fit: cover; }
+    .product-detail__thumbs { display: flex; gap: var(--s2); }
+    .product-detail__thumb { width: 72px; height: 72px; overflow: hidden; border-radius: 4px; cursor: pointer; border: 2px solid transparent; }
+    .product-detail__thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .product-detail__info { display: flex; flex-direction: column; gap: var(--s4); }
+    .product-detail__cat { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
+    .product-detail__title { font-family: var(--font-display); font-size: 34px; margin: 0; line-height: 1.15; }
+    .product-detail__price { font-size: 22px; font-weight: 600; color: var(--ink); }
+    .product-detail__desc { color: var(--slate); line-height: 1.7; }
+    .product-detail__desc p { margin: 0 0 var(--s3); }
+
     /* ---- Lists: hours, prices ----------------------------------------- */
 
     .rows { max-width: 720px; }
@@ -606,5 +669,6 @@
         .js .reveal, .js .reveal.in { opacity: 1; transform: none; transition: none; }
         .btn:hover { transform: none; }
         .grid-photos figure:hover img { transform: none; }
+        .product-card:hover .product-card__img img { transform: none; }
     }
 </style>

@@ -97,6 +97,7 @@ class SitePerformanceBudgetTest extends TestCase
             'rich_text' => ['heading' => 'Before you come', 'body' => '<p>'.$lorem.'</p>'],
             'mission' => ['heading' => 'Our Mission', 'body' => '<p>'.$lorem.'</p>'],
             'why_choose_us' => ['heading' => 'Why Choose Us?', 'body' => '<p>'.$lorem.'</p>'],
+            'shop' => ['heading' => 'Shop'],
             'opening_hours' => ['heading' => 'Opening hours', 'days' => array_fill(0, 7, ['day' => 'Monday', 'hours' => '08:00–17:00'])],
             'price_list' => ['heading' => 'Prices', 'items' => array_fill(0, 20, ['name' => 'Double room, per night', 'description' => 'Breakfast included', 'price' => 'N$ 1 850'])],
             'location' => ['heading' => 'Find us', 'directions_note' => $lorem],

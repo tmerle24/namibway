@@ -203,6 +203,14 @@ class Site extends Model
         return $this->hasMany(SiteImage::class);
     }
 
+    /**
+     * @return HasMany<ShopProduct, $this>
+     */
+    public function shopProducts(): HasMany
+    {
+        return $this->hasMany(ShopProduct::class);
+    }
+
     public function isPublished(): bool
     {
         return $this->status->isPublished();

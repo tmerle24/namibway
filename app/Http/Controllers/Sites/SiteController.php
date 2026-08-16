@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sites;
 
+use App\Models\ShopProduct;
 use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Models\SiteImage;
@@ -51,11 +52,11 @@ class SiteController
      * exists, and how the renderer is exercised in CI. Deliberately not a
      * pretty URL: it is for us, not an address anybody is given.
      */
-    public function path(Request $request, string $slug, ?string $page = null): Response
+    public function path(Request $request, string $slug, ?string $path = null): Response
     {
         $site = Site::where('slug', $slug)->firstOrFail();
 
-        return $this->page($request, $site, (string) $page);
+        return $this->page($request, $site, (string) $path);
     }
 
     private function page(Request $request, Site $site, string $pageSlug): Response
@@ -84,6 +85,14 @@ class SiteController
             return $this->about($request, $site);
         }
 
+        if ($page === null && $pageSlug === 'shop') {
+            return $this->shopIndex($request, $site);
+        }
+
+        if ($page === null && str_starts_with($pageSlug, 'shop/')) {
+            return $this->shopProduct($request, $site, substr($pageSlug, 5));
+        }
+
         abort_if($page === null, 404);
 
         $stored = $page->renderableBlocks()->get()
@@ -95,11 +104,21 @@ class SiteController
             ? $this->bookingPanel->for($site, $request)
             : null;
 
+        // The first page of shop products, loaded only when the shop block is
+        // present. shouldRender() then hides the block when none are published.
+        $shopProducts = $stored->contains(fn (SiteBlock $block) => $block->type === 'shop')
+            ? $site->shopProducts()->published()->orderBy('sort')->orderBy('id')->limit(8)->get()
+            : collect();
+
+        $shopHasMore = $shopProducts->count() === 8
+            && $site->shopProducts()->published()->count() > 8;
+
         $blocks = $stored
-            ->filter(fn (SiteBlock $block) => $this->shouldRender($block, $site, $booking))
+            ->filter(fn (SiteBlock $block) => $this->shouldRender($block, $site, $booking, $shopProducts))
             ->values();
 
-        $images = $this->images($site, $blocks->pluck('data')->all());
+        $productImageIds = $shopProducts->flatMap(fn (ShopProduct $p) => $p->image_ids ?? [])->all();
+        $images = $this->images($site, $blocks->pluck('data')->all(), $productImageIds);
 
         $response = response()->view('sites.page', [
             'site' => $site,
@@ -107,6 +126,8 @@ class SiteController
             'blocks' => $blocks,
             'images' => $images,
             'booking' => $booking,
+            'shopProducts' => $shopProducts,
+            'shopHasMore' => $shopHasMore,
             'accent' => $this->accent($site),
             // Absolute, because the form is posted from the site's own host as
             // well as from the path fallback, and only one of those can use a
@@ -193,11 +214,14 @@ class SiteController
      * what they show does not live in the payload: booking depends on whether
      * the property has sellable inventory right now, and location and contact
      * render details held on the site.
+     *
+     * @param Collection<int, ShopProduct>|null $shopProducts
      */
-    private function shouldRender(SiteBlock $block, Site $site, ?BookingPanelData $booking): bool
+    private function shouldRender(SiteBlock $block, Site $site, ?BookingPanelData $booking, ?Collection $shopProducts = null): bool
     {
         return match ($block->type) {
             'booking' => $booking !== null,
+            'shop' => ($shopProducts ?? collect())->isNotEmpty(),
             // Every business gets the form. `accepts_inquiries` used to gate it
             // as well, which meant a partner who does not sell through our
             // booking system had no way to be contacted from their own website
@@ -241,9 +265,10 @@ class SiteController
      * than a page that will not render.
      *
      * @param  array<int, array<string, mixed>|null>  $payloads
+     * @param  array<int, mixed>  $extraIds  Additional image ids to load (e.g. from shop products)
      * @return Collection<int, SiteImage>
      */
-    private function images(Site $site, array $payloads): Collection
+    private function images(Site $site, array $payloads, array $extraIds = []): Collection
     {
         $ids = [];
 
@@ -259,11 +284,120 @@ class SiteController
             }
         }
 
+        foreach ($extraIds as $id) {
+            if (is_int($id) || (is_string($id) && ctype_digit($id))) {
+                $ids[] = (int) $id;
+            }
+        }
+
         if ($ids === []) {
             return collect();
         }
 
         return $site->images()->whereIn('id', array_unique($ids))->get()->keyBy('id');
+    }
+
+    /**
+     * The full shop catalogue, with optional category filter and sort.
+     *
+     * Served at /shop (or /_sites/{slug}/shop). Filtering and sorting via URL
+     * parameters rather than JavaScript: the page is statically renderable, and
+     * a URL the browser can bookmark and share is better than a state that lives
+     * only in memory.
+     */
+    private function shopIndex(Request $request, Site $site): Response
+    {
+        $this->assertVisible($request, $site);
+
+        abort_unless($site->shopProducts()->published()->exists(), 404);
+
+        $category = $request->query('category');
+        $sort = $request->query('sort', 'default');
+
+        $query = $site->shopProducts()->published();
+
+        if (filled($category)) {
+            $query->where('category', $category);
+        }
+
+        $query->when($sort === 'name', fn ($q) => $q->orderBy('title'))
+            ->when($sort === 'price_asc', fn ($q) => $q->orderBy('price'))
+            ->when($sort === 'price_desc', fn ($q) => $q->orderByDesc('price'))
+            ->when(! in_array($sort, ['name', 'price_asc', 'price_desc']), fn ($q) => $q->orderBy('sort')->orderBy('id'));
+
+        $products = $query->get();
+
+        $categories = $site->shopProducts()->published()
+            ->whereNotNull('category')
+            ->orderBy('category')
+            ->distinct()
+            ->pluck('category');
+
+        $imageIds = $products->flatMap(fn (ShopProduct $p) => $p->image_ids ?? [])->all();
+        $images = $this->images($site, [], $imageIds);
+
+        $response = response()->view('sites.shop', [
+            'site' => $site,
+            'accent' => $this->accent($site),
+            'products' => $products,
+            'images' => $images,
+            'categories' => $categories,
+            'activeCategory' => $category,
+            'activeSort' => $sort,
+        ]);
+
+        if (! $site->isPublished()) {
+            $response->header('X-Robots-Tag', 'noindex, nofollow');
+        }
+
+        return $response;
+    }
+
+    /**
+     * A single product's detail page.
+     *
+     * Served at /shop/{slug} (or /_sites/{site-slug}/shop/{product-slug}).
+     */
+    private function shopProduct(Request $request, Site $site, string $slug): Response
+    {
+        $this->assertVisible($request, $site);
+
+        /** @var ShopProduct|null $product */
+        $product = $site->shopProducts()
+            ->published()
+            ->where('slug', $slug)
+            ->first();
+
+        abort_if($product === null, 404);
+
+        $imageIds = $product->image_ids ?? [];
+        $images = $this->images($site, [], $imageIds);
+
+        $related = $site->shopProducts()
+            ->published()
+            ->when(filled($product->category), fn ($q) => $q->where('category', $product->category))
+            ->where('id', '!=', $product->id)
+            ->orderBy('sort')
+            ->limit(4)
+            ->get();
+
+        $relatedImageIds = $related->flatMap(fn (ShopProduct $p) => array_slice($p->image_ids ?? [], 0, 1))->all();
+        $allImages = $images->merge($this->images($site, [], $relatedImageIds));
+
+        $response = response()->view('sites.shop-product', [
+            'site' => $site,
+            'accent' => $this->accent($site),
+            'product' => $product,
+            'images' => $allImages,
+            'related' => $related,
+            'enquiryAction' => route('sites.enquiry', $site->slug),
+        ]);
+
+        if (! $site->isPublished()) {
+            $response->header('X-Robots-Tag', 'noindex, nofollow');
+        }
+
+        return $response;
     }
 
     private function accent(Site $site): string

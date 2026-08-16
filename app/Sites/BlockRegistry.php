@@ -18,6 +18,7 @@ use App\Sites\Blocks\MissionBlock;
 use App\Sites\Blocks\OpeningHoursBlock;
 use App\Sites\Blocks\PriceListBlock;
 use App\Sites\Blocks\RichTextBlock;
+use App\Sites\Blocks\ShopBlock;
 use App\Sites\Blocks\WhyChooseUsBlock;
 
 /**
@@ -43,6 +44,7 @@ class BlockRegistry
         EnquiryBlock::class,
         RichTextBlock::class,
         MissionBlock::class,
+        ShopBlock::class,
         WhyChooseUsBlock::class,
         LocationBlock::class,
         ContactBlock::class,
@@ -72,7 +74,7 @@ class BlockRegistry
         'activity' => ['hero', 'highlights', 'about', 'gallery', 'price_list', 'booking', 'enquiry', 'location', 'contact', 'footer'],
         'car_rental' => ['hero', 'highlights', 'price_list', 'about', 'booking', 'enquiry', 'location', 'contact', 'footer'],
         'tour_operator' => ['hero', 'highlights', 'about', 'gallery', 'price_list', 'booking', 'enquiry', 'contact', 'footer'],
-        'retail' => ['hero', 'about', 'mission', 'why_choose_us', 'opening_hours', 'gallery', 'price_list', 'enquiry', 'location', 'contact', 'footer'],
+        'retail' => ['hero', 'about', 'mission', 'why_choose_us', 'shop', 'opening_hours', 'gallery', 'price_list', 'enquiry', 'location', 'contact', 'footer'],
         'service' => ['hero', 'highlights', 'about', 'mission', 'why_choose_us', 'opening_hours', 'price_list', 'enquiry', 'location', 'contact', 'footer'],
     ];
 

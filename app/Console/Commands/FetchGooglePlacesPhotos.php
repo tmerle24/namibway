@@ -77,5 +77,4 @@ class FetchGooglePlacesPhotos extends Command
 
         return self::SUCCESS;
     }
-
 }
