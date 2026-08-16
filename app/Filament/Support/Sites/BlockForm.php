@@ -154,7 +154,16 @@ class BlockForm
                     ->default(EnquiryFormType::StayRequest->value)
                     ->native(false)
                     ->live()
-                    ->helperText('An order form needs something to order — a menu on the listing, or products in the shop.'),
+                    // What this site can actually render, checked against the
+                    // business behind it rather than described in general. The
+                    // page degrades quietly to a contact form when the pick
+                    // cannot be honoured, which is right in front of a visitor
+                    // and useless here — so the reason is said where the choice
+                    // is made, and it names the thing that is missing.
+                    ->helperText(fn (Get $get): string => EnquiryBlock::unavailableReason(
+                        $site,
+                        EnquiryFormType::tryFrom((string) $get('form_type')) ?? EnquiryFormType::StayRequest,
+                    ) ?? 'One form per site — pick the one that matches what you are selling.'),
                 Select::make('channel')
                     ->label('How it is answered')
                     ->options([
@@ -167,6 +176,7 @@ class BlockForm
                 TextInput::make('heading')
                     ->label('Heading')
                     ->maxLength(120)
+                    ->helperText('One of the standard headings follows the form type. Write your own and it stays exactly as typed.')
                     ->placeholder(fn (Get $get): string => EnquiryFormType::tryFrom((string) $get('form_type'))?->heading()
                         ?? EnquiryFormType::StayRequest->heading()),
                 TextInput::make('button_label')

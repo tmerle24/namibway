@@ -271,6 +271,36 @@ class SiteContactFormTest extends TestCase
         );
     }
 
+    /**
+     * The editor says why, where the choice is made.
+     *
+     * `formTypeFor()` degrades quietly, which is right in front of a visitor
+     * and useless to the owner: somebody picked "Restaurant order", pressed
+     * Save and got a plain contact form with no explanation anywhere. A select
+     * that accepts a choice it will not honour has to name the thing that is
+     * missing.
+     */
+    public function test_the_editor_says_why_a_form_it_cannot_show_was_refused(): void
+    {
+        $restaurant = $this->restaurant();
+        $restaurant->update(['accepts_orders' => true, 'accepts_table_reservations' => false]);
+        $site = $this->siteFor(EnquiryFormType::RestaurantOrder, $restaurant);
+
+        $this->assertStringContainsString(
+            'no menu items yet',
+            (string) EnquiryBlock::unavailableReason($site, EnquiryFormType::RestaurantOrder)
+        );
+        $this->assertStringContainsString(
+            'switched off on the listing',
+            (string) EnquiryBlock::unavailableReason($site, EnquiryFormType::TableReservation)
+        );
+
+        MenuItem::factory()->for($restaurant)->create(['price' => 60.00]);
+
+        $this->assertNull(EnquiryBlock::unavailableReason($site->refresh(), EnquiryFormType::RestaurantOrder));
+        $this->assertNull(EnquiryBlock::unavailableReason($site, EnquiryFormType::Contact));
+    }
+
     public function test_a_whatsapp_form_offers_no_second_way_to_send(): void
     {
         $site = $this->siteFor(
