@@ -129,8 +129,29 @@ This is written down because it has gone wrong twice: an entire site crawled to 
 - Nightly enrichment (`listings:nightly-enrich`) is **commented out in `routes/console.php` since 2026-08-04** because Claude API costs ran too high. Re-enable with a smaller `nightly_batch_size` once understood.
 - Kaia itself stays cheap (~$0.15–0.50 per completed planning session, both phases on Haiku) relative to commission per booking — cost pressure comes from the bulk enrichment pipeline, not from planning.
 
+### Paid work is written down the moment it arrives
+The budget guards above cap what we spend. This is the other half, and it is the one that was missing: **what we have already paid for must survive.** A model completion, a Places lookup, a fetched page — anything that cost money to produce is persisted the moment it comes back, before anything else can go wrong.
+
+Not at the end of the flow. Not when the user clicks Save. Not "once the form validates". A result that lives only in form state, session state, a job's local variable or a Livewire component is one navigation, timeout, validation error or bug away from being destroyed — and then we pay a second time for a result we already had. **Cost is not only in the call; it is in the call having to be made twice.**
+
+This is already how the scrapers work — the raw HTML archive is written *before any early return*, so a classifier bug never means fetching the site again. Generalise it: the same reasoning applies to every paid call.
+
+Concretely, when adding anything that spends money:
+- **Persist on arrival**, keyed to something durable (a row, a job record), not to the screen that requested it.
+- **A multi-step UI writes after each step**, not once at the end. If a user can generate ten AI descriptions and then lose them by closing a tab, the flow is wrong, not the user.
+- **Make the write idempotent** so a retry is free rather than a second charge.
+- If the result genuinely cannot be persisted yet, say what it costs to redo it in the UI, so nobody discovers the price by losing it.
+
+Broken on 2026-08-16, which is why this is written down: eleven AI-written product descriptions existed only in Livewire form state and were destroyed by the bug in the data-loss section below. The images survived (they had been written to R2 on arrival — the right pattern, in the same feature); only the paid text was lost, because it was the one thing waiting for a Save.
+
 ### Data-loss lesson
 `namibway:backfill-listing-cities` once overwrote correct `city_id` values because a "Windhoek" hit in a free-text address field (many remote operators use a Windhoek postal address) beat the real location. The command is fixed, but re-running it does **not** repair already-corrupted rows — `restore-listing-city-ids.sh` surgically restores just that column from a backup. Treat any bulk backfill over existing non-null data as destructive: gate on "currently empty" or dry-run first.
+
+**A form may only delete what it was shown (2026-08-16).** The shop product editor is a repeater, so "delete this product" is expressed by a row being *absent*. That makes an empty form indistinguishable from "remove everything" — and the same modal carries import buttons that create products behind it. Open the editor on an empty shop, upload eleven photographs through the nested action, click Save, and the parent form — still holding the empty list it was opened with — deleted all eleven. `ShopProduct` has no soft deletes, so they were gone, and with them the AI descriptions that had cost real money to write.
+
+The fix worth generalising is not "refresh the form after an import" (that is also done, and it is not a guarantee — any concurrent write reintroduces the race). It is that **the delete is scoped to the set of ids the form was hydrated with**, carried in a hidden field: a save may only delete a product it was actually displaying. An empty form now deletes nothing, because a form that saw nothing may say nothing about what should go. Held down by `ShopProductEditorTest`.
+
+This is the same shape as the rule below it — never key a destructive decision on a value that can be stale — with the twist that the stale value here is *absence*. Any "sync a list from a form" write has this bug by default; if you are writing one, ask what happens when the submitted list is empty, and make that case a no-op unless it was explicitly emptied.
 
 A near miss of the same class, found 2026-08-09 before it fired: `photos:audit-r2 --delete-orphaned` decided what was referenced by comparing the raw DB value against `Storage::disk('r2')->url($key)`. Scraper photos are stored as **absolute** URLs built from `CLOUDFLARE_R2_URL` at download time, so changing that variable — exactly what attaching a custom domain to the bucket requires — would have made every referenced photo look orphaned and deleted the entire live library on confirm. It now matches on filename, which no host or prefix change can affect, and which errs toward "referenced" (leaves an orphan) rather than toward deletion. General rule for anything that deletes: never key the keep/delete decision on a value derived from mutable config.
 

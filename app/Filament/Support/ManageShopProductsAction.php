@@ -75,8 +75,12 @@ class ManageShopProductsAction
             )
             ->modalSubmitActionLabel('Save')
             ->modalWidth('5xl')
-            ->fillForm(fn (Listing|Partner|null $record): array => ['products' => self::state($record)])
+            ->fillForm(fn (Listing|Partner|null $record): array => self::fill($record))
             ->form(fn (Listing|Partner|null $record): array => [
+                // What the form was showing when it opened. Saving may only
+                // delete products in this set — see write().
+                Forms\Components\Hidden::make('known_product_ids'),
+
                 Forms\Components\Actions::make([
                     FormAction::make('import_instagram')
                         ->label('Import from Instagram')
@@ -277,13 +281,24 @@ class ManageShopProductsAction
                                         ])->columns(2),
                                     ])->columnSpan(3),
                                 ]),
+
+                            Forms\Components\Toggle::make('publish')
+                                ->label('Publish straight away')
+                                ->helperText('You have just reviewed every title and description above, '
+                                    .'so there is nothing left to check. Turn this off to create them as drafts instead.')
+                                ->default(true)
+                                ->hidden(fn (Get $get): bool => empty($get('upload_items'))),
                         ])
-                        ->action(function (Listing|Partner|null $record, array $data): void {
+                        ->action(function (Listing|Partner|null $record, array $data, Set $set): void {
                             $site = $record === null ? null : SiteResolver::for($record);
 
                             if ($site === null) {
                                 return;
                             }
+
+                            $status = ($data['publish'] ?? true)
+                                ? ShopProductStatus::Published
+                                : ShopProductStatus::Draft;
 
                             $maxSort = $site->shopProducts()->max('sort') ?? -1;
                             $created = 0;
@@ -309,7 +324,7 @@ class ManageShopProductsAction
                                     'title' => mb_substr($title, 0, 255),
                                     'description' => filled($item['description'] ?? null) ? trim((string) $item['description']) : null,
                                     ...self::parsePrice((string) ($item['price'] ?? '')),
-                                    'status' => ShopProductStatus::Draft,
+                                    'status' => $status,
                                     'image_ids' => [$imageId],
                                     'sort' => ++$maxSort,
                                 ]);
@@ -317,9 +332,18 @@ class ManageShopProductsAction
                                 $created++;
                             }
 
+                            // Pull the new products into the parent form. Without this
+                            // the list behind this modal still shows what was there when
+                            // it opened, and saving it would delete everything just made.
+                            foreach (self::fill($record) as $key => $value) {
+                                $set($key, $value);
+                            }
+
                             Notification::make()
                                 ->title($created.' '.($created === 1 ? 'product' : 'products').' created')
-                                ->body('Set to Draft — reopen the Products window to review and publish.')
+                                ->body($status === ShopProductStatus::Published
+                                    ? 'Live on the website. They are in the list behind this window.'
+                                    : 'Saved as drafts — publish them in the list behind this window.')
                                 ->success()
                                 ->send();
                         }),
@@ -454,8 +478,46 @@ class ManageShopProductsAction
                     return;
                 }
 
-                self::write($site, is_array($data['products'] ?? null) ? $data['products'] : []);
+                self::write(
+                    $site,
+                    is_array($data['products'] ?? null) ? $data['products'] : [],
+                    self::ids($data['known_product_ids'] ?? null),
+                );
             });
+    }
+
+    /**
+     * The form's initial state, including the record of which products it is
+     * showing. Also used to refresh the form after a nested import creates
+     * products behind it.
+     *
+     * @return array{products: array<int, array<string, mixed>>, known_product_ids: string}
+     */
+    private static function fill(Listing|Partner|null $record): array
+    {
+        $products = self::state($record);
+
+        return [
+            'products' => $products,
+            'known_product_ids' => implode(',', array_column($products, 'product_id')),
+        ];
+    }
+
+    /**
+     * Parse the hidden id list back into integers.
+     *
+     * @return array<int, int>
+     */
+    private static function ids(mixed $value): array
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        return array_values(array_map(
+            intval(...),
+            array_filter(explode(',', $value), is_numeric(...))
+        ));
     }
 
     /**
@@ -494,9 +556,25 @@ class ManageShopProductsAction
     }
 
     /**
+     * Write the submitted product list back to the site.
+     *
+     * `$knownIds` is what the form was showing when it opened. A product may
+     * only be deleted if it is in that set: removing a row from the repeater is
+     * the *only* way this form can say "delete", and it can only say it about a
+     * product it was actually displaying.
+     *
+     * Without that scope, an empty repeater means "delete everything" — and the
+     * repeater is legitimately empty in a case that happens constantly: the
+     * modal is opened, a nested import (photo upload, Instagram, spreadsheet)
+     * creates products behind it, and the stale form is then saved. That wiped
+     * 11 freshly uploaded products on 2026-08-16. The form is refreshed after
+     * an import now, but this scope is the guarantee — a stale form can no
+     * longer delete a product it never knew about.
+     *
      * @param  array<int, mixed>  $state
+     * @param  array<int, int>  $knownIds
      */
-    private static function write(Site $site, array $state): void
+    private static function write(Site $site, array $state, array $knownIds): void
     {
         $keptIds = [];
         $sort = 0;
@@ -542,11 +620,13 @@ class ManageShopProductsAction
             $sort++;
         }
 
-        $site->shopProducts()
-            ->whereNotIn('id', $keptIds === [] ? [0] : $keptIds)
-            ->delete();
+        $removedIds = array_values(array_diff($knownIds, $keptIds));
 
-        $count = count($keptIds);
+        if ($removedIds !== []) {
+            $site->shopProducts()->whereIn('id', $removedIds)->delete();
+        }
+
+        $count = $site->shopProducts()->count();
 
         Notification::make()
             ->title('Saved')
