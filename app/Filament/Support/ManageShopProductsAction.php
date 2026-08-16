@@ -40,6 +40,12 @@ class ManageShopProductsAction
             ->visible(fn (Listing $record): bool => SiteResolver::for($record) !== null);
     }
 
+    public static function partnerHeader(string $name = 'manage_products'): PageAction
+    {
+        return self::configure(PageAction::make($name))
+            ->visible(fn (Partner $record): bool => SiteResolver::for($record) !== null);
+    }
+
     /**
      * @template T of FormAction|PageAction
      *
