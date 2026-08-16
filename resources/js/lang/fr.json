@@ -283,7 +283,21 @@
             "checkIn": "Arrivée",
             "checkOut": "Départ",
             "adults": "Adultes",
-            "children": "Enfants (moins de 12 ans)"
+            "children": "Enfants (moins de 12 ans)",
+            "modes": {
+                "table": "Réserver une table",
+                "order": "Commander"
+            },
+            "tableTitle": "Réserver une table",
+            "orderTitle": "Commander à la carte",
+            "date": "Date",
+            "time": "Heure",
+            "sendTable": "Demander une table",
+            "sendOrder": "Envoyer la commande",
+            "orderTotal": "Votre commande ({count})",
+            "orderSuccess": "Commande envoyée ! Le restaurant la confirmera directement.",
+            "add": "Ajouter un {item}",
+            "remove": "Retirer un {item}"
         },
         "reviews": {
             "title": "Avis",

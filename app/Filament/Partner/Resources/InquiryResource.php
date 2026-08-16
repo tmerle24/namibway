@@ -2,10 +2,12 @@
 
 namespace App\Filament\Partner\Resources;
 
+use App\Enums\InquiryKind;
 use App\Enums\InquiryStatus;
 use App\Filament\Partner\Resources\InquiryResource\Pages;
 use App\Filament\Partner\Support\InquiryDecisions;
 use App\Models\Inquiry;
+use App\Models\InquiryItem;
 use Filament\Forms\Form;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
@@ -64,7 +66,12 @@ class InquiryResource extends Resource
                     ])
                     ->columns(3),
 
+                // Three shapes of request, three sections, one of them shown.
+                // A table booking rendered in the "Stay" section printed an
+                // empty check-out and a room type it will never have; an order
+                // printed a party of two nobody asked for.
                 Infolists\Components\Section::make('Stay')
+                    ->visible(fn (Inquiry $record): bool => $record->kind === InquiryKind::Booking)
                     ->schema([
                         Infolists\Components\TextEntry::make('listing.name')->label('Listing'),
                         Infolists\Components\TextEntry::make('check_in')->label('Check-in')->date('D, d M Y')->placeholder('—'),
@@ -74,6 +81,36 @@ class InquiryResource extends Resource
                         Infolists\Components\TextEntry::make('bookable_unit_code')->label('Room type')->placeholder('—'),
                     ])
                     ->columns(3),
+
+                Infolists\Components\Section::make('Table')
+                    ->visible(fn (Inquiry $record): bool => $record->kind === InquiryKind::TableReservation)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('listing.name')->label('Listing'),
+                        Infolists\Components\TextEntry::make('check_in')->label('Date')->date('D, d M Y')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('arrival_time')
+                            ->label('Time')
+                            ->formatStateUsing(fn (Inquiry $record): string => $record->arrivalTimeLabel() ?? '—'),
+                        Infolists\Components\TextEntry::make('adults')->label('Adults'),
+                        Infolists\Components\TextEntry::make('children')->label('Children'),
+                    ])
+                    ->columns(3),
+
+                Infolists\Components\Section::make('Order')
+                    ->visible(fn (Inquiry $record): bool => $record->kind === InquiryKind::Order)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('listing.name')->label('Listing')->columnSpanFull(),
+                        Infolists\Components\RepeatableEntry::make('items')
+                            ->hiddenLabel()
+                            ->schema([
+                                Infolists\Components\TextEntry::make('quantity')->label('Qty'),
+                                Infolists\Components\TextEntry::make('name')->label('Item'),
+                                Infolists\Components\TextEntry::make('line_total')
+                                    ->label('Line total')
+                                    ->money(fn (InquiryItem $record): string => $record->currency),
+                            ])
+                            ->columns(3)
+                            ->columnSpanFull(),
+                    ]),
 
                 Infolists\Components\Section::make('Booking')
                     ->schema([
@@ -102,6 +139,11 @@ class InquiryResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('Guest')->searchable(),
                 Tables\Columns\TextColumn::make('listing.name')->label('Listing'),
+                // What was asked for. A restaurant's inbox holds tables and
+                // orders side by side, and they are answered differently.
+                Tables\Columns\TextColumn::make('kind')
+                    ->label('Request')
+                    ->badge(),
                 Tables\Columns\TextColumn::make('check_in')->label('Check-in')->date('d M Y')->placeholder('—'),
                 Tables\Columns\TextColumn::make('check_out')->label('Check-out')->date('d M Y')->placeholder('—'),
                 Tables\Columns\TextColumn::make('status')

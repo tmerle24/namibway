@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers\Sites;
 
+use App\Enums\InquiryKind;
+use App\Enums\ListingType;
 use App\Mail\EnquiryCopy;
+use App\Models\Listing;
 use App\Models\Site;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -81,12 +84,15 @@ class SiteEnquiryController
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
+            // A visit is a date and a time with no departure. The time used to
+            // be folded into the free-text travel_dates here to avoid a
+            // migration; namibway.com's own restaurant form is a second front
+            // door onto the same fact, so it has a column of its own now
+            // (`inquiries.arrival_time`) and the emails render it from there.
+            'kind' => $this->kind($listing, $validated),
             'check_in' => $validated['check_in'],
             'check_out' => $validated['check_out'] ?? null,
-            // An activity or a restaurant has a time and no departure, and
-            // `inquiries` has no column for one. It goes in the free-text
-            // travel_dates beside the date rather than into a migration, so the
-            // partner reads it in the same line they already read.
+            'arrival_time' => $validated['time'] ?? null,
             'travel_dates' => $this->when($validated),
             // Both columns are NOT NULL with a default; passing null explicitly
             // overrides the default and fails, so the fallback lives here.
@@ -143,18 +149,39 @@ class SiteEnquiryController
     }
 
     /**
+     * What shape of request this is.
+     *
+     * The block already draws itself two ways — arrival and departure for a
+     * stay, date and time for a visit (`App\Sites\Blocks\EnquiryBlock`) — and
+     * this is the same distinction reaching the row it writes. A restaurant's
+     * visit is a table booking; an activity's is still a booking request, which
+     * is what it was before this column existed.
+     *
+     * A site's own page never takes an order: it has no menu of ours to order
+     * from, and the enquiry block is one form, not a basket.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function kind(Listing $listing, array $validated): InquiryKind
+    {
+        return $listing->type === ListingType::Restaurant && filled($validated['time'] ?? null)
+            ? InquiryKind::TableReservation
+            : InquiryKind::Booking;
+    }
+
+    /**
+     * The human-readable summary of when, for the partner screens that show
+     * this column. The time is no longer appended: it has its own column, and
+     * two copies of one fact is one too many.
+     *
      * @param  array<string, mixed>  $validated
      */
     private function when(array $validated): string
     {
         $date = (string) $validated['check_in'];
 
-        if (filled($validated['check_out'] ?? null)) {
-            return $date.' – '.$validated['check_out'];
-        }
-
-        return filled($validated['time'] ?? null)
-            ? $date.' at '.$validated['time']
+        return filled($validated['check_out'] ?? null)
+            ? $date.' – '.$validated['check_out']
             : $date;
     }
 }

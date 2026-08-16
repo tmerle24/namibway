@@ -132,6 +132,14 @@ class StayPromoter
      */
     private function write(Inquiry $inquiry, StayStatus $status): Reservation
     {
+        // A table booking and a food order are answered by the partner like any
+        // other request, but neither allocates a unit for a range of nights, so
+        // there is nothing here to write. Checked first, because every reason
+        // below it would otherwise report a missing check-out as the problem.
+        if (! $inquiry->kind->becomesAStay()) {
+            throw StayNotPromotableException::notAStay($inquiry);
+        }
+
         $listing = $inquiry->listing;
 
         if ($listing === null) {
@@ -183,6 +191,14 @@ class StayPromoter
      */
     public function promoteQuietly(Inquiry $inquiry): ?Reservation
     {
+        // Nothing was ever going to be written for these, so nothing failed.
+        // Confirming a table booking must not put an incident in the team's
+        // inbox — an alert that fires on a normal day is an alert nobody reads
+        // on the day it matters.
+        if (! $inquiry->kind->becomesAStay()) {
+            return null;
+        }
+
         try {
             return $this->promote($inquiry);
         } catch (Throwable $failure) {

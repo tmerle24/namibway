@@ -251,6 +251,19 @@ class Listing extends Model
     }
 
     /**
+     * What a restaurant sells, in menu order. Empty for everything else, and
+     * empty for a restaurant nobody has entered a menu for — which is every
+     * restaurant until somebody does, and which the page handles by offering a
+     * table and no order tab.
+     *
+     * @return HasMany<MenuItem, $this>
+     */
+    public function menuItems(): HasMany
+    {
+        return $this->hasMany(MenuItem::class)->orderBy('sort')->orderBy('id');
+    }
+
+    /**
      * @return HasMany<Review, $this>
      */
     public function reviews(): HasMany

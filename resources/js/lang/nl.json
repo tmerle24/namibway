@@ -283,7 +283,21 @@
             "checkIn": "Aankomst",
             "checkOut": "Vertrek",
             "adults": "Volwassenen",
-            "children": "Kinderen (onder 12)"
+            "children": "Kinderen (onder 12)",
+            "modes": {
+                "table": "Tafel reserveren",
+                "order": "Eten bestellen"
+            },
+            "tableTitle": "Tafel reserveren",
+            "orderTitle": "Bestellen van de kaart",
+            "date": "Datum",
+            "time": "Tijd",
+            "sendTable": "Tafel aanvragen",
+            "sendOrder": "Bestelling versturen",
+            "orderTotal": "Je bestelling ({count})",
+            "orderSuccess": "Bestelling verstuurd! Het restaurant bevestigt rechtstreeks.",
+            "add": "Eén {item} toevoegen",
+            "remove": "Eén {item} verwijderen"
         },
         "reviews": {
             "title": "Beoordelingen",

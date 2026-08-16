@@ -147,6 +147,66 @@ gets built with this future use in mind rather than needing a rewrite.
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-16 — a restaurant is asked for a table or for dinner
+
+Until now every listing type was asked the same question — check-in, check-out,
+adults, children — which for a restaurant meant a departure date it does not
+have and a form that could not express the two things it actually sells.
+
+- ✅ **`App\Enums\InquiryKind`: `booking`, `table_reservation`, `order`.** A
+  property of the *request*, not of the listing's vertical, which is the
+  distinction `BOOKING_BEYOND_ROOMS.md` §6 asks for: the core never learns to
+  ask "which vertical am I serving?", only "what shape is this request?".
+  Everything that existed before is a `booking` by default, so nothing was
+  backfilled and no existing reader changed.
+- ✅ **A table is a date and a time**, both required, with no departure —
+  `inquiries.arrival_time`. The customer-website form had been folding the time
+  into the free-text `travel_dates` ("2026-09-01 at 19:30") explicitly to avoid
+  a migration; that was right for one caller and wrong for two, so both front
+  doors now write the column and `SiteEnquiryController` stops folding.
+- ✅ **An order is a list, and nothing else.** No dates, no times, no party
+  size — the fields are refused rather than defaulted, so a row never carries a
+  check-in nobody asked for.
+- ✅ **`menu_items`, listing-scoped, not `bookable_units`.** A room type is a
+  thing with a *count*; a plate of kudu has none, and putting it in
+  `bookable_units` would mean inventing a unit count and then teaching the
+  inventory writer to ignore it. Small table at the edge; the booking core never
+  learns it exists.
+- ✅ **The browser sends ids and quantities. Nothing else.** Names, prices and
+  the total are read from the menu in the database by
+  `App\Services\Booking\MenuOrder` and frozen onto `inquiry_items` — the same
+  rule `reservation_nights` follows, so a price rise next week cannot change
+  what somebody ordered last week.
+- ✅ **Confirming a restaurant request no longer alerts the team.**
+  `StayPromoter` used to try to write every confirmed request to the nights
+  calendar and mail an incident when it could not; a table booking has no
+  check-out, so every one of them would have produced a false alarm. The kind
+  now says whether it becomes a stay at all.
+- ✅ **Dinner does not use up the one active booking request.**
+  `ActiveRequestGate` counted every inquiry, so ordering a burger would have
+  locked the traveller out of requesting anywhere to sleep until the kitchen
+  replied. It now counts only stay-shaped requests, in both directions. A
+  judgement call, made rather than asked: the rule rations speculative requests
+  at lodges, and shipping it the other way would have made the feature unusable.
+- ✅ **Both panels can maintain a menu** — a "Menu" tab in /admin (relationship
+  Repeater) and `MenuItemsRelationManager` in the partner panel, sharing
+  `MenuItemSchema`, and shown only for a restaurant. The tab's visibility is one
+  closure, not `visible()` followed by `visibleOn('edit')` — the latter is
+  *implemented as* `visible()`, so the second call silently replaces the first
+  and the tab would have shown on every lodge in the panel.
+- ⬜ **Covers per sitting.** A restaurant's real inventory is seats at a time,
+  which is a slot on the ARI calendar (`BOOKING_SYSTEM.md`, "Time inside a
+  day") and not this. Today a table request is a question the restaurant
+  answers, exactly like a request to a lodge on somebody else's PMS.
+- ⬜ **The trip plan does not order.** A restaurant on a day plan is still
+  decorative — `TripController::store` only ever creates inquiries for
+  accommodation. Ordering from the plan is the obvious next step and is
+  deliberately not in this change.
+- ⬜ **The website builder's `price_list` block is still typed by hand.** Its
+  docblock says a menu is "something no system of ours holds", which is now half
+  false: a listing-backed site could import the menu the way it imports
+  everything else. Left alone rather than half-wired.
+
 ### 2026-08-12 — room types are part of the listing, not a box under it
 
 - ✅ **A "Room types" tab in the /admin listing form**, between Media and

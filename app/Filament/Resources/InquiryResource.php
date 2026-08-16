@@ -5,12 +5,14 @@ namespace App\Filament\Resources;
 use App\Enums\InquiryStatus;
 use App\Filament\Resources\InquiryResource\Pages;
 use App\Models\Inquiry;
+use App\Models\InquiryItem;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class InquiryResource extends Resource
 {
@@ -50,6 +52,22 @@ class InquiryResource extends Resource
                         Forms\Components\TextInput::make('phone')->disabled(),
                         Forms\Components\TextInput::make('travel_dates')->disabled(),
                         Forms\Components\Textarea::make('message')->disabled()->columnSpanFull(),
+                        // What was ordered, where anything was. Read-only like
+                        // everything else in this section: the team answers
+                        // orders, it does not edit them — an order that was
+                        // wrong is declined and placed again, the same rule
+                        // money follows.
+                        Forms\Components\Placeholder::make('order')
+                            ->label('Order')
+                            ->visible(fn (?Inquiry $record): bool => $record !== null && $record->items()->exists())
+                            ->content(fn (Inquiry $record): HtmlString => new HtmlString(
+                                collect($record->items)
+                                    ->map(fn (InquiryItem $item): string => e("{$item->quantity} × {$item->name}")
+                                        .' <span style="opacity:.6">'.e($item->currency.' '.number_format($item->line_total, 2)).'</span>')
+                                    ->push('<strong>'.e(__('Total').': '.($record->currency ?? 'NAD').' '.number_format((float) $record->total_amount, 2)).'</strong>')
+                                    ->implode('<br>')
+                            ))
+                            ->columnSpanFull(),
                     ]),
 
                 Forms\Components\Section::make('Status & Tracking')
@@ -84,6 +102,10 @@ class InquiryResource extends Resource
                 Tables\Columns\TextColumn::make('listing.name')
                     ->label('Listing')
                     ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('kind')
+                    ->label('Request')
+                    ->badge()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),

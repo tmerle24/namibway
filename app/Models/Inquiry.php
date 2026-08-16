@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\InquiryKind;
 use App\Enums\InquiryStatus;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
@@ -13,12 +16,14 @@ use Illuminate\Support\Carbon;
  * @property int $listing_id
  * @property int|null $trip_id
  * @property int|null $user_id
+ * @property InquiryKind $kind
  * @property string $name
  * @property string $email
  * @property string|null $phone
  * @property string|null $travel_dates
  * @property Carbon|null $check_in
  * @property Carbon|null $check_out
+ * @property string|null $arrival_time
  * @property int $adults
  * @property int $children
  * @property string|null $message
@@ -29,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $currency
  * @property Carbon|null $hold_expires_at
  * @property string|null $notes
+ * @property-read Collection<int, InquiryItem> $items
  */
 class Inquiry extends Model
 {
@@ -38,12 +44,14 @@ class Inquiry extends Model
         'listing_id',
         'trip_id',
         'user_id',
+        'kind',
         'name',
         'email',
         'phone',
         'travel_dates',
         'check_in',
         'check_out',
+        'arrival_time',
         'adults',
         'children',
         'message',
@@ -56,7 +64,24 @@ class Inquiry extends Model
         'notes',
     ];
 
+    /**
+     * A request is a booking request unless it says otherwise.
+     *
+     * The column carries the same default, but that one only applies once the
+     * row reaches the database — and the observer, the promoter and the emails
+     * all read `kind` off the *model*, including the instance handed straight
+     * to `created()`. Without this, every caller that does not name a kind
+     * (the shortlist batch, a plan's bookings) would hand those readers a null
+     * and fatal on the first `$inquiry->kind->…`.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'kind' => InquiryKind::Booking->value,
+    ];
+
     protected $casts = [
+        'kind' => InquiryKind::class,
         'status' => InquiryStatus::class,
         'check_in' => 'date',
         'check_out' => 'date',
@@ -73,6 +98,27 @@ class Inquiry extends Model
     public function listing(): BelongsTo
     {
         return $this->belongsTo(Listing::class);
+    }
+
+    /**
+     * The lines of an order. Empty for every other kind of request.
+     *
+     * @return HasMany<InquiryItem, $this>
+     */
+    public function items(): HasMany
+    {
+        return $this->hasMany(InquiryItem::class);
+    }
+
+    /**
+     * The requested time as a person writes it — "19:30", not "19:30:00".
+     *
+     * Postgres hands back a `time` column with its seconds, which no restaurant
+     * asked for and which reads as machine output in an email.
+     */
+    public function arrivalTimeLabel(): ?string
+    {
+        return filled($this->arrival_time) ? substr($this->arrival_time, 0, 5) : null;
     }
 
     /**

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import '../../css/kaia-home.css';
+import type { FormDataConvertible } from '@inertiajs/core';
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Globe, Pencil, UserPlus } from '@lucide/vue';
 import { computed, nextTick, ref } from 'vue';
@@ -17,6 +18,7 @@ import NavMoreMenu from '@/components/NavMoreMenu.vue';
 import PublishConsentModal from '@/components/PublishConsentModal.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
+import { formatPrice } from '@/lib/currency';
 import { onImageError, thumb, thumbAttrs } from '@/lib/media';
 import type { PriceUnit } from '@/lib/price-unit';
 import { formatPriceWithUnit } from '@/lib/price-unit';
@@ -119,8 +121,25 @@ interface Review {
     created_at: string;
 }
 
+/** One line of a restaurant's menu — see App\Models\MenuItem. */
+interface MenuItem {
+    id: number;
+    name: string;
+    description: string | null;
+    price: number;
+    currency: string;
+    image: string | null;
+}
+
+interface MenuSection {
+    category: string;
+    items: MenuItem[];
+}
+
 const props = defineProps<{
     listing: Listing;
+    /** Empty for everything that is not a restaurant with a menu entered. */
+    menu: MenuSection[];
     reviews: Review[];
     is_preview?: boolean;
     can_publish?: boolean;
@@ -145,8 +164,165 @@ const account = computed(
 // account's name instead of the one they entered for this trip.
 const initialAccount = account.value;
 
+const { t } = useI18n();
+
 const inquiryForm = ref<{ submit: () => void } | null>(null);
 const showInquiryLogin = ref(false);
+
+// ---------------------------------------------------------------------------
+// Restaurants: a table, or an order
+// ---------------------------------------------------------------------------
+// A restaurant is asked for two different things, and asking for both on one
+// form would mean a guest ordering two burgers first telling us how many
+// children are coming. So the panel has two tabs and each renders only its own
+// fields — the shared contact fields stay put underneath, and the whole thing
+// is still one <Form>, so the logged-out login modal keeps working unchanged.
+
+const isRestaurant = computed(() => props.listing.type === 'restaurant');
+
+// A restaurant nobody has entered a menu for gets no order tab at all rather
+// than an empty one. The server enforces the same thing — see
+// ListingController::inquiryKind().
+const canOrder = computed(
+    () =>
+        isRestaurant.value &&
+        props.menu.some((section) => section.items.length > 0),
+);
+
+const inquiryMode = ref<'table' | 'order'>('table');
+
+/** menu item id → how many. Absent means none; a stepper never goes below 0. */
+const orderQuantities = ref<Record<number, number>>({});
+
+const menuItemsById = computed(() => {
+    const items = new Map<number, MenuItem>();
+
+    for (const section of props.menu) {
+        for (const item of section.items) {
+            items.set(item.id, item);
+        }
+    }
+
+    return items;
+});
+
+const orderLines = computed(() =>
+    Object.entries(orderQuantities.value)
+        .map(([id, quantity]) => ({
+            item: menuItemsById.value.get(Number(id)),
+            quantity,
+        }))
+        .filter(
+            (line): line is { item: MenuItem; quantity: number } =>
+                line.item !== undefined && line.quantity > 0,
+        ),
+);
+
+const orderItemCount = computed(() =>
+    orderLines.value.reduce((total, line) => total + line.quantity, 0),
+);
+
+// A running total in the traveler's own display currency, exactly like every
+// other price on the page. It is a preview and nothing more: the total that is
+// stored and sent to the kitchen is added up server-side from the menu in the
+// database (App\Services\Booking\MenuOrder), never from this number.
+const orderTotal = computed(() =>
+    orderLines.value.reduce(
+        (total, line) => total + line.item.price * line.quantity,
+        0,
+    ),
+);
+
+function setQuantity(item: MenuItem, quantity: number) {
+    const next = Math.min(99, Math.max(0, quantity));
+
+    if (next === 0) {
+        delete orderQuantities.value[item.id];
+
+        return;
+    }
+
+    orderQuantities.value[item.id] = next;
+}
+
+function quantityOf(item: MenuItem): number {
+    return orderQuantities.value[item.id] ?? 0;
+}
+
+/**
+ * What actually goes on the wire beside the typed contact fields.
+ *
+ * Ids and counts only — no names and no prices. A form that posts a price is a
+ * form somebody can edit to post a different one.
+ */
+function withRequestKind(
+    data: Record<string, FormDataConvertible>,
+): Record<string, FormDataConvertible> {
+    if (!isRestaurant.value) {
+        return data;
+    }
+
+    if (inquiryMode.value === 'order') {
+        return {
+            ...data,
+            kind: 'order',
+            items: orderLines.value.map((line) => ({
+                menu_item_id: line.item.id,
+                quantity: line.quantity,
+            })),
+        };
+    }
+
+    return { ...data, kind: 'table_reservation' };
+}
+
+// Nothing picked yet is not an error to show after the fact — the button says
+// so instead.
+const inquiryBlocked = computed(
+    () =>
+        isRestaurant.value &&
+        inquiryMode.value === 'order' &&
+        orderLines.value.length === 0,
+);
+
+function onOrderSent() {
+    orderQuantities.value = {};
+}
+
+/** Today in the browser's own timezone — a `min` of "yesterday" in Windhoek is a bug. */
+const today = computed(() => {
+    const now = new Date();
+
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 10);
+});
+
+// "Request availability" is what a lodge is asked; a restaurant is asked for a
+// table or for dinner, and the panel should say which.
+const inquiryTitle = computed(() => {
+    if (!isRestaurant.value) {
+        return t('listing.inquiry.title');
+    }
+
+    return inquiryMode.value === 'order'
+        ? t('listing.inquiry.orderTitle')
+        : t('listing.inquiry.tableTitle');
+});
+
+const inquirySendLabel = computed(() =>
+    isRestaurant.value && inquiryMode.value === 'order'
+        ? t('listing.inquiry.sendOrder')
+        : isRestaurant.value
+          ? t('listing.inquiry.sendTable')
+          : t('listing.inquiry.send'),
+);
+
+const inquirySuccessLabel = computed(() =>
+    isRestaurant.value && inquiryMode.value === 'order'
+        ? t('listing.inquiry.orderSuccess')
+        : t('listing.inquiry.success'),
+);
 
 function onInquirySend(event: MouseEvent) {
     // Logged in: the button is a real submit and this does nothing.
@@ -221,8 +397,6 @@ function approvePendingPhotos() {
         { preserveScroll: true },
     );
 }
-
-const { t } = useI18n();
 
 // Stated with its unit where the listing records one — this page is where a
 // traveler decides, so "from €45" and "from €45 per person" must not look the
@@ -808,7 +982,29 @@ const socialLinks = computed(() =>
 
                 <div class="inquiry-panel">
                     <template v-if="props.listing.accepts_inquiries">
-                        <h3>{{ t('listing.inquiry.title') }}</h3>
+                        <h3>{{ inquiryTitle }}</h3>
+                        <!--
+                            Two tabs only where there is genuinely a second
+                            thing to ask for. A restaurant with no menu entered
+                            shows the table form on its own, with no hint that
+                            something is missing.
+                        -->
+                        <div v-if="canOrder" class="inquiry-mode-tabs">
+                            <button
+                                type="button"
+                                :class="{ active: inquiryMode === 'table' }"
+                                @click="inquiryMode = 'table'"
+                            >
+                                {{ t('listing.inquiry.modes.table') }}
+                            </button>
+                            <button
+                                type="button"
+                                :class="{ active: inquiryMode === 'order' }"
+                                @click="inquiryMode = 'order'"
+                            >
+                                {{ t('listing.inquiry.modes.order') }}
+                            </button>
+                        </div>
                         <p
                             v-if="props.listing.contact_person"
                             class="inquiry-contact-person"
@@ -843,8 +1039,10 @@ const socialLinks = computed(() =>
                                 })
                             "
                             reset-on-success
+                            :transform="withRequestKind"
                             v-slot="{ errors, processing, recentlySuccessful }"
                             class="inquiry-form"
+                            @success="onOrderSent"
                         >
                             <label>
                                 {{ t('listing.inquiry.name') }}
@@ -871,58 +1069,227 @@ const socialLinks = computed(() =>
                                 <input name="phone" type="text" />
                                 <InputError :message="errors.phone" />
                             </label>
-                            <div class="inquiry-dates-row">
-                                <label class="inquiry-date-field">
-                                    {{ t('listing.inquiry.checkIn') }}
-                                    <input
-                                        name="check_in"
-                                        type="date"
-                                        :min="
-                                            new Date()
-                                                .toISOString()
-                                                .slice(0, 10)
-                                        "
-                                    />
-                                    <InputError :message="errors.check_in" />
-                                </label>
-                                <label class="inquiry-date-field">
-                                    {{ t('listing.inquiry.checkOut') }}
-                                    <input
-                                        name="check_out"
-                                        type="date"
-                                        :min="
-                                            new Date()
-                                                .toISOString()
-                                                .slice(0, 10)
-                                        "
-                                    />
-                                    <InputError :message="errors.check_out" />
-                                </label>
+                            <!--
+                                A stay: arrival and departure, both optional —
+                                "sometime in June" is still a request worth
+                                sending. Unchanged from before restaurants had
+                                a form of their own.
+                            -->
+                            <template v-if="!isRestaurant">
+                                <div class="inquiry-dates-row">
+                                    <label class="inquiry-date-field">
+                                        {{ t('listing.inquiry.checkIn') }}
+                                        <input
+                                            name="check_in"
+                                            type="date"
+                                            :min="today"
+                                        />
+                                        <InputError
+                                            :message="errors.check_in"
+                                        />
+                                    </label>
+                                    <label class="inquiry-date-field">
+                                        {{ t('listing.inquiry.checkOut') }}
+                                        <input
+                                            name="check_out"
+                                            type="date"
+                                            :min="today"
+                                        />
+                                        <InputError
+                                            :message="errors.check_out"
+                                        />
+                                    </label>
+                                </div>
+                                <div class="inquiry-guests-row">
+                                    <label class="inquiry-guest-field">
+                                        {{ t('listing.inquiry.adults') }}
+                                        <input
+                                            name="adults"
+                                            type="number"
+                                            min="1"
+                                            max="20"
+                                            value="2"
+                                        />
+                                        <InputError :message="errors.adults" />
+                                    </label>
+                                    <label class="inquiry-guest-field">
+                                        {{ t('listing.inquiry.children') }}
+                                        <input
+                                            name="children"
+                                            type="number"
+                                            min="0"
+                                            max="20"
+                                            value="0"
+                                        />
+                                        <InputError
+                                            :message="errors.children"
+                                        />
+                                    </label>
+                                </div>
+                            </template>
+
+                            <!--
+                                A table: a date and a time, both required, and
+                                no departure. A restaurant cannot hold "dinner
+                                sometime", and asking afterwards costs the
+                                partner an email this form can save them.
+                            -->
+                            <template v-else-if="inquiryMode === 'table'">
+                                <div class="inquiry-dates-row">
+                                    <label class="inquiry-date-field">
+                                        {{ t('listing.inquiry.date') }}
+                                        <input
+                                            name="check_in"
+                                            type="date"
+                                            required
+                                            :min="today"
+                                        />
+                                        <InputError
+                                            :message="errors.check_in"
+                                        />
+                                    </label>
+                                    <label class="inquiry-date-field">
+                                        {{ t('listing.inquiry.time') }}
+                                        <input
+                                            name="arrival_time"
+                                            type="time"
+                                            required
+                                            value="19:00"
+                                        />
+                                        <InputError
+                                            :message="errors.arrival_time"
+                                        />
+                                    </label>
+                                </div>
+                                <div class="inquiry-guests-row">
+                                    <label class="inquiry-guest-field">
+                                        {{ t('listing.inquiry.adults') }}
+                                        <input
+                                            name="adults"
+                                            type="number"
+                                            min="1"
+                                            max="20"
+                                            value="2"
+                                            required
+                                        />
+                                        <InputError :message="errors.adults" />
+                                    </label>
+                                    <label class="inquiry-guest-field">
+                                        {{ t('listing.inquiry.children') }}
+                                        <input
+                                            name="children"
+                                            type="number"
+                                            min="0"
+                                            max="20"
+                                            value="0"
+                                        />
+                                        <InputError
+                                            :message="errors.children"
+                                        />
+                                    </label>
+                                </div>
+                            </template>
+
+                            <!--
+                                An order: the menu, with a stepper per line. No
+                                date, no time, no party size — the ask is the
+                                list, and every field that is not part of it is
+                                a question nobody has an answer to.
+                            -->
+                            <div v-else class="menu-picker">
+                                <div
+                                    v-for="section in props.menu"
+                                    :key="section.category"
+                                    class="menu-section"
+                                >
+                                    <h4>{{ section.category }}</h4>
+                                    <div
+                                        v-for="item in section.items"
+                                        :key="item.id"
+                                        class="menu-item"
+                                        :class="{
+                                            picked: quantityOf(item) > 0,
+                                        }"
+                                    >
+                                        <img
+                                            v-if="item.image"
+                                            v-bind="thumbAttrs(item.image, 96)"
+                                            :alt="item.name"
+                                            class="menu-item-photo"
+                                            loading="lazy"
+                                            @error="onImageError"
+                                        />
+                                        <div class="menu-item-text">
+                                            <strong>{{ item.name }}</strong>
+                                            <span
+                                                v-if="item.description"
+                                                class="menu-item-description"
+                                                >{{ item.description }}</span
+                                            >
+                                            <span class="menu-item-price">{{
+                                                formatPrice(item.price)
+                                            }}</span>
+                                        </div>
+                                        <div class="menu-item-stepper">
+                                            <button
+                                                type="button"
+                                                :aria-label="
+                                                    t(
+                                                        'listing.inquiry.remove',
+                                                        {
+                                                            item: item.name,
+                                                        },
+                                                    )
+                                                "
+                                                :disabled="
+                                                    quantityOf(item) === 0
+                                                "
+                                                @click="
+                                                    setQuantity(
+                                                        item,
+                                                        quantityOf(item) - 1,
+                                                    )
+                                                "
+                                            >
+                                                −
+                                            </button>
+                                            <span
+                                                class="menu-item-quantity"
+                                                aria-live="polite"
+                                                >{{ quantityOf(item) }}</span
+                                            >
+                                            <button
+                                                type="button"
+                                                :aria-label="
+                                                    t('listing.inquiry.add', {
+                                                        item: item.name,
+                                                    })
+                                                "
+                                                @click="
+                                                    setQuantity(
+                                                        item,
+                                                        quantityOf(item) + 1,
+                                                    )
+                                                "
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="menu-total">
+                                    <span>{{
+                                        t('listing.inquiry.orderTotal', {
+                                            count: orderItemCount,
+                                        })
+                                    }}</span>
+                                    <strong>{{
+                                        formatPrice(orderTotal)
+                                    }}</strong>
+                                </p>
+                                <InputError :message="errors.items" />
                             </div>
-                            <div class="inquiry-guests-row">
-                                <label class="inquiry-guest-field">
-                                    {{ t('listing.inquiry.adults') }}
-                                    <input
-                                        name="adults"
-                                        type="number"
-                                        min="1"
-                                        max="20"
-                                        value="2"
-                                    />
-                                    <InputError :message="errors.adults" />
-                                </label>
-                                <label class="inquiry-guest-field">
-                                    {{ t('listing.inquiry.children') }}
-                                    <input
-                                        name="children"
-                                        type="number"
-                                        min="0"
-                                        max="20"
-                                        value="0"
-                                    />
-                                    <InputError :message="errors.children" />
-                                </label>
-                            </div>
+
                             <label>
                                 {{ t('listing.inquiry.message') }}
                                 <textarea name="message" rows="3"></textarea>
@@ -938,20 +1305,20 @@ const socialLinks = computed(() =>
                             <button
                                 :type="account ? 'submit' : 'button'"
                                 class="cta"
-                                :disabled="processing"
+                                :disabled="processing || inquiryBlocked"
                                 @click="onInquirySend"
                             >
                                 {{
                                     processing
                                         ? t('listing.inquiry.sending')
-                                        : t('listing.inquiry.send')
+                                        : inquirySendLabel
                                 }}
                             </button>
                             <p v-if="!account" class="inquiry-login-note">
                                 {{ t('listing.inquiry.loginRequired') }}
                             </p>
                             <p v-if="recentlySuccessful" class="confirm-note">
-                                {{ t('listing.inquiry.success') }}
+                                {{ inquirySuccessLabel }}
                             </p>
                         </Form>
                     </template>
@@ -1254,5 +1621,147 @@ const socialLinks = computed(() =>
         background: var(--paper, #fbf8f1);
         border-bottom: 1px solid var(--sand-dark, #d6c9b5);
     }
+}
+
+/* --- Restaurant: table or order ------------------------------------------ */
+
+.inquiry-mode-tabs {
+    display: flex;
+    gap: 4px;
+    margin: 0 0 14px;
+    padding: 4px;
+    background: var(--sand, #efe6d6);
+    border-radius: 999px;
+}
+
+.inquiry-mode-tabs button {
+    flex: 1;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 999px;
+    background: none;
+    color: var(--ink-light, #5c5347);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    /* Both labels are on screen at once, so the tab must not resize when the
+       weight changes on selection — the row would shuffle under the thumb. */
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+.inquiry-mode-tabs button.active {
+    background: var(--paper, #fbf8f1);
+    color: var(--ink, #2f2a22);
+    box-shadow: 0 1px 3px rgb(47 42 34 / 0.12);
+}
+
+.menu-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.menu-section h4 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-light, #5c5347);
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border: 1px solid var(--sand-dark, #d6c9b5);
+    border-radius: 12px;
+    background: var(--paper, #fbf8f1);
+}
+
+.menu-item + .menu-item {
+    margin-top: 8px;
+}
+
+.menu-item.picked {
+    border-color: var(--rust, #b45309);
+    background: #fdf6ec;
+}
+
+.menu-item-photo {
+    width: 48px;
+    height: 48px;
+    flex: none;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.menu-item-text {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 14px;
+}
+
+.menu-item-description {
+    font-size: 12px;
+    color: var(--ink-light, #5c5347);
+}
+
+.menu-item-price {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--rust, #b45309);
+}
+
+.menu-item-stepper {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 4px;
+}
+
+.menu-item-stepper button {
+    /* 36px rather than the visual 28px: this is the control a phone user taps
+       repeatedly, and a stepper that misses is worse than no stepper. */
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--sand-dark, #d6c9b5);
+    border-radius: 50%;
+    background: var(--paper, #fbf8f1);
+    color: var(--ink, #2f2a22);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.menu-item-stepper button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.menu-item-quantity {
+    min-width: 20px;
+    text-align: center;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.menu-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--sand-dark, #d6c9b5);
+    font-size: 15px;
 }
 </style>
