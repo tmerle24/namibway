@@ -20,6 +20,9 @@ use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Throwable;
 
 /**
  * Manage shop products for a listing's website.
@@ -142,23 +145,35 @@ class ManageShopProductsAction
                                     return SiteResolver::for($record)?->mediaPrefix() ?? 'sites';
                                 })
                                 ->fetchFileInformation(false)
+                                ->dehydrated(false)
                                 ->live()
-                                ->afterStateUpdated(function (?array $state, Get $get, Set $set): void {
+                                ->afterStateUpdated(function (?array $state, Get $get, Set $set) use ($record): void {
+                                    $site = SiteResolver::for($record);
                                     $keys = array_values(array_filter($state ?? []));
                                     $current = $get('upload_items') ?? [];
-                                    $existingKeys = array_column($current, 'image_key');
+                                    $existingTempKeys = array_column($current, 'temp_key');
 
                                     $items = $current;
 
-                                    foreach ($keys as $key) {
-                                        if (! in_array($key, $existingKeys, true)) {
-                                            $items[] = [
-                                                'image_key' => $key,
-                                                'title' => '',
-                                                'description' => '',
-                                                'price' => '',
-                                            ];
+                                    foreach ($keys as $tempKey) {
+                                        if (in_array($tempKey, $existingTempKeys, true)) {
+                                            continue;
                                         }
+
+                                        // Move from Livewire temp storage to R2 immediately so
+                                        // the preview URL is a real public R2 URL, not a temp path.
+                                        [$r2Key, $previewUrl] = $site !== null
+                                            ? self::moveTempToR2($tempKey, $site)
+                                            : [null, null];
+
+                                        $items[] = [
+                                            'temp_key' => $tempKey,
+                                            'image_key' => $r2Key,
+                                            'preview_url' => $previewUrl ?? '',
+                                            'title' => '',
+                                            'description' => '',
+                                            'price' => '',
+                                        ];
                                     }
 
                                     $set('upload_items', $items);
@@ -206,14 +221,17 @@ class ManageShopProductsAction
                                 ->columns(4)
                                 ->hidden(fn (Get $get): bool => empty($get('upload_items')))
                                 ->schema([
+                                    Forms\Components\Hidden::make('temp_key'),
                                     Forms\Components\Hidden::make('image_key'),
+                                    Forms\Components\Hidden::make('preview_url'),
 
                                     Forms\Components\Placeholder::make('_preview')
                                         ->label('')
                                         ->content(fn (Get $get): HtmlString => new HtmlString(
-                                            '<div class="aspect-square w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">'
-                                            .'<img src="'.e(Storage::disk('r2')->url($get('image_key') ?? '')).'" '
-                                            .'class="w-full h-full object-cover" loading="lazy" />'
+                                            '<div class="relative w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800" style="aspect-ratio:1/1">'
+                                            .($get('preview_url') !== ''
+                                                ? '<img src="'.e($get('preview_url')).'" class="absolute inset-0 w-full h-full object-cover" loading="lazy" />'
+                                                : '')
                                             .'</div>'
                                         ))
                                         ->columnSpan(1),
@@ -603,6 +621,30 @@ class ManageShopProductsAction
         $site = $record === null ? null : SiteResolver::for($record);
 
         return $site === null ? 'sites' : $site->mediaPrefix();
+    }
+
+    /**
+     * Move a Livewire temporary upload to R2 immediately, so the preview URL
+     * is a real public URL rather than a temp-storage path.
+     *
+     * Leaves the temp file in place — Livewire's own cleanup removes it later.
+     * If the R2 write fails for any reason, returns [null, null] and the row
+     * shows without a preview rather than blowing up the upload flow.
+     *
+     * @return array{0: string|null, 1: string|null}  [r2Key, publicUrl]
+     */
+    private static function moveTempToR2(string $tempKey, Site $site): array
+    {
+        try {
+            $tmpFile = TemporaryUploadedFile::createFromLivewire($tempKey);
+            $ext = strtolower(pathinfo($tmpFile->getClientOriginalName(), PATHINFO_EXTENSION)) ?: 'jpg';
+            $r2Key = $site->mediaPrefix().'/'.Str::random(20).'.'.$ext;
+            Storage::disk('r2')->put($r2Key, file_get_contents($tmpFile->getRealPath()), 'public');
+
+            return [$r2Key, Storage::disk('r2')->url($r2Key)];
+        } catch (Throwable) {
+            return [null, null];
+        }
     }
 
     /**
