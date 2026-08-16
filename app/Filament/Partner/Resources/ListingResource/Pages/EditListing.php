@@ -15,6 +15,7 @@ use App\Filament\Support\EditPagesAction;
 use App\Filament\Support\EditSiteImagesAction;
 use App\Filament\Support\EditSiteLogoAction;
 use App\Filament\Support\EditTypographyAction;
+use App\Filament\Support\ManageShopProductsAction;
 use App\Filament\Support\OrderWebsiteAction;
 use App\Filament\Support\ViewListingAction;
 use App\Models\Listing;
@@ -62,6 +63,7 @@ class EditListing extends EditRecord
             EditBlocksAction::header(),
             EditPagesAction::header(),
             EditSiteImagesAction::header(),
+            ManageShopProductsAction::header(),
             EditHeroAction::header(),
             EditSiteLogoAction::header(),
             EditTypographyAction::header(),
