@@ -280,7 +280,7 @@ class ManageShopProductsAction
                                     'site_id' => $site->id,
                                     'title' => mb_substr($title, 0, 255),
                                     'description' => filled($item['description'] ?? null) ? trim((string) $item['description']) : null,
-                                    'price' => filled($item['price'] ?? null) ? mb_substr(trim((string) $item['price']), 0, 100) : null,
+                                    ...self::parsePrice((string) ($item['price'] ?? '')),
                                     'status' => ShopProductStatus::Draft,
                                     'image_ids' => [$imageId],
                                     'sort' => ++$maxSort,
@@ -603,5 +603,31 @@ class ManageShopProductsAction
         $site = $record === null ? null : SiteResolver::for($record);
 
         return $site === null ? 'sites' : $site->mediaPrefix();
+    }
+
+    /**
+     * Parse a freeform price string into the split price/price_text columns.
+     *
+     * A plain number, optionally prefixed with a currency mark, becomes a
+     * decimal `price`; anything with a qualifier stays as `price_text` only.
+     *
+     * @return array{price: float|null, price_text: string|null}
+     */
+    private static function parsePrice(string $raw): array
+    {
+        $text = trim($raw);
+
+        if ($text === '') {
+            return ['price' => null, 'price_text' => null];
+        }
+
+        $bare = preg_replace('/^(?:N\$|R|\$|€|£|ZAR|NAD|EUR|USD|GBP)\s*/iu', '', $text) ?? $text;
+        $bare = str_replace([' ', "\u{00A0}", ','], ['', '', '.'], trim($bare));
+
+        if (preg_match('/^\d+(?:\.\d{1,2})?$/', $bare) === 1) {
+            return ['price' => (float) $bare, 'price_text' => null];
+        }
+
+        return ['price' => null, 'price_text' => mb_substr($text, 0, 100)];
     }
 }
