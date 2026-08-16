@@ -221,15 +221,13 @@ class SiteContactFormTest extends TestCase
     }
 
     /**
-     * A switch over an empty menu is a promise the page cannot keep — the same
-     * rule `Listing::requestKinds()` applies on namibway.com. With neither
-     * channel open the form is still there; it just stops claiming to book
-     * anything, because walk-ins are a real way to run a restaurant.
+     * With neither channel open the form is still there; it just stops claiming
+     * to book anything, because walk-ins are a real way to run a restaurant.
      */
     public function test_a_restaurant_that_takes_neither_online_gets_a_plain_contact_form(): void
     {
         $restaurant = $this->restaurant();
-        $restaurant->update(['accepts_table_reservations' => false, 'accepts_orders' => true]);
+        $restaurant->update(['accepts_table_reservations' => false, 'accepts_orders' => false]);
 
         $site = $this->siteFor(EnquiryFormType::TableReservation, $restaurant);
 
@@ -299,6 +297,50 @@ class SiteContactFormTest extends TestCase
 
         $this->assertNull(EnquiryBlock::unavailableReason($site->refresh(), EnquiryFormType::RestaurantOrder));
         $this->assertNull(EnquiryBlock::unavailableReason($site, EnquiryFormType::Contact));
+    }
+
+    /**
+     * A street food shop setting its site up, which is what this cost three
+     * days of.
+     *
+     * The owner switches ordering on and picks the order form before a single
+     * dish is entered — because entering them is the next thing they were going
+     * to do. The form used to become a contact form at that moment while the
+     * menu button kept saying "Order online", so the page contradicted itself
+     * and nothing said why. The choice stands now: one name everywhere, and the
+     * dishes appear as soon as they exist.
+     */
+    public function test_an_empty_menu_does_not_turn_the_order_form_into_something_else(): void
+    {
+        $restaurant = $this->restaurant();
+        $restaurant->update(['accepts_orders' => true, 'accepts_table_reservations' => false]);
+
+        $site = $this->siteFor(EnquiryFormType::RestaurantOrder, $restaurant);
+        $site->update(['whatsapp' => '+264811234567']);
+        SiteBlock::where('site_page_id', SitePage::sole()->id)
+            ->update(['data' => [
+                'form_type' => EnquiryFormType::RestaurantOrder->value,
+                'channel' => EnquiryBlock::CHANNEL_WHATSAPP,
+                'button_label' => 'Order online',
+            ]]);
+
+        $page = $this->get($site->publicUrl());
+
+        $page->assertSee('Order online')->assertDontSee('Get in touch');
+
+        // Name, number, message, and one button that opens WhatsApp.
+        $page->assertSee('name="name"', false)
+            ->assertSee('name="phone"', false)
+            ->assertSee('name="message"', false)
+            ->assertSee('Send via WhatsApp');
+
+        // The number the shop calls back on rides in the message. It was
+        // collected and then left out of it.
+        $page->assertSee("value('eq-phone')", false);
+
+        MenuItem::factory()->for($restaurant)->create(['name' => 'Kapana plate', 'price' => 45.00]);
+
+        $this->get($site->publicUrl())->assertSee('Kapana plate');
     }
 
     public function test_a_whatsapp_form_offers_no_second_way_to_send(): void

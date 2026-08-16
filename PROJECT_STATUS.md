@@ -1541,6 +1541,19 @@ the form type was **stored once and never asked again**, and the form had **two 
 No migration: the correction happens at render, so it applies to every site already
 generated without a write, and it keeps applying when a business changes its mind again.
 
+**Corrected the same day: an empty menu no longer changes the form.** The rule above
+originally also degraded a restaurant-order form when the menu had no dishes in it, on the
+reasoning that an order form with nothing to order is a promise the page cannot keep. In
+front of a business setting its site up that reasoning is backwards — the menu is empty
+*because they are in the middle of filling it* — and it cost three days of "I picked
+ordering and the page shows a contact form". Only the two switches decide now; the page
+renders the order form with no items yet and the dishes appear the moment they exist. Two
+things went with it: a typed **menu-button label is dropped when the type it was written
+for has been corrected away** (the bar read "Order online" over a contact form, which is
+what made the page contradict itself), and the WhatsApp message now carries the visitor's
+**phone number**, which was collected and then left out of it — on a food order it is the
+one thing the shop needs.
+
 **Followed the same day: the editor says why.** Degrading quietly is right in front of a
 visitor and useless to the owner — somebody picked "Restaurant order", pressed Save, and got
 a plain contact form with no explanation on any screen. `EnquiryBlock::unavailableReason()`

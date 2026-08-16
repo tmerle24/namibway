@@ -6,6 +6,7 @@ use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Sites\ActionButtons;
 use App\Sites\Blocks\EnquiryBlock;
+use App\Sites\Blocks\EnquiryFormType;
 
 /**
  * The buttons a page offers, resolved once and handed to the three places that
@@ -297,6 +298,12 @@ final class SiteActions
         return null;
     }
 
+    /** The form type this block was set to, before any correction. */
+    private static function formType(SiteBlock $block): EnquiryFormType
+    {
+        return EnquiryBlock::formType($block->data);
+    }
+
     private static function label(SiteBlock $block, Site $site): string
     {
         // The contact form says what it is for, and the button follows it: a
@@ -305,9 +312,14 @@ final class SiteActions
         // is a different string from the heading above the form on purpose,
         // because "Request availability" is right there and far too long here.
         if ($block->type === 'enquiry') {
+            $type = EnquiryBlock::formTypeFor($site, $block->data);
             $typed = trim((string) ($block->data['button_label'] ?? ''));
 
-            if ($typed !== '') {
+            // A typed label was written for the form the owner picked. Where
+            // that pick has been corrected away, the label goes with it —
+            // otherwise the bar reads "Order online" over a contact form,
+            // which is the exact complaint this rule was missing.
+            if ($typed !== '' && $type === self::formType($block)) {
                 return $typed;
             }
 
@@ -317,7 +329,6 @@ final class SiteActions
             // something away rather than adding a default. Resolved rather than
             // read raw, so a heading left over from a form type the business no
             // longer offers does not outlive it.
-            $type = EnquiryBlock::formTypeFor($site, $block->data);
             $heading = EnquiryBlock::heading($type, $block->data);
 
             return mb_strlen($heading) <= self::MAX_DERIVED_LABEL
