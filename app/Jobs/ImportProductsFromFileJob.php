@@ -60,7 +60,7 @@ class ImportProductsFromFileJob implements ShouldQueue
         try {
             $data = app(SpreadsheetReader::class)->read($path);
         } catch (Throwable $e) {
-            $this->notifyFailure("Could not read the file: {$e->getMessage()}");
+            $this->notifyFailure('Could not read the file: '.$e->getMessage());
             Storage::disk('local')->delete($this->fileKey);
 
             return;
@@ -230,10 +230,10 @@ class ImportProductsFromFileJob implements ShouldQueue
             return;
         }
 
-        $body = "They are set to Draft — open the Products window to review and publish them.";
+        $body = 'They are set to Draft — open the Products window to review and publish them.';
 
         if ($skipped > 0) {
-            $body .= " {$skipped} ".($skipped === 1 ? 'row was' : 'rows were').' skipped (missing title).';
+            $body .= ' '.$skipped.' '.($skipped === 1 ? 'row was' : 'rows were').' skipped (missing title).';
         }
 
         Notification::make()
