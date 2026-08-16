@@ -87,6 +87,8 @@ class WebsiteTab
                 Forms\Components\Actions::make([
                     EditContactChannelsAction::make(),
 
+                    EditEnquiryFormAction::make(),
+
                     EditBlocksAction::make(),
 
                     EditPagesAction::make(),
