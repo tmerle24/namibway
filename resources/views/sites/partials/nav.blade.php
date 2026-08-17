@@ -104,6 +104,11 @@
      * own — one loop over the blocks it already has.
      */
     $actions = \App\Sites\Rendering\SiteActions::for($site, $blocks);
+
+    // On the home page bare anchors scroll within the page. On shop or product
+    // pages the sections don't exist, so prefix with the home URL so the link
+    // still lands correctly.
+    $anchorBase = ($isHome ?? true) ? '' : $site->pageUrl();
 @endphp
 <header class="nav {{ $hasHero ? '' : 'nav--solid' }}" id="nav">
     <div class="nav__inner">
@@ -112,7 +117,7 @@
         @if ($items !== [])
             <nav class="nav__links">
                 @foreach ($items as $item)
-                    <a href="{{ $item['href'] ?? '#'.$item['anchor'] }}"
+                    <a href="{{ $item['href'] ?? $anchorBase.'#'.$item['anchor'] }}"
                        @if ($item['action'] ?? false) class="nav__link--action" @endif
                        @if ($item['current'] ?? false) aria-current="page" @endif>{{ $item['label'] }}</a>
                 @endforeach
@@ -149,7 +154,7 @@
     @if ($items !== [])
         <div class="nav__panel" id="nav-panel" hidden>
             @foreach ($items as $item)
-                <a href="{{ $item['href'] ?? '#'.$item['anchor'] }}"
+                <a href="{{ $item['href'] ?? $anchorBase.'#'.$item['anchor'] }}"
                    @if ($item['current'] ?? false) aria-current="page" @endif>{{ $item['label'] }}</a>
             @endforeach
         </div>

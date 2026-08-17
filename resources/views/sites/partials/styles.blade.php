@@ -444,8 +444,11 @@
     .shop-subbar {
         position: sticky; top: 64px; z-index: 90;
         background: var(--salt); border-bottom: 1px solid var(--bone);
+        height: 40px;
+    }
+    .shop-subbar .wrap {
         display: flex; align-items: center; justify-content: space-between;
-        padding: 0 var(--s5); height: 40px; gap: var(--s4);
+        height: 100%; gap: var(--s4);
     }
     .shop-breadcrumb {
         display: flex; align-items: center; gap: 6px;

@@ -37,14 +37,17 @@
         'blocks' => $navBlocks,
         'page' => $navPage,
         'hasHero' => false,
+        'isHome' => false,
     ])
 
     <div class="shop-subbar">
-        <nav class="shop-breadcrumb" aria-label="Breadcrumb">
-            <a href="{{ $site->pageUrl() }}">{{ $site->name }}</a>
-            <span aria-hidden="true">›</span>
-            <span aria-current="page">Shop</span>
-        </nav>
+        <div class="wrap">
+            <nav class="shop-breadcrumb" aria-label="Breadcrumb">
+                <a href="{{ $site->pageUrl() }}">{{ $site->name }}</a>
+                <span aria-hidden="true">›</span>
+                <span aria-current="page">Shop</span>
+            </nav>
+        </div>
     </div>
 
     <main>

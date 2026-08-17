@@ -54,7 +54,7 @@
 <body id="top">
     <script>document.documentElement.classList.add('js');</script>
 
-    @include('sites.partials.nav', ['hasHero' => $hero !== null])
+    @include('sites.partials.nav', ['hasHero' => $hero !== null, 'isHome' => $page->is_home])
 
     <main>
         @foreach ($blocks as $block)
