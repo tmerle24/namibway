@@ -471,11 +471,11 @@ class ListingResource extends Resource
                                     ->columnSpanFull(),
                             ]),
 
+                        WebsiteTab::make(),
+
                         Forms\Components\Tabs\Tab::make('Booking system / API')
                             ->icon('heroicon-o-link')
                             ->schema(BookingConnectorSchema::schema()),
-
-                        WebsiteTab::make(),
 
                         Forms\Components\Tabs\Tab::make('Visibility')
                             ->icon('heroicon-o-eye')

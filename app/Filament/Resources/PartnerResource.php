@@ -115,35 +115,6 @@ class PartnerResource extends Resource
                             ])
                             ->columns(2),
 
-                        WebsiteTab::make(),
-
-                        Forms\Components\Tabs\Tab::make('Portal Access')
-                            ->icon('heroicon-o-key')
-                            ->schema([
-                                Forms\Components\Select::make('portal_user_id')
-                                    ->label('Portal user')
-                                    ->options(User::whereNull('partner_id')->orWhereHas('partner', fn ($q) => $q->whereKey(0))->pluck('email', 'id'))
-                                    ->searchable()
-                                    ->placeholder('No portal access')
-                                    ->helperText('Assigning a user here grants them access to /partner for this property.')
-                                    ->dehydrated(false)
-                                    ->afterStateHydrated(function ($component, ?Partner $record) {
-                                        if (! $record) {
-                                            return;
-                                        }
-
-                                        $user = User::where('partner_id', $record->id)->first();
-                                        $component->state($user?->id);
-                                    })
-                                    ->saveRelationshipsUsing(function (?int $state, Partner $record) {
-                                        User::where('partner_id', $record->id)->whereKeyNot($state ?? 0)->update(['partner_id' => null]);
-
-                                        if ($state) {
-                                            User::whereKey($state)->update(['partner_id' => $record->id]);
-                                        }
-                                    }),
-                            ]),
-
                         Forms\Components\Tabs\Tab::make('Bookings')
                             ->icon('heroicon-o-envelope')
                             ->schema([
@@ -273,6 +244,35 @@ class PartnerResource extends Resource
                                     })
                                     ->visible(fn (Get $get) => filled($get('connector_type'))),
                             ]),
+
+                        Forms\Components\Tabs\Tab::make('Portal Access')
+                            ->icon('heroicon-o-key')
+                            ->schema([
+                                Forms\Components\Select::make('portal_user_id')
+                                    ->label('Portal user')
+                                    ->options(User::whereNull('partner_id')->orWhereHas('partner', fn ($q) => $q->whereKey(0))->pluck('email', 'id'))
+                                    ->searchable()
+                                    ->placeholder('No portal access')
+                                    ->helperText('Assigning a user here grants them access to /partner for this property.')
+                                    ->dehydrated(false)
+                                    ->afterStateHydrated(function ($component, ?Partner $record) {
+                                        if (! $record) {
+                                            return;
+                                        }
+
+                                        $user = User::where('partner_id', $record->id)->first();
+                                        $component->state($user?->id);
+                                    })
+                                    ->saveRelationshipsUsing(function (?int $state, Partner $record) {
+                                        User::where('partner_id', $record->id)->whereKeyNot($state ?? 0)->update(['partner_id' => null]);
+
+                                        if ($state) {
+                                            User::whereKey($state)->update(['partner_id' => $record->id]);
+                                        }
+                                    }),
+                            ]),
+
+                        WebsiteTab::make(),
                     ]),
             ]);
     }
