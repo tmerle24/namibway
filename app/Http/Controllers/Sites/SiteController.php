@@ -433,7 +433,7 @@ class SiteController
      * Shop pages are always solid-bar (no hero behind the nav), so hasHero is
      * not returned — the caller passes `hasHero: false` to the nav partial.
      *
-     * @return array{0: \Illuminate\Support\Collection<int, SiteBlock>, 1: SitePage|null}
+     * @return array{0: Collection<int, SiteBlock>, 1: SitePage|null}
      */
     private function navData(Site $site): array
     {
