@@ -42,6 +42,7 @@ class PartnerResource extends Resource
                         Forms\Components\Tabs\Tab::make('Basic information')
                             ->icon('heroicon-o-information-circle')
                             ->schema([
+                                // Identity — the most-edited fields, no section wrapper needed
                                 Forms\Components\FileUpload::make('logo')
                                     ->image()
                                     ->disk('r2')
@@ -50,7 +51,8 @@ class PartnerResource extends Resource
                                     ->columnSpanFull(),
                                 Forms\Components\TextInput::make('name')
                                     ->required()
-                                    ->maxLength(255),
+                                    ->maxLength(255)
+                                    ->columnSpanFull(),
                                 Forms\Components\TextInput::make('short_description')
                                     ->label('Short description')
                                     ->maxLength(240)
@@ -58,24 +60,45 @@ class PartnerResource extends Resource
                                     ->columnSpanFull(),
                                 Forms\Components\Textarea::make('bio')
                                     ->label('Full description')
+                                    ->rows(5)
                                     ->columnSpanFull(),
-                                Forms\Components\TextInput::make('email')
-                                    ->email()
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('phone')
-                                    ->tel()
-                                    ->maxLength(50),
-                                Forms\Components\TextInput::make('website')
-                                    ->url()
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('instagram')
-                                    ->url()
-                                    ->maxLength(255)
-                                    ->helperText('Full profile URL, e.g. https://instagram.com/yourlodge'),
-                                Forms\Components\TextInput::make('facebook')
-                                    ->url()
-                                    ->maxLength(255),
+
+                                // Contact — grouped so the three fields read as one answer to "how do I reach them?"
+                                Forms\Components\Section::make('Contact')
+                                    ->icon('heroicon-o-phone')
+                                    ->columnSpanFull()
+                                    ->columns(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('email')
+                                            ->email()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('phone')
+                                            ->tel()
+                                            ->maxLength(50),
+                                        Forms\Components\TextInput::make('website')
+                                            ->url()
+                                            ->maxLength(255)
+                                            ->columnSpanFull(),
+                                    ]),
+
+                                // Social — secondary, collapsible so they don't clutter the form when empty
+                                Forms\Components\Section::make('Social media')
+                                    ->icon('heroicon-o-share')
+                                    ->columnSpanFull()
+                                    ->columns(2)
+                                    ->collapsible()
+                                    ->schema([
+                                        Forms\Components\TextInput::make('instagram')
+                                            ->url()
+                                            ->maxLength(255)
+                                            ->helperText('Full profile URL, e.g. https://instagram.com/yourlodge'),
+                                        Forms\Components\TextInput::make('facebook')
+                                            ->url()
+                                            ->maxLength(255),
+                                    ]),
+
                                 Forms\Components\Section::make('Location')
+                                    ->icon('heroicon-o-map-pin')
                                     ->columnSpanFull()
                                     ->columns(2)
                                     ->schema([
@@ -90,28 +113,6 @@ class PartnerResource extends Resource
                                             ->step(0.0000001),
                                     ]),
 
-                                Forms\Components\Section::make('Source images for the website')
-                                    ->columnSpanFull()
-                                    ->columns(1)
-                                    ->description('These feed the website generator. After generating, edit the site\'s own pictures on the Website tab via Pictures.')
-                                    ->schema([
-                                        Forms\Components\FileUpload::make('image')
-                                            ->label('Hero image')
-                                            ->image()
-                                            ->disk('r2')
-                                            ->directory('partners')
-                                            ->imageEditor()
-                                            ->helperText('Main photograph — shown full-width at the top of the generated website.'),
-
-                                        Forms\Components\FileUpload::make('gallery')
-                                            ->label('Gallery')
-                                            ->image()
-                                            ->disk('r2')
-                                            ->directory('partners')
-                                            ->multiple()
-                                            ->reorderable()
-                                            ->helperText('Additional photographs. Drag to reorder.'),
-                                    ]),
                             ])
                             ->columns(2),
 

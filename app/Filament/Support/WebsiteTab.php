@@ -193,6 +193,36 @@ class WebsiteTab
                         ]),
                     ]),
 
+                // ── Source images (Partner only) ─────────────────────────────
+                // These seed the generator on first build (and forced rebuilds).
+                // After generation the site's own images are managed via the
+                // Edit website → Pictures action above; these fields are only
+                // relevant before that first generate.
+                Forms\Components\Section::make('Source images')
+                    ->icon('heroicon-o-photo')
+                    ->description('Used when building the website. After generation, manage images via Edit website → Pictures. Already-uploaded photos survive a rebuild — these are only re-imported when the site has no images yet.')
+                    ->collapsible()
+                    ->collapsed()
+                    ->visible(fn (Listing|Partner|null $record): bool => $record instanceof Partner)
+                    ->columns(1)
+                    ->schema([
+                        Forms\Components\FileUpload::make('image')
+                            ->label('Hero image')
+                            ->image()
+                            ->disk('r2')
+                            ->directory('partners')
+                            ->imageEditor()
+                            ->helperText('Main photograph — shown full-width at the top of the generated website.'),
+                        Forms\Components\FileUpload::make('gallery')
+                            ->label('Gallery')
+                            ->image()
+                            ->disk('r2')
+                            ->directory('partners')
+                            ->multiple()
+                            ->reorderable()
+                            ->helperText('Additional photographs. Drag to reorder.'),
+                    ]),
+
                 // ── Operational — rebuild / confirm ──────────────────────────
                 Forms\Components\Section::make('Operations')
                     ->schema([

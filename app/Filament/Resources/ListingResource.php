@@ -65,57 +65,60 @@ class ListingResource extends Resource
                         Forms\Components\Tabs\Tab::make('Basic information')
                             ->icon('heroicon-o-information-circle')
                             ->schema([
-                                Forms\Components\Select::make('type')
-                                    ->options(ListingType::class)
-                                    ->live()
-                                    ->required(),
-                                Forms\Components\Select::make('vehicle_category')
-                                    ->label('Vehicle category')
-                                    ->options(VehicleCategory::class)
-                                    ->helperText('Self-drive rental vs. a guided tour with a driver-guide included.')
-                                    ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value)
-                                    ->required(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
-                                Forms\Components\Select::make('vehicle_class')
-                                    ->label('Vehicle class')
-                                    ->options(VehicleClass::class)
-                                    ->helperText('What the traveler actually drives. Optional — left empty, this vehicle is matched by the old "Camper" highlights heuristic instead, which cannot tell a rooftop-tent 4x4 from a motorhome.')
-                                    ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
-                                Forms\Components\TimePicker::make('pickup_time')
-                                    ->label('Default pickup time')
-                                    ->helperText('The rental company\'s standard opening time. Pre-fills the booking form.')
-                                    ->seconds(false)
-                                    ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
-                                Forms\Components\TimePicker::make('return_time')
-                                    ->label('Default return time')
-                                    ->helperText('The rental company\'s standard closing time. Pre-fills the booking form.')
-                                    ->seconds(false)
-                                    ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
-                                Forms\Components\Select::make('partner_id')
-                                    ->label('Partner')
-                                    ->relationship('partner', 'name')
-                                    ->searchable()
-                                    ->preload()
-                                    ->createOptionForm([
-                                        Forms\Components\TextInput::make('name')->required(),
-                                        Forms\Components\TextInput::make('email')->email(),
-                                        Forms\Components\TextInput::make('phone'),
-                                    ])
-                                    ->createOptionAction(fn (Forms\Components\Actions\Action $action) => $action
-                                        ->label('Create new partner')
-                                        ->mountUsing(fn (Form $form, Component $livewire) => $form->fill([
-                                            // @phpstan-ignore property.notFound
-                                            'name' => data_get($livewire->data, 'name') ?? '',
-                                        ]))
-                                    ),
-                                Forms\Components\TextInput::make('wetu_id')
-                                    ->label('Wetu property ID')
-                                    ->placeholder('e.g. WETU-001')
-                                    ->helperText('Set this to enable automatic content sync from Wetu'),
-                                Forms\Components\TextInput::make('slug')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->unique(ignoreRecord: true)
-                                    ->helperText('Auto-filled from the name when creating. Change with care afterwards — the URL breaks unless a redirect is set up.'),
+                                // Classification — type and partner are the two fields that determine
+                                // everything else; they go first so vehicle-specific fields appear
+                                // immediately after the type is set.
+                                Forms\Components\Section::make('Classification')
+                                    ->icon('heroicon-o-tag')
+                                    ->columnSpanFull()
+                                    ->columns(2)
+                                    ->schema([
+                                        Forms\Components\Select::make('type')
+                                            ->options(ListingType::class)
+                                            ->live()
+                                            ->required(),
+                                        Forms\Components\Select::make('partner_id')
+                                            ->label('Partner')
+                                            ->relationship('partner', 'name')
+                                            ->searchable()
+                                            ->preload()
+                                            ->createOptionForm([
+                                                Forms\Components\TextInput::make('name')->required(),
+                                                Forms\Components\TextInput::make('email')->email(),
+                                                Forms\Components\TextInput::make('phone'),
+                                            ])
+                                            ->createOptionAction(fn (Forms\Components\Actions\Action $action) => $action
+                                                ->label('Create new partner')
+                                                ->mountUsing(fn (Form $form, Component $livewire) => $form->fill([
+                                                    // @phpstan-ignore property.notFound
+                                                    'name' => data_get($livewire->data, 'name') ?? '',
+                                                ]))
+                                            ),
+                                        Forms\Components\Select::make('vehicle_category')
+                                            ->label('Vehicle category')
+                                            ->options(VehicleCategory::class)
+                                            ->helperText('Self-drive rental vs. a guided tour with a driver-guide included.')
+                                            ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value)
+                                            ->required(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
+                                        Forms\Components\Select::make('vehicle_class')
+                                            ->label('Vehicle class')
+                                            ->options(VehicleClass::class)
+                                            ->helperText('What the traveler actually drives. Optional — left empty, this vehicle is matched by the old "Camper" highlights heuristic instead, which cannot tell a rooftop-tent 4x4 from a motorhome.')
+                                            ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
+                                        Forms\Components\TimePicker::make('pickup_time')
+                                            ->label('Default pickup time')
+                                            ->helperText('The rental company\'s standard opening time. Pre-fills the booking form.')
+                                            ->seconds(false)
+                                            ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
+                                        Forms\Components\TimePicker::make('return_time')
+                                            ->label('Default return time')
+                                            ->helperText('The rental company\'s standard closing time. Pre-fills the booking form.')
+                                            ->seconds(false)
+                                            ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
+                                    ]),
+
+                                // Content — primary editorial fields; no section wrapper so they feel
+                                // like the natural "body" of the form rather than a box inside a box.
                                 Forms\Components\TextInput::make('name')
                                     ->required()
                                     ->maxLength(255)
@@ -147,6 +150,7 @@ class ListingResource extends Resource
                                     ->columnSpanFull(),
 
                                 Forms\Components\Section::make('Contact')
+                                    ->icon('heroicon-o-phone')
                                     ->schema([
                                         Forms\Components\TextInput::make('contact_person')
                                             ->maxLength(255),
@@ -176,6 +180,7 @@ class ListingResource extends Resource
                                     ->columnSpanFull(),
 
                                 Forms\Components\Section::make('Location')
+                                    ->icon('heroicon-o-map-pin')
                                     ->schema([
                                         Forms\Components\Select::make('city_id')
                                             ->label('City')
@@ -201,7 +206,9 @@ class ListingResource extends Resource
                                     ->columns(2)
                                     ->columnSpanFull(),
 
-                                Forms\Components\Section::make('What this property has')
+                                // Renamed from 'What this property has' — shorter, scans faster in the sidebar
+                                Forms\Components\Section::make('Amenities')
+                                    ->icon('heroicon-o-check-circle')
                                     ->description('From the shared catalogue. The moment anything is ticked here, the scraped free-text facilities stop being shown — see Listing::amenityList().')
                                     ->schema([
                                         Forms\Components\Select::make('amenities')
@@ -219,6 +226,7 @@ class ListingResource extends Resource
                                     ->columnSpanFull(),
 
                                 Forms\Components\Section::make('Pricing & ratings')
+                                    ->icon('heroicon-o-currency-dollar')
                                     ->schema([
                                         Forms\Components\TextInput::make('price_from')
                                             ->numeric(),
@@ -261,6 +269,27 @@ class ListingResource extends Resource
                                     ])
                                     ->columns(2)
                                     ->columnSpanFull(),
+
+                                // Admin — slug and integrations are set once on create (slug auto-fills)
+                                // and rarely revisited; collapsing keeps the form readable day-to-day.
+                                Forms\Components\Section::make('Admin')
+                                    ->icon('heroicon-o-cog-6-tooth')
+                                    ->description('Slug auto-fills from the name on create. Change with care — the URL breaks unless a redirect is set up.')
+                                    ->collapsible()
+                                    ->collapsed()
+                                    ->columnSpanFull()
+                                    ->columns(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('slug')
+                                            ->required()
+                                            ->maxLength(255)
+                                            ->unique(ignoreRecord: true)
+                                            ->columnSpanFull(),
+                                        Forms\Components\TextInput::make('wetu_id')
+                                            ->label('Wetu property ID')
+                                            ->placeholder('e.g. WETU-001')
+                                            ->helperText('Set this to enable automatic content sync from Wetu'),
+                                    ]),
                             ])
                             ->columns(2),
 
