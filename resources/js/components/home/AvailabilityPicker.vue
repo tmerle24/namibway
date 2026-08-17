@@ -15,6 +15,7 @@ const props = defineProps<{
     checkIn: string | null;
     checkOut?: string | null;
     images?: string[];
+    title?: string;
 }>();
 
 const emit = defineEmits<{
@@ -145,7 +146,9 @@ function chooseSlot(unit: AvailabilityUnit, slot: AvailabilitySlot): void {
 
 <template>
     <div class="room-options-panel">
-        <div class="alternatives-title">{{ t('itinerary.chooseRoom') }}</div>
+        <div class="alternatives-title">
+            {{ title ?? t('itinerary.chooseRoom') }}
+        </div>
 
         <div v-if="loading" class="room-options-note">
             {{ t('itinerary.roomsLoading') }}

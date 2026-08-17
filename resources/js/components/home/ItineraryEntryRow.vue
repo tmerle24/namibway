@@ -21,6 +21,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     (e: 'remove'): void;
     (e: 'swap'): void;
+    (e: 'choose-unit'): void;
     (e: 'update:time', value: string | null): void;
 }>();
 
@@ -95,6 +96,10 @@ const details = computed(() => {
         parts.push(t(`itinerary.meal.${mealOfDay(props.time)}`));
     }
 
+    if (props.item.unit_selection) {
+        parts.push(props.item.unit_selection.name);
+    }
+
     return parts;
 });
 
@@ -121,6 +126,10 @@ const menuItems = computed(() => {
     if (!props.readonly) {
         items.push({ key: 'time', label: t('itinerary.changeTime') });
 
+        if (props.item.slug) {
+            items.push({ key: 'pick-slot', label: t('itinerary.pickSlot') });
+        }
+
         if (props.item.id) {
             items.push({ key: 'swap', label: t('itinerary.change') });
         }
@@ -140,6 +149,8 @@ function onMenuSelect(key: string) {
         previewOpen.value = true;
     } else if (key === 'time') {
         startTimeEdit();
+    } else if (key === 'pick-slot') {
+        emit('choose-unit');
     } else if (key === 'swap') {
         emit('swap');
     } else if (key === 'delete') {

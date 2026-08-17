@@ -35,6 +35,10 @@ export interface ItineraryListingRef {
     // type === 'activity' | 'restaurant'. Drives the merged day timeline's
     // sort order in ItinerarySection.vue; null/unset entries sink to the end.
     time?: string | null;
+    // The traveler's chosen booking unit or departure slot, as returned by
+    // GET /availability. Stored on the plan entry so it survives save/share
+    // without a second fetch; cleared when the listing changes.
+    unit_selection?: RoomOption | null;
 }
 
 // Placeholder room-type content — not backed by RoomType/live availability

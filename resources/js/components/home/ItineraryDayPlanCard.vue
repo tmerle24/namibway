@@ -28,6 +28,7 @@ const emit = defineEmits<{
     (e: 'add', type: 'activity' | 'restaurant'): void;
     (e: 'swap', entry: DayEntry): void;
     (e: 'remove', entry: DayEntry): void;
+    (e: 'choose-unit', entry: DayEntry): void;
     (e: 'update-time', entry: DayEntry, value: string | null): void;
     (e: 'remove-day'): void;
     (e: 'toggle-collapse'): void;
@@ -120,6 +121,7 @@ const { t } = useI18n();
                 @update:time="(value) => emit('update-time', entry, value)"
                 @remove="emit('remove', entry)"
                 @swap="emit('swap', entry)"
+                @choose-unit="emit('choose-unit', entry)"
             />
         </div>
     </div>

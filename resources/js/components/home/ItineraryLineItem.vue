@@ -16,6 +16,7 @@ const emit = defineEmits<{
     (e: 'remove'): void;
     (e: 'swap'): void;
     (e: 'add'): void;
+    (e: 'choose-unit'): void;
 }>();
 
 const { t } = useI18n();
@@ -41,6 +42,10 @@ const priceLabel = computed(() =>
 const menuItems = computed(() => {
     const items: { key: string; label: string; danger?: boolean }[] = [];
 
+    if (!props.readonly && props.itemRef?.slug) {
+        items.push({ key: 'pick-unit', label: t('itinerary.pickVehicle') });
+    }
+
     if (props.itemRef?.id) {
         items.push({ key: 'swap', label: t('itinerary.change') });
     }
@@ -51,7 +56,9 @@ const menuItems = computed(() => {
 });
 
 function onMenuSelect(key: string) {
-    if (key === 'swap') {
+    if (key === 'pick-unit') {
+        emit('choose-unit');
+    } else if (key === 'swap') {
         emit('swap');
     } else if (key === 'delete') {
         emit('remove');
