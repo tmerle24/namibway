@@ -258,6 +258,17 @@ GET /availability?listing=…&check_in=…[&check_out=…][&time=…]&adults=…
 | Is an activity possible on X at Y for N? | ✔ | — | filter only | ✔ |
 | Is a table free on X at Y for N? | ✔ | — | ✔ | ✔ |
 
+**This is a deliberate deviation from the integration standards, and here is why.**
+OpenTravel and the channel managers do the opposite — one message per domain
+(`OTA_HotelAvailRQ` and its siblings), so three endpoints would be the more standard shape.
+Those standards govern traffic *between companies*, where each domain arrives with its own
+vocabulary. Here the sellable thing is already one entity with one calendar and one rate-plan
+mechanism, so three endpoints would be three doors into the same room and every caller would
+have to guess which. The discipline that keeps this simple: **one response shape, in which
+the differences are data and never branches** — an empty slot list rather than an activity
+mode. The moment an `if (activity)` appears inside this endpoint, the generalisation has
+failed and § 6 already says so.
+
 **`check_in` is a date, not a datetime.** For a slot-bound product the client must be
 *offered* the departures rather than state one, or nobody discovers that 09:00, 12:00 and
 15:00 exist. The time belongs in the response. `time` on the way in is a filter ("from
@@ -349,11 +360,29 @@ This does **not** contradict "the website owns its own data" (`WEBSITE_BUILDER.m
 That rule protects *content* — text, images, layout. Goods are the business's own records,
 nearer to a listing's menu than to a hero image.
 
-**Precondition, to be settled first: `sites.partner_id` is nullable today**, with a comment
-saying a shop has no partner. That comment is stale — partner websites are generated from
-the partner record, which has carried `logo`, `image`, `gallery`, `short_description`,
+**Precondition, settled: `sites.partner_id` becomes required.** It is nullable today, with a
+comment saying a shop has no partner. That comment is stale — partner websites are generated
+from the partner record, which has carried `logo`, `image`, `gallery`, `short_description`,
 `address` and coordinates since 2026-08-14. If products hang off the partner, every site
 needs one, or there are sites whose products have nowhere to live.
+
+**`source_listing_id` is not redundant with it, and must not be replaced by a derivation.**
+The obvious objection is that a listing implies a partner, so one column could be computed
+from the other. It does not: **`listings.partner_id` is nullable**, and an unclaimed scraped
+listing — the ordinary case, not the exception — has none. The two columns answer two
+different questions and both are needed:
+
+* `partner_id` — **whose site is this?** The paying customer. Required.
+* `source_listing_id` — **where did its content come from at creation?** An optional import
+  source, and § 5a of `WEBSITE_BUILDER.md` is explicit that it is not a dependency.
+
+A second reason not to derive it: a listing can be **claimed later**, at which point a
+derived owner would change under the site's feet. A stored column does not move.
+
+**Nothing is needed for putting a shop on a page.** The block editor in the Content modal
+already offers every block type rather than only the template's — `BlockForm::builderBlocks()`
+iterates `BlockRegistry::all()` — so a shop block can be added to a restaurant's or a
+craftsman's site today. Only *generation* limits `shop` to the `retail` template.
 
 ### 7.7 Order lines keep the frozen name **and** gain the reference
 
