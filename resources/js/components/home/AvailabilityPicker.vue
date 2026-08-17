@@ -59,7 +59,13 @@ async function load() {
 }
 
 watch(
-    () => [props.slug, props.checkIn, props.checkOut, props.adults, props.children],
+    () => [
+        props.slug,
+        props.checkIn,
+        props.checkOut,
+        props.adults,
+        props.children,
+    ],
     load,
     { immediate: true },
 );
@@ -166,7 +172,8 @@ function chooseSlot(unit: AvailabilityUnit, slot: AvailabilitySlot): void {
                             v-if="imagesFor(unit).length"
                             class="room-option-thumb"
                             :class="{
-                                'room-option-thumb--stand-in': !unit.gallery.length,
+                                'room-option-thumb--stand-in':
+                                    !unit.gallery.length,
                             }"
                             :title="
                                 unit.gallery.length
@@ -191,9 +198,7 @@ function chooseSlot(unit: AvailabilityUnit, slot: AvailabilitySlot): void {
                         }}</span>
                         <span class="alt-price">
                             {{
-                                formatPrice(
-                                    String((unit.total ?? 0) / periods),
-                                )
+                                formatPrice(String((unit.total ?? 0) / periods))
                             }}
                             <span class="room-option-per-night"
                                 >/{{ t('itinerary.perNight') }}</span
