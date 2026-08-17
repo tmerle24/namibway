@@ -32,6 +32,13 @@ class InquiryObserver
 
     public function created(Inquiry $inquiry): void
     {
+        // An inquiry placed by internal code (hold jobs, promoters, tests)
+        // carries a pre-set status; a fresh customer submission does not.
+        // Only the latter needs a notification — the others are already handled.
+        if ($inquiry->status !== InquiryStatus::Pending) {
+            return;
+        }
+
         $connectorType = $inquiry->listing?->partner?->connector_type;
 
         $automatedTypes = [
@@ -62,10 +69,10 @@ class InquiryObserver
         // rather than off a connector, so there was never a reason to withhold
         // them — see App\Services\Booking\InquiryDecisionService.
         //
-        // Partner first, then the listing's own address — a business whose
-        // website is asking for enquiries has to receive them even where we
-        // never recorded a partner contact, and a shop that never listed with
-        // us has no listing to fall back to at all. See Inquiry::sellerEmail().
+        // The listing's own contact address first, then the partner — see
+        // Inquiry::sellerEmail(). A shop with no listing falls back to its
+        // partner email; a property with no recorded contact reaches its
+        // owning partner.
         $recipient = $inquiry->sellerEmail();
 
         if ($recipient) {
