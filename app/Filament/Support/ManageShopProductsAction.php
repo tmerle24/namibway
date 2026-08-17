@@ -492,11 +492,11 @@ class ManageShopProductsAction
                                         Storage::disk('r2')->url($key)
                                     );
 
-                                    if (filled($result['title'] ?? '')) {
+                                    if (filled($result['title'])) {
                                         $set('title', $result['title']);
                                     }
 
-                                    if (filled($result['description'] ?? '')) {
+                                    if (filled($result['description'])) {
                                         $set('description', $result['description']);
                                     }
                                 }),
