@@ -41,10 +41,10 @@ interface PaymentProvider
     /**
      * Currencies this gateway will actually settle.
      *
-     * Load-bearing rather than informational: the folio is in NAD and no
-     * provider available to us settles NAD, so somebody has to decide what is
-     * really charged. Answering it here keeps that decision inside the
-     * provider instead of leaking into the booking flow.
+     * Load-bearing rather than informational: `PaymentGateway::chargeableAmount()`
+     * checks whether the folio currency is in this list. If it is, no conversion
+     * is needed. If not, it applies the peg table from `config/payments.currency_pegs`.
+     * Answering it here keeps that decision inside the provider.
      *
      * @return array<int, string> ISO 4217 codes
      */

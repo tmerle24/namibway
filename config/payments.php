@@ -141,6 +141,17 @@ return [
             'failure_codes' => [],
         ],
 
+        'paygate' => [
+            // From the PayGate Merchant Portal. Both are required.
+            // Test values (from PayGate's public docs): ID = 10011072130, key = secret.
+            'paygate_id' => env('PAYGATE_ID'),
+            'encryption_key' => env('PAYGATE_ENCRYPTION_KEY'),
+
+            // ISO 3166-1 alpha-3 country code sent in initiate.trans.
+            // NAM = Namibia. Configurable in case a second market is added.
+            'country' => env('PAYGATE_COUNTRY', 'NAM'),
+        ],
+
         'paystack' => [
             'secret_key' => env('PAYSTACK_SECRET_KEY'),
             'public_key' => env('PAYSTACK_PUBLIC_KEY'),

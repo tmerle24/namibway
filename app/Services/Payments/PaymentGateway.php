@@ -354,12 +354,13 @@ class PaymentGateway
     /**
      * What the gateway is actually asked for.
      *
-     * The folio is in NAD and no provider available to us settles NAD, so
-     * something has to give. NAD is pegged 1:1 to ZAR under the Common
-     * Monetary Area (`config/currencies.php`), which makes ZAR the honest
-     * answer rather than a conversion nobody can check — and the rate is
-     * stored on the intent so a later refund returns the same money, and so a
-     * peg that ends does not rewrite what was charged.
+     * PayGate (our Namibia gateway) settles NAD natively, so a NAD folio
+     * passes straight through with no conversion. For any other provider whose
+     * `supportedCurrencies()` does not include NAD, the NAD↔ZAR peg in
+     * `config/payments.currency_pegs` is applied — NAD is pegged 1:1 to ZAR
+     * under the Common Monetary Area. The rate is stored on the intent so a
+     * later refund returns the same money, and so a peg that ends does not
+     * rewrite what was charged.
      *
      * @return array{amount: float, currency: string, rate: float}
      */

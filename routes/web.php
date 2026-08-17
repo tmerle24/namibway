@@ -12,6 +12,8 @@ use App\Http\Controllers\ListingController;
 use App\Http\Controllers\ListingsPartnerHandbookPdfController;
 use App\Http\Controllers\MarketingMaterialDownloadController;
 use App\Http\Controllers\PartnerApiGuideController;
+use App\Http\Controllers\PayGateRedirectController;
+use App\Http\Controllers\PayGateReturnController;
 use App\Http\Controllers\PaymentCheckoutController;
 use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\SavedPlanController;
@@ -81,6 +83,11 @@ Route::get('admin/documents/{document}/file', DocumentDownloadController::class)
 Route::get('pay/{intent}', [PaymentCheckoutController::class, 'show'])->name('payments.checkout');
 Route::post('pay/{intent}', [PaymentCheckoutController::class, 'decide'])->name('payments.decide');
 Route::get('pay/{intent}/done', PaymentReturnController::class)->name('payments.return');
+// PayGate-specific routes. The redirect page auto-submits a form POST to PayGate's
+// process.trans. The return route receives PayGate's browser POST back and bounces
+// the guest to the standard result page; it is CSRF-exempt (bootstrap/app.php).
+Route::get('pay/{intent}/go', PayGateRedirectController::class)->name('payments.paygate.redirect');
+Route::post('pay/{intent}/paygate-done', PayGateReturnController::class)->name('payments.paygate.return');
 
 // Invoices are rendered on demand from their frozen snapshot rather than
 // stored, so this route is the only way to the document and its check is the

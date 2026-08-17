@@ -31,6 +31,7 @@ class PaymentProviderFactory
         return match ($key) {
             'demo' => new DemoProvider,
             'dpo' => $this->makeDpo(),
+            'paygate' => $this->makePayGate(),
             'paystack' => $this->makePaystack(),
             default => throw new InvalidArgumentException(
                 "Unknown payment provider [{$key}]. Configured in config/payments.php."
@@ -47,7 +48,8 @@ class PaymentProviderFactory
     {
         return [
             'demo' => (new DemoProvider)->label(),
-            'dpo' => 'DPO Pay (Namibia, settles NAD)',
+            'paygate' => 'PayGate by Network (Namibia, settles NAD)',
+            'dpo' => 'DPO Pay directpay (separate DPO product, not the Namibia account)',
             'paystack' => 'Paystack (no Namibian merchant account)',
         ];
     }
@@ -66,6 +68,21 @@ class PaymentProviderFactory
             companyToken: $token,
             baseUrl: (string) config('payments.providers.dpo.base_url', 'https://secure.3gdirectpay.com'),
         ));
+    }
+
+    private function makePayGate(): PayGateProvider
+    {
+        $paygateId = (string) config('payments.providers.paygate.paygate_id', '');
+        $encryptionKey = (string) config('payments.providers.paygate.encryption_key', '');
+
+        if ($paygateId === '' || $encryptionKey === '') {
+            throw new InvalidArgumentException(
+                'PayGate is selected but PAYGATE_ID or PAYGATE_ENCRYPTION_KEY is not set. '
+                .'Both come from the PayGate Merchant Portal.'
+            );
+        }
+
+        return new PayGateProvider(new PayGateClient($paygateId, $encryptionKey));
     }
 
     private function makePaystack(): PaystackProvider
