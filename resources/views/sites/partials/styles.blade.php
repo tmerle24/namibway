@@ -256,6 +256,13 @@
     }
     .btn--light:hover { background: rgba(255,255,255,.24); filter: none; }
     .btn__icon { height: 16px; width: 16px; vertical-align: -3px; margin-right: 7px; }
+    /* WhatsApp: always visible on mobile, hidden on wide screens where a typed
+       enquiry via email is the better fit. btn--desktop-only is the inverse. */
+    .btn--whatsapp { background: #25D366; color: #fff; box-shadow: none; }
+    .btn--whatsapp:hover { background: #1ebe5d; filter: none; }
+    @media (min-width: 640px) { .btn--whatsapp { display: none; } }
+    .btn--desktop-only { display: none; }
+    @media (min-width: 640px) { .btn--desktop-only { display: inline-flex; } }
 
     /* ---- Hero -------------------------------------------------------- */
 
@@ -408,6 +415,26 @@
 
     /* ---- Shop ---------------------------------------------------------- */
 
+    .shop-subbar {
+        position: sticky; top: 64px; z-index: 90;
+        background: var(--salt); border-bottom: 1px solid var(--bone);
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0 var(--s5); height: 40px; gap: var(--s4);
+    }
+    .shop-breadcrumb {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 13px; color: var(--slate);
+        overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    }
+    .shop-breadcrumb a { color: var(--slate); text-decoration: none; }
+    .shop-breadcrumb a:hover { color: var(--ink); }
+    .shop-breadcrumb span[aria-current] { color: var(--ink); }
+    .shop-back {
+        flex: none; font-size: 13px; color: var(--slate); text-decoration: none;
+        white-space: nowrap;
+    }
+    .shop-back:hover { color: var(--ink); }
+
     .shop-filters {
         display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s5);
         align-items: center;
@@ -443,7 +470,8 @@
         width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease;
     }
     .product-card:hover .product-card__img img { transform: scale(1.04); }
-    .product-card__img--empty { color: var(--slate); font-size: 32px; }
+    .product-card__img--empty { color: var(--slate); display: flex; align-items: center; justify-content: center; }
+    .product-detail__main-img--empty { display: flex; align-items: center; justify-content: center; }
     .product-card__body { padding: var(--s3) var(--s4); flex: 1; display: flex; flex-direction: column; }
     .product-card__category {
         font-size: 12px; text-transform: uppercase; letter-spacing: .06em;

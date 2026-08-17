@@ -354,6 +354,8 @@ class SiteController
         $imageIds = $products->flatMap(fn (ShopProduct $p) => $p->image_ids ?? [])->all();
         $images = $this->images($site, [], $imageIds);
 
+        [$navBlocks, $navPage] = $this->navData($site);
+
         $response = response()->view('sites.shop', [
             'site' => $site,
             'accent' => $this->accent($site),
@@ -362,6 +364,8 @@ class SiteController
             'categories' => $categories,
             'activeCategory' => $category,
             'activeSort' => $sort,
+            'navBlocks' => $navBlocks,
+            'navPage' => $navPage,
         ]);
 
         if (! $site->isPublished()) {
@@ -402,6 +406,8 @@ class SiteController
         $relatedImageIds = $related->flatMap(fn (ShopProduct $p) => array_slice($p->image_ids ?? [], 0, 1))->all();
         $allImages = $images->merge($this->images($site, [], $relatedImageIds));
 
+        [$navBlocks, $navPage] = $this->navData($site);
+
         $response = response()->view('sites.shop-product', [
             'site' => $site,
             'accent' => $this->accent($site),
@@ -409,6 +415,8 @@ class SiteController
             'images' => $allImages,
             'related' => $related,
             'enquiryAction' => route('sites.enquiry', $site->slug),
+            'navBlocks' => $navBlocks,
+            'navPage' => $navPage,
         ]);
 
         if (! $site->isPublished()) {
@@ -416,6 +424,34 @@ class SiteController
         }
 
         return $response;
+    }
+
+    /**
+     * The home page's blocks and page record, for rendering the site nav on
+     * pages that are not built from blocks (shop, about, legal).
+     *
+     * Shop pages are always solid-bar (no hero behind the nav), so hasHero is
+     * not returned — the caller passes `hasHero: false` to the nav partial.
+     *
+     * @return array{0: \Illuminate\Support\Collection<int, SiteBlock>, 1: SitePage|null}
+     */
+    private function navData(Site $site): array
+    {
+        $page = $site->pages()
+            ->where('locale', $site->default_locale)
+            ->where('is_home', true)
+            ->first();
+
+        if ($page === null) {
+            return [collect(), null];
+        }
+
+        $blocks = $page->renderableBlocks()
+            ->get()
+            ->filter(fn (SiteBlock $block) => BlockRegistry::has($block->type))
+            ->values();
+
+        return [$blocks, $page];
     }
 
     private function accent(Site $site): string

@@ -6,6 +6,8 @@
     /** @var \Illuminate\Support\Collection<int, string> $categories */
     /** @var string|null $activeCategory */
     /** @var string $activeSort */
+    /** @var \Illuminate\Support\Collection<int, \App\Models\SiteBlock> $navBlocks */
+    /** @var \App\Models\SitePage|null $navPage */
 
     $shopUrl = $site->pageUrl('shop');
 @endphp
@@ -18,17 +20,22 @@
     @include('sites.partials.styles')
     <style>:root { --accent: {{ $accent }}; }</style>
 </head>
-<body>
+<body id="top">
     <script>document.documentElement.classList.add('js');</script>
 
-    <header class="nav nav--solid" id="nav">
-        <div class="nav__inner">
-            @include('sites.partials.brand', ['href' => $site->pageUrl()])
-            <nav class="nav__links">
-                <a href="{{ $site->pageUrl() }}">← Back</a>
-            </nav>
-        </div>
-    </header>
+    @include('sites.partials.nav', [
+        'blocks' => $navBlocks,
+        'page' => $navPage,
+        'hasHero' => false,
+    ])
+
+    <div class="shop-subbar">
+        <nav class="shop-breadcrumb" aria-label="Breadcrumb">
+            <a href="{{ $site->pageUrl() }}">{{ $site->name }}</a>
+            <span aria-hidden="true">›</span>
+            <span aria-current="page">Shop</span>
+        </nav>
+    </div>
 
     <main>
         <section class="section">
@@ -80,7 +87,7 @@
                                              alt="{{ $thumb->alt ?? $product->title }}"
                                              loading="lazy" decoding="async">
                                     @else
-                                        <span class="product-card__img--empty">📦</span>
+                                        @include('sites.partials.product-placeholder')
                                     @endif
                                 </div>
                                 <div class="product-card__body">

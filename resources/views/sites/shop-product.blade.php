@@ -5,6 +5,8 @@
     /** @var \Illuminate\Support\Collection<int, \App\Models\SiteImage> $images */
     /** @var \Illuminate\Support\Collection<int, \App\Models\ShopProduct> $related */
     /** @var string $enquiryAction */
+    /** @var \Illuminate\Support\Collection<int, \App\Models\SiteBlock> $navBlocks */
+    /** @var \App\Models\SitePage|null $navPage */
 
     $productImages = collect($product->image_ids ?? [])
         ->map(fn ($id) => $images->get((int) $id))
@@ -23,17 +25,25 @@
     @include('sites.partials.styles')
     <style>:root { --accent: {{ $accent }}; }</style>
 </head>
-<body>
+<body id="top">
     <script>document.documentElement.classList.add('js');</script>
 
-    <header class="nav nav--solid" id="nav">
-        <div class="nav__inner">
-            @include('sites.partials.brand', ['href' => $site->pageUrl()])
-            <nav class="nav__links">
-                <a href="{{ $site->pageUrl('shop') }}">← Shop</a>
-            </nav>
-        </div>
-    </header>
+    @include('sites.partials.nav', [
+        'blocks' => $navBlocks,
+        'page' => $navPage,
+        'hasHero' => false,
+    ])
+
+    <div class="shop-subbar">
+        <nav class="shop-breadcrumb" aria-label="Breadcrumb">
+            <a href="{{ $site->pageUrl() }}">{{ $site->name }}</a>
+            <span aria-hidden="true">›</span>
+            <a href="{{ $site->pageUrl('shop') }}">Shop</a>
+            <span aria-hidden="true">›</span>
+            <span aria-current="page">{{ $product->title }}</span>
+        </nav>
+        <a href="{{ $site->pageUrl('shop') }}" class="shop-back">← Back to shop</a>
+    </div>
 
     <main>
         <section class="section">
@@ -66,8 +76,8 @@
                                 </div>
                             @endif
                         @else
-                            <div class="product-detail__main-img" style="display:flex;align-items:center;justify-content:center;font-size:64px;">
-                                📦
+                            <div class="product-detail__main-img product-detail__main-img--empty">
+                                @include('sites.partials.product-placeholder')
                             </div>
                         @endif
                     </div>
@@ -101,7 +111,7 @@
                                     $waNumber = preg_replace('/\D/', '', $site->whatsapp);
                                 @endphp
                                 <a href="https://wa.me/{{ $waNumber }}?text={{ $waText }}"
-                                   class="btn" target="_blank" rel="noopener">
+                                   class="btn btn--whatsapp" target="_blank" rel="noopener">
                                     Order via WhatsApp
                                 </a>
                             @endif
@@ -111,11 +121,11 @@
                                     $mailSubject = urlencode('Enquiry: '.$product->title);
                                 @endphp
                                 <a href="mailto:{{ $site->contact_email }}?subject={{ $mailSubject }}"
-                                   class="btn btn--ghost">
+                                   class="btn btn--ghost btn--desktop-only">
                                     Send an email
                                 </a>
                             @elseif ($site->sourceListing !== null)
-                                <a href="{{ $site->pageUrl().'#enquiry' }}" class="btn btn--ghost">
+                                <a href="{{ $site->pageUrl().'#enquiry' }}" class="btn btn--ghost btn--desktop-only">
                                     Make an enquiry
                                 </a>
                             @endif
@@ -139,7 +149,7 @@
                                                  alt="{{ $relThumb->alt ?? $rel->title }}"
                                                  loading="lazy" decoding="async">
                                         @else
-                                            <span class="product-card__img--empty">📦</span>
+                                            @include('sites.partials.product-placeholder')
                                         @endif
                                     </div>
                                     <div class="product-card__body">

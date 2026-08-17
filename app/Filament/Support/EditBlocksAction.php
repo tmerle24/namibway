@@ -187,10 +187,24 @@ class EditBlocksAction
     private static function stateFor(SitePage $page): array
     {
         return $page->blocks()->orderBy('sort')->get()
-            ->map(fn (SiteBlock $block): array => [
-                'type' => $block->type,
-                'data' => ($block->data ?? []) + ['is_enabled' => $block->is_enabled],
-            ])
+            ->map(function (SiteBlock $block): array {
+                // A block created before a new field was added to its definition
+                // has no value for that field. Without the defaults here, Filament
+                // fills the form with null — which renders a Toggle as OFF, and
+                // saving then writes false. The user never touched the toggle, but
+                // the next save silently disables the feature for this site. Merging
+                // the definition's defaults means a Toggle the user never touched
+                // stays at its designed default rather than falling to OFF.
+                //
+                // The block's own values take precedence (left side of +), so a
+                // toggle the user did set to false stays false.
+                $defaults = $block->definition()?->defaults() ?? [];
+
+                return [
+                    'type' => $block->type,
+                    'data' => ($block->data ?? []) + $defaults + ['is_enabled' => $block->is_enabled],
+                ];
+            })
             ->all();
     }
 
