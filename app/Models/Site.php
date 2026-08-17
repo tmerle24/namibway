@@ -24,7 +24,7 @@ use Illuminate\Support\Str;
  * if they leave, and half the customers never have a listing at all.
  *
  * @property int $id
- * @property int $partner_id
+ * @property int|null $partner_id
  * @property int|null $source_listing_id
  * @property BusinessType $business_type
  * @property string $name
