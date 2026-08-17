@@ -485,6 +485,37 @@ been got wrong once:
   must not assume the reader is planning a trip. A plumber's website sells to the town it is
   in.
 
+### Where this is heading — a business directory, noted 2026-08-17
+
+Possible, not decided, and worth knowing about before the partner side is built any further:
+a public directory of **all** partners and their products, on its own domain — the names in
+play are **NamibWay.na** or **NamibBusiness.com**. Independent of tourism listings: the
+plumber and the craft shop appear there on the same footing as a lodge, and the audience is
+whoever is looking for a business, traveller or local.
+
+It is not a small feature, and the reason to write it down now is that it needs things the
+partner side does not have today. Nobody should build the missing pieces *for* it yet —
+but nobody should make them harder to add either:
+
+* **A partner has no public identity.** `Partner` is an account that owns listings and
+  receives inquiries. It has no publish state, no description, no logo of its own, no
+  address you could put on a directory card. Today all of that lives on the `Listing` or on
+  the `Site`, both of which the non-tourism customer may not have.
+* **There is no trade or category taxonomy.** `ListingType` classifies tourism-bookable
+  things. A directory needs "plumber", "welder", "grocer" — a different axis, and not one to
+  bolt onto `ListingType` (see `BOOKING_BEYOND_ROOMS.md` § 6 on why "which vertical am I
+  serving?" is the wrong question to build around).
+* **Products are scoped to a site, not to a partner.** `shop_products.site_id` is right for
+  a website and wrong for a directory that wants to search across every partner's goods.
+  Reaching them centrally means going through `sites`, which a partner-only customer has
+  exactly one of — workable, but it is the join a directory would live on, so it should not
+  get any harder.
+* **A second public front end.** It is a third audience after namibway.com and the tenant
+  sites, so it is a third host on the same app rather than a second application — the
+  pattern `SiteResolver` already establishes.
+* **The content-source ladder still applies.** Nothing sourced from a third-party directory
+  becomes publishable because we put it in a directory of our own.
+
 ### Starting point: not every customer has a listing
 
 The kit is also sold to businesses that **have no listing on NamibWay** and will never get
