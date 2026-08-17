@@ -7,8 +7,10 @@ use App\Enums\OperatingMode;
 use App\Enums\SettlementModel;
 use App\Filament\Resources\PartnerResource\Pages;
 use App\Filament\Support\MessagesColumn;
+use App\Filament\Support\PipelineImageResolver;
 use App\Filament\Support\WebsiteTab;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\HtmlString;
 use App\Models\Partner;
 use App\Models\PartnerMessage;
 use App\Models\PaymentSettings;
@@ -112,11 +114,36 @@ class PartnerResource extends Resource
                         Forms\Components\Tabs\Tab::make('Media')
                             ->icon('heroicon-o-photo')
                             ->schema([
+                                // Placeholder renders the stored image at real quality.
+                                // FilePond rasterizes its own preview to a small canvas and
+                                // CSS-stretches it — the result looks blurry regardless of
+                                // the source file, so we show the actual image separately.
+                                Forms\Components\Placeholder::make('logo_preview')
+                                    ->label('Current logo')
+                                    ->visibleOn('edit')
+                                    ->content(function (?Partner $record): HtmlString {
+                                        if (! $record?->logo) {
+                                            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">No logo set yet.</span>');
+                                        }
+
+                                        $url = e(Controller::resolveMediaUrl($record->logo));
+
+                                        return new HtmlString("<img src=\"{$url}\" style=\"max-height: 160px; border-radius: 0.5rem; object-fit: contain;\" />");
+                                    })
+                                    ->columnSpanFull(),
+                                // fetchFileInformation(false) + getUploadedFileUsing() are both
+                                // required: logos are stored as full R2 URLs, and FileUpload's
+                                // default hydration calls getDisk()->exists() on the raw value
+                                // before getUploadedFileUsing() ever runs — silently dropping it
+                                // when the value looks like a URL rather than a relative path.
                                 Forms\Components\FileUpload::make('logo')
                                     ->image()
                                     ->disk('r2')
                                     ->directory('partners')
                                     ->imageEditor()
+                                    ->openable()
+                                    ->fetchFileInformation(false)
+                                    ->getUploadedFileUsing(PipelineImageResolver::resolve(...))
                                     ->columnSpanFull(),
                             ]),
 
