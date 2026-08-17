@@ -61,11 +61,12 @@ final class ActionButtons
      * The placement a site gets when nobody has said otherwise.
      *
      * Read it as a sentence: the enquiry button is under the headline on a
-     * desktop and at the foot of the screen on a phone; WhatsApp and the
-     * telephone are phone things, and live at the foot of the screen where a
-     * thumb is; the business's own button — "About us" until they change it —
-     * is under the headline on both. Nothing is in the menu, which is a list of
-     * places on the page and not a place for a button.
+     * desktop and at the foot of the screen on a phone; WhatsApp is at the
+     * foot of the screen on both (this market answers on WhatsApp regardless
+     * of device); the call and map buttons are phone-only; the business's own
+     * button — "About us" until they change it — is under the headline on both.
+     * Nothing is in the menu, which is a list of places on the page and not a
+     * place for a button.
      *
      * @return array<string, array{places: array<int, string>, label: string|null, href: string|null}>
      */
@@ -73,7 +74,7 @@ final class ActionButtons
     {
         return [
             'enquiry' => ['places' => ['hero.desktop', 'footer.phone'], 'label' => null, 'href' => null],
-            'whatsapp' => ['places' => ['footer.phone'], 'label' => null, 'href' => null],
+            'whatsapp' => ['places' => ['footer.phone', 'footer.desktop'], 'label' => null, 'href' => null],
             'call' => ['places' => ['footer.phone'], 'label' => null, 'href' => null],
             'map' => ['places' => ['footer.phone'], 'label' => null, 'href' => null],
             'custom' => ['places' => ['hero.phone', 'hero.desktop'], 'label' => null, 'href' => null],

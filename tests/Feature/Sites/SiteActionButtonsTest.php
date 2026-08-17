@@ -138,7 +138,7 @@ class SiteActionButtonsTest extends TestCase
         $this->assertSame('phone', $buttons->visibility('enquiry', 'footer'));
         $this->assertNull($buttons->visibility('enquiry', 'menu'));
 
-        $this->assertSame('phone', $buttons->visibility('whatsapp', 'footer'));
+        $this->assertSame('both', $buttons->visibility('whatsapp', 'footer'));
         $this->assertNull($buttons->visibility('whatsapp', 'hero'));
 
         $this->assertSame('phone', $buttons->visibility('call', 'footer'));
@@ -260,10 +260,11 @@ class SiteActionButtonsTest extends TestCase
         $this->assertStringContainsString('https://wa.me/264810000000', $bar);
         $this->assertStringContainsString('bar__item--primary', $bar);
 
-        // The strip itself is a phone thing by default, so both it and the
-        // space it takes out of the flow are hidden on a desktop.
-        $this->assertStringContainsString('<div class="bar at-phone">', $markup);
-        $this->assertStringContainsString('<div class="bar__spacer at-phone" aria-hidden="true"></div>', $markup);
+        // WhatsApp defaults to both phone and desktop, so the strip itself is
+        // visible on both — call and enquiry remain phone-only within it.
+        $this->assertStringContainsString('<div class="bar ">', $markup);
+        $this->assertStringContainsString('<div class="bar__spacer " aria-hidden="true"></div>', $markup);
+        $this->assertMatchesRegularExpression('/bar__item[^"]*at-phone[^"]*"\s+href="tel:/', $markup);
     }
 
     public function test_a_strip_placed_on_a_desktop_too_is_shown_on_both(): void

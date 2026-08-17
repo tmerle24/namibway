@@ -14,11 +14,11 @@ use Filament\Notifications\Notification;
  * Where each action button appears, and on which screen.
  *
  * Four actions and six places each, which sounds like a lot of switches until
- * you try to write the rule instead: WhatsApp is how this market answers and is
- * close to useless on a desktop; a button in the menu is redundant with the
- * band it points at and takes the width a long name needs; a strip at the foot
- * of the screen is right on a phone and clutter on a laptop. Every one of those
- * is a judgement about a particular business, so it is a switch.
+ * you try to write the rule instead: WhatsApp is how this market answers and
+ * belongs in the footer strip on both phone and desktop by default; a button
+ * in the menu is redundant with the band it points at and takes the width a
+ * long name needs; call and map are phone things. Every one of those is a
+ * judgement about a particular business, so it is a switch.
  *
  * The form is one section per action: where it shows, and what it says. Nothing
  * here can produce a broken button — a placement for an action whose target

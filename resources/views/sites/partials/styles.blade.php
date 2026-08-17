@@ -293,11 +293,10 @@
     }
     .btn--light:hover { background: rgba(255,255,255,.24); filter: none; }
     .btn__icon { height: 16px; width: 16px; vertical-align: -3px; margin-right: 7px; }
-    /* WhatsApp: always visible on mobile, hidden on wide screens where a typed
-       enquiry via email is the better fit. btn--desktop-only is the inverse. */
+    /* WhatsApp: visible on all screen sizes. btn--desktop-only is for buttons
+       that should appear on wide screens only (e.g. an inline enquiry form trigger). */
     .btn--whatsapp { background: #25D366; color: #fff; box-shadow: none; }
     .btn--whatsapp:hover { background: #1ebe5d; filter: none; }
-    @media (min-width: 640px) { .btn--whatsapp { display: none; } }
     .btn--desktop-only { display: none; }
     @media (min-width: 640px) { .btn--desktop-only { display: inline-flex; } }
 
