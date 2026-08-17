@@ -80,7 +80,7 @@ class PayGateClient
         $source = '';
 
         foreach ($fields as $key => $value) {
-            if ($key === 'CHECKSUM' || $value === '' || $value === null) {
+            if ($key === 'CHECKSUM' || $value === '') {
                 continue;
             }
 
@@ -126,11 +126,11 @@ class PayGateClient
     {
         $response = $this->request()->asForm()->post($url, $fields);
 
+        /** @var array<string, mixed> $parsed */
         $parsed = [];
         parse_str($response->body(), $parsed);
 
-        // parse_str gives mixed, but PayGate returns scalar values only.
-        return array_map('strval', $parsed);
+        return array_map(fn (mixed $v): string => is_scalar($v) ? (string) $v : '', $parsed);
     }
 
     private function request(): PendingRequest
