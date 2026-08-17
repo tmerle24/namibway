@@ -497,14 +497,23 @@ It is not a small feature, and the reason to write it down now is that it needs 
 partner side does not have today. Nobody should build the missing pieces *for* it yet —
 but nobody should make them harder to add either:
 
-* **A partner has no public identity.** `Partner` is an account that owns listings and
-  receives inquiries. It has no publish state, no description, no logo of its own, no
-  address you could put on a directory card. Today all of that lives on the `Listing` or on
-  the `Site`, both of which the non-tourism customer may not have.
-* **There is no trade or category taxonomy.** `ListingType` classifies tourism-bookable
-  things. A directory needs "plumber", "welder", "grocer" — a different axis, and not one to
-  bolt onto `ListingType` (see `BOOKING_BEYOND_ROOMS.md` § 6 on why "which vertical am I
-  serving?" is the wrong question to build around).
+* **A partner already carries most of a directory card, and it should stay optional.**
+  `partners` has `logo`, `image`, `gallery`, `bio`, `short_description`, `address`,
+  `latitude`/`longitude`, `business_type`, `email`, `phone`, `website`, `instagram` and
+  `facebook` — added for the website generator, and every one of them nullable. That is the
+  right shape and it is deliberate: a partner filling nothing in is a normal partner, and a
+  directory entry is something they *may* have rather than something the record demands.
+  Anything added here later keeps that property.
+* **What a partner does not have is a public face.** No publish state and no slug, so there
+  is no answer to "may this partner be shown?" or "at what address?". Both are small, and
+  both are the sort of thing that must not be inferred — a partner is in the system because
+  we scraped or invited them, which is not consent to appear in a directory.
+* **There is no trade or category taxonomy.** `business_type` exists but is the *website
+  template* axis — accommodation, restaurant, activity, car_rental, tour_operator, retail,
+  service. A directory needs "plumber", "welder", "grocer", which is finer and a different
+  question. Do not stretch either `business_type` or `ListingType` to carry it (see
+  `BOOKING_BEYOND_ROOMS.md` § 6 on why "which vertical am I serving?" is the wrong question
+  to build around).
 * **Products are scoped to a site, not to a partner.** `shop_products.site_id` is right for
   a website and wrong for a directory that wants to search across every partner's goods.
   Reaching them centrally means going through `sites`, which a partner-only customer has

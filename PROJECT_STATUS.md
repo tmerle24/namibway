@@ -1585,10 +1585,12 @@ the standard headings follows the form type, anything typed stays exactly as typ
 - **A business directory, possible rather than decided** (noted 2026-08-17) — a public listing
   of every partner and their products on its own domain, **NamibWay.na** or
   **NamibBusiness.com**, independent of tourism listings and aimed at locals as much as
-  travellers. Not to be built yet, but it needs several things the partner side does not have
-  — a partner has no public identity of its own, there is no trade taxonomy, and products are
-  scoped to a site rather than to a partner. The list, and what not to make harder in the
-  meantime, is in `WEBSITE_BUILDER.md` § 5a.
+  travellers. Not to be built yet. A partner already carries most of a directory card —
+  logo, photo, gallery, description, address, coordinates, contact — all nullable, and it
+  stays that way. What is missing is a public face (no publish state, no slug), a trade
+  taxonomy finer than `business_type`, and products that are scoped to a site rather than to
+  a partner. The list, and what not to make harder in the meantime, is in
+  `WEBSITE_BUILDER.md` § 5a.
 - **Multilingual sites** — EN, DE, NL, FR, ES. `site_pages.locale` is the foundation and not
   the feature: there is no switcher, no per-locale routing, and the renderer reads
   `default_locale` and nothing else.
