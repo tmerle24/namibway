@@ -41,6 +41,9 @@ enum EnquiryFormType: string
     /** Goods from the site's own shop, with quantities and an address. */
     case ProductOrder = 'product_order';
 
+    /** An enquiry about a single product — name and email only, no cart or address. */
+    case ProductEnquiry = 'product_enquiry';
+
     public function label(): string
     {
         return match ($this) {
@@ -49,6 +52,7 @@ enum EnquiryFormType: string
             self::TableReservation => 'Table reservation — date, time and party',
             self::RestaurantOrder => 'Restaurant order — from the menu',
             self::ProductOrder => 'Product order — from the shop',
+            self::ProductEnquiry => 'Product enquiry — about a single item',
         };
     }
 
@@ -63,6 +67,7 @@ enum EnquiryFormType: string
             self::TableReservation => 'Book a table',
             self::RestaurantOrder => 'Order online',
             self::ProductOrder => 'Buy online',
+            self::ProductEnquiry => 'Send an enquiry',
         };
     }
 
@@ -83,6 +88,7 @@ enum EnquiryFormType: string
             self::TableReservation => 'Book a table',
             self::RestaurantOrder => 'Order',
             self::ProductOrder => 'Buy online',
+            self::ProductEnquiry => 'Enquire',
         };
     }
 
@@ -98,7 +104,7 @@ enum EnquiryFormType: string
         return match ($this) {
             self::Contact, self::StayRequest => InquiryKind::Booking,
             self::TableReservation => InquiryKind::TableReservation,
-            self::RestaurantOrder, self::ProductOrder => InquiryKind::Order,
+            self::RestaurantOrder, self::ProductOrder, self::ProductEnquiry => InquiryKind::Order,
         };
     }
 

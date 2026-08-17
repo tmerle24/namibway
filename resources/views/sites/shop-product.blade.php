@@ -12,6 +12,9 @@
         ->map(fn ($id) => $images->get((int) $id))
         ->filter()
         ->values();
+
+    $enquirySent = request()->query('sent');
+    $showEnquiry = $enquirySent !== null;
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $site->default_locale }}">
@@ -116,18 +119,49 @@
                                 </a>
                             @endif
 
-                            @if (filled($site->contact_email))
-                                @php
-                                    $mailSubject = urlencode('Enquiry: '.$product->title);
-                                @endphp
-                                <a href="mailto:{{ $site->contact_email }}?subject={{ $mailSubject }}"
-                                   class="btn btn--ghost btn--desktop-only">
-                                    Send an email
-                                </a>
-                            @elseif ($site->sourceListing !== null)
-                                <a href="{{ $site->pageUrl().'#enquiry' }}" class="btn btn--ghost btn--desktop-only">
-                                    Make an enquiry
-                                </a>
+                            @unless ($showEnquiry)
+                                <button type="button"
+                                        class="btn btn--ghost btn--desktop-only"
+                                        onclick="document.getElementById('enquiry').hidden=false;this.hidden=true">
+                                    Send an enquiry
+                                </button>
+                            @endunless
+                        </div>
+
+                        {{-- Desktop enquiry form (inline, hidden until the button is tapped) --}}
+                        <div id="enquiry" class="product-enquiry" {{ $showEnquiry ? '' : 'hidden' }}>
+                            @if ($enquirySent === '1')
+                                <p class="product-enquiry__sent">Thanks — we'll be in touch soon.</p>
+                            @else
+                                @if ($enquirySent === '0')
+                                    <p class="product-enquiry__error">Something went wrong. Please try again.</p>
+                                @endif
+                                <form method="POST" action="{{ route('sites.enquiry', $site) }}"
+                                      class="product-enquiry__form">
+                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                    <input class="enquiry__trap" type="text" name="website"
+                                           tabindex="-1" autocomplete="off" aria-hidden="true">
+                                    <div class="field">
+                                        <label for="pq-name">Your name</label>
+                                        <input id="pq-name" type="text" name="name" required autocomplete="name">
+                                    </div>
+                                    <div class="field">
+                                        <label for="pq-email">Email address</label>
+                                        <input id="pq-email" type="email" name="email" required autocomplete="email">
+                                    </div>
+                                    <div class="field">
+                                        <label for="pq-message">Message (optional)</label>
+                                        <textarea id="pq-message" name="message" rows="3"
+                                                  placeholder="Any questions about {{ $product->title }}?"></textarea>
+                                    </div>
+                                    <div style="display:flex;gap:var(--s3);align-items:center">
+                                        <button type="submit" class="btn">Send enquiry</button>
+                                        <button type="button" class="product-enquiry__cancel"
+                                                onclick="this.closest('#enquiry').hidden=true;document.querySelector('.btn--desktop-only').hidden=false">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
                             @endif
                         </div>
                     </div>

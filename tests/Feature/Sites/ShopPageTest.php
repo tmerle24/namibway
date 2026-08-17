@@ -2,12 +2,16 @@
 
 namespace Tests\Feature\Sites;
 
+use App\Enums\InquiryKind;
 use App\Enums\ShopProductStatus;
+use App\Models\Inquiry;
+use App\Models\Partner;
 use App\Models\ShopProduct;
 use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Models\SitePage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
@@ -26,7 +30,8 @@ class ShopPageTest extends TestCase
 
     private function siteWithShop(): array
     {
-        $site = Site::factory()->create(['name' => 'Beads & Baskets']);
+        $partner = Partner::create(['name' => 'Beads & Baskets', 'email' => 'shop@beads.na']);
+        $site = Site::factory()->create(['name' => 'Beads & Baskets', 'partner_id' => $partner->id]);
         $page = SitePage::factory()->create(['site_id' => $site->id, 'title' => $site->name]);
 
         SiteBlock::create([
@@ -139,5 +144,55 @@ class ShopPageTest extends TestCase
         $this->assertIsString($html);
         $this->assertStringContainsString('btn--whatsapp', $html);
         $this->assertStringContainsString('btn--desktop-only', $html);
+    }
+
+    /**
+     * Posting the product enquiry form creates an Inquiry with kind=order,
+     * with the product title in the message, and redirects back with sent=1.
+     */
+    public function test_product_enquiry_creates_an_order_inquiry(): void
+    {
+        Mail::fake();
+
+        [$site, $product] = $this->siteWithShop();
+
+        $this->post(route('sites.enquiry', $site), [
+            'product_id' => $product->id,
+            'name' => 'Anna Meyer',
+            'email' => 'anna@example.com',
+            'message' => 'Do you ship to Swakopmund?',
+        ])->assertRedirect();
+
+        $inquiry = Inquiry::latest()->first();
+        $this->assertNotNull($inquiry);
+        $this->assertSame(InquiryKind::Order, $inquiry->kind);
+        $this->assertStringContainsString('Palm Basket', $inquiry->message);
+        $this->assertStringContainsString('Swakopmund', $inquiry->message);
+        $this->assertSame($site->partner_id, $inquiry->partner_id);
+    }
+
+    /**
+     * A product_id that does not belong to this site is rejected silently.
+     */
+    public function test_product_enquiry_rejects_a_foreign_product_id(): void
+    {
+        Mail::fake();
+
+        [$site] = $this->siteWithShop();
+        $otherPartner = Partner::create(['name' => 'Other', 'email' => 'other@example.com']);
+        $otherSite = Site::factory()->create(['partner_id' => $otherPartner->id]);
+        $foreign = ShopProduct::create([
+            'site_id' => $otherSite->id,
+            'title' => 'Other', 'slug' => 'other',
+            'status' => ShopProductStatus::Published,
+            'image_ids' => [], 'sort' => 0,
+        ]);
+
+        $this->post(route('sites.enquiry', $site), [
+            'product_id' => $foreign->id,
+            'name' => 'Bot', 'email' => 'bot@example.com',
+        ])->assertRedirect();
+
+        $this->assertDatabaseCount('inquiries', 0);
     }
 }

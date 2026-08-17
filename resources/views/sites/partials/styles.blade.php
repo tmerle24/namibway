@@ -269,6 +269,15 @@
     .btn--desktop-only { display: none; }
     @media (min-width: 640px) { .btn--desktop-only { display: inline-flex; } }
 
+    /* ---- Product enquiry (desktop inline form on product detail page) -- */
+
+    .product-enquiry { margin-top:var(--s4); padding:var(--s4); background:#fff; border:1px solid var(--bone); border-radius:4px; }
+    .product-enquiry__form { display:grid; gap:var(--s3); }
+    .product-enquiry__sent { margin:0; color:var(--slate); font-size:15px; }
+    .product-enquiry__error { margin:0 0 var(--s3); padding:var(--s3); border-left:3px solid var(--accent); background:#fff; font-size:15px; }
+    .product-enquiry__cancel { background:none; border:none; padding:0; font:inherit; font-size:14px; color:var(--slate); cursor:pointer; text-decoration:underline; }
+    .product-enquiry__cancel:hover { color:var(--ink); }
+
     /* ---- Hero -------------------------------------------------------- */
 
     .hero { position: relative; margin-top: -64px; background: var(--ink); overflow: hidden; }

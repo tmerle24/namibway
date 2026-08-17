@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Sites;
 
 use App\Mail\EnquiryCopy;
 use App\Models\Inquiry;
+use App\Models\ShopProduct;
 use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Services\Booking\SiteOrder;
@@ -82,6 +83,17 @@ class SiteEnquiryController
         /** @var array<string, mixed> $validated */
         $validated = $validator->validated();
 
+        // A product-page enquiry names a single product by id. The product must
+        // exist on this site — otherwise the POST was hand-crafted and does not
+        // carry a real context.
+        $product = null;
+        if ($type === EnquiryFormType::ProductEnquiry) {
+            $product = $site->shopProducts()->find($validated['product_id'] ?? null);
+            if ($product === null) {
+                return $this->back($request, false);
+            }
+        }
+
         // Priced before anything is written, so an order naming something that
         // is no longer for sale fails as a rejected form rather than as a
         // request the business cannot fill.
@@ -117,7 +129,7 @@ class SiteEnquiryController
             // The delivery address rides in the message rather than in a column
             // of its own: it is one line of prose the business reads, not a
             // field anything queries or ships against yet.
-            'message' => $this->message($validated),
+            'message' => $this->message($validated, $product),
         ]);
 
         $order?->attachTo($inquiry, $type);
@@ -179,6 +191,11 @@ class SiteEnquiryController
      */
     private function formType(Site $site, Request $request): EnquiryFormType
     {
+        // A product-page enquiry carries product_id; no block lookup needed.
+        if ($request->has('product_id')) {
+            return EnquiryFormType::ProductEnquiry;
+        }
+
         $block = $site->pages()
             ->with('blocks')
             ->get()
@@ -239,6 +256,11 @@ class SiteEnquiryController
                 'items.*' => ['integer', 'min:0', 'max:99'],
                 'address' => ['required', 'string', 'max:500'],
             ],
+
+            EnquiryFormType::ProductEnquiry => [
+                ...$contact,
+                'product_id' => ['required', 'integer'],
+            ],
         };
     }
 
@@ -262,22 +284,26 @@ class SiteEnquiryController
     }
 
     /**
-     * The visitor's message, with the delivery address in front of it where the
-     * form collected one.
+     * The visitor's message, with the product name and/or delivery address
+     * prepended where the form collected them.
      *
      * @param  array<string, mixed>  $validated
      */
-    private function message(array $validated): ?string
+    private function message(array $validated, ?ShopProduct $product = null): ?string
     {
         $message = $validated['message'] ?? null;
         $address = $validated['address'] ?? null;
 
-        if (blank($address)) {
+        $prefix = $product !== null ? 'Enquiry about: '.$product->title : null;
+
+        if (filled($address)) {
+            $prefix = ($prefix !== null ? $prefix."\n" : '')."Delivery address:\n".$address;
+        }
+
+        if ($prefix === null) {
             return $message;
         }
 
-        return blank($message)
-            ? "Delivery address:\n".$address
-            : "Delivery address:\n".$address."\n\n".$message;
+        return blank($message) ? $prefix : $prefix."\n\n".$message;
     }
 }
