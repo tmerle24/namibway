@@ -134,7 +134,12 @@
        overflow the 64px bar height. Without overflow:visible the logo would be
        clipped to the 48px content area (64px − 2×8px padding). */
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__inner { overflow: visible; }
-    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { height: 56px; }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo {
+        height: {{ $site->logo_hero_height ?? 56 }}px;
+        /* drop-shadow follows the logo's actual shape (respects transparency),
+           same idea as the text-shadow on .nav__name in the same state. */
+        filter: drop-shadow(0 2px 12px rgba(0,0,0,.5));
+    }
     /* nowrap: a menu item breaking across two lines was the other half of what
        made the bar taller than the hero's negative margin. */
     .nav__links { display: none; gap: var(--s4); align-items: center; flex-wrap: nowrap; }
