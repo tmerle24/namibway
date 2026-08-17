@@ -76,12 +76,10 @@
                         </div>
                         @endunless
 
-                        @unless ($viaWhatsApp)
                         <div class="field">
                             <label for="eq-phone">Phone (optional)</label>
                             <input type="tel" id="eq-phone" name="phone" maxlength="50">
                         </div>
-                        @endunless
 
                         @if ($type === EnquiryFormType::StayRequest)
                             {{-- Two real fields, one row. The pair reads as a
