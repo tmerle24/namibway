@@ -60,9 +60,13 @@ use RuntimeException;
 class PayGateProvider implements PaymentProvider
 {
     private const STATUS_APPROVED = 1;
+
     private const STATUS_DECLINED = 2;
+
     private const STATUS_CANCELLED = 3;
+
     private const STATUS_USER_CANCELLED = 4;
+
     private const STATUS_SETTLEMENT_VOIDED = 7;
 
     public function __construct(private readonly PayGateClient $client) {}

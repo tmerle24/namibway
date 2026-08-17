@@ -22,7 +22,9 @@ use Illuminate\Support\Facades\Http;
 class PayGateClient
 {
     private const INITIATE_URL = 'https://secure.paygate.co.za/payweb3/initiate.trans';
+
     public const PROCESS_URL = 'https://secure.paygate.co.za/payweb3/process.trans';
+
     private const QUERY_URL = 'https://secure.paygate.co.za/payweb3/query.trans';
 
     public function __construct(
