@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Sites;
 
+use App\Enums\ContentSource;
 use App\Enums\ShopProductStatus;
 use App\Filament\Support\ManageShopProductsAction;
 use App\Models\Listing;
 use App\Models\ShopProduct;
 use App\Models\Site;
+use App\Models\SiteImage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -98,6 +100,45 @@ class ShopProductEditorTest extends TestCase
     }
 
     /**
+     * The picture is handed over in the shape a loaded FileUpload holds —
+     * keyed by an id, not as the bare storage key.
+     *
+     * The form is filled two ways: Filament hydrates it when the modal opens,
+     * and `Set` writes it directly when the list is refreshed after an import.
+     * Only the first runs the component's hydration callbacks, so a bare key
+     * survived one path and blew up the other — `getUploadedFiles()` iterates
+     * that state, and a string is not iterable. Producing the loaded shape here
+     * is what makes the two paths agree.
+     */
+    public function test_the_picture_is_given_to_the_form_the_way_a_file_upload_holds_it(): void
+    {
+        $site = $this->site();
+        $image = SiteImage::create([
+            'site_id' => $site->id,
+            'key' => 'sites/monas-collection/collar.jpg',
+            'content_source' => ContentSource::Partner,
+            'prospect_only' => false,
+            'sort' => 0,
+        ]);
+
+        $product = $this->product($site, 'Beaded collar');
+        $product->update(['image_ids' => [$image->id]]);
+
+        $row = $this->state($site)[0];
+
+        $this->assertIsArray($row['image_key'], 'A FileUpload iterates its state; a bare key is not iterable.');
+        $this->assertSame(['sites/monas-collection/collar.jpg'], array_values($row['image_key']));
+    }
+
+    public function test_a_product_without_a_picture_gives_the_form_an_empty_list(): void
+    {
+        $site = $this->site();
+        $this->product($site, 'Beaded collar');
+
+        $this->assertSame([], $this->state($site)[0]['image_key']);
+    }
+
+    /**
      * A row somebody added and did not fill in is not a product.
      */
     public function test_a_row_without_a_title_is_ignored(): void
@@ -125,6 +166,20 @@ class ShopProductEditorTest extends TestCase
             'image_ids' => [],
             'sort' => 0,
         ]);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function state(Site $site): array
+    {
+        $method = new ReflectionMethod(ManageShopProductsAction::class, 'state');
+        $method->setAccessible(true);
+
+        /** @var array<int, array<string, mixed>> $rows */
+        $rows = $method->invoke(null, $site->sourceListing);
+
+        return $rows;
     }
 
     /**

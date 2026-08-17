@@ -76,6 +76,31 @@ Build:
 
 ### Constraints a change here can break
 
+- **One editor, reached from either owner.** A `Site` hangs off a listing *or* a partner,
+  and everything on it — pages, bands, pictures, products — hangs off the site. Once
+  `SiteResolver` has answered, the two owners are indistinguishable, so there is no honest
+  reason for a listing's website editor and a partner's to be different screens. They are
+  one: `WebsiteTab`, assembled from shared action classes in `app/Filament/Support`, mounted
+  by both `ListingResource` and `PartnerResource`. Three rules follow, all held down by
+  `WebsiteEditorSurfaceTest` rather than remembered:
+  1. **Whatever the Website tab offers is offered nowhere else in `/admin`.** The test reads
+     the action list out of `WebsiteTab` itself, so an action added tomorrow is covered
+     without touching the test.
+  2. **Nothing a site owns gets a Filament resource of its own** — `SitePage`, `SiteBlock`,
+     `SiteImage`, `ShopProduct`.
+  3. **Both resources mount the same tab class.** A branch inside it is fine where the
+     difference is real (which generation job runs); a second tab is not.
+
+  The one deliberate exception is the **partner panel**, whose listing page has no tabs at
+  all — its header action is that panel's link to the editor, not a second way into the
+  admin panel's. It uses the same `configure()` and therefore the same form.
+
+  Written down because it was lost twice in one week. A global Content → Shop Products
+  resource grew up beside the tab and drifted: after `shop_products.price` became a decimal
+  column it still offered the price as free text with `maxLength(100)`, so one product had
+  two editors that disagreed about what a price is. And a duplicate "Products" button sat in
+  the partner page header directly above the tab that already had one. Neither was a
+  decision — both were somebody adding a screen next to the problem they had that day.
 - **Validation goes through `BlockDefinition::rules()`.** Nothing writes a block without
   passing them, and the editor is not an exception.
 - **No markup from outside** the rich-text path and its allow-list

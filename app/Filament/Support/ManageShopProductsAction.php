@@ -525,6 +525,20 @@ class ManageShopProductsAction
     }
 
     /**
+     * The product rows, in the shape the form's own components expect.
+     *
+     * `image_key` is emitted as `[uuid => key]` rather than as the bare key,
+     * because that is what a FileUpload's state is once it is loaded: its
+     * `afterStateHydrated` wraps the value, and everything downstream —
+     * `getUploadedFiles()` among them — then iterates it.
+     *
+     * Handing it the bare key works only as long as hydration is the sole way
+     * the state is filled. It is not: `Set` writes state directly and runs no
+     * hydration callbacks, so refreshing the list after an import left a string
+     * where a FileUpload expected an array, and the next Livewire request died
+     * in `foreach`. Producing the loaded shape here means both paths agree.
+     * `key()` unwraps it again on the way back out.
+     *
      * @return array<int, array<string, mixed>>
      */
     private static function state(Listing|Partner|null $record): array
@@ -552,7 +566,7 @@ class ManageShopProductsAction
                     'price_text' => $product->price_text,
                     'category' => $product->category,
                     'status' => $product->status->value,
-                    'image_key' => $imageKey,
+                    'image_key' => $imageKey === null ? [] : [(string) Str::uuid() => $imageKey],
                     'description' => $product->description,
                 ];
             })
