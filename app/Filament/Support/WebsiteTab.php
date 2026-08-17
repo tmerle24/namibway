@@ -3,7 +3,9 @@
 namespace App\Filament\Support;
 
 use App\Enums\BusinessType;
+use App\Enums\ListingType;
 use App\Enums\SiteStatus;
+use App\Filament\Resources\ListingResource;
 use App\Jobs\GenerateSiteFromPartnerJob;
 use App\Jobs\GenerateSiteJob;
 use App\Models\Listing;
@@ -96,6 +98,36 @@ class WebsiteTab
                     EditSiteImagesAction::make(),
 
                     ManageShopProductsAction::make(),
+
+                    Action::make('manage_menu_items')
+                        ->label('Menu')
+                        ->icon('heroicon-o-clipboard-document-list')
+                        ->color('gray')
+                        ->visible(function (Listing|Partner|null $record): bool {
+                            if ($record === null) {
+                                return false;
+                            }
+
+                            $listing = $record instanceof Listing
+                                ? $record
+                                : SiteResolver::for($record)?->sourceListing;
+
+                            return $listing !== null && $listing->type === ListingType::Restaurant;
+                        })
+                        ->url(function (Listing|Partner|null $record): ?string {
+                            if ($record === null) {
+                                return null;
+                            }
+
+                            $listing = $record instanceof Listing
+                                ? $record
+                                : SiteResolver::for($record)?->sourceListing;
+
+                            return $listing !== null
+                                ? ListingResource::getUrl('edit', ['record' => $listing]).'#relation-manager-menu-items-relation-manager'
+                                : null;
+                        })
+                        ->openUrlInNewTab(),
 
                     EditHeroAction::make(),
 

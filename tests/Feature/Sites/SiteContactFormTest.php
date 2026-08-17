@@ -329,7 +329,9 @@ class SiteContactFormTest extends TestCase
         $page->assertSee('Order online')->assertDontSee('Get in touch');
 
         // Name, number, message, and one button that opens WhatsApp.
+        // No email field — the response goes back over WhatsApp, not mail.
         $page->assertSee('name="name"', false)
+            ->assertDontSee('name="email"', false)
             ->assertSee('name="phone"', false)
             ->assertSee('name="message"', false)
             ->assertSee('Send via WhatsApp');
@@ -354,9 +356,11 @@ class SiteContactFormTest extends TestCase
 
         // One channel, never both. The form used to render a submit button and
         // a WhatsApp button side by side, which asks the visitor to choose a
-        // medium before they have said anything.
+        // medium before they have said anything. No email field either — the
+        // response goes back over WhatsApp, not mail.
         $this->get($site->publicUrl())
             ->assertSee('Send via WhatsApp')
-            ->assertDontSee('Send request');
+            ->assertDontSee('Send request')
+            ->assertDontSee('name="email"', false);
     }
 }

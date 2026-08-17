@@ -63,10 +63,12 @@
                             <input type="text" id="eq-name" name="name" required maxlength="255">
                         </div>
 
+                        @unless ($viaWhatsApp)
                         <div class="field">
                             <label for="eq-email">Email</label>
-                            <input type="email" id="eq-email" name="email" @unless ($viaWhatsApp) required @endunless maxlength="255">
+                            <input type="email" id="eq-email" name="email" required maxlength="255">
                         </div>
+                        @endunless
 
                         <div class="field">
                             <label for="eq-phone">Phone (optional)</label>
