@@ -2746,9 +2746,13 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                 day.accommodation
                                                             "
                                                             :booking-status="
-                                                                day.accommodation?.id
+                                                                day
+                                                                    .accommodation
+                                                                    ?.id
                                                                     ? (bookingStatusByListingId.get(
-                                                                          day.accommodation.id,
+                                                                          day
+                                                                              .accommodation
+                                                                              .id,
                                                                       ) ?? null)
                                                                     : null
                                                             "
