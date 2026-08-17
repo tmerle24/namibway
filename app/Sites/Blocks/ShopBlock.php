@@ -35,7 +35,7 @@ class ShopBlock extends BlockDefinition
     {
         return array_merge([
             'heading' => ['nullable', 'string', 'max:120'],
-            'product_count' => ['nullable', 'integer', 'in:3,4,6,8,12'],
+            'product_count' => ['nullable', 'integer', 'min:1', 'max:60'],
         ], $this->navRules());
     }
 
