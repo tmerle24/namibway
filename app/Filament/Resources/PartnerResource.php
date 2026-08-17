@@ -43,12 +43,6 @@ class PartnerResource extends Resource
                             ->icon('heroicon-o-information-circle')
                             ->schema([
                                 // Identity — the most-edited fields, no section wrapper needed
-                                Forms\Components\FileUpload::make('logo')
-                                    ->image()
-                                    ->disk('r2')
-                                    ->directory('partners')
-                                    ->imageEditor()
-                                    ->columnSpanFull(),
                                 Forms\Components\TextInput::make('name')
                                     ->required()
                                     ->maxLength(255)
@@ -114,6 +108,17 @@ class PartnerResource extends Resource
 
                             ])
                             ->columns(2),
+
+                        Forms\Components\Tabs\Tab::make('Media')
+                            ->icon('heroicon-o-photo')
+                            ->schema([
+                                Forms\Components\FileUpload::make('logo')
+                                    ->image()
+                                    ->disk('r2')
+                                    ->directory('partners')
+                                    ->imageEditor()
+                                    ->columnSpanFull(),
+                            ]),
 
                         Forms\Components\Tabs\Tab::make('Bookings')
                             ->icon('heroicon-o-envelope')
