@@ -279,6 +279,7 @@ class BlockForm
             // Lazily: the modal is built for every row of a table, and a
             // query per picture list per row is a page that crawls.
             ->options(fn (): array => self::imageOptions($site))
+            ->allowHtml()
             ->searchable()
             ->native(false)
             ->placeholder('No picture');
@@ -289,11 +290,16 @@ class BlockForm
         return CheckboxList::make($name)
             ->label('Pictures')
             ->options(fn (): array => self::imageOptions($site))
+            ->allowHtml()
             ->columns(2)
             ->bulkToggleable();
     }
 
     /**
+     * Each option renders a small thumbnail beside the alt text and filename so
+     * the picker is a gallery, not a list of random R2 keys. HTML is safe here:
+     * both alt and filename are escaped before being placed in the markup.
+     *
      * @return array<int, string>
      */
     private static function imageOptions(Site $site): array
@@ -301,9 +307,22 @@ class BlockForm
         return $site->images()
             ->orderBy('sort')
             ->get()
-            ->mapWithKeys(fn (SiteImage $image): array => [
-                $image->id => $image->alt ?: basename((string) $image->key),
-            ])
+            ->mapWithKeys(function (SiteImage $image): array {
+                $thumb = e($image->thumb(80));
+                $filename = e(basename((string) $image->key));
+                $alt = filled($image->alt) ? e($image->alt) : '';
+
+                $label = '<span style="display:flex;align-items:center;gap:10px;padding:2px 0">'
+                    .'<img src="'.$thumb.'" width="40" height="40" loading="lazy"'
+                    .' style="flex:none;width:40px;height:40px;object-fit:cover;border-radius:3px">'
+                    .'<span style="min-width:0;overflow:hidden">'
+                    .($alt !== '' ? '<span style="display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'.$alt.'</span>' : '')
+                    .'<span style="display:block;font-size:11px;opacity:.55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'.$filename.'</span>'
+                    .'</span>'
+                    .'</span>';
+
+                return [$image->id => $label];
+            })
             ->all();
     }
 
