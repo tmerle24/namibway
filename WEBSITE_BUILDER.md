@@ -485,6 +485,71 @@ decisions are made, brevity in the rest.
 
 **Decided.** Not up for assessment — only the implementation is to be worked out.
 
+### Confirmed by sales, 2026-08-17 — two customer groups, and only one of them is tourism
+
+The section below was written as a design premise. It is now what is actually being sold:
+the co-founder is out selling websites, and the customers fall into two groups.
+
+* **Tourism partners** — lodges, restaurants, operators who already have a **listing** on
+  NamibWay. The website is a second surface on a business the platform already knows, and
+  the listing is the import source described below.
+* **Everyone else** — trades, workshops, craftsmen, shops, service businesses. **No listing,
+  and there never will be one**: there is nothing for Kaia to put in an itinerary, and their
+  customers are substantially **locals** rather than travellers. For them the website is the
+  whole product, and NamibWay is their web agency rather than their booking channel.
+
+The second group is the reason `sites.partner_id` exists and why a site must be attachable
+to a **partner alone**. Two consequences worth stating plainly, because both have already
+been got wrong once:
+
+* **A partner-only site is not a degraded listing site.** It is the normal case for half the
+  customers. Anything that assumes `Site::$sourceListing` is present is a bug, not an edge
+  case — `inquiries.listing_id` was NOT NULL for exactly this reason and a shop's own website
+  could receive no enquiry at all (see `PROJECT_STATUS.md` § 4, 2026-08-16).
+* **Not every audience is a traveller.** Copy, template defaults and anything Kaia-shaped
+  must not assume the reader is planning a trip. A plumber's website sells to the town it is
+  in.
+
+### Where this is heading — a business directory, noted 2026-08-17
+
+Possible, not decided, and worth knowing about before the partner side is built any further:
+a public directory of **all** partners and their products, on its own domain — the names in
+play are **NamibWay.na** or **NamibBusiness.com**. Independent of tourism listings: the
+plumber and the craft shop appear there on the same footing as a lodge, and the audience is
+whoever is looking for a business, traveller or local.
+
+It is not a small feature, and the reason to write it down now is that it needs things the
+partner side does not have today. Nobody should build the missing pieces *for* it yet —
+but nobody should make them harder to add either:
+
+* **A partner already carries most of a directory card, and it should stay optional.**
+  `partners` has `logo`, `image`, `gallery`, `bio`, `short_description`, `address`,
+  `latitude`/`longitude`, `business_type`, `email`, `phone`, `website`, `instagram` and
+  `facebook` — added for the website generator, and every one of them nullable. That is the
+  right shape and it is deliberate: a partner filling nothing in is a normal partner, and a
+  directory entry is something they *may* have rather than something the record demands.
+  Anything added here later keeps that property.
+* **What a partner does not have is a public face.** No publish state and no slug, so there
+  is no answer to "may this partner be shown?" or "at what address?". Both are small, and
+  both are the sort of thing that must not be inferred — a partner is in the system because
+  we scraped or invited them, which is not consent to appear in a directory.
+* **There is no trade or category taxonomy.** `business_type` exists but is the *website
+  template* axis — accommodation, restaurant, activity, car_rental, tour_operator, retail,
+  service. A directory needs "plumber", "welder", "grocer", which is finer and a different
+  question. Do not stretch either `business_type` or `ListingType` to carry it (see
+  `BOOKING_BEYOND_ROOMS.md` § 6 on why "which vertical am I serving?" is the wrong question
+  to build around).
+* **Products are scoped to a site, not to a partner.** `shop_products.site_id` is right for
+  a website and wrong for a directory that wants to search across every partner's goods.
+  Reaching them centrally means going through `sites`, which a partner-only customer has
+  exactly one of — workable, but it is the join a directory would live on, so it should not
+  get any harder.
+* **A second public front end.** It is a third audience after namibway.com and the tenant
+  sites, so it is a third host on the same app rather than a second application — the
+  pattern `SiteResolver` already establishes.
+* **The content-source ladder still applies.** Nothing sourced from a third-party directory
+  becomes publishable because we put it in a directory of our own.
+
 ### Starting point: not every customer has a listing
 
 The kit is also sold to businesses that **have no listing on NamibWay** and will never get

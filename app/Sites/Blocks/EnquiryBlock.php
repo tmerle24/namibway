@@ -125,9 +125,19 @@ class EnquiryBlock extends BlockDefinition
             return $stored === EnquiryFormType::RestaurantOrder ? EnquiryFormType::Contact : $stored;
         }
 
-        // A switch over an empty menu is the same broken promise as a switch
-        // that is off — the same rule Listing::requestKinds() applies.
-        $takesOrders = $listing->accepts_orders && $listing->menuItems()->available()->exists();
+        // Only the switches decide, and an empty menu deliberately does not.
+        //
+        // It used to: a restaurant with ordering on but no dishes entered was
+        // pushed to a contact form, on the reasoning that an order form with
+        // nothing to order is a promise the page cannot keep. In front of a
+        // business setting its site up that reasoning is backwards — the menu
+        // is empty *because they are in the middle of filling it*, and having
+        // the form silently become something else while they work is what cost
+        // three days of "I picked ordering and it shows a contact form". The
+        // page renders the order form with no items yet, the labels stay
+        // honest, and the dishes appear the moment they exist. What is missing
+        // is said in the panel instead — see unavailableReason().
+        $takesOrders = (bool) $listing->accepts_orders;
         $takesTables = (bool) $listing->accepts_table_reservations;
 
         return match (true) {

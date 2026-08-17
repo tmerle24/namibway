@@ -213,6 +213,10 @@
                                 var name = value('eq-name');
                                 if (name) msg += '\n\nName: ' + name;
                                 if (value('eq-email')) msg += '\nEmail: ' + value('eq-email');
+                                // The number to call back on. It was collected
+                                // and then left out of the message, which on a
+                                // food order is the one thing the shop needs.
+                                if (value('eq-phone')) msg += '\nPhone: ' + value('eq-phone');
                                 if (value('eq-in')) msg += '\nDate: ' + value('eq-in');
                                 if (value('eq-out')) msg += '\nUntil: ' + value('eq-out');
                                 if (value('eq-time')) msg += '\nTime: ' + value('eq-time');

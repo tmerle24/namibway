@@ -1541,6 +1541,19 @@ the form type was **stored once and never asked again**, and the form had **two 
 No migration: the correction happens at render, so it applies to every site already
 generated without a write, and it keeps applying when a business changes its mind again.
 
+**Corrected the same day: an empty menu no longer changes the form.** The rule above
+originally also degraded a restaurant-order form when the menu had no dishes in it, on the
+reasoning that an order form with nothing to order is a promise the page cannot keep. In
+front of a business setting its site up that reasoning is backwards — the menu is empty
+*because they are in the middle of filling it* — and it cost three days of "I picked
+ordering and the page shows a contact form". Only the two switches decide now; the page
+renders the order form with no items yet and the dishes appear the moment they exist. Two
+things went with it: a typed **menu-button label is dropped when the type it was written
+for has been corrected away** (the bar read "Order online" over a contact form, which is
+what made the page contradict itself), and the WhatsApp message now carries the visitor's
+**phone number**, which was collected and then left out of it — on a food order it is the
+one thing the shop needs.
+
 **Followed the same day: the editor says why.** Degrading quietly is right in front of a
 visitor and useless to the owner — somebody picked "Restaurant order", pressed Save, and got
 a plain contact form with no explanation on any screen. `EnquiryBlock::unavailableReason()`
@@ -1592,6 +1605,25 @@ happens at render, so every site already generated is fixed by the deploy.
   never becomes one. Decide whether the ledger takes a second kind of payable thing or these
   are invoiced outside it, then the "send a payment link" button belongs in the partner
   panel and in the confirmation mail.
+- **Delivery for a restaurant order.** A product order asks for a delivery address and a
+  restaurant order deliberately does not, because ordering food to an address is not yet how
+  this market works — a Kapana stand is collected from. That is a statement about today, not
+  about the shape of the thing: food delivery is plausibly large here later, and it is one
+  switch plus one address field away, since the address already exists on the product side
+  (`EnquiryFormType::needsAddress()`, and `SiteEnquiryController::message()` puts it in front
+  of the message). What it needs before it is worth building is the part that is not a field:
+  a delivery area, a fee, and some idea of who carries the food. Do not add the address to
+  restaurant orders as a quiet default in the meantime — an address box on a form for a stand
+  people walk up to is a question with no good answer.
+- **A business directory, possible rather than decided** (noted 2026-08-17) — a public listing
+  of every partner and their products on its own domain, **NamibWay.na** or
+  **NamibBusiness.com**, independent of tourism listings and aimed at locals as much as
+  travellers. Not to be built yet. A partner already carries most of a directory card —
+  logo, photo, gallery, description, address, coordinates, contact — all nullable, and it
+  stays that way. What is missing is a public face (no publish state, no slug), a trade
+  taxonomy finer than `business_type`, and products that are scoped to a site rather than to
+  a partner. The list, and what not to make harder in the meantime, is in
+  `WEBSITE_BUILDER.md` § 5a.
 - **Multilingual sites** — EN, DE, NL, FR, ES. `site_pages.locale` is the foundation and not
   the feature: there is no switcher, no per-locale routing, and the renderer reads
   `default_locale` and nothing else.
