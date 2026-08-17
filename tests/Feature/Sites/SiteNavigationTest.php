@@ -282,7 +282,9 @@ class SiteNavigationTest extends TestCase
         $this->assertMatchesRegularExpression('/\.nav__name \{[^}]*-webkit-line-clamp: 2/s', $css);
         // On the declaration, not the word: the rule's own comment explains
         // why the ellipsis went, and that comment is served with the page.
-        $this->assertStringNotContainsString('text-overflow:', $css);
+        // Scoped to the nav name rule — other elements (shop breadcrumb etc.)
+        // may legitimately use text-overflow for their own content.
+        $this->assertDoesNotMatchRegularExpression('/\.nav__name \{[^}]*text-overflow:/s', $css);
         // And the room for them: the bar's outside height is untouched, its
         // padding is what made space.
         $this->assertStringContainsString('height: 64px; overflow: hidden; padding: var(--s2) var(--s4);', $css);

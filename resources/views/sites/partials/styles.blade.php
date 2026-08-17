@@ -128,8 +128,13 @@
        hero's gradient is built for text much further down the frame. */
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__name { text-shadow: 0 1px 12px rgba(0,0,0,.55); }
     /* An owner's mark is whatever shape it is, so it is bounded by height and
-       left to find its own width. */
-    .nav__logo { height: 36px; width: auto; max-width: 200px; object-fit: contain; display: block; }
+       left to find its own width. Hero state: prominent; scrolled: compact. */
+    .nav__logo { height: 36px; width: auto; max-width: 200px; object-fit: contain; display: block; transition: height .3s ease; }
+    /* Over the hero the background is transparent, so the logo can safely
+       overflow the 64px bar height. Without overflow:visible the logo would be
+       clipped to the 48px content area (64px − 2×8px padding). */
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__inner { overflow: visible; }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { height: 56px; }
     /* nowrap: a menu item breaking across two lines was the other half of what
        made the bar taller than the hero's negative margin. */
     .nav__links { display: none; gap: var(--s4); align-items: center; flex-wrap: nowrap; }
