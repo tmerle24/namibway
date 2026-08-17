@@ -22,6 +22,8 @@ class WhyChooseUsBlock extends BlockDefinition
         return [
             'heading' => ['nullable', 'string', 'max:120'],
             'body' => ['nullable', 'string', 'max:8000'],
+            'image_id' => ['nullable', 'integer'],
+            'image_side' => ['nullable', 'string', 'in:left,right'],
         ];
     }
 
@@ -35,7 +37,7 @@ class WhyChooseUsBlock extends BlockDefinition
      */
     public function defaults(): array
     {
-        return ['heading' => 'Why Choose Us?', 'body' => null];
+        return ['heading' => 'Why Choose Us?', 'body' => null, 'image_id' => null, 'image_side' => 'right'];
     }
 
     /**

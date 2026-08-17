@@ -109,6 +109,7 @@ class BlockForm
                 TextInput::make('heading')->label('Heading')->maxLength(120),
                 self::richText('body', 'The text'),
                 self::image('image_id', $site, 'Photograph beside it'),
+                self::imageSide(),
                 Toggle::make('slideshow')
                     ->label('Show as story slideshow')
                     ->helperText('A long text is shown a paragraph at a time, with arrows to page '
@@ -211,12 +212,16 @@ class BlockForm
                 TextInput::make('heading')->label('Heading')->maxLength(120)
                     ->placeholder('Our Mission'),
                 self::richText('body', 'The text'),
+                self::image('image_id', $site, 'Photograph beside it'),
+                self::imageSide(),
             ],
 
             'why_choose_us' => [
                 TextInput::make('heading')->label('Heading')->maxLength(120)
                     ->placeholder('Why Choose Us?'),
                 self::richText('body', 'The text'),
+                self::image('image_id', $site, 'Photograph beside it'),
+                self::imageSide(),
             ],
 
             'shop' => [
@@ -269,6 +274,16 @@ class BlockForm
 
             default => [],
         };
+    }
+
+    private static function imageSide(): Select
+    {
+        return Select::make('image_side')
+            ->label('Image side')
+            ->options(['right' => 'Right', 'left' => 'Left'])
+            ->default('right')
+            ->native(false)
+            ->helperText('Which side the photograph sits on beside the text.');
     }
 
     /**
