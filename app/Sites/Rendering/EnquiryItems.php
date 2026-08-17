@@ -7,6 +7,7 @@ use App\Models\ShopProduct;
 use App\Models\Site;
 use App\Sites\Blocks\EnquiryFormType;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * What an order form on a customer's website offers, and what it costs.
@@ -86,6 +87,7 @@ final class EnquiryItems
                 price: $item->price,
                 currency: $item->currency,
                 section: $item->section(),
+                imageUrl: self::resolveMenuItemImageUrl($item->image),
             )),
             $first === null ? 'NAD' : $first->currency,
         );
@@ -93,7 +95,7 @@ final class EnquiryItems
 
     private static function fromShop(Site $site): self
     {
-        $rows = $site->shopProducts()->orderable()->orderBy('sort')->orderBy('id')->get();
+        $rows = $site->shopProducts()->orderable()->orderBy('sort')->orderBy('id')->with('images')->get();
         $first = $rows->first();
 
         return new self(
@@ -104,8 +106,22 @@ final class EnquiryItems
                 price: (float) $product->price,
                 currency: $product->currency,
                 section: filled($product->category) ? $product->category : 'Products',
+                imageUrl: $product->firstImageUrl(120),
             )),
             $first === null ? 'NAD' : $first->currency,
         );
+    }
+
+    private static function resolveMenuItemImageUrl(?string $image): ?string
+    {
+        if (blank($image)) {
+            return null;
+        }
+
+        if (str_starts_with($image, 'http://') || str_starts_with($image, 'https://') || str_starts_with($image, '/')) {
+            return $image;
+        }
+
+        return Storage::disk('r2')->url($image);
     }
 }

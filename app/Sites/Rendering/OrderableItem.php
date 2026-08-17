@@ -19,6 +19,7 @@ final class OrderableItem
         public readonly float $price,
         public readonly string $currency,
         public readonly string $section,
+        public readonly ?string $imageUrl = null,
     ) {}
 
     public function priceLabel(): string
