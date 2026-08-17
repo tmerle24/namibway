@@ -214,6 +214,17 @@ class BlockForm
                 self::richText('body', 'The text'),
                 self::image('image_id', $site, 'Photograph beside it'),
                 self::imageSide(),
+                Toggle::make('nav_visible')
+                    ->label('Show in the menu')
+                    ->helperText('Adds this section as a link in the site navigation bar.')
+                    ->default(false)
+                    ->live(),
+                TextInput::make('nav_label')
+                    ->label('Menu label')
+                    ->maxLength(40)
+                    ->placeholder(fn (Get $get): string => $get('heading') ?: 'Our Mission')
+                    ->helperText('Leave empty to use the heading.')
+                    ->visible(fn (Get $get): bool => (bool) $get('nav_visible')),
             ],
 
             'why_choose_us' => [
@@ -222,6 +233,17 @@ class BlockForm
                 self::richText('body', 'The text'),
                 self::image('image_id', $site, 'Photograph beside it'),
                 self::imageSide(),
+                Toggle::make('nav_visible')
+                    ->label('Show in the menu')
+                    ->helperText('Adds this section as a link in the site navigation bar.')
+                    ->default(false)
+                    ->live(),
+                TextInput::make('nav_label')
+                    ->label('Menu label')
+                    ->maxLength(40)
+                    ->placeholder(fn (Get $get): string => $get('heading') ?: 'Why Choose Us?')
+                    ->helperText('Leave empty to use the heading.')
+                    ->visible(fn (Get $get): bool => (bool) $get('nav_visible')),
             ],
 
             'shop' => [

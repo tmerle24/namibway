@@ -16,7 +16,9 @@
      * separate menu: one array renders twice, so a link can never be in one and
      * missing from the other.
      */
-    $navTypes = ['about', 'highlights', 'mission', 'shop', 'gallery', 'opening_hours', 'price_list', 'why_choose_us', 'enquiry', 'contact'];
+    // Block types that appear in the nav automatically (opt-out model).
+    // Other block types opt in per-block via nav_visible in their data.
+    $navTypes = ['about', 'highlights', 'shop', 'gallery', 'opening_hours', 'price_list', 'enquiry', 'contact'];
     $items = [];
     $n = 0;
 
@@ -34,30 +36,33 @@
             $n++;
         }
 
+        $inNav = in_array($navBlock->type, $navTypes, true)
+            || ($navBlock->data['nav_visible'] ?? false) === true;
+
+        if (! $inNav || count($items) >= 5) {
+            continue;
+        }
+
         // The contact form is named once, by SiteActions, because the same
         // target is also a button — beside the menu, on the opening screen and
         // in the strip at the foot. Reading the raw heading here gave one site
         // a menu item saying "Request availability" next to a button saying
         // "Book a table", both scrolling to the same form.
+        // nav_label overrides heading for blocks that set it explicitly.
         $label = $navBlock->type === 'enquiry'
             ? \App\Sites\Rendering\SiteActions::enquiryLabel($site, [$navBlock])
-            : ($navBlock->data['heading'] ?? $navBlock->definition()?->label() ?? '');
+            : ($navBlock->data['nav_label'] ?? $navBlock->data['heading'] ?? $navBlock->definition()?->label() ?? '');
 
-        // Five is where a bar this size stops reading as a menu and starts
-        // reading as a list. The panel is not so constrained, but the two have
-        // to agree, so the cap is shared.
-        if (in_array($navBlock->type, $navTypes, true) && count($items) < 5) {
-            // The band the enquiry button points at is marked as it is
-            // collected, and moved to the end below. It is the one item in this
-            // list that is an action rather than a place, and once the page has
-            // scrolled it is the one that becomes a button — both of which want
-            // it at the end of the row rather than in the middle of it.
-            $items[] = [
-                'anchor' => 's'.$n,
-                'label' => $label,
-                'action' => $navBlock->type === 'enquiry',
-            ];
-        }
+        // The band the enquiry button points at is marked as it is collected,
+        // and moved to the end below. It is the one item in this list that is
+        // an action rather than a place, and once the page has scrolled it is
+        // the one that becomes a button — both of which want it at the end of
+        // the row rather than in the middle of it.
+        $items[] = [
+            'anchor' => 's'.$n,
+            'label' => $label,
+            'action' => $navBlock->type === 'enquiry',
+        ];
     }
 
     // "Request availability" after "Get in touch", not before it.

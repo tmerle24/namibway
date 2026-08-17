@@ -24,6 +24,8 @@ class MissionBlock extends BlockDefinition
             'body' => ['nullable', 'string', 'max:8000'],
             'image_id' => ['nullable', 'integer'],
             'image_side' => ['nullable', 'string', 'in:left,right'],
+            'nav_visible' => ['nullable', 'boolean'],
+            'nav_label' => ['nullable', 'string', 'max:40'],
         ];
     }
 
@@ -37,7 +39,7 @@ class MissionBlock extends BlockDefinition
      */
     public function defaults(): array
     {
-        return ['heading' => 'Our Mission', 'body' => null, 'image_id' => null, 'image_side' => 'right'];
+        return ['heading' => 'Our Mission', 'body' => null, 'image_id' => null, 'image_side' => 'right', 'nav_visible' => false, 'nav_label' => null];
     }
 
     /**
