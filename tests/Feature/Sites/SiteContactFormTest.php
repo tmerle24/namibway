@@ -345,6 +345,22 @@ class SiteContactFormTest extends TestCase
         $this->get($site->publicUrl())->assertSee('Kapana plate');
     }
 
+    public function test_the_enquiry_form_renders_on_a_partner_only_site_with_no_listing(): void
+    {
+        // A boutique or workshop that has no travel listing still gets a contact
+        // form on its own website. The form used to be hidden because shouldRender
+        // checked only sourceListing — a partner-only site always had null there
+        // and the form never appeared regardless of settings.
+        $partner = Partner::create(['name' => 'Monas Collection', 'email' => 'monas@example.com']);
+        $site = $this->siteFor(EnquiryFormType::Contact, partner: $partner);
+        $site->update(['whatsapp' => '+264818586747']);
+
+        $this->get($site->publicUrl())
+            ->assertOk()
+            ->assertSee('name="name"', false)
+            ->assertSee('name="email"', false);
+    }
+
     public function test_a_whatsapp_form_offers_no_second_way_to_send(): void
     {
         $site = $this->siteFor(

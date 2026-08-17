@@ -244,10 +244,10 @@ class SiteController
             // Every business gets the form. `accepts_inquiries` used to gate it
             // as well, which meant a partner who does not sell through our
             // booking system had no way to be contacted from their own website
-            // — the opposite of the point. What still gates it is somewhere for
-            // the enquiry to go: an `Inquiry` belongs to a listing, so a site
-            // built for a business we hold no listing for has no form yet.
-            'enquiry' => $site->sourceListing !== null,
+            // — the opposite of the point. An Inquiry now names a listing or a
+            // partner (since 2026-08-16), so a partner-only site without a
+            // listing still has somewhere for the enquiry to go.
+            'enquiry' => $site->sourceListing !== null || $site->partner_id !== null,
             'location' => filled($site->address) || (filled($site->latitude) && filled($site->longitude)),
             'contact' => filled($site->contact_email) || filled($site->contact_phone) || filled($site->whatsapp),
             default => $block->isFilled(),
@@ -451,9 +451,16 @@ class SiteController
             return [collect(), null];
         }
 
+        // One query to decide if the shop block should render — same gate as on
+        // the home page, where shouldRender() hides the shop block when there
+        // are no published products. Without it a shop block that is empty on
+        // the home page still appears as a nav item on the shop/product pages.
+        $shopProducts = $site->shopProducts()->published()->limit(1)->get();
+
         $blocks = $page->renderableBlocks()
             ->get()
             ->filter(fn (SiteBlock $block) => BlockRegistry::has($block->type))
+            ->filter(fn (SiteBlock $block) => $this->shouldRender($block, $site, null, $shopProducts))
             ->values();
 
         return [$blocks, $page];
