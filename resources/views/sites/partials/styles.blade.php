@@ -614,12 +614,13 @@
     .field label {
         font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--slate);
     }
-    .field input, .field select {
+    .field input, .field select, .field textarea {
         font: inherit; font-size: 16px; padding: 10px 12px;
         border: 1px solid var(--bone); border-radius: 2px; background: var(--salt);
         color: var(--ink); width: 100%;
     }
-    .field input:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .field textarea { resize: vertical; line-height: 1.55; }
+    .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
     .offers { margin-top: var(--s5); }
     .offer {
         display: flex; justify-content: space-between; align-items: baseline;
@@ -644,6 +645,184 @@
     .enquiry__wa { display: flex; align-items: center; gap: var(--s4); padding-top: var(--s4); margin-top: var(--s2); border-top: 1px solid var(--bone); }
     .enquiry__wa-or { color: var(--slate); font-size: 14px; white-space: nowrap; }
     .enquiry__wa-btn { flex: 1; text-align: center; }
+
+    /* ---- Item picker — order and menu forms ----------------------------- */
+
+    /* Trigger button: a ghost tile the full width of the form card */
+    .eq-picker { display: grid; gap: var(--s3); }
+    .eq-picker__trigger {
+        display: flex; align-items: center; justify-content: center; gap: var(--s3);
+        width: 100%; padding: 14px 20px;
+        background: var(--salt); border: 1px solid var(--bone); border-radius: 2px;
+        font: inherit; font-size: 15px; color: var(--ink); cursor: pointer;
+        transition: border-color .2s ease, background .2s ease;
+    }
+    .eq-picker__trigger:hover { border-color: var(--accent); background: #fff; }
+    .eq-picker__trigger-icon { flex: none; }
+    .eq-picker__trigger-label { flex: 1; text-align: left; }
+    .eq-picker__badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 22px; height: 22px; padding: 0 6px;
+        background: var(--accent); color: #fff;
+        border-radius: 11px; font-size: 12px; font-weight: 700; line-height: 1;
+        transition: transform .2s cubic-bezier(.34,1.56,.64,1), opacity .15s ease;
+    }
+    .eq-picker__badge[hidden] { display: none; }
+
+    /* Compact order summary shown below the trigger after selection */
+    .eq-picker__summary {
+        background: var(--salt); border: 1px solid var(--bone);
+        border-radius: 2px; padding: var(--s3) var(--s4);
+        animation: eqFadeIn .2s ease;
+    }
+    .eq-picker__summary[hidden] { display: none; }
+    .eq-picker__lines { list-style: none; margin: 0; padding: 0; }
+    .eq-picker__line {
+        display: flex; justify-content: space-between; align-items: baseline;
+        gap: var(--s3); padding: 5px 0; border-bottom: 1px solid var(--bone);
+        font-size: 15px;
+    }
+    .eq-picker__line:last-child { border-bottom: 0; }
+    .eq-picker__line-name { color: var(--ink); }
+    .eq-picker__line-sub { color: var(--slate); white-space: nowrap; font-size: 14px; }
+    .eq-picker__subtotal { margin: var(--s3) 0 0; font-size: 15px; color: var(--slate); }
+    .eq-picker__subtotal strong { color: var(--ink); }
+    .eq-picker__edit {
+        display: inline; background: none; border: none; padding: 0;
+        font: inherit; font-size: 13px; color: var(--accent); cursor: pointer;
+        text-decoration: underline; text-underline-offset: 2px; margin-left: var(--s3);
+    }
+
+    /* The drawer itself — bottom sheet on mobile, centred modal on wider screens */
+    .eq-drawer {
+        position: fixed; inset: 0; z-index: 200;
+        display: flex; flex-direction: column; justify-content: flex-end;
+        align-items: stretch;
+    }
+    .eq-drawer[hidden] { display: none; }
+    .eq-drawer--closing .eq-drawer__panel { animation: eqSlideDown .22s ease forwards; }
+    .eq-drawer--closing .eq-drawer__backdrop { animation: eqFadeOut .22s ease forwards; }
+
+    .eq-drawer__backdrop {
+        position: absolute; inset: 0;
+        background: rgba(22,24,28,.52);
+        -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+        animation: eqFadeIn .2s ease;
+    }
+    .eq-drawer__panel {
+        position: relative; z-index: 1;
+        background: #fff; border-radius: 16px 16px 0 0;
+        display: flex; flex-direction: column;
+        max-height: 88vh;
+        box-shadow: 0 -8px 40px rgba(0,0,0,.18);
+        animation: eqSlideUp .28s cubic-bezier(.32,1,.6,1);
+    }
+    /* Drag handle — pure CSS, signals "this can be swiped" */
+    .eq-drawer__panel::before {
+        content: ''; display: block; flex: none;
+        width: 36px; height: 4px; border-radius: 2px;
+        background: var(--bone); margin: 10px auto 0;
+    }
+
+    .eq-drawer__head {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: var(--s3) var(--s5) var(--s3);
+        border-bottom: 1px solid var(--bone); flex: none;
+    }
+    .eq-drawer__title { margin: 0; font-size: 17px; font-weight: 600; }
+    .eq-drawer__close {
+        display: flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; border-radius: 50%;
+        background: var(--salt); border: 0; cursor: pointer;
+        font-size: 18px; color: var(--slate); line-height: 1;
+        transition: background .15s ease, color .15s ease;
+    }
+    .eq-drawer__close:hover { background: var(--bone); color: var(--ink); }
+
+    .eq-drawer__body {
+        flex: 1; overflow-y: auto; padding: 0 var(--s5) var(--s4);
+        overscroll-behavior: contain;
+        /* momentum scroll on iOS */
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .eq-drawer__foot {
+        display: flex; align-items: center; gap: var(--s4);
+        padding: var(--s4) var(--s5);
+        border-top: 1px solid var(--bone); flex: none; background: #fff;
+        /* Sits above iOS home bar */
+        padding-bottom: max(var(--s4), env(safe-area-inset-bottom));
+    }
+    .eq-drawer__total { margin: 0; font-size: 15px; color: var(--slate); flex: 1; }
+    .eq-drawer__total strong { display: block; font-size: 19px; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .eq-drawer__confirm { flex: none; white-space: nowrap; padding: 12px 22px; }
+
+    /* Section headings inside the drawer */
+    .eq-section { margin-top: var(--s4); }
+    .eq-section:first-child { margin-top: var(--s4); }
+    .eq-section__head {
+        font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+        color: var(--slate); margin: 0 0 var(--s2);
+        padding-bottom: var(--s2); border-bottom: 1px solid var(--bone);
+    }
+
+    /* Individual item row */
+    .eq-row {
+        display: flex; align-items: center; gap: var(--s4);
+        padding: var(--s3) 0;
+        border-bottom: 1px solid var(--bone);
+        transition: opacity .15s ease;
+    }
+    .eq-row:last-child { border-bottom: 0; }
+    .eq-row__text { flex: 1; min-width: 0; }
+    .eq-row__name { font-size: 16px; font-weight: 500; display: block; }
+    .eq-row__desc { font-size: 14px; color: var(--slate); display: block; margin-top: 2px; }
+    .eq-row__price { font-size: 14px; color: var(--slate); display: block; margin-top: 3px; }
+    /* Highlight the name when qty > 0 */
+    .eq-row--active .eq-row__name { color: var(--accent); }
+
+    /* +/− stepper */
+    .eq-stepper {
+        display: flex; align-items: center; flex: none;
+        border: 1px solid var(--bone); border-radius: 4px; overflow: hidden;
+    }
+    .eq-stepper__btn {
+        display: flex; align-items: center; justify-content: center;
+        /* 44×44 minimum tap target */
+        width: 44px; height: 44px;
+        background: var(--salt); border: 0; cursor: pointer;
+        font-size: 22px; line-height: 1; color: var(--ink);
+        font-family: var(--font-body);
+        transition: background .12s ease, color .12s ease;
+        -webkit-user-select: none; user-select: none;
+    }
+    .eq-stepper__btn:hover { background: var(--bone); }
+    .eq-stepper__btn:active { background: var(--accent); color: #fff; }
+    .eq-stepper__val {
+        min-width: 36px; text-align: center;
+        font-size: 16px; font-variant-numeric: tabular-nums;
+        padding: 0 4px; line-height: 44px;
+        border-left: 1px solid var(--bone); border-right: 1px solid var(--bone);
+        background: #fff;
+    }
+
+    @keyframes eqFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes eqFadeOut { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes eqSlideUp   { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes eqSlideDown { from { transform: translateY(0); } to { transform: translateY(100%); } }
+
+    /* On wider screens: centred modal instead of bottom sheet */
+    @media (min-width: 640px) {
+        .eq-drawer { justify-content: center; align-items: center; padding: var(--s6) var(--s4); }
+        .eq-drawer__panel {
+            border-radius: 8px;
+            width: 100%; max-width: 520px;
+            max-height: min(86vh, 680px);
+            animation: eqFadeIn .18s ease;
+        }
+        .eq-drawer__panel::before { display: none; }
+        .eq-drawer--closing .eq-drawer__panel { animation: eqFadeOut .18s ease forwards; }
+    }
 
     /* ---- Contact and footer ------------------------------------------- */
 

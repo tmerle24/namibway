@@ -92,7 +92,11 @@ return [
         // under the 100 KB first-view target that separates "fast" from "acceptable".
         // Raised again to 80 KB: logo hero/compact height CSS variables and the
         // configurable drop-shadow rule added ~300 bytes to the inlined stylesheet.
-        'document_bytes' => 80 * 1024,
+        // Raised again to 96 KB: the product/order picker (bottom-sheet on mobile,
+        // centred modal on desktop) replaced bare number spinners in the enquiry
+        // block — the CSS and IIFE JS for the drawer, stepper, animation and focus
+        // trap add ~11 KB. Still well under the 100 KB fast/acceptable threshold.
+        'document_bytes' => 96 * 1024,
     ],
 
     /*

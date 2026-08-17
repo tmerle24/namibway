@@ -30,6 +30,8 @@ use Spatie\Translatable\HasTranslations;
  * @property string|null $phone
  * @property string|null $website
  * @property array<string, string>|null $social_links
+ * @property-read string|null $instagram
+ * @property-read string|null $facebook
  * @property string|null $source_url
  * @property string|null $claim_token
  * @property Carbon|null $claim_token_sent_at
@@ -112,6 +114,16 @@ class Partner extends Model
         'deposit_rate' => 'float',
         'allow_zero_deposit' => 'boolean',
     ];
+
+    public function getInstagramAttribute(): ?string
+    {
+        return $this->social_links['instagram'] ?? null;
+    }
+
+    public function getFacebookAttribute(): ?string
+    {
+        return $this->social_links['facebook'] ?? null;
+    }
 
     /**
      * @return BelongsTo<User, $this>
