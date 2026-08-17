@@ -10,7 +10,6 @@ use App\Filament\Support\MessagesColumn;
 use App\Filament\Support\PipelineImageResolver;
 use App\Filament\Support\WebsiteTab;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\HtmlString;
 use App\Models\Partner;
 use App\Models\PartnerMessage;
 use App\Models\PaymentSettings;
@@ -23,6 +22,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class PartnerResource extends Resource
 {

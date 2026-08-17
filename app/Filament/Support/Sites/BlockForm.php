@@ -69,7 +69,7 @@ class BlockForm
 
                     ...self::for($type, $site),
 
-                    ...(!in_array($type, ['hero', 'footer'], true) ? self::navControls($definition) : []),
+                    ...(! in_array($type, ['hero', 'footer'], true) ? self::navControls($definition) : []),
                 ]);
         }
 
