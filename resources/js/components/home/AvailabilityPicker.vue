@@ -33,6 +33,7 @@ const lightboxIndex = ref<number | null>(null);
 async function load() {
     if (!props.slug || !props.checkIn) {
         units.value = [];
+
         return;
     }
 
@@ -65,9 +66,11 @@ watch(
 
 function capacityLabel(unit: AvailabilityUnit): string {
     const parts = [t('itinerary.meta.adults', unit.max_adults)];
+
     if (unit.max_children > 0) {
         parts.push(t('itinerary.meta.children', unit.max_children));
     }
+
     return parts.join(', ');
 }
 
@@ -77,18 +80,24 @@ function imagesFor(unit: AvailabilityUnit): string[] {
 
 function openLightbox(unit: AvailabilityUnit): void {
     const images = imagesFor(unit);
-    if (!images.length) return;
+
+    if (!images.length) {
+        return;
+    }
+
     lightboxImages.value = images;
     lightboxIndex.value = 0;
 }
 
 function chargeLabel(unit: AvailabilityUnit): string {
     const added = unit.charges.filter((c) => !c.included);
+
     if (!added.length) {
         return t('itinerary.roomChargesIncluded', {
             named: { names: unit.charges.map((c) => c.name).join(', ') },
         });
     }
+
     return t('itinerary.roomChargesAdded', {
         named: {
             amount: formatPrice(

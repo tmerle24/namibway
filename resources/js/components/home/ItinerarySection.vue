@@ -30,6 +30,7 @@ import type {
 import { vehicleTypeForClass } from '@/lib/kaia-types';
 import { onImageError, thumbAttrs } from '@/lib/media';
 import { isRecurring, travelerFactor } from '@/lib/price-unit';
+import AvailabilityPicker from './AvailabilityPicker.vue';
 import ConfirmModal from './ConfirmModal.vue';
 import ItineraryDayPlanCard from './ItineraryDayPlanCard.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
@@ -38,7 +39,6 @@ import KebabMenu from './KebabMenu.vue';
 import ListingSwapModal from './ListingSwapModal.vue';
 import LocationPicker from './LocationPicker.vue';
 import MapViewModal from './MapViewModal.vue';
-import AvailabilityPicker from './AvailabilityPicker.vue';
 import SaveButton from './SaveButton.vue';
 import SaveLoginModal from './SaveLoginModal.vue';
 import SaveShareBar from './SaveShareBar.vue';
