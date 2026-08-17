@@ -480,7 +480,6 @@ class ManageShopProductsAction
                                 ->icon('heroicon-o-sparkles')
                                 ->color('gray')
                                 ->tooltip('Generate name and description from the product photo')
-                                ->visible(fn (Get $get): bool => self::key($get('image_key')) !== null)
                                 ->action(function (Get $get, Set $set): void {
                                     $key = self::key($get('image_key'));
 
