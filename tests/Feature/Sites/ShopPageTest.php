@@ -53,7 +53,7 @@ class ShopPageTest extends TestCase
             'title' => 'Palm Basket',
             'slug' => 'palm-basket',
             'status' => ShopProductStatus::Published,
-            'image_ids' => [],
+            
             'sort' => 0,
         ]);
 
@@ -185,7 +185,7 @@ class ShopPageTest extends TestCase
             'site_id' => $otherSite->id,
             'title' => 'Other', 'slug' => 'other',
             'status' => ShopProductStatus::Published,
-            'image_ids' => [], 'sort' => 0,
+            'sort' => 0,
         ]);
 
         $this->post(route('sites.enquiry', $site), [

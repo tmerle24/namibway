@@ -6,6 +6,7 @@ use App\Enums\ShopProductStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Str;
 
 /**
@@ -21,7 +22,6 @@ use Illuminate\Support\Str;
  * @property string $currency
  * @property string|null $category
  * @property ShopProductStatus $status
- * @property array<int, int> $image_ids
  * @property string|null $instagram_post_url
  * @property int $sort
  */
@@ -37,7 +37,6 @@ class ShopProduct extends Model
         'currency',
         'category',
         'status',
-        'image_ids',
         'instagram_post_url',
         'sort',
     ];
@@ -45,7 +44,6 @@ class ShopProduct extends Model
     protected $casts = [
         'status' => ShopProductStatus::class,
         'price' => 'float',
-        'image_ids' => 'array',
         'sort' => 'integer',
     ];
 
@@ -62,6 +60,18 @@ class ShopProduct extends Model
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
+    }
+
+    /**
+     * Ordered product images via the shop_product_images pivot.
+     *
+     * @return BelongsToMany<SiteImage, $this>
+     */
+    public function images(): BelongsToMany
+    {
+        return $this->belongsToMany(SiteImage::class, 'shop_product_images')
+            ->withPivot('sort')
+            ->orderByPivot('sort');
     }
 
     /** @param Builder<ShopProduct> $query */
@@ -102,22 +112,14 @@ class ShopProduct extends Model
     }
 
     /**
-     * The first image, or null when the product has none.
+     * The first image URL, or null when the product has none.
      *
-     * Used for the grid thumbnail. The full image collection for a detail page
-     * is loaded by the controller and keyed by id, the same as block images.
+     * Loads via the relationship — call with an already-eager-loaded model
+     * to avoid an extra query per product.
      */
     public function firstImageUrl(int $width = 600): ?string
     {
-        $id = $this->image_ids[0] ?? null;
-
-        if ($id === null) {
-            return null;
-        }
-
-        $image = SiteImage::find($id);
-
-        return $image?->thumb($width);
+        return $this->images->first()?->thumb($width);
     }
 
     /**

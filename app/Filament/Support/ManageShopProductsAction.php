@@ -315,23 +315,24 @@ class ManageShopProductsAction
                                     continue;
                                 }
 
-                                $imageId = SiteImage::create([
+                                $siteImage = SiteImage::create([
                                     'site_id' => $site->id,
                                     'key' => $imageKey,
                                     'content_source' => ContentSource::Partner,
                                     'prospect_only' => false,
                                     'sort' => 0,
-                                ])->id;
+                                ]);
 
-                                ShopProduct::create([
+                                $product = ShopProduct::create([
                                     'site_id' => $site->id,
                                     'title' => mb_substr($title, 0, 255),
                                     'description' => filled($item['description'] ?? null) ? trim((string) $item['description']) : null,
                                     ...self::parsePrice((string) ($item['price'] ?? '')),
                                     'status' => $status,
-                                    'image_ids' => [$imageId],
                                     'sort' => ++$maxSort,
                                 ]);
+
+                                $product->images()->attach($siteImage->id, ['sort' => 0]);
 
                                 $created++;
                             }
@@ -420,7 +421,6 @@ class ManageShopProductsAction
                     ->itemLabel(fn (array $state): string => filled($state['title'] ?? '') ? (string) $state['title'] : 'New product')
                     ->schema([
                         Forms\Components\Hidden::make('product_id'),
-                        Forms\Components\Hidden::make('image_id'),
 
                         Forms\Components\TextInput::make('title')
                             ->label('Name')
@@ -459,36 +459,40 @@ class ManageShopProductsAction
                                 ->default(ShopProductStatus::Published->value)
                                 ->native(false),
 
-                            Forms\Components\FileUpload::make('image_key')
-                                ->label('Photo')
+                            Forms\Components\FileUpload::make('photo_keys')
+                                ->label('Photos')
                                 ->image()
+                                ->multiple()
+                                ->reorderable()
                                 ->disk('r2')
                                 ->directory(fn (Listing|Partner|null $record): string => self::prefixFor($record))
-                                ->imageEditor()
                                 ->fetchFileInformation(false)
-                                // Move to R2 immediately on selection so the key is already
-                                // finalised before the action closure runs. Filament's own
-                                // saveUploadedFiles() does not run reliably for FileUpload
-                                // components nested inside a Repeater inside an action modal,
-                                // leaving image_key null and image_ids empty after save.
+                                // Move each new upload to R2 immediately so every key in the
+                                // state is a final R2 path by the time write() runs.
                                 ->afterStateUpdated(function (
                                     Listing|Partner|null $record,
                                     Set $set,
-                                    TemporaryUploadedFile|null $state,
+                                    ?array $state,
                                 ): void {
-                                    if (! $state instanceof TemporaryUploadedFile) {
+                                    if (! is_array($state)) {
                                         return;
                                     }
                                     $site = $record === null ? null : SiteResolver::for($record);
                                     if ($site === null) {
                                         return;
                                     }
-                                    [$r2Key] = self::moveTempToR2($state, $site);
-                                    if ($r2Key !== null) {
-                                        // Keep the [uuid => key] shape that state() emits so
-                                        // both the upload and hydration paths agree on format.
-                                        $set('image_key', [(string) Str::uuid() => $r2Key]);
+                                    $resolved = [];
+                                    foreach ($state as $uuid => $value) {
+                                        if ($value instanceof TemporaryUploadedFile) {
+                                            [$r2Key] = self::moveTempToR2($value, $site);
+                                            if ($r2Key !== null) {
+                                                $resolved[(string) Str::uuid()] = $r2Key;
+                                            }
+                                        } elseif (is_string($value) && $value !== '') {
+                                            $resolved[$uuid] = $value;
+                                        }
                                     }
+                                    $set('photo_keys', $resolved);
                                 }),
                         ]),
 
@@ -505,7 +509,8 @@ class ManageShopProductsAction
                                 ->color('gray')
                                 ->tooltip('Generate name and description from the product photo')
                                 ->action(function (Get $get, Set $set): void {
-                                    $key = self::key($get('image_key'));
+                                    $photoKeys = $get('photo_keys');
+                                    $key = self::key(is_array($photoKeys) ? reset($photoKeys) : null);
 
                                     if ($key === null) {
                                         return;
@@ -600,24 +605,21 @@ class ManageShopProductsAction
             return [];
         }
 
-        return $site->shopProducts()->orderBy('sort')->get()
+        return $site->shopProducts()->with('images')->orderBy('sort')->get()
             ->map(function (ShopProduct $product): array {
-                $imageId = $product->image_ids[0] ?? null;
-                $imageKey = null;
-
-                if (is_int($imageId)) {
-                    $imageKey = SiteImage::find($imageId)?->key;
-                }
+                // [uuid => key] shape so both hydration and Set() paths agree
+                $photoKeys = $product->images
+                    ->mapWithKeys(fn (SiteImage $img): array => [(string) Str::uuid() => $img->key])
+                    ->all();
 
                 return [
                     'product_id' => $product->id,
-                    'image_id' => $imageId,
                     'title' => $product->title,
                     'price' => $product->price,
                     'price_text' => $product->price_text,
                     'category' => $product->category,
                     'status' => $product->status->value,
-                    'image_key' => $imageKey === null ? [] : [(string) Str::uuid() => $imageKey],
+                    'photo_keys' => $photoKeys,
                     'description' => $product->description,
                 ];
             })
@@ -653,13 +655,14 @@ class ManageShopProductsAction
                 continue;
             }
 
-            $imageKey = self::key($entry['image_key'] ?? null);
-            $imageId = is_numeric($entry['image_id'] ?? null) ? (int) $entry['image_id'] : null;
             $productId = is_numeric($entry['product_id'] ?? null) ? (int) $entry['product_id'] : null;
             $status = ShopProductStatus::tryFrom((string) ($entry['status'] ?? '')) ?? ShopProductStatus::Published;
 
-            // Resolve the image: create or update a SiteImage for the upload.
-            $resolvedImageIds = self::resolveImage($site, $imageKey, $imageId, $productId);
+            // Ordered R2 keys from the multi-image FileUpload.
+            $photoKeys = array_values(array_filter(
+                array_values(is_array($entry['photo_keys'] ?? null) ? $entry['photo_keys'] : []),
+                fn (mixed $v): bool => is_string($v) && $v !== '',
+            ));
 
             $attrs = [
                 'title' => trim((string) $entry['title']),
@@ -667,17 +670,17 @@ class ManageShopProductsAction
                 'price_text' => filled($entry['price_text'] ?? null) ? trim((string) $entry['price_text']) : null,
                 'category' => filled($entry['category'] ?? null) ? trim((string) $entry['category']) : null,
                 'status' => $status,
-                'image_ids' => $resolvedImageIds,
                 'description' => filled($entry['description'] ?? null) ? trim((string) $entry['description']) : null,
                 'sort' => $sort,
             ];
 
             if ($productId !== null) {
-                $existing = $site->shopProducts()->whereKey($productId)->first();
+                $product = $site->shopProducts()->whereKey($productId)->first();
 
-                if ($existing instanceof ShopProduct) {
-                    $existing->update($attrs);
-                    $keptIds[] = $existing->id;
+                if ($product instanceof ShopProduct) {
+                    $product->update($attrs);
+                    self::syncProductImages($site, $product, $photoKeys);
+                    $keptIds[] = $product->id;
                     $sort++;
 
                     continue;
@@ -685,6 +688,7 @@ class ManageShopProductsAction
             }
 
             $product = ShopProduct::create(['site_id' => $site->id] + $attrs);
+            self::syncProductImages($site, $product, $photoKeys);
             $keptIds[] = $product->id;
             $sort++;
         }
@@ -705,56 +709,29 @@ class ManageShopProductsAction
     }
 
     /**
-     * Create or update the SiteImage for a product's primary photo.
+     * Sync a product's images to the pivot table.
      *
-     * Returns the resolved image_ids array (a single-element array or empty).
-     * Deliberately never deletes a SiteImage — orphan cleanup is `photos:audit-r2`.
+     * Each R2 key maps to a SiteImage row (created if it does not exist yet)
+     * and the pivot is synced by key — images no longer in the list are detached,
+     * sort order follows the position in the array.
      *
-     * @return array<int, int>
+     * @param  array<int, string>  $r2Keys  Ordered R2 object keys
      */
-    private static function resolveImage(Site $site, ?string $imageKey, ?int $imageId, ?int $productId): array
+    private static function syncProductImages(Site $site, ShopProduct $product, array $r2Keys): void
     {
-        if ($imageKey === null) {
-            // No image: clear the first slot only. If there were additional
-            // images (added via the admin resource), keep them.
-            if ($productId !== null && $imageId !== null) {
-                $product = $site->shopProducts()->whereKey($productId)->first();
+        $pivotData = [];
 
-                if ($product instanceof ShopProduct) {
-                    $remaining = array_values(array_filter(
-                        $product->image_ids,
-                        fn (int $id): bool => $id !== $imageId
-                    ));
+        foreach ($r2Keys as $sort => $key) {
+            $image = $site->images()->firstOrCreate(
+                ['key' => $key],
+                ['content_source' => ContentSource::Partner, 'prospect_only' => false, 'sort' => 0],
+            );
 
-                    return $remaining;
-                }
-            }
-
-            return [];
+            $pivotData[$image->id] = ['sort' => $sort];
         }
 
-        // An image key is present. Find an existing SiteImage to update, or create one.
-        $existing = $imageId !== null
-            ? $site->images()->whereKey($imageId)->first()
-            : null;
-
-        if ($existing instanceof SiteImage) {
-            if ($existing->key !== $imageKey) {
-                $existing->update(['key' => $imageKey]);
-            }
-
-            return [$existing->id];
-        }
-
-        $newImage = SiteImage::create([
-            'site_id' => $site->id,
-            'key' => $imageKey,
-            'content_source' => ContentSource::Partner,
-            'prospect_only' => false,
-            'sort' => 0,
-        ]);
-
-        return [$newImage->id];
+        // sync() attaches new rows, detaches removed ones, updates sort.
+        $product->images()->sync($pivotData);
     }
 
     /**

@@ -2,16 +2,12 @@
     /** @var \App\Models\Site $site */
     /** @var string $accent */
     /** @var \App\Models\ShopProduct $product */
-    /** @var \Illuminate\Support\Collection<int, \App\Models\SiteImage> $images */
     /** @var \Illuminate\Support\Collection<int, \App\Models\ShopProduct> $related */
     /** @var string $enquiryAction */
     /** @var \Illuminate\Support\Collection<int, \App\Models\SiteBlock> $navBlocks */
     /** @var \App\Models\SitePage|null $navPage */
 
-    $productImages = collect($product->image_ids ?? [])
-        ->map(fn ($id) => $images->get((int) $id))
-        ->filter()
-        ->values();
+    $productImages = $product->images;
 
     $enquirySent = request()->query('sent');
     $showEnquiry = $enquirySent !== null;
@@ -175,7 +171,7 @@
                         </h2>
                         <div class="grid-shop">
                             @foreach ($related as $rel)
-                                @php $relThumb = $images->get($rel->image_ids[0] ?? null); @endphp
+                                @php $relThumb = $rel->images->first(); @endphp
                                 <a href="{{ $rel->url() }}" class="product-card reveal">
                                     <div class="product-card__img">
                                         @if ($relThumb)

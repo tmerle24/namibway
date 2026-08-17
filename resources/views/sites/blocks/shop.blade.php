@@ -2,7 +2,6 @@
     /** @var \App\Models\Site $site */
     /** @var \App\Sites\Blocks\ShopBlock $definition */
     /** @var array<string, mixed> $data */
-    /** @var \Illuminate\Support\Collection<int, \App\Models\SiteImage> $images */
     /** @var \Illuminate\Support\Collection<int, \App\Models\ShopProduct> $shopProducts */
     /** @var bool $shopHasMore */
 @endphp
@@ -16,7 +15,7 @@
 
         <div class="grid-shop">
             @foreach ($shopProducts as $product)
-                @php $thumb = $images->get($product->image_ids[0] ?? null); @endphp
+                @php $thumb = $product->images->first(); @endphp
                 <a href="{{ $product->url() }}" class="product-card reveal">
                     <div class="product-card__img">
                         @if ($thumb)

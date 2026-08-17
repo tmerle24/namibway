@@ -81,14 +81,15 @@ class RecoverShopProducts extends Command
         $sort = ($site->shopProducts()->max('sort') ?? -1);
 
         foreach ($orphans->values() as $i => $image) {
-            ShopProduct::create([
+            $product = ShopProduct::create([
                 'site_id' => $site->id,
                 'title' => $texts[$i]['title'] ?? 'Product '.($i + 1),
                 'description' => $texts[$i]['description'] ?? null,
                 'status' => $status,
-                'image_ids' => [$image->id],
                 'sort' => ++$sort,
             ]);
+
+            $product->images()->attach($image->id, ['sort' => 0]);
         }
 
         $this->info("{$orphans->count()} product(s) created as {$status->value}. Prices still need entering.");
@@ -109,11 +110,12 @@ class RecoverShopProducts extends Command
     {
         $used = [];
 
-        foreach ($site->shopProducts()->get() as $product) {
-            foreach ($product->image_ids as $id) {
-                $used[] = (int) $id;
-            }
-        }
+        // Images referenced via the pivot table.
+        $used = array_merge($used, $site->shopProducts()
+            ->join('shop_product_images', 'shop_products.id', '=', 'shop_product_images.shop_product_id')
+            ->pluck('shop_product_images.site_image_id')
+            ->map(fn ($id) => (int) $id)
+            ->all());
 
         $blocks = SiteBlock::whereIn(
             'site_page_id',

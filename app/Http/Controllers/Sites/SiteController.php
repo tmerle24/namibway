@@ -113,7 +113,7 @@ class SiteController
         $shopBlock = $stored->first(fn (SiteBlock $block) => $block->type === 'shop');
         $shopLimit = (int) ($shopBlock?->data['product_count'] ?? 8);
         $shopProducts = $shopBlock !== null
-            ? $site->shopProducts()->published()->orderBy('sort')->orderBy('id')->limit($shopLimit)->get()
+            ? $site->shopProducts()->with('images')->published()->orderBy('sort')->orderBy('id')->limit($shopLimit)->get()
             : collect();
 
         $shopHasMore = $shopProducts->count() === $shopLimit
@@ -132,8 +132,7 @@ class SiteController
             : EnquiryBlock::formTypeFor($site, $enquiryBlock->data);
         $enquiryItems = EnquiryItems::for($site, $enquiryType);
 
-        $productImageIds = $shopProducts->flatMap(fn (ShopProduct $p) => $p->image_ids ?? [])->all();
-        $images = $this->images($site, $blocks->pluck('data')->all(), $productImageIds);
+        $images = $this->images($site, $blocks->pluck('data')->all());
 
         $response = response()->view('sites.page', [
             'site' => $site,
@@ -284,11 +283,10 @@ class SiteController
      * is simply dropped by the partial. A missing picture is a smaller failure
      * than a page that will not render.
      *
-     * @param  array<int, array<string, mixed>|null>  $payloads
-     * @param  array<int, mixed>  $extraIds  Additional image ids to load (e.g. from shop products)
+     * @param  array<int, array<string, mixed>|null>  $payloads  Block data arrays
      * @return Collection<int, SiteImage>
      */
-    private function images(Site $site, array $payloads, array $extraIds = []): Collection
+    private function images(Site $site, array $payloads): Collection
     {
         $ids = [];
 
@@ -301,12 +299,6 @@ class SiteController
                         $ids[] = (int) $id;
                     }
                 }
-            }
-        }
-
-        foreach ($extraIds as $id) {
-            if (is_int($id) || (is_string($id) && ctype_digit($id))) {
-                $ids[] = (int) $id;
             }
         }
 
@@ -360,6 +352,7 @@ class SiteController
         $totalPages = (int) ceil($total / $perPage);
         $page = min($page, max(1, $totalPages));
         $products = $query->offset(($page - 1) * $perPage)->limit($perPage)->get();
+        $products->load('images');
 
         $categories = $site->shopProducts()->published()
             ->whereNotNull('category')
@@ -367,16 +360,12 @@ class SiteController
             ->distinct()
             ->pluck('category');
 
-        $imageIds = $products->flatMap(fn (ShopProduct $p) => $p->image_ids ?? [])->all();
-        $images = $this->images($site, [], $imageIds);
-
         [$navBlocks, $navPage] = $this->navData($site);
 
         $response = response()->view('sites.shop', [
             'site' => $site,
             'accent' => $this->accent($site),
             'products' => $products,
-            'images' => $images,
             'categories' => $categories,
             'activeCategory' => $category,
             'activeSort' => $sort,
@@ -412,10 +401,10 @@ class SiteController
 
         abort_if($product === null, 404);
 
-        $imageIds = $product->image_ids ?? [];
-        $images = $this->images($site, [], $imageIds);
+        $product->load('images');
 
         $related = $site->shopProducts()
+            ->with('images')
             ->published()
             ->when(filled($product->category), fn ($q) => $q->where('category', $product->category))
             ->where('id', '!=', $product->id)
@@ -423,16 +412,12 @@ class SiteController
             ->limit(4)
             ->get();
 
-        $relatedImageIds = $related->flatMap(fn (ShopProduct $p) => array_slice($p->image_ids ?? [], 0, 1))->all();
-        $allImages = $images->merge($this->images($site, [], $relatedImageIds));
-
         [$navBlocks, $navPage] = $this->navData($site);
 
         $response = response()->view('sites.shop-product', [
             'site' => $site,
             'accent' => $this->accent($site),
             'product' => $product,
-            'images' => $allImages,
             'related' => $related,
             'enquiryAction' => route('sites.enquiry', $site->slug),
             'navBlocks' => $navBlocks,

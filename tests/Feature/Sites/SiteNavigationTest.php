@@ -68,7 +68,7 @@ class SiteNavigationTest extends TestCase
             'site_id' => $site->id,
             'title' => 'Beaded collar',
             'status' => ShopProductStatus::Published,
-            'image_ids' => [],
+            
             'sort' => 0,
         ]);
 

@@ -96,18 +96,21 @@ class ImportProductsFromFileJob implements ShouldQueue
             }
 
             $imageUrl = trim($this->cell($cells, $col['image_url'] ?? null));
-            $imageId = $imageUrl !== '' ? $this->storeImage($imageUrl) : null;
+            $image = $imageUrl !== '' ? $this->storeImage($imageUrl) : null;
 
-            ShopProduct::create([
+            $product = ShopProduct::create([
                 'site_id' => $this->site->id,
                 'title' => mb_substr($title, 0, 255),
                 ...$this->price($this->cell($cells, $col['price'] ?? null)),
                 'category' => mb_substr($this->cell($cells, $col['category'] ?? null), 0, 100) ?: null,
                 'description' => $this->cell($cells, $col['description'] ?? null) ?: null,
                 'status' => ShopProductStatus::Draft,
-                'image_ids' => $imageId !== null ? [$imageId] : [],
                 'sort' => ++$maxSort,
             ]);
+
+            if ($image !== null) {
+                $product->images()->attach($image->id, ['sort' => 0]);
+            }
 
             $imported++;
         }
@@ -156,7 +159,7 @@ class ImportProductsFromFileJob implements ShouldQueue
         return trim($cells[$index] ?? '');
     }
 
-    private function storeImage(string $url): ?int
+    private function storeImage(string $url): ?SiteImage
     {
         try {
             // Attempt to normalise Google Drive / Dropbox share links to
@@ -187,7 +190,7 @@ class ImportProductsFromFileJob implements ShouldQueue
                 'content_source' => ContentSource::Partner,
                 'prospect_only' => false,
                 'sort' => 0,
-            ])->id;
+            ]);
         } catch (Throwable) {
             return null;
         }

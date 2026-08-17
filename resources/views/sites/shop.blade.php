@@ -2,7 +2,6 @@
     /** @var \App\Models\Site $site */
     /** @var string $accent */
     /** @var \Illuminate\Support\Collection<int, \App\Models\ShopProduct> $products */
-    /** @var \Illuminate\Support\Collection<int, \App\Models\SiteImage> $images */
     /** @var \Illuminate\Support\Collection<int, string> $categories */
     /** @var string|null $activeCategory */
     /** @var string $activeSort */
@@ -111,7 +110,7 @@
                 @if ($products->isNotEmpty())
                     <div class="grid-shop">
                         @foreach ($products as $product)
-                            @php $thumb = $images->get($product->image_ids[0] ?? null); @endphp
+                            @php $thumb = $product->images->first(); @endphp
                             <a href="{{ $product->url() }}" class="product-card reveal">
                                 <div class="product-card__img">
                                     @if ($thumb)

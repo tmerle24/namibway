@@ -83,8 +83,8 @@ class ImportInstagramProductsJob implements ShouldQueue
                 continue;
             }
 
-            $imageId = $this->storeImage($post['image_url']);
-            $this->createProduct($post, $imageId, (int) $maxSort + 1);
+            $image = $this->storeImage($post['image_url']);
+            $this->createProduct($post, $image, (int) $maxSort + 1);
             $maxSort++;
             $imported++;
         }
@@ -166,7 +166,7 @@ class ImportInstagramProductsJob implements ShouldQueue
         return $posts;
     }
 
-    private function storeImage(string $url): ?int
+    private function storeImage(string $url): ?SiteImage
     {
         try {
             $content = Http::timeout(30)->get($url)->body();
@@ -184,7 +184,7 @@ class ImportInstagramProductsJob implements ShouldQueue
                 'content_source' => ContentSource::Partner,
                 'prospect_only' => false,
                 'sort' => 0,
-            ])->id;
+            ]);
         } catch (Throwable) {
             return null;
         }
@@ -193,7 +193,7 @@ class ImportInstagramProductsJob implements ShouldQueue
     /**
      * @param  array{image_url: string, caption: string, post_url: string}  $post
      */
-    private function createProduct(array $post, ?int $imageId, int $sort): void
+    private function createProduct(array $post, ?SiteImage $image, int $sort): void
     {
         $caption = trim($post['caption']);
 
@@ -206,15 +206,18 @@ class ImportInstagramProductsJob implements ShouldQueue
             $title = 'Product';
         }
 
-        ShopProduct::create([
+        $product = ShopProduct::create([
             'site_id' => $this->site->id,
             'title' => mb_substr($title, 0, 255),
             'description' => $description !== '' ? $description : null,
             'status' => ShopProductStatus::Draft,
-            'image_ids' => $imageId !== null ? [$imageId] : [],
             'instagram_post_url' => $post['post_url'],
             'sort' => $sort,
         ]);
+
+        if ($image !== null) {
+            $product->images()->attach($image->id, ['sort' => 0]);
+        }
     }
 
     private function notifySuccess(string $username, int $count): void

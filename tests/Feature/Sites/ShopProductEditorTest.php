@@ -100,17 +100,10 @@ class ShopProductEditorTest extends TestCase
     }
 
     /**
-     * The picture is handed over in the shape a loaded FileUpload holds —
-     * keyed by an id, not as the bare storage key.
-     *
-     * The form is filled two ways: Filament hydrates it when the modal opens,
-     * and `Set` writes it directly when the list is refreshed after an import.
-     * Only the first runs the component's hydration callbacks, so a bare key
-     * survived one path and blew up the other — `getUploadedFiles()` iterates
-     * that state, and a string is not iterable. Producing the loaded shape here
-     * is what makes the two paths agree.
+     * Images are given to the form as [uuid => key] — the same shape a loaded
+     * FileUpload holds — so both hydration and Set() paths agree on format.
      */
-    public function test_the_picture_is_given_to_the_form_the_way_a_file_upload_holds_it(): void
+    public function test_the_pictures_are_given_to_the_form_as_keyed_arrays(): void
     {
         $site = $this->site();
         $image = SiteImage::create([
@@ -122,20 +115,20 @@ class ShopProductEditorTest extends TestCase
         ]);
 
         $product = $this->product($site, 'Beaded collar');
-        $product->update(['image_ids' => [$image->id]]);
+        $product->images()->attach($image->id, ['sort' => 0]);
 
         $row = $this->state($site)[0];
 
-        $this->assertIsArray($row['image_key'], 'A FileUpload iterates its state; a bare key is not iterable.');
-        $this->assertSame(['sites/monas-collection/collar.jpg'], array_values($row['image_key']));
+        $this->assertIsArray($row['photo_keys'], 'FileUpload expects an array, not a bare string.');
+        $this->assertSame(['sites/monas-collection/collar.jpg'], array_values($row['photo_keys']));
     }
 
-    public function test_a_product_without_a_picture_gives_the_form_an_empty_list(): void
+    public function test_a_product_without_pictures_gives_the_form_an_empty_array(): void
     {
         $site = $this->site();
         $this->product($site, 'Beaded collar');
 
-        $this->assertSame([], $this->state($site)[0]['image_key']);
+        $this->assertSame([], $this->state($site)[0]['photo_keys']);
     }
 
     /**
@@ -163,7 +156,6 @@ class ShopProductEditorTest extends TestCase
             'site_id' => $site->id,
             'title' => $title,
             'status' => ShopProductStatus::Published,
-            'image_ids' => [],
             'sort' => 0,
         ]);
     }
