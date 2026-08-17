@@ -460,6 +460,31 @@ decisions are made, brevity in the rest.
 
 **Decided.** Not up for assessment — only the implementation is to be worked out.
 
+### Confirmed by sales, 2026-08-17 — two customer groups, and only one of them is tourism
+
+The section below was written as a design premise. It is now what is actually being sold:
+the co-founder is out selling websites, and the customers fall into two groups.
+
+* **Tourism partners** — lodges, restaurants, operators who already have a **listing** on
+  NamibWay. The website is a second surface on a business the platform already knows, and
+  the listing is the import source described below.
+* **Everyone else** — trades, workshops, craftsmen, shops, service businesses. **No listing,
+  and there never will be one**: there is nothing for Kaia to put in an itinerary, and their
+  customers are substantially **locals** rather than travellers. For them the website is the
+  whole product, and NamibWay is their web agency rather than their booking channel.
+
+The second group is the reason `sites.partner_id` exists and why a site must be attachable
+to a **partner alone**. Two consequences worth stating plainly, because both have already
+been got wrong once:
+
+* **A partner-only site is not a degraded listing site.** It is the normal case for half the
+  customers. Anything that assumes `Site::$sourceListing` is present is a bug, not an edge
+  case — `inquiries.listing_id` was NOT NULL for exactly this reason and a shop's own website
+  could receive no enquiry at all (see `PROJECT_STATUS.md` § 4, 2026-08-16).
+* **Not every audience is a traveller.** Copy, template defaults and anything Kaia-shaped
+  must not assume the reader is planning a trip. A plumber's website sells to the town it is
+  in.
+
 ### Starting point: not every customer has a listing
 
 The kit is also sold to businesses that **have no listing on NamibWay** and will never get
