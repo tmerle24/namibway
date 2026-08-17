@@ -88,7 +88,7 @@ class SiteEnquiryController
         // carry a real context.
         $product = null;
         if ($type === EnquiryFormType::ProductEnquiry) {
-            $product = $site->shopProducts()->find($validated['product_id'] ?? null);
+            $product = $site->shopProducts()->firstWhere('id', $validated['product_id'] ?? null);
             if ($product === null) {
                 return $this->back($request, false);
             }
