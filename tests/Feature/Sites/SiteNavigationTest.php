@@ -68,7 +68,7 @@ class SiteNavigationTest extends TestCase
             'partner_id' => $site->partner_id,
             'title' => 'Beaded collar',
             'status' => ShopProductStatus::Published,
-            
+
             'sort' => 0,
         ]);
 

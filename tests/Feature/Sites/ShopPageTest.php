@@ -53,7 +53,7 @@ class ShopPageTest extends TestCase
             'title' => 'Palm Basket',
             'slug' => 'palm-basket',
             'status' => ShopProductStatus::Published,
-            
+
             'sort' => 0,
         ]);
 

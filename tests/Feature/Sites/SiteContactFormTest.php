@@ -132,8 +132,8 @@ class SiteContactFormTest extends TestCase
         $site = $this->siteFor(EnquiryFormType::ProductOrder, partner: $partner);
 
         $bowl = ShopProduct::create([
-            'site_id' => $site->id, 'title' => 'Carved bowl', 'price' => 480.00,
-            'status' => 'published', 
+            'partner_id' => $partner->id, 'title' => 'Carved bowl', 'price' => 480.00,
+            'status' => 'published',
         ]);
 
         $this->post("/_sites/{$site->slug}/enquiry", [
@@ -160,8 +160,8 @@ class SiteContactFormTest extends TestCase
         // "Call for price" is a real thing a shop says and shows in the
         // catalogue. It is not a number an order can be totalled from.
         $onRequest = ShopProduct::create([
-            'site_id' => $site->id, 'title' => 'Commissioned piece', 'price' => null,
-            'price_text' => 'Call for price', 'status' => 'published', 
+            'partner_id' => $partner->id, 'title' => 'Commissioned piece', 'price' => null,
+            'price_text' => 'Call for price', 'status' => 'published',
         ]);
 
         $this->post("/_sites/{$site->slug}/enquiry", [
