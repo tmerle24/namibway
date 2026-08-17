@@ -151,6 +151,7 @@ class PayGateProvider implements PaymentProvider
                 'pay_request_id' => $payRequestId,
                 'process_checksum' => $processChecksum,
                 'paygate_reference' => $reference,
+                'process_url' => PayGateClient::PROCESS_URL,
             ],
         );
     }
