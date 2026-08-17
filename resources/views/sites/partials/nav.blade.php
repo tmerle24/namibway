@@ -16,7 +16,7 @@
      * separate menu: one array renders twice, so a link can never be in one and
      * missing from the other.
      */
-    $navTypes = ['about', 'highlights', 'shop', 'gallery', 'opening_hours', 'price_list', 'enquiry', 'contact'];
+    $navTypes = ['about', 'highlights', 'mission', 'shop', 'gallery', 'opening_hours', 'price_list', 'why_choose_us', 'enquiry', 'contact'];
     $items = [];
     $n = 0;
 
