@@ -230,13 +230,10 @@ class BlockForm
             'shop' => [
                 TextInput::make('heading')->label('Section heading')->maxLength(120)
                     ->placeholder('Shop'),
-                TextInput::make('product_count')
+                Select::make('product_count')
                     ->label('Products shown on homepage')
-                    ->numeric()
-                    ->minValue(1)
-                    ->maxValue(60)
+                    ->options([3 => '3', 4 => '4', 6 => '6', 8 => '8', 12 => '12'])
                     ->default(8)
-                    ->placeholder('8')
                     ->helperText('A "View all" button appears automatically when there are more.'),
             ],
 
