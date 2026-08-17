@@ -481,9 +481,7 @@
                                 return el ? (el.value || '').trim() : '';
                             }
 
-                            btn.addEventListener('click', function (e) {
-                                e.preventDefault();
-
+                            btn.addEventListener('click', function () {
                                 var msg = 'Hello ' + siteName + ',';
                                 var name = value('eq-name');
                                 if (name) msg += '\n\nName: ' + name;
@@ -507,7 +505,9 @@
 
                                 if (value('eq-message')) msg += '\n\n' + value('eq-message');
 
-                                window.open(waBase + '?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+                                // Update href before navigation so popup blockers
+                                // can't strip the ?text= by falling back to bare href.
+                                btn.href = waBase + '?text=' + encodeURIComponent(msg);
                             });
                         }());
                         </script>
