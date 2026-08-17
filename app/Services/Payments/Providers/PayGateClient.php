@@ -126,11 +126,16 @@ class PayGateClient
     {
         $response = $this->request()->asForm()->post($url, $fields);
 
-        /** @var array<string, mixed> $parsed */
-        $parsed = [];
-        parse_str($response->body(), $parsed);
+        $raw = [];
+        parse_str($response->body(), $raw);
 
-        return array_map(fn (mixed $v): string => is_scalar($v) ? (string) $v : '', $parsed);
+        $result = [];
+
+        foreach ($raw as $key => $value) {
+            $result[(string) $key] = is_scalar($value) ? (string) $value : '';
+        }
+
+        return $result;
     }
 
     private function request(): PendingRequest
