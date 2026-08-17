@@ -1572,6 +1572,16 @@ the standard headings follows the form type, anything typed stays exactly as typ
   never becomes one. Decide whether the ledger takes a second kind of payable thing or these
   are invoiced outside it, then the "send a payment link" button belongs in the partner
   panel and in the confirmation mail.
+- **Delivery for a restaurant order.** A product order asks for a delivery address and a
+  restaurant order deliberately does not, because ordering food to an address is not yet how
+  this market works — a Kapana stand is collected from. That is a statement about today, not
+  about the shape of the thing: food delivery is plausibly large here later, and it is one
+  switch plus one address field away, since the address already exists on the product side
+  (`EnquiryFormType::needsAddress()`, and `SiteEnquiryController::message()` puts it in front
+  of the message). What it needs before it is worth building is the part that is not a field:
+  a delivery area, a fee, and some idea of who carries the food. Do not add the address to
+  restaurant orders as a quiet default in the meantime — an address box on a form for a stand
+  people walk up to is a question with no good answer.
 - **Multilingual sites** — EN, DE, NL, FR, ES. `site_pages.locale` is the foundation and not
   the feature: there is no switcher, no per-locale routing, and the renderer reads
   `default_locale` and nothing else.
