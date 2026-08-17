@@ -65,7 +65,7 @@ return new class extends Migration
         foreach ($byProduct as $productId => $ids) {
             DB::table('shop_products')
                 ->where('id', $productId)
-                ->update(['image_ids' => json_encode(array_values($ids))]);
+                ->update(['image_ids' => json_encode($ids)]);
         }
 
         Schema::dropIfExists('shop_product_images');
