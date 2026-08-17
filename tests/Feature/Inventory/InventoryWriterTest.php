@@ -51,7 +51,7 @@ class InventoryWriterTest extends TestCase
         return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 2,
-            'rate_per_night' => 1000,
+            'base_rate' => 1000,
             'currency' => 'NAD',
             ...$attributes,
         ]);
@@ -97,7 +97,7 @@ class InventoryWriterTest extends TestCase
     public function test_a_stay_crossing_a_season_boundary_is_priced_per_night(): void
     {
         $listing = $this->listing();
-        $room = $this->room($listing, ['rate_per_night' => 1000]);
+        $room = $this->room($listing, ['base_rate' => 1000]);
 
         // Low season through the 11th, high season from the 12th — a season is
         // a range written onto dates, not an entity resolved at read time.
@@ -209,7 +209,7 @@ class InventoryWriterTest extends TestCase
     public function test_a_night_with_no_calendar_row_falls_back_to_the_bookable_unit_defaults(): void
     {
         $listing = $this->listing();
-        $room = $this->room($listing, ['total_units' => 4, 'rate_per_night' => 1750]);
+        $room = $this->room($listing, ['total_units' => 4, 'base_rate' => 1750]);
 
         $this->assertSame(0, BookableUnitCalendarDay::where('bookable_unit_id', $room->id)->count());
 
@@ -225,7 +225,7 @@ class InventoryWriterTest extends TestCase
     public function test_an_override_wins_over_the_bookable_unit_default(): void
     {
         $listing = $this->listing();
-        $room = $this->room($listing, ['total_units' => 4, 'rate_per_night' => 1000]);
+        $room = $this->room($listing, ['total_units' => 4, 'base_rate' => 1000]);
 
         $this->writer->setCalendar($room, now()->parse('2027-02-01'), now()->parse('2027-02-01'), [
             'units_total' => 1,
@@ -261,8 +261,8 @@ class InventoryWriterTest extends TestCase
     public function test_one_reservation_can_hold_several_bookable_units_with_quantities(): void
     {
         $listing = $this->listing();
-        $standard = $this->room($listing, ['total_units' => 4, 'rate_per_night' => 1000]);
-        $family = $this->room($listing, ['total_units' => 2, 'rate_per_night' => 2000]);
+        $standard = $this->room($listing, ['total_units' => 4, 'base_rate' => 1000]);
+        $family = $this->room($listing, ['total_units' => 2, 'base_rate' => 2000]);
 
         $reservation = $this->writer->book(new BookingRequest(
             listing: $listing,

@@ -9,12 +9,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * One line of an order — see the `inquiry_items` migration for why every value
  * here is a copy rather than a lookup.
  *
- * Written only by `App\Services\Booking\MenuOrder`, which prices an order from
- * the menu in the database and never from what the browser posted.
+ * Written by `App\Services\Booking\MenuOrder` (namibway.com restaurant orders)
+ * and `App\Services\Booking\SiteOrder` (customer-website product and menu orders).
+ * Both price from the database — never from what the browser posted.
  *
  * @property int $id
  * @property int $inquiry_id
  * @property int|null $menu_item_id
+ * @property int|null $shop_product_id
  * @property string $name
  * @property int $quantity
  * @property float $unit_price
@@ -26,6 +28,7 @@ class InquiryItem extends Model
     protected $fillable = [
         'inquiry_id',
         'menu_item_id',
+        'shop_product_id',
         'name',
         'quantity',
         'unit_price',
@@ -55,5 +58,16 @@ class InquiryItem extends Model
     public function menuItem(): BelongsTo
     {
         return $this->belongsTo(MenuItem::class);
+    }
+
+    /**
+     * The site shop product this line came from, where set. Null for restaurant
+     * orders (those carry menu_item_id) and for lines without a source product.
+     *
+     * @return BelongsTo<ShopProduct, $this>
+     */
+    public function shopProduct(): BelongsTo
+    {
+        return $this->belongsTo(ShopProduct::class);
     }
 }

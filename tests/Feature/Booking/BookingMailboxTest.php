@@ -57,7 +57,7 @@ class BookingMailboxTest extends TestCase
         $room = BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 2,
-            'rate_per_night' => 1500,
+            'base_rate' => 1500,
             'currency' => 'NAD',
         ]);
 

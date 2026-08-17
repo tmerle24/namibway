@@ -159,7 +159,7 @@ class ArrivalsBoardTest extends TestCase
         return BookableUnit::factory()->create(array_merge([
             'listing_id' => $listing->id,
             'total_units' => 3,
-            'rate_per_night' => 1500.00,
+            'base_rate' => 1500.00,
             'currency' => 'NAD',
         ], $attributes));
     }

@@ -94,7 +94,7 @@ class PartnerNoticesTest extends TestCase
     public function test_a_room_nobody_priced_is_named_before_a_guest_is_standing_there(): void
     {
         [, $listing] = $this->partnerWithProperty();
-        $this->bookableUnit($listing, ['name' => 'Riverside Chalet', 'rate_per_night' => 0]);
+        $this->bookableUnit($listing, ['name' => 'Riverside Chalet', 'base_rate' => 0]);
 
         $notice = $this->noticeKeyed($listing, 'no-prices');
 
@@ -105,7 +105,7 @@ class PartnerNoticesTest extends TestCase
     public function test_a_rate_set_on_a_plan_counts_as_a_price(): void
     {
         [, $listing] = $this->partnerWithProperty();
-        $room = $this->bookableUnit($listing, ['rate_per_night' => 0]);
+        $room = $this->bookableUnit($listing, ['base_rate' => 0]);
 
         $plan = RatePlan::create([
             'listing_id' => $listing->id,
@@ -196,7 +196,7 @@ class PartnerNoticesTest extends TestCase
         return BookableUnit::factory()->create(array_merge([
             'listing_id' => $listing->id,
             'total_units' => 3,
-            'rate_per_night' => 1500.00,
+            'base_rate' => 1500.00,
             'currency' => 'NAD',
             'is_active' => true,
         ], $attributes));

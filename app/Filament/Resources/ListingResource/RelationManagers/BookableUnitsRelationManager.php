@@ -62,9 +62,9 @@ class BookableUnitsRelationManager extends RelationManager
                         : (string) $record->max_adults),
                 Tables\Columns\TextColumn::make('total_units')
                     ->label('Units'),
-                Tables\Columns\TextColumn::make('rate_per_night')
+                Tables\Columns\TextColumn::make('base_rate')
                     ->label('Per night')
-                    ->formatStateUsing(fn (BookableUnit $record) => "{$record->currency} ".number_format((float) $record->rate_per_night, 2)),
+                    ->formatStateUsing(fn (BookableUnit $record) => "{$record->currency} ".number_format((float) $record->base_rate, 2)),
                 Tables\Columns\TextColumn::make('amenities_count')
                     ->label('Amenities')
                     ->counts('amenities')
@@ -84,6 +84,6 @@ class BookableUnitsRelationManager extends RelationManager
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('rate_per_night');
+            ->defaultSort('base_rate');
     }
 }

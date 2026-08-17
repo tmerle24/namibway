@@ -229,7 +229,7 @@ class InvoiceNumberingConcurrencyTest extends TestCase
         return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 5,
-            'rate_per_night' => 1000,
+            'base_rate' => 1000,
             'currency' => 'NAD',
         ]);
     }

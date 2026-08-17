@@ -27,7 +27,7 @@ class BookableUnitFactory extends Factory
             'max_adults' => 2,
             'max_children' => 2,
             'total_units' => 3,
-            'rate_per_night' => fake()->randomFloat(2, 800, 4500),
+            'base_rate' => fake()->randomFloat(2, 800, 4500),
             'currency' => 'NAD',
             'is_active' => true,
         ];

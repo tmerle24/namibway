@@ -24,7 +24,7 @@ beforeEach(function () {
         'code' => 'standard',
         'name' => 'Standard Room',
         'total_units' => 1,
-        'rate_per_night' => 1000,
+        'base_rate' => 1000,
         'currency' => 'NAD',
     ]);
 });

@@ -320,7 +320,7 @@ class SettlementModelTest extends TestCase
         return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 5,
-            'rate_per_night' => $rate,
+            'base_rate' => $rate,
             'currency' => 'NAD',
         ]);
     }

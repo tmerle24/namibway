@@ -368,7 +368,7 @@ class SellingADepartureTest extends TestCase
             'name' => $name,
             'code' => $code,
             'total_units' => $units,
-            'rate_per_night' => $rate,
+            'base_rate' => $rate,
             'currency' => 'NAD',
         ]);
     }

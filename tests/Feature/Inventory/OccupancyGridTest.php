@@ -78,7 +78,7 @@ class OccupancyGridTest extends TestCase
     public function test_a_stay_crossing_a_season_boundary_shows_each_nights_own_rate(): void
     {
         $listing = $this->property();
-        $room = $this->bookableUnit($listing, ['rate_per_night' => 1000]);
+        $room = $this->bookableUnit($listing, ['base_rate' => 1000]);
 
         $writer = app(InventoryWriter::class);
         $writer->setCalendar($room, Carbon::parse('2026-09-01'), Carbon::parse('2026-09-04'), ['rate' => 1000.00]);
@@ -97,7 +97,7 @@ class OccupancyGridTest extends TestCase
     public function test_a_night_with_no_calendar_row_falls_back_to_the_bookable_unit(): void
     {
         $listing = $this->property();
-        $this->bookableUnit($listing, ['total_units' => 5, 'rate_per_night' => 2250]);
+        $this->bookableUnit($listing, ['total_units' => 5, 'base_rate' => 2250]);
 
         $cells = $this->grid($listing)->rows[0]->cells;
 
@@ -344,7 +344,7 @@ class OccupancyGridTest extends TestCase
         return BookableUnit::factory()->create(array_merge([
             'listing_id' => $listing->id,
             'total_units' => 3,
-            'rate_per_night' => 1500.00,
+            'base_rate' => 1500.00,
             'currency' => 'NAD',
         ], $attributes));
     }

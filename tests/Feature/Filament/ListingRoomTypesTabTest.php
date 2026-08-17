@@ -46,7 +46,7 @@ class ListingRoomTypesTabTest extends TestCase
         $this->assertSame('Luxury Chalet', $unit->name);
         $this->assertSame('LUX', $unit->code);
         $this->assertSame(4, $unit->total_units);
-        $this->assertSame('2500.00', $unit->rate_per_night);
+        $this->assertSame('2500.00', $unit->base_rate);
         $this->assertSame('NAD', $unit->currency);
         $this->assertTrue($unit->is_active);
     }
@@ -158,7 +158,8 @@ class ListingRoomTypesTabTest extends TestCase
             'max_adults' => 2,
             'max_children' => 0,
             'total_units' => 4,
-            'rate_per_night' => 2500,
+            'turnaround_days' => 0,
+            'base_rate' => 2500,
             'currency' => 'NAD',
             'is_active' => true,
         ], $overrides);

@@ -27,7 +27,7 @@ it('returns available room types on successful availability check', function () 
                     'code' => 'CHALET',
                     'name' => 'Bush Chalet',
                     'available' => 3,
-                    'rate_per_night' => 2500.00,
+                    'base_rate' => 2500.00,
                     'currency' => 'NAD',
                     'total_rate' => 7500.00,
                     'meal_plan' => 'FB',
@@ -56,8 +56,8 @@ it('filters out unavailable room types', function () {
         ->shouldReceive('get')
         ->andReturn([
             'room_types' => [
-                ['code' => 'A', 'name' => 'Type A', 'available' => 0, 'rate_per_night' => 1000, 'currency' => 'NAD', 'total_rate' => 2000],
-                ['code' => 'B', 'name' => 'Type B', 'available' => 2, 'rate_per_night' => 1500, 'currency' => 'NAD', 'total_rate' => 3000],
+                ['code' => 'A', 'name' => 'Type A', 'available' => 0, 'base_rate' => 1000, 'currency' => 'NAD', 'total_rate' => 2000],
+                ['code' => 'B', 'name' => 'Type B', 'available' => 2, 'base_rate' => 1500, 'currency' => 'NAD', 'total_rate' => 3000],
             ],
         ]);
 

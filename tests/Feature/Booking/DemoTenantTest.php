@@ -55,7 +55,7 @@ class DemoTenantTest extends TestCase
                 'code' => $code,
                 'name' => $code === 'STD' ? 'Standard Chalet' : 'Luxury Suite',
                 'total_units' => $units,
-                'rate_per_night' => $rate,
+                'base_rate' => $rate,
                 'currency' => 'NAD',
                 'is_active' => true,
             ]);
@@ -331,8 +331,8 @@ class DemoTenantTest extends TestCase
 
         // Anchored to the listing's own "from" price, so the numbers on screen
         // are in the right neighbourhood for that property.
-        $cheapest = $tenant->listing->bookableUnits()->orderBy('rate_per_night')->first();
-        $this->assertSame(2000.0, (float) $cheapest->rate_per_night);
+        $cheapest = $tenant->listing->bookableUnits()->orderBy('base_rate')->first();
+        $this->assertSame(2000.0, (float) $cheapest->base_rate);
 
         // And the real listing still has none — the demo made them on its copy.
         $this->assertSame(0, $listing->bookableUnits()->count());

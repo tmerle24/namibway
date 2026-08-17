@@ -31,7 +31,9 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property string|null $guest_email
  * @property string|null $guest_phone
  * @property CarbonImmutable $check_in
+ * @property string|null $pickup_time  HH:MM — vehicle hand-over time, null for non-vehicle stays.
  * @property CarbonImmutable $check_out
+ * @property string|null $return_time  HH:MM — vehicle return time, null for non-vehicle stays.
  * @property int $adults
  * @property int $children
  * @property float|null $total_amount
@@ -76,7 +78,9 @@ class Reservation extends Model
         'guest_email',
         'guest_phone',
         'check_in',
+        'pickup_time',
         'check_out',
+        'return_time',
         'adults',
         'children',
         'total_amount',
