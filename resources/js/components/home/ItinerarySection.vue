@@ -183,11 +183,13 @@ const readonly = computed(() => props.canEdit === false);
 // stay card reads from here so it stays live without re-fetching the plan.
 const bookingStatusByListingId = computed(() => {
     const map = new Map<number, string>();
+
     for (const booking of props.bookings ?? []) {
         if (booking.listing_id !== null && booking.inquiry_status !== null) {
             map.set(booking.listing_id, booking.inquiry_status);
         }
     }
+
     return map;
 });
 
