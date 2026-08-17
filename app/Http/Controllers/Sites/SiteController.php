@@ -110,12 +110,14 @@ class SiteController
 
         // The first page of shop products, loaded only when the shop block is
         // present. shouldRender() then hides the block when none are published.
-        $shopProducts = $stored->contains(fn (SiteBlock $block) => $block->type === 'shop')
-            ? $site->shopProducts()->published()->orderBy('sort')->orderBy('id')->limit(8)->get()
+        $shopBlock = $stored->first(fn (SiteBlock $block) => $block->type === 'shop');
+        $shopLimit = (int) ($shopBlock?->data['product_count'] ?? 8);
+        $shopProducts = $shopBlock !== null
+            ? $site->shopProducts()->published()->orderBy('sort')->orderBy('id')->limit($shopLimit)->get()
             : collect();
 
-        $shopHasMore = $shopProducts->count() === 8
-            && $site->shopProducts()->published()->count() > 8;
+        $shopHasMore = $shopProducts->count() === $shopLimit
+            && $site->shopProducts()->published()->count() > $shopLimit;
 
         $blocks = $stored
             ->filter(fn (SiteBlock $block) => $this->shouldRender($block, $site, $booking, $shopProducts))
@@ -331,6 +333,9 @@ class SiteController
 
         $category = $request->query('category');
         $sort = $request->query('sort', 'default');
+        $search = trim((string) $request->query('q', ''));
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = 24;
 
         $query = $site->shopProducts()->published();
 
@@ -338,12 +343,23 @@ class SiteController
             $query->where('category', $category);
         }
 
+        if (filled($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->whereRaw('lower(title) like ?', ['%'.mb_strtolower($search).'%'])
+                    ->orWhereRaw('lower(category) like ?', ['%'.mb_strtolower($search).'%'])
+                    ->orWhereRaw('lower(description) like ?', ['%'.mb_strtolower($search).'%']);
+            });
+        }
+
         $query->when($sort === 'name', fn ($q) => $q->orderBy('title'))
             ->when($sort === 'price_asc', fn ($q) => $q->orderByRaw('price asc nulls last'))
             ->when($sort === 'price_desc', fn ($q) => $q->orderByRaw('price desc nulls last'))
             ->when(! in_array($sort, ['name', 'price_asc', 'price_desc']), fn ($q) => $q->orderBy('sort')->orderBy('id'));
 
-        $products = $query->get();
+        $total = $query->count();
+        $totalPages = (int) ceil($total / $perPage);
+        $page = min($page, max(1, $totalPages));
+        $products = $query->offset(($page - 1) * $perPage)->limit($perPage)->get();
 
         $categories = $site->shopProducts()->published()
             ->whereNotNull('category')
@@ -364,6 +380,10 @@ class SiteController
             'categories' => $categories,
             'activeCategory' => $category,
             'activeSort' => $sort,
+            'search' => $search,
+            'page' => $page,
+            'totalPages' => $totalPages,
+            'total' => $total,
             'navBlocks' => $navBlocks,
             'navPage' => $navPage,
         ]);

@@ -449,6 +449,30 @@
     }
     .shop-back:hover { color: var(--ink); }
 
+    .shop-search {
+        position: relative; display: flex; align-items: center;
+        margin-bottom: var(--s4); max-width: 480px;
+    }
+    .shop-search__input {
+        width: 100%; font: inherit; font-size: 16px;
+        padding: 10px 72px 10px var(--s3);
+        border: 1px solid var(--bone); border-radius: 6px;
+        background: var(--salt); color: var(--ink);
+    }
+    .shop-search__input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .shop-search__btn {
+        position: absolute; right: 36px; top: 50%; transform: translateY(-50%);
+        background: none; border: none; padding: 4px; cursor: pointer; color: var(--slate);
+        display: flex; align-items: center;
+    }
+    .shop-search__btn svg { width: 18px; height: 18px; }
+    .shop-search__btn:hover { color: var(--ink); }
+    .shop-search__clear {
+        position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+        font-size: 14px; color: var(--slate); text-decoration: none; line-height: 1;
+    }
+    .shop-search__clear:hover { color: var(--ink); }
+
     .shop-filters {
         display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s5);
         align-items: center;
@@ -468,6 +492,20 @@
         border: 1px solid var(--bone); border-radius: 6px;
         padding: 6px var(--s3); cursor: pointer;
     }
+    .shop-pager {
+        display: flex; align-items: center; justify-content: center;
+        gap: var(--s2); margin-top: var(--s6); flex-wrap: wrap;
+    }
+    .shop-pager__btn, .shop-pager__num {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 36px; height: 36px; padding: 0 var(--s2);
+        border-radius: 4px; border: 1px solid var(--bone);
+        font-size: 15px; color: var(--ink); text-decoration: none;
+        transition: background .15s, border-color .15s;
+    }
+    .shop-pager__btn:hover, .shop-pager__num:hover { background: var(--bone); }
+    .shop-pager__num--active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .shop-pager__ellipsis { font-size: 15px; color: var(--slate); padding: 0 4px; }
     .grid-shop { display: grid; gap: var(--s4); grid-template-columns: repeat(2, 1fr); }
     @media (min-width: 860px) { .grid-shop { grid-template-columns: repeat(3, 1fr); gap: var(--s5); } }
     .product-card {

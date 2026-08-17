@@ -30,6 +30,7 @@ class ShopBlock extends BlockDefinition
     {
         return [
             'heading' => ['nullable', 'string', 'max:120'],
+            'product_count' => ['nullable', 'integer', 'in:3,4,6,8,12'],
         ];
     }
 
@@ -48,6 +49,7 @@ class ShopBlock extends BlockDefinition
     {
         return [
             'heading' => 'Shop',
+            'product_count' => 8,
         ];
     }
 }

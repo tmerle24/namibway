@@ -221,8 +221,12 @@ class BlockForm
 
             'shop' => [
                 TextInput::make('heading')->label('Section heading')->maxLength(120)
-                    ->placeholder('Shop')
-                    ->helperText('Products are managed separately in the shop admin.'),
+                    ->placeholder('Shop'),
+                Select::make('product_count')
+                    ->label('Products shown on homepage')
+                    ->options([3 => '3', 4 => '4', 6 => '6', 8 => '8', 12 => '12'])
+                    ->default(8)
+                    ->helperText('A "View all" button appears automatically when there are more.'),
             ],
 
             'location' => [

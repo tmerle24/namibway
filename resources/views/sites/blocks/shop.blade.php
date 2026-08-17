@@ -26,7 +26,7 @@
                                  alt="{{ $thumb->alt ?? $product->title }}"
                                  loading="lazy" decoding="async">
                         @else
-                            <span class="product-card__img--empty">📦</span>
+                            @include('sites.partials.product-placeholder')
                         @endif
                     </div>
                     <div class="product-card__body">

@@ -90,7 +90,7 @@ return [
         // JS) is now inlined on every page, the inline styles grew with new block
         // types (enquiry, shop), and the block library reached 16 types. Still well
         // under the 100 KB first-view target that separates "fast" from "acceptable".
-        'document_bytes' => 77 * 1024,
+        'document_bytes' => 79 * 1024,
     ],
 
     /*

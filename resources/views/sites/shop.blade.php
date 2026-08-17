@@ -6,10 +6,21 @@
     /** @var \Illuminate\Support\Collection<int, string> $categories */
     /** @var string|null $activeCategory */
     /** @var string $activeSort */
+    /** @var string $search */
+    /** @var int $page */
+    /** @var int $totalPages */
+    /** @var int $total */
     /** @var \Illuminate\Support\Collection<int, \App\Models\SiteBlock> $navBlocks */
     /** @var \App\Models\SitePage|null $navPage */
 
     $shopUrl = $site->pageUrl('shop');
+
+    // Build a query-string for pagination links that preserves the active filters.
+    $pagerBase = array_filter([
+        'category' => $activeCategory,
+        'sort' => $activeSort !== 'default' ? $activeSort : null,
+        'q' => filled($search) ? $search : null,
+    ]);
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $site->default_locale }}">
@@ -41,6 +52,29 @@
         <section class="section">
             <div class="wrap">
                 <h1 style="font-family:var(--font-display);font-size:38px;margin:0 0 var(--s5);">Shop</h1>
+
+                {{-- Search --}}
+                <form method="GET" action="{{ $shopUrl }}" class="shop-search" role="search">
+                    @if ($activeCategory)
+                        <input type="hidden" name="category" value="{{ $activeCategory }}">
+                    @endif
+                    @if ($activeSort !== 'default')
+                        <input type="hidden" name="sort" value="{{ $activeSort }}">
+                    @endif
+                    <input type="search" name="q" value="{{ $search }}" placeholder="Search products…"
+                           class="shop-search__input" aria-label="Search products">
+                    <button type="submit" class="shop-search__btn" aria-label="Search">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"
+                             stroke-linecap="round" aria-hidden="true">
+                            <circle cx="8.5" cy="8.5" r="5.5"/>
+                            <line x1="13" y1="13" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                    @if (filled($search))
+                        <a href="{{ $shopUrl.'?'.http_build_query(array_filter(['category' => $activeCategory, 'sort' => $activeSort !== 'default' ? $activeSort : null])) }}"
+                           class="shop-search__clear" aria-label="Clear search">✕</a>
+                    @endif
+                </form>
 
                 @if ($categories->isNotEmpty() || $products->isNotEmpty())
                     <div class="shop-filters">
@@ -102,8 +136,40 @@
                             </a>
                         @endforeach
                     </div>
+
+                    {{-- Pagination --}}
+                    @if ($totalPages > 1)
+                        <nav class="shop-pager" aria-label="Pages">
+                            @if ($page > 1)
+                                <a href="{{ $shopUrl.'?'.http_build_query($pagerBase + ['page' => $page - 1]) }}"
+                                   class="shop-pager__btn" aria-label="Previous page">‹</a>
+                            @endif
+
+                            @for ($p = 1; $p <= $totalPages; $p++)
+                                @if ($p === $page)
+                                    <span class="shop-pager__num shop-pager__num--active">{{ $p }}</span>
+                                @elseif ($p === 1 || $p === $totalPages || abs($p - $page) <= 2)
+                                    <a href="{{ $shopUrl.'?'.http_build_query($pagerBase + ['page' => $p]) }}"
+                                       class="shop-pager__num">{{ $p }}</a>
+                                @elseif (abs($p - $page) === 3)
+                                    <span class="shop-pager__ellipsis">…</span>
+                                @endif
+                            @endfor
+
+                            @if ($page < $totalPages)
+                                <a href="{{ $shopUrl.'?'.http_build_query($pagerBase + ['page' => $page + 1]) }}"
+                                   class="shop-pager__btn" aria-label="Next page">›</a>
+                            @endif
+                        </nav>
+                    @endif
                 @else
-                    <p style="color:var(--slate)">No products found in this category.</p>
+                    <p style="color:var(--slate)">
+                        @if (filled($search))
+                            No products found for "{{ $search }}".
+                        @else
+                            No products found in this category.
+                        @endif
+                    </p>
                 @endif
             </div>
         </section>
