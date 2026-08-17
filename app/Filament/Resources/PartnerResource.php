@@ -85,16 +85,15 @@ class PartnerResource extends Resource
                                 Forms\Components\Section::make('Social media')
                                     ->icon('heroicon-o-share')
                                     ->columnSpanFull()
-                                    ->columns(2)
                                     ->collapsible()
                                     ->schema([
-                                        Forms\Components\TextInput::make('instagram')
-                                            ->url()
-                                            ->maxLength(255)
-                                            ->helperText('Full profile URL, e.g. https://instagram.com/yourlodge'),
-                                        Forms\Components\TextInput::make('facebook')
-                                            ->url()
-                                            ->maxLength(255),
+                                        Forms\Components\KeyValue::make('social_links')
+                                            ->hiddenLabel()
+                                            ->helperText('Key = platform (instagram, facebook, linkedin, youtube, tiktok, twitter, tripadvisor), value = full URL.')
+                                            ->keyLabel('Platform')
+                                            ->valueLabel('URL')
+                                            ->reorderable(false)
+                                            ->columnSpanFull(),
                                     ]),
 
                                 Forms\Components\Section::make('Location')

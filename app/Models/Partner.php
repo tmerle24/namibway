@@ -27,8 +27,7 @@ use Spatie\Translatable\HasTranslations;
  * @property string|null $email
  * @property string|null $phone
  * @property string|null $website
- * @property string|null $instagram
- * @property string|null $facebook
+ * @property array<string, string>|null $social_links
  * @property string|null $source_url
  * @property string|null $claim_token
  * @property Carbon|null $claim_token_sent_at
@@ -70,8 +69,7 @@ class Partner extends Model
         'email',
         'phone',
         'website',
-        'instagram',
-        'facebook',
+        'social_links',
         'source_url',
         'claim_token',
         'claim_token_sent_at',
@@ -94,6 +92,7 @@ class Partner extends Model
 
     protected $casts = [
         'gallery' => 'array',
+        'social_links' => 'array',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
         'connector_type' => ConnectorType::class,

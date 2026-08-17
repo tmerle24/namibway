@@ -207,11 +207,6 @@ class SiteGenerator
      */
     private function siteFieldsFromPartner(Partner $partner): array
     {
-        $social = array_filter([
-            'instagram' => $partner->instagram,
-            'facebook' => $partner->facebook,
-        ], fn ($v) => filled($v));
-
         return array_filter([
             'contact_email' => $partner->email,
             'contact_phone' => $partner->phone,
@@ -219,7 +214,7 @@ class SiteGenerator
             'address' => $partner->address,
             'latitude' => $partner->latitude,
             'longitude' => $partner->longitude,
-            'social_links' => $social ?: null,
+            'social_links' => $partner->social_links ?: null,
         ], fn ($v) => filled($v));
     }
 
