@@ -136,14 +136,14 @@
        left to find its own width. Hero state: prominent; scrolled: compact.
        Both height and filter transition so neither snaps when the bar turns solid. */
     .nav__logo {
-        height: {{ $site->logo_compact_height ? $site->logo_compact_height.'px' : 'calc(var(--nav-height) - 24px)' }};
+        height: {{ $site->logo_compact_height ? $site->logo_compact_height.'px' : 'calc(var(--nav-height) * 0.6)' }};
         width: auto; max-width: 200px; object-fit: contain; display: block;
         transition: height .3s ease, filter .3s ease;
     }
     /* nav__inner is overflow:visible (see above), so the logo can extend
-       beyond the 64px bar in the hero state without any separate override. */
+       beyond the bar in the hero state without any separate override. */
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo {
-        height: {{ $site->logo_hero_height ?? 56 }}px;
+        height: {{ $site->logo_hero_height ? $site->logo_hero_height.'px' : 'calc(var(--nav-height) - 8px)' }};
         /* White drop-shadow: makes the logo glow against any dark hero photo
            while respecting the logo's actual shape (transparency included). */
         filter: drop-shadow(0 2px 12px rgba(255,255,255,1));

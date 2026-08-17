@@ -100,8 +100,8 @@ class EditSiteLogoAction
                                 ->minValue(32)
                                 ->maxValue(300)
                                 ->suffix('px')
-                                ->placeholder('56')
-                                ->helperText('How tall the logo appears before the page is scrolled. Default 56 px.'),
+                                ->placeholder('auto')
+                                ->helperText('Before the page is scrolled. Default: bar height − 8 px (fills the bar).'),
 
                             Forms\Components\TextInput::make('logo_compact_height')
                                 ->label('Logo size in the sticky bar')
@@ -110,7 +110,7 @@ class EditSiteLogoAction
                                 ->maxValue(120)
                                 ->suffix('px')
                                 ->placeholder('auto')
-                                ->helperText('Once the bar turns solid. Default scales with the bar height (bar − 24 px).'),
+                                ->helperText('Once the bar turns solid. Default: 60 % of bar height (always smaller than the opening size).'),
                         ])->hidden(fn (Forms\Get $get): bool => blank($get('logo_key'))),
                     ]),
 
