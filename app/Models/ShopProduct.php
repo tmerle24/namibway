@@ -132,5 +132,4 @@ class ShopProduct extends Model
     {
         return $this->images->first()?->thumb($width);
     }
-
 }
