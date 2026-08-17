@@ -173,22 +173,23 @@
     .nav--solid .nav__name { color: var(--ink); }
     .nav--solid .nav__links a { color: var(--slate); }
 
+    @php $logoCompact = $site->logo_compact_height ? $site->logo_compact_height.'px' : 'calc(var(--nav-height) * 0.6)'; @endphp
     @if (($site->nav_hero_style ?? 'transparent') === 'frosted')
-    /* Frosted: the bar is a white-tinted pane — dark text and links, no logo glow. */
+    /* Frosted: the bar is a white-tinted pane — dark text and links, no logo zoom. */
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) { background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 1px 0 var(--bone); }
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__name { color: var(--ink); text-shadow: none; }
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__links a { color: var(--slate); }
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__links a:hover { color: var(--ink); }
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__burger span { background: var(--ink); }
-    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { filter: none; }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { filter: none; height: {{ $logoCompact }}; }
     @elseif (($site->nav_hero_style ?? 'transparent') === 'white')
-    /* Solid white: bar is always opaque — dark text and links, no logo glow. */
+    /* Solid white: bar is always opaque — dark text and links, no logo zoom. */
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) { background: var(--salt); box-shadow: 0 1px 0 var(--bone); }
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__name { color: var(--ink); text-shadow: none; }
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__links a { color: var(--slate); }
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__links a:hover { color: var(--ink); }
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__burger span { background: var(--ink); }
-    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { filter: none; }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { filter: none; height: {{ $logoCompact }}; }
     @endif
 
     /* The burger and its panel. Both are unhidden by the script, so a page
