@@ -38,6 +38,18 @@ class BlockForm
     /**
      * Every type as a Builder block, in the registry's own order.
      *
+     * Each is capped at one. A page carries one band of each type — a block row
+     * is found by `firstOrNew(['type' => $type])` and `EditBlocksAction::write()`
+     * refuses a page with two of anything — and `maxItems(1)` is how that rule
+     * reaches the person choosing. Filament drops a block from the picker once
+     * the page holds its maximum (`Builder::getBlockPickerBlocks()`), so what is
+     * offered is what can actually be added.
+     *
+     * Without it the picker listed all eighteen types no matter what the page
+     * already had, so on a page with nine bands half the menu was a trap: pick
+     * one that is already there, and the only thing that says so is a red
+     * refusal at save time, after the work of filling it in.
+     *
      * @return array<int, Builder\Block>
      */
     public static function builderBlocks(Site $site): array
@@ -47,6 +59,7 @@ class BlockForm
         foreach (BlockRegistry::all() as $type => $definition) {
             $blocks[] = Builder\Block::make($type)
                 ->label($definition->label())
+                ->maxItems(1)
                 ->schema([
                     Toggle::make('is_enabled')
                         ->label('Show this on the page')

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Sites;
 
+use App\Enums\ShopProductStatus;
+use App\Models\ShopProduct;
 use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Models\SitePage;
@@ -47,6 +49,48 @@ class SiteNavigationTest extends TestCase
         ]);
 
         $this->get($site->publicUrl())->assertSee('What we offer');
+    }
+
+    /**
+     * On a shop's website the products are the reason the page exists, so the
+     * one section selling them cannot be the one section the menu leaves out.
+     * It was: `shop` was missing from the menu's list of types, so a retail
+     * site offered About and Gallery and no way to reach the shelves.
+     */
+    public function test_the_shop_is_in_the_menu(): void
+    {
+        $site = $this->siteWith([
+            'about' => ['heading' => 'About us', 'body' => 'A bead workshop.'],
+            'shop' => ['heading' => 'Our collection'],
+        ]);
+
+        ShopProduct::create([
+            'site_id' => $site->id,
+            'title' => 'Beaded collar',
+            'status' => ShopProductStatus::Published,
+            'image_ids' => [],
+            'sort' => 0,
+        ]);
+
+        // The heading alone proves nothing — the band prints it too. The link
+        // to the band's anchor is what only the menu emits.
+        $this->get($site->publicUrl())->assertOk()->assertSee('href="#s2"', false);
+    }
+
+    /**
+     * The band renders only where there is something on the shelves, so the
+     * menu must not offer a link to a section the page dropped.
+     */
+    public function test_an_empty_shop_is_neither_shown_nor_linked(): void
+    {
+        $site = $this->siteWith([
+            'about' => ['heading' => 'About us', 'body' => 'A bead workshop.'],
+            'shop' => ['heading' => 'Our collection'],
+        ]);
+
+        $this->get($site->publicUrl())->assertOk()
+            ->assertDontSee('Our collection')
+            ->assertDontSee('href="#s2"', false);
     }
 
     public function test_the_burger_panel_carries_the_same_links_as_the_bar(): void

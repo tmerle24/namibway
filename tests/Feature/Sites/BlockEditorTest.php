@@ -37,6 +37,23 @@ class BlockEditorTest extends TestCase
      */
     private const NOT_PAYLOAD = ['is_enabled'];
 
+    /**
+     * A page carries one band of each type: the row is found by type
+     * (`firstOrNew`) and `write()` refuses a page with two of anything. The
+     * picker has to say so, or half of what it offers on a filled page is a
+     * choice that can only fail — and it fails at save, after the filling in.
+     */
+    public function test_the_picker_offers_each_band_once(): void
+    {
+        foreach (BlockForm::builderBlocks($this->site()) as $block) {
+            $this->assertSame(
+                1,
+                $block->getMaxItems(),
+                "The [{$block->getName()}] band may be added more than once, but a page carries one of each."
+            );
+        }
+    }
+
     public function test_every_block_type_has_a_form_and_no_field_the_type_rejects(): void
     {
         $site = $this->site();
