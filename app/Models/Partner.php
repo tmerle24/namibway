@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ConnectorType;
 use App\Enums\OperatingMode;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -50,7 +51,7 @@ use Spatie\Translatable\HasTranslations;
  */
 class Partner extends Model
 {
-    use HasTranslations;
+    use HasFactory, HasTranslations;
 
     /** @var array<int, string> */
     public array $translatable = ['bio'];
