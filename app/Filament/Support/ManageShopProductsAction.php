@@ -465,7 +465,31 @@ class ManageShopProductsAction
                                 ->disk('r2')
                                 ->directory(fn (Listing|Partner|null $record): string => self::prefixFor($record))
                                 ->imageEditor()
-                                ->fetchFileInformation(false),
+                                ->fetchFileInformation(false)
+                                // Move to R2 immediately on selection so the key is already
+                                // finalised before the action closure runs. Filament's own
+                                // saveUploadedFiles() does not run reliably for FileUpload
+                                // components nested inside a Repeater inside an action modal,
+                                // leaving image_key null and image_ids empty after save.
+                                ->afterStateUpdated(function (
+                                    Listing|Partner|null $record,
+                                    Set $set,
+                                    TemporaryUploadedFile|null $state,
+                                ): void {
+                                    if (! $state instanceof TemporaryUploadedFile) {
+                                        return;
+                                    }
+                                    $site = $record === null ? null : SiteResolver::for($record);
+                                    if ($site === null) {
+                                        return;
+                                    }
+                                    [$r2Key] = self::moveTempToR2($state, $site);
+                                    if ($r2Key !== null) {
+                                        // Keep the [uuid => key] shape that state() emits so
+                                        // both the upload and hydration paths agree on format.
+                                        $set('image_key', [(string) Str::uuid() => $r2Key]);
+                                    }
+                                }),
                         ]),
 
                         Forms\Components\Textarea::make('description')
