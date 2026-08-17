@@ -473,6 +473,34 @@ class ManageShopProductsAction
                             ->rows(3)
                             ->maxLength(4000)
                             ->columnSpanFull(),
+
+                        Forms\Components\Actions::make([
+                            FormAction::make('ai_describe')
+                                ->label('Generate with AI')
+                                ->icon('heroicon-o-sparkles')
+                                ->color('gray')
+                                ->tooltip('Generate name and description from the product photo')
+                                ->visible(fn (Get $get): bool => self::key($get('image_key')) !== null)
+                                ->action(function (Get $get, Set $set): void {
+                                    $key = self::key($get('image_key'));
+
+                                    if ($key === null) {
+                                        return;
+                                    }
+
+                                    $result = app(ShopProductDescriber::class)->describe(
+                                        Storage::disk('r2')->url($key)
+                                    );
+
+                                    if (filled($result['title'] ?? '')) {
+                                        $set('title', $result['title']);
+                                    }
+
+                                    if (filled($result['description'] ?? '')) {
+                                        $set('description', $result['description']);
+                                    }
+                                }),
+                        ])->columnSpanFull(),
                     ]),
             ])
             ->action(function (Listing|Partner|null $record, array $data): void {
