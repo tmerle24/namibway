@@ -177,6 +177,17 @@ class Inquiry extends Model
     }
 
     /**
+     * The plan item this request was made from, where the request came through
+     * the trip plan rather than a direct listing page.
+     *
+     * @return HasOne<ItineraryItem, $this>
+     */
+    public function itineraryItem(): HasOne
+    {
+        return $this->hasOne(ItineraryItem::class);
+    }
+
+    /**
      * @return BelongsTo<Trip, $this>
      */
     public function trip(): BelongsTo

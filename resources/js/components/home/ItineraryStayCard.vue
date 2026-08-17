@@ -16,6 +16,9 @@ const props = defineProps<{
     nights: number;
     roomSelection?: RoomOption | null;
     readonly?: boolean;
+    // The inquiry_status value from the ItineraryItem row created on booking,
+    // null when no booking request has been sent for this accommodation yet.
+    bookingStatus?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -139,6 +142,18 @@ function onMenuSelect(key: string) {
                         <span v-else class="stay-card-name">{{
                             stay.name
                         }}</span>
+                        <span
+                            v-if="bookingStatus"
+                            class="stay-booking-badge"
+                            :class="`stay-booking-badge--${bookingStatus}`"
+                        >
+                            {{
+                                t(
+                                    `booking.status.${bookingStatus}`,
+                                    bookingStatus,
+                                )
+                            }}
+                        </span>
                         <!-- The period used to be appended here as a hardcoded
                              "/Nacht"; it now comes from priceLabel, which says
                              what the listing actually records. -->

@@ -1238,13 +1238,15 @@ the results half as much as the picker.
   the raw `price_from`, so a per-person rate lands a tier too low, and
   Kaia's catalog isn't told the unit either.
 
-- ⬜ **Booking facts on a plan entry.** The entry's detail line and its
-  modal are both structured to take them, but nothing links an `Inquiry`
-  to the plan entry it came from — so there is no booking reference,
-  confirmation state, or partner instruction to show yet. This is the
-  natural next step after staged confirmations (see CLAUDE.md's "core
-  product mechanic"), and it wants the collaborative data model to land
-  first so "who booked this" has an answer.
+- ✅ **Booking facts on a plan entry.** Done 2026-08-17 (item 8 from
+  BOOKING_BEYOND_ROOMS.md §7.10). `ItineraryItem` rows now bridge a
+  `SavedPlan` to its `Inquiry` for each accommodation in the booking.
+  Created by `TripController::store` at the moment requests are sent, with
+  the exact check-in/check-out span derived from the plan's dates. The
+  stay card on the plan page now shows a colour-coded booking status badge
+  (pending / awaiting partner / confirmed / cancelled) seeded from the
+  `bookings` prop that `SavedPlanController::show` passes down. JSON stays
+  for planning; rows are what link a plan entry to the outside world.
 
 - ⬜ **Real city/destination photo galleries.** The stage thumbnail opens a
   slider, but there is no gallery column for places — `destinations` and

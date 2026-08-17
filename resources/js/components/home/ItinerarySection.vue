@@ -67,6 +67,15 @@ const props = defineProps<{
     // having a token: the autosave persists anonymously, and only an
     // authenticated claim (KaiaController::claimPlan) makes a plan owned.
     owned?: boolean;
+    // ItineraryItem rows created when booking requests were sent. Used to show
+    // booking status badges on the relevant accommodation entries.
+    bookings?: Array<{
+        listing_id: number | null;
+        kind: string;
+        date: string | null;
+        date_to: string | null;
+        inquiry_status: string | null;
+    }>;
 }>();
 
 const emit = defineEmits<{
@@ -168,6 +177,19 @@ const currentOwned = ref<boolean>(props.owned ?? false);
 // so the ordinary chat -> plan flow (which passes no canEdit at all) is
 // unaffected; only a read-only share link turns it off.
 const readonly = computed(() => props.canEdit === false);
+
+// Keyed lookup of booking status per accommodation listing, seeded from the
+// ItineraryItem rows created when booking requests were sent. The badge on the
+// stay card reads from here so it stays live without re-fetching the plan.
+const bookingStatusByListingId = computed(() => {
+    const map = new Map<number, string>();
+    for (const booking of props.bookings ?? []) {
+        if (booking.listing_id !== null && booking.inquiry_status !== null) {
+            map.set(booking.listing_id, booking.inquiry_status);
+        }
+    }
+    return map;
+});
 
 // Set once the server has rejected a write as stale. Autosaving stops at that
 // point: the local plan and the stored one have diverged, and continuing to
@@ -2720,6 +2742,13 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                             :readonly="readonly"
                                                             :stay="
                                                                 day.accommodation
+                                                            "
+                                                            :booking-status="
+                                                                day.accommodation?.id
+                                                                    ? (bookingStatusByListingId.get(
+                                                                          day.accommodation.id,
+                                                                      ) ?? null)
+                                                                    : null
                                                             "
                                                             :date-range-label="
                                                                 day.date
