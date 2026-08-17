@@ -16,7 +16,7 @@
         <div class="grid-shop">
             @foreach ($shopProducts as $product)
                 @php $thumb = $product->images->first(); @endphp
-                <a href="{{ $product->url() }}" class="product-card reveal">
+                <a href="{{ $site->pageUrl('shop/'.$product->slug) }}" class="product-card reveal">
                     <div class="product-card__img">
                         @if ($thumb)
                             <img src="{{ $thumb->thumb(480) }}"

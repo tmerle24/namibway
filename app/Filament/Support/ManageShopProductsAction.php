@@ -324,7 +324,7 @@ class ManageShopProductsAction
                                 ]);
 
                                 $product = ShopProduct::create([
-                                    'site_id' => $site->id,
+                                    'partner_id' => $site->partner_id,
                                     'title' => mb_substr($title, 0, 255),
                                     'description' => filled($item['description'] ?? null) ? trim((string) $item['description']) : null,
                                     ...self::parsePrice((string) ($item['price'] ?? '')),
@@ -687,7 +687,7 @@ class ManageShopProductsAction
                 }
             }
 
-            $product = ShopProduct::create(['site_id' => $site->id] + $attrs);
+            $product = ShopProduct::create(['partner_id' => $site->partner_id] + $attrs);
             self::syncProductImages($site, $product, $photoKeys);
             $keptIds[] = $product->id;
             $sort++;

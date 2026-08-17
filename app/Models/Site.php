@@ -24,7 +24,7 @@ use Illuminate\Support\Str;
  * if they leave, and half the customers never have a listing at all.
  *
  * @property int $id
- * @property int|null $partner_id
+ * @property int $partner_id
  * @property int|null $source_listing_id
  * @property BusinessType $business_type
  * @property string $name
@@ -221,7 +221,7 @@ class Site extends Model
      */
     public function shopProducts(): HasMany
     {
-        return $this->hasMany(ShopProduct::class);
+        return $this->hasMany(ShopProduct::class, 'partner_id', 'partner_id');
     }
 
     public function isPublished(): bool

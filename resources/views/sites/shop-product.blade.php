@@ -175,7 +175,7 @@
                         <div class="grid-shop">
                             @foreach ($related as $rel)
                                 @php $relThumb = $rel->images->first(); @endphp
-                                <a href="{{ $rel->url() }}" class="product-card reveal">
+                                <a href="{{ $site->pageUrl('shop/'.$rel->slug) }}" class="product-card reveal">
                                     <div class="product-card__img">
                                         @if ($relThumb)
                                             <img src="{{ $relThumb->thumb(480) }}"

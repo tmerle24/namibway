@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\BusinessType;
 use App\Enums\SiteStatus;
+use App\Models\Partner;
 use App\Models\Site;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -22,6 +23,7 @@ class SiteFactory extends Factory
         $slug = Str::slug($name).'-'.fake()->unique()->numberBetween(1, 100000);
 
         return [
+            'partner_id' => Partner::factory(),
             'business_type' => fake()->randomElement(BusinessType::cases()),
             'name' => $name,
             'slug' => $slug,

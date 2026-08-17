@@ -207,7 +207,7 @@ class ImportInstagramProductsJob implements ShouldQueue
         }
 
         $product = ShopProduct::create([
-            'site_id' => $this->site->id,
+            'partner_id' => $this->site->partner_id,
             'title' => mb_substr($title, 0, 255),
             'description' => $description !== '' ? $description : null,
             'status' => ShopProductStatus::Draft,

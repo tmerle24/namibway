@@ -49,7 +49,7 @@ class ShopPageTest extends TestCase
         ]);
 
         $product = ShopProduct::create([
-            'site_id' => $site->id,
+            'partner_id' => $partner->id,
             'title' => 'Palm Basket',
             'slug' => 'palm-basket',
             'status' => ShopProductStatus::Published,
@@ -182,7 +182,7 @@ class ShopPageTest extends TestCase
         $otherPartner = Partner::create(['name' => 'Other', 'email' => 'other@example.com']);
         $otherSite = Site::factory()->create(['partner_id' => $otherPartner->id]);
         $foreign = ShopProduct::create([
-            'site_id' => $otherSite->id,
+            'partner_id' => $otherPartner->id,
             'title' => 'Other', 'slug' => 'other',
             'status' => ShopProductStatus::Published,
             'sort' => 0,
