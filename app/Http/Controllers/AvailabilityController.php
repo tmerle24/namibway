@@ -90,6 +90,6 @@ class AvailabilityController extends Controller
                     ->map(fn (string $path) => self::resolveMediaUrl($path))
                     ->values(),
             ])->values(),
-        ]);
+        ], options: JSON_PRESERVE_ZERO_FRACTION);
     }
 }
