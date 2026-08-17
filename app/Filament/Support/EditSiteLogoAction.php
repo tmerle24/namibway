@@ -107,10 +107,10 @@ class EditSiteLogoAction
                                 ->label('Logo size in the sticky bar')
                                 ->numeric()
                                 ->minValue(24)
-                                ->maxValue(48)
+                                ->maxValue(120)
                                 ->suffix('px')
-                                ->placeholder('36')
-                                ->helperText('Once the bar turns solid. Max 48 px. Default 36 px.'),
+                                ->placeholder('auto')
+                                ->helperText('Once the bar turns solid. Default scales with the bar height (bar − 24 px).'),
                         ])->hidden(fn (Forms\Get $get): bool => blank($get('logo_key'))),
                     ]),
 
@@ -127,7 +127,7 @@ class EditSiteLogoAction
                             ->label('Bar height')
                             ->numeric()
                             ->minValue(48)
-                            ->maxValue(96)
+                            ->maxValue(160)
                             ->suffix('px')
                             ->placeholder('64')
                             ->helperText('Default 64 px. Everything adjusts: the hero sits under the bar by this amount.'),
@@ -150,10 +150,10 @@ class EditSiteLogoAction
                 $site->logo_hero_height = ($heroHeight !== null && $heroHeight >= 32 && $heroHeight <= 300) ? $heroHeight : null;
 
                 $compactHeight = is_numeric($data['logo_compact_height'] ?? null) ? (int) $data['logo_compact_height'] : null;
-                $site->logo_compact_height = ($compactHeight !== null && $compactHeight >= 24 && $compactHeight <= 48) ? $compactHeight : null;
+                $site->logo_compact_height = ($compactHeight !== null && $compactHeight >= 24 && $compactHeight <= 120) ? $compactHeight : null;
 
                 $navHeight = is_numeric($data['nav_height'] ?? null) ? (int) $data['nav_height'] : null;
-                $site->nav_height = ($navHeight !== null && $navHeight >= 48 && $navHeight <= 96) ? $navHeight : null;
+                $site->nav_height = ($navHeight !== null && $navHeight >= 48 && $navHeight <= 160) ? $navHeight : null;
 
                 $style = (string) ($data['nav_hero_style'] ?? 'transparent');
                 $site->nav_hero_style = array_key_exists($style, self::NAV_HERO_STYLES) ? $style : null;

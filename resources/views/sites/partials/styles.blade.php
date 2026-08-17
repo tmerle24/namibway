@@ -136,7 +136,7 @@
        left to find its own width. Hero state: prominent; scrolled: compact.
        Both height and filter transition so neither snaps when the bar turns solid. */
     .nav__logo {
-        height: {{ $site->logo_compact_height ?? 36 }}px;
+        height: {{ $site->logo_compact_height ? $site->logo_compact_height.'px' : 'calc(var(--nav-height) - 24px)' }};
         width: auto; max-width: 200px; object-fit: contain; display: block;
         transition: height .3s ease, filter .3s ease;
     }
