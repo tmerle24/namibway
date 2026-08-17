@@ -346,6 +346,86 @@ export interface RoomTypeOffer {
  * and means "ask the partner" — never "make something up", which is what the
  * picker used to do.
  */
+/** One bookable departure — matches AvailabilityController's slot shape. */
+export interface AvailabilitySlot {
+    starts_at: string;
+    label: string;
+    duration_minutes: number;
+    units_left: number;
+    total: number;
+    total_payable: number;
+}
+
+/**
+ * One bookable unit returned by GET /availability.
+ *
+ * Slot-based units (activities) have `slots` and null totals at the unit level;
+ * date-range units (accommodation, vehicle) have a `total` and empty `slots`.
+ * See UnitOffer.php and BOOKING_BEYOND_ROOMS.md §7.1.
+ */
+export interface AvailabilityUnit {
+    code: string;
+    name: string;
+    description: string | null;
+    max_adults: number;
+    max_children: number;
+    slots: AvailabilitySlot[];
+    total: number | null;
+    total_payable: number | null;
+    charges: RoomCharge[];
+    currency: string;
+    units_left: number | null;
+    gallery: string[];
+}
+
+export async function fetchAvailability(
+    slug: string,
+    params: {
+        checkIn: string;
+        checkOut?: string;
+        time?: string;
+        adults?: number;
+        children?: number;
+    },
+): Promise<{ periods: number; units: AvailabilityUnit[] }> {
+    const query = new URLSearchParams({
+        listing: slug,
+        check_in: params.checkIn,
+    });
+
+    if (params.checkOut) {
+        query.set('check_out', params.checkOut);
+    }
+
+    if (params.time) {
+        query.set('time', params.time);
+    }
+
+    if (params.adults) {
+        query.set('adults', String(params.adults));
+    }
+
+    if (params.children) {
+        query.set('children', String(params.children));
+    }
+
+    const response = await fetch(`/availability?${query}`, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to load availability');
+    }
+
+    const data = await response.json();
+
+    return {
+        periods: (data.periods as number) ?? 1,
+        units: (data.units as AvailabilityUnit[]) ?? [],
+    };
+}
+
 export async function fetchRoomTypes(
     slug: string,
     params: {

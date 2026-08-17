@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AfterSalesController;
+use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\DashboardBookingController;
@@ -111,6 +112,12 @@ Route::get('listings/{listing:slug}/preview', [ListingController::class, 'previe
 Route::get('listings/{listing:slug}/room-types', [ListingController::class, 'roomTypes'])
     ->middleware('throttle:60,1')
     ->name('listings.room-types');
+// Unified availability for all verticals (accommodation, activity, vehicle).
+// `check_out` is optional — slot-based units (activities) query a single date.
+// See AvailabilityController and BOOKING_BEYOND_ROOMS.md §7.1.
+Route::get('availability', AvailabilityController::class)
+    ->middleware('throttle:60,1')
+    ->name('availability');
 Route::get('listings/{listing:slug}', [ListingController::class, 'show'])->name('listings.show');
 Route::post('listings/{listing:slug}/publish', [ListingController::class, 'publish'])->name('listings.publish');
 Route::post('listings/{listing:slug}/approve-photos', [ListingController::class, 'approvePhotos'])->name('listings.approve-photos');

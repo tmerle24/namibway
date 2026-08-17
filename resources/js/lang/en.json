@@ -158,6 +158,8 @@
         "addNight": "Add night",
         "priceOnRequest": "Price on request",
         "perNight": "night",
+        "perSeat": "seat",
+        "seatsLeft": "Last seat | Only {count} seats left",
         "perDay": "day",
         "stayLabel": "Accommodation",
         "activityLabel": "Activity",

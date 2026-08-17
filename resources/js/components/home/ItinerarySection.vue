@@ -38,7 +38,7 @@ import KebabMenu from './KebabMenu.vue';
 import ListingSwapModal from './ListingSwapModal.vue';
 import LocationPicker from './LocationPicker.vue';
 import MapViewModal from './MapViewModal.vue';
-import RoomTypePicker from './RoomTypePicker.vue';
+import AvailabilityPicker from './AvailabilityPicker.vue';
 import SaveButton from './SaveButton.vue';
 import SaveLoginModal from './SaveLoginModal.vue';
 import SaveShareBar from './SaveShareBar.vue';
@@ -2642,7 +2642,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                         />
                                                     </div>
 
-                                                    <RoomTypePicker
+                                                    <AvailabilityPicker
                                                         v-if="
                                                             !readonly &&
                                                             roomPickerKey ===
