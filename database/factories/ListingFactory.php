@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Enums\ListingType;
 use App\Models\City;
 use App\Models\Listing;
+use App\Models\Partner;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -23,6 +24,7 @@ class ListingFactory extends Factory
         $name = fake()->company();
 
         return [
+            'partner_id' => Partner::factory(),
             'type' => fake()->randomElement(ListingType::cases()),
             'name' => $name,
             'slug' => Str::slug($name).'-'.fake()->unique()->numberBetween(1, 100000),

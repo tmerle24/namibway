@@ -27,8 +27,8 @@ class EditSiteLogoAction
     /** @var array<string, string> */
     public const NAV_HERO_STYLES = [
         'transparent' => 'Transparent — logo floats over the photograph',
-        'frosted'     => 'Frosted glass — white tint with blur',
-        'white'       => 'Solid white — bar is always fully white',
+        'frosted' => 'Frosted glass — white tint with blur',
+        'white' => 'Solid white — bar is always fully white',
     ];
 
     public static function make(string $name = 'edit_logo'): FormAction
@@ -62,12 +62,12 @@ class EditSiteLogoAction
                 $site = $record === null ? null : SiteResolver::for($record);
 
                 return $site === null ? [] : [
-                    'logo_key'            => $site->logo_key,
-                    'brand_name'          => $site->brand_name,
-                    'logo_hero_height'    => $site->logo_hero_height,
+                    'logo_key' => $site->logo_key,
+                    'brand_name' => $site->brand_name,
+                    'logo_hero_height' => $site->logo_hero_height,
                     'logo_compact_height' => $site->logo_compact_height,
-                    'nav_height'          => $site->nav_height,
-                    'nav_hero_style'      => $site->nav_hero_style ?? 'transparent',
+                    'nav_height' => $site->nav_height,
+                    'nav_hero_style' => $site->nav_hero_style ?? 'transparent',
                 ];
             })
             ->form([

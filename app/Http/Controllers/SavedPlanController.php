@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\City;
 use App\Models\Destination;
+use App\Models\ItineraryItem;
 use App\Models\SavedPlan;
 use App\Services\Pdf\RouteMapImageService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -56,6 +57,18 @@ class SavedPlanController extends Controller
 
         [$saved, $canEdit] = $resolved;
 
+        $bookings = $saved->items()
+            ->with('inquiry:id,status')
+            ->get()
+            ->map(fn (ItineraryItem $item) => [
+                'listing_id' => $item->listing_id,
+                'kind' => $item->kind->value,
+                'date' => $item->date?->toDateString(),
+                'date_to' => $item->date_to?->toDateString(),
+                'inquiry_status' => $item->inquiry?->status?->value,
+            ])
+            ->all();
+
         return Inertia::render('TripPlan', [
             'plan' => $saved->plan_json,
             'title' => $saved->title,
@@ -75,6 +88,9 @@ class SavedPlanController extends Controller
             // KaiaController::claimPlan. Only true for the owner, so a visitor
             // is never shown someone else's saved state.
             'owned' => $saved->user_id !== null && $saved->user_id === $request->user()?->id,
+            // Booking state for each item that has triggered a booking request.
+            // Keyed lookup is done in ItinerarySection on the listing_id.
+            'bookings' => $bookings,
         ]);
     }
 

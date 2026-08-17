@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Enums\InquiryStatus;
+use App\Enums\ListingType;
 use App\Models\BookableUnit;
 use App\Models\Inquiry;
+use App\Models\ItineraryItem;
 use App\Models\SavedPlan;
 use App\Models\Trip;
 use App\Services\Booking\ActiveRequestGate;
 use App\Services\Booking\RoomCapacity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class TripController extends Controller
 {
@@ -148,8 +151,63 @@ class TripController extends Controller
             'plan' => $validated['plan'],
         ]);
 
+        // Collect first and last date in the plan for each accommodation, so the
+        // ItineraryItem records the exact leg rather than the whole trip span.
+        // Dates in variant_days are stored as 'j M Y' strings (e.g. "3 Aug 2026").
+        /** @var array<int, array{first: Carbon, last: Carbon}> $datesByListing */
+        $datesByListing = [];
+
+        foreach ($variantDays as $day) {
+            $dayListingId = isset($day['accommodation']['id']) ? (int) $day['accommodation']['id'] : null;
+
+            if ($dayListingId === null || ! array_key_exists($dayListingId, $roomByListing)) {
+                continue;
+            }
+
+            $dayDateStr = $day['date'] ?? null;
+
+            if (! is_string($dayDateStr)) {
+                continue;
+            }
+
+            try {
+                $dayDate = Carbon::createFromFormat('j M Y', $dayDateStr)->startOfDay();
+            } catch (\Throwable) {
+                continue;
+            }
+
+            if (! isset($datesByListing[$dayListingId])) {
+                $datesByListing[$dayListingId] = ['first' => $dayDate, 'last' => $dayDate];
+            } else {
+                if ($dayDate->lt($datesByListing[$dayListingId]['first'])) {
+                    $datesByListing[$dayListingId]['first'] = $dayDate;
+                }
+                if ($dayDate->gt($datesByListing[$dayListingId]['last'])) {
+                    $datesByListing[$dayListingId]['last'] = $dayDate;
+                }
+            }
+        }
+
+        $sort = 0;
+
         foreach ($roomByListing as $listingId => $bookableUnitCode) {
-            Inquiry::create([
+            $checkIn = $datesByListing[$listingId]['first'] ?? null;
+            // check-out is the morning after the last night — the day the guest
+            // leaves, not the last night they sleep there.
+            $checkOut = isset($datesByListing[$listingId]['last'])
+                ? $datesByListing[$listingId]['last']->copy()->addDay()
+                : null;
+
+            $item = ItineraryItem::create([
+                'saved_plan_id' => $plan->id,
+                'listing_id' => $listingId,
+                'kind' => ListingType::Accommodation,
+                'date' => $checkIn,
+                'date_to' => $checkOut,
+                'sort' => $sort++,
+            ]);
+
+            $inquiry = Inquiry::create([
                 'listing_id' => $listingId,
                 'trip_id' => $trip->id,
                 'user_id' => $user->id,
@@ -163,6 +221,8 @@ class TripController extends Controller
                 'bookable_unit_code' => $bookableUnitCode,
                 'status' => InquiryStatus::Pending,
             ]);
+
+            $item->update(['inquiry_id' => $inquiry->id]);
         }
 
         return response()->json([

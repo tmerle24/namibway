@@ -153,7 +153,7 @@ class ShopProductEditorTest extends TestCase
     private function product(Site $site, string $title): ShopProduct
     {
         return ShopProduct::create([
-            'site_id' => $site->id,
+            'partner_id' => $site->partner_id,
             'title' => $title,
             'status' => ShopProductStatus::Published,
             'sort' => 0,

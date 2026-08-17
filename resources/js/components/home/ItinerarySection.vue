@@ -30,6 +30,7 @@ import type {
 import { vehicleTypeForClass } from '@/lib/kaia-types';
 import { onImageError, thumbAttrs } from '@/lib/media';
 import { isRecurring, travelerFactor } from '@/lib/price-unit';
+import AvailabilityPicker from './AvailabilityPicker.vue';
 import ConfirmModal from './ConfirmModal.vue';
 import ItineraryDayPlanCard from './ItineraryDayPlanCard.vue';
 import ItineraryLineItem from './ItineraryLineItem.vue';
@@ -38,7 +39,6 @@ import KebabMenu from './KebabMenu.vue';
 import ListingSwapModal from './ListingSwapModal.vue';
 import LocationPicker from './LocationPicker.vue';
 import MapViewModal from './MapViewModal.vue';
-import RoomTypePicker from './RoomTypePicker.vue';
 import SaveButton from './SaveButton.vue';
 import SaveLoginModal from './SaveLoginModal.vue';
 import SaveShareBar from './SaveShareBar.vue';
@@ -67,6 +67,15 @@ const props = defineProps<{
     // having a token: the autosave persists anonymously, and only an
     // authenticated claim (KaiaController::claimPlan) makes a plan owned.
     owned?: boolean;
+    // ItineraryItem rows created when booking requests were sent. Used to show
+    // booking status badges on the relevant accommodation entries.
+    bookings?: Array<{
+        listing_id: number | null;
+        kind: string;
+        date: string | null;
+        date_to: string | null;
+        inquiry_status: string | null;
+    }>;
 }>();
 
 const emit = defineEmits<{
@@ -84,6 +93,7 @@ const isLoggedIn = computed(() => !!page.props.auth?.user);
 const editableVariants = ref<ItineraryVariant[]>([]);
 const swap = ref<SwapState | null>(null);
 const roomPickerKey = ref<string | null>(null);
+const unitPickerKey = ref<string | null>(null);
 // Which day rows on the timeline are folded shut, keyed variantIndex-dayIndex.
 // Purely a viewing convenience — never persisted with the plan, and reset
 // whenever days are added, removed or reordered, since the index a key points
@@ -167,6 +177,21 @@ const currentOwned = ref<boolean>(props.owned ?? false);
 // so the ordinary chat -> plan flow (which passes no canEdit at all) is
 // unaffected; only a read-only share link turns it off.
 const readonly = computed(() => props.canEdit === false);
+
+// Keyed lookup of booking status per accommodation listing, seeded from the
+// ItineraryItem rows created when booking requests were sent. The badge on the
+// stay card reads from here so it stays live without re-fetching the plan.
+const bookingStatusByListingId = computed(() => {
+    const map = new Map<number, string>();
+
+    for (const booking of props.bookings ?? []) {
+        if (booking.listing_id !== null && booking.inquiry_status !== null) {
+            map.set(booking.listing_id, booking.inquiry_status);
+        }
+    }
+
+    return map;
+});
 
 // Set once the server has rejected a write as stale. Autosaving stops at that
 // point: the local plan and the stored one have diverged, and continuing to
@@ -1566,6 +1591,128 @@ function clearRoom(variantIndex: number, dayIndex: number) {
     }
 }
 
+// --- Activity / restaurant / vehicle unit picker ---
+
+function entryPickerKey(
+    variantIndex: number,
+    dayIndex: number,
+    type: 'activity' | 'restaurant',
+    itemIndex: number,
+    departure = false,
+): string {
+    return `${variantIndex}-${dayIndex}-${type}-${itemIndex}${departure ? '-d' : ''}`;
+}
+
+function vehiclePickerUnitKey(variantIndex: number): string {
+    return `${variantIndex}-vehicle`;
+}
+
+function toggleEntryPicker(
+    variantIndex: number,
+    dayIndex: number,
+    type: 'activity' | 'restaurant',
+    itemIndex: number,
+    departure = false,
+) {
+    const key = entryPickerKey(
+        variantIndex,
+        dayIndex,
+        type,
+        itemIndex,
+        departure,
+    );
+
+    unitPickerKey.value = unitPickerKey.value === key ? null : key;
+}
+
+function toggleVehiclePicker(variantIndex: number) {
+    const key = vehiclePickerUnitKey(variantIndex);
+
+    unitPickerKey.value = unitPickerKey.value === key ? null : key;
+}
+
+function selectEntryUnit(
+    variantIndex: number,
+    dayIndex: number,
+    type: 'activity' | 'restaurant',
+    itemIndex: number,
+    option: RoomOption,
+    departure = false,
+) {
+    const day = editableVariants.value[variantIndex].days[dayIndex];
+    let arr: ItineraryListingRef[] | undefined;
+
+    if (departure) {
+        arr =
+            type === 'activity'
+                ? day.departure_activities
+                : day.departure_restaurants;
+    } else {
+        arr = type === 'activity' ? day.activities : day.restaurants;
+    }
+
+    if (arr?.[itemIndex]) {
+        arr[itemIndex] = { ...arr[itemIndex], unit_selection: option };
+    }
+
+    unitPickerKey.value = null;
+}
+
+function selectVehicleUnit(variantIndex: number, option: RoomOption) {
+    const vehicle = editableVariants.value[variantIndex].vehicle;
+
+    if (vehicle) {
+        editableVariants.value[variantIndex].vehicle = {
+            ...vehicle,
+            unit_selection: option,
+        };
+    }
+
+    unitPickerKey.value = null;
+}
+
+function entryPickerDate(
+    variantIndex: number,
+    dayIndex: number,
+    departure: boolean,
+): string | null {
+    const day = editableVariants.value[variantIndex].days[dayIndex];
+
+    return (departure ? day.date_to : day.date) ?? null;
+}
+
+function variantDateRange(
+    variantIndex: number,
+): { checkIn: string; checkOut: string } | null {
+    const days = editableVariants.value[variantIndex].days;
+
+    if (!days.length) {
+        return null;
+    }
+
+    const checkIn = days[0].date;
+
+    if (!checkIn) {
+        return null;
+    }
+
+    const lastDay = days[days.length - 1];
+
+    if (lastDay.date_to) {
+        return { checkIn, checkOut: lastDay.date_to };
+    }
+
+    const lastDate = parseDayDate(lastDay.date);
+
+    if (!lastDate) {
+        return null;
+    }
+
+    lastDate.setDate(lastDate.getDate() + 1);
+
+    return { checkIn, checkOut: toIsoDate(lastDate) };
+}
+
 // --- Swap / Add panel ---
 
 type SwapField = 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
@@ -2094,6 +2241,33 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                         variant.vehicle!,
                                     )
                                 "
+                                @choose-unit="toggleVehiclePicker(variantIndex)"
+                            />
+                            <AvailabilityPicker
+                                v-if="
+                                    !readonly &&
+                                    variant.vehicle?.slug &&
+                                    unitPickerKey ===
+                                        vehiclePickerUnitKey(variantIndex)
+                                "
+                                :slug="variant.vehicle.slug"
+                                :check-in="
+                                    variantDateRange(variantIndex)?.checkIn ??
+                                    null
+                                "
+                                :check-out="
+                                    variantDateRange(variantIndex)?.checkOut ??
+                                    null
+                                "
+                                :adults="currentTripParams?.adults ?? 2"
+                                :children="
+                                    currentTripParams?.children_under_13 ?? 0
+                                "
+                                :title="t('itinerary.chooseVehicleUnit')"
+                                @select="
+                                    (option) =>
+                                        selectVehicleUnit(variantIndex, option)
+                                "
                             />
                             <div
                                 v-if="vehicleEstimatedLabel(variant)"
@@ -2571,6 +2745,17 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                             :stay="
                                                                 day.accommodation
                                                             "
+                                                            :booking-status="
+                                                                day
+                                                                    .accommodation
+                                                                    ?.id
+                                                                    ? (bookingStatusByListingId.get(
+                                                                          day
+                                                                              .accommodation
+                                                                              .id,
+                                                                      ) ?? null)
+                                                                    : null
+                                                            "
                                                             :date-range-label="
                                                                 day.date
                                                                     ? stageDateRangeLabel(
@@ -2642,7 +2827,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                         />
                                                     </div>
 
-                                                    <RoomTypePicker
+                                                    <AvailabilityPicker
                                                         v-if="
                                                             !readonly &&
                                                             roomPickerKey ===
@@ -2825,7 +3010,69 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                             ),
                                                     )
                                                 "
+                                                @choose-unit="
+                                                    (entry) =>
+                                                        toggleEntryPicker(
+                                                            variantIndex,
+                                                            dayIndex,
+                                                            entry.type,
+                                                            entry.itemIndex,
+                                                        )
+                                                "
                                             />
+                                            <template v-if="!readonly">
+                                                <template
+                                                    v-for="entry in dayEntries(
+                                                        variantIndex,
+                                                        dayIndex,
+                                                    )"
+                                                    :key="`picker-${entry.type}-${entry.itemIndex}`"
+                                                >
+                                                    <AvailabilityPicker
+                                                        v-if="
+                                                            entry.item.slug &&
+                                                            unitPickerKey ===
+                                                                entryPickerKey(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                    entry.type,
+                                                                    entry.itemIndex,
+                                                                )
+                                                        "
+                                                        :slug="entry.item.slug"
+                                                        :check-in="
+                                                            entryPickerDate(
+                                                                variantIndex,
+                                                                dayIndex,
+                                                                false,
+                                                            )
+                                                        "
+                                                        :adults="
+                                                            currentTripParams?.adults ??
+                                                            2
+                                                        "
+                                                        :children="
+                                                            currentTripParams?.children_under_13 ??
+                                                            0
+                                                        "
+                                                        :title="
+                                                            t(
+                                                                'itinerary.chooseSlot',
+                                                            )
+                                                        "
+                                                        @select="
+                                                            (option) =>
+                                                                selectEntryUnit(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                    entry.type,
+                                                                    entry.itemIndex,
+                                                                    option,
+                                                                )
+                                                        "
+                                                    />
+                                                </template>
+                                            </template>
                                         </div>
 
                                         <!-- The departure day: checkout is the
@@ -2932,7 +3179,73 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                             true,
                                                         )
                                                 "
+                                                @choose-unit="
+                                                    (entry) =>
+                                                        toggleEntryPicker(
+                                                            variantIndex,
+                                                            dayIndex,
+                                                            entry.type,
+                                                            entry.itemIndex,
+                                                            true,
+                                                        )
+                                                "
                                             />
+                                            <template v-if="!readonly">
+                                                <template
+                                                    v-for="entry in dayEntries(
+                                                        variantIndex,
+                                                        dayIndex,
+                                                        true,
+                                                    )"
+                                                    :key="`picker-d-${entry.type}-${entry.itemIndex}`"
+                                                >
+                                                    <AvailabilityPicker
+                                                        v-if="
+                                                            entry.item.slug &&
+                                                            unitPickerKey ===
+                                                                entryPickerKey(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                    entry.type,
+                                                                    entry.itemIndex,
+                                                                    true,
+                                                                )
+                                                        "
+                                                        :slug="entry.item.slug"
+                                                        :check-in="
+                                                            entryPickerDate(
+                                                                variantIndex,
+                                                                dayIndex,
+                                                                true,
+                                                            )
+                                                        "
+                                                        :adults="
+                                                            currentTripParams?.adults ??
+                                                            2
+                                                        "
+                                                        :children="
+                                                            currentTripParams?.children_under_13 ??
+                                                            0
+                                                        "
+                                                        :title="
+                                                            t(
+                                                                'itinerary.chooseSlot',
+                                                            )
+                                                        "
+                                                        @select="
+                                                            (option) =>
+                                                                selectEntryUnit(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                    entry.type,
+                                                                    entry.itemIndex,
+                                                                    option,
+                                                                    true,
+                                                                )
+                                                        "
+                                                    />
+                                                </template>
+                                            </template>
                                         </div>
                                     </div>
                                 </template>

@@ -144,15 +144,16 @@ class Inquiry extends Model
     /**
      * Where a request to this business is answered.
      *
-     * The partner's address first — it is the account that logs in and the one
-     * the confirm and decline links belong to. A listing's own contact address
-     * is the fallback for a property we hold but have never signed.
+     * The listing's own contact address is tried first — it is the most
+     * specific reach for that property. The inquiry's direct partner (set on
+     * shop orders and site enquiries) and then the listing's owning partner
+     * are fallbacks for when no per-listing address is recorded.
      */
     public function sellerEmail(): ?string
     {
-        return $this->partner?->email
-            ?: $this->listing?->partner?->email
-            ?: $this->listing?->contact_email;
+        return $this->listing?->contact_email
+            ?: $this->partner?->email
+            ?: $this->listing?->partner?->email;
     }
 
     /**
@@ -174,6 +175,17 @@ class Inquiry extends Model
     public function arrivalTimeLabel(): ?string
     {
         return filled($this->arrival_time) ? substr($this->arrival_time, 0, 5) : null;
+    }
+
+    /**
+     * The plan item this request was made from, where the request came through
+     * the trip plan rather than a direct listing page.
+     *
+     * @return HasOne<ItineraryItem, $this>
+     */
+    public function itineraryItem(): HasOne
+    {
+        return $this->hasOne(ItineraryItem::class);
     }
 
     /**

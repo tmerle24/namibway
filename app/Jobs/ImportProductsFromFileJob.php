@@ -99,7 +99,7 @@ class ImportProductsFromFileJob implements ShouldQueue
             $image = $imageUrl !== '' ? $this->storeImage($imageUrl) : null;
 
             $product = ShopProduct::create([
-                'site_id' => $this->site->id,
+                'partner_id' => $this->site->partner_id,
                 'title' => mb_substr($title, 0, 255),
                 ...$this->price($this->cell($cells, $col['price'] ?? null)),
                 'category' => mb_substr($this->cell($cells, $col['category'] ?? null), 0, 100) ?: null,

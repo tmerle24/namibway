@@ -10,10 +10,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Str;
 
 /**
- * A product on a customer's shop section.
+ * A product on a partner's shop.
+ *
+ * Owned by the partner, not the site. A partner's catalogue is the same across
+ * all of their sites; the site is a presentation layer, not the owner.
  *
  * @property int $id
- * @property int $site_id
+ * @property int $partner_id
+ * @property int|null $listing_id Property-specific products set this; general catalogue products leave it null.
  * @property string $title
  * @property string $slug
  * @property string|null $description
@@ -28,7 +32,8 @@ use Illuminate\Support\Str;
 class ShopProduct extends Model
 {
     protected $fillable = [
-        'site_id',
+        'partner_id',
+        'listing_id',
         'title',
         'slug',
         'description',
@@ -56,10 +61,16 @@ class ShopProduct extends Model
         });
     }
 
-    /** @return BelongsTo<Site, $this> */
-    public function site(): BelongsTo
+    /** @return BelongsTo<Partner, $this> */
+    public function partner(): BelongsTo
     {
-        return $this->belongsTo(Site::class);
+        return $this->belongsTo(Partner::class);
+    }
+
+    /** @return BelongsTo<Listing, $this> */
+    public function listing(): BelongsTo
+    {
+        return $this->belongsTo(Listing::class);
     }
 
     /**
@@ -120,16 +131,5 @@ class ShopProduct extends Model
     public function firstImageUrl(int $width = 600): ?string
     {
         return $this->images->first()?->thumb($width);
-    }
-
-    /**
-     * The URL of this product on its site.
-     *
-     * Used for links from the shop block on the home page and from the shop
-     * index to the detail page.
-     */
-    public function url(): string
-    {
-        return $this->site->pageUrl('shop/'.$this->slug);
     }
 }

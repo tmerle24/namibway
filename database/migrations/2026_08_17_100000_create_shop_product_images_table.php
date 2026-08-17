@@ -33,10 +33,10 @@ return new class extends Migration
 
                 DB::table('shop_product_images')->insertOrIgnore([
                     'shop_product_id' => $product->id,
-                    'site_image_id'   => (int) $siteImageId,
-                    'sort'            => (int) $sort,
-                    'created_at'      => now(),
-                    'updated_at'      => now(),
+                    'site_image_id' => (int) $siteImageId,
+                    'sort' => (int) $sort,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
             }
         }
@@ -65,7 +65,7 @@ return new class extends Migration
         foreach ($byProduct as $productId => $ids) {
             DB::table('shop_products')
                 ->where('id', $productId)
-                ->update(['image_ids' => json_encode(array_values($ids))]);
+                ->update(['image_ids' => json_encode($ids)]);
         }
 
         Schema::dropIfExists('shop_product_images');

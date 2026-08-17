@@ -9,6 +9,7 @@ use App\Enums\VehicleCategory;
 use App\Jobs\GenerateSiteJob;
 use App\Mail\SiteReady;
 use App\Models\Listing;
+use App\Models\Partner;
 use App\Models\Site;
 use App\Models\User;
 use App\Sites\BlockRegistry;
@@ -197,7 +198,8 @@ class SiteGeneratorTest extends TestCase
 
     public function test_a_business_with_no_listing_gets_the_same_kit(): void
     {
-        $site = (new SiteGenerator)->empty('Swakop Auto Electric', BusinessType::Service);
+        $partner = Partner::factory()->create();
+        $site = (new SiteGenerator)->empty('Swakop Auto Electric', BusinessType::Service, $partner);
 
         $this->assertNull($site->source_listing_id);
         $this->assertSame('swakop-auto-electric', $site->slug);
