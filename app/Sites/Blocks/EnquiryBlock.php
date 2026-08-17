@@ -50,18 +50,23 @@ class EnquiryBlock extends BlockDefinition
         return 'Contact form';
     }
 
+    public function navDefault(): bool
+    {
+        return true;
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'heading' => ['nullable', 'string', 'max:120'],
             'intro' => ['nullable', 'string', 'max:300'],
             'form_type' => ['nullable', 'string', 'in:'.implode(',', array_column(EnquiryFormType::cases(), 'value'))],
             'channel' => ['nullable', 'string', 'in:'.self::CHANNEL_EMAIL.','.self::CHANNEL_WHATSAPP],
             'button_label' => ['nullable', 'string', 'max:24'],
-        ];
+        ], $this->navRules());
     }
 
     public function isFilled(array $data): bool

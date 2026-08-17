@@ -21,17 +21,22 @@ class HighlightsBlock extends BlockDefinition
         return 'Highlights';
     }
 
+    public function navDefault(): bool
+    {
+        return true;
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'heading' => ['nullable', 'string', 'max:120'],
             'items' => ['array', 'max:8'],
             'items.*.title' => ['required', 'string', 'max:80'],
             'items.*.text' => ['nullable', 'string', 'max:300'],
-        ];
+        ], $this->navRules());
     }
 
     public function isFilled(array $data): bool

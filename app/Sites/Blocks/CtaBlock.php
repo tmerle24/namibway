@@ -26,12 +26,12 @@ class CtaBlock extends BlockDefinition
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'heading' => ['nullable', 'string', 'max:120'],
             'text' => ['nullable', 'string', 'max:300'],
             'label' => ['nullable', 'string', 'max:40'],
             'href' => ['nullable', 'string', 'max:2048'],
-        ];
+        ], $this->navRules());
     }
 
     public function isFilled(array $data): bool

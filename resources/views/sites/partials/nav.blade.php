@@ -16,9 +16,6 @@
      * separate menu: one array renders twice, so a link can never be in one and
      * missing from the other.
      */
-    // Block types that appear in the nav automatically (opt-out model).
-    // Other block types opt in per-block via nav_visible in their data.
-    $navTypes = ['about', 'highlights', 'shop', 'gallery', 'opening_hours', 'price_list', 'enquiry', 'contact'];
     $items = [];
     $n = 0;
 
@@ -32,26 +29,30 @@
         ->get();
 
     foreach ($blocks as $navBlock) {
-        if (! in_array($navBlock->type, ['hero', 'footer'], true)) {
-            $n++;
+        if (in_array($navBlock->type, ['hero', 'footer'], true)) {
+            continue;
         }
 
-        $inNav = in_array($navBlock->type, $navTypes, true)
-            || ($navBlock->data['nav_visible'] ?? false) === true;
+        $n++;
+        $definition = $navBlock->definition();
+
+        // nav_visible in block data is the explicit setting; fall back to the
+        // block type's own navDefault() for blocks that were placed before this
+        // field existed.
+        $inNav = (bool) ($navBlock->data['nav_visible'] ?? $definition?->navDefault() ?? false);
 
         if (! $inNav || count($items) >= 5) {
             continue;
         }
 
-        // The contact form is named once, by SiteActions, because the same
-        // target is also a button — beside the menu, on the opening screen and
-        // in the strip at the foot. Reading the raw heading here gave one site
-        // a menu item saying "Request availability" next to a button saying
-        // "Book a table", both scrolling to the same form.
-        // nav_label overrides heading for blocks that set it explicitly.
-        $label = $navBlock->type === 'enquiry'
-            ? \App\Sites\Rendering\SiteActions::enquiryLabel($site, [$navBlock])
-            : ($navBlock->data['nav_label'] ?? $navBlock->data['heading'] ?? $navBlock->definition()?->label() ?? '');
+        // nav_label overrides the derived label when set. The enquiry block
+        // label is named once by SiteActions so the menu and the button always
+        // agree — but an explicit nav_label still wins.
+        $label = filled($navBlock->data['nav_label'] ?? null)
+            ? $navBlock->data['nav_label']
+            : ($navBlock->type === 'enquiry'
+                ? \App\Sites\Rendering\SiteActions::enquiryLabel($site, [$navBlock])
+                : ($navBlock->data['heading'] ?? $definition?->label() ?? ''));
 
         // The band the enquiry button points at is marked as it is collected,
         // and moved to the end below. It is the one item in this list that is

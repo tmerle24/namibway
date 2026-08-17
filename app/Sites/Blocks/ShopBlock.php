@@ -23,15 +23,20 @@ class ShopBlock extends BlockDefinition
         return 'Shop';
     }
 
+    public function navDefault(): bool
+    {
+        return true;
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'heading' => ['nullable', 'string', 'max:120'],
             'product_count' => ['nullable', 'integer', 'in:3,4,6,8,12'],
-        ];
+        ], $this->navRules());
     }
 
     public function isFilled(array $data): bool

@@ -44,10 +44,10 @@ class BookingBlock extends BlockDefinition
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'heading' => ['nullable', 'string', 'max:120'],
             'intro' => ['nullable', 'string', 'max:300'],
-        ];
+        ], $this->navRules());
     }
 
     public function isFilled(array $data): bool

@@ -5,6 +5,7 @@ namespace App\Filament\Support\Sites;
 use App\Models\Site;
 use App\Models\SiteImage;
 use App\Sites\BlockRegistry;
+use App\Sites\Blocks\BlockDefinition;
 use App\Sites\Blocks\EnquiryBlock;
 use App\Sites\Blocks\EnquiryFormType;
 use Filament\Forms\Components\Builder;
@@ -67,6 +68,8 @@ class BlockForm
                         ->default(true),
 
                     ...self::for($type, $site),
+
+                    ...(!in_array($type, ['hero', 'footer'], true) ? self::navControls($definition) : []),
                 ]);
         }
 
@@ -214,17 +217,6 @@ class BlockForm
                 self::richText('body', 'The text'),
                 self::image('image_id', $site, 'Photograph beside it'),
                 self::imageSide(),
-                Toggle::make('nav_visible')
-                    ->label('Show in the menu')
-                    ->helperText('Adds this section as a link in the site navigation bar.')
-                    ->default(false)
-                    ->live(),
-                TextInput::make('nav_label')
-                    ->label('Menu label')
-                    ->maxLength(40)
-                    ->placeholder(fn (Get $get): string => $get('heading') ?: 'Our Mission')
-                    ->helperText('Leave empty to use the heading.')
-                    ->visible(fn (Get $get): bool => (bool) $get('nav_visible')),
             ],
 
             'why_choose_us' => [
@@ -233,17 +225,6 @@ class BlockForm
                 self::richText('body', 'The text'),
                 self::image('image_id', $site, 'Photograph beside it'),
                 self::imageSide(),
-                Toggle::make('nav_visible')
-                    ->label('Show in the menu')
-                    ->helperText('Adds this section as a link in the site navigation bar.')
-                    ->default(false)
-                    ->live(),
-                TextInput::make('nav_label')
-                    ->label('Menu label')
-                    ->maxLength(40)
-                    ->placeholder(fn (Get $get): string => $get('heading') ?: 'Why Choose Us?')
-                    ->helperText('Leave empty to use the heading.')
-                    ->visible(fn (Get $get): bool => (bool) $get('nav_visible')),
             ],
 
             'shop' => [
@@ -299,6 +280,25 @@ class BlockForm
 
             default => [],
         };
+    }
+
+    /**
+     * @return array<int, Component>
+     */
+    private static function navControls(BlockDefinition $definition): array
+    {
+        return [
+            Toggle::make('nav_visible')
+                ->label('Show in the menu')
+                ->helperText('Adds this section as a link in the site navigation bar.')
+                ->default($definition->navDefault())
+                ->live(),
+            TextInput::make('nav_label')
+                ->label('Menu label')
+                ->maxLength(40)
+                ->helperText('Leave empty to use the heading. Keep it short — it lands in a small bar.')
+                ->visible(fn (Get $get): bool => (bool) $get('nav_visible')),
+        ];
     }
 
     private static function imageSide(): Select

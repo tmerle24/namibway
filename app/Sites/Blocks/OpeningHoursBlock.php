@@ -27,18 +27,23 @@ class OpeningHoursBlock extends BlockDefinition
         return 'Opening hours';
     }
 
+    public function navDefault(): bool
+    {
+        return true;
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'heading' => ['nullable', 'string', 'max:120'],
             'note' => ['nullable', 'string', 'max:300'],
             'days' => ['array', 'max:8'],
             'days.*.day' => ['required', 'string', 'max:40'],
             'days.*.hours' => ['required', 'string', 'max:60'],
-        ];
+        ], $this->navRules());
     }
 
     public function isFilled(array $data): bool

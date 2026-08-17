@@ -27,12 +27,17 @@ class PriceListBlock extends BlockDefinition
         return 'Price list';
     }
 
+    public function navDefault(): bool
+    {
+        return true;
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'heading' => ['nullable', 'string', 'max:120'],
             'note' => ['nullable', 'string', 'max:300'],
             'whatsapp_order' => ['boolean'],
@@ -40,7 +45,7 @@ class PriceListBlock extends BlockDefinition
             'items.*.name' => ['required', 'string', 'max:120'],
             'items.*.description' => ['nullable', 'string', 'max:300'],
             'items.*.price' => ['nullable', 'string', 'max:40'],
-        ];
+        ], $this->navRules());
     }
 
     public function isFilled(array $data): bool

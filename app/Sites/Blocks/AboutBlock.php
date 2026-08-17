@@ -22,19 +22,24 @@ class AboutBlock extends BlockDefinition
         return 'About';
     }
 
+    public function navDefault(): bool
+    {
+        return true;
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'eyebrow' => ['nullable', 'string', 'max:60'],
             'heading' => ['nullable', 'string', 'max:120'],
             'body' => ['nullable', 'string', 'max:8000'],
             'image_id' => ['nullable', 'integer'],
             'image_side' => ['nullable', 'string', 'in:left,right'],
             'slideshow' => ['boolean'],
-        ];
+        ], $this->navRules());
     }
 
     public function isFilled(array $data): bool

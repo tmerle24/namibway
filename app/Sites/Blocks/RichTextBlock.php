@@ -27,10 +27,10 @@ class RichTextBlock extends BlockDefinition
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'heading' => ['nullable', 'string', 'max:120'],
             'body' => ['nullable', 'string', 'max:8000'],
-        ];
+        ], $this->navRules());
     }
 
     public function isFilled(array $data): bool

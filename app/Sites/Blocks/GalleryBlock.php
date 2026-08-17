@@ -24,16 +24,21 @@ class GalleryBlock extends BlockDefinition
         return 'Gallery';
     }
 
+    public function navDefault(): bool
+    {
+        return true;
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'heading' => ['nullable', 'string', 'max:120'],
             'image_ids' => ['array', 'max:'.self::MAX_IMAGES],
             'image_ids.*' => ['integer'],
-        ];
+        ], $this->navRules());
     }
 
     public function isFilled(array $data): bool

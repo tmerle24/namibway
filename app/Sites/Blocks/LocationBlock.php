@@ -32,10 +32,10 @@ class LocationBlock extends BlockDefinition
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'heading' => ['nullable', 'string', 'max:120'],
             'directions_note' => ['nullable', 'string', 'max:600'],
-        ];
+        ], $this->navRules());
     }
 
     public function isFilled(array $data): bool

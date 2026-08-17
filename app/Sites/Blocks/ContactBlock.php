@@ -24,17 +24,22 @@ class ContactBlock extends BlockDefinition
         return 'Contact';
     }
 
+    public function navDefault(): bool
+    {
+        return true;
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'heading' => ['nullable', 'string', 'max:120'],
             'intro' => ['nullable', 'string', 'max:300'],
             'opening_hours' => ['nullable', 'string', 'max:600'],
             'show_form' => ['boolean'],
-        ];
+        ], $this->navRules());
     }
 
     public function isFilled(array $data): bool

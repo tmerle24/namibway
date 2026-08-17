@@ -92,6 +92,34 @@ abstract class BlockDefinition
         return false;
     }
 
+    /**
+     * Whether this block type appears in the site navigation by default.
+     *
+     * Blocks that override this to true show up automatically when placed on a
+     * page. Blocks that return false are opt-in: the editor must switch
+     * nav_visible on for a specific block instance.
+     *
+     * Hero and Footer override nothing — they are structural and never listed.
+     */
+    public function navDefault(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Validation rules shared by every block that can appear in the nav.
+     * Merge into rules() for all content blocks (not hero/footer).
+     *
+     * @return array<string, mixed>
+     */
+    public function navRules(): array
+    {
+        return [
+            'nav_visible' => ['nullable', 'boolean'],
+            'nav_label' => ['nullable', 'string', 'max:40'],
+        ];
+    }
+
     /** @param array<string, mixed> $data */
     protected function filled(array $data, string $key): bool
     {
