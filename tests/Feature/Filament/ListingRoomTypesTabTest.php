@@ -158,6 +158,7 @@ class ListingRoomTypesTabTest extends TestCase
             'max_adults' => 2,
             'max_children' => 0,
             'total_units' => 4,
+            'turnaround_days' => 0,
             'base_rate' => 2500,
             'currency' => 'NAD',
             'is_active' => true,

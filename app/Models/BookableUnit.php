@@ -38,6 +38,8 @@ class BookableUnit extends Model
     /** @use HasFactory<BookableUnitFactory> */
     use HasFactory;
 
+    protected $attributes = ['turnaround_days' => 0];
+
     protected $fillable = [
         'listing_id',
         'code',
