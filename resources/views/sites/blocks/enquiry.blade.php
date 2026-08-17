@@ -117,31 +117,39 @@
                                 <input type="number" id="eq-adults" name="adults" min="1" max="20" value="2" required>
                             </div>
                         @elseif ($showItems)
-                            <div class="enquiry__items" id="eq-items" data-currency="{{ $items->currency }}">
+                            {{-- Hidden inputs carry the quantities to the backend and to the
+                                 WhatsApp script. The picker modal controls these; they are
+                                 never shown or filled in by hand. --}}
+                            <div id="eq-inputs" data-currency="{{ $items->currency }}" style="display:none" aria-hidden="true">
                                 @foreach ($items->sections() as $section)
-                                    <h4 class="enquiry__items-head">{{ $section['section'] }}</h4>
-
                                     @foreach ($section['items'] as $item)
-                                        <div class="enquiry__item">
-                                            <div class="enquiry__item-text">
-                                                <strong>{{ $item->name }}</strong>
-                                                @if (filled($item->description))
-                                                    <span class="note">{{ \Illuminate\Support\Str::limit($item->description, 90) }}</span>
-                                                @endif
-                                                <span class="enquiry__item-price">{{ $item->priceLabel() }}</span>
-                                            </div>
-                                            <input type="number"
-                                                   class="enquiry__item-qty"
-                                                   name="items[{{ $item->id }}]"
-                                                   data-price="{{ $item->price }}"
-                                                   data-name="{{ $item->name }}"
-                                                   min="0" max="99" value="0"
-                                                   aria-label="Quantity of {{ $item->name }}">
-                                        </div>
+                                        <input type="hidden"
+                                               class="enquiry__item-qty"
+                                               name="items[{{ $item->id }}]"
+                                               data-price="{{ $item->price }}"
+                                               data-name="{{ $item->name }}"
+                                               value="0">
                                     @endforeach
                                 @endforeach
+                            </div>
 
-                                <p class="enquiry__total"><span>Total</span> <strong id="eq-total">{{ $items->currency }} 0.00</strong></p>
+                            {{-- Trigger + inline summary --}}
+                            <div class="eq-picker" id="eq-picker">
+                                <button type="button" class="eq-picker__trigger" id="eq-picker-btn" aria-haspopup="dialog">
+                                    <svg class="eq-picker__trigger-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+                                    </svg>
+                                    <span class="eq-picker__trigger-label">Choose items</span>
+                                    <span class="eq-picker__badge" id="eq-badge" hidden>0</span>
+                                </button>
+
+                                <div class="eq-picker__summary" id="eq-summary" hidden>
+                                    <ul class="eq-picker__lines" id="eq-summary-lines"></ul>
+                                    <p class="eq-picker__subtotal">
+                                        Total <strong id="eq-total">{{ $items->currency }} 0.00</strong>
+                                        <button type="button" class="eq-picker__edit" id="eq-edit-btn">Edit order</button>
+                                    </p>
+                                </div>
                             </div>
 
                             @if ($type->needsAddress())
@@ -150,6 +158,57 @@
                                     <textarea id="eq-address" name="address" rows="3" maxlength="500" required></textarea>
                                 </div>
                             @endif
+
+                            {{-- Item picker drawer — sits inside the form so type="button"
+                                 buttons cannot accidentally submit it. Position:fixed so it
+                                 escapes the form's stacking context and covers the page. --}}
+                            <div class="eq-drawer" id="eq-drawer" role="dialog" aria-modal="true"
+                                 aria-labelledby="eq-drawer-title" hidden>
+                                <div class="eq-drawer__backdrop" id="eq-backdrop"></div>
+                                <div class="eq-drawer__panel" id="eq-panel">
+                                    <div class="eq-drawer__head">
+                                        <h3 class="eq-drawer__title" id="eq-drawer-title">Choose items</h3>
+                                        <button type="button" class="eq-drawer__close" id="eq-drawer-close" aria-label="Close">
+                                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/></svg>
+                                        </button>
+                                    </div>
+
+                                    <div class="eq-drawer__body" id="eq-drawer-body">
+                                        @foreach ($items->sections() as $section)
+                                            <div class="eq-section">
+                                                <h4 class="eq-section__head">{{ $section['section'] }}</h4>
+
+                                                @foreach ($section['items'] as $item)
+                                                    <div class="eq-row" data-id="{{ $item->id }}" data-price="{{ $item->price }}" data-name="{{ e($item->name) }}">
+                                                        <div class="eq-row__text">
+                                                            <strong class="eq-row__name">{{ $item->name }}</strong>
+                                                            @if (filled($item->description))
+                                                                <span class="eq-row__desc">{{ \Illuminate\Support\Str::limit($item->description, 100) }}</span>
+                                                            @endif
+                                                            <span class="eq-row__price">{{ $item->priceLabel() }}</span>
+                                                        </div>
+                                                        <div class="eq-stepper">
+                                                            <button type="button" class="eq-stepper__btn" data-action="dec" aria-label="Remove one {{ $item->name }}">−</button>
+                                                            <span class="eq-stepper__val">0</span>
+                                                            <button type="button" class="eq-stepper__btn" data-action="inc" aria-label="Add one {{ $item->name }}">+</button>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endforeach
+                                    </div>
+
+                                    <div class="eq-drawer__foot">
+                                        <div class="eq-drawer__total">
+                                            <span>Total</span>
+                                            <strong id="eq-drawer-total">{{ $items->currency }} 0.00</strong>
+                                        </div>
+                                        <button type="button" class="btn eq-drawer__confirm" id="eq-drawer-confirm">
+                                            Confirm selection
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         @endif
 
                         <div class="field">
@@ -174,23 +233,188 @@
                     @if ($showItems)
                         <script>
                         (function () {
-                            var box = document.getElementById('eq-items');
-                            if (!box) return;
-                            var out = document.getElementById('eq-total');
-                            var currency = box.getAttribute('data-currency') || '';
+                            var inputs  = document.getElementById('eq-inputs');
+                            if (!inputs) return;
+
+                            var currency   = inputs.getAttribute('data-currency') || '';
+                            var drawer     = document.getElementById('eq-drawer');
+                            var panel      = document.getElementById('eq-panel');
+                            var backdrop   = document.getElementById('eq-backdrop');
+                            var pickerBtn  = document.getElementById('eq-picker-btn');
+                            var editBtn    = document.getElementById('eq-edit-btn');
+                            var closeBtn   = document.getElementById('eq-drawer-close');
+                            var confirmBtn = document.getElementById('eq-drawer-confirm');
+                            var badge      = document.getElementById('eq-badge');
+                            var summary    = document.getElementById('eq-summary');
+                            var summaryLines = document.getElementById('eq-summary-lines');
+                            var totalOut   = document.getElementById('eq-total');
+                            var drawerTotal = document.getElementById('eq-drawer-total');
+
+                            // Map id → { input, row, valEl }
+                            var items = {};
+                            inputs.querySelectorAll('.enquiry__item-qty').forEach(function (inp) {
+                                var id = inp.name.replace(/^items\[/, '').replace(/\]$/, '');
+                                var row = drawer.querySelector('.eq-row[data-id="' + id + '"]');
+                                var valEl = row ? row.querySelector('.eq-stepper__val') : null;
+                                items[id] = { input: inp, row: row, valEl: valEl };
+                            });
+
+                            // ---- Helpers ----
+
+                            function fmt(n) { return currency + ' ' + n.toFixed(2); }
+
+                            function qty(id) { return parseInt(items[id].input.value || '0', 10); }
+
+                            function setQty(id, n) {
+                                n = Math.max(0, Math.min(99, n));
+                                items[id].input.value = n;
+                                if (items[id].valEl) items[id].valEl.textContent = n;
+                                if (items[id].row) {
+                                    items[id].row.classList.toggle('eq-row--active', n > 0);
+                                }
+                                refresh();
+                            }
 
                             function total() {
                                 var sum = 0;
-                                box.querySelectorAll('.enquiry__item-qty').forEach(function (input) {
-                                    var qty = parseInt(input.value || '0', 10);
-                                    var price = parseFloat(input.getAttribute('data-price') || '0');
-                                    if (qty > 0 && !isNaN(price)) sum += qty * price;
+                                Object.keys(items).forEach(function (id) {
+                                    var q = qty(id);
+                                    var p = parseFloat(items[id].input.getAttribute('data-price') || '0');
+                                    if (q > 0 && !isNaN(p)) sum += q * p;
                                 });
-                                out.textContent = currency + ' ' + sum.toFixed(2);
+                                return sum;
                             }
 
-                            box.addEventListener('input', total);
-                            total();
+                            function totalCount() {
+                                var n = 0;
+                                Object.keys(items).forEach(function (id) { n += qty(id); });
+                                return n;
+                            }
+
+                            function refresh() {
+                                var t = total();
+                                var count = totalCount();
+                                if (drawerTotal) drawerTotal.textContent = fmt(t);
+                                if (totalOut)    totalOut.textContent    = fmt(t);
+                                if (badge) {
+                                    if (count > 0) {
+                                        badge.textContent = count;
+                                        badge.hidden = false;
+                                    } else {
+                                        badge.hidden = true;
+                                    }
+                                }
+                            }
+
+                            function refreshSummary() {
+                                if (!summary || !summaryLines) return;
+                                var lines = [];
+                                Object.keys(items).forEach(function (id) {
+                                    var q = qty(id);
+                                    if (q > 0) {
+                                        var name  = items[id].input.getAttribute('data-name') || '';
+                                        var price = parseFloat(items[id].input.getAttribute('data-price') || '0');
+                                        lines.push({ q: q, name: name, sub: (q * price).toFixed(2) });
+                                    }
+                                });
+                                if (lines.length) {
+                                    summaryLines.innerHTML = lines.map(function (l) {
+                                        return '<li class="eq-picker__line">' +
+                                            '<span class="eq-picker__line-name">' + l.q + ' × ' + escHtml(l.name) + '</span>' +
+                                            '<span class="eq-picker__line-sub">' + currency + ' ' + l.sub + '</span>' +
+                                            '</li>';
+                                    }).join('');
+                                    summary.hidden = false;
+                                } else {
+                                    summary.hidden = true;
+                                }
+                            }
+
+                            function escHtml(s) {
+                                return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                            }
+
+                            // ---- Focus trap ----
+
+                            function focusableEls() {
+                                return Array.prototype.slice.call(
+                                    panel.querySelectorAll(
+                                        'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+                                    )
+                                );
+                            }
+
+                            function trapFocus(e) {
+                                if (e.key !== 'Tab') return;
+                                var els = focusableEls();
+                                if (!els.length) { e.preventDefault(); return; }
+                                var first = els[0], last = els[els.length - 1];
+                                if (e.shiftKey) {
+                                    if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+                                } else {
+                                    if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+                                }
+                            }
+
+                            // ---- Open / close ----
+
+                            var prevFocus = null;
+
+                            function open() {
+                                prevFocus = document.activeElement;
+                                drawer.hidden = false;
+                                drawer.classList.remove('eq-drawer--closing');
+                                document.body.style.overflow = 'hidden';
+                                // Focus the first stepper button
+                                var first = focusableEls()[0];
+                                if (first) setTimeout(function () { first.focus(); }, 50);
+                                document.addEventListener('keydown', onKeyDown);
+                            }
+
+                            function close() {
+                                drawer.classList.add('eq-drawer--closing');
+                                document.body.style.overflow = '';
+                                document.removeEventListener('keydown', onKeyDown);
+                                // Wait for CSS animation to finish, then hide
+                                var dur = window.matchMedia('(min-width: 640px)').matches ? 180 : 220;
+                                setTimeout(function () {
+                                    drawer.hidden = true;
+                                    drawer.classList.remove('eq-drawer--closing');
+                                    if (prevFocus) prevFocus.focus();
+                                }, dur);
+                            }
+
+                            function onKeyDown(e) {
+                                if (e.key === 'Escape') close();
+                                else trapFocus(e);
+                            }
+
+                            // ---- Stepper clicks (event delegation on the drawer body) ----
+
+                            drawer.addEventListener('click', function (e) {
+                                var btn = e.target.closest('.eq-stepper__btn');
+                                if (!btn) return;
+                                var row = btn.closest('.eq-row');
+                                if (!row) return;
+                                var id = row.getAttribute('data-id');
+                                if (!items[id]) return;
+                                var action = btn.getAttribute('data-action');
+                                setQty(id, qty(id) + (action === 'inc' ? 1 : -1));
+                            });
+
+                            // ---- Controls ----
+
+                            if (pickerBtn)  pickerBtn.addEventListener('click', open);
+                            if (editBtn)    editBtn.addEventListener('click', open);
+                            if (closeBtn)   closeBtn.addEventListener('click', close);
+                            if (backdrop)   backdrop.addEventListener('click', close);
+                            if (confirmBtn) confirmBtn.addEventListener('click', function () {
+                                close();
+                                setTimeout(refreshSummary, 240);
+                            });
+
+                            // Initial state
+                            refresh();
                         }());
                         </script>
                     @endif
