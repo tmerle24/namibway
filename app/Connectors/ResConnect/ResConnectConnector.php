@@ -41,7 +41,7 @@ class ResConnectConnector implements BookingConnector
                     code: $rt['code'],
                     name: $rt['name'],
                     available: (int) ($rt['available'] ?? 0),
-                    ratePerNight: (float) ($rt['rate_per_night'] ?? 0),
+                    ratePerNight: (float) ($rt['base_rate'] ?? 0),
                     currency: $rt['currency'] ?? 'NAD',
                     totalRate: (float) ($rt['total_rate'] ?? 0),
                     mealPlan: $rt['meal_plan'] ?? null,

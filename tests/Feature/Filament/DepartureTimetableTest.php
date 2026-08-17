@@ -120,7 +120,7 @@ class DepartureTimetableTest extends TestCase
             'listing_id' => $listing->id,
             'name' => $name,
             'total_units' => 8,
-            'rate_per_night' => 950,
+            'base_rate' => 950,
             'currency' => 'NAD',
         ]);
     }

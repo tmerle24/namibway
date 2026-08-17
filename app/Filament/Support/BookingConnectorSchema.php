@@ -228,7 +228,7 @@ class BookingConnectorSchema
                             ->numeric()
                             ->required()
                             ->minValue(1),
-                        Forms\Components\TextInput::make('rate_per_night')
+                        Forms\Components\TextInput::make('base_rate')
                             ->numeric()
                             ->required()
                             ->prefix('NAD')

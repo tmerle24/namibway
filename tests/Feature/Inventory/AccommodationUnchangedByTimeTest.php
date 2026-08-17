@@ -83,7 +83,7 @@ class AccommodationUnchangedByTimeTest extends TestCase
     public function test_a_lodges_grid_reads_exactly_what_the_calendar_says(): void
     {
         $listing = Listing::factory()->create();
-        $room = $this->bookableUnit($listing, ['total_units' => 3, 'rate_per_night' => 1800]);
+        $room = $this->bookableUnit($listing, ['total_units' => 3, 'base_rate' => 1800]);
 
         $this->book($listing, $room, '2026-09-04', '2026-09-06', quantity: 2, guest: 'Guest');
 
@@ -113,8 +113,8 @@ class AccommodationUnchangedByTimeTest extends TestCase
     public function test_a_departures_row_never_becomes_the_days_row_in_a_bulk_read(): void
     {
         $listing = Listing::factory()->create();
-        $chalet = $this->bookableUnit($listing, ['name' => 'Chalet', 'total_units' => 3, 'rate_per_night' => 1800]);
-        $tour = $this->bookableUnit($listing, ['name' => 'Quad tour', 'total_units' => 8, 'rate_per_night' => 950]);
+        $chalet = $this->bookableUnit($listing, ['name' => 'Chalet', 'total_units' => 3, 'base_rate' => 1800]);
+        $tour = $this->bookableUnit($listing, ['name' => 'Quad tour', 'total_units' => 8, 'base_rate' => 950]);
 
         $plan = $this->ratePlan($listing);
         $morning = $this->slot($tour, '09:00', 'Morning departure');
@@ -170,7 +170,7 @@ class AccommodationUnchangedByTimeTest extends TestCase
     public function test_a_retired_departure_does_not_start_answering_for_the_night(): void
     {
         $listing = Listing::factory()->create();
-        $unit = $this->bookableUnit($listing, ['name' => 'Quad', 'total_units' => 8, 'rate_per_night' => 950]);
+        $unit = $this->bookableUnit($listing, ['name' => 'Quad', 'total_units' => 8, 'base_rate' => 950]);
         $plan = $this->ratePlan($listing);
         $morning = $this->slot($unit, '09:00', 'Morning departure');
 
@@ -263,7 +263,7 @@ class AccommodationUnchangedByTimeTest extends TestCase
         return BookableUnit::factory()->create(array_merge([
             'listing_id' => $listing->id,
             'total_units' => 2,
-            'rate_per_night' => 1200,
+            'base_rate' => 1200,
             'currency' => 'NAD',
         ], $attributes));
     }

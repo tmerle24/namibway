@@ -53,7 +53,7 @@ class SoftHoldTest extends TestCase
             'listing_id' => $this->listing->id,
             'code' => 'STD',
             'total_units' => 1,
-            'rate_per_night' => 1200,
+            'base_rate' => 1200,
             'currency' => 'NAD',
         ]);
     }

@@ -107,6 +107,16 @@ class ListingResource extends Resource
                             ->options(VehicleClass::class)
                             ->helperText('What the traveler actually drives. Setting this is how your vehicle reaches travelers who pick that class when planning.')
                             ->visible(fn (?Listing $record): bool => $record?->type === ListingType::Vehicle),
+                        Forms\Components\TimePicker::make('pickup_time')
+                            ->label('Default pickup time')
+                            ->helperText('Your standard opening time for vehicle collection. Pre-fills the booking form.')
+                            ->seconds(false)
+                            ->visible(fn (?Listing $record): bool => $record?->type === ListingType::Vehicle),
+                        Forms\Components\TimePicker::make('return_time')
+                            ->label('Default return time')
+                            ->helperText('Your standard closing time for vehicle return. Pre-fills the booking form.')
+                            ->seconds(false)
+                            ->visible(fn (?Listing $record): bool => $record?->type === ListingType::Vehicle),
                     ])
                     ->columns(2),
 

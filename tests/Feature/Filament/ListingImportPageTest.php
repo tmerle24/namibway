@@ -85,7 +85,7 @@ class ListingImportPageTest extends TestCase
             ->get('/admin/bulk-capture-guide')
             ->assertOk()
             ->assertSee('photo_folder')
-            ->assertSee('rate_per_night')
+            ->assertSee('base_rate')
             ->assertSee('Only upload photos we are allowed to publish');
     }
 

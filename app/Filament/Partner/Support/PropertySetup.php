@@ -47,8 +47,8 @@ class PropertySetup
     {
         return $this->activeRooms($property)
             ->where(fn (Builder $query) => $query
-                ->whereNull('rate_per_night')
-                ->orWhere('rate_per_night', '<=', 0))
+                ->whereNull('base_rate')
+                ->orWhere('base_rate', '<=', 0))
             ->whereNotExists(fn (QueryBuilder $query) => $query
                 ->selectRaw('1')
                 ->from((new RatePlanDay)->getTable())

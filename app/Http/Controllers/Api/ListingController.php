@@ -113,7 +113,7 @@ class ListingController extends Controller
      *   "live_availability": true, "booking_mode": "connector", "connector": "resconnect",
      *   "available": true,
      *   "room_types": [
-     *     {"code": "std", "name": "Standard Room", "available": 2, "rate_per_night": 1500.0, "currency": "NAD", "total_rate": 6000.0, "meal_plan": null, "description": null}
+     *     {"code": "std", "name": "Standard Room", "available": 2, "base_rate": 1500.0, "currency": "NAD", "total_rate": 6000.0, "meal_plan": null, "description": null}
      *   ],
      *   "error": null
      * }
@@ -172,7 +172,7 @@ class ListingController extends Controller
                 'code' => $roomType->code,
                 'name' => $roomType->name,
                 'available' => $roomType->available,
-                'rate_per_night' => $roomType->ratePerNight,
+                'base_rate' => $roomType->ratePerNight,
                 'currency' => $roomType->currency,
                 'total_rate' => $roomType->totalRate,
                 'meal_plan' => $roomType->mealPlan,

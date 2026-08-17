@@ -27,8 +27,9 @@ use InvalidArgumentException;
  * @property int $max_adults
  * @property int $max_children
  * @property int $total_units
- * @property float $rate_per_night
+ * @property float $base_rate  Fallback when no rate-plan day overrides it. The rate plan always wins.
  * @property string $currency
+ * @property int $turnaround_days  Days needed between hand-over and next pickup (vehicles only). 0 = same-day fine.
  * @property bool $is_active
  * @property-read Collection<int, Amenity> $amenities
  */
@@ -46,7 +47,8 @@ class BookableUnit extends Model
         'max_adults',
         'max_children',
         'total_units',
-        'rate_per_night',
+        'turnaround_days',
+        'base_rate',
         'currency',
         'is_active',
     ];
@@ -89,7 +91,8 @@ class BookableUnit extends Model
         'max_adults' => 'integer',
         'max_children' => 'integer',
         'total_units' => 'integer',
-        'rate_per_night' => 'decimal:2',
+        'turnaround_days' => 'integer',
+        'base_rate' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 

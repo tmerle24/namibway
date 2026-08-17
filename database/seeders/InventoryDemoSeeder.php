@@ -96,7 +96,7 @@ class InventoryDemoSeeder extends Seeder
                     'max_adults' => $definition['adults'],
                     'max_children' => $definition['children'],
                     'total_units' => $definition['units'],
-                    'rate_per_night' => $definition['rate'],
+                    'base_rate' => $definition['rate'],
                     'currency' => 'NAD',
                     'is_active' => true,
                 ]
@@ -119,14 +119,14 @@ class InventoryDemoSeeder extends Seeder
 
         foreach ($rooms as $room) {
             $writer->setCalendar($room, $start, $highSeasonStart->copy()->subDay(), [
-                'rate' => round((float) $room->rate_per_night, 2),
+                'rate' => round((float) $room->base_rate, 2),
                 'min_stay' => null,
                 'closed_to_arrival' => false,
                 'closed_to_departure' => false,
             ]);
 
             $writer->setCalendar($room, $highSeasonStart, $end, [
-                'rate' => round((float) $room->rate_per_night * 1.6, 2),
+                'rate' => round((float) $room->base_rate * 1.6, 2),
             ]);
 
             // A peak weekend that will not take one-nighters, and a changeover

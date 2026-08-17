@@ -59,7 +59,7 @@ class RoomOffersTest extends TestCase
             'max_adults' => 2,
             'max_children' => 0,
             'total_units' => 2,
-            'rate_per_night' => 1200,
+            'base_rate' => 1200,
             'currency' => 'NAD',
             'is_active' => true,
         ]);
@@ -196,7 +196,7 @@ class RoomOffersTest extends TestCase
             'max_adults' => 2,
             'max_children' => 0,
             'total_units' => 1,
-            'rate_per_night' => 0,
+            'base_rate' => 0,
             'currency' => 'NAD',
             'is_active' => true,
         ]);

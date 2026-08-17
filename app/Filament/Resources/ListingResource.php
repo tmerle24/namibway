@@ -80,6 +80,16 @@ class ListingResource extends Resource
                                     ->options(VehicleClass::class)
                                     ->helperText('What the traveler actually drives. Optional — left empty, this vehicle is matched by the old "Camper" highlights heuristic instead, which cannot tell a rooftop-tent 4x4 from a motorhome.')
                                     ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
+                                Forms\Components\TimePicker::make('pickup_time')
+                                    ->label('Default pickup time')
+                                    ->helperText('The rental company\'s standard opening time. Pre-fills the booking form.')
+                                    ->seconds(false)
+                                    ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
+                                Forms\Components\TimePicker::make('return_time')
+                                    ->label('Default return time')
+                                    ->helperText('The rental company\'s standard closing time. Pre-fills the booking form.')
+                                    ->seconds(false)
+                                    ->visible(fn (Forms\Get $get): bool => $get('type') === ListingType::Vehicle->value),
                                 Forms\Components\Select::make('partner_id')
                                     ->label('Partner')
                                     ->relationship('partner', 'name')

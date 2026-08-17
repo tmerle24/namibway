@@ -98,7 +98,7 @@ class RoomAvailability
         return BookableUnit::query()
             ->where('listing_id', $listingId)
             ->where('is_active', true)
-            ->orderBy('rate_per_night')
+            ->orderBy('base_rate')
             ->get()
             ->map(fn (BookableUnit $bookableUnit) => [
                 'bookable_unit' => $bookableUnit,

@@ -191,7 +191,7 @@ class CalendarSnapshot
             return $day->rate;
         }
 
-        return (float) $bookableUnit->rate_per_night;
+        return (float) $bookableUnit->base_rate;
     }
 
     /** Units a night is holding, sold and blocked together. */

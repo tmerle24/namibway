@@ -59,9 +59,9 @@ class NativeConnector implements BookingConnector
                     code: $bookableUnit->code,
                     name: $bookableUnit->name,
                     available: $available,
-                    ratePerNight: (float) $bookableUnit->rate_per_night,
+                    ratePerNight: (float) $bookableUnit->base_rate,
                     currency: $bookableUnit->currency,
-                    totalRate: (float) $bookableUnit->rate_per_night * $nights,
+                    totalRate: (float) $bookableUnit->base_rate * $nights,
                     description: $bookableUnit->description,
                 );
             })
@@ -105,7 +105,7 @@ class NativeConnector implements BookingConnector
             }
 
             $nights = max(1, $request->checkIn->diffInDays($request->checkOut));
-            $totalAmount = (float) $bookableUnit->rate_per_night * $nights;
+            $totalAmount = (float) $bookableUnit->base_rate * $nights;
 
             if ($request->inquiryId) {
                 Inquiry::whereKey($request->inquiryId)->update([

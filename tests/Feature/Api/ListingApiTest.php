@@ -129,7 +129,7 @@ class ListingApiTest extends TestCase
                         'code' => 'std',
                         'name' => 'Standard Room',
                         'available' => 2,
-                        'rate_per_night' => 1500,
+                        'base_rate' => 1500,
                         'currency' => 'NAD',
                         'total_rate' => 6000,
                     ],

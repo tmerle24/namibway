@@ -54,7 +54,7 @@ class ManualBookingTest extends TestCase
         return BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 2,
-            'rate_per_night' => 1000,
+            'base_rate' => 1000,
             'currency' => 'NAD',
             'is_active' => true,
             ...$attributes,

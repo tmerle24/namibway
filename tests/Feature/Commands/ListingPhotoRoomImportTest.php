@@ -210,7 +210,7 @@ class ListingPhotoRoomImportTest extends TestCase
         $workbook = $this->makeWorkbook([
             'Listings' => [['id'], [$listing->id]],
             'RoomTypes' => [
-                ['listing_id', 'listing', 'code', 'name', 'total_units', 'rate_per_night', 'max_adults'],
+                ['listing_id', 'listing', 'code', 'name', 'total_units', 'base_rate', 'max_adults'],
                 [$listing->id, 'Okonjima Bush Camp', 'STD', 'Standard Chalet', 6, '1450', 2],
             ],
         ]);
@@ -224,13 +224,13 @@ class ListingPhotoRoomImportTest extends TestCase
         $room = BookableUnit::where('listing_id', $listing->id)->where('code', 'STD')->firstOrFail();
         $this->assertSame('Standard Chalet', $room->name);
         $this->assertSame(6, $room->total_units);
-        $this->assertSame('1450.00', $room->rate_per_night);
+        $this->assertSame('1450.00', $room->base_rate);
 
         // Same file again, one value changed: the room is updated, not duplicated.
         $workbook = $this->makeWorkbook([
             'Listings' => [['id'], [$listing->id]],
             'RoomTypes' => [
-                ['listing_id', 'code', 'name', 'total_units', 'rate_per_night'],
+                ['listing_id', 'code', 'name', 'total_units', 'base_rate'],
                 [$listing->id, 'STD', 'Standard Chalet', 6, '1600'],
             ],
         ]);
@@ -241,7 +241,7 @@ class ListingPhotoRoomImportTest extends TestCase
         $this->importer()->apply($plan);
 
         $this->assertSame(1, BookableUnit::where('listing_id', $listing->id)->count());
-        $this->assertSame('1600.00', $room->refresh()->rate_per_night);
+        $this->assertSame('1600.00', $room->refresh()->base_rate);
     }
 
     public function test_a_room_can_reference_a_listing_the_same_import_creates(): void
@@ -252,7 +252,7 @@ class ListingPhotoRoomImportTest extends TestCase
                 ['Desert Whisper Lodge', 'accommodation'],
             ],
             'RoomTypes' => [
-                ['listing_id', 'listing', 'code', 'name', 'total_units', 'rate_per_night'],
+                ['listing_id', 'listing', 'code', 'name', 'total_units', 'base_rate'],
                 ['', 'Desert Whisper Lodge', 'SUITE', 'Desert Suite', 3, '3200'],
             ],
         ]);
@@ -274,7 +274,7 @@ class ListingPhotoRoomImportTest extends TestCase
         $workbook = $this->makeWorkbook([
             'Listings' => [['id'], [$listing->id]],
             'RoomTypes' => [
-                ['listing_id', 'listing', 'code', 'name', 'total_units', 'rate_per_night'],
+                ['listing_id', 'listing', 'code', 'name', 'total_units', 'base_rate'],
                 ['', 'Lodge That Does Not Exist', 'STD', 'Standard', 2, '100'],
             ],
         ]);
@@ -299,7 +299,7 @@ class ListingPhotoRoomImportTest extends TestCase
         $workbook = $this->makeWorkbook([
             'Listings' => [['id', 'photo_folder'], [$listing->id, 'Okonjima Bush Camp']],
             'RoomTypes' => [
-                ['listing_id', 'code', 'name', 'total_units', 'rate_per_night', 'photo_folder'],
+                ['listing_id', 'code', 'name', 'total_units', 'base_rate', 'photo_folder'],
                 [$listing->id, 'STD', 'Standard Chalet', 4, '1450', 'Okonjima Bush Camp/STD'],
             ],
         ]);
@@ -334,7 +334,7 @@ class ListingPhotoRoomImportTest extends TestCase
         $workbook = $this->makeWorkbook([
             'Listings' => [['id'], [$listing->id]],
             'RoomTypes' => [
-                ['listing_id', 'code', 'name', 'total_units', 'rate_per_night', 'photo_folder'],
+                ['listing_id', 'code', 'name', 'total_units', 'base_rate', 'photo_folder'],
                 [$listing->id, 'STD', 'Standard', 2, '900', 'STD'],
             ],
         ]);
@@ -357,7 +357,7 @@ class ListingPhotoRoomImportTest extends TestCase
             'max_adults' => 2,
             'max_children' => 2,
             'total_units' => 4,
-            'rate_per_night' => 2100.00,
+            'base_rate' => 2100.00,
             'currency' => 'NAD',
             'is_active' => true,
         ]);

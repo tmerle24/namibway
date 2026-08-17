@@ -95,6 +95,8 @@ class Listing extends Model
         'activities',
         'languages',
         'opening_hours',
+        'pickup_time',
+        'return_time',
         'enrichment_score',
         'enrichment_status',
         'confidence',

@@ -71,7 +71,7 @@ class PanelPrintTest extends TestCase
             'listing_id' => $listing->id,
             'name' => 'Bush Chalet',
             'total_units' => 4,
-            'rate_per_night' => 2450,
+            'base_rate' => 2450,
             'currency' => 'NAD',
         ]);
 
@@ -90,7 +90,7 @@ class PanelPrintTest extends TestCase
             'listing_id' => $listing->id,
             'name' => 'Quad tour',
             'total_units' => 8,
-            'rate_per_night' => 950,
+            'base_rate' => 950,
             'currency' => 'NAD',
         ]);
 

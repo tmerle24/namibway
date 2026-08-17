@@ -113,7 +113,7 @@ class ConcurrentBookingTest extends TestCase
         $room = BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 1,
-            'rate_per_night' => 1000,
+            'base_rate' => 1000,
             'currency' => 'NAD',
         ]);
 
@@ -143,7 +143,7 @@ class ConcurrentBookingTest extends TestCase
         $room = BookableUnit::factory()->create([
             'listing_id' => $listing->id,
             'total_units' => 2,
-            'rate_per_night' => 1000,
+            'base_rate' => 1000,
             'currency' => 'NAD',
         ]);
 
@@ -182,7 +182,7 @@ class ConcurrentBookingTest extends TestCase
             'listing_id' => $listing->id,
             'name' => 'Quad tour',
             'total_units' => 1,
-            'rate_per_night' => 950,
+            'base_rate' => 950,
             'currency' => 'NAD',
         ]);
 

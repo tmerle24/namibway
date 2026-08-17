@@ -83,18 +83,19 @@ class SiteOrder
     /**
      * Write the lines onto a request that has just been created.
      *
-     * `menu_item_id` is only set for a restaurant order — a product line points
-     * at `shop_products`, a different table, and pretending otherwise would put
-     * a foreign key on a row that does not exist there. The frozen name and
-     * price are what the business reads either way, which is the whole reason
-     * they are frozen.
+     * `menu_item_id` is only set for a restaurant order; `shop_product_id` only
+     * for a product order. Both point at different tables — mixing them would
+     * create an FK on a row that does not exist there. The frozen name and price
+     * are what the business reads either way.
      */
     public function attachTo(Inquiry $inquiry, EnquiryFormType $type): void
     {
         $isMenu = $type === EnquiryFormType::RestaurantOrder;
+        $isProduct = $type === EnquiryFormType::ProductOrder;
 
         $inquiry->items()->createMany(array_map(fn (array $line): array => [
             'menu_item_id' => $isMenu ? $line['id'] : null,
+            'shop_product_id' => $isProduct ? $line['id'] : null,
             'name' => $line['name'],
             'quantity' => $line['quantity'],
             'unit_price' => $line['unit_price'],

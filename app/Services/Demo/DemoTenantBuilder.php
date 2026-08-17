@@ -310,7 +310,7 @@ class DemoTenantBuilder
                 'max_adults' => $room->max_adults,
                 'max_children' => $room->max_children,
                 'total_units' => $room->total_units,
-                'rate_per_night' => $room->rate_per_night,
+                'base_rate' => $room->base_rate,
                 'currency' => $room->currency,
                 'is_active' => $room->is_active,
             ]))->all();
@@ -352,7 +352,7 @@ class DemoTenantBuilder
                 'max_adults' => $adults,
                 'max_children' => $children,
                 'total_units' => $units,
-                'rate_per_night' => round($base * $factor, 2),
+                'base_rate' => round($base * $factor, 2),
                 'currency' => $currency,
                 'is_active' => true,
             ]);
@@ -391,7 +391,7 @@ class DemoTenantBuilder
         }
 
         foreach ($rooms as $room) {
-            $base = round((float) $room->rate_per_night, 2);
+            $base = round((float) $room->base_rate, 2);
 
             $this->writer->setCalendar($room, $start, $highSeason->copy()->subDay(), ['rate' => $base]);
             $this->writer->setCalendar($room, $highSeason, $lastNight, ['rate' => round($base * 1.6, 2)]);

@@ -51,7 +51,7 @@ class DepartureBookingTest extends TestCase
             'listing_id' => $this->listing->id,
             'name' => 'Quad tour',
             'total_units' => 8,
-            'rate_per_night' => 950,
+            'base_rate' => 950,
             'currency' => 'NAD',
         ]);
         $this->morning = $this->slot('09:00', 'Morning departure');

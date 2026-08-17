@@ -50,7 +50,7 @@ class CustomerTest extends TestCase
         $this->room = BookableUnit::factory()->create([
             'listing_id' => $this->listing->id,
             'total_units' => 5,
-            'rate_per_night' => 1200,
+            'base_rate' => 1200,
             'currency' => 'NAD',
         ]);
     }
@@ -156,7 +156,7 @@ class CustomerTest extends TestCase
         $secondRoom = BookableUnit::factory()->create([
             'listing_id' => $second->id,
             'total_units' => 2,
-            'rate_per_night' => 900,
+            'base_rate' => 900,
             'currency' => 'NAD',
         ]);
 
@@ -185,7 +185,7 @@ class CustomerTest extends TestCase
         $otherRoom = BookableUnit::factory()->create([
             'listing_id' => $otherListing->id,
             'total_units' => 2,
-            'rate_per_night' => 900,
+            'base_rate' => 900,
             'currency' => 'NAD',
         ]);
 
@@ -226,7 +226,7 @@ class CustomerTest extends TestCase
         $room = BookableUnit::factory()->create([
             'listing_id' => $unclaimed->id,
             'total_units' => 1,
-            'rate_per_night' => 500,
+            'base_rate' => 500,
             'currency' => 'NAD',
         ]);
 

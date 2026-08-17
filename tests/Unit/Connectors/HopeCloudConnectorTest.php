@@ -32,7 +32,7 @@ it('returns available rooms with tourism levy surfaced in description', function
                     'code' => 'CHALET',
                     'name' => 'Bush Chalet',
                     'available' => 2,
-                    'rate_per_night' => 2000.0,
+                    'base_rate' => 2000.0,
                     'currency' => 'NAD',
                     'total_rate' => 6090.0,
                     'description' => 'Comfortable bush chalet',
@@ -60,7 +60,7 @@ it('returns unavailable when no rooms available', function () {
     $this->client->shouldReceive('get')->andReturn([
         'tourism_levy_rate' => 15.0,
         'room_types' => [
-            ['code' => 'R1', 'name' => 'Room', 'available' => 0, 'rate_per_night' => 1000, 'currency' => 'NAD', 'total_rate' => 2000],
+            ['code' => 'R1', 'name' => 'Room', 'available' => 0, 'base_rate' => 1000, 'currency' => 'NAD', 'total_rate' => 2000],
         ],
     ]);
 

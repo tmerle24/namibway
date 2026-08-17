@@ -55,7 +55,7 @@ class StayPromotionTest extends TestCase
             'listing_id' => $this->listing->id,
             'code' => 'STD',
             'total_units' => 2,
-            'rate_per_night' => 1200,
+            'base_rate' => 1200,
             'currency' => 'NAD',
         ]);
     }
@@ -139,7 +139,7 @@ class StayPromotionTest extends TestCase
             'listing_id' => $this->listing->id,
             'code' => 'SUITE',
             'total_units' => 1,
-            'rate_per_night' => 3000,
+            'base_rate' => 3000,
             'currency' => 'NAD',
         ]);
 
@@ -163,7 +163,7 @@ class StayPromotionTest extends TestCase
             'listing_id' => $this->listing->id,
             'code' => 'SUITE',
             'total_units' => 1,
-            'rate_per_night' => 3000,
+            'base_rate' => 3000,
             'currency' => 'NAD',
         ]);
 

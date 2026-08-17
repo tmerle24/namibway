@@ -139,7 +139,7 @@ class RoomCapacityTest extends TestCase
             'max_adults' => 2,
             'max_children' => 2,
             'total_units' => 3,
-            'rate_per_night' => 1200,
+            'base_rate' => 1200,
         ]);
 
         $manual = app(ManualBooking::class);
@@ -237,7 +237,7 @@ class RoomCapacityTest extends TestCase
     {
         return BookableUnit::factory()->create(array_merge([
             'total_units' => 2,
-            'rate_per_night' => 1200,
+            'base_rate' => 1200,
             'currency' => 'NAD',
         ], $attributes));
     }

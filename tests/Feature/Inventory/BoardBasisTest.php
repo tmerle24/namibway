@@ -45,7 +45,7 @@ class BoardBasisTest extends TestCase
             'listing_id' => $listing->id,
             'name' => 'Standard Chalet',
             'total_units' => 3,
-            'rate_per_night' => 1500,
+            'base_rate' => 1500,
             'currency' => 'NAD',
         ]);
     }

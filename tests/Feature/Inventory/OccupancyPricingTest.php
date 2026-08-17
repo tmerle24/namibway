@@ -58,7 +58,7 @@ class OccupancyPricingTest extends TestCase
             'max_adults' => 4,
             'max_children' => 2,
             'total_units' => 3,
-            'rate_per_night' => 1200,
+            'base_rate' => 1200,
             'currency' => 'NAD',
         ]);
     }

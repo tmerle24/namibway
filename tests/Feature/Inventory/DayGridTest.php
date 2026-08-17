@@ -122,7 +122,7 @@ class DayGridTest extends TestCase
     public function test_each_departure_carries_its_own_seats_price_and_passengers(): void
     {
         $listing = Listing::factory()->create();
-        $unit = $this->unit($listing, ['total_units' => 8, 'rate_per_night' => 950]);
+        $unit = $this->unit($listing, ['total_units' => 8, 'base_rate' => 950]);
         $plan = $this->ratePlan($listing);
         $morning = $this->slot($unit, '09:00', 'Morning departure', 180);
         $sunset = $this->slot($unit, '17:00', 'Sunset drive', 180);
@@ -181,7 +181,7 @@ class DayGridTest extends TestCase
     public function test_the_month_reading_sums_the_days_departures(): void
     {
         $listing = Listing::factory()->create();
-        $unit = $this->unit($listing, ['total_units' => 8, 'rate_per_night' => 950]);
+        $unit = $this->unit($listing, ['total_units' => 8, 'base_rate' => 950]);
         $plan = $this->ratePlan($listing);
         $morning = $this->slot($unit, '09:00', 'Morning', 180);
         $sunset = $this->slot($unit, '17:00', 'Sunset', 180);
@@ -286,7 +286,7 @@ class DayGridTest extends TestCase
             'listing_id' => $listing->id,
             'name' => 'Quad tour',
             'total_units' => 8,
-            'rate_per_night' => 950,
+            'base_rate' => 950,
             'currency' => 'NAD',
         ], $attributes));
     }

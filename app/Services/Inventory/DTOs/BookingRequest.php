@@ -67,5 +67,11 @@ class BookingRequest
          * that fits, which is nearly all of them.
          */
         public readonly ?string $overCapacityNote = null,
+        /**
+         * Vehicle hand-over times. Null for accommodation and activity stays.
+         * When null, InventoryWriter falls back to the listing's own defaults.
+         */
+        public readonly ?string $pickupTime = null,
+        public readonly ?string $returnTime = null,
     ) {}
 }

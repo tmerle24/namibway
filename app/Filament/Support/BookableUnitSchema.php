@@ -59,7 +59,8 @@ class BookableUnitSchema
                 ->minValue(1)
                 ->maxValue(255)
                 ->required(),
-            Forms\Components\TextInput::make('rate_per_night')
+            Forms\Components\TextInput::make('base_rate')
+                ->helperText('Fallback rate when no rate-plan day says anything different. The rate plan always wins on nights it covers.')
                 ->numeric()
                 ->minValue(0)
                 ->required(),
@@ -67,6 +68,13 @@ class BookableUnitSchema
                 ->default('NAD')
                 ->required()
                 ->maxLength(3),
+            Forms\Components\TextInput::make('turnaround_days')
+                ->label('Turnaround days')
+                ->helperText('Vehicles only — days between one guest returning it and the next picking it up (cleaning, inspection). 0 = same-day fine.')
+                ->numeric()
+                ->minValue(0)
+                ->maxValue(14)
+                ->default(0),
             Forms\Components\Toggle::make('is_active')
                 ->helperText('Inactive room types are hidden from travelers and from availability.')
                 ->default(true),

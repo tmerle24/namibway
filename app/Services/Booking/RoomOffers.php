@@ -20,7 +20,7 @@ use Carbon\CarbonInterface;
  * same calendar the lodge sells from.
  *
  * This is the seam CLAUDE.md called "the later, deliberate step": the trip
- * plan used to price a room as `rate_per_night × nights` and count
+ * plan used to price a room as `base_rate × nights` and count
  * availability from overlapping inquiries, while the lodge-facing system
  * priced from rate plans and counted ARI units. Two readers, two answers, and
  * the difference only becomes visible when a real property enters real rates —
