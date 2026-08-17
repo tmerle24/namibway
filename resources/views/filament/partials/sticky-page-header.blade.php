@@ -71,4 +71,26 @@
     .dark .fi-header {
         background-color: rgb(var(--gray-950, 3 7 18));
     }
+
+    /* ---- Modal: fixed header + footer, scrollable body ------------------
+       The outer scroll container (overflow-y-auto on the backdrop grid) is
+       irrelevant — we cap the modal window itself and make only the content
+       area scroll. No position:sticky needed: the window is a flex column
+       and the header/footer are natural non-shrinking ends; only the middle
+       grows and overflows. */
+    .fi-modal-window:not(.fi-modal-slide-over-window) {
+        max-height: min(90dvh, 900px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .fi-modal-content {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
+    }
+    .fi-modal-header,
+    .fi-modal-footer {
+        flex-shrink: 0;
+    }
 </style>
