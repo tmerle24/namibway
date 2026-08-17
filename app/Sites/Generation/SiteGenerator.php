@@ -134,10 +134,10 @@ class SiteGenerator
      * Build an empty site for a business we hold nothing about — the same kit,
      * the same block order, with placeholders waiting to be filled.
      */
-    public function empty(string $name, BusinessType $type): Site
+    public function empty(string $name, BusinessType $type, Partner $partner): Site
     {
-        return DB::transaction(function () use ($name, $type): Site {
-            $site = $this->create($name, $type, null);
+        return DB::transaction(function () use ($name, $type, $partner): Site {
+            $site = $this->create($name, $type, null, $partner);
 
             $this->writeSiteFields($site, $this->legalFieldsFrom($site));
             $this->writeBlocks($site, []);

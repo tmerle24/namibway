@@ -65,7 +65,7 @@ class SiteNavigationTest extends TestCase
         ]);
 
         ShopProduct::create([
-            'site_id' => $site->id,
+            'partner_id' => $site->partner_id,
             'title' => 'Beaded collar',
             'status' => ShopProductStatus::Published,
             

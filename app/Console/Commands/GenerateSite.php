@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Enums\BusinessType;
 use App\Enums\ContentSource;
 use App\Models\Listing;
+use App\Models\Partner;
 use App\Models\Site;
 use App\Sites\Generation\GenerationReport;
 use App\Sites\Generation\SiteGenerator;
@@ -28,6 +29,7 @@ class GenerateSite extends Command
         {listing? : Slug or id of a listing to build the site from}
         {--name= : Business name, for a customer with no listing}
         {--type= : Business type, for a customer with no listing}
+        {--partner= : Partner id or email, required when using --name}
         {--force : Discard generated content and rebuild. Refuses on a published site}
         {--list : Show the sites that exist and do nothing else}
         {--candidates : Show listings that would make a presentable site, and do nothing else}';
@@ -86,7 +88,7 @@ class GenerateSite extends Command
         if (! is_string($name) || trim($name) === '') {
             $this->error('Name a listing to build from, or pass --name and --type for a business without one.');
             $this->line('  php artisan sites:generate okonjima-bush-camp');
-            $this->line('  php artisan sites:generate --name="Swakop Auto Electric" --type=service');
+            $this->line('  php artisan sites:generate --name="Swakop Auto Electric" --type=service --partner=42');
 
             return null;
         }
@@ -99,7 +101,25 @@ class GenerateSite extends Command
             return null;
         }
 
-        return $generator->empty(trim($name), $type);
+        $partnerRef = $this->option('partner');
+
+        if (! is_string($partnerRef) || trim($partnerRef) === '') {
+            $this->error('Pass --partner=<id or email> to associate the site with an existing partner.');
+
+            return null;
+        }
+
+        $partner = Partner::where('id', ctype_digit($partnerRef) ? (int) $partnerRef : 0)
+            ->orWhere('email', $partnerRef)
+            ->first();
+
+        if ($partner === null) {
+            $this->error("No partner matches [{$partnerRef}].");
+
+            return null;
+        }
+
+        return $generator->empty(trim($name), $type, $partner);
     }
 
     /**
