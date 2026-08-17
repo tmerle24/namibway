@@ -19,6 +19,12 @@
 
     $items = $enquiryItems ?? null;
     $showItems = $type->hasItems() && $items !== null && ! $items->isEmpty();
+
+    $pickerTitle = match ($type) {
+        EnquiryFormType::RestaurantOrder => 'Choose food',
+        EnquiryFormType::ProductOrder    => 'Choose products',
+        default                          => 'Choose items',
+    };
 @endphp
 <section class="section section--tint" id="{{ $anchor }}">
     <div class="wrap">
@@ -70,10 +76,12 @@
                         </div>
                         @endunless
 
+                        @unless ($viaWhatsApp)
                         <div class="field">
                             <label for="eq-phone">Phone (optional)</label>
                             <input type="tel" id="eq-phone" name="phone" maxlength="50">
                         </div>
+                        @endunless
 
                         @if ($type === EnquiryFormType::StayRequest)
                             {{-- Two real fields, one row. The pair reads as a
@@ -139,7 +147,7 @@
                                     <svg class="eq-picker__trigger-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
                                     </svg>
-                                    <span class="eq-picker__trigger-label">Choose items</span>
+                                    <span class="eq-picker__trigger-label">{{ $pickerTitle }}</span>
                                     <span class="eq-picker__badge" id="eq-badge" hidden>0</span>
                                 </button>
 
@@ -167,7 +175,7 @@
                                 <div class="eq-drawer__backdrop" id="eq-backdrop"></div>
                                 <div class="eq-drawer__panel" id="eq-panel">
                                     <div class="eq-drawer__head">
-                                        <h3 class="eq-drawer__title" id="eq-drawer-title">Choose items</h3>
+                                        <h3 class="eq-drawer__title" id="eq-drawer-title">{{ $pickerTitle }}</h3>
                                         <button type="button" class="eq-drawer__close" id="eq-drawer-close" aria-label="Close">
                                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/></svg>
                                         </button>
@@ -180,6 +188,12 @@
 
                                                 @foreach ($section['items'] as $item)
                                                     <div class="eq-row" data-id="{{ $item->id }}" data-price="{{ $item->price }}" data-name="{{ e($item->name) }}">
+                                                        @if ($item->imageUrl)
+                                                            <img src="{{ $item->imageUrl }}" alt="{{ $item->name }}"
+                                                                 class="eq-thumb" width="56" height="56" loading="lazy"
+                                                                 data-full="{{ $item->imageUrl }}"
+                                                                 title="Tap to enlarge">
+                                                        @endif
                                                         <div class="eq-row__text">
                                                             <strong class="eq-row__name">{{ $item->name }}</strong>
                                                             @if (filled($item->description))
@@ -208,6 +222,12 @@
                                         </button>
                                     </div>
                                 </div>
+                            </div>
+
+                            {{-- Lightbox overlay for thumbnail zoom — lives outside the drawer so it
+                                 isn't clipped by the panel's overflow:hidden. --}}
+                            <div class="eq-lightbox" id="eq-lightbox" hidden aria-hidden="true" role="dialog" aria-label="Product image">
+                                <img class="eq-lightbox__img" id="eq-lightbox-img" src="" alt="">
                             </div>
                         @endif
 
@@ -415,6 +435,37 @@
 
                             // Initial state
                             refresh();
+
+                            // ---- Thumbnail lightbox ----
+
+                            var lightbox    = document.getElementById('eq-lightbox');
+                            var lightboxImg = document.getElementById('eq-lightbox-img');
+
+                            if (lightbox && lightboxImg) {
+                                drawer.addEventListener('click', function (e) {
+                                    var thumb = e.target.closest('.eq-thumb');
+                                    if (!thumb) return;
+                                    var src = thumb.getAttribute('data-full') || thumb.src;
+                                    lightboxImg.src = src;
+                                    lightboxImg.alt = thumb.alt;
+                                    lightbox.hidden = false;
+                                    lightbox.removeAttribute('aria-hidden');
+                                });
+
+                                function closeLightbox() {
+                                    lightbox.hidden = true;
+                                    lightbox.setAttribute('aria-hidden', 'true');
+                                    lightboxImg.src = '';
+                                }
+
+                                lightbox.addEventListener('click', closeLightbox);
+                                document.addEventListener('keydown', function (e) {
+                                    if (e.key === 'Escape' && !lightbox.hidden) {
+                                        e.stopPropagation();
+                                        closeLightbox();
+                                    }
+                                }, true);
+                            }
                         }());
                         </script>
                     @endif

@@ -781,6 +781,34 @@
     /* Highlight the name when qty > 0 */
     .eq-row--active .eq-row__name { color: var(--accent); }
 
+    /* Product thumbnail inside each row */
+    .eq-thumb {
+        flex: none;
+        width: 56px; height: 56px;
+        object-fit: cover;
+        border-radius: 6px;
+        cursor: zoom-in;
+        transition: opacity .12s ease;
+    }
+    .eq-thumb:hover { opacity: .85; }
+
+    /* Full-screen lightbox for tapped thumbnails */
+    .eq-lightbox {
+        position: fixed; inset: 0; z-index: 300;
+        background: rgba(0,0,0,.88);
+        display: flex; align-items: center; justify-content: center;
+        cursor: zoom-out;
+        animation: eqFadeIn .18s ease;
+    }
+    .eq-lightbox[hidden] { display: none; }
+    .eq-lightbox__img {
+        max-width: min(90vw, 640px);
+        max-height: 82vh;
+        border-radius: 8px;
+        box-shadow: 0 8px 40px rgba(0,0,0,.5);
+        pointer-events: none;
+    }
+
     /* +/− stepper */
     .eq-stepper {
         display: flex; align-items: center; flex: none;
