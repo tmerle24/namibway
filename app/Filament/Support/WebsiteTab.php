@@ -17,6 +17,7 @@ use App\Sites\Publishing\PublishGate;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\ActionSize;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -39,200 +40,218 @@ class WebsiteTab
             ->icon('heroicon-o-globe-alt')
             ->visibleOn('edit')
             ->schema([
-                Forms\Components\Placeholder::make('website_state')
-                    ->label('Status')
-                    ->content(fn (Listing|Partner|null $record): string => match (true) {
-                        $record === null => '—',
-                        SiteResolver::for($record) === null => 'No website yet.',
-                        SiteResolver::for($record)->isPublished() => 'Published — live at its own address and indexable.',
-                        default => 'Draft — opens at its own address, but tells search engines to ignore it.',
-                    }),
+                // ── Status + primary CTAs ────────────────────────────────────
+                Forms\Components\Section::make()
+                    ->schema([
+                        Forms\Components\Placeholder::make('website_state')
+                            ->label('Status')
+                            ->content(fn (Listing|Partner|null $record): string => match (true) {
+                                $record === null => '—',
+                                SiteResolver::for($record) === null => 'No website yet.',
+                                SiteResolver::for($record)->isPublished() => 'Published — live at its own address and indexable.',
+                                default => 'Draft — opens at its own address, but tells search engines to ignore it.',
+                            }),
 
-                Forms\Components\Placeholder::make('website_address')
-                    ->label('Address')
-                    ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
-                    ->content(function (Listing|Partner|null $record): HtmlString {
-                        $site = $record === null ? null : SiteResolver::for($record);
+                        Forms\Components\Placeholder::make('website_address')
+                            ->label('Address')
+                            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
+                            ->content(function (Listing|Partner|null $record): HtmlString {
+                                $site = $record === null ? null : SiteResolver::for($record);
 
-                        if ($site === null) {
-                            return new HtmlString('—');
-                        }
+                                if ($site === null) {
+                                    return new HtmlString('—');
+                                }
 
-                        $url = e($site->publicUrl());
+                                $url = e($site->publicUrl());
 
-                        return new HtmlString(
-                            '<a href="'.$url.'" target="_blank" rel="noopener" class="underline">'.$url.'</a>'
-                            .(blank($site->host)
-                                ? '<p class="text-sm opacity-70 mt-1">No host yet — run <code>sites:hosts --backfill</code> once the wildcard domain is configured.</p>'
-                                : '')
-                        );
-                    }),
+                                return new HtmlString(
+                                    '<a href="'.$url.'" target="_blank" rel="noopener" class="underline">'.$url.'</a>'
+                                    .(blank($site->host)
+                                        ? '<p class="text-sm opacity-70 mt-1">No host yet — run <code>sites:hosts --backfill</code> once the wildcard domain is configured.</p>'
+                                        : '')
+                                );
+                            }),
 
-                Forms\Components\Placeholder::make('website_terms')
-                    ->label('Legal pages')
-                    ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
-                    ->content(function (Listing|Partner|null $record): string {
-                        $site = $record === null ? null : SiteResolver::for($record);
+                        Forms\Components\Placeholder::make('website_terms')
+                            ->label('Legal pages')
+                            ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
+                            ->content(function (Listing|Partner|null $record): string {
+                                $site = $record === null ? null : SiteResolver::for($record);
 
-                        if ($site === null) {
-                            return '—';
-                        }
+                                if ($site === null) {
+                                    return '—';
+                                }
 
-                        return $site->terms_accepted_at === null
-                            ? 'We have written the first version of Privacy, the legal notice and the copyright line. '
-                                .'Send them to the business to confirm — the site publishes itself when they do.'
-                            : 'Confirmed by '.($site->terms_accepted_by ?: 'the business')
-                                .' on '.$site->terms_accepted_at->format('j M Y')
-                                .($site->terms_version ? ', against terms '.$site->terms_version : '').'.';
-                    }),
+                                return $site->terms_accepted_at === null
+                                    ? 'We have written the first version of Privacy, the legal notice and the copyright line. '
+                                        .'Send them to the business to confirm — the site publishes itself when they do.'
+                                    : 'Confirmed by '.($site->terms_accepted_by ?: 'the business')
+                                        .' on '.$site->terms_accepted_at->format('j M Y')
+                                        .($site->terms_version ? ', against terms '.$site->terms_version : '').'.';
+                            }),
 
-                Forms\Components\Actions::make([
-                    EditContactChannelsAction::make(),
+                        Forms\Components\Actions::make([
+                            Action::make('publish_website')
+                                ->label(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record)?->isPublished() === true
+                                    ? 'Unpublish'
+                                    : 'Publish')
+                                ->icon('heroicon-o-rocket-launch')
+                                ->size(ActionSize::Large)
+                                ->color(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record)?->isPublished() === true
+                                    ? 'danger'
+                                    : 'success')
+                                ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
+                                ->requiresConfirmation()
+                                ->modalDescription(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record)?->isPublished() === true
+                                    ? 'It stops being indexable and goes back to being a draft.'
+                                    : 'It becomes indexable by search engines under this business\'s name. '
+                                        .'Only do this once they have seen it and agreed.')
+                                ->form(fn (Listing|Partner|null $record): array => $record !== null && SiteResolver::for($record)?->isPublished() === true
+                                    ? []
+                                    : [
+                                        Forms\Components\Checkbox::make('terms')
+                                            ->label(fn (): string => 'The business has seen the site and its legal pages, and accepts the NamibWay website terms'
+                                                .(LegalText::termsUrl() === null ? '.' : ' ('.LegalText::termsUrl().').'))
+                                            ->required()
+                                            ->accepted(),
 
-                    EditEnquiryFormAction::make(),
+                                        Forms\Components\TextInput::make('confirmed_by')
+                                            ->label('Who confirmed')
+                                            ->helperText('The person at the business who agreed — a name is enough.')
+                                            ->maxLength(255),
+                                    ])
+                                ->action(fn (Listing|Partner|null $record, array $data) => $record === null ? null : self::togglePublished($record, $data)),
 
-                    EditBlocksAction::make(),
+                            Action::make('open_website')
+                                ->label('Open')
+                                ->icon('heroicon-o-arrow-top-right-on-square')
+                                ->size(ActionSize::Large)
+                                ->color('gray')
+                                ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
+                                ->url(fn (Listing|Partner|null $record): ?string => $record === null ? null : SiteResolver::for($record)?->publicUrl())
+                                ->openUrlInNewTab(),
+                        ]),
+                    ]),
 
-                    EditPagesAction::make(),
+                // ── Editing tools — alphabetical ─────────────────────────────
+                Forms\Components\Section::make('Edit website')
+                    ->schema([
+                        Forms\Components\Actions::make([
+                            EditActionButtonsAction::make(),
 
-                    EditSiteImagesAction::make(),
+                            EditContactChannelsAction::make(),
 
-                    ManageShopProductsAction::make(),
+                            EditEnquiryFormAction::make(),
 
-                    Action::make('manage_menu_items')
-                        ->label('Menu')
-                        ->icon('heroicon-o-clipboard-document-list')
-                        ->color('gray')
-                        ->visible(function (Listing|Partner|null $record): bool {
-                            if ($record === null) {
-                                return false;
-                            }
+                            EditBlocksAction::make(),
 
-                            $listing = $record instanceof Listing
-                                ? $record
-                                : SiteResolver::for($record)?->sourceListing;
+                            EditTypographyAction::make(),
 
-                            return $listing !== null && $listing->type === ListingType::Restaurant;
-                        })
-                        ->url(function (Listing|Partner|null $record): ?string {
-                            if ($record === null) {
-                                return null;
-                            }
+                            Action::make('manage_menu_items')
+                                ->label('Menu')
+                                ->icon('heroicon-o-clipboard-document-list')
+                                ->color('gray')
+                                ->visible(function (Listing|Partner|null $record): bool {
+                                    if ($record === null) {
+                                        return false;
+                                    }
 
-                            $listing = $record instanceof Listing
-                                ? $record
-                                : SiteResolver::for($record)?->sourceListing;
+                                    $listing = $record instanceof Listing
+                                        ? $record
+                                        : SiteResolver::for($record)?->sourceListing;
 
-                            return $listing !== null
-                                ? ListingResource::getUrl('edit', ['record' => $listing]).'#relation-manager-menu-items-relation-manager'
-                                : null;
-                        })
-                        ->openUrlInNewTab(),
+                                    return $listing !== null && $listing->type === ListingType::Restaurant;
+                                })
+                                ->url(function (Listing|Partner|null $record): ?string {
+                                    if ($record === null) {
+                                        return null;
+                                    }
 
-                    EditHeroAction::make(),
+                                    $listing = $record instanceof Listing
+                                        ? $record
+                                        : SiteResolver::for($record)?->sourceListing;
 
-                    EditSiteLogoAction::make(),
+                                    return $listing !== null
+                                        ? ListingResource::getUrl('edit', ['record' => $listing]).'#relation-manager-menu-items-relation-manager'
+                                        : null;
+                                })
+                                ->openUrlInNewTab(),
 
-                    EditTypographyAction::make(),
+                            EditSiteLogoAction::make(),
 
-                    EditActionButtonsAction::make(),
+                            EditHeroAction::make(),
 
-                    EditCustomDomainAction::make(),
+                            EditCustomDomainAction::make(),
 
-                    EditLegalTextAction::make(),
+                            EditPagesAction::make(),
 
-                    SendTermsConfirmationAction::make(),
+                            EditSiteImagesAction::make(),
 
-                    Action::make('build_website')
-                        ->label(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record) !== null
-                            ? 'Rebuild from this '.($record instanceof Partner ? 'partner' : 'listing')
-                            : 'Create website')
-                        ->icon('heroicon-o-globe-alt')
-                        ->color(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record) !== null ? 'gray' : 'success')
-                        ->requiresConfirmation()
-                        ->modalDescription(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record) !== null
-                            ? 'We rebuild from this source — the text, photographs and address. '
-                                .'Anything already edited on the website is left alone, and the bell reports what happened.'
-                            : 'We build from this source — its text, its photographs, its address. '
-                                .'Nothing becomes public. A notification follows when the draft is ready.')
-                        // Partners without a business_type need one to generate — ask for it here
-                        // the first time, since it is not derivable from the record automatically.
-                        ->form(fn (Listing|Partner|null $record): array => (
-                            $record instanceof Partner
-                            && SiteResolver::for($record) === null
-                            && blank($record->business_type)
-                        ) ? [
-                            Forms\Components\Select::make('business_type')
-                                ->label('Business type')
-                                ->options(BusinessType::class)
-                                ->required()
-                                ->default(BusinessType::Retail->value)
-                                ->helperText('Set this once on the partner record to skip this question next time.'),
-                        ] : [])
-                        ->action(function (Listing|Partner|null $record, array $data): void {
-                            if ($record === null) {
-                                return;
-                            }
+                            EditLegalTextAction::make(),
 
-                            $userId = auth()->id();
-                            $userId = is_numeric($userId) ? (int) $userId : null;
+                            ManageShopProductsAction::make(),
+                        ]),
+                    ]),
 
-                            if ($record instanceof Partner) {
-                                $existing = SiteResolver::for($record);
-                                $type = ($existing !== null ? $existing->business_type : null)
-                                    ?? (filled($record->business_type) ? BusinessType::from($record->business_type) : null)
-                                    ?? (isset($data['business_type']) ? BusinessType::from($data['business_type']) : BusinessType::Retail);
+                // ── Operational — rebuild / confirm ──────────────────────────
+                Forms\Components\Section::make('Operations')
+                    ->schema([
+                        Forms\Components\Actions::make([
+                            SendTermsConfirmationAction::make(),
 
-                                GenerateSiteFromPartnerJob::dispatch($record, $type, $userId);
-                            } else {
-                                GenerateSiteJob::dispatch($record, $userId);
-                            }
+                            Action::make('build_website')
+                                ->label(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record) !== null
+                                    ? 'Rebuild from this '.($record instanceof Partner ? 'partner' : 'listing')
+                                    : 'Create website')
+                                ->icon('heroicon-o-globe-alt')
+                                ->color(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record) !== null ? 'gray' : 'success')
+                                ->requiresConfirmation()
+                                ->modalDescription(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record) !== null
+                                    ? 'We rebuild from this source — the text, photographs and address. '
+                                        .'Anything already edited on the website is left alone, and the bell reports what happened.'
+                                    : 'We build from this source — its text, its photographs, its address. '
+                                        .'Nothing becomes public. A notification follows when the draft is ready.')
+                                // Partners without a business_type need one to generate — ask for it here
+                                // the first time, since it is not derivable from the record automatically.
+                                ->form(fn (Listing|Partner|null $record): array => (
+                                    $record instanceof Partner
+                                    && SiteResolver::for($record) === null
+                                    && blank($record->business_type)
+                                ) ? [
+                                    Forms\Components\Select::make('business_type')
+                                        ->label('Business type')
+                                        ->options(BusinessType::class)
+                                        ->required()
+                                        ->default(BusinessType::Retail->value)
+                                        ->helperText('Set this once on the partner record to skip this question next time.'),
+                                ] : [])
+                                ->action(function (Listing|Partner|null $record, array $data): void {
+                                    if ($record === null) {
+                                        return;
+                                    }
 
-                            Notification::make()
-                                ->title('Building the website')
-                                ->body('It takes a minute. The bell will say how it went.')
-                                ->success()
-                                ->send();
-                        }),
+                                    $userId = auth()->id();
+                                    $userId = is_numeric($userId) ? (int) $userId : null;
 
-                    Action::make('publish_website')
-                        ->label(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record)?->isPublished() === true
-                            ? 'Unpublish'
-                            : 'Publish')
-                        ->icon('heroicon-o-rocket-launch')
-                        ->color(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record)?->isPublished() === true
-                            ? 'danger'
-                            : 'success')
-                        ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
-                        ->requiresConfirmation()
-                        ->modalDescription(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record)?->isPublished() === true
-                            ? 'It stops being indexable and goes back to being a draft.'
-                            : 'It becomes indexable by search engines under this business\'s name. '
-                                .'Only do this once they have seen it and agreed.')
-                        ->form(fn (Listing|Partner|null $record): array => $record !== null && SiteResolver::for($record)?->isPublished() === true
-                            ? []
-                            : [
-                                Forms\Components\Checkbox::make('terms')
-                                    ->label(fn (): string => 'The business has seen the site and its legal pages, and accepts the NamibWay website terms'
-                                        .(LegalText::termsUrl() === null ? '.' : ' ('.LegalText::termsUrl().').'))
-                                    ->required()
-                                    ->accepted(),
+                                    if ($record instanceof Partner) {
+                                        $existing = SiteResolver::for($record);
+                                        $type = ($existing !== null ? $existing->business_type : null)
+                                            ?? (filled($record->business_type) ? BusinessType::from($record->business_type) : null)
+                                            ?? (isset($data['business_type']) ? BusinessType::from($data['business_type']) : BusinessType::Retail);
 
-                                Forms\Components\TextInput::make('confirmed_by')
-                                    ->label('Who confirmed')
-                                    ->helperText('The person at the business who agreed — a name is enough.')
-                                    ->maxLength(255),
-                            ])
-                        ->action(fn (Listing|Partner|null $record, array $data) => $record === null ? null : self::togglePublished($record, $data)),
+                                        GenerateSiteFromPartnerJob::dispatch($record, $type, $userId);
+                                    } else {
+                                        GenerateSiteJob::dispatch($record, $userId);
+                                    }
 
-                    Action::make('open_website')
-                        ->label('Open')
-                        ->icon('heroicon-o-arrow-top-right-on-square')
-                        ->color('gray')
-                        ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
-                        ->url(fn (Listing|Partner|null $record): ?string => $record === null ? null : SiteResolver::for($record)?->publicUrl())
-                        ->openUrlInNewTab(),
-                ]),
+                                    Notification::make()
+                                        ->title('Building the website')
+                                        ->body('It takes a minute. The bell will say how it went.')
+                                        ->success()
+                                        ->send();
+                                }),
+                        ]),
+                    ]),
             ]);
     }
 
