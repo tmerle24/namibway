@@ -1258,6 +1258,74 @@ Three decisions inside it:
   submit is the kind of thing that is only ever discovered later, and `photos:audit-r2` is
   what collects what nothing references any more.
 
+### Recurring issue — shop product images showing as placeholder (2026-08-17)
+
+**Symptom:** a product detail page renders the SVG shopping-bag placeholder (`product-detail__main-img--empty`)
+instead of a photograph, even though the product exists with a title and description.
+
+**Architecture recap (so the cause is obvious when it recurs):**
+
+```
+ShopProduct.image_ids  →  [SiteImage.id, …]  →  SiteImage.key  →  R2 object
+```
+
+The controller loads `$site->images()->whereIn('id', $imageIds)` and keys it by id. If
+`image_ids` is empty (`[]`) or contains ids that have no matching `site_images` row, the
+collection has no entries and the view renders the placeholder.
+
+**Cause A — `image_ids: []` on a freshly created product.** The data-loss incident
+(2026-08-16, recorded in `CLAUDE.md`) wiped every `shop_products` row, but `site_images`
+rows and the R2 objects behind them were deliberately never deleted. When products were
+then recreated by hand (title + description entered in the editor, no photo step), the
+new rows started with `image_ids: []` — correct behaviour, but no link back to the
+surviving photographs.
+
+**Cause B — broken `image_ids` after a future data-loss of the same shape.** If the
+product editor is ever opened and saved while Livewire state is still showing the previous
+empty list (the 2026-08-16 bug, now guarded by `ShopProductEditorTest`), `image_ids` is
+overwritten with `[]`. The `site_images` rows survive; only the pointer is lost.
+
+**Diagnostic — check live:**
+
+```sql
+-- Which products on a site have no images?
+SELECT id, title, image_ids
+FROM shop_products
+WHERE site_id = (SELECT id FROM sites WHERE slug = 'oc-monas-collection')
+  AND image_ids = '[]'
+ORDER BY sort;
+
+-- Which site_images on that site are referenced by nothing?
+SELECT si.id, si.key
+FROM site_images si
+WHERE si.site_id = (SELECT id FROM sites WHERE slug = 'oc-monas-collection')
+  AND si.id NOT IN (
+    SELECT jsonb_array_elements_text(image_ids)::int
+    FROM shop_products
+    WHERE site_id = si.site_id
+      AND image_ids != '[]'
+  );
+```
+
+**Recovery:**
+
+```bash
+# 1. Dry run first — see what would be created
+php artisan sites:recover-products oc-monas-collection --dry-run
+
+# 2. If images are orphaned: rebuild products from those images (with AI text, published)
+php artisan sites:recover-products oc-monas-collection --ai --publish
+
+# 3. If the SiteImage rows themselves are also gone (all bytes orphaned on R2):
+#    re-upload through Filament → Website tab → Images, then re-assign in the shop editor.
+```
+
+**Prevention going forward:** the shop editor's `ShopProductEditorTest` guards against the
+save-with-empty-form deletion. The deeper fix — uploading a photo and writing the product
+in one step inside the editor — means `image_ids` is never `[]` on a product that has a
+picture. Products that genuinely have no picture (price list items, service offerings) are
+fine with `[]`; the placeholder is correct for those.
+
 ### Built 2026-08-12 — more than one page
 
 `EditPagesAction`, on the Website tab and in the owner's own panel: add, rename, reorder and
