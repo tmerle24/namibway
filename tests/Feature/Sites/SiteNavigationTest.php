@@ -227,15 +227,15 @@ class SiteNavigationTest extends TestCase
         $css = $this->get($site->publicUrl())->assertOk()->getContent();
 
         $this->assertIsString($css);
-        // The bar's height in document flow is fixed — content may overflow it
-        // visually (the logo does, in the hero state), but the layout height is
-        // always 64px and the hero's -64px margin-top stays correct.
+        // The bar's height is fixed via var(--nav-height) (default 64 px). The
+        // hero is pulled up under it by calc(-1 * var(--nav-height)), so any
+        // configured height keeps the arithmetic correct.
         // overflow:visible rather than hidden: the name is constrained by
         // -webkit-line-clamp and the logo by its own height rule, so no clipping
         // is needed — and hidden caused a two-step logo transition by snapping
         // the clip boundary mid-animation as .is-scrolled was added.
-        $this->assertStringContainsString('height: 64px; overflow: visible;', $css);
-        $this->assertStringContainsString('.hero { position: relative; margin-top: -64px;', $css);
+        $this->assertStringContainsString('height: var(--nav-height); overflow: visible;', $css);
+        $this->assertStringContainsString('.hero { position: relative; margin-top: calc(-1 * var(--nav-height));', $css);
         // A menu item breaking across two lines was half of what made it grow.
         // The other half was the name, which is allowed to wrap now — but only
         // inside the bar, clamped to the two lines its padding leaves room for.
@@ -294,7 +294,7 @@ class SiteNavigationTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/\.nav__name \{[^}]*text-overflow:/s', $css);
         // And the room for them: the bar's outside height is untouched, its
         // padding is what made space. overflow:visible — see test above.
-        $this->assertStringContainsString('height: 64px; overflow: visible; padding: var(--s2) var(--s4);', $css);
+        $this->assertStringContainsString('height: var(--nav-height); overflow: visible; padding: var(--s2) var(--s4);', $css);
     }
 
     /**

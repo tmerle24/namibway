@@ -46,6 +46,8 @@ use Illuminate\Support\Str;
  * @property string|null $logo_key
  * @property int|null $logo_hero_height
  * @property int|null $logo_compact_height
+ * @property int|null $nav_height
+ * @property string|null $nav_hero_style
  * @property string $default_locale
  * @property string|null $contact_email
  * @property string|null $contact_phone
@@ -94,6 +96,8 @@ class Site extends Model
         'logo_key',
         'logo_hero_height',
         'logo_compact_height',
+        'nav_height',
+        'nav_hero_style',
         'default_locale',
         'contact_email',
         'contact_phone',
@@ -143,6 +147,7 @@ class Site extends Model
         'brand_size_mobile' => 'integer',
         'logo_hero_height' => 'integer',
         'logo_compact_height' => 'integer',
+        'nav_height' => 'integer',
         'action_buttons' => 'array',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',

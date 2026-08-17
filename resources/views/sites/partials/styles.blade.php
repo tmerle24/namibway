@@ -55,6 +55,7 @@
 
         --measure: 64ch;
         --container: 1120px;
+        --nav-height: {{ $site->nav_height ?? 64 }}px;
     }
 
     *, *::before, *::after { box-sizing: border-box; }
@@ -101,7 +102,7 @@
            what the hero's negative margin cancels and must not change, but the
            room inside it is what a wrapped name has to live in. 48px fits two
            lines at any size this bar offers. */
-        height: 64px; overflow: visible; padding: var(--s2) var(--s4);
+        height: var(--nav-height); overflow: visible; padding: var(--s2) var(--s4);
         width: 100%; max-width: var(--container); margin: 0 auto;
     }
     .nav__name {
@@ -171,6 +172,24 @@
     .nav--solid { background: var(--salt); box-shadow: 0 1px 0 var(--bone); }
     .nav--solid .nav__name { color: var(--ink); }
     .nav--solid .nav__links a { color: var(--slate); }
+
+    @if (($site->nav_hero_style ?? 'transparent') === 'frosted')
+    /* Frosted: the bar is a white-tinted pane — dark text and links, no logo glow. */
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) { background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 1px 0 var(--bone); }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__name { color: var(--ink); text-shadow: none; }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__links a { color: var(--slate); }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__links a:hover { color: var(--ink); }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__burger span { background: var(--ink); }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { filter: none; }
+    @elseif (($site->nav_hero_style ?? 'transparent') === 'white')
+    /* Solid white: bar is always opaque — dark text and links, no logo glow. */
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) { background: var(--salt); box-shadow: 0 1px 0 var(--bone); }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__name { color: var(--ink); text-shadow: none; }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__links a { color: var(--slate); }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__links a:hover { color: var(--ink); }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__burger span { background: var(--ink); }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { filter: none; }
+    @endif
 
     /* The burger and its panel. Both are unhidden by the script, so a page
        without JavaScript shows neither a dead button nor an open list. */
@@ -292,7 +311,7 @@
 
     /* ---- Hero -------------------------------------------------------- */
 
-    .hero { position: relative; margin-top: -64px; background: var(--ink); overflow: hidden; }
+    .hero { position: relative; margin-top: calc(-1 * var(--nav-height)); background: var(--ink); overflow: hidden; }
     .hero__media { position: absolute; inset: 0; }
     .hero__media img {
         width: 100%; height: 100%; object-fit: cover;
@@ -306,7 +325,7 @@
         position: relative; z-index: 2;
         min-height: min(84vh, 760px);
         display: flex; flex-direction: column; justify-content: flex-end;
-        padding: calc(64px + var(--s7)) var(--s4) var(--s7);
+        padding: calc(var(--nav-height) + var(--s7)) var(--s4) var(--s7);
         width: 100%; max-width: var(--container); margin: 0 auto;
         color: #fff;
     }
@@ -338,7 +357,7 @@
     .hero--plain .hero__body {
         min-height: min(56vh, 460px);
         justify-content: center;
-        padding-top: calc(64px + var(--s6));
+        padding-top: calc(var(--nav-height) + var(--s6));
         padding-bottom: var(--s6);
     }
     .hero--plain {
@@ -442,7 +461,7 @@
     /* ---- Shop ---------------------------------------------------------- */
 
     .shop-subbar {
-        position: sticky; top: 64px; z-index: 90;
+        position: sticky; top: var(--nav-height); z-index: 90;
         background: var(--salt); border-bottom: 1px solid var(--bone);
         height: 40px;
     }
