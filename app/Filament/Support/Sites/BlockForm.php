@@ -111,8 +111,9 @@ class BlockForm
                 self::image('image_id', $site, 'Photograph beside it'),
                 Toggle::make('slideshow')
                     ->label('Show as story slideshow')
-                    ->helperText('Long texts (2+ paragraphs) are shown one paragraph at a time. '
-                        .'A "Read the full story" link leads to the complete page.')
+                    ->helperText('A long text is shown a paragraph at a time, with arrows to page '
+                        .'through it. A text written as one long block is split at sentence '
+                        .'boundaries. A "Read the full story" link leads to the complete page.')
                     ->default(true),
             ],
 

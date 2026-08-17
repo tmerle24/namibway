@@ -2,12 +2,9 @@
     $image = $images->get($data['image_id'] ?? null);
     $body = $data['body'] ?? null;
 
-    // Split on <p>…</p> boundaries to get individual slides.
-    $slides = [];
-    if (filled($body)) {
-        preg_match_all('/<p[^>]*>[\s\S]*?<\/p>/i', $body, $m);
-        $slides = array_values(array_filter($m[0], fn ($s) => filled(strip_tags($s))));
-    }
+    // Paragraphs, whatever the text is marked up as — or not. See
+    // App\Sites\Rendering\StoryText.
+    $slides = \App\Sites\Rendering\StoryText::slides($body);
 
     // Slideshow: opt-in (default true), only when there are at least 2 paragraphs.
     $useSlideshow = ($data['slideshow'] ?? true) && count($slides) >= 2;
@@ -88,8 +85,9 @@
                 @else
                     {{-- Already sanitised on the way in through the same purifier
                          allow-list as a listing description — see SiteBlock and
-                         Listing::sanitizeRichText. --}}
-                    <div class="prose">{!! $body !!}</div>
+                         Listing::sanitizeRichText. StoryText only puts the
+                         paragraph breaks back. --}}
+                    <div class="prose">{!! \App\Sites\Rendering\StoryText::html($body) !!}</div>
                 @endif
             </div>
 

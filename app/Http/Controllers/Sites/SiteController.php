@@ -14,6 +14,7 @@ use App\Sites\LegalText;
 use App\Sites\Rendering\BookingPanel;
 use App\Sites\Rendering\BookingPanelData;
 use App\Sites\Rendering\EnquiryItems;
+use App\Sites\Rendering\StoryText;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
@@ -185,8 +186,11 @@ class SiteController
      * Reached at /about (or /_sites/{slug}/about for drafts) and linked from
      * the story slideshow when the about block has 2+ paragraphs. The body is
      * already sanitised by the purifier allow-list on save, so it renders as
-     * HTML directly. 404s when the site has no about block or no body text —
-     * the link in the slideshow is only shown when there is something here.
+     * HTML directly — StoryText only restores the paragraph breaks, which text
+     * written as plain newlines does not have and which this page needs even
+     * more than the slideshow does. 404s when the site has no about block or no
+     * body text — the link in the slideshow is only shown when there is
+     * something here.
      */
     private function about(Request $request, Site $site): Response
     {
@@ -207,7 +211,7 @@ class SiteController
             'site' => $site,
             'accent' => $this->accent($site),
             'title' => filled($block->data['heading'] ?? null) ? $block->data['heading'] : 'About us',
-            'body' => $block->data['body'],
+            'body' => StoryText::html($block->data['body']),
         ]);
 
         if (! $site->isPublished()) {

@@ -1549,6 +1549,39 @@ the switch is off on the listing, the shop has no priced products. A select that
 choice it will not honour has to say so. The heading field says its own rule too — one of
 the standard headings follows the form type, anything typed stays exactly as typed.
 
+### Fixed 2026-08-17 — the about text pages through, whatever it was written as
+
+Found on a real partner site: a shop whose "About us" ran to about 1,200 characters rendered
+as one unbroken wall, with no slides, no arrows and no "Read the full story" link — the exact
+opposite of what the toggle in the editor promises.
+
+The slideshow looked for its slides with a `<p>…</p>` regex, which assumes the text arrives
+marked up. **Most of it does not.** A description typed, pasted or scraped is stored as plain
+text, and `Listing::sanitizeRichText` HTML-escapes a value with no tags in it rather than
+running it through the purifier — so there was not a single `<p>` to match, the split produced
+nothing, and the fallback branch printed the lot. Newlines make it worse rather than better:
+a text genuinely written as four paragraphs is still one wall, because a newline is invisible
+in HTML.
+
+`App\Sites\Rendering\StoryText` recovers paragraphs from whatever the text actually is:
+markup is **walked as a tree** rather than matched (which also fixes a quieter fault — a
+`<ul>` between two `<p>`s appeared on no slide at all, so content written for the page simply
+vanished from it), plain text breaks on blank lines and then on single ones, and a single long
+run of sentences is cut at sentence boundaries into slides of about a screenful. Only that
+last case invents a boundary, and only inside a paragraph that is pure text — cutting HTML on
+a sentence would cut it inside a tag, so a long paragraph carrying a link stays whole. A
+heading travels with the text under it instead of taking a slide to itself.
+
+Two details worth keeping: the boundary regex treats punctuation running straight into a
+capital as a sentence end (`uniquely yours.Culturally inspired` — what text stripped of its
+tags looks like), which is also why the fix removes the missing space that was visible on the
+live page; and nothing is dropped, held down by a test asserting the slides still contain the
+whole text character for character.
+
+The same reconstruction runs on the full story page and on the block with the slideshow turned
+off, because a wall of text is a wall of text there too. No migration and no regeneration: it
+happens at render, so every site already generated is fixed by the deploy.
+
 ### Next up, in the order it was asked for
 
 - **Collecting the money.** A provider that onboards a Namibian entity and settles in NAD,
