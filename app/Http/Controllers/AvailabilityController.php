@@ -50,7 +50,7 @@ class AvailabilityController extends Controller
         $children = (int) ($validated['children'] ?? 0);
         $timeFrom = $validated['time'] ?? null;
 
-        $periods = max(1, $checkIn->diffInDays($checkOut));
+        $periods = max(1, (int) $checkIn->diffInDays($checkOut));
 
         $offers = app(UnitAvailability::class)->for(
             $listing,
