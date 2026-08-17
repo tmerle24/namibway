@@ -90,14 +90,18 @@
        leaves a strip of page background above the photograph. Measured at 834px
        it was 90px tall and the strip was 26px. A fixed height makes that
        arithmetic true at every width instead of most of them; the rules below
-       are what keep the content inside it, wrapping included. */
+       are what keep the content inside it, wrapping included.
+
+       overflow:visible rather than hidden: the name is clamped by
+       -webkit-line-clamp so it cannot exceed the bar, and hidden caused a
+       two-step logo transition by snapping the clip mid-animation. */
     .nav__inner {
         display: flex; align-items: center; gap: var(--s4);
         /* 8px of vertical padding rather than 12: the bar's outside height is
            what the hero's negative margin cancels and must not change, but the
            room inside it is what a wrapped name has to live in. 48px fits two
            lines at any size this bar offers. */
-        height: 64px; overflow: hidden; padding: var(--s2) var(--s4);
+        height: 64px; overflow: visible; padding: var(--s2) var(--s4);
         width: 100%; max-width: var(--container); margin: 0 auto;
     }
     .nav__name {
@@ -128,17 +132,20 @@
        hero's gradient is built for text much further down the frame. */
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__name { text-shadow: 0 1px 12px rgba(0,0,0,.55); }
     /* An owner's mark is whatever shape it is, so it is bounded by height and
-       left to find its own width. Hero state: prominent; scrolled: compact. */
-    .nav__logo { height: 36px; width: auto; max-width: 200px; object-fit: contain; display: block; transition: height .3s ease; }
-    /* Over the hero the background is transparent, so the logo can safely
-       overflow the 64px bar height. Without overflow:visible the logo would be
-       clipped to the 48px content area (64px − 2×8px padding). */
-    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__inner { overflow: visible; }
+       left to find its own width. Hero state: prominent; scrolled: compact.
+       Both height and filter transition so neither snaps when the bar turns solid. */
+    .nav__logo {
+        height: {{ $site->logo_compact_height ?? 36 }}px;
+        width: auto; max-width: 200px; object-fit: contain; display: block;
+        transition: height .3s ease, filter .3s ease;
+    }
+    /* nav__inner is overflow:visible (see above), so the logo can extend
+       beyond the 64px bar in the hero state without any separate override. */
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo {
         height: {{ $site->logo_hero_height ?? 56 }}px;
-        /* drop-shadow follows the logo's actual shape (respects transparency),
-           same idea as the text-shadow on .nav__name in the same state. */
-        filter: drop-shadow(0 2px 12px rgba(0,0,0,.5));
+        /* White drop-shadow: makes the logo glow against any dark hero photo
+           while respecting the logo's actual shape (transparency included). */
+        filter: drop-shadow(0 2px 12px rgba(255,255,255,1));
     }
     /* nowrap: a menu item breaking across two lines was the other half of what
        made the bar taller than the hero's negative margin. */

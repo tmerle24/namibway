@@ -60,6 +60,7 @@ class EditSiteLogoAction
                     'logo_key' => $site->logo_key,
                     'brand_name' => $site->brand_name,
                     'logo_hero_height' => $site->logo_hero_height,
+                    'logo_compact_height' => $site->logo_compact_height,
                 ];
             })
             ->form([
@@ -86,17 +87,25 @@ class EditSiteLogoAction
                     ->helperText('A wide mark reads best — it is fitted to the height of the bar. '
                         .'A transparent PNG or an SVG sits well over a photograph.'),
 
-                Forms\Components\TextInput::make('logo_hero_height')
-                    ->label('Logo size in the opening screen')
-                    ->numeric()
-                    ->minValue(32)
-                    ->maxValue(300)
-                    ->suffix('px')
-                    ->placeholder('56')
-                    ->helperText('How tall the logo appears before the page is scrolled. '
-                        .'Leave empty for the default (56 px). The logo shrinks back to its '
-                        .'compact size once the bar turns solid.')
-                    ->hidden(fn (Forms\Get $get): bool => blank($get('logo_key'))),
+                Forms\Components\Grid::make(2)->schema([
+                    Forms\Components\TextInput::make('logo_hero_height')
+                        ->label('Size in the opening screen')
+                        ->numeric()
+                        ->minValue(32)
+                        ->maxValue(300)
+                        ->suffix('px')
+                        ->placeholder('56')
+                        ->helperText('How tall the logo appears before the page is scrolled. Default 56 px.'),
+
+                    Forms\Components\TextInput::make('logo_compact_height')
+                        ->label('Size in the sticky bar')
+                        ->numeric()
+                        ->minValue(24)
+                        ->maxValue(48)
+                        ->suffix('px')
+                        ->placeholder('36')
+                        ->helperText('Once the bar turns solid. Max 48 px (fits the 64 px bar). Default 36 px.'),
+                ])->hidden(fn (Forms\Get $get): bool => blank($get('logo_key'))),
             ])
             ->action(function (Listing|Partner|null $record, array $data): void {
                 $site = $record === null ? null : SiteResolver::for($record);
@@ -113,10 +122,15 @@ class EditSiteLogoAction
                 $brand = trim((string) ($data['brand_name'] ?? ''));
                 $site->brand_name = $brand === '' ? null : $brand;
 
-                $height = is_numeric($data['logo_hero_height'] ?? null)
+                $heroHeight = is_numeric($data['logo_hero_height'] ?? null)
                     ? (int) $data['logo_hero_height']
                     : null;
-                $site->logo_hero_height = ($height !== null && $height >= 32 && $height <= 300) ? $height : null;
+                $site->logo_hero_height = ($heroHeight !== null && $heroHeight >= 32 && $heroHeight <= 300) ? $heroHeight : null;
+
+                $compactHeight = is_numeric($data['logo_compact_height'] ?? null)
+                    ? (int) $data['logo_compact_height']
+                    : null;
+                $site->logo_compact_height = ($compactHeight !== null && $compactHeight >= 24 && $compactHeight <= 48) ? $compactHeight : null;
 
                 $site->forceFill(['logo_key' => is_string($key) && $key !== '' ? $key : null])->save();
 
