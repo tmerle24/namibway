@@ -6,28 +6,34 @@ use App\Enums\InquiryKind;
 use App\Mail\EnquiryCopy;
 use App\Mail\TraderOrderReceived;
 use App\Models\Inquiry;
+use App\Models\MenuItem;
 use App\Models\Site;
+use App\Services\Booking\MenuOrder;
 use App\Services\Booking\SiteOrder;
 use App\Sites\Blocks\EnquiryFormType;
-use App\Sites\Rendering\EnquiryItems;
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Standalone order flow for small traders.
+ * Standalone order flow for small traders and restaurants.
  *
  * Reached via QR code → /order on the trader's own site host, or the /_sites
- * back door for development. The form is always product_order — a pickup-first,
- * cash-or-simulated-payment prototype wiring the pipeline end to end before
- * WhatsApp and real payment links are added.
+ * back door for development. Two item sources are supported:
+ *
+ * - **Shop products** (`ShopProduct`) — retail traders, craft sellers. Items
+ *   belong to the Site directly, priced via `SiteOrder`.
+ * - **Menu items** (`MenuItem`) — restaurants whose site links to a Listing.
+ *   Items belong to the Listing, priced via `MenuOrder`. Shop products take
+ *   priority when both exist.
  *
  * No session, no CSRF, no authentication — same posture as the rest of the
  * customer-website renderer. The honeypot and rate limit are the guards.
@@ -37,9 +43,8 @@ class SiteOrderController
     /**
      * The standalone order form — what the QR code lands on.
      *
-     * Shows all orderable products for this site with inline quantity steppers
-     * (no drawer — picking items is the entire point of the page, so the drawer
-     * is friction, not UX). Contact fields and payment choice follow.
+     * Shows all orderable items with inline quantity steppers. Shop products
+     * are tried first; if none, the linked listing's menu items are loaded.
      */
     public function form(Request $request, Site $site): Response
     {
@@ -52,22 +57,35 @@ class SiteOrderController
             ->orderBy('id')
             ->get();
 
+        // Restaurants have no shop products — fall back to the listing menu.
+        $menuItems = collect();
+        if ($products->isEmpty() && $site->sourceListing !== null) {
+            $menuItems = $site->sourceListing->menuItems()
+                ->available()
+                ->orderBy('category')
+                ->orderBy('sort')
+                ->orderBy('name')
+                ->get();
+        }
+
         $orderAction = $this->actionUrl($request, 'order');
 
         return response()->view('sites.order', [
-            'site'        => $site,
-            'products'    => $products,
-            'accent'      => $this->accent($site),
-            'orderAction' => $orderAction,
+            'site'         => $site,
+            'products'     => $products,
+            'menuItems'    => $menuItems,
+            'isRestaurant' => $menuItems->isNotEmpty(),
+            'accent'       => $this->accent($site),
+            'orderAction'  => $orderAction,
         ]);
     }
 
     /**
      * Order form submission.
      *
-     * Creates the Inquiry and either redirects to the payment simulation page
-     * (simulated_payment) or marks it as awaiting cash and sends the trader
-     * email immediately.
+     * Detects whether items are shop products or menu items (server-side, not
+     * from the POST), prices them via the appropriate service, creates the
+     * Inquiry, and hands off to the payment flow.
      */
     public function submit(Request $request, Site $site): RedirectResponse
     {
@@ -94,28 +112,57 @@ class SiteOrderController
         /** @var array<string, mixed> $validated */
         $validated = $validator->validated();
 
-        $order = SiteOrder::price($site, EnquiryFormType::ProductOrder, (array) $validated['items']);
+        $listing = $site->sourceListing;
+        $hasShopProducts = $site->shopProducts()->published()->exists();
 
-        if ($order->isEmpty()) {
-            return redirect()->away($this->actionUrl($request, 'order').'?error=1');
+        if (! $hasShopProducts && $listing !== null) {
+            // Restaurant path — price from menu_items via MenuOrder.
+            $lines = $this->itemsToMenuLines((array) $validated['items']);
+
+            try {
+                $menuOrder = MenuOrder::price($listing, $lines);
+            } catch (Throwable) {
+                return redirect()->away($this->actionUrl($request, 'order').'?error=1');
+            }
+
+            $inquiry = Inquiry::create([
+                'listing_id'    => $listing->id,
+                'partner_id'    => $site->partner_id,
+                'name'          => $validated['name'],
+                'email'         => $validated['email'],
+                'phone'         => $validated['phone'] ?? null,
+                'kind'          => InquiryKind::Order,
+                'adults'        => 1,
+                'children'      => 0,
+                'message'       => $validated['message'] ?? null,
+                'payment_state' => $validated['payment'] === 'cash' ? 'awaiting_cash' : null,
+            ]);
+
+            $menuOrder->attachTo($inquiry);
+        } else {
+            // Shop path — price from shop_products via SiteOrder.
+            $shopOrder = SiteOrder::price($site, EnquiryFormType::ProductOrder, (array) $validated['items']);
+
+            if ($shopOrder->isEmpty()) {
+                return redirect()->away($this->actionUrl($request, 'order').'?error=1');
+            }
+
+            $inquiry = Inquiry::create([
+                'listing_id'    => $site->sourceListing?->id,
+                'partner_id'    => $site->partner_id,
+                'name'          => $validated['name'],
+                'email'         => $validated['email'],
+                'phone'         => $validated['phone'] ?? null,
+                'kind'          => InquiryKind::Order,
+                'adults'        => 1,
+                'children'      => 0,
+                'message'       => $validated['message'] ?? null,
+                'payment_state' => $validated['payment'] === 'cash' ? 'awaiting_cash' : null,
+            ]);
+
+            $shopOrder->attachTo($inquiry, EnquiryFormType::ProductOrder);
         }
 
-        $inquiry = Inquiry::create([
-            'listing_id'    => $site->sourceListing?->id,
-            'partner_id'    => $site->partner_id,
-            'name'          => $validated['name'],
-            'email'         => $validated['email'],
-            'phone'         => $validated['phone'] ?? null,
-            'kind'          => InquiryKind::Order,
-            'adults'        => 1,
-            'children'      => 0,
-            'message'       => $validated['message'] ?? null,
-            'payment_state' => $validated['payment'] === 'cash' ? 'awaiting_cash' : null,
-        ]);
-
-        $order->attachTo($inquiry, EnquiryFormType::ProductOrder);
-
-        // Customer copy — same as the enquiry form sends.
         try {
             Mail::to($validated['email'])->send(new EnquiryCopy($inquiry));
         } catch (Throwable $e) {
@@ -128,7 +175,6 @@ class SiteOrderController
             return $this->redirectTo($request, 'order/thanks');
         }
 
-        // Simulated: hand off to the payment page before the trader is notified.
         return $this->redirectTo($request, 'order/pay/'.$inquiry->id);
     }
 
@@ -146,9 +192,9 @@ class SiteOrderController
         abort_unless($inquiry->payment_state === null, 404);
 
         return response()->view('sites.order-pay', [
-            'site'        => $site,
-            'inquiry'     => $inquiry,
-            'accent'      => $this->accent($site),
+            'site'          => $site,
+            'inquiry'       => $inquiry,
+            'accent'        => $this->accent($site),
             'confirmAction' => $this->actionUrl($request, 'order/pay/'.$inquiry->id),
         ]);
     }
@@ -203,10 +249,10 @@ class SiteOrderController
             ? $site->pageUrl('order')
             : rtrim(Str::before($request->url(), '/order'), '/').'/order';
 
-        // Draft sites require the preview token; without it assertVisible()
-        // returns 404, and a QR code that always 404s is useless. Append the
-        // token so the printed QR stays scannable while the site is still a draft.
-        // Published sites need no token, so the QR URL stays clean.
+        // Draft sites require ?preview= on every page — without it assertVisible()
+        // aborts with 404, making the printed QR useless before the site goes live.
+        // Append the draft_token so it remains scannable during review; published
+        // sites get a clean URL with no token.
         if (! $site->isPublished()) {
             $url .= '?preview='.$site->draft_token;
         }
@@ -220,8 +266,8 @@ class SiteOrderController
         ))->build();
 
         return response($result->getString(), 200, [
-            'Content-Type'  => $result->getMimeType(),
-            'Cache-Control' => 'public, max-age=86400',
+            'Content-Type'        => $result->getMimeType(),
+            'Cache-Control'       => 'public, max-age=86400',
             'Content-Disposition' => 'inline; filename="order-qr.png"',
         ]);
     }
@@ -242,26 +288,33 @@ class SiteOrderController
     }
 
     /**
-     * Redirect to a path relative to this site's root — works for both the host
-     * path (https://myshop.namibway.com) and the dev path fallback
-     * (https://namibway.com/_sites/my-shop).
+     * Convert the flat `items[{id}] = qty` post format to the array-of-lines
+     * format that `MenuOrder::price()` expects.
      *
-     * The submit URL is always …/order, so everything before that is the root.
-     * For pay/confirm the submit URL is …/order/pay/{id}, so the root is before
-     * /order/pay/. Both strip cleanly with a simple beforeLast.
+     * @param  array<string, mixed>  $items
+     * @return array<int, array{menu_item_id: int, quantity: int}>
      */
-    private function redirectTo(Request $request, string $path): RedirectResponse
+    private function itemsToMenuLines(array $items): array
     {
-        $base = $this->siteBase($request);
+        $lines = [];
 
-        return redirect()->away($base.'/'.$path);
+        foreach ($items as $id => $qty) {
+            $id  = (int) $id;
+            $qty = (int) $qty;
+
+            if ($id > 0 && $qty > 0) {
+                $lines[] = ['menu_item_id' => $id, 'quantity' => $qty];
+            }
+        }
+
+        return $lines;
     }
 
-    /**
-     * Absolute URL for a path under this site's root, computed from the current
-     * request URL. Used for form actions and redirects so that the same
-     * controller method works on both the site's own host and the dev fallback.
-     */
+    private function redirectTo(Request $request, string $path): RedirectResponse
+    {
+        return redirect()->away($this->siteBase($request).'/'.$path);
+    }
+
     private function actionUrl(Request $request, string $path): string
     {
         return $this->siteBase($request).'/'.$path;
@@ -271,7 +324,6 @@ class SiteOrderController
     {
         $url = $request->url();
 
-        // Both submit URLs contain "/order"; everything before it is the root.
         return rtrim(Str::before($url, '/order'), '/');
     }
 

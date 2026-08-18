@@ -1,10 +1,17 @@
 @php
     /** @var \App\Models\Site $site */
     /** @var \Illuminate\Support\Collection<int, \App\Models\ShopProduct> $products */
+    /** @var \Illuminate\Support\Collection<int, \App\Models\MenuItem> $menuItems */
+    /** @var bool $isRestaurant */
     /** @var string $accent */
     /** @var string $orderAction */
 
     $hasError = request()->query('error') === '1';
+
+    // Menu items are already sorted by category — group for display.
+    $menuByCategory = $isRestaurant
+        ? $menuItems->groupBy(fn ($item) => filled($item->category) ? $item->category : 'Other')
+        : collect();
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $site->default_locale }}">
@@ -222,40 +229,76 @@
                 <input type="text" name="website" tabindex="-1" autocomplete="off">
             </div>
 
-            {{-- Product list --}}
-            <p class="order-section-title">Choose items</p>
-            @if ($products->isEmpty())
-                <p style="color:var(--slate);padding:var(--s4) 0 var(--s5);font-size:15px;">No products are listed yet — check back soon.</p>
+            {{-- Item list: shop products OR restaurant menu items --}}
+            <p class="order-section-title">{{ $isRestaurant ? 'Choose your food' : 'Choose items' }}</p>
+
+            @if ($products->isEmpty() && $menuItems->isEmpty())
+                <p style="color:var(--slate);padding:var(--s4) 0 var(--s5);font-size:15px;">No items available yet — check back soon.</p>
             @endif
-            <ul class="product-rows" id="product-list">
-                @foreach ($products as $product)
-                    @php $thumb = $product->images->first(); @endphp
-                    <li class="product-row">
-                        <div class="product-row__img">
-                            @if ($thumb)
-                                <img src="{{ $thumb->thumb(160) }}" alt="{{ $product->title }}" loading="lazy">
-                            @else
-                                @include('sites.partials.product-placeholder')
-                            @endif
-                        </div>
-                        <div class="product-row__body">
-                            @if (filled($product->category))
-                                <div class="product-row__category">{{ $product->category }}</div>
-                            @endif
-                            <p class="product-row__name">{{ $product->title }}</p>
-                            @if (filled($product->priceLabel()))
-                                <p class="product-row__price">{{ $product->priceLabel() }}</p>
-                            @endif
-                        </div>
-                        <div class="stepper" data-product-id="{{ $product->id }}" data-price="{{ $product->price ?? 0 }}" data-currency="{{ $product->currency }}">
-                            <button type="button" class="stepper__btn" data-action="dec" aria-label="Remove one {{ $product->title }}">−</button>
-                            <span class="stepper__val" aria-live="polite">0</span>
-                            <button type="button" class="stepper__btn" data-action="inc" aria-label="Add one {{ $product->title }}">+</button>
-                            <input type="hidden" name="items[{{ $product->id }}]" value="0" class="qty-input">
-                        </div>
-                    </li>
+
+            @if ($isRestaurant)
+                {{-- Restaurant: grouped by category --}}
+                @foreach ($menuByCategory as $category => $items)
+                    <p class="order-section-title" style="font-size:12px;margin-top:var(--s4);margin-bottom:var(--s2);opacity:.7;">{{ $category }}</p>
+                    <ul class="product-rows" id="product-list">
+                        @foreach ($items as $item)
+                            <li class="product-row">
+                                <div class="product-row__img">
+                                    @if (filled($item->image))
+                                        <img src="{{ $item->image }}" alt="{{ $item->name }}" loading="lazy">
+                                    @else
+                                        @include('sites.partials.product-placeholder')
+                                    @endif
+                                </div>
+                                <div class="product-row__body">
+                                    <p class="product-row__name">{{ $item->name }}</p>
+                                    @if (filled($item->description))
+                                        <p style="font-size:12px;color:var(--slate);margin:2px 0 0;line-height:1.4;">{{ $item->description }}</p>
+                                    @endif
+                                    <p class="product-row__price">{{ $item->currency }} {{ number_format($item->price, 2) }}</p>
+                                </div>
+                                <div class="stepper" data-product-id="{{ $item->id }}" data-price="{{ $item->price }}" data-currency="{{ $item->currency }}">
+                                    <button type="button" class="stepper__btn" data-action="dec" aria-label="Remove one {{ $item->name }}">−</button>
+                                    <span class="stepper__val" aria-live="polite">0</span>
+                                    <button type="button" class="stepper__btn" data-action="inc" aria-label="Add one {{ $item->name }}">+</button>
+                                    <input type="hidden" name="items[{{ $item->id }}]" value="0" class="qty-input">
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
                 @endforeach
-            </ul>
+            @else
+                {{-- Shop: flat list --}}
+                <ul class="product-rows" id="product-list">
+                    @foreach ($products as $product)
+                        @php $thumb = $product->images->first(); @endphp
+                        <li class="product-row">
+                            <div class="product-row__img">
+                                @if ($thumb)
+                                    <img src="{{ $thumb->thumb(160) }}" alt="{{ $product->title }}" loading="lazy">
+                                @else
+                                    @include('sites.partials.product-placeholder')
+                                @endif
+                            </div>
+                            <div class="product-row__body">
+                                @if (filled($product->category))
+                                    <div class="product-row__category">{{ $product->category }}</div>
+                                @endif
+                                <p class="product-row__name">{{ $product->title }}</p>
+                                @if (filled($product->priceLabel()))
+                                    <p class="product-row__price">{{ $product->priceLabel() }}</p>
+                                @endif
+                            </div>
+                            <div class="stepper" data-product-id="{{ $product->id }}" data-price="{{ $product->price ?? 0 }}" data-currency="{{ $product->currency }}">
+                                <button type="button" class="stepper__btn" data-action="dec" aria-label="Remove one {{ $product->title }}">−</button>
+                                <span class="stepper__val" aria-live="polite">0</span>
+                                <button type="button" class="stepper__btn" data-action="inc" aria-label="Add one {{ $product->title }}">+</button>
+                                <input type="hidden" name="items[{{ $product->id }}]" value="0" class="qty-input">
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
 
             {{-- Contact --}}
             <div class="order-card">
