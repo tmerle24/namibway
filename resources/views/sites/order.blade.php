@@ -12,6 +12,17 @@
     $menuByCategory = $isRestaurant
         ? $menuItems->groupBy(fn ($item) => filled($item->category) ? $item->category : 'Other')
         : collect();
+
+    // MenuItem::image stores a relative R2 key (menu-items/xyz.jpg).
+    // resolveMediaUrl turns it into a full URL; MediaUrl::thumb then routes it
+    // through /thumbs/{width}/ so image bytes never pass through PHP.
+    $menuItemThumb = function (\App\Models\MenuItem $item) {
+        if (blank($item->image)) {
+            return null;
+        }
+        $url = \App\Http\Controllers\Controller::resolveMediaUrl($item->image);
+        return \App\Support\MediaUrl::thumb($url, 160);
+    };
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $site->default_locale }}">
@@ -244,8 +255,9 @@
                         @foreach ($items as $item)
                             <li class="product-row">
                                 <div class="product-row__img">
-                                    @if (filled($item->image))
-                                        <img src="{{ $item->image }}" alt="{{ $item->name }}" loading="lazy">
+                                    @php $thumb = $menuItemThumb($item); @endphp
+                                    @if ($thumb)
+                                        <img src="{{ $thumb }}" alt="{{ $item->name }}" loading="lazy">
                                     @else
                                         @include('sites.partials.product-placeholder')
                                     @endif
