@@ -17,7 +17,6 @@ use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -71,13 +70,13 @@ class SiteOrderController
         $orderAction = $this->actionUrl($request, 'order');
 
         return response()->view('sites.order', [
-            'site'         => $site,
-            'products'     => $products,
-            'menuItems'    => $menuItems,
+            'site' => $site,
+            'products' => $products,
+            'menuItems' => $menuItems,
             'isRestaurant' => $menuItems->isNotEmpty(),
-            'contactMode'  => $this->contactMode($site),
-            'accent'       => $this->accent($site),
-            'orderAction'  => $orderAction,
+            'contactMode' => $this->contactMode($site),
+            'accent' => $this->accent($site),
+            'orderAction' => $orderAction,
         ]);
     }
 
@@ -99,11 +98,11 @@ class SiteOrderController
         $phoneMode = $this->contactMode($site) === 'phone';
 
         $validator = Validator::make($request->all(), [
-            'name'    => ['required', 'string', 'max:255'],
-            'email'   => $phoneMode ? ['nullable', 'email', 'max:255'] : ['required', 'email', 'max:255'],
-            'phone'   => $phoneMode ? ['required', 'string', 'max:50'] : ['nullable', 'string', 'max:50'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => $phoneMode ? ['nullable', 'email', 'max:255'] : ['required', 'email', 'max:255'],
+            'phone' => $phoneMode ? ['required', 'string', 'max:50'] : ['nullable', 'string', 'max:50'],
             'message' => ['nullable', 'string', 'max:2000'],
-            'items'   => ['required', 'array', 'min:1', 'max:60'],
+            'items' => ['required', 'array', 'min:1', 'max:60'],
             'items.*' => ['integer', 'min:0', 'max:99'],
             'payment' => ['required', 'in:cash,simulated'],
         ]);
@@ -129,15 +128,15 @@ class SiteOrderController
             }
 
             $inquiry = Inquiry::create([
-                'listing_id'    => $listing->id,
-                'partner_id'    => $site->partner_id,
-                'name'          => $validated['name'],
-                'email'         => $validated['email'],
-                'phone'         => $validated['phone'] ?? null,
-                'kind'          => InquiryKind::Order,
-                'adults'        => 1,
-                'children'      => 0,
-                'message'       => $validated['message'] ?? null,
+                'listing_id' => $listing->id,
+                'partner_id' => $site->partner_id,
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'] ?? null,
+                'kind' => InquiryKind::Order,
+                'adults' => 1,
+                'children' => 0,
+                'message' => $validated['message'] ?? null,
                 'payment_state' => $validated['payment'] === 'cash' ? 'awaiting_cash' : null,
             ]);
 
@@ -151,15 +150,15 @@ class SiteOrderController
             }
 
             $inquiry = Inquiry::create([
-                'listing_id'    => $site->sourceListing?->id,
-                'partner_id'    => $site->partner_id,
-                'name'          => $validated['name'],
-                'email'         => $validated['email'],
-                'phone'         => $validated['phone'] ?? null,
-                'kind'          => InquiryKind::Order,
-                'adults'        => 1,
-                'children'      => 0,
-                'message'       => $validated['message'] ?? null,
+                'listing_id' => $site->sourceListing?->id,
+                'partner_id' => $site->partner_id,
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'] ?? null,
+                'kind' => InquiryKind::Order,
+                'adults' => 1,
+                'children' => 0,
+                'message' => $validated['message'] ?? null,
                 'payment_state' => $validated['payment'] === 'cash' ? 'awaiting_cash' : null,
             ]);
 
@@ -198,9 +197,9 @@ class SiteOrderController
         abort_unless($inquiry->payment_state === null, 404);
 
         return response()->view('sites.order-pay', [
-            'site'          => $site,
-            'inquiry'       => $inquiry,
-            'accent'        => $this->accent($site),
+            'site' => $site,
+            'inquiry' => $inquiry,
+            'accent' => $this->accent($site),
             'confirmAction' => $this->actionUrl($request, 'order/pay/'.$inquiry->id),
         ]);
     }
@@ -230,7 +229,7 @@ class SiteOrderController
     public function thanks(Request $request, Site $site): Response
     {
         return response()->view('sites.order-thanks', [
-            'site'   => $site,
+            'site' => $site,
             'accent' => $this->accent($site),
         ]);
     }
@@ -264,7 +263,7 @@ class SiteOrderController
         }
 
         $result = (new Builder(
-            writer: new PngWriter(),
+            writer: new PngWriter,
             data: $url,
             errorCorrectionLevel: ErrorCorrectionLevel::Medium,
             size: 400,
@@ -272,8 +271,8 @@ class SiteOrderController
         ))->build();
 
         return response($result->getString(), 200, [
-            'Content-Type'        => $result->getMimeType(),
-            'Cache-Control'       => 'public, max-age=86400',
+            'Content-Type' => $result->getMimeType(),
+            'Cache-Control' => 'public, max-age=86400',
             'Content-Disposition' => 'inline; filename="order-qr.png"',
         ]);
     }
@@ -305,7 +304,7 @@ class SiteOrderController
         $lines = [];
 
         foreach ($items as $id => $qty) {
-            $id  = (int) $id;
+            $id = (int) $id;
             $qty = (int) $qty;
 
             if ($id > 0 && $qty > 0) {

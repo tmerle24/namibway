@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sites;
 
+use App\Models\Inquiry;
 use App\Models\ShopProduct;
 use App\Models\Site;
 use App\Models\SiteBlock;
@@ -9,7 +10,6 @@ use App\Models\SiteImage;
 use App\Models\SitePage;
 use App\Sites\BlockRegistry;
 use App\Sites\Blocks\EnquiryBlock;
-use App\Http\Controllers\Sites\SiteOrderController;
 use App\Sites\Blocks\EnquiryFormType;
 use App\Sites\LegalText;
 use App\Sites\Rendering\BookingPanel;
@@ -111,7 +111,7 @@ class SiteController
         }
 
         if ($page === null && str_starts_with($pageSlug, 'order/pay/')) {
-            $inquiry = \App\Models\Inquiry::findOrFail((int) substr($pageSlug, strlen('order/pay/')));
+            $inquiry = Inquiry::findOrFail((int) substr($pageSlug, strlen('order/pay/')));
 
             return app(SiteOrderController::class)->payPage($request, $site, $inquiry);
         }
