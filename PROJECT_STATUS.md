@@ -1764,6 +1764,44 @@ form they were given, with the consequence each one has for the build.
   whoever edits, edits one language at a time and has to see what is missing in the
   others.
 
+### Next up — trader orders (2026-08-18)
+
+`WEBSITES_TRADER_ORDERS.md` is the spec. The feature adds a QR-initiated order channel
+for small traders (street food, crafts, informal accommodation) who are listed on NamibWay
+and hold a mini-website. It is a feature of the website product, not a revenue line — no
+commission, the N$ 399/month subscription is the justification.
+
+**Dependency: do not start before the block renderer from Website Prompt 1 is stable.**
+Building the order form block before the renderer exists means building it twice.
+
+Suggested order once the renderer is in place (§ 10 of the spec):
+
+1. Product catalogue + admin editing (agency model first)
+2. Order form block + submission + `pending_confirmation`
+3. WhatsApp notification relay + confirm/decline links + expiry job
+4. Payment link issuance + attestation UI
+5. QR generation per listing
+
+Key constraints the spec records that must not be softened in code:
+
+- **NamibWay never takes custody of trader funds.** The payment link resolves to the
+  trader's own instrument (PayToday / bank merchant / cash). Recording-only, no licence
+  required. No NamibWay-held balance, wallet or escrow concept, ever.
+- **`payment_state` is attested, not observed** — `paid` means the trader said so.
+  Whether PayToday exposes a settlement callback (which would add an `observed` value)
+  must be checked before the form is built; it changes the design.
+- **QR codes are per listing, not per order, and must remain stable once printed** — a
+  reprint is a real-world cost to the trader.
+- **International shipping is out of scope for the MVP** — CITES and veterinary import
+  rules for animal-material crafts place the platform in the export chain.
+- **Demo tenants must never emit outbound notifications** — the existing flag governs
+  this; trader orders are no exception.
+
+Estimated one to two weeks of build on top of a working renderer. Open decisions before
+building: PayToday callback availability, whether payment-instrument onboarding is bundled
+into the subscription or a one-off setup fee, and whether declined orders auto-suggest
+alternative nearby traders.
+
 ---
 
 ## 5. Constraints that carry into both workstreams
