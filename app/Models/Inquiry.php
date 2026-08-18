@@ -64,6 +64,7 @@ class Inquiry extends Model
         'bookable_unit_code',
         'total_amount',
         'currency',
+        'payment_state',
         'hold_expires_at',
         'notes',
     ];

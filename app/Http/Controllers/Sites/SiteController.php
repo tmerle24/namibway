@@ -9,6 +9,7 @@ use App\Models\SiteImage;
 use App\Models\SitePage;
 use App\Sites\BlockRegistry;
 use App\Sites\Blocks\EnquiryBlock;
+use App\Http\Controllers\Sites\SiteOrderController;
 use App\Sites\Blocks\EnquiryFormType;
 use App\Sites\LegalText;
 use App\Sites\Rendering\BookingPanel;
@@ -95,6 +96,24 @@ class SiteController
 
         if ($page === null && str_starts_with($pageSlug, 'shop/')) {
             return $this->shopProduct($request, $site, substr($pageSlug, 5));
+        }
+
+        if ($page === null && $pageSlug === 'order') {
+            return app(SiteOrderController::class)->form($request, $site);
+        }
+
+        if ($page === null && $pageSlug === 'order/qr') {
+            return app(SiteOrderController::class)->qr($request, $site);
+        }
+
+        if ($page === null && $pageSlug === 'order/thanks') {
+            return app(SiteOrderController::class)->thanks($request, $site);
+        }
+
+        if ($page === null && str_starts_with($pageSlug, 'order/pay/')) {
+            $inquiry = \App\Models\Inquiry::findOrFail((int) substr($pageSlug, strlen('order/pay/')));
+
+            return app(SiteOrderController::class)->payPage($request, $site, $inquiry);
         }
 
         abort_if($page === null, 404);

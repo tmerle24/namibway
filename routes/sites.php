@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Sites\SiteController;
 use App\Http\Controllers\Sites\SiteEnquiryController;
+use App\Http\Controllers\Sites\SiteOrderController;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
 
@@ -36,3 +37,11 @@ Route::get($prefix.'/{slug}/{path?}', [SiteController::class, 'path'])
 Route::post($prefix.'/{site:slug}/enquiry', SiteEnquiryController::class)
     ->middleware(['throttle:10,1', SubstituteBindings::class])
     ->name('sites.enquiry');
+
+Route::post($prefix.'/{site:slug}/order', [SiteOrderController::class, 'submit'])
+    ->middleware(['throttle:30,1', SubstituteBindings::class])
+    ->name('sites.order.submit');
+
+Route::post($prefix.'/{site:slug}/order/pay/{inquiry}', [SiteOrderController::class, 'payConfirm'])
+    ->middleware(['throttle:30,1', SubstituteBindings::class])
+    ->name('sites.order.pay.confirm');

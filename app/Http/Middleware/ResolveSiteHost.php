@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use App\Http\Controllers\Sites\SiteController;
 use App\Http\Controllers\Sites\SiteEnquiryController;
+use App\Http\Controllers\Sites\SiteOrderController;
+use App\Models\Inquiry;
 use App\Sites\SiteResolver;
 use Closure;
 use Illuminate\Http\Request;
@@ -48,13 +50,21 @@ class ResolveSiteHost
             return $next($request);
         }
 
-        // The enquiry form is the one thing that posts. Everything else on a
-        // site host is a page, and a stray POST is answered with a 404 rather
-        // than falling through to the travel platform's routes.
-        if ($request->isMethod('POST')) {
-            abort_unless(trim($request->path(), '/') === 'enquiry', 404);
+        $path = trim($request->path(), '/');
 
-            return app(SiteEnquiryController::class)($request, $site);
+        if ($request->isMethod('POST')) {
+            if ($path === 'enquiry') {
+                return app(SiteEnquiryController::class)($request, $site);
+            }
+            if ($path === 'order') {
+                return app(SiteOrderController::class)->submit($request, $site);
+            }
+            if (str_starts_with($path, 'order/pay/')) {
+                $inquiry = Inquiry::findOrFail((int) substr($path, strlen('order/pay/')));
+
+                return app(SiteOrderController::class)->payConfirm($request, $site, $inquiry);
+            }
+            abort(404);
         }
 
         abort_unless($request->isMethodSafe(), 404);
