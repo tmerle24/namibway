@@ -3,6 +3,7 @@
     /** @var \Illuminate\Support\Collection<int, \App\Models\ShopProduct> $products */
     /** @var \Illuminate\Support\Collection<int, \App\Models\MenuItem> $menuItems */
     /** @var bool $isRestaurant */
+    /** @var string $contactMode 'email'|'phone' */
     /** @var string $accent */
     /** @var string $orderAction */
 
@@ -319,14 +320,17 @@
                     <label for="ord-name">Full name</label>
                     <input type="text" id="ord-name" name="name" required maxlength="255" autocomplete="name">
                 </div>
+                @if ($contactMode === 'phone')
+                <div class="field">
+                    <label for="ord-phone">Phone / WhatsApp</label>
+                    <input type="tel" id="ord-phone" name="phone" required maxlength="50" autocomplete="tel" inputmode="tel">
+                </div>
+                @else
                 <div class="field">
                     <label for="ord-email">Email</label>
-                    <input type="email" id="ord-email" name="email" required maxlength="255" autocomplete="email">
+                    <input type="email" id="ord-email" name="email" required maxlength="255" autocomplete="email" inputmode="email">
                 </div>
-                <div class="field">
-                    <label for="ord-phone">Phone (optional)</label>
-                    <input type="tel" id="ord-phone" name="phone" maxlength="50" autocomplete="tel">
-                </div>
+                @endif
                 <div class="field" style="margin-bottom: 0">
                     <label for="ord-message">Note (optional)</label>
                     <textarea id="ord-message" name="message" rows="2" maxlength="2000" placeholder="Special requests, collection time…"></textarea>

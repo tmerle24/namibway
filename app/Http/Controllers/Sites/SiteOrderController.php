@@ -75,6 +75,7 @@ class SiteOrderController
             'products'     => $products,
             'menuItems'    => $menuItems,
             'isRestaurant' => $menuItems->isNotEmpty(),
+            'contactMode'  => $this->contactMode($site),
             'accent'       => $this->accent($site),
             'orderAction'  => $orderAction,
         ]);
@@ -95,10 +96,12 @@ class SiteOrderController
             return $this->redirectTo($request, 'order/thanks');
         }
 
+        $phoneMode = $this->contactMode($site) === 'phone';
+
         $validator = Validator::make($request->all(), [
             'name'    => ['required', 'string', 'max:255'],
-            'email'   => ['required', 'email', 'max:255'],
-            'phone'   => ['nullable', 'string', 'max:50'],
+            'email'   => $phoneMode ? ['nullable', 'email', 'max:255'] : ['required', 'email', 'max:255'],
+            'phone'   => $phoneMode ? ['required', 'string', 'max:50'] : ['nullable', 'string', 'max:50'],
             'message' => ['nullable', 'string', 'max:2000'],
             'items'   => ['required', 'array', 'min:1', 'max:60'],
             'items.*' => ['integer', 'min:0', 'max:99'],
@@ -163,10 +166,13 @@ class SiteOrderController
             $shopOrder->attachTo($inquiry, EnquiryFormType::ProductOrder);
         }
 
-        try {
-            Mail::to($validated['email'])->send(new EnquiryCopy($inquiry));
-        } catch (Throwable $e) {
-            report($e);
+        // EnquiryCopy requires an email address — skip in phone mode.
+        if (filled($inquiry->email)) {
+            try {
+                Mail::to($inquiry->email)->send(new EnquiryCopy($inquiry));
+            } catch (Throwable $e) {
+                report($e);
+            }
         }
 
         if ($validated['payment'] === 'cash') {
@@ -325,6 +331,16 @@ class SiteOrderController
         $url = $request->url();
 
         return rtrim(Str::before($url, '/order'), '/');
+    }
+
+    /**
+     * 'phone' when the trader configured WhatsApp (the customer's phone number
+     * is the natural reply channel); 'email' otherwise. Never both — the form
+     * shows exactly one contact field beyond name so the flow stays frictionless.
+     */
+    private function contactMode(Site $site): string
+    {
+        return filled($site->whatsapp) ? 'phone' : 'email';
     }
 
     private function accent(Site $site): string

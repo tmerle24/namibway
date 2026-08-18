@@ -14,8 +14,12 @@
 | | |
 |---|---|
 | **Customer** | {{ $inquiry->name }} |
+@if (filled($inquiry->email))
 | **Email** | {{ $inquiry->email }} |
-| **Phone** | {{ $inquiry->phone ?? '—' }} |
+@endif
+@if (filled($inquiry->phone))
+| **WhatsApp / Phone** | {{ $inquiry->phone }} |
+@endif
 @if ($total)
 | **Order total** | {{ number_format($total, 2) }} {{ $currency }} |
 @endif
