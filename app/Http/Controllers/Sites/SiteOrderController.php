@@ -196,7 +196,14 @@ class SiteOrderController
     {
         abort_if($site->partner === null, 404);
 
-        $url = $site->pageUrl('order');
+        // For a site with its own domain, use the canonical URL — it is stable
+        // once printed and must not change (reprinting costs the trader). For the
+        // /_sites path fallback, derive from the current request so the QR is
+        // scannable from whatever host the image itself was reached on: accessing
+        // /order/qr via the machine's LAN IP produces a QR that a phone can reach.
+        $url = filled($site->host)
+            ? $site->pageUrl('order')
+            : rtrim(Str::before($request->url(), '/order'), '/').'/order';
 
         $result = (new Builder(
             writer: new PngWriter(),
