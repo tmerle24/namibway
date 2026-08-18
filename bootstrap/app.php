@@ -54,7 +54,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // carries no CSRF token of ours. The request is still authenticated:
         // the code is exchanged server-side and the identity comes from a JWT
         // Apple signed. See SocialAuthController for why this flow is stateless.
-        $middleware->validateCsrfTokens(except: ['auth/apple/callback']);
+        $middleware->validateCsrfTokens(except: [
+            'auth/apple/callback',
+            // PayGate POSTs back to RETURN_URL via a browser-mediated form
+            // redirect with no session and no CSRF token.
+            'pay/*/paygate-done',
+        ]);
 
         // Before route matching, because the travel platform's routes carry no
         // host constraint and would otherwise answer on a customer's domain.

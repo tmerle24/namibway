@@ -13,7 +13,9 @@ use App\Http\Controllers\ListingController;
 use App\Http\Controllers\ListingsPartnerHandbookPdfController;
 use App\Http\Controllers\MarketingMaterialDownloadController;
 use App\Http\Controllers\PartnerApiGuideController;
+use App\Http\Controllers\PaymentBridgeReturnController;
 use App\Http\Controllers\PaymentCheckoutController;
+use App\Http\Controllers\PaymentFormBridgeController;
 use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\SavedPlanController;
 use App\Http\Controllers\SiteTermsController;
@@ -82,6 +84,11 @@ Route::get('admin/documents/{document}/file', DocumentDownloadController::class)
 Route::get('pay/{intent}', [PaymentCheckoutController::class, 'show'])->name('payments.checkout');
 Route::post('pay/{intent}', [PaymentCheckoutController::class, 'decide'])->name('payments.decide');
 Route::get('pay/{intent}/done', PaymentReturnController::class)->name('payments.return');
+// Form-POST bridge routes for gateways that redirect via a browser-submitted form
+// rather than a plain GET. The return route is CSRF-exempt (bootstrap/app.php)
+// because the gateway's redirect is a cross-domain POST with no session.
+Route::get('pay/{intent}/go', PaymentFormBridgeController::class)->name('payments.paygate.redirect');
+Route::post('pay/{intent}/paygate-done', PaymentBridgeReturnController::class)->name('payments.paygate.return');
 
 // Invoices are rendered on demand from their frozen snapshot rather than
 // stored, so this route is the only way to the document and its check is the
