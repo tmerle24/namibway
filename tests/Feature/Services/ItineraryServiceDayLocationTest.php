@@ -150,15 +150,33 @@ class ItineraryServiceDayLocationTest extends TestCase
         $windhoek = City::where('slug', 'windhoek')->firstOrFail();
         $this->seedLodge($windhoek, 'Windhoek Lodge');
 
-        // A park name — what the prompt tells Claude never to use, and what
-        // no City row matches. Nothing to resolve it to, so it stays put.
+        // An area name no City row carries, under any spelling — nothing to
+        // resolve it to, so it stays put rather than being blanked.
+        $this->fakeAnthropicPlan('Damaraland', 'Nowhere Lodge');
+
+        $plan = app(ItineraryService::class)->generate($this->tripParams());
+
+        foreach ($plan['variants'][0]['days'] as $day) {
+            $this->assertSame('Damaraland', $day['location']);
+            $this->assertNull($day['region']);
+        }
+    }
+
+    public function test_the_short_name_of_a_park_resolves_to_the_park(): void
+    {
+        $windhoek = City::where('slug', 'windhoek')->firstOrFail();
+        $this->seedLodge($windhoek, 'Windhoek Lodge');
+
+        // "Etosha" is what a traveler says and what Claude reads everywhere it
+        // has ever read about Namibia; the place it means is called "Etosha
+        // National Park" here, and since 2026-08-18 that is a real row.
         $this->fakeAnthropicPlan('Etosha', 'Nowhere Lodge');
 
         $plan = app(ItineraryService::class)->generate($this->tripParams());
 
         foreach ($plan['variants'][0]['days'] as $day) {
-            $this->assertSame('Etosha', $day['location']);
-            $this->assertNull($day['region']);
+            $this->assertSame('Etosha National Park', $day['location']);
+            $this->assertSame('Kunene', $day['region']);
         }
     }
 }

@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources;
 
-use App\Enums\SettlementType;
+use App\Enums\PlaceType;
 use App\Filament\Resources\CityResource\Pages;
 use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
@@ -14,13 +14,29 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
 
+/**
+ * The place gazetteer a listing is filed against — towns and villages, and
+ * since 2026-08-18 the tourism areas that are not settlements at all (Etosha,
+ * Onguma, Sossusvlei). It is called "Places" everywhere a person can read it,
+ * because "Cities" is what told the content team a lodge in a national park
+ * had nowhere to go; the model and table keep their names.
+ */
 class CityResource extends Resource
 {
     protected static ?string $model = City::class;
 
+    // Keeps the city icon although the resource now also holds parks and
+    // reserves: heroicon-o-map-pin already means Destinations in this panel,
+    // and one icon means one thing here.
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
 
     protected static ?string $navigationGroup = 'Settings';
+
+    protected static ?string $navigationLabel = 'Places';
+
+    protected static ?string $modelLabel = 'place';
+
+    protected static ?string $pluralModelLabel = 'places';
 
     public static function form(Form $form): Form
     {
@@ -50,11 +66,14 @@ class CityResource extends Resource
                     ->preload()
                     ->required(),
                 Forms\Components\Select::make('type')
-                    ->options(SettlementType::class)
-                    ->required(),
+                    ->label('Place type')
+                    ->options(PlaceType::class)
+                    ->required()
+                    ->helperText('A park, reserve or landmark is a real place to file a lodge in — use it rather than the nearest town when the property is not in that town.'),
                 Forms\Components\TextInput::make('population')
                     ->numeric()
-                    ->minValue(0),
+                    ->minValue(0)
+                    ->helperText('Settlements only — leave empty for a park, reserve or landmark.'),
                 Forms\Components\TextInput::make('area_km2')
                     ->label('Area (km²)')
                     ->numeric()
@@ -94,7 +113,8 @@ class CityResource extends Resource
                     ->label('Region')
                     ->relationship('region', 'name'),
                 Tables\Filters\SelectFilter::make('type')
-                    ->options(SettlementType::class),
+                    ->label('Place type')
+                    ->options(PlaceType::class),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

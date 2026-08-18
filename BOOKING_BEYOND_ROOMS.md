@@ -425,7 +425,7 @@ and that is already shared — `inquiry_items`.
 Both forms are already in use here, and the split turns out to be meaningful:
 
 * **`*Type` classifies the entity** — `ListingType`, `BusinessType`, `ConnectorType`,
-  `DiscountType`, `SettlementType`, `RouteTripType`.
+  `DiscountType`, `PlaceType`, `RouteTripType`.
 * **`*Kind` discriminates variants of one record** — `DocumentKind` (file or wiki page),
   `InvoiceKind` (invoice or credit note), `GuestKind`, `ChargeKind`, `InquiryKind`. It
   decides which columns on that row mean anything.

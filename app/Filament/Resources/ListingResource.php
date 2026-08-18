@@ -183,7 +183,8 @@ class ListingResource extends Resource
                                     ->icon('heroicon-o-map-pin')
                                     ->schema([
                                         Forms\Components\Select::make('city_id')
-                                            ->label('City')
+                                            ->label('Place')
+                                            ->helperText('Town, national park, private reserve or landmark — whichever the property actually stands in. Missing one? Add it under Settings → Places.')
                                             ->relationship('city', 'name')
                                             ->searchable()
                                             ->preload()
@@ -553,7 +554,7 @@ class ListingResource extends Resource
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('city.name')
-                    ->label('City')
+                    ->label('Place')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('latitude')
                     ->numeric()
@@ -884,16 +885,16 @@ class ListingResource extends Resource
                     // data-loss lesson). Correcting a wrong city stays a
                     // per-record edit, where the current value is visible.
                     Tables\Actions\BulkAction::make('assign_city')
-                        ->label('Assign city')
+                        ->label('Assign place')
                         ->icon('heroicon-o-map-pin')
                         ->color('gray')
                         ->form([
                             Forms\Components\Select::make('city_id')
-                                ->label('City')
+                                ->label('Place')
                                 ->options(fn () => City::query()->orderBy('name')->pluck('name', 'id'))
                                 ->searchable()
                                 ->required()
-                                ->helperText('Only applied to selected listings that have no city yet.'),
+                                ->helperText('Only applied to selected listings that have no place yet.'),
                         ])
                         ->action(fn (Collection $records, array $data) => self::assignCity($records, (int) $data['city_id']))
                         ->deselectRecordsAfterCompletion(),
