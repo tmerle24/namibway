@@ -52,8 +52,6 @@ class SiteOrderController
             ->orderBy('id')
             ->get();
 
-        abort_if($products->isEmpty(), 404);
-
         $orderAction = $this->actionUrl($request, 'order');
 
         return response()->view('sites.order', [
@@ -204,6 +202,14 @@ class SiteOrderController
         $url = filled($site->host)
             ? $site->pageUrl('order')
             : rtrim(Str::before($request->url(), '/order'), '/').'/order';
+
+        // Draft sites require the preview token; without it assertVisible()
+        // returns 404, and a QR code that always 404s is useless. Append the
+        // token so the printed QR stays scannable while the site is still a draft.
+        // Published sites need no token, so the QR URL stays clean.
+        if (! $site->isPublished()) {
+            $url .= '?preview='.$site->draft_token;
+        }
 
         $result = (new Builder(
             writer: new PngWriter(),

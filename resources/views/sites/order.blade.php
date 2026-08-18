@@ -224,6 +224,9 @@
 
             {{-- Product list --}}
             <p class="order-section-title">Choose items</p>
+            @if ($products->isEmpty())
+                <p style="color:var(--slate);padding:var(--s4) 0 var(--s5);font-size:15px;">No products are listed yet — check back soon.</p>
+            @endif
             <ul class="product-rows" id="product-list">
                 @foreach ($products as $product)
                     @php $thumb = $product->images->first(); @endphp
