@@ -6,6 +6,7 @@ use App\Models\MenuItem;
 use App\Models\ShopProduct;
 use App\Models\Site;
 use App\Sites\Blocks\EnquiryFormType;
+use App\Support\MediaUrl;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
@@ -119,9 +120,9 @@ final class EnquiryItems
         }
 
         if (str_starts_with($image, 'http://') || str_starts_with($image, 'https://') || str_starts_with($image, '/')) {
-            return $image;
+            return MediaUrl::thumb($image, 120);
         }
 
-        return Storage::disk('r2')->url($image);
+        return MediaUrl::thumb(Storage::disk('r2')->url($image), 120);
     }
 }
