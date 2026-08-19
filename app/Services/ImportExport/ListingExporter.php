@@ -192,6 +192,7 @@ class ListingExporter
 
         $writer->addRow(Row::fromValues([]));
         $writer->addRow(Row::fromValues(['Places (the "city" column)', 'Region'], $bold));
+        $writer->addRow(Row::fromValues(['', 'Parks, reserves and landmarks are in this list too — file a lodge where it stands, not in the nearest town.']));
 
         City::query()
             ->with('region')
@@ -207,9 +208,9 @@ class ListingExporter
         return match ($column->header) {
             'name' => 'Example Lodge (delete this row before importing)',
             'type' => 'accommodation',
-            'city' => 'Outjo',
-            'address' => 'C38, 10 km south of Andersson Gate',
-            'coordinates' => '-19.183000, 15.917000',
+            'city' => 'Etosha National Park',
+            'address' => 'Namutoni, 3 km inside Von Lindequist Gate',
+            'coordinates' => '-18.806000, 16.941000',
             'short_description' => 'In one line: what people come here for.',
             'price_from' => 1250,
             'currency' => 'NAD',

@@ -123,7 +123,7 @@ class EnrichmentResource extends Resource
                                 ->extraInputAttributes(fn (): array => self::focusAttributes('ntb_number')),
                             Forms\Components\Select::make('type')->label('Category')->options(ListingType::class)->required(),
                             Forms\Components\Select::make('city_id')
-                                ->label('City')
+                                ->label('Place')
                                 ->relationship('city', 'name')
                                 ->searchable()
                                 ->preload()
@@ -496,7 +496,7 @@ class EnrichmentResource extends Resource
                     ->action($editBasic)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('city.name')
-                    ->label('City')
+                    ->label('Place')
                     ->searchable()
                     ->action($editRegion)
                     ->sortable(),
@@ -661,7 +661,7 @@ class EnrichmentResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('type')->label('Category')->options(ListingType::class),
                 Tables\Filters\SelectFilter::make('city_id')
-                    ->label('City')
+                    ->label('Place')
                     ->relationship('city', 'name')
                     // SelectFilter truncates to 50 options by default too — see the city_id
                     // form field above for why that's a problem with 100+ cities seeded.

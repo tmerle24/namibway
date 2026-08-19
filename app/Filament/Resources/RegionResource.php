@@ -59,7 +59,7 @@ class RegionResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('slug'),
                 Tables\Columns\TextColumn::make('cities_count')
-                    ->label('Cities'),
+                    ->label('Places'),
             ])
             ->filters([
                 //

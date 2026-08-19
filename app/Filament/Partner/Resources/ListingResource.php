@@ -70,7 +70,8 @@ class ListingResource extends Resource
                             ->placeholder('Add a highlight...')
                             ->columnSpanFull(),
                         Forms\Components\Select::make('city_id')
-                            ->label('City')
+                            ->label('Place')
+                            ->helperText('Town, national park, private reserve or landmark — whichever your property actually stands in.')
                             ->relationship('city', 'name')
                             ->searchable()
                             ->preload()
@@ -403,7 +404,7 @@ class ListingResource extends Resource
                     ->badge()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('city.name')
-                    ->label('City')
+                    ->label('Place')
                     ->sortable(),
                 Tables\Columns\IconColumn::make('accepts_inquiries')
                     ->label('Accepts inquiries')

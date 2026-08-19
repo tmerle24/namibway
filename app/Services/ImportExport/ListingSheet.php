@@ -77,7 +77,7 @@ final class ListingSheet
                 header: 'city',
                 type: SheetColumnType::City,
                 attribute: 'city_id',
-                help: 'A place from the list on the "'.self::HELP_SHEET_NAME.'" sheet. For duplicate names: "Name (Region)". Without a city the listing never appears in a Kaia trip plan.',
+                help: 'A place from the list on the "'.self::HELP_SHEET_NAME.'" sheet — a town, but also a national park, private reserve or landmark ("Etosha National Park", "Onguma Nature Reserve", "Sossusvlei"). Use the one the property actually stands in, not the nearest town. For duplicate names: "Name (Region)". Without a place the listing never appears in a Kaia trip plan.',
                 aliases: ['stadt', 'ort'],
                 width: 24,
             ),

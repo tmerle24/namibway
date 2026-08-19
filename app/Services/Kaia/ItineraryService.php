@@ -191,6 +191,9 @@ class ItineraryService
     /** @var Collection<string, City>|null keyed by lowercased city name */
     private ?Collection $cityIndex = null;
 
+    /** @var Collection<string, City>|null keyed by the lowercased short name of a tourism area ("etosha" for "Etosha National Park") */
+    private ?Collection $cityAliasIndex = null;
+
     /** @var Collection<string, City>|null keyed by lowercased political region name */
     private ?Collection $regionHubCache = null;
 
@@ -1034,9 +1037,10 @@ class ItineraryService
             effort into one excellent plan rather than splitting it across several.)
 
             For each day's "location" field, use the listing's exact "city" value — e.g. "Swakopmund",
-            "Otjiwarongo", "Sesriem", "Windhoek". Never use a park or tourist-area name (e.g. "Etosha")
-            even if that's what the traveler said — look up which of those city values the chosen listing
-            actually carries and use that instead. These values are used to draw the route on the trip map
+            "Otjiwarongo", "Sesriem", "Windhoek", "Etosha National Park". Copy that value exactly, character
+            for character — never a shortened or invented area name ("Etosha", "Damaraland") even if that's
+            what the traveler said, and never a region ("Kunene"); look up which city value the chosen
+            listing actually carries and use that instead. These values are used to draw the route on the trip map
             and to check real driving times between consecutive days, so they must match a real city
             exactly — stay within the regions named in the ROUTE guidance above, but pick the specific city
             each chosen listing is actually in.
@@ -1459,10 +1463,63 @@ class ItineraryService
         }
 
         if ($this->cityIndex === null) {
-            $this->cityIndex = City::query()->with('region')->get()->keyBy(fn (City $city) => mb_strtolower($city->name));
+            $cities = City::query()->with('region')->get();
+
+            $this->cityIndex = $cities->keyBy(fn (City $city) => mb_strtolower($city->name));
+            $this->cityAliasIndex = $this->buildAliasIndex($cities);
         }
 
-        return $this->cityIndex->get(mb_strtolower($name));
+        $key = mb_strtolower($name);
+
+        return $this->cityIndex->get($key) ?? $this->cityAliasIndex?->get($key);
+    }
+
+    /**
+     * Short names for the places that are not settlements: a traveler — and
+     * Claude, which reads the same travel writing — says "Etosha", not "Etosha
+     * National Park", and the plan is worth more resolved than left as prose.
+     *
+     * Only ever a fallback behind the exact-name index, and only for names
+     * that are unambiguous: a short form colliding with a real place name or
+     * with another area's short form is dropped rather than guessed at.
+     *
+     * @param  Collection<int, City>  $cities
+     * @return Collection<string, City>
+     */
+    private function buildAliasIndex(Collection $cities): Collection
+    {
+        $taken = $cities->map(fn (City $city) => mb_strtolower($city->name))->flip();
+
+        /** @var Collection<string, City> $aliases */
+        $aliases = collect();
+        $ambiguous = [];
+
+        foreach ($cities as $city) {
+            if ($city->type->isSettlement()) {
+                continue;
+            }
+
+            $short = mb_strtolower(trim((string) preg_replace(
+                '/\s+(?:(?:private\s+)?(?:national|nature|game|plateau)\s+)?(?:park|reserve|conservancy)$/i',
+                '',
+                $city->name,
+            )));
+
+            if ($short === '' || $taken->has($short) || isset($ambiguous[$short])) {
+                continue;
+            }
+
+            if ($aliases->has($short)) {
+                $ambiguous[$short] = true;
+                $aliases->forget($short);
+
+                continue;
+            }
+
+            $aliases->put($short, $city);
+        }
+
+        return $aliases;
     }
 
     /**
@@ -1557,7 +1614,7 @@ class ItineraryService
                                         'properties' => [
                                             'day' => ['type' => 'integer'],
                                             'date' => ['type' => 'string', 'description' => 'Calendar date for this day, e.g. "14 Aug 2026". Computed from travel_period start date.'],
-                                            'location' => ['type' => 'string', 'description' => 'Exact city value from the listing catalog, e.g. "Swakopmund", "Otjiwarongo", "Sesriem" — never a park/tourist-area name like "Etosha"'],
+                                            'location' => ['type' => 'string', 'description' => 'Exact city value from the listing catalog, e.g. "Swakopmund", "Otjiwarongo", "Sesriem", "Etosha National Park" — copied character for character, never shortened ("Etosha") or replaced by a region ("Kunene")'],
                                             'accommodation' => ['type' => 'string'],
                                             'activity' => ['type' => 'string'],
                                             'activity_time' => ['type' => 'string', 'description' => 'Optional 24h "HH:MM" start time for the activity, e.g. "06:00" for a sunrise game drive. Omit if no particular time of day applies.'],

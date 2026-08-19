@@ -2,14 +2,17 @@
 
 namespace Tests\Feature\Commands;
 
+use App\Enums\PlaceType;
 use App\Models\City;
+use App\Models\Listing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * The command requires every in-scope (municipality/town/community) city to
+ * The command requires every in-scope place (PlaceType::inDrivingMatrix() —
+ * the larger settlements plus every park, reserve and landmark) to
  * already have lat/lng — a freshly migrated DB has none (see
  * create_cities_table.php), so it fails by default without any setup; these
  * tests bulk-fill coordinates for that scenario instead of relying on the
@@ -49,7 +52,7 @@ class BackfillCityDrivingHoursCommandTest extends TestCase
 
     public function test_dry_run_computes_but_writes_nothing(): void
     {
-        City::whereIn('type', ['municipality', 'town', 'community'])->update(['lat' => -22.0, 'lng' => 17.0]);
+        City::whereIn('type', PlaceType::drivingMatrixValues())->update(['lat' => -22.0, 'lng' => 17.0]);
         $this->fakeOsrmTable(7200);
 
         $this->artisan('namibway:backfill-city-driving-hours', ['--dry-run' => true])->assertSuccessful();
@@ -57,9 +60,35 @@ class BackfillCityDrivingHoursCommandTest extends TestCase
         $this->assertSame(0, DB::table('city_driving_hours')->count());
     }
 
+    public function test_a_settlement_hosting_a_listing_is_in_scope_despite_its_type(): void
+    {
+        // Sesriem is officially a settlement — the class this command skips
+        // wholesale — and it is also where everyone visiting Sossusvlei
+        // sleeps. What puts it in the matrix is the listing, not the type.
+        City::whereIn('type', PlaceType::drivingMatrixValues())->update(['lat' => -22.0, 'lng' => 17.0]);
+
+        $sesriem = City::where('slug', 'sesriem')->firstOrFail();
+        Listing::factory()->create(['city_id' => $sesriem->id, 'is_published' => true]);
+
+        // Counted, so its missing coordinates stop the run.
+        $this->artisan('namibway:backfill-city-driving-hours')->assertFailed();
+
+        $sesriem->update(['lat' => -24.4833, 'lng' => 15.8]);
+        $this->fakeOsrmTable(7200);
+
+        $this->artisan('namibway:backfill-city-driving-hours')->assertSuccessful();
+
+        $this->assertTrue(
+            DB::table('city_driving_hours')
+                ->where('city_a_id', $sesriem->id)
+                ->orWhere('city_b_id', $sesriem->id)
+                ->exists(),
+        );
+    }
+
     public function test_computes_and_upserts_real_pairs(): void
     {
-        $inScope = City::whereIn('type', ['municipality', 'town', 'community']);
+        $inScope = City::whereIn('type', PlaceType::drivingMatrixValues());
         $inScope->update(['lat' => -22.0, 'lng' => 17.0]);
         $expectedPairs = intdiv($inScope->count() * ($inScope->count() - 1), 2);
 

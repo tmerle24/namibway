@@ -147,6 +147,60 @@ gets built with this future use in mind rather than needing a rewrite.
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-18 — a lodge in a park has somewhere to be filed
+
+The co-founder went looking for Onguma, and for Etosha as the area Onguma is
+in, and found neither: `cities` was seeded as Namibia's administrative
+gazetteer — the ~105 proclaimed municipalities, towns and settlements — so a
+property standing in a park, on a private reserve or at a landmark had no
+place to be filed in. Half the country's lodges are in exactly that position.
+
+That is not a cosmetic gap in a dropdown, because `city` is what the trip plan
+is built out of: it is the day's location, the point Kaia measures driving
+hours between (`city_driving_hours`), and the Explore filter. A listing with no
+city never enters a plan at all; a listing filed in the nearest town enters it
+in the wrong place — the demo seed still puts Etosha lodges in Outjo, ~100 km
+away, and a plan built from that is wrong by an hour's drive without ever
+looking wrong.
+
+Fixed by widening what a place *is* rather than adding a second location
+entity beside the first:
+
+- `SettlementType` → `PlaceType`, plus `national_park`, `nature_reserve` and
+  `landmark`. One taxonomy, so everything downstream — day locations, the
+  driving matrix, the Excel `city` column, the nearest-place matching the
+  namibweb importer does from GPS — keeps working with no new concept.
+- Those three types are in `PlaceType::inDrivingMatrix()`, so a park is routed
+  between like a town. Villages and settlements stay out, as before.
+- 22 places seeded (`2026_08_18_110000_seed_tourism_places.php`): Etosha,
+  Onguma, Ongava, Sossusvlei, Sesriem, Solitaire, NamibRand, Twyfelfontein,
+  Palmwag, Skeleton Coast, Spitzkoppe, Cape Cross, Sandwich Harbour, Fish
+  River Canyon, Ai-Ais, Kolmanskop, Aus, Waterberg, Erindi, Bwabwata, Mudumu,
+  Nkasa Rupara. Coordinates are deliberately left null — the same
+  `namibway:backfill-city-coordinates` that geocoded every settlement fills
+  them, rather than having numbers typed in from memory.
+- Called **Places** everywhere a person reads it (both panels, the Excel
+  instructions sheet), because "City" is what told the content team a lodge in
+  a national park had nowhere to go.
+- Kaia resolves the short name too: `ItineraryService::canonicalCity()` falls
+  back to an alias index built from the tourism areas ("Etosha" → "Etosha
+  National Park"), because that is what a traveler types and what the model
+  has read everywhere it has ever read about Namibia. Ambiguous short forms —
+  one that collides with a real place or with another area — are dropped
+  rather than guessed at. The prompt now says to copy the catalog's city value
+  character for character instead of "never name a park", which was only true
+  while parks were not places.
+
+**After deploying, in this order:** `namibway:backfill-city-coordinates`, then
+`namibway:backfill-city-driving-hours` — the second refuses to run while any
+in-scope place has no coordinates, which is what keeps the matrix from
+silently having holes.
+
+Left open: nothing splits Etosha into its gates. A single park row means a
+plan measures a drive to Namutoni as if it went to the middle of the park —
+worth revisiting only once real Etosha listings exist and the error shows up
+in a plan.
+
 ### 2026-08-16 — a restaurant says which channels it takes online
 
 Follow-up to the entry below, from the first question asked of it once it was
