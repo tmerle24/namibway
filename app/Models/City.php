@@ -21,6 +21,7 @@ use Illuminate\Support\Str;
  *
  * @property int $id
  * @property int $region_id
+ * @property int|null $destination_id
  * @property string $name
  * @property string $slug
  * @property string|null $image
@@ -37,6 +38,7 @@ class City extends Model
 
     protected $fillable = [
         'region_id',
+        'destination_id',
         'name',
         'slug',
         'image',
@@ -70,6 +72,19 @@ class City extends Model
     public function region(): BelongsTo
     {
         return $this->belongsTo(Region::class);
+    }
+
+    /**
+     * The tourism area this place sits in — Onguma is in Etosha, Sesriem is in
+     * Sossusvlei. Nullable, because plenty of places are in none: Windhoek is
+     * simply Windhoek. This is what a traveler is shown; `region` is the
+     * political one and stays internal (see the 2026-08-19 migration).
+     *
+     * @return BelongsTo<Destination, $this>
+     */
+    public function destination(): BelongsTo
+    {
+        return $this->belongsTo(Destination::class);
     }
 
     /**

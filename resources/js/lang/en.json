@@ -355,7 +355,7 @@
             "activities": "Activities",
             "restaurants": "Restaurants",
             "vehicles": "Vehicles",
-            "regions": "Regions",
+            "regions": "Areas",
             "date": "Date",
             "selectDate": "Select date(s)",
             "keyword": "Search by keyword…",
@@ -363,7 +363,7 @@
             "moreFilters": "More filters ▾",
             "hideFilters": "Hide filters ▲",
             "note": "Dates are captured for when live partner availability is connected — this catalog isn't date-checked yet.",
-            "allRegions": "All regions",
+            "allRegions": "All areas",
             "allCities": "All cities",
             "anyBudget": "Any budget",
             "budget": "Budget",
@@ -385,7 +385,7 @@
             "activity": "Things to do",
             "restaurant": "Where to eat",
             "vehicle": "Getting around",
-            "region": "Regions to explore"
+            "region": "Areas to explore"
         },
         "viewAll": "View all →",
         "featured": {

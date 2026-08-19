@@ -419,6 +419,7 @@ class ItineraryService
                 'gallery' => $this->resolveGallery($listing),
                 'city' => $listing->city?->name,
                 'region' => $listing->region,
+                'area' => $listing->area,
                 // The stay card in the trip plan shows a line of "why this one"
                 // detail under the name; without these it can only ever show
                 // the bare listing name (see ItineraryStayCard.vue).
@@ -433,7 +434,7 @@ class ItineraryService
                 return null;
             }
 
-            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'price_unit' => null, 'duration_minutes' => null, 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'region' => null, 'short_description' => null, 'rating' => null, 'rating_count' => null];
+            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'price_unit' => null, 'duration_minutes' => null, 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'region' => null, 'area' => null, 'short_description' => null, 'rating' => null, 'rating_count' => null];
         };
 
         $plan['variants'] = array_map(function (array $variant) use ($resolve, $listings) {
@@ -563,6 +564,7 @@ class ItineraryService
                 'gallery' => $this->resolveGallery($fallback),
                 'city' => $fallback->city?->name,
                 'region' => $fallback->region,
+                'area' => $fallback->area,
                 'short_description' => $fallback->getTranslation('short_description', 'en', useFallbackLocale: true) ?: null,
                 'rating' => $fallback->rating !== null ? (float) $fallback->rating : null,
                 'rating_count' => $fallback->rating_count,
@@ -621,12 +623,17 @@ class ItineraryService
 
             if ($city === null) {
                 $day['region'] ??= null;
+                $day['area'] ??= null;
 
                 continue;
             }
 
             $day['location'] = $city->name;
             $day['region'] = $city->region?->name;
+            // What the stage card actually prints under the place name — see
+            // City::destination(). The political region stays for the map's
+            // fallback lookups and for plans saved before areas existed.
+            $day['area'] = $city->destination?->name;
         }
 
         unset($day);
@@ -653,7 +660,7 @@ class ItineraryService
             $key = fn (City $city) => mb_strtolower((string) $city->region?->name);
 
             $this->regionHubCache = City::query()
-                ->with('region')
+                ->with(['region', 'destination'])
                 ->whereHas('region')
                 ->whereHas('listings', fn ($q) => $q->where('is_published', true))
                 ->withCount(['listings' => fn ($q) => $q->where('is_published', true)])
@@ -680,13 +687,13 @@ class ItineraryService
      */
     public function alternatives(string $type, ?int $excludeId = null): array
     {
-        $excluded = $excludeId !== null ? Listing::with('city.region')->find($excludeId) : null;
+        $excluded = $excludeId !== null ? Listing::with(['city.region', 'city.destination'])->find($excludeId) : null;
 
         $pool = Listing::query()
             ->where('is_published', true)
             ->where('type', $type)
             ->when($excludeId !== null, fn ($q) => $q->where('id', '!=', $excludeId))
-            ->with('city.region')
+            ->with(['city.region', 'city.destination'])
             ->get();
 
         if ($pool->isEmpty()) {
@@ -738,6 +745,7 @@ class ItineraryService
                 'gallery' => $this->resolveGallery($listing),
                 'city' => $listing->city?->name,
                 'region' => $listing->region,
+                'area' => $listing->area,
                 'short_description' => $listing->getTranslation('short_description', 'en', useFallbackLocale: true) ?: null,
                 'rating' => $listing->rating !== null ? (float) $listing->rating : null,
                 'rating_count' => $listing->rating_count,
@@ -983,6 +991,7 @@ class ItineraryService
             'gallery' => $this->resolveGallery($listing),
             'city' => $listing->city?->name,
             'region' => $listing->region,
+            'area' => $listing->area,
             'short_description' => $listing->getTranslation('short_description', 'en', useFallbackLocale: true) ?: null,
             'rating' => $listing->rating !== null ? (float) $listing->rating : null,
             'rating_count' => $listing->rating_count,
@@ -1463,7 +1472,7 @@ class ItineraryService
         }
 
         if ($this->cityIndex === null) {
-            $cities = City::query()->with('region')->get();
+            $cities = City::query()->with(['region', 'destination'])->get();
 
             $this->cityIndex = $cities->keyBy(fn (City $city) => mb_strtolower($city->name));
             $this->cityAliasIndex = $this->buildAliasIndex($cities);
@@ -1708,7 +1717,7 @@ class ItineraryService
         $order = array_flip($shortlisted);
 
         return Listing::query()
-            ->with('city.region')
+            ->with(['city.region', 'city.destination'])
             ->whereIn('id', $shortlisted)
             ->get()
             // whereIn returns rows in whatever order the index hands back, but
@@ -1733,6 +1742,7 @@ class ItineraryService
                     // Both sent: 'region' satisfies the macro ROUTE guidance ("which regions to
                     // visit"), 'city' is what the day-by-day "location" field must be filled with.
                     'region' => $listing->region,
+                    'area' => $listing->area,
                     'city' => $listing->city?->name,
                     'description' => $listing->getTranslation('description', 'en', useFallbackLocale: true),
                     'highlights' => $listing->getTranslation('highlights', 'en', useFallbackLocale: true) ?? [],

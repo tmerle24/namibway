@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Spatie\Translatable\HasTranslations;
 
@@ -52,6 +53,18 @@ class Destination extends Model
                 $destination->slug = Str::slug($destination->name);
             }
         });
+    }
+
+    /**
+     * The places that make up this area — Etosha holds the park itself,
+     * Onguma and Ongava. What the destination card filters on, and what a
+     * listing inherits its displayed area from through its place.
+     *
+     * @return HasMany<City, $this>
+     */
+    public function cities(): HasMany
+    {
+        return $this->hasMany(City::class);
     }
 
     /**

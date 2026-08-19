@@ -294,7 +294,7 @@
             "activities": "Aktivitäten",
             "restaurants": "Restaurants",
             "vehicles": "Fahrzeuge",
-            "regions": "Regionen",
+            "regions": "Gegenden",
             "date": "Datum",
             "selectDate": "Datum(e) wählen",
             "keyword": "Nach Stichwort suchen…",
@@ -302,7 +302,7 @@
             "moreFilters": "Weitere Filter ▾",
             "hideFilters": "Filter ausblenden ▲",
             "note": "Daten werden erfasst, sobald echte Partner-Verfügbarkeit angebunden ist — dieser Katalog ist noch nicht datumsgeprüft.",
-            "allRegions": "Alle Regionen",
+            "allRegions": "Alle Gegenden",
             "allCities": "Alle Städte",
             "anyBudget": "Beliebiges Budget",
             "budget": "Budget",
@@ -324,7 +324,7 @@
             "activity": "Unternehmungen",
             "restaurant": "Essen gehen",
             "vehicle": "Unterwegs sein",
-            "region": "Regionen entdecken"
+            "region": "Gegenden entdecken"
         },
         "viewAll": "Alle ansehen →",
         "featured": {

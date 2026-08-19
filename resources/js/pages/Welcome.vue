@@ -31,6 +31,7 @@ interface Listing {
     description: string | null;
     image: string | null;
     region: string | null;
+    area: string | null;
     city: string | null;
     latitude: number | null;
     longitude: number | null;

@@ -23,6 +23,7 @@ interface Listing {
     description: string | null;
     image: string | null;
     region: string | null;
+    area: string | null;
     city: string | null;
     latitude: number | null;
     longitude: number | null;
@@ -81,6 +82,7 @@ interface SearchListing {
     description: string | null;
     image: string | null;
     region: string | null;
+    area: string | null;
     city: string | null;
     price_from: string | null;
     price_currency: string;
@@ -195,7 +197,12 @@ const ideaRows = computed<IdeaRow[]>(() => {
             id: listing.id,
             title: listing.name,
             description: truncate(listing.description),
-            region: listing.region,
+            // The tourism area ("Etosha") in preference to the political one
+            // ("Oshikoto"): this value heads the filter select, rides along to
+            // /listings/search as `region`, and is what a traveler recognises.
+            // The political region stays as the fallback for a place that
+            // belongs to no area yet — better a coarse answer than none.
+            region: listing.area ?? listing.region,
             city: listing.city,
             budget: budgetBucket(listing.price_from),
             image:
@@ -219,7 +226,10 @@ const ideaRows = computed<IdeaRow[]>(() => {
             id: null,
             title: destination.name,
             description: destination.blurb ?? '',
-            region: destination.region_name,
+            // The card's own name, not the political region it happens to sit
+            // in: clicking "Etosha" used to filter on Kunene, which showed the
+            // Skeleton Coast and left the Onguma lodges out.
+            region: destination.name,
             city: null,
             budget: null,
             image: destination.image ?? '/images/explore/region-khomas.jpg',
@@ -988,10 +998,10 @@ const mapMarkers = computed<ExploreMapMarker[]>(() => {
                         </div>
                         <h4 class="result-card-name">{{ item.name }}</h4>
                         <p
-                            v-if="item.city || item.region"
+                            v-if="item.city || item.area || item.region"
                             class="result-card-region"
                         >
-                            {{ item.city ?? item.region }}
+                            {{ item.city ?? item.area ?? item.region }}
                         </p>
                         <p v-if="item.description" class="result-card-desc">
                             {{ truncate(item.description, 110) }}

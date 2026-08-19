@@ -54,17 +54,20 @@ class KaiaController extends Controller
             ->with('region:id,name')
             ->get(['id', 'name', 'lat', 'lng', 'image', 'region_id']);
 
-        // 'region' rides along on every entry so the trip plan can print the
-        // political region as a subtitle beside a stage's city name without a
-        // second round-trip — and without depending on the day's accommodation
-        // carrying a city_id of its own, which plenty of scraped listings
-        // still don't.
+        // 'area' rides along on every entry so the trip plan can print it as a
+        // subtitle beside a stage's place name without a second round-trip —
+        // and without depending on the day's accommodation carrying a city_id
+        // of its own, which plenty of scraped listings still don't. 'region'
+        // is the political one and stays for the same reason it always has:
+        // plans saved before areas existed print it.
         $coords = $destinations->mapWithKeys(fn (Destination $d) => [
             mb_strtolower($d->getTranslation('name', 'en')) => [
                 'lat' => $d->lat,
                 'lng' => $d->lng,
                 'image' => $d->image ? self::resolveMediaUrl($d->image) : null,
                 'region' => $d->region->name,
+                // A destination is itself the area.
+                'area' => $d->getTranslation('name', 'en'),
             ],
         ]);
 
@@ -88,6 +91,10 @@ class KaiaController extends Controller
                 'lng' => $first->lng,
                 'image' => $first->image ? self::resolveMediaUrl($first->image) : null,
                 'region' => (string) $politicalRegion,
+                // Null, not the first destination's name: this entry is keyed
+                // by a political region, and naming one of the areas inside it
+                // would put "Etosha" under a plan that only ever said "Kunene".
+                'area' => null,
             ];
         }
 
@@ -101,8 +108,8 @@ class KaiaController extends Controller
             ->whereNotNull('lat')
             ->whereNotNull('lng')
             ->whereHas('listings', fn ($q) => $q->where('is_published', true))
-            ->with('region:id,name')
-            ->get(['id', 'name', 'lat', 'lng', 'region_id'])
+            ->with(['region:id,name', 'destination:id,name'])
+            ->get(['id', 'name', 'lat', 'lng', 'region_id', 'destination_id'])
             ->each(function (City $city) use ($coords) {
                 $key = mb_strtolower($city->name);
 
@@ -117,6 +124,10 @@ class KaiaController extends Controller
                         // it be nullable would widen every entry's shape,
                         // including the two above that genuinely can't be.
                         'region' => $city->region->name,
+                        // The tourism area, which is what the plan prints
+                        // under the place name — null where the place is in
+                        // none, and then the card shows the place alone.
+                        'area' => $city->destination?->name,
                     ];
                 }
             });
