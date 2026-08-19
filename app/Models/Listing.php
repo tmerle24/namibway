@@ -250,6 +250,19 @@ class Listing extends Model
     }
 
     /**
+     * The tourism area this listing is in — "Etosha" for a lodge on Onguma —
+     * derived from its place the same way the region is. This is the one a
+     * traveler is shown: the political region answers which administration a
+     * property falls under, which is not what somebody planning a trip is
+     * asking. Null where the place belongs to no area, and then the place
+     * stands alone.
+     */
+    public function getAreaAttribute(): ?string
+    {
+        return $this->city?->destination?->name;
+    }
+
+    /**
      * @return HasMany<Inquiry, $this>
      */
     public function inquiries(): HasMany
@@ -521,11 +534,24 @@ class Listing extends Model
             $query->where('vehicle_class', $vehicleClass);
         }
 
+        // Deliberately a "roughly where" filter rather than a strict one: the
+        // same parameter carries a place name, a tourism area and a political
+        // region, because all three are things a traveler types or clicks. The
+        // area is what the Explore selects and the destination cards send since
+        // 2026-08-19 — without it here, clicking "Etosha" would filter on the
+        // political region and miss every lodge on Onguma.
         $region = $filters['region'] ?? null;
 
         if (is_string($region) && $region !== '') {
             $query->whereHas('city', fn ($q) => $q->where('name', 'ilike', '%'.$region.'%')
-                ->orWhereHas('region', fn ($q2) => $q2->where('name', 'ilike', '%'.$region.'%')));
+                ->orWhereHas('region', fn ($q2) => $q2->where('name', 'ilike', '%'.$region.'%'))
+                // cast(...) because a destination's name is a translations
+                // JSON column, which ilike cannot be applied to directly —
+                // same shape as the keyword filter below.
+                ->orWhereHas('destination', fn ($q2) => $q2->whereRaw(
+                    'lower(cast(name as text)) like ?',
+                    ['%'.mb_strtolower($region).'%'],
+                )));
         }
 
         // Separate from $region above (which also matches city names, for the

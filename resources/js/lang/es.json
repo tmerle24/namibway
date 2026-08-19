@@ -166,7 +166,7 @@
             "activities": "Actividades",
             "restaurants": "Restaurantes",
             "vehicles": "Vehículos",
-            "regions": "Regiones",
+            "regions": "Zonas",
             "date": "Fecha",
             "selectDate": "Seleccionar fecha(s)",
             "keyword": "Buscar por palabra clave…",
@@ -174,7 +174,7 @@
             "moreFilters": "Más filtros ▾",
             "hideFilters": "Ocultar filtros ▲",
             "note": "Las fechas se registran para cuando se conecte la disponibilidad real de los socios — este catálogo aún no verifica fechas.",
-            "allRegions": "Todas las regiones",
+            "allRegions": "Todas las zonas",
             "allCities": "Todas las ciudades",
             "anyBudget": "Cualquier presupuesto",
             "budget": "Económico",
@@ -192,7 +192,7 @@
             "activity": "Qué hacer",
             "restaurant": "Dónde comer",
             "vehicle": "Cómo moverte",
-            "region": "Regiones para explorar"
+            "region": "Zonas para explorar"
         },
         "viewAll": "Ver todo →",
         "featured": {

@@ -59,7 +59,7 @@ class HomeController extends Controller
                 ->orderByDesc('is_featured')
                 ->orderByRaw('MD5(id::text || ?)', [$daySeed])
                 ->limit(self::PER_CATEGORY_LIMIT)
-                ->with('city.region')
+                ->with(['city.region', 'city.destination'])
                 ->get(self::LISTING_COLUMNS))
             ->map(fn (Listing $listing) => self::presentListing($listing));
 
@@ -97,7 +97,7 @@ class HomeController extends Controller
             ->where('is_homepage_pick', true)
             ->whereIn('type', self::FEATURED_TYPES)
             ->orderByRaw('MD5(id::text || ?)', [$daySeed])
-            ->with('city.region')
+            ->with(['city.region', 'city.destination'])
             ->first(self::LISTING_COLUMNS)
             ?? Listing::query()
                 ->where('is_published', true)
@@ -105,7 +105,7 @@ class HomeController extends Controller
                 ->orderByRaw("(image IS NOT NULL OR json_array_length(COALESCE(gallery, '[]')) > 0) DESC")
                 ->orderByDesc('rating')
                 ->orderByRaw('MD5(id::text || ?)', [$daySeed])
-                ->with('city.region')
+                ->with(['city.region', 'city.destination'])
                 ->first(self::LISTING_COLUMNS);
     }
 
@@ -120,6 +120,7 @@ class HomeController extends Controller
             'description' => $listing->description,
             'image' => $listing->image ? self::resolveMediaUrl($listing->image) : null,
             'region' => $listing->region,
+            'area' => $listing->area,
             'city' => $listing->city ? $listing->city->name : self::detectTown($listing->address),
             'latitude' => $listing->latitude !== null ? (float) $listing->latitude : null,
             'longitude' => $listing->longitude !== null ? (float) $listing->longitude : null,

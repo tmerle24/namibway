@@ -95,6 +95,7 @@ interface Listing {
     pending_gallery: string[];
     pending_photos_source: string | null;
     region: string | null;
+    area: string | null;
     city: string | null;
     address: string | null;
     phone: string | null;
@@ -436,6 +437,26 @@ const heroImage = computed(() => {
     const fallbacks = FALLBACK_HERO_IMAGES[props.listing.type];
 
     return fallbacks[props.listing.id % fallbacks.length];
+});
+
+// What goes in brackets after the town: the tourism area a traveler thinks in
+// ("Onguma Nature Reserve (Etosha)"), falling back to the political region for
+// a place that belongs to no area yet — coarse, but better than nothing, and
+// it disappears on its own as areas get filled in. Suppressed when it would
+// only repeat the town, which is the case for Windhoek and Swakopmund, where
+// the town IS the area.
+const locationArea = computed(() => {
+    const area = props.listing.area ?? props.listing.region;
+
+    if (!area) {
+        return null;
+    }
+
+    const city = props.listing.city;
+
+    return city && city.toLowerCase().trim() === area.toLowerCase().trim()
+        ? null
+        : area;
 });
 
 // The hero is a CSS background, so it can't carry a srcset — ask for the top
@@ -814,7 +835,7 @@ const socialLinks = computed(() =>
                         >{{ t('listing.backToHome') }}</Link
                     >
                 </div>
-                <p v-if="props.listing.city || props.listing.region">
+                <p v-if="props.listing.city || locationArea">
                     <Link
                         v-if="props.listing.city"
                         :href="home({ query: { city: props.listing.city } })"
@@ -822,16 +843,14 @@ const socialLinks = computed(() =>
                         >{{ props.listing.city }}</Link
                     >
                     <Link
-                        v-if="props.listing.region"
-                        :href="
-                            home({ query: { region: props.listing.region } })
-                        "
+                        v-if="locationArea"
+                        :href="home({ query: { region: locationArea } })"
                         class="detail-region-link"
                         :class="{ 'detail-region-sub': props.listing.city }"
                         >{{
                             props.listing.city
-                                ? `(${props.listing.region})`
-                                : props.listing.region
+                                ? `(${locationArea})`
+                                : locationArea
                         }}</Link
                     >
                 </p>

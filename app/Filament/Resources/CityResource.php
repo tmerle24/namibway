@@ -7,6 +7,7 @@ use App\Filament\Resources\CityResource\Pages;
 use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
 use App\Models\City;
+use App\Models\Destination;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -38,6 +39,21 @@ class CityResource extends Resource
 
     protected static ?string $pluralModelLabel = 'places';
 
+    /**
+     * The areas a place can be filed under, id => name, sorted on the
+     * translated name in PHP.
+     *
+     * @return array<int, string>
+     */
+    public static function areaOptions(): array
+    {
+        return Destination::query()
+            ->get(['id', 'name'])
+            ->sortBy(fn (Destination $destination): string => (string) $destination->name)
+            ->mapWithKeys(fn (Destination $destination): array => [$destination->id => (string) $destination->name])
+            ->all();
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -60,11 +76,21 @@ class CityResource extends Resource
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
                 Forms\Components\Select::make('region_id')
-                    ->label('Region')
+                    ->label('Region (political)')
+                    ->helperText('Administrative only — the traveller never sees it. Carries the country.')
                     ->relationship('region', 'name')
                     ->searchable()
                     ->preload()
                     ->required(),
+                Forms\Components\Select::make('destination_id')
+                    ->label('Area')
+                    ->helperText('What the traveller is shown: "Onguma Nature Reserve (Etosha)". Leave empty for a place that is in no tourism area — a town simply stands for itself.')
+                    // Options built in PHP rather than through relationship():
+                    // a destination's name is a translations JSON column, and
+                    // Postgres cannot order by one ("could not identify an
+                    // ordering operator for type json"). Same reason below.
+                    ->options(self::areaOptions(...))
+                    ->searchable(),
                 Forms\Components\Select::make('type')
                     ->label('Place type')
                     ->options(PlaceType::class)
@@ -99,8 +125,12 @@ class CityResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('destination.name')
+                    ->label('Area')
+                    ->placeholder('—'),
                 Tables\Columns\TextColumn::make('region.name')
                     ->label('Region')
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('type')
                     ->badge(),
@@ -109,6 +139,9 @@ class CityResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('destination_id')
+                    ->label('Area')
+                    ->options(self::areaOptions(...)),
                 Tables\Filters\SelectFilter::make('region_id')
                     ->label('Region')
                     ->relationship('region', 'name'),

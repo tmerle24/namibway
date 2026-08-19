@@ -166,7 +166,7 @@
             "activities": "Activiteiten",
             "restaurants": "Restaurants",
             "vehicles": "Voertuigen",
-            "regions": "Regio's",
+            "regions": "Gebieden",
             "date": "Datum",
             "selectDate": "Selecteer datum(s)",
             "keyword": "Zoek op trefwoord…",
@@ -174,7 +174,7 @@
             "moreFilters": "Meer filters ▾",
             "hideFilters": "Filters verbergen ▲",
             "note": "Data worden vastgelegd voor wanneer live partnerbeschikbaarheid is gekoppeld — deze catalogus is nog niet op datum gecontroleerd.",
-            "allRegions": "Alle regio's",
+            "allRegions": "Alle gebieden",
             "allCities": "Alle steden",
             "anyBudget": "Elk budget",
             "budget": "Budget",
@@ -192,7 +192,7 @@
             "activity": "Dingen om te doen",
             "restaurant": "Waar te eten",
             "vehicle": "Onderweg",
-            "region": "Regio's om te ontdekken"
+            "region": "Gebieden om te ontdekken"
         },
         "viewAll": "Alles bekijken →",
         "featured": {

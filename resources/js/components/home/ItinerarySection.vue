@@ -626,35 +626,44 @@ function sameCity(a?: string | null, b?: string | null): boolean {
     return !!a && !!b && a.toLowerCase().trim() === b.toLowerCase().trim();
 }
 
-// The political region (e.g. "Khomas"), shown quieter beside the city name on
-// the timeline card. Three sources in decreasing precision: the region the
-// backend resolved for the day, the stay's own region, and finally a lookup
-// by city name in the coords index — that last one is what covers a stay
-// whose listing has no city_id (plenty of scraped ones don't) and older saved
-// plans that predate `day.region`.
+// What is shown quieter beside the place name on the timeline card: the
+// tourism area ("Etosha"), because that is what somebody planning a trip
+// recognises — "Oshikoto" tells them nothing about where Onguma is. The
+// political region is only the fallback, for a place that belongs to no area
+// yet and for plans saved before areas existed.
+//
+// Three sources in decreasing precision, for each of the two: what the backend
+// resolved for the day, the stay's own, and finally a lookup by place name in
+// the coords index — that last one covers a stay whose listing has no city_id
+// (plenty of scraped ones don't).
 function dayRegion(day: {
     location: string;
     region?: string | null;
-    accommodation?: { city?: string | null; region?: string | null } | null;
+    area?: string | null;
+    accommodation?: {
+        city?: string | null;
+        region?: string | null;
+        area?: string | null;
+    } | null;
 }): string | null {
-    const lookUp = (name?: string | null) =>
-        (name && regionCoords.value[name.toLowerCase().trim()]?.region) || null;
-
     const city = dayCity(day);
 
-    // Whatever region we print has to belong to the city in the heading — the
-    // stay's own region only counts while the stay is still in that city.
-    const region =
-        (sameCity(city, day.location) ? day.region : null) ||
+    // Whatever we print has to belong to the place in the heading — the stay's
+    // own value only counts while the stay is still in that place.
+    const pick = (key: 'area' | 'region') =>
+        (sameCity(city, day.location) ? day[key] : null) ||
         (sameCity(city, day.accommodation?.city)
-            ? day.accommodation?.region
+            ? day.accommodation?.[key]
             : null) ||
-        lookUp(city) ||
+        (city && regionCoords.value[city.toLowerCase().trim()]?.[key]) ||
         null;
 
-    // Repeating the heading in smaller type says nothing — happens when the
-    // heading itself fell back to a region name for want of a city.
-    return region && region !== city ? region : null;
+    const label = pick('area') || pick('region');
+
+    // Repeating the heading in smaller type says nothing — happens for a town
+    // that is its own area (Windhoek, Swakopmund), and when the heading itself
+    // fell back to an area name for want of a place.
+    return label && label !== city ? label : null;
 }
 
 // How many people the prices apply to. Only ever used to multiply a rate the

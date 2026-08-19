@@ -13,6 +13,16 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
+/**
+ * A destination is two things at once, and both are deliberate: the card a
+ * traveller sees on the homepage, and — since 2026-08-19 — the **area** places
+ * are grouped under (Places → Area). That is why the card finally shows what it
+ * promises: "Etosha" used to filter on the political region, which pulled in
+ * the Skeleton Coast and left every lodge on Onguma out.
+ *
+ * An area that should group places without appearing as a card is simply left
+ * unpublished — the grouping does not depend on `is_published`.
+ */
 class DestinationResource extends Resource
 {
     use Translatable;
@@ -87,6 +97,10 @@ class DestinationResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('region.name')
                     ->label('Region'),
+                Tables\Columns\TextColumn::make('cities_count')
+                    ->label('Places')
+                    ->counts('cities')
+                    ->tooltip('How many places are filed under this area — what the card actually shows.'),
                 Tables\Columns\TextColumn::make('sort_order')
                     ->sortable(),
                 Tables\Columns\IconColumn::make('is_published')

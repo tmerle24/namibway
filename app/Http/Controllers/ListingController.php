@@ -36,7 +36,7 @@ class ListingController extends Controller
 {
     public function search(Request $request): JsonResponse
     {
-        $query = Listing::query()->where('is_published', true)->with('city.region')->filterBy($request->query());
+        $query = Listing::query()->where('is_published', true)->with(['city.region', 'city.destination'])->filterBy($request->query());
 
         // Used by the itinerary's "change" modal to keep the currently-assigned
         // listing out of its own alternatives list.
@@ -120,6 +120,7 @@ class ListingController extends Controller
                     ->values(),
                 'highlights' => $l->highlights ?? [],
                 'region' => $l->region,
+                'area' => $l->area,
                 'city' => $l->city?->name,
                 // Carried through so a listing swapped into a trip plan keeps
                 // its map marker (see ListingSwapModal.vue's select()).
@@ -178,6 +179,7 @@ class ListingController extends Controller
                     ->map(fn (string $path) => self::resolveMediaUrl($path))
                     ->values(),
                 'region' => $listing->region,
+                'area' => $listing->area,
                 'city' => $listing->city?->name,
                 'address' => $listing->address,
                 'phone' => $phone['display'] ?? null,
@@ -401,6 +403,7 @@ class ListingController extends Controller
                     ? $listing->pending_photos_source?->value
                     : null,
                 'region' => $listing->region,
+                'area' => $listing->area,
                 'city' => $listing->city?->name,
                 'address' => $parsedCoordinates ? null : $listing->address,
                 'phone' => $phone['display'] ?? null,

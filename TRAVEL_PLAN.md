@@ -147,6 +147,56 @@ gets built with this future use in mind rather than needing a rewrite.
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-19 — the traveler is shown the area, not the region
+
+Follow-up to the entry below, and the co-founder's actual point once Onguma was
+selectable: **"Onguma Nature Reserve (Oshikoto)" is of no interest to anybody
+planning a trip.** They want to read "Onguma (Etosha)". The same holds for
+Sesriem and Solitaire, which are Sossusvlei to everyone who goes there.
+
+The political region was the only thing a place had to offer, and it answers a
+question nobody planning a holiday asks — which administration the property
+pays its levies to. So a place now carries a second, nullable link beside it:
+its **area**.
+
+Three levels, split by what each is for:
+
+| | Example | What it is for |
+|---|---|---|
+| **Area** (`destinations`) | Sossusvlei | What the traveler says. Filter, cards, the label under a place name |
+| **Place** (`cities`) | Sesriem, Solitaire, NamibRand | Where a bed is. Driving times, the day's position in the plan |
+| **Sight** (a `landmark` place) | Deadvlei, Dune 45 | Where you go, not where you sleep. Hangs off an activity |
+
+The area is the existing `Destination` — Etosha, Sossusvlei, Swakopmund and
+nine more are already there with a name, blurb and photo, and are already what
+the homepage offers. No third entity; `cities.destination_id`, and the two
+questions a place answers stop being confused with each other.
+
+What changed with it:
+
+- **The destination card finally shows what it promises.** It filtered on the
+  political region, so "Etosha" meant Kunene — the Skeleton Coast included,
+  every Onguma lodge excluded, because Onguma is in Oshikoto. It now filters on
+  the area, and `Listing::scopeFilterBy`'s `region` parameter — deliberately a
+  "roughly where" filter — matches an area name as well as a place and a region.
+- **Everything a traveler reads prefers the area**: the trip plan's stage
+  subtitle, the listing page's bracket after the town, the Explore select
+  (relabelled from Regions to Areas in all five languages). The political
+  region is only the fallback, for a place in no area yet, and it disappears on
+  its own as the content team fills them in.
+- **Both stay in the admin**, and the place form says which is which: Region
+  (political) is marked administrative, Area is marked as what the traveler
+  sees. Destinations gained a Places count, so it is visible at a glance what
+  an area actually gathers.
+- The migration files the obvious ones (Etosha ← Onguma, Ongava; Sossusvlei ←
+  Sesriem, Solitaire, NamibRand; and so on) and **only fills blanks**. Outjo is
+  deliberately left alone: whether the gateway town to Etosha South counts as
+  "Etosha" is a content decision, not a migration's guess.
+
+A rule worth keeping, so this does not turn into a second gazetteer: **a sight
+is created when something bookable happens there.** Deadvlei with no tour in
+the catalog is an empty row.
+
 ### 2026-08-18 — a lodge in a park has somewhere to be filed
 
 The co-founder went looking for Onguma, and for Etosha as the area Onguma is

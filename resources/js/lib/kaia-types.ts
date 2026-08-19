@@ -25,6 +25,10 @@ export interface ItineraryListingRef {
     gallery?: string[];
     city?: string | null;
     region?: string | null;
+    // The tourism area the listing's place sits in ("Etosha"), preferred over
+    // the political region wherever a stage is labelled. Absent on plans saved
+    // before areas existed.
+    area?: string | null;
     // The one-line "why this one" detail the stay card shows under the name
     // (see ItineraryStayCard.vue). Carried in the plan's own copy of the
     // listing so a saved/shared plan renders without refetching listings.
@@ -79,8 +83,13 @@ export interface ItineraryDay {
     // The political region `location` sits in, resolved server-side (see
     // ItineraryService::normalizeDayLocations). Absent on saved plans made
     // before that existed — the UI falls back to the accommodation's own
-    // region, then to a lookup by city name.
+    // region, then to a lookup by place name.
     region?: string | null;
+    // The tourism area `location` sits in ("Etosha" for a stay on Onguma),
+    // resolved the same way and preferred over the region wherever a stage is
+    // labelled: it is what a traveler recognises. Absent on plans saved before
+    // areas existed, and null for a place that belongs to no area.
+    area?: string | null;
     accommodation?: ItineraryListingRef | null;
     // Arrays — Kaia itself still only ever fills in one of each, but the
     // traveler can add a 2nd/3rd manually (see ItinerarySection.vue's
