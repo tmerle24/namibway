@@ -154,54 +154,85 @@ should be able to answer: *"I'm in Tsumeb for two days, what gives me a real
 understanding of this part of Namibia?"* and *"I'm driving Windhoek → Etosha,
 what can I see along the way?"*
 
-Framed correctly as **not a Kaia change**. It is a missing entity. Where we
-actually stand:
+Framed correctly as **not a Kaia change**. It is a missing entity — but a
+smaller one than it looked before the two entries below (2026-08-18 and
+2026-08-19) landed, which is most of what this section is for.
 
-- **Kaia knows businesses only.** The catalog handed to the model is built
-  exclusively from `Listing` rows (`ItineraryService::toAiCatalog()`, around
-  `app/Services/Kaia/ItineraryService.php:1666`), and `ListingType` has four
-  cases — accommodation, activity, restaurant, vehicle — all of them things
-  with a price and a partner. There is nowhere in the database that "Hoba
-  Meteorite" belongs.
-- **`Destination` looks like the answer and isn't.** It is a display card:
-  name, slug, blurb, image, `region_id`, lat/lng, sort_order
-  (`app/Models/Destination.php`), used only by `HomeController` (homepage
-  cards) and `KaiaController` (map coordinates + region grouping). No link to
-  cities or listings, no body text, and **it never reaches the itinerary
-  prompt at all**.
+### What the geography already gives us
 
-Shape if we do it:
+- **A tourism area is a place now.** `PlaceType` covers `national_park`,
+  `nature_reserve` and `landmark`, and 22 of them are seeded — Etosha,
+  Sossusvlei, Twyfelfontein, Spitzkoppe, Kolmanskop, Cape Cross, Fish River
+  Canyon, Waterberg, Skeleton Coast, Sandwich Harbour and the rest. Several are
+  literally on the co-founder's list. They are in the driving matrix and Kaia
+  resolves their short names (`ItineraryService::canonicalCity()` → the alias
+  index, "Etosha" → "Etosha National Park").
+- **`Destination` is the area above them**, not just a homepage card:
+  `cities.destination_id`, it filters listings, it is what the traveler reads,
+  and since #199 it reaches the itinerary prompt as `area`
+  (`Listing::getAreaAttribute()` → `toAiCatalog()`).
 
-- A separate **place / point-of-interest** entity, deliberately *not* a
-  `Listing`: coordinates (mandatory — that is what makes it routable), city
-  and region, a category, a visit duration (same shape as
-  `listings.duration_minutes`), and access facts (4x4 only? permit? entry fee?
-  best season and time of day?). No price, no partner, no availability. Same
-  reasoning that keeps `menu_items` out of `bookable_units`: a small table at
-  the edge that the booking core never learns exists. Putting places in
-  `listings` would leak them into Explore filters, the room picker,
-  `/availability` and the inquiry flow.
-- **Coordinates do the linking**, not a curated join table — what is near this
-  place, what lies along this route — so the corpus grows with onboarding
-  rather than with editorial work. `city_driving_hours` + OSRM + lat/lng
-  already carry that. Curated relations only as an override on top.
-- **"Local businesses, communities, guides" are not places.** A business with
-  no listing is already expressible: an `Inquiry` names a listing *or* a
-  partner, and the website builder sells to exactly those trades. That is a
-  `Partner` (+ optionally a `Site`), not a POI. Keeping "a place" and "a
-  business" as separate nouns is what keeps the booking core out of the
-  content question.
+So the earlier framing of this section — "there is nowhere in the database that
+Hoba Meteorite belongs, and Kaia only ever sees businesses" — is no longer
+right and has been corrected here. Coordinates, a place taxonomy, an area above
+it and driving times between them all exist.
 
-Two cautions worth writing down before anyone starts:
+### What is actually still missing
+
+Kaia knows the **names and coordinates** of places. She knows nothing **about**
+them, and nothing that isn't a container for a listing. The dividing line is
+already written down in `PlaceType::inDrivingMatrix()`: a park or reserve is in
+that table *precisely because something bookable stands on it*. The Hoba
+Meteorite, Lake Otjikoto, the dinosaur footprints at Otjihaenamaparero, a hot
+spring, a rock-art site with no lodge on it — nothing is sold there, so nothing
+puts them in `cities`, and nothing should.
+
+That is the gap: **a thing you go and look at**, as opposed to a place you are
+in.
+
+### Shape if we do it
+
+- A separate **point-of-interest** table, not another `PlaceType` and not a
+  `Listing`. #198 deliberately widened the one place taxonomy rather than
+  adding a second location entity, and that was right for *places* — but a POI
+  is a different noun with different attributes: a visit duration (the shape
+  `listings.duration_minutes` already has), access facts (4x4 only? permit?
+  entry fee? best season and time of day?), and no listings filed under it.
+  Making it a `PlaceType` would put a meteorite in the city-to-city driving
+  matrix and offer it as a day location and an Explore filter value. Making it
+  a `Listing` would leak it into Explore, the room picker, `/availability` and
+  the inquiry flow. It belongs beside both — same reasoning that keeps
+  `menu_items` out of `bookable_units`.
+- **It hangs off the existing geography rather than duplicating it**: nullable
+  `city_id` (the place it sits in or nearest to) plus its own coordinates,
+  which is what makes it routable. Several entries are *both* — Twyfelfontein,
+  Sossusvlei and Kolmanskop are already `cities` rows because lodges are filed
+  there, and are also things you drive to and walk around. In those cases the
+  place row stays the container and the POI row carries the visit facts; they
+  point at each other rather than one being deleted in favour of the other.
+- **Coordinates do the linking to businesses**, not a curated join table — what
+  is near this POI, what lies along this route — so the corpus pays off with
+  every partner we onboard rather than only with editorial work.
+  `city_driving_hours` + OSRM + lat/lng already carry that. Curated relations
+  only as an override on top.
+- **"Local businesses, communities, guides" are not POIs.** A business with no
+  listing is already expressible: an `Inquiry` names a listing *or* a partner,
+  and the website builder sells to exactly those trades. That is a `Partner`
+  (+ optionally a `Site`). Keeping "a place", "a thing to see" and "a business"
+  as three separate nouns is what keeps the booking core out of the content
+  question.
+
+### Two cautions worth writing down before anyone starts
 
 - **Cost and latency live in exactly this dimension.** The catalog is capped at
   `MAX_CANDIDATES_PER_TYPE` on purpose — loading every published listing as a
-  model took `/kaia/message` down with an OOM on 2026-08-09. A place corpus
-  with editorial text grows the prompt the same way. So places must be
-  pre-filtered geographically in SQL before the model sees anything, and
-  **long-form text must never enter the itinerary prompt**: that call needs a
-  name, a coordinate, a category and one line. The deep content is what a
-  detail page renders and what a separate answer-a-question call retrieves.
+  model took `/kaia/message` down with an OOM on 2026-08-09. A POI corpus with
+  editorial text grows the prompt the same way, and #199 has already added
+  `area` to every catalog entry. So POIs must be pre-filtered geographically in
+  SQL before the model sees anything, and **long-form text must never enter the
+  itinerary prompt**: that call needs a name, a coordinate, a category and one
+  line. The deep content is what a detail page renders and what a separate
+  answer-a-question call retrieves.
 - **The content is the expensive part, not the code.** Encyclopedic facts about
   the Hoba meteorite are free — the model already has them, so they
   differentiate nothing. What cannot be copied is operational truth (which
@@ -212,22 +243,28 @@ Two cautions worth writing down before anyone starts:
   `ContentSource::directory` and are not publishable, so this needs its own
   photography plan.
 
-Also note that **"I'm in Tsumeb for two days" is a second conversational
-mode**, not the itinerary generator. Kaia today only plans a trip from scratch
-(interview → params → full plan); there is no path for answering a question
-about a place. That is real work — and it is the same mode as the on-trip
-tracker in the section above.
+### And one of the two questions is a second conversational mode
 
-Recommended first step, deliberately small: add the entity minimally, fill
-30–50 places on routes we already have `RouteTemplate`s for, and ship **one**
-visible thing — attractions along the route in the existing trip plan (map pin
-plus a line in the day). If travelers engage with it, the corpus is worth
+"I'm in Tsumeb for two days" is not the itinerary generator. Kaia today only
+plans a trip from scratch (interview → params → full plan); there is no path
+for answering a question about a place. That is real work — and it is the same
+mode as the on-trip tracker in the section above. "What's along the road to
+Etosha" is the nearer half: a corridor query over `RouteTemplate` stops and
+coordinates, close to what the plan already computes.
+
+### Recommended first step
+
+Smaller than it was a week ago, because the geography landed in the meantime.
+Add the POI entity, fill 30–50 entries anchored to places that already exist
+(the 22 tourism areas plus the towns on our `RouteTemplate`s), and ship **one**
+visible thing — attractions along the route in the existing trip plan, a map
+pin plus a line in the day. If travelers engage with it, the corpus is worth
 funding; if not, it cost a week rather than a quarter.
 
 Naming: "Travel Intelligence for Namibia" is positioning, not schema. Keep
-Namibia out of table names — a `points_of_interest` table hanging off
-`City`/`Region` travels to the next country by construction (see CLAUDE.md →
-"Brand & expansion").
+Namibia out of table names — a POI table hanging off `City`/`Destination`
+travels to the next country by construction (see CLAUDE.md → "Brand &
+expansion").
 
 ## Backlog
 
@@ -1475,11 +1512,14 @@ the results half as much as the picker.
   keys off the bucket path, and `photos:audit-r2` matches on filename), so it
   is a tidiness item, not a correctness one.
 - ⬜ **On-trip progress tracker** — see the dedicated section above.
-- ⬜ **Places, not just businesses** — a point-of-interest layer so Kaia
-  can answer "what is worth seeing here / along this road?" instead of only
-  "where do I sleep and what can I book?". Proposed 2026-08-23; see the
-  dedicated section above for why it is a data-model step rather than a
-  Kaia change, and for the prompt-size and content-cost cautions.
+- ⬜ **Things to see, not only places to stay** — a point-of-interest layer
+  so Kaia can answer "what is worth seeing here / along this road?", not
+  only "where do I sleep and what can I book?". Proposed 2026-08-23. The
+  geography under it exists since 2026-08-18/19 (tourism areas are places,
+  areas are shown and sent to the model); what is missing is the thing you
+  go and look at, which is not a container for a listing. See the dedicated
+  section above for why it is a separate table rather than another
+  `PlaceType`, and for the prompt-size and content-cost cautions.
 - ✅ ~~Removing a single day from inside a collapsed multi-night stay isn't
   possible from the UI anymore~~ — fixed in session 8: every day of a stage
   has its own row and its own menu, so a stay can be shortened a night at a
