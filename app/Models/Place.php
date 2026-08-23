@@ -145,4 +145,34 @@ class Place extends Model
 
         return $place;
     }
+
+    /**
+     * What a traveller calls this place: "Etosha" for "Etosha National Park",
+     * "Onguma" for "Onguma Nature Reserve".
+     *
+     * Null for a town, whose name is already the short one, and for anything
+     * where stripping the descriptor leaves nothing.
+     *
+     * Two things read this and they must not drift: ItineraryService builds its
+     * alias index from it, so the model's "Etosha" resolves to the right row;
+     * and namibway:backfill-listing-places matches it against listing names,
+     * because a lodge called "Onguma Bush Camp" is on Onguma however far its
+     * postal address says it is from anywhere.
+     */
+    public function shortName(): ?string
+    {
+        if ($this->type === PlaceType::Town) {
+            return null;
+        }
+
+        $name = $this->getTranslation('name', 'en', useFallbackLocale: true);
+
+        $short = trim((string) preg_replace(
+            '/\s+(?:(?:private\s+)?(?:national|nature|game|plateau)\s+)?(?:park|reserve|conservancy)$/i',
+            '',
+            $name,
+        ));
+
+        return $short === '' || mb_strtolower($short) === mb_strtolower($name) ? null : $short;
+    }
 }

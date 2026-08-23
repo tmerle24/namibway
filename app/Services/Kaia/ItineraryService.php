@@ -4,7 +4,6 @@ namespace App\Services\Kaia;
 
 use App\Connectors\ConnectorFactory;
 use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
-use App\Enums\PlaceType;
 use App\Enums\PriceUnit;
 use App\Enums\VehicleClass;
 use App\Http\Controllers\Controller;
@@ -1567,15 +1566,9 @@ class ItineraryService
         $ambiguous = [];
 
         foreach ($places as $place) {
-            if ($place->type === PlaceType::Town) {
-                continue;
-            }
-
-            $short = mb_strtolower(trim((string) preg_replace(
-                '/\s+(?:(?:private\s+)?(?:national|nature|game|plateau)\s+)?(?:park|reserve|conservancy)$/i',
-                '',
-                $place->name,
-            )));
+            // Place::shortName() is the one derivation, shared with
+            // namibway:backfill-listing-places so the two cannot drift.
+            $short = mb_strtolower((string) $place->shortName());
 
             if ($short === '' || $taken->has($short) || isset($ambiguous[$short])) {
                 continue;
