@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 /**
  * One-time backfill for City rows with no lat/lng — every one of the 105
  * seeded cities starts out unset (CitySeeder never geocodes). Needed before
- * namibway:backfill-city-driving-hours can compute a real OSRM matrix, and
+ * namibway:backfill-place-driving-hours can compute a real OSRM matrix, and
  * before KaiaController::regionCoords()/SavedPlanController::pdf() can place
  * a city-precision marker on the trip map instead of falling back to a
  * region/destination centroid.

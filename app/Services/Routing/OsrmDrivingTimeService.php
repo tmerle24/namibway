@@ -2,7 +2,7 @@
 
 namespace App\Services\Routing;
 
-use App\Models\City;
+use App\Models\Place;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -10,12 +10,12 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Real city-to-city driving durations via OSRM's Table API — the city-level
+ * Real place-to-place driving durations via OSRM's Table API — the place-level
  * counterpart to ItineraryService::DRIVING_HOURS (which is region-level,
  * hand-verified once and kept as a compact hardcoded table since it's only
- * 91 pairs; a city-level equivalent would be hundreds of pairs, too many to
+ * 91 pairs; a place-level equivalent would be hundreds of pairs, too many to
  * hand-verify or hardcode, so this fetches and caches real values instead —
- * see namibway:backfill-city-driving-hours, the only caller).
+ * see namibway:backfill-place-driving-hours, the only caller).
  *
  * The Table API computes a whole pairwise duration matrix in one HTTP call,
  * unlike the single-route API which would need one call per pair. The public
@@ -41,12 +41,12 @@ class OsrmDrivingTimeService
      * request left uncomputed, is simply absent from the result — never a
      * fabricated/guessed value.
      *
-     * @param  Collection<int, City>  $cities
-     * @return array<int, array{city_a_id: int, city_b_id: int, hours: float}>
+     * @param  Collection<int, Place>  $places
+     * @return array<int, array{place_a_id: int, place_b_id: int, hours: float}>
      */
-    public function durationMatrix(Collection $cities): array
+    public function durationMatrix(Collection $places): array
     {
-        $groups = $cities->values()->chunk(self::CHUNK_SIZE)->values();
+        $groups = $places->values()->chunk(self::CHUNK_SIZE)->values();
         $results = [];
 
         for ($i = 0; $i < $groups->count(); $i++) {
@@ -59,9 +59,9 @@ class OsrmDrivingTimeService
     }
 
     /**
-     * @param  Collection<int, City>  $sources
-     * @param  Collection<int, City>  $destinations
-     * @return array<int, array{city_a_id: int, city_b_id: int, hours: float}>
+     * @param  Collection<int, Place>  $sources
+     * @param  Collection<int, Place>  $destinations
+     * @return array<int, array{place_a_id: int, place_b_id: int, hours: float}>
      */
     private function chunkPair(Collection $sources, Collection $destinations, bool $sameGroup): array
     {
@@ -81,12 +81,12 @@ class OsrmDrivingTimeService
         $seen = [];
 
         foreach ($sourceIdx as $si => $srcCoordIdx) {
-            $srcCity = $coordinates[$srcCoordIdx];
+            $srcPlace = $coordinates[$srcCoordIdx];
 
             foreach ($destIdx as $di => $dstCoordIdx) {
-                $dstCity = $coordinates[$dstCoordIdx];
+                $dstPlace = $coordinates[$dstCoordIdx];
 
-                if ($srcCity->id === $dstCity->id) {
+                if ($srcPlace->id === $dstPlace->id) {
                     continue;
                 }
 
@@ -96,8 +96,8 @@ class OsrmDrivingTimeService
                     continue;
                 }
 
-                $a = min($srcCity->id, $dstCity->id);
-                $b = max($srcCity->id, $dstCity->id);
+                $a = min($srcPlace->id, $dstPlace->id);
+                $b = max($srcPlace->id, $dstPlace->id);
                 $key = "{$a}|{$b}";
 
                 if (isset($seen[$key])) {
@@ -105,7 +105,7 @@ class OsrmDrivingTimeService
                 }
 
                 $seen[$key] = true;
-                $pairs[] = ['city_a_id' => $a, 'city_b_id' => $b, 'hours' => round($seconds / 3600, 2)];
+                $pairs[] = ['place_a_id' => $a, 'place_b_id' => $b, 'hours' => round($seconds / 3600, 2)];
             }
         }
 
@@ -113,7 +113,7 @@ class OsrmDrivingTimeService
     }
 
     /**
-     * @param  Collection<int, City>  $coordinates
+     * @param  Collection<int, Place>  $coordinates
      * @param  array<int, int>  $sourceIdx
      * @param  array<int, int>  $destIdx
      * @return array<int, array<int, float|null>>|null  seconds, [source][destination]
@@ -122,8 +122,8 @@ class OsrmDrivingTimeService
     {
         $this->throttle();
 
-        // OSRM coordinates are lon,lat — the opposite of City's lat/lng column order.
-        $coordString = $coordinates->map(fn (City $city) => "{$city->lng},{$city->lat}")->implode(';');
+        // OSRM coordinates are lon,lat — the opposite of Place's lat/lng column order.
+        $coordString = $coordinates->map(fn (Place $place) => "{$place->lng},{$place->lat}")->implode(';');
         $baseUrl = rtrim((string) config('services.osrm.base_url'), '/');
 
         try {

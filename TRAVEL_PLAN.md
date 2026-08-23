@@ -270,6 +270,57 @@ expansion").
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-23 — a city is an address, a place is where you go
+
+#198 gave parks, reserves and landmarks rows in `cities` so a lodge standing in
+one had somewhere to be filed. It solved the filing problem by breaking the
+noun: a table called cities held Etosha National Park, `population` and
+`area_km2` were meaningless on those rows, and the question a listing has to
+answer **twice** could only be answered once — *what is your address* and
+*where do you sit for a traveller*. A camp on Onguma is posted to Outjo and is
+nowhere near it.
+
+So the two are separated, in three steps that each ship green:
+
+- **`cities`** is the address, classified by `CityType` — the administrative
+  gazetteer, towns down to settlements, what a street address resolves to.
+- **`places`** is where a traveller goes, classified by `PlaceType` — national
+  park, nature reserve, landmark, **and town**. A listing carries both.
+
+The decision that makes this cheap rather than expensive: **everything Kaia
+routes on is a place**, so the trip-relevant towns get a place row of their own
+and `cities.place_id` links the two identities. Windhoek is one dot on the map
+seen twice — as an address, and as a stop on a trip. Without that, the driving
+matrix and every day location would have become a polymorphic city-or-place
+pair: four columns and a doubled lookup in the hottest code in the product.
+
+What moved, concretely:
+
+- `city_driving_hours` → **`place_driving_hours`**, existing rows carried over
+  through `cities.place_id` so not one OSRM request was repeated. The command
+  is `namibway:backfill-place-driving-hours` and its scope is simply *every
+  place* — the type rule it used to need is gone, because a place exists
+  precisely when it is somewhere a traveller goes.
+- `ItineraryService::canonicalCity()` → **`canonicalPlace()`**, resolving day
+  locations against `places`. Day-location *strings* are unchanged — a place
+  carries the same name its city did — so saved plans keep working.
+- The AI catalog sends **`place`** instead of `city`, and the prompt says to
+  copy that value. Sending the address city is what would put a traveller in
+  Outjo.
+- `ListingObserver` fills `place_id` from the listing's city, and **never
+  overwrites one set by hand** — that override is the entire reason the two
+  columns exist.
+
+Two things deliberately left for step 3: the tourism rows are still in
+`cities` (copied, not moved, with `legacy_city_id` recording the origin), and
+`CityType` still carries the three tourism cases. Nothing reads them any more;
+deleting them is its own commit so a rollback stays cheap.
+
+Still open after that: a listing filed in a village with no place row gets no
+place, so nothing routes it. That is the case `namibway:backfill-place-driving-hours`
+used to cover with "anywhere a published listing actually is", and it needs a
+home — most likely creating the place when the first listing lands there.
+
 ### 2026-08-23 — a thing you go and look at has a table
 
 First step of the section above, and only the first: the schema, nothing that

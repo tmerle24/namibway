@@ -22,6 +22,25 @@ class ListingObserver
      * transaction, and one sweep that is already rate-limited per host
      * instead of a burst of jobs an import would trigger.
      */
+    /**
+     * A listing filed in a city inherits that city's place, so that everything
+     * Kaia routes on has one without anybody having to know the split exists.
+     *
+     * Only ever fills a blank: a place set by hand — a camp whose postal
+     * address is Outjo but which sits in Etosha — is the whole reason the two
+     * columns are separate and must never be overwritten by the address.
+     */
+    public function saving(Listing $listing): void
+    {
+        if ($listing->place_id !== null || $listing->city_id === null) {
+            return;
+        }
+
+        if ($listing->isDirty('city_id') || ! $listing->exists) {
+            $listing->place_id = $listing->city?->place_id;
+        }
+    }
+
     public function saved(Listing $listing): void
     {
         if (! $listing->wasChanged('website') || blank($listing->website)) {

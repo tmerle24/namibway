@@ -24,18 +24,31 @@ enum PlaceType: string implements HasColor, HasLabel
     case NatureReserve = 'nature_reserve';
     case Landmark = 'landmark';
 
+    /**
+     * A town a traveler plans around — Windhoek, Swakopmund, Sesriem.
+     *
+     * A place of this kind mirrors a city, and that is the point rather than a
+     * duplication: the city row is the *address* (population, area, what a
+     * street address resolves to), this row is the *stop on a trip*. Keeping
+     * both means everything Kaia routes on is a place, so the driving matrix
+     * stays place-to-place instead of becoming a polymorphic city-or-place
+     * pair, and `cities.place_id` is the link between the two identities.
+     */
+    case Town = 'town';
+
     public function getLabel(): string
     {
         return match ($this) {
             self::NationalPark => 'National park',
             self::NatureReserve => 'Nature reserve / private game reserve',
             self::Landmark => 'Landmark / tourism area',
+            self::Town => 'Town',
         };
     }
 
     public function getColor(): string
     {
-        return 'primary';
+        return $this === self::Town ? 'success' : 'primary';
     }
 
     /**

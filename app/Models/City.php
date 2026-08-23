@@ -25,7 +25,6 @@ use Illuminate\Support\Str;
  * @property int $id
  * @property int $region_id
  * @property int|null $destination_id
- * @property int|null $place_id
  * @property string $name
  * @property string $slug
  * @property string|null $image

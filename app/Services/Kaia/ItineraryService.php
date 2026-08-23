@@ -4,11 +4,13 @@ namespace App\Services\Kaia;
 
 use App\Connectors\ConnectorFactory;
 use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
+use App\Enums\PlaceType;
 use App\Enums\PriceUnit;
 use App\Enums\VehicleClass;
 use App\Http\Controllers\Controller;
 use App\Models\City;
 use App\Models\Listing;
+use App\Models\Place;
 use App\Models\RouteTemplate;
 use App\Models\RouteTemplateStop;
 use Carbon\Carbon;
@@ -62,7 +64,7 @@ class ItineraryService
      *
      * Kaia's day-by-day `location` field and its hard driving-time safety
      * check now operate at City granularity (see the city_driving_hours DB
-     * table, populated by namibway:backfill-city-driving-hours via OSRM's
+     * table, populated by namibway:backfill-place-driving-hours via OSRM's
      * Table API — regenerating a 100+-city equivalent of this constant by
      * hand isn't practical). This table is kept as the fallback for city
      * pairs the DB matrix doesn't cover (small settlements excluded from the
@@ -186,15 +188,15 @@ class ItineraryService
      *
      * @var array<string, float>|null
      */
-    private ?array $cityHoursCache = null;
+    private ?array $placeHoursCache = null;
 
-    /** @var Collection<string, City>|null keyed by lowercased city name */
-    private ?Collection $cityIndex = null;
+    /** @var Collection<string, Place>|null keyed by lowercased place name */
+    private ?Collection $placeIndex = null;
 
-    /** @var Collection<string, City>|null keyed by the lowercased short name of a tourism area ("etosha" for "Etosha National Park") */
-    private ?Collection $cityAliasIndex = null;
+    /** @var Collection<string, Place>|null keyed by the lowercased short name of a tourism place ("etosha" for "Etosha National Park") */
+    private ?Collection $placeAliasIndex = null;
 
-    /** @var Collection<string, City>|null keyed by lowercased political region name */
+    /** @var Collection<string, Place>|null keyed by lowercased political region name */
     private ?Collection $regionHubCache = null;
 
     public function __construct(private readonly AnthropicClient $client) {}
@@ -418,6 +420,7 @@ class ItineraryService
                 'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
                 'gallery' => $this->resolveGallery($listing),
                 'city' => $listing->city?->name,
+                'place' => $listing->place?->name,
                 'region' => $listing->region,
                 'area' => $listing->area,
                 // The stay card in the trip plan shows a line of "why this one"
@@ -434,7 +437,7 @@ class ItineraryService
                 return null;
             }
 
-            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'price_unit' => null, 'duration_minutes' => null, 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'region' => null, 'area' => null, 'short_description' => null, 'rating' => null, 'rating_count' => null];
+            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'price_unit' => null, 'duration_minutes' => null, 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'place' => null, 'region' => null, 'area' => null, 'short_description' => null, 'rating' => null, 'rating_count' => null];
         };
 
         $plan['variants'] = array_map(function (array $variant) use ($resolve, $listings) {
@@ -563,6 +566,7 @@ class ItineraryService
                 'image' => $fallback->image ? Controller::resolveMediaUrl($fallback->image) : null,
                 'gallery' => $this->resolveGallery($fallback),
                 'city' => $fallback->city?->name,
+                'place' => $fallback->place?->name,
                 'region' => $fallback->region,
                 'area' => $fallback->area,
                 'short_description' => $fallback->getTranslation('short_description', 'en', useFallbackLocale: true) ?: null,
@@ -615,25 +619,27 @@ class ItineraryService
         foreach ($days as &$day) {
             $location = (string) ($day['location'] ?? '');
             $accommodation = $day['accommodation'] ?? null;
-            $accommodationCity = is_array($accommodation) ? ($accommodation['city'] ?? null) : null;
+            // The accommodation's own place first: a camp on Onguma carries a
+            // postal city that is nowhere near where the traveler will be.
+            $accommodationPlace = is_array($accommodation) ? ($accommodation['place'] ?? $accommodation['city'] ?? null) : null;
 
-            $city = is_string($accommodationCity) ? $this->canonicalCity($accommodationCity) : null;
-            $city ??= $this->canonicalCity($location);
-            $city ??= $this->busiestCityOfRegion($location);
+            $place = is_string($accommodationPlace) ? $this->canonicalPlace($accommodationPlace) : null;
+            $place ??= $this->canonicalPlace($location);
+            $place ??= $this->busiestPlaceOfRegion($location);
 
-            if ($city === null) {
+            if ($place === null) {
                 $day['region'] ??= null;
                 $day['area'] ??= null;
 
                 continue;
             }
 
-            $day['location'] = $city->name;
-            $day['region'] = $city->region?->name;
+            $day['location'] = $place->name;
+            $day['region'] = $place->region?->name;
             // What the stage card actually prints under the place name — see
             // City::destination(). The political region stays for the map's
             // fallback lookups and for plans saved before areas existed.
-            $day['area'] = $city->destination?->name;
+            $day['area'] = $place->destination?->name;
         }
 
         unset($day);
@@ -648,7 +654,7 @@ class ItineraryService
      * arbitrary settlement that happens to sort first. Returns null for
      * anything that isn't one of the 14 region names.
      */
-    private function busiestCityOfRegion(string $regionName): ?City
+    private function busiestPlaceOfRegion(string $regionName): ?Place
     {
         $name = mb_strtolower(trim($regionName));
 
@@ -657,17 +663,19 @@ class ItineraryService
         }
 
         if ($this->regionHubCache === null) {
-            $key = fn (City $city) => mb_strtolower((string) $city->region?->name);
+            $key = fn (Place $place) => mb_strtolower((string) $place->region?->name);
 
-            $this->regionHubCache = City::query()
+            $this->regionHubCache = Place::query()
                 ->with(['region', 'destination'])
                 ->whereHas('region')
                 ->whereHas('listings', fn ($q) => $q->where('is_published', true))
                 ->withCount(['listings' => fn ($q) => $q->where('is_published', true)])
-                // Name as the tiebreaker keeps the pick stable rather than
-                // letting it drift with whatever order Postgres returns.
+                // Slug as the tiebreaker keeps the pick stable rather than
+                // letting it drift with whatever order Postgres returns. Not
+                // `name`: that column is translatable, so it is json, and
+                // Postgres has no ordering operator for json.
                 ->orderByDesc('listings_count')
-                ->orderBy('name')
+                ->orderBy('slug')
                 ->get()
                 // unique() keeps the first of each region — the busiest city,
                 // given the ordering above. keyBy() alone would keep the last.
@@ -744,6 +752,7 @@ class ItineraryService
                 'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
                 'gallery' => $this->resolveGallery($listing),
                 'city' => $listing->city?->name,
+                'place' => $listing->place?->name,
                 'region' => $listing->region,
                 'area' => $listing->area,
                 'short_description' => $listing->getTranslation('short_description', 'en', useFallbackLocale: true) ?: null,
@@ -990,6 +999,7 @@ class ItineraryService
             'image' => $listing->image ? Controller::resolveMediaUrl($listing->image) : null,
             'gallery' => $this->resolveGallery($listing),
             'city' => $listing->city?->name,
+            'place' => $listing->place?->name,
             'region' => $listing->region,
             'area' => $listing->area,
             'short_description' => $listing->getTranslation('short_description', 'en', useFallbackLocale: true) ?: null,
@@ -1045,12 +1055,12 @@ class ItineraryService
             future version of this product may offer alternative variants again; for now, put all your
             effort into one excellent plan rather than splitting it across several.)
 
-            For each day's "location" field, use the listing's exact "city" value — e.g. "Swakopmund",
+            For each day's "location" field, use the listing's exact "place" value — e.g. "Swakopmund",
             "Otjiwarongo", "Sesriem", "Windhoek", "Etosha National Park". Copy that value exactly, character
             for character — never a shortened or invented area name ("Etosha", "Damaraland") even if that's
-            what the traveler said, and never a region ("Kunene"); look up which city value the chosen
+            what the traveler said, and never a region ("Kunene"); look up which place value the chosen
             listing actually carries and use that instead. These values are used to draw the route on the trip map
-            and to check real driving times between consecutive days, so they must match a real city
+            and to check real driving times between consecutive days, so they must match a real place
             exactly — stay within the regions named in the ROUTE guidance above, but pick the specific city
             each chosen listing is actually in.
 
@@ -1282,26 +1292,26 @@ class ItineraryService
 
         foreach ($plan['variants'] as $variant) {
             $prevDay = null;
-            $prevCity = null;
+            $prevPlace = null;
 
             foreach ($variant['days'] ?? [] as $day) {
-                $city = $this->canonicalCity((string) ($day['location'] ?? ''));
+                $place = $this->canonicalPlace((string) ($day['location'] ?? ''));
 
-                if ($city === null) {
+                if ($place === null) {
                     continue;
                 }
 
-                if ($prevCity !== null && $prevCity->id !== $city->id) {
-                    $hours = $this->drivingHours($prevCity, $city);
+                if ($prevPlace !== null && $prevPlace->id !== $place->id) {
+                    $hours = $this->drivingHours($prevPlace, $place);
 
                     if ($hours !== null && $hours > self::MAX_DRIVING_HOURS) {
-                        $violations[] = "Day {$prevDay}\u{2192}{$day['day']}: {$prevCity->name} \u{2192} "
-                            ."{$city->name} is ~{$hours}h driving, over the ".self::MAX_DRIVING_HOURS
+                        $violations[] = "Day {$prevDay}\u{2192}{$day['day']}: {$prevPlace->name} \u{2192} "
+                            ."{$place->name} is ~{$hours}h driving, over the ".self::MAX_DRIVING_HOURS
                             .'h daily limit';
                     }
                 }
 
-                $prevCity = $city;
+                $prevPlace = $place;
                 $prevDay = $day['day'] ?? $prevDay;
             }
         }
@@ -1332,8 +1342,8 @@ class ItineraryService
 
         $startName = $this->stringParam($tripParams, 'start_location', 'Windhoek');
         $endName = $this->stringParam($tripParams, 'end_location', $startName);
-        $start = $this->canonicalCity($startName);
-        $end = $this->canonicalCity($endName);
+        $start = $this->canonicalPlace($startName);
+        $end = $this->canonicalPlace($endName);
         $nights = is_numeric($tripParams['nights'] ?? null) ? (int) $tripParams['nights'] : null;
 
         foreach ($plan['variants'] as $index => $variant) {
@@ -1351,8 +1361,8 @@ class ItineraryService
                     .' — produce EXACTLY '.($nights + 1).' day entries, numbered 1 to '.($nights + 1);
             }
 
-            $first = $this->canonicalCity((string) ($days[0]['location'] ?? ''));
-            $last = $this->canonicalCity((string) ($days[count($days) - 1]['location'] ?? ''));
+            $first = $this->canonicalPlace((string) ($days[0]['location'] ?? ''));
+            $last = $this->canonicalPlace((string) ($days[count($days) - 1]['location'] ?? ''));
 
             if ($start !== null && $first !== null && $first->region_id !== $start->region_id) {
                 $violations[] = "{$label}: day 1 is in {$first->name} but the trip starts in "
@@ -1385,7 +1395,7 @@ class ItineraryService
     /**
      * Looks up the real driving time between two cities. Tries the
      * city_driving_hours DB table first (real OSRM data, see
-     * OsrmDrivingTimeService / namibway:backfill-city-driving-hours). If the
+     * OsrmDrivingTimeService / namibway:backfill-place-driving-hours). If the
      * pair isn't covered there (e.g. one of the cities is a small settlement
      * excluded from that backfill), falls back to the region-level
      * DRIVING_HOURS table — but only when the two cities are in different
@@ -1394,16 +1404,16 @@ class ItineraryService
      * estimate, consistent with the existing null-skip semantics for any
      * unknown pair.
      */
-    private function drivingHours(City $a, City $b): ?float
+    private function drivingHours(Place $a, Place $b): ?float
     {
         if ($a->id === $b->id) {
             return 0.0;
         }
 
-        $cityHours = $this->cityDrivingHours($a->id, $b->id);
+        $placeHours = $this->placeDrivingHours($a->id, $b->id);
 
-        if ($cityHours !== null) {
-            return $cityHours;
+        if ($placeHours !== null) {
+            return $placeHours;
         }
 
         if ($a->region_id === $b->region_id || $a->region === null || $b->region === null) {
@@ -1416,24 +1426,24 @@ class ItineraryService
     /**
      * @return array<string, float>
      */
-    private function cityHoursIndex(): array
+    private function placeHoursIndex(): array
     {
-        if ($this->cityHoursCache === null) {
-            $this->cityHoursCache = DB::table('city_driving_hours')
-                ->get(['city_a_id', 'city_b_id', 'hours'])
-                ->mapWithKeys(fn ($row) => ["{$row->city_a_id}|{$row->city_b_id}" => (float) $row->hours])
+        if ($this->placeHoursCache === null) {
+            $this->placeHoursCache = DB::table('place_driving_hours')
+                ->get(['place_a_id', 'place_b_id', 'hours'])
+                ->mapWithKeys(fn ($row) => ["{$row->place_a_id}|{$row->place_b_id}" => (float) $row->hours])
                 ->all();
         }
 
-        return $this->cityHoursCache;
+        return $this->placeHoursCache;
     }
 
-    private function cityDrivingHours(int $cityAId, int $cityBId): ?float
+    private function placeDrivingHours(int $placeAId, int $placeBId): ?float
     {
-        $a = min($cityAId, $cityBId);
-        $b = max($cityAId, $cityBId);
+        $a = min($placeAId, $placeBId);
+        $b = max($placeAId, $placeBId);
 
-        return $this->cityHoursIndex()["{$a}|{$b}"] ?? null;
+        return $this->placeHoursIndex()["{$a}|{$b}"] ?? null;
     }
 
     /**
@@ -1463,7 +1473,7 @@ class ItineraryService
      * Claude was told not to use, typos, etc.) — that day is simply skipped
      * from driving-time validation.
      */
-    private function canonicalCity(string $name): ?City
+    private function canonicalPlace(string $name): ?Place
     {
         $name = trim($name);
 
@@ -1471,16 +1481,16 @@ class ItineraryService
             return null;
         }
 
-        if ($this->cityIndex === null) {
-            $cities = City::query()->with(['region', 'destination'])->get();
+        if ($this->placeIndex === null) {
+            $places = Place::query()->with(['region', 'destination'])->get();
 
-            $this->cityIndex = $cities->keyBy(fn (City $city) => mb_strtolower($city->name));
-            $this->cityAliasIndex = $this->buildAliasIndex($cities);
+            $this->placeIndex = $places->keyBy(fn (Place $place) => mb_strtolower($place->name));
+            $this->placeAliasIndex = $this->buildAliasIndex($places);
         }
 
         $key = mb_strtolower($name);
 
-        return $this->cityIndex->get($key) ?? $this->cityAliasIndex?->get($key);
+        return $this->placeIndex->get($key) ?? $this->placeAliasIndex?->get($key);
     }
 
     /**
@@ -1492,26 +1502,26 @@ class ItineraryService
      * that are unambiguous: a short form colliding with a real place name or
      * with another area's short form is dropped rather than guessed at.
      *
-     * @param  Collection<int, City>  $cities
-     * @return Collection<string, City>
+     * @param  Collection<int, Place>  $places
+     * @return Collection<string, Place>
      */
-    private function buildAliasIndex(Collection $cities): Collection
+    private function buildAliasIndex(Collection $places): Collection
     {
-        $taken = $cities->map(fn (City $city) => mb_strtolower($city->name))->flip();
+        $taken = $places->map(fn (Place $place) => mb_strtolower($place->name))->flip();
 
-        /** @var Collection<string, City> $aliases */
+        /** @var Collection<string, Place> $aliases */
         $aliases = collect();
         $ambiguous = [];
 
-        foreach ($cities as $city) {
-            if ($city->type->isSettlement()) {
+        foreach ($places as $place) {
+            if ($place->type === PlaceType::Town) {
                 continue;
             }
 
             $short = mb_strtolower(trim((string) preg_replace(
                 '/\s+(?:(?:private\s+)?(?:national|nature|game|plateau)\s+)?(?:park|reserve|conservancy)$/i',
                 '',
-                $city->name,
+                $place->name,
             )));
 
             if ($short === '' || $taken->has($short) || isset($ambiguous[$short])) {
@@ -1525,7 +1535,7 @@ class ItineraryService
                 continue;
             }
 
-            $aliases->put($short, $city);
+            $aliases->put($short, $place);
         }
 
         return $aliases;
@@ -1623,7 +1633,7 @@ class ItineraryService
                                         'properties' => [
                                             'day' => ['type' => 'integer'],
                                             'date' => ['type' => 'string', 'description' => 'Calendar date for this day, e.g. "14 Aug 2026". Computed from travel_period start date.'],
-                                            'location' => ['type' => 'string', 'description' => 'Exact city value from the listing catalog, e.g. "Swakopmund", "Otjiwarongo", "Sesriem", "Etosha National Park" — copied character for character, never shortened ("Etosha") or replaced by a region ("Kunene")'],
+                                            'location' => ['type' => 'string', 'description' => 'Exact place value from the listing catalog, e.g. "Swakopmund", "Otjiwarongo", "Sesriem", "Etosha National Park" — copied character for character, never shortened ("Etosha") or replaced by a region ("Kunene")'],
                                             'accommodation' => ['type' => 'string'],
                                             'activity' => ['type' => 'string'],
                                             'activity_time' => ['type' => 'string', 'description' => 'Optional 24h "HH:MM" start time for the activity, e.g. "06:00" for a sunrise game drive. Omit if no particular time of day applies.'],
@@ -1739,11 +1749,15 @@ class ItineraryService
                 $entry = [
                     'name' => $listing->getTranslation('name', 'en', useFallbackLocale: true),
                     'type' => $listing->type->value,
-                    // Both sent: 'region' satisfies the macro ROUTE guidance ("which regions to
-                    // visit"), 'city' is what the day-by-day "location" field must be filled with.
+                    // Three sent, and only one of them is what a day's "location" may
+                    // be filled with. 'region' satisfies the macro ROUTE guidance
+                    // ("which regions to visit"); 'area' is the name a traveler uses;
+                    // 'place' is the routable value — what the driving matrix is keyed
+                    // on and what canonicalPlace() resolves back. Not the address city:
+                    // a camp on Onguma is posted to Outjo and is nowhere near it.
                     'region' => $listing->region,
                     'area' => $listing->area,
-                    'city' => $listing->city?->name,
+                    'place' => ($listing->place ?? $listing->city)?->name,
                     'description' => $listing->getTranslation('description', 'en', useFallbackLocale: true),
                     'highlights' => $listing->getTranslation('highlights', 'en', useFallbackLocale: true) ?? [],
                     'price_from' => $listing->price_from,

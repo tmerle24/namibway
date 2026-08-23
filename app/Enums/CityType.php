@@ -72,7 +72,9 @@ enum CityType: string implements HasColor, HasLabel
 
     /**
      * Whether a place of this kind earns a row in the city-to-city driving
-     * matrix Kaia's daily-drive check reads (see BackfillCityDrivingHours).
+     * matrix Kaia's daily-drive check used to read; since 2026-08-23 that matrix
+     * is place-to-place and this method only decides which cities earn a place
+     * row (see give_trip_relevant_cities_a_place).
      *
      * The larger settlements are in because a lodge can plausibly sit there;
      * every tourism area is in for the same reason and more strongly — a park

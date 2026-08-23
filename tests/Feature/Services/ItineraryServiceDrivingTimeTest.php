@@ -15,12 +15,12 @@ use Tests\TestCase;
 
 /**
  * ItineraryService::generate()'s driving-time safety check now validates at
- * City granularity (city_driving_hours, backed by real OSRM data — see
+ * place granularity (place_driving_hours, backed by real OSRM data — see
  * OsrmDrivingTimeService) instead of the old region-level DRIVING_HOURS
  * table. Regions/cities themselves are already fully seeded by the
  * create_regions_table/create_cities_table migrations (RefreshDatabase runs
  * every migration), so these tests use the real Windhoek/Swakopmund/
- * Okahandja rows rather than factory-created ones — only city_driving_hours
+ * Okahandja rows rather than factory-created ones — only place_driving_hours
  * and the Anthropic response are test-specific.
  */
 class ItineraryServiceDrivingTimeTest extends TestCase
@@ -97,9 +97,9 @@ class ItineraryServiceDrivingTimeTest extends TestCase
         $windhoek = City::where('slug', 'windhoek')->firstOrFail();
         $okahandja = City::where('slug', 'okahandja')->firstOrFail();
 
-        DB::table('city_driving_hours')->insert([
-            'city_a_id' => min($windhoek->id, $okahandja->id),
-            'city_b_id' => max($windhoek->id, $okahandja->id),
+        DB::table('place_driving_hours')->insert([
+            'place_a_id' => min($windhoek->place_id, $okahandja->place_id),
+            'place_b_id' => max($windhoek->place_id, $okahandja->place_id),
             'hours' => 0.9,
             'created_at' => now(),
             'updated_at' => now(),
@@ -123,9 +123,9 @@ class ItineraryServiceDrivingTimeTest extends TestCase
 
         // Deliberately over ItineraryService::MAX_DRIVING_HOURS (6.0), unlike the
         // real ~4h OSRM value — this test only needs a violation to exist.
-        DB::table('city_driving_hours')->insert([
-            'city_a_id' => min($windhoek->id, $swakopmund->id),
-            'city_b_id' => max($windhoek->id, $swakopmund->id),
+        DB::table('place_driving_hours')->insert([
+            'place_a_id' => min($windhoek->place_id, $swakopmund->place_id),
+            'place_b_id' => max($windhoek->place_id, $swakopmund->place_id),
             'hours' => 9.0,
             'created_at' => now(),
             'updated_at' => now(),

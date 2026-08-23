@@ -2,33 +2,33 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\CityType;
-use App\Models\City;
+use App\Models\Place;
 use App\Services\Routing\OsrmDrivingTimeService;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Computes and stores real driving hours between every pair of Namibia's
- * larger places — the bigger settlements plus every tourism area (park,
- * reserve, landmark), which is exactly where a lodge stands when it stands
- * nowhere near a town, plus anywhere a published listing actually is. Which
- * types count is CityType::inDrivingMatrix(); the ~65 small village/
- * settlement/private_town rows are otherwise excluded, near-zero chance of
- * ever hosting a bookable Listing; see ItineraryService::drivingHours(),
- * which falls back to the existing region-level table for anything outside
- * this matrix, so nothing is left unvalidated even for an excluded
- * settlement.
+ * Computes and stores real driving hours between every pair of places.
  *
- * Requires namibway:backfill-city-coordinates to have already filled lat/lng
- * for every in-scope city — refuses to run otherwise rather than silently
- * writing a matrix with holes. Safe to rerun: upserts on the
- * [city_a_id, city_b_id] unique constraint.
+ * A place exists precisely because it is somewhere a traveler goes — the towns
+ * they plan around plus every park, reserve and landmark — so the matrix is
+ * simply every place, with no type filter to keep in step with anything. That
+ * is the payoff of the 2026-08-23 split: while parks lived in `cities` next to
+ * ~65 villages nobody stays in, this command needed a rule for which rows
+ * counted, and the rule had to be repeated in the migration, the tests and
+ * Kaia.
+ *
+ * Requires coordinates on every place — refuses to run otherwise rather than
+ * silently writing a matrix with holes. Places inherit their coordinates from
+ * the city they were created from, so namibway:backfill-city-coordinates is
+ * still what fills the blanks, followed by a re-run of this command.
+ *
+ * Safe to rerun: upserts on the [place_a_id, place_b_id] unique constraint.
  */
-class BackfillCityDrivingHours extends Command
+class BackfillPlaceDrivingHours extends Command
 {
-    protected $signature = 'namibway:backfill-city-driving-hours
+    protected $signature = 'namibway:backfill-place-driving-hours
                             {--dry-run : Compute and summarize without writing to DB}';
 
     protected $description = 'Compute real place-to-place driving hours via OSRM for towns, parks and reserves and store them for Kaia\'s driving-time safety check';
@@ -40,13 +40,11 @@ class BackfillCityDrivingHours extends Command
      * are officially settlements, the class this excludes wholesale, and they
      * are also where a Sossusvlei or Namib traveler sleeps.
      *
-     * @return Builder<City>
+     * @return Builder<Place>
      */
     private static function inScope(): Builder
     {
-        return City::query()->where(fn ($query) => $query
-            ->whereIn('type', CityType::drivingMatrixValues())
-            ->orWhereHas('listings', fn ($listings) => $listings->where('is_published', true)));
+        return Place::query();
     }
 
     public function handle(OsrmDrivingTimeService $osrm): int
@@ -67,22 +65,22 @@ class BackfillCityDrivingHours extends Command
             return self::FAILURE;
         }
 
-        $cities = self::inScope()
+        $places = self::inScope()
             ->whereNotNull('lat')
             ->whereNotNull('lng')
             ->get(['id', 'name', 'lat', 'lng']);
 
-        if ($cities->count() < 2) {
+        if ($places->count() < 2) {
             $this->info('Fewer than 2 in-scope places with coordinates — nothing to compute.');
 
             return self::SUCCESS;
         }
 
-        $this->info("Computing driving hours between {$cities->count()} cities via OSRM...");
+        $this->info("Computing driving hours between {$places->count()} cities via OSRM...");
 
-        $pairs = $osrm->durationMatrix($cities);
+        $pairs = $osrm->durationMatrix($places);
 
-        $possiblePairs = intdiv($cities->count() * ($cities->count() - 1), 2);
+        $possiblePairs = intdiv($places->count() * ($places->count() - 1), 2);
         $unroutable = $possiblePairs - count($pairs);
 
         if ($pairs === []) {
@@ -94,9 +92,9 @@ class BackfillCityDrivingHours extends Command
         if (! $dry) {
             $now = now();
 
-            DB::table('city_driving_hours')->upsert(
+            DB::table('place_driving_hours')->upsert(
                 array_map(fn (array $pair) => [...$pair, 'created_at' => $now, 'updated_at' => $now], $pairs),
-                ['city_a_id', 'city_b_id'],
+                ['place_a_id', 'place_b_id'],
                 ['hours', 'updated_at'],
             );
         }
