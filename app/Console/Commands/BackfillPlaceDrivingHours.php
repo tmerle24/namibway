@@ -57,10 +57,26 @@ class BackfillPlaceDrivingHours extends Command
 
         $missingCoordinates = self::inScope()
             ->where(fn ($q) => $q->whereNull('lat')->orWhereNull('lng'))
-            ->count();
+            ->orderBy('slug')
+            ->get(['id', 'name', 'slug', 'type']);
 
-        if ($missingCoordinates > 0) {
-            $this->error("{$missingCoordinates} in-scope place(s) still have no coordinates — run namibway:backfill-city-coordinates first.");
+        if ($missingCoordinates->isNotEmpty()) {
+            // Naming them matters: the fix is different per row. Most are
+            // geocodable, and the ones OpenStreetMap does not know have to be
+            // typed in by a person — and until 2026-08-23 this message sent
+            // people to the *city* geocoder, which cannot help a national park.
+            $this->error($missingCoordinates->count().' place(s) have no coordinates, so the matrix would have holes. Nothing written.');
+            $this->newLine();
+            $this->table(
+                ['Place', 'Type'],
+                $missingCoordinates->map(fn (Place $place): array => [
+                    $place->getTranslation('name', 'en', useFallbackLocale: true),
+                    $place->type->value,
+                ])->all(),
+            );
+            $this->newLine();
+            $this->line('Run <options=bold>namibway:backfill-place-coordinates</> to geocode them.');
+            $this->line('Anything it cannot find has to be set by hand under Settings → Places.');
 
             return self::FAILURE;
         }

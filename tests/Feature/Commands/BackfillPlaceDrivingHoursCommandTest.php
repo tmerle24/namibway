@@ -135,4 +135,19 @@ class BackfillPlaceDrivingHoursCommandTest extends TestCase
 
         $this->assertEqualsWithDelta(1.0, $updated->hours, 0.001);
     }
+
+    public function test_the_refusal_names_the_places_and_the_right_command(): void
+    {
+        Place::query()->update(['lat' => -22.0, 'lng' => 17.0]);
+
+        $erindi = Place::where('slug', 'erindi-private-game-reserve')->firstOrFail();
+        $erindi->update(['lat' => null, 'lng' => null]);
+
+        // Until 2026-08-23 this pointed at the *city* geocoder, which cannot
+        // help a park, and it never said which row was the problem.
+        $this->artisan('namibway:backfill-place-driving-hours')
+            ->expectsOutputToContain('Erindi Private Game Reserve')
+            ->expectsOutputToContain('namibway:backfill-place-coordinates')
+            ->assertFailed();
+    }
 }
