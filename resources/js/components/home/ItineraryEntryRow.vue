@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { formatDuration } from '@/lib/duration';
 import type { ItineraryListingRef } from '@/lib/kaia-types';
 import { formatPriceWithUnit } from '@/lib/price-unit';
+import AttractionPreviewModal from './AttractionPreviewModal.vue';
 import KebabMenu from './KebabMenu.vue';
 import ListingPreviewModal from './ListingPreviewModal.vue';
 
@@ -62,6 +63,11 @@ function onTimeInput(event: Event) {
 }
 
 const icon = computed(() => (props.type === 'activity' ? '📷' : '🍴'));
+
+// A day's activity may be a bookable one or a thing you simply go and look at.
+// The two have different detail views because an attraction has no listing page
+// behind it — see AttractionController.
+const isAttraction = computed(() => props.item.type === 'attraction');
 
 // Every row in the plan states a price. Plenty of scraped listings carry no
 // rate yet, and silently omitting it there reads either as "included" or as a
@@ -126,7 +132,7 @@ const menuItems = computed(() => {
     if (!props.readonly) {
         items.push({ key: 'time', label: t('itinerary.changeTime') });
 
-        if (props.item.slug) {
+        if (props.item.slug && !isAttraction.value) {
             items.push({ key: 'pick-slot', label: t('itinerary.pickSlot') });
         }
 
@@ -239,8 +245,14 @@ function onMenuSelect(key: string) {
         />
     </div>
 
+    <AttractionPreviewModal
+        v-if="previewOpen && item.slug && isAttraction"
+        :slug="item.slug"
+        @close="previewOpen = false"
+    />
+
     <ListingPreviewModal
-        v-if="previewOpen && item.slug"
+        v-else-if="previewOpen && item.slug"
         :slug="item.slug"
         @close="previewOpen = false"
     />

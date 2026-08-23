@@ -1,4 +1,8 @@
 {
+    "attraction": {
+        "needs4x4": "Accessible uniquement en 4x4",
+        "needsPermit": "Permis obligatoire"
+    },
     "nav": {
         "dashboard": "Tableau de bord",
         "login": "Se connecter",

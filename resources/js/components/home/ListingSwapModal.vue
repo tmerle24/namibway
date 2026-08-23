@@ -6,7 +6,7 @@ import type {
     ListingSearchResult,
     ListingSearchSort,
 } from '@/lib/kaia-client';
-import { searchListings } from '@/lib/kaia-client';
+import { searchAttractions, searchListings } from '@/lib/kaia-client';
 import type { ItineraryListingRef } from '@/lib/kaia-types';
 import { onImageError, thumbAttrs } from '@/lib/media';
 import { formatPriceWithUnit } from '@/lib/price-unit';
@@ -84,9 +84,22 @@ async function runSearch(page = 1, append = false) {
             page,
         });
 
+        // Things to see sit in the same list as bookable activities: a
+        // traveller choosing what to do that day does not care which table it
+        // came from. Only on the first page — they are unpaginated and few,
+        // so appending them again on "load more" would just repeat them.
+        const attractions =
+            props.type === 'activity' && !append
+                ? await searchAttractions({
+                      keyword: keyword.value || undefined,
+                      referenceCity: props.defaultCity || undefined,
+                      maxDistanceKm: maxDistanceKm.value || undefined,
+                  })
+                : [];
+
         results.value = append
             ? [...results.value, ...response.data]
-            : response.data;
+            : [...response.data, ...attractions];
         meta.value = response.meta;
     } catch {
         if (!append) {
@@ -402,7 +415,10 @@ onUnmounted(() => {
                             class="swap-modal-item-price"
                             >{{ priceLabel(result) }}</span
                         >
+                        <!-- Only a listing has a page to open; an attraction's
+                             detail lives in a modal on the plan row instead. -->
                         <a
+                            v-if="result.type !== 'attraction'"
                             :href="detailUrl(result.slug)"
                             target="_blank"
                             rel="noopener noreferrer"

@@ -1,4 +1,8 @@
 {
+    "attraction": {
+        "needs4x4": "Nur mit Allrad erreichbar",
+        "needsPermit": "Permit erforderlich"
+    },
     "nav": {
         "dashboard": "Dashboard",
         "login": "Anmelden",

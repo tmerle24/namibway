@@ -199,7 +199,11 @@ export async function fetchListingPreview(
 
 export interface ListingSearchResult {
     id: number;
-    type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
+    // 'attraction' is not a listing type — it is a thing you go and look at,
+    // and it appears here because a day's activity may be either. The rest of
+    // the shape is shared so one card and one row serve both.
+    type:
+        'accommodation' | 'activity' | 'restaurant' | 'vehicle' | 'attraction';
     // Only present when type === 'vehicle'.
     vehicle_category: 'self_drive' | 'guided_tour' | null;
     name: string;
@@ -311,6 +315,81 @@ export async function searchListings(
     const data = await response.json();
 
     return { data: data.data ?? [], meta: data.meta };
+}
+
+/**
+ * A thing to go and look at, as the trip plan shows it. Deliberately the same
+ * shape a listing search result has — the activity picker offers both in one
+ * list, so one card design has to serve both — with the fields that cannot
+ * apply left null rather than faked.
+ */
+export interface AttractionSearchResult extends ListingSearchResult {
+    attraction_type: string;
+    attraction_type_label: string;
+}
+
+/** The detail modal's payload: the long text and the operational facts. */
+export interface AttractionPreview extends AttractionSearchResult {
+    description: string | null;
+    access_note: string | null;
+    best_time_note: string | null;
+    /** null means nobody has checked, not "no" — see the attractions table. */
+    requires_4x4: boolean | null;
+    requires_permit: boolean | null;
+    photos_attribution: string | null;
+}
+
+/**
+ * Things to see near a day's location. Separate from searchListings because
+ * price, rating and vehicle class do not apply here and pretending they do
+ * would be the only way to share the query.
+ */
+export async function searchAttractions(params: {
+    keyword?: string;
+    referenceCity?: string;
+    maxDistanceKm?: string;
+}): Promise<AttractionSearchResult[]> {
+    const query = new URLSearchParams();
+
+    if (params.keyword) {
+        query.set('keyword', params.keyword);
+    }
+
+    if (params.referenceCity) {
+        query.set('reference_city', params.referenceCity);
+    }
+
+    if (params.maxDistanceKm) {
+        query.set('max_distance_km', params.maxDistanceKm);
+    }
+
+    const response = await fetch(`/attractions/search?${query}`, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+        return [];
+    }
+
+    const data = await response.json();
+
+    return data.data ?? [];
+}
+
+export async function fetchAttractionPreview(
+    slug: string,
+): Promise<AttractionPreview> {
+    const response = await fetch(`/attractions/${slug}`, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Attraction ${slug} could not be loaded`);
+    }
+
+    return response.json();
 }
 
 /** One real, bookable room type — see ListingController::roomTypes. */

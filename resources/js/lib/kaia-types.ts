@@ -4,7 +4,11 @@ export interface ItineraryListingRef {
     id: number | null;
     slug: string | null;
     name: string;
-    type: 'accommodation' | 'activity' | 'restaurant' | 'vehicle';
+    // 'attraction' is not a listing type — it is a thing you go and look at,
+    // and it appears here because a day's activity may be either. The rest of
+    // the shape is shared so one card and one row serve both.
+    type:
+        'accommodation' | 'activity' | 'restaurant' | 'vehicle' | 'attraction';
     // Only meaningful when type === 'vehicle'.
     vehicle_category?: 'self_drive' | 'guided_tour' | null;
     price_from: string | null;

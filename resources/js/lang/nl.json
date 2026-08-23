@@ -1,4 +1,8 @@
 {
+    "attraction": {
+        "needs4x4": "Alleen bereikbaar met 4x4",
+        "needsPermit": "Vergunning vereist"
+    },
     "nav": {
         "dashboard": "Dashboard",
         "login": "Inloggen",

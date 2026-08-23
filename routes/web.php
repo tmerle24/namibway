@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AfterSalesController;
+use App\Http\Controllers\AttractionController;
 use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\CurrencyController;
@@ -112,6 +113,12 @@ Route::get('thumbs/{width}/{path}', ThumbnailController::class)
     ->name('thumbs.show');
 
 Route::get('listings/search', [ListingController::class, 'search'])->name('listings.search');
+
+// Things to see, beside the things to book: the trip plan's activity picker
+// offers both, and an attraction has a detail modal of its own because it has
+// no listing page to open.
+Route::get('attractions/search', [AttractionController::class, 'search'])->name('attractions.search');
+Route::get('attractions/{slug}', [AttractionController::class, 'show'])->name('attractions.show');
 Route::get('listings/{listing:slug}/preview', [ListingController::class, 'preview'])->name('listings.preview');
 // Real room types + remaining units for a stay, for the trip plan's room
 // picker. Open like the rest of browsing — booking one is what needs an

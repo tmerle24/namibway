@@ -1,4 +1,8 @@
 {
+    "attraction": {
+        "needs4x4": "Solo accesible en 4x4",
+        "needsPermit": "Se necesita permiso"
+    },
     "nav": {
         "dashboard": "Panel",
         "login": "Iniciar sesión",

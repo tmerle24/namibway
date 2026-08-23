@@ -444,10 +444,10 @@ class ItineraryService
             $name = $attraction->getTranslation('name', 'en', useFallbackLocale: true);
             $index['attraction|'.mb_strtolower($name)] = [
                 'id' => $attraction->id,
-                // Deliberately null: the trip plan opens a listing preview from
-                // this slug, and an attraction has no listing page to open. A
-                // row without one still shows its name, duration and place.
-                'slug' => null,
+                // The row opens a preview from this, and 'type' is what says
+                // which preview: an attraction has its own modal (there is no
+                // listing page behind it) fed by /attractions/{slug}.
+                'slug' => $attraction->slug,
                 'name' => $name,
                 'type' => 'attraction',
                 'price_from' => $attraction->entry_fee,

@@ -1,4 +1,8 @@
 {
+    "attraction": {
+        "needs4x4": "4x4 needed to get there",
+        "needsPermit": "Permit needed"
+    },
     "nav": {
         "dashboard": "Dashboard",
         "login": "Log in",
