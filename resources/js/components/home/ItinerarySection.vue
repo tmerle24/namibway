@@ -626,6 +626,14 @@ function sameCity(a?: string | null, b?: string | null): boolean {
     return !!a && !!b && a.toLowerCase().trim() === b.toLowerCase().trim();
 }
 
+/** Whether two place-ish names say the same thing — "Etosha" and "Etosha National Park". */
+function overlaps(a: string, b: string): boolean {
+    const x = a.toLowerCase().trim();
+    const y = b.toLowerCase().trim();
+
+    return !!x && !!y && (x.includes(y) || y.includes(x));
+}
+
 // What is shown quieter beside the place name on the timeline card: the
 // tourism area ("Etosha"), because that is what somebody planning a trip
 // recognises — "Oshikoto" tells them nothing about where Onguma is. The
@@ -658,12 +666,17 @@ function dayRegion(day: {
         (city && regionCoords.value[city.toLowerCase().trim()]?.[key]) ||
         null;
 
-    const label = pick('area') || pick('region');
+    // The tourism area only. The political region used to be the fallback and
+    // is not one: "Otjiwarongo (Otjozondjupa)" names the administration the
+    // town pays its levies to, which tells a traveller nothing about where
+    // they are. A place that belongs to no area is shown alone.
+    const label = pick('area');
 
-    // Repeating the heading in smaller type says nothing — happens for a town
-    // that is its own area (Windhoek, Swakopmund), and when the heading itself
-    // fell back to an area name for want of a place.
-    return label && label !== city ? label : null;
+    // Repeating the heading in smaller type says nothing. Exact equality is not
+    // enough — the heading is a place and the label is the area it sits in, so
+    // "Etosha National Park" is captioned "Etosha", which is the same word
+    // twice at two lengths. Either containing the other is a repeat.
+    return label && !overlaps(label, city) ? label : null;
 }
 
 // How many people the prices apply to. Only ever used to multiply a rate the

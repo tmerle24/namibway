@@ -2,122 +2,55 @@
 
 namespace Database\Seeders;
 
+use App\Models\Place;
 use App\Models\RouteTemplate;
 use App\Models\RouteTemplateStop;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
+/**
+ * The classic Namibia self-drive routes, as sequences of places.
+ *
+ * Rewritten 2026-08-23 from four published Namibia self-drive route guides,
+ * which describe the same anticlockwise loop with the same stops in the same
+ * order. The shape is not a matter of taste — it is what the roads and the
+ * distances allow, and every guide arrives at it independently.
+ *
+ * **They used to name regions, and that was the bug.** Kunene is 115,000 km²
+ * and runs from the Skeleton Coast to the Angolan border, so "visit Kunene"
+ * left the model free to pick any town in it. A real generated trip went
+ * Windhoek → Otjiwarongo → the coast → Etosha → Khorixas with three legs over
+ * eight hours: not a route anybody would drive, and not something the model
+ * did wrong so much as something the template never said.
+ *
+ * Three rules the stop lists follow:
+ *
+ *  - **No leg over the daily driving cap.** Where two highlights are further
+ *    apart than a morning's drive there is a night in between — Keetmanshoop
+ *    before Fish River Canyon, Solitaire between Sossusvlei and the coast.
+ *    Gravel roads, no driving after dark and help a long way off are what
+ *    make that a safety rule rather than a comfort one.
+ *  - **Two nights where the point is to stay.** Sossusvlei, Swakopmund,
+ *    Twyfelfontein and Etosha are not stopovers; one night at Sossusvlei means
+ *    arriving after the dunes close and leaving before they open.
+ *  - **Etosha is crossed west to east**, which is how the park is driven, and
+ *    puts a camp at each end instead of doubling back.
+ *
+ * Stops are the loop body *between* the Windhoek start/end bookend days —
+ * ItineraryService adds those separately whichever template is chosen.
+ *
+ * The old region-level note about Karas being unreachable is gone with the
+ * regions: at region granularity Hardap→Karas was 6.7h and over the cap, but
+ * the places inside them are two hours apart, so the south is simply part of
+ * the long loop now.
+ */
 class RouteTemplateSeeder extends Seeder
 {
-    /**
-     * Starter "classic route" content so ItineraryService::matchingRouteTemplates()
-     * has real candidates out of the box, and so Anna has real examples to
-     * edit in Filament rather than an empty table. Stops are the loop body
-     * *between* the Windhoek start/end bookend days — ItineraryService adds
-     * those separately regardless of which template (if any) is chosen.
-     */
     public function run(): void
     {
-        $templates = [
-            [
-                'name' => 'Classic Safari Loop',
-                'trip_type' => 'safari',
-                'min_nights' => 8,
-                'max_nights' => 16,
-                'notes' => 'The default round-trip loop for most travelers — wildlife, desert scenery and coast in one continuous pass.',
-                'sort' => 10,
-                'stops' => [
-                    ['region' => 'Otjozondjupa', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Waterberg Plateau hiking'],
-                    ['region' => 'Kunene', 'min_nights' => 3, 'max_nights' => 5, 'highlights' => 'Etosha safari, waterhole game viewing, Damaraland, Twyfelfontein rock engravings'],
-                    ['region' => 'Erongo', 'min_nights' => 2, 'max_nights' => 4, 'highlights' => 'Spitzkoppe, Erongo Mountains, Skeleton Coast, Swakopmund'],
-                    ['region' => 'Hardap', 'min_nights' => 2, 'max_nights' => 4, 'highlights' => 'Sossusvlei, Sesriem, Naukluft'],
-                ],
-            ],
-            [
-                'name' => 'Etosha Quick Escape',
-                'trip_type' => 'safari',
-                'min_nights' => 4,
-                'max_nights' => 7,
-                'notes' => 'For short trips — no time to cover the whole country, so stay focused on one unmissable highlight.',
-                'sort' => 20,
-                'stops' => [
-                    ['region' => 'Kunene', 'min_nights' => 2, 'max_nights' => 5, 'highlights' => 'Etosha safari, waterhole game viewing'],
-                ],
-            ],
-            [
-                'name' => 'Extended Namibia Loop',
-                'trip_type' => 'adventure',
-                'min_nights' => 17,
-                'max_nights' => 24,
-                // NOT extended into Karas (Fish River Canyon / Lüderitz): every
-                // DRIVING_HOURS pair touching Karas exceeds MAX_DRIVING_HOURS
-                // (closest is Hardap|Karas at 6.7h) — it can't be reached from or
-                // returned to this loop within the daily driving-time limit at
-                // any trip length, so extra nights buy depth in the same 4
-                // regions instead of a 5th region.
-                'notes' => 'For travelers with real time to spare — goes deeper into the same classic loop (longer stays, more day trips per region) rather than adding new regions.',
-                'sort' => 30,
-                'stops' => [
-                    ['region' => 'Otjozondjupa', 'min_nights' => 1, 'max_nights' => 3, 'highlights' => 'Waterberg Plateau hiking'],
-                    ['region' => 'Kunene', 'min_nights' => 4, 'max_nights' => 8, 'highlights' => 'Etosha safari, waterhole game viewing, Damaraland'],
-                    ['region' => 'Erongo', 'min_nights' => 3, 'max_nights' => 6, 'highlights' => 'Spitzkoppe, Skeleton Coast, Swakopmund'],
-                    ['region' => 'Hardap', 'min_nights' => 3, 'max_nights' => 6, 'highlights' => 'Sossusvlei, Sesriem, Naukluft'],
-                ],
-            ],
-            [
-                // The classic loop above deliberately stays out of Karas — that
-                // decision predates the per-city driving-hours backfill
-                // (2026-08-04) and was based on the coarse REGION-level
-                // Hardap|Karas figure (6.7h, over the 6h cap). The actual
-                // city_driving_hours table now has a same-region-cheap bridge
-                // (Mariental<->Keetmanshoop, 2.44h) that makes Karas reachable
-                // within the per-day cap after all — see ItineraryService's
-                // cityDrivingHours() which is checked before the region
-                // fallback. Hardap appears twice: once northbound (Sossusvlei)
-                // and once again as the final stop before Windhoek (Kalahari,
-                // near Mariental) — that second Hardap leg is what keeps the
-                // Karas->Windhoek return under the driving-time cap, instead of
-                // jumping straight from Karas to Khomas (7.3h, over cap).
-                'name' => 'Grand Namibia Loop',
-                'trip_type' => 'adventure',
-                'min_nights' => 18,
-                'max_nights' => 28,
-                'notes' => 'The full country loop for travelers with 3+ weeks — everything in the Classic Safari Loop plus a deep run south to Fish River Canyon, the Kalahari and Lüderitz.',
-                'sort' => 40,
-                'stops' => [
-                    ['region' => 'Otjozondjupa', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Waterberg Plateau hiking'],
-                    ['region' => 'Kunene', 'min_nights' => 3, 'max_nights' => 6, 'highlights' => 'Etosha safari, waterhole game viewing, Damaraland, Twyfelfontein rock engravings'],
-                    ['region' => 'Erongo', 'min_nights' => 2, 'max_nights' => 4, 'highlights' => 'Spitzkoppe, Erongo Mountains, Skeleton Coast, Swakopmund'],
-                    ['region' => 'Hardap', 'min_nights' => 1, 'max_nights' => 3, 'highlights' => 'Sossusvlei, Sesriem, Naukluft'],
-                    ['region' => 'Karas', 'min_nights' => 4, 'max_nights' => 7, 'highlights' => 'Fish River Canyon, quiver tree forest, Lüderitz, Kolmanskop ghost town, wild desert horses'],
-                    ['region' => 'Hardap', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Kalahari Desert (Mariental area), final stop before Windhoek'],
-                ],
-            ],
-            [
-                // Zambezi (Caprivi) is the single most remote region in the
-                // DRIVING_HOURS table (10.4h+ from every neighbor except
-                // Kavango East/West) — no direct day-leg from or to it is ever
-                // safe, region-fallback or city-level. Kavango East appears
-                // twice (outbound and return) specifically so Claude has an
-                // explicit overnight bridge in both directions instead of
-                // improvising one; Zambezi<->Kavango East is 5.4h, within cap.
-                'name' => 'Caprivi Green North Extension',
-                'trip_type' => 'adventure',
-                'min_nights' => 21,
-                'max_nights' => 32,
-                'notes' => 'Only for travelers with 3+ weeks — extends the classic north loop into the water-rich, tropical Zambezi (Caprivi) region: elephants, hippos and river life near the Botswana border. Skips the coast to keep total driving time reasonable.',
-                'sort' => 50,
-                'stops' => [
-                    ['region' => 'Otjozondjupa', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Waterberg Plateau hiking'],
-                    ['region' => 'Kunene', 'min_nights' => 3, 'max_nights' => 6, 'highlights' => 'Etosha safari, waterhole game viewing'],
-                    ['region' => 'Kavango East', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Popa Falls, Okavango River, Bwabwata National Park (west)'],
-                    ['region' => 'Zambezi', 'min_nights' => 3, 'max_nights' => 6, 'highlights' => 'Caprivi wetlands, elephants and hippos, Chobe/Zambezi river confluence, day trips toward the Botswana border'],
-                    ['region' => 'Kavango East', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Return via Rundu, Okavango riverside'],
-                ],
-            ],
-        ];
+        $places = Place::query()->with('region')->get()->keyBy('slug');
 
-        foreach ($templates as $template) {
+        foreach (self::templates() as $template) {
             $model = RouteTemplate::firstOrNew(['slug' => Str::slug($template['name'])]);
 
             // HasTranslations::setTranslations() merges into whatever locales
@@ -138,16 +71,130 @@ class RouteTemplateSeeder extends Seeder
 
             $model->stops()->delete();
 
-            foreach ($template['stops'] as $index => $stop) {
+            $order = 0;
+
+            foreach ($template['stops'] as $stop) {
+                /** @var Place|null $place */
+                $place = $places->get($stop['place']);
+
+                // A place we do not hold a row for is skipped rather than
+                // written region-only: a stop nobody can resolve is worse than
+                // a shorter route, because the model will fill the gap itself.
+                if ($place === null) {
+                    continue;
+                }
+
                 RouteTemplateStop::create([
                     'route_template_id' => $model->id,
-                    'region' => $stop['region'],
+                    'place_id' => $place->id,
+                    // Still written: the macro ROUTE guidance is region-level,
+                    // and a stop has to be able to answer "which part of the
+                    // country is this leg in".
+                    'region' => $place->region->name,
                     'min_nights' => $stop['min_nights'],
                     'max_nights' => $stop['max_nights'],
                     'highlights' => $stop['highlights'],
-                    'sort_order' => $index,
+                    'sort_order' => $order++,
                 ]);
             }
         }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private static function templates(): array
+    {
+        return [
+            [
+                'name' => 'Classic Safari Loop',
+                'trip_type' => 'safari',
+                'min_nights' => 8,
+                'max_nights' => 16,
+                'notes' => 'The two-week route every guide opens with — desert, coast, rock art and Etosha in one continuous anticlockwise pass, with no leg longer than a morning.',
+                'sort' => 10,
+                'stops' => [
+                    ['place' => 'sesriem', 'min_nights' => 2, 'max_nights' => 3, 'highlights' => 'Sossusvlei and Deadvlei at sunrise, Dune 45, Sesriem Canyon'],
+                    ['place' => 'swakopmund', 'min_nights' => 2, 'max_nights' => 3, 'highlights' => 'The coast, Walvis Bay lagoon, Sandwich Harbour, the only town on the route with restaurants worth planning around'],
+                    ['place' => 'twyfelfontein', 'min_nights' => 2, 'max_nights' => 2, 'highlights' => 'Rock engravings, Organ Pipes, Burnt Mountain, desert-adapted elephant in the Huab'],
+                    ['place' => 'etosha-national-park', 'min_nights' => 3, 'max_nights' => 4, 'highlights' => 'Waterholes at dawn and dusk, west to east across the park, the floodlit hide at Okaukuejo after dark'],
+                    ['place' => 'waterberg-plateau-park', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'A walk up the plateau, breaking the last long drive back'],
+                ],
+            ],
+            [
+                'name' => 'Etosha Quick Escape',
+                'trip_type' => 'safari',
+                'min_nights' => 4,
+                'max_nights' => 7,
+                'notes' => 'For a short trip — no time to cross the country, so one unmissable thing done properly rather than four done badly.',
+                'sort' => 20,
+                'stops' => [
+                    ['place' => 'otjiwarongo', 'min_nights' => 1, 'max_nights' => 1, 'highlights' => 'Cheetah country, and half the drive north already behind you'],
+                    ['place' => 'etosha-national-park', 'min_nights' => 2, 'max_nights' => 4, 'highlights' => 'Two full days of game drives, west to east'],
+                ],
+            ],
+            [
+                'name' => 'Extended Namibia Loop',
+                'trip_type' => 'adventure',
+                'min_nights' => 17,
+                'max_nights' => 24,
+                'notes' => 'The classic loop with the Kalahari at the start, a night in the Erongo granite and the quiet eastern edge of Etosha — depth in the same country rather than more of it.',
+                'sort' => 30,
+                'stops' => [
+                    ['place' => 'mariental', 'min_nights' => 2, 'max_nights' => 2, 'highlights' => 'Red Kalahari dunes and the first proper night sky'],
+                    ['place' => 'sesriem', 'min_nights' => 2, 'max_nights' => 3, 'highlights' => 'Sossusvlei, Deadvlei, Dune 45'],
+                    ['place' => 'solitaire', 'min_nights' => 1, 'max_nights' => 1, 'highlights' => 'Apple pie, the Kuiseb pass, and a short day between two long ones'],
+                    ['place' => 'swakopmund', 'min_nights' => 2, 'max_nights' => 3, 'highlights' => 'The coast; Sandwich Harbour and the Walvis Bay lagoon from here'],
+                    ['place' => 'spitzkoppe', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'Granite, rock art, and the darkest sky on the route'],
+                    ['place' => 'twyfelfontein', 'min_nights' => 2, 'max_nights' => 2, 'highlights' => 'Engravings, Burnt Mountain, the Petrified Forest at Khorixas'],
+                    ['place' => 'etosha-national-park', 'min_nights' => 3, 'max_nights' => 4, 'highlights' => 'West to east across the park'],
+                    ['place' => 'onguma-nature-reserve', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'The quiet eastern edge, outside the park gates'],
+                    ['place' => 'waterberg-plateau-park', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'The plateau, and the last stop before town'],
+                ],
+            ],
+            [
+                'name' => 'Grand Namibia Loop',
+                'trip_type' => 'adventure',
+                'min_nights' => 18,
+                'max_nights' => 28,
+                'notes' => 'The whole country for three weeks and more: the Kalahari, the deep south to Fish River Canyon and Lüderitz, then north up the coast to Damaraland and Etosha.',
+                'sort' => 40,
+                'stops' => [
+                    ['place' => 'mariental', 'min_nights' => 2, 'max_nights' => 2, 'highlights' => 'Kalahari dunes'],
+                    ['place' => 'keetmanshoop', 'min_nights' => 1, 'max_nights' => 1, 'highlights' => 'Quiver Tree Forest and Giants Playground at last light'],
+                    ['place' => 'fish-river-canyon', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'The main viewpoint in the last hour of sun; Ai-Ais hot springs below'],
+                    ['place' => 'luderitz', 'min_nights' => 2, 'max_nights' => 2, 'highlights' => 'Kolmanskop in the morning light, Diaz Point, the wild horses at Garub on the way in'],
+                    ['place' => 'sesriem', 'min_nights' => 2, 'max_nights' => 3, 'highlights' => 'Sossusvlei and Deadvlei'],
+                    ['place' => 'swakopmund', 'min_nights' => 2, 'max_nights' => 3, 'highlights' => 'The coast'],
+                    ['place' => 'cape-cross', 'min_nights' => 1, 'max_nights' => 1, 'highlights' => 'The seal colony, and the salt road north'],
+                    ['place' => 'twyfelfontein', 'min_nights' => 2, 'max_nights' => 2, 'highlights' => 'Damaraland, rock engravings, desert elephant'],
+                    ['place' => 'etosha-national-park', 'min_nights' => 3, 'max_nights' => 4, 'highlights' => 'West to east across the park'],
+                    ['place' => 'waterberg-plateau-park', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'The plateau'],
+                ],
+            ],
+            [
+                // Zambezi is the most remote corner of the country: every
+                // neighbour except the Kavangos is a day and a half away. Rundu
+                // is therefore an explicit overnight bridge in both directions,
+                // rather than something the model has to improvise.
+                'name' => 'Caprivi Green North Extension',
+                'trip_type' => 'adventure',
+                'min_nights' => 21,
+                'max_nights' => 32,
+                'notes' => 'Three weeks and more, ending in the one green part of Namibia: rivers, elephant and hippo on the Botswana border. Skips the far south to keep the driving days sane.',
+                'sort' => 50,
+                'stops' => [
+                    ['place' => 'sesriem', 'min_nights' => 2, 'max_nights' => 3, 'highlights' => 'Sossusvlei and Deadvlei'],
+                    ['place' => 'swakopmund', 'min_nights' => 2, 'max_nights' => 3, 'highlights' => 'The coast'],
+                    ['place' => 'twyfelfontein', 'min_nights' => 2, 'max_nights' => 2, 'highlights' => 'Damaraland'],
+                    ['place' => 'etosha-national-park', 'min_nights' => 3, 'max_nights' => 4, 'highlights' => 'West to east across the park'],
+                    ['place' => 'grootfontein', 'min_nights' => 1, 'max_nights' => 1, 'highlights' => 'The Hoba meteorite, and the turn east'],
+                    ['place' => 'rundu', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'The Okavango, and the first green on the whole trip'],
+                    ['place' => 'katima-mulilo', 'min_nights' => 2, 'max_nights' => 3, 'highlights' => 'Zambezi floodplains, elephant and hippo; Chobe and the falls an hour further'],
+                    ['place' => 'rundu', 'min_nights' => 1, 'max_nights' => 2, 'highlights' => 'The riverside again, westbound — the bridge that keeps the return legal'],
+                    ['place' => 'otjiwarongo', 'min_nights' => 1, 'max_nights' => 1, 'highlights' => 'The last night before Windhoek'],
+                ],
+            ],
+        ];
     }
 }

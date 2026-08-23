@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class RouteTemplateStop extends Model
 {
     protected $fillable = [
+        'place_id',
         'route_template_id',
         'region',
         'min_nights',
@@ -41,5 +42,16 @@ class RouteTemplateStop extends Model
     public function routeTemplate(): BelongsTo
     {
         return $this->belongsTo(RouteTemplate::class);
+    }
+
+    /**
+     * The place this leg is spent at. Nullable only so a stop written before
+     * 2026-08-23 — when a stop named a region and nothing finer — still loads.
+     *
+     * @return BelongsTo<Place, $this>
+     */
+    public function place(): BelongsTo
+    {
+        return $this->belongsTo(Place::class);
     }
 }

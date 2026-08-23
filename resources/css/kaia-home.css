@@ -17,6 +17,9 @@
     --sage-light: #dce4d6;
     --gold: #e3a857;
     --paper: #fbf8f1;
+    /* The one surface that sits *on* the paper rather than being it. A card
+       painted --paper is invisible: the whole page is that colour. */
+    --card: #fff;
     --danger: #a13d2f;
     --danger-light: #f3ddd7;
 
@@ -2951,8 +2954,9 @@ body:has(.kaia-page) {
    flex row rather than pinned to the corner. */
 .kaia-page .stay-card {
     /* A real card now that the stage block around it lost its border — this
-       is the one box the stay gets. */
-    background: var(--paper);
+       is the one box the stay gets, so it has to read as a box. --paper is the
+       page's own colour and made it disappear into the background. */
+    background: var(--card);
     padding: 10px 12px;
 }
 .kaia-page .stay-card-main {

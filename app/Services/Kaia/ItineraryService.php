@@ -1099,9 +1099,10 @@ class ItineraryService
             min_nights/max_nights range so the stops' nights sum to the trip's total night count (the
             Windhoek start/end days from the ROUTE guidance above are separate from and in addition to the
             stops). This takes priority over freely inventing your own route. If the list is empty, ignore
-            this paragraph and follow the ROUTE guidance above instead. A stop's "region" says which area
-            that leg covers — it is not the day's "location"; pick a city inside that region and write the
-            city.
+            this paragraph and follow the ROUTE guidance above instead. A stop's "place" IS the day's
+            "location" — copy it character for character and pick the stay from listings carrying that
+            place. Only where a stop has no place does its "region" apply, and then pick a place inside
+            that region.
 
             Build exactly 1 variant — a single, focused itinerary that best fits the trip parameters. (A
             future version of this product may offer alternative variants again; for now, put all your
@@ -2047,7 +2048,7 @@ class ItineraryService
             ->where('is_published', true)
             ->where('min_nights', '<=', $nights)
             ->where('max_nights', '>=', $nights)
-            ->with('stops')
+            ->with('stops.place')
             ->orderBy('sort_order')
             ->get()
             ->map(fn (RouteTemplate $template) => [
@@ -2055,6 +2056,11 @@ class ItineraryService
                 'trip_type' => $template->trip_type->value,
                 'notes' => $template->notes,
                 'stops' => $template->stops->map(fn (RouteTemplateStop $stop) => [
+                    // The place is what a day's location must be filled with;
+                    // the region is only the macro answer to "which part of
+                    // the country is this leg in". Sending the region alone is
+                    // what let a plan zigzag across Kunene for three days.
+                    'place' => $stop->place?->name,
                     'region' => $stop->region,
                     'min_nights' => $stop->min_nights,
                     'max_nights' => $stop->max_nights,
