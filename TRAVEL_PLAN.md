@@ -363,6 +363,49 @@ onto the places those cities are, filling blanks only, so it heals nightly and
 a hand-set value survives (a park's centre is not its nearest town's high
 street).
 
+### 2026-08-23 — Kaia can send you to look at something
+
+The table got a model, a screen, 47 rows and a way into the trip plan, so the
+section above stops being a schema and starts being a feature.
+
+**How it reaches a plan.** A day's `activity` may now name a bookable activity
+from the catalog *or* an entry from a second list the model is given, "things to
+see". Both are resolved by name in `resolveReferences`; the model is not asked
+which kind it picked. The prompt says when to reach for one: a day that is
+mostly a drive, a night where the catalog has no activity near the bed, or an
+interest the catalog cannot serve.
+
+Three shapes worth keeping:
+
+- **The short form is all the model sees** — name, type, place, one line, and
+  `visit_minutes` where known. The long description never enters the prompt.
+  That is the same discipline as `MAX_CANDIDATES_PER_TYPE`, and for the same
+  reason (the OOM of 2026-08-09). Capped at `MAX_ATTRACTIONS`.
+- **Only published rows with coordinates.** Without a coordinate it cannot be
+  drawn or checked against where the traveller is, so offering it would be
+  offering a name.
+- **The resolved entry carries no slug**, deliberately: the plan opens a
+  *listing* preview from that field and an attraction has no listing page. The
+  row still shows its name, duration and place. An attraction detail page is
+  the obvious follow-up.
+
+**The 47 rows** (`2026_08_23_160000_seed_attractions`) are published and marked
+`ai_generated`. The names, categories and geography are right — nothing is in
+the wrong region — but the coordinates were written from knowledge rather than
+read off a map, and two kilometres out is a wrong turn on a gravel road. So
+`namibway:verify-attraction-coordinates` checks each one against OpenStreetMap
+and lists only the ones that disagree by more than 3 km, because checking 47 by
+hand is a job nobody finishes. **Report-only by default and that is the point:**
+Nominatim is often worse than we are for a rock-art site or a farm gate — it
+returns the nearest town centre, or a hotel that borrowed the name — so a
+disagreement means "somebody look", never "OSM wins". `--apply` exists for after
+you have looked.
+
+`entry_fee` is null on every row on purpose: an invented fee is worse than none,
+and they change. `requires_4x4`/`requires_permit` are set only where the answer
+is a standing fact about the site (Sandwich Harbour, Kolmanskop, Twyfelfontein)
+and left null everywhere else, which means "not established" and not "no".
+
 ### 2026-08-23 — a thing you go and look at has a table
 
 First step of the section above, and only the first: the schema, nothing that

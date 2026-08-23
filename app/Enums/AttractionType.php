@@ -30,6 +30,15 @@ enum AttractionType: string implements HasColor, HasLabel
     case Museum = 'museum';
     case Viewpoint = 'viewpoint';
 
+    /**
+     * A marker or a photo stop that is none of the above — a park gate, the
+     * Tropic of Capricorn sign. Small, and people stop anyway.
+     *
+     * Shares a word with PlaceType::Landmark and means something else: that
+     * one is an area a lodge can stand in, this one is a thing you photograph.
+     */
+    case Landmark = 'landmark';
+
     public function getLabel(): string
     {
         return match ($this) {
@@ -42,6 +51,7 @@ enum AttractionType: string implements HasColor, HasLabel
             self::Culture => 'Culture & heritage',
             self::Museum => 'Museum',
             self::Viewpoint => 'Viewpoint',
+            self::Landmark => 'Landmark',
         };
     }
 
@@ -49,6 +59,7 @@ enum AttractionType: string implements HasColor, HasLabel
     {
         return match ($this) {
             self::NaturalFeature, self::Viewpoint => 'success',
+            self::Landmark => 'gray',
             self::Geology, self::Palaeontology => 'warning',
             self::Wildlife => 'primary',
             self::RockArt, self::Culture => 'danger',

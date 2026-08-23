@@ -8,6 +8,7 @@ use App\Enums\PlaceType;
 use App\Enums\PriceUnit;
 use App\Enums\VehicleClass;
 use App\Http\Controllers\Controller;
+use App\Models\Attraction;
 use App\Models\City;
 use App\Models\Listing;
 use App\Models\Place;
@@ -47,6 +48,8 @@ class ItineraryService
      * Cap per type regardless of catalog size — keeps the AI's input bounded
      * (cost + latency) even once the catalog grows to hundreds of listings.
      */
+    private const MAX_ATTRACTIONS = 60;
+
     private const MAX_CANDIDATES_PER_TYPE = 20;
 
     /**
@@ -291,11 +294,15 @@ class ItineraryService
     private function attempt(array $tripParams, ?string $correction = null): array
     {
         $listings = $this->candidateListings($tripParams);
+        $attractions = $this->candidateAttractions();
         $routeTemplates = $this->matchingRouteTemplates($tripParams);
 
         $userContent = 'Trip parameters: '.json_encode($tripParams)
             .PHP_EOL.PHP_EOL.'NamibWay catalog (only use listings from here): '
             .json_encode($this->toAiCatalog($listings))
+            .PHP_EOL.PHP_EOL.'Things to see (free to visit or paid on the spot — no booking, and a '
+            ."day's \"activity\" may name one of these instead of a catalog activity): "
+            .json_encode($this->toAiAttractions($attractions))
             .PHP_EOL.PHP_EOL.'Candidate classic routes for this trip (see ROUTE guidance below for how '
             .'to use these): '.json_encode($routeTemplates);
 
@@ -322,7 +329,7 @@ class ItineraryService
         foreach ($response['content'] ?? [] as $block) {
             if (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'propose_itinerary') {
                 $plan = $this->validatePlan($block['input']);
-                $plan = $this->resolveReferences($plan, $listings);
+                $plan = $this->resolveReferences($plan, $listings, $attractions);
 
                 // Echoed from the trip params (already resolved/defaulted by
                 // stringParam) rather than trusted from Claude's tool call —
@@ -394,9 +401,10 @@ class ItineraryService
      *
      * @param  array{trip_summary: string, variants: array<int, array<string, mixed>>}  $plan
      * @param  Collection<int, Listing>  $listings
+     * @param  Collection<int, Attraction>  $attractions
      * @return array{trip_summary: string, variants: array<int, array<string, mixed>>}
      */
-    private function resolveReferences(array $plan, Collection $listings): array
+    private function resolveReferences(array $plan, Collection $listings, Collection $attractions): array
     {
         /** @var array<string, array{id: int, slug: string, name: string, type: string, price_from: ?string, price_currency: string, price_unit: string|null, duration_minutes: int|null, lat: float|null, lng: float|null, image: string|null, gallery: array<int, string>, city: string|null, short_description: string|null, rating: float|null, rating_count: int|null}> $index */
         $index = [];
@@ -432,12 +440,49 @@ class ItineraryService
             ];
         }
 
+        foreach ($attractions as $attraction) {
+            $name = $attraction->getTranslation('name', 'en', useFallbackLocale: true);
+            $index['attraction|'.mb_strtolower($name)] = [
+                'id' => $attraction->id,
+                // Deliberately null: the trip plan opens a listing preview from
+                // this slug, and an attraction has no listing page to open. A
+                // row without one still shows its name, duration and place.
+                'slug' => null,
+                'name' => $name,
+                'type' => 'attraction',
+                'price_from' => $attraction->entry_fee,
+                'price_currency' => $attraction->entry_fee_currency,
+                'price_unit' => null,
+                'duration_minutes' => $attraction->visit_minutes,
+                'lat' => $attraction->lat,
+                'lng' => $attraction->lng,
+                'image' => $attraction->image ? Controller::resolveMediaUrl($attraction->image) : null,
+                'gallery' => [],
+                'city' => $attraction->city?->name,
+                'place' => $attraction->place?->name,
+                'region' => ($attraction->place ?? $attraction->city)?->region?->name,
+                'area' => ($attraction->place ?? $attraction->city)?->destination?->name,
+                'short_description' => $attraction->getTranslation('summary', 'en', useFallbackLocale: true) ?: null,
+                'rating' => null,
+                'rating_count' => null,
+            ];
+        }
+
         $resolve = function (?string $name, string $type) use ($index): ?array {
             if ($name === null || $name === '') {
                 return null;
             }
 
-            return $index[$type.'|'.mb_strtolower($name)] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'price_unit' => null, 'duration_minutes' => null, 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'place' => null, 'region' => null, 'area' => null, 'short_description' => null, 'rating' => null, 'rating_count' => null];
+            $key = mb_strtolower($name);
+
+            // An "activity" may be a bookable one or a thing you simply go and
+            // look at; the model is given both lists and is not asked to say
+            // which kind it picked.
+            if ($type === 'activity') {
+                return $index['activity|'.$key] ?? $index['attraction|'.$key] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'price_unit' => null, 'duration_minutes' => null, 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'place' => null, 'region' => null, 'area' => null, 'short_description' => null, 'rating' => null, 'rating_count' => null];
+            }
+
+            return $index[$type.'|'.$key] ?? ['id' => null, 'slug' => null, 'name' => $name, 'type' => $type, 'price_from' => null, 'price_currency' => 'NAD', 'price_unit' => null, 'duration_minutes' => null, 'lat' => null, 'lng' => null, 'image' => null, 'gallery' => [], 'city' => null, 'place' => null, 'region' => null, 'area' => null, 'short_description' => null, 'rating' => null, 'rating_count' => null];
         };
 
         $plan['variants'] = array_map(function (array $variant) use ($resolve, $listings) {
@@ -1035,8 +1080,16 @@ class ItineraryService
             You are Kaia, the AI travel companion for NamibWay. Build a real, bookable Namibia itinerary
             for the traveler based on the trip parameters and catalog you were given.
 
-            You MUST base every day of the plan only on listings from the provided catalog. Never invent
-            a property, activity, restaurant, or vehicle name that isn't in it.
+            You MUST base every day of the plan only on the provided catalog and the provided "things to
+            see" list. Never invent a property, activity, restaurant, vehicle or sight name that isn't in
+            one of them.
+
+            THINGS TO SEE: a day's "activity" may name a bookable activity from the catalog OR an entry
+            from the "things to see" list — a meteorite, a canyon viewpoint, a rock-art site. Those cost
+            nothing to arrange and need no booking, so prefer one when the day is mostly a drive, when the
+            catalog has no activity near where the traveler sleeps that night, or when it simply suits
+            their interests better. Pick one that is at or near the day's location, and respect its
+            "visit_minutes" when the day already has a long drive in it.
 
             {$routeGuidance}
 
@@ -1635,7 +1688,7 @@ class ItineraryService
                                             'date' => ['type' => 'string', 'description' => 'Calendar date for this day, e.g. "14 Aug 2026". Computed from travel_period start date.'],
                                             'location' => ['type' => 'string', 'description' => 'Exact place value from the listing catalog, e.g. "Swakopmund", "Otjiwarongo", "Sesriem", "Etosha National Park" — copied character for character, never shortened ("Etosha") or replaced by a region ("Kunene")'],
                                             'accommodation' => ['type' => 'string'],
-                                            'activity' => ['type' => 'string'],
+                                            'activity' => ['type' => 'string', 'description' => 'Exact name from either the listing catalog (a bookable activity) or the "things to see" list (free or paid on the spot, no booking) — copied character for character'],
                                             'activity_time' => ['type' => 'string', 'description' => 'Optional 24h "HH:MM" start time for the activity, e.g. "06:00" for a sunrise game drive. Omit if no particular time of day applies.'],
                                             'restaurant' => ['type' => 'string'],
                                             'restaurant_time' => ['type' => 'string', 'description' => 'Optional 24h "HH:MM" start time for the restaurant, e.g. "19:00" for dinner. Omit if no particular time of day applies.'],
@@ -1736,6 +1789,68 @@ class ItineraryService
             // the ->first() listing in a city as its fallback stay.
             ->sortBy(fn (Listing $listing) => $order[$listing->id])
             ->values();
+    }
+
+    /**
+     * Everything worth going to look at, for the model to hang a day off.
+     *
+     * Unlike the listing catalog this is not narrowed by budget or by vehicle,
+     * because none of those apply to a meteorite. It is capped all the same:
+     * the corpus is a few dozen today and the prompt is the dimension that has
+     * already taken /kaia/message down once (2026-08-09).
+     *
+     * Only published rows, and only ones with coordinates — without those it
+     * cannot be drawn on the map or checked against where the traveler is, so
+     * offering it would be offering a name and nothing else.
+     *
+     * @return Collection<int, Attraction>
+     */
+    private function candidateAttractions(): Collection
+    {
+        return Attraction::query()
+            ->where('is_published', true)
+            ->whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->with(['place.region', 'place.destination', 'city.region', 'city.destination'])
+            ->orderBy('slug')
+            ->limit(self::MAX_ATTRACTIONS)
+            ->get();
+    }
+
+    /**
+     * The short form the model sees: enough to choose one and place it, and
+     * deliberately not the long description, which belongs on a detail page
+     * and would grow the prompt in exactly the wrong dimension.
+     *
+     * @param  Collection<int, Attraction>  $attractions
+     * @return array<int, array<string, mixed>>
+     */
+    private function toAiAttractions(Collection $attractions): array
+    {
+        return $attractions
+            ->map(function (Attraction $attraction): array {
+                $entry = [
+                    'name' => $attraction->getTranslation('name', 'en', useFallbackLocale: true),
+                    'type' => $attraction->type->value,
+                    'place' => ($attraction->place ?? $attraction->city)?->name,
+                    'summary' => $attraction->getTranslation('summary', 'en', useFallbackLocale: true),
+                ];
+
+                // Only where known — how long to allow is what lets the model
+                // decide whether it fits beside a drive, and a null on every
+                // entry would just be prompt weight.
+                if ($attraction->visit_minutes !== null) {
+                    $entry['visit_minutes'] = $attraction->visit_minutes;
+                }
+
+                if ($attraction->requires_4x4 === true) {
+                    $entry['requires_4x4'] = true;
+                }
+
+                return $entry;
+            })
+            ->values()
+            ->all();
     }
 
     /**
