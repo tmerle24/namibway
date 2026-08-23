@@ -6,6 +6,7 @@ use App\Enums\VehicleClass;
 use App\Models\City;
 use App\Models\Destination;
 use App\Models\Listing;
+use App\Models\Place;
 use App\Models\Region;
 use App\Models\SavedPlan;
 use App\Services\Kaia\InterviewService;
@@ -98,12 +99,37 @@ class KaiaController extends Controller
             ];
         }
 
-        // Also key by City — a day's "location" is now always a city (see
-        // ItineraryService), so this is what actually resolves the trip map's
-        // per-day marker/thumbnail today. Only cities with a published listing
-        // are included, mirroring cities()/regions() above. Never overrides a
-        // destination-name key (destinations have curated images; a bare city
-        // row has none).
+        // Then by Place, which is what a day's "location" actually is since
+        // 2026-08-23 — and the reason stages were silently missing from the
+        // trip map: this index was destinations plus political regions, so
+        // "Sesriem" resolved to nothing and the marker could only be drawn
+        // when the stay itself carried coordinates. **Every** place is
+        // included, not only those hosting a listing: a route stop is a place
+        // precisely because a traveller goes there, whether or not the catalog
+        // has caught up. Never overrides a destination-name key, which has a
+        // curated photo a bare place row has not.
+        Place::query()
+            ->whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->with(['region:id,name', 'destination:id,name'])
+            ->get(['id', 'name', 'lat', 'lng', 'image', 'region_id', 'destination_id'])
+            ->each(function (Place $place) use ($coords) {
+                $key = mb_strtolower($place->name);
+
+                if (! $coords->has($key)) {
+                    $coords[$key] = [
+                        'lat' => $place->lat,
+                        'lng' => $place->lng,
+                        'image' => $place->image ? self::resolveMediaUrl($place->image) : null,
+                        'region' => $place->region->name,
+                        'area' => $place->destination?->name,
+                    ];
+                }
+            });
+
+        // Finally by City, for a plan saved before places existed — its day
+        // locations are city names and must keep resolving. Only cities with a
+        // published listing, mirroring cities()/regions() above.
         City::query()
             ->whereNotNull('lat')
             ->whereNotNull('lng')
