@@ -270,6 +270,58 @@ expansion").
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-24 — a day entry is a night, and the departure day is not one
+
+From a prod screenshot: a trip booked as **1–18 January 2027, 17 nights** ended
+on a Windhoek stage reading **"17 – 19 Jan 2027 (2 Nächte)"**, with day rows for
+18 Jan and 19 Jan under it. The traveler is home on the 18th. The plan invented
+a night, and then a checkout after it.
+
+The cause is one line of prompt, not the timeline code. A `days` entry is a
+**night** — that is the model the whole plan is built on: `stageNights()` counts
+the days in a stage, `addNight()` inserts a day, `applyDates()` gives day *i*
+the range start+i → start+i+1, and what happens on the checkout morning rides on
+the last night as `departure_activities` (session 11, and the PDF says so in as
+many words). Kaia, though, was asked for `nights + 1` entries, one per calendar
+day the traveler is in the country, departure day included. Every generated plan
+therefore carried one night too many, and every one of them checked out a day
+after the traveler's own end date. The `nights + 1` rule was itself put in on
+2026-08-09 to *fix* this symptom ("a stage dated past the departure day") — it
+codified the off-by-one instead.
+
+- ✅ **The prompt asks for one entry per night** (`routingGuidance`): exactly
+  `nights` entries, numbered 1 to `nights`, no entry for the departure day, and
+  — this is what the dropped entry used to carry — **the last night** must be in
+  or next to the end location, because that is where the traveler leaves from
+  the next morning. The day-count paragraph now also reaches the one-way branch,
+  which never had one even though the count was validated for both.
+- ✅ **`validateRouteShape` counts to `nights`**, not `nights + 1`, and its
+  correction message asks for the last *night* in the end location.
+- ✅ **`foldReturnDay()` catches a stray one anyway.** A prompt is a request,
+  not a guarantee, so a plan that comes back exactly one entry too long has that
+  entry **folded into the night before it, not deleted**: its date is already
+  that night's `date_to`, and whatever was planned on it becomes that night's
+  departure entries — precisely where the plan renders the checkout morning.
+  Only the one off-by-one folds; two entries too many is nights misallocated,
+  which still goes back to the model for a retry.
+- ✅ **Plans already saved are repaired** by a migration doing the identical
+  fold (`2026_08_24_090000_fold_the_departure_day_out_of_saved_plans`), guarded
+  on `count(days) === trip_params.nights + 1` so a plan the traveler has since
+  added nights to is left alone. It bumps `version`, so a tab holding the old
+  document gets the conflict banner instead of quietly writing the phantom night
+  back.
+- ✅ **The share card counts nights too** (`TripPlanMeta::length`): it was
+  counting day entries and calling them days, so a four-night plan unfurled as
+  "4 days, 25 Aug – 29 Aug" — a count that contradicted its own date range.
+
+Worth knowing before touching this again: the vehicle line multiplies its daily
+rate by `days.length`, so this quietly corrected a 17-day rental billed as 18
+days as well. And what is *still* not synced is the other direction — adding a
+night in the UI does not update `trip_params.nights`, so the meta line keeps
+saying "17 Nächte" over an 18-night plan. Left alone deliberately: `nights` and
+`travel_period` are one statement from the interview, and moving one without the
+other trades a wrong number for an inconsistent pair. See "Known gaps".
+
 ### 2026-08-24 — a shared trip link says what it is
 
 A `/trip/{token}` link exists for exactly one reason: to be sent to somebody.
@@ -1716,6 +1768,16 @@ the results half as much as the picker.
   and `artisan test` run first in CI.
 
 ### Known gaps / next up
+
+- ⬜ **The trip's meta line does not follow its own edits.** `trip_params`
+  carries `nights` and `travel_period` as one statement from the interview, and
+  the plan header prints both. Adding or removing a night in the timeline
+  changes neither, so a 17-night plan grown to 18 still reads "17 Nächte,
+  1–18 Januar 2027". Syncing `nights` alone is not the fix — it would leave the
+  period contradicting it — so the honest version updates both from the days
+  themselves, which means deciding whether an edited plan may move its own end
+  date or whether growing it is a regeneration. Found while fixing the phantom
+  departure night on 2026-08-24.
 
 - 🟡 **Price units are recorded but nowhere entered.** The column, the
   editors, the payloads and the arithmetic landed in session 16; no listing

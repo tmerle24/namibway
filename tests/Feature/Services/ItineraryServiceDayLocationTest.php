@@ -41,7 +41,10 @@ class ItineraryServiceDayLocationTest extends TestCase
     private function tripParams(): array
     {
         return [
-            'nights' => 1,
+            // Two day entries is a two-night trip: a `days` entry is a night,
+            // and there is no separate entry for the departure day (see
+            // ItineraryService::foldReturnDay).
+            'nights' => 2,
             'travel_period' => '14 August 2026',
             'interests' => 'wildlife',
             'adults' => 2,
