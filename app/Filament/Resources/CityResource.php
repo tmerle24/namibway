@@ -16,28 +16,22 @@ use Filament\Tables\Table;
 use Illuminate\Support\Str;
 
 /**
- * The place gazetteer a listing is filed against — towns and villages, and
- * since 2026-08-18 the tourism areas that are not settlements at all (Etosha,
- * Onguma, Sossusvlei). It is called "Places" everywhere a person can read it,
- * because "Cities" is what told the content team a lodge in a national park
- * had nowhere to go; the model and table keep their names.
+ * The address gazetteer — towns, villages and settlements, i.e. what a
+ * listing's street address resolves to.
+ *
+ * Between 2026-08-18 and 2026-08-23 this also held parks, reserves and
+ * landmarks and was labelled "Places", because a lodge standing in a park had
+ * nowhere to be filed. Those are a different noun and have their own screen
+ * now (see PlaceResource): a city is where post arrives, a place is where a
+ * traveller goes. `Place` on a row here is the trip identity of the same town.
  */
 class CityResource extends Resource
 {
     protected static ?string $model = City::class;
 
-    // Keeps the city icon although the resource now also holds parks and
-    // reserves: heroicon-o-map-pin already means Destinations in this panel,
-    // and one icon means one thing here.
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
 
     protected static ?string $navigationGroup = 'Settings';
-
-    protected static ?string $navigationLabel = 'Places';
-
-    protected static ?string $modelLabel = 'place';
-
-    protected static ?string $pluralModelLabel = 'places';
 
     /**
      * The areas a place can be filed under, id => name, sorted on the
@@ -125,6 +119,10 @@ class CityResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('place.name')
+                    ->label('Place')
+                    ->placeholder('—')
+                    ->tooltip('The trip identity of this town — what Kaia routes on. Empty means no traveller plans around it.'),
                 Tables\Columns\TextColumn::make('destination.name')
                     ->label('Area')
                     ->placeholder('—'),
@@ -146,8 +144,18 @@ class CityResource extends Resource
                     ->label('Region')
                     ->relationship('region', 'name'),
                 Tables\Filters\SelectFilter::make('type')
-                    ->label('Place type')
+                    ->label('City type')
                     ->options(CityType::class),
+                Tables\Filters\TernaryFilter::make('place_id')
+                    ->label('Is a place')
+                    ->placeholder('All')
+                    ->trueLabel('Somewhere travellers plan around')
+                    ->falseLabel('Address only')
+                    ->queries(
+                        true: fn ($query) => $query->whereNotNull('place_id'),
+                        false: fn ($query) => $query->whereNull('place_id'),
+                        blank: fn ($query) => $query,
+                    ),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

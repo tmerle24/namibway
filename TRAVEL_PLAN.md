@@ -332,9 +332,22 @@ the Explore filter for "Etosha" missed a camp with no city at all
 handed the frontend `area = null` because `place_id` was not in its column
 whitelist, so the relation could not load.
 
+**Filament followed the same day.** Settings now holds four screens instead of
+three: **Cities** is addresses again (with a `Place` column and an "Is a place"
+filter, so the trip identity is visible from the address side), **Places** is
+the new one, **Destinations** is the area above them, **Regions** unchanged.
+The places table has a *Routable* column, because a place without coordinates
+is silently absent from the driving matrix and that is not something to find
+out from a broken plan.
+
+A listing now has **two** location fields in both panels: *City (address)* and
+*Place*. Empty, the place follows the city; set, it wins. That is the Onguma
+case in one control — postal address in Outjo, traveller in Etosha — and it is
+the only thing a content manager has to understand about the split.
+
 Still open: a listing filed in a village with no place row gets no place, so
 nothing routes it — most likely the place should be created when the first
-listing lands there. And there is no Filament screen for places yet.
+listing lands there.
 
 ### 2026-08-23 — a thing you go and look at has a table
 

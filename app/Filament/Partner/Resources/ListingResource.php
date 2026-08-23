@@ -17,6 +17,7 @@ use App\Filament\Support\RestaurantChannelSchema;
 use App\Http\Controllers\Controller;
 use App\Models\Amenity;
 use App\Models\Listing;
+use App\Models\Place;
 use App\Services\Payments\RateResolver;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -70,14 +71,23 @@ class ListingResource extends Resource
                             ->placeholder('Add a highlight...')
                             ->columnSpanFull(),
                         Forms\Components\Select::make('city_id')
-                            ->label('Place')
-                            ->helperText('Town, national park, private reserve or landmark — whichever your property actually stands in.')
+                            ->label('City (address)')
+                            ->helperText('The town your postal address is in.')
                             ->relationship('city', 'name')
                             ->searchable()
                             ->preload()
                             // See the equivalent field in the admin ListingResource — without this,
                             // the default 50-option preload silently drops later-alphabet cities.
                             ->optionsLimit(300),
+                        Forms\Components\Select::make('place_id')
+                            ->label('Place')
+                            ->helperText('Where a guest is when they are with you — a park, a reserve, a landmark, or the town itself. Leave it empty and it follows the address; set it when the two differ, e.g. a camp on Onguma with a postal address in Outjo.')
+                            ->relationship('place', 'slug')
+                            ->getOptionLabelFromRecordUsing(fn (Place $record): string => (string) $record->name)
+                            ->searchable(['slug'])
+                            ->preload()
+                            ->optionsLimit(300)
+                            ->nullable(),
                         Forms\Components\TextInput::make('price_from')
                             ->numeric()
                             ->prefix('NAD')

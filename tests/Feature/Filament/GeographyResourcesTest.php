@@ -3,6 +3,7 @@
 namespace Tests\Feature\Filament;
 
 use App\Models\City;
+use App\Models\Place;
 use App\Models\Region;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,5 +57,33 @@ class GeographyResourcesTest extends TestCase
         $city = City::where('slug', 'swakopmund')->firstOrFail();
 
         $this->assertSame('Erongo', $city->region->name);
+    }
+
+    public function test_places_list_and_edit_pages_render(): void
+    {
+        $etosha = Place::where('slug', 'etosha-national-park')->firstOrFail();
+
+        $this->actingAs($this->admin())
+            ->get('/admin/places')
+            ->assertOk()
+            ->assertSee('Etosha National Park');
+
+        $this->actingAs($this->admin())
+            ->get("/admin/places/{$etosha->id}/edit")
+            ->assertOk();
+    }
+
+    public function test_cities_and_places_are_two_screens_holding_two_things(): void
+    {
+        // The whole point of the 2026-08-23 split. A park is not an address
+        // and must not turn up on the screen of addresses; a town is both, so
+        // it is on both, linked by cities.place_id.
+        $this->assertNull(City::where('slug', 'etosha-national-park')->first());
+        $this->assertNotNull(Place::where('slug', 'etosha-national-park')->first());
+
+        $windhoek = City::where('slug', 'windhoek')->firstOrFail();
+
+        $this->assertNotNull($windhoek->place);
+        $this->assertSame('Windhoek', $windhoek->place->name);
     }
 }

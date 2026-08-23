@@ -27,6 +27,7 @@ use App\Models\City;
 use App\Models\Listing;
 use App\Models\Partner;
 use App\Models\PartnerMessage;
+use App\Models\Place;
 use App\Services\Enrichment\ClaimInviteService;
 use App\Services\ImportExport\ListingExporter;
 use Filament\Forms;
@@ -183,8 +184,8 @@ class ListingResource extends Resource
                                     ->icon('heroicon-o-map-pin')
                                     ->schema([
                                         Forms\Components\Select::make('city_id')
-                                            ->label('Place')
-                                            ->helperText('Town, national park, private reserve or landmark — whichever the property actually stands in. Missing one? Add it under Settings → Places.')
+                                            ->label('City (address)')
+                                            ->helperText('The town the postal address is in. Missing one? Add it under Settings → Cities.')
                                             ->relationship('city', 'name')
                                             ->searchable()
                                             ->preload()
@@ -195,6 +196,15 @@ class ListingResource extends Resource
                                             // selected. Comfortably above the current ~105 rows.
                                             ->optionsLimit(300)
                                             ->columnSpanFull(),
+                                        Forms\Components\Select::make('place_id')
+                                            ->label('Place')
+                                            ->helperText('Where a traveller is when they are here — a park, a reserve, a landmark, or the town itself. This is what the trip plan and the driving times use. Left empty it follows the city; set it when the two differ, e.g. a camp on Onguma posted to Outjo.')
+                                            ->relationship('place', 'slug')
+                                            ->getOptionLabelFromRecordUsing(fn (Place $record): string => (string) $record->name)
+                                            ->searchable(['slug'])
+                                            ->preload()
+                                            ->optionsLimit(300)
+                                            ->nullable(),
                                         Forms\Components\TextInput::make('latitude')
                                             ->numeric(),
                                         Forms\Components\TextInput::make('longitude')
