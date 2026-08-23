@@ -4276,3 +4276,20 @@ body:has(.kaia-page) {
     color: var(--rust);
     opacity: 0.75;
 }
+
+/* A stop in the route line is a jump to its stage, and must not look like one:
+   the line is a summary, and a row of nine links would shout louder than the
+   plan under it. So the button inherits everything and changes only the cursor
+   — plus an underline on hover, which appears on intent rather than at rest. */
+.kaia-page .variant-route-stop {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+.kaia-page .variant-route-stop:hover,
+.kaia-page .variant-route-stop:focus-visible {
+    text-decoration: underline;
+}

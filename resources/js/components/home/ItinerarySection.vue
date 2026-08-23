@@ -819,15 +819,45 @@ function stayIdentity(day: {
     return String(acc.id ?? acc.slug ?? acc.name);
 }
 
-// A day starts a new "stage" (Etappe) when it's the first day, or its
-// accommodation differs from the previous day's — consecutive days at the
-// same accommodation are one stage: the city heading, thumbnail, and
-// "Unterkunft" line only show once, on the stage's first day.
+// A day starts a new "stage" (Etappe) when it's the first day, when its
+// location differs from the previous day's, or when its accommodation does.
+// Consecutive days in the same place at the same stay are one stage: the
+// heading, thumbnail and "Unterkunft" line show once, on its first day.
+//
+// **The location has to count, not only the stay.** On a camper trip the
+// accommodation is the same vehicle for three weeks, so grouping on it alone
+// swallowed the whole route into one stage: a plan showed "Spitzkoppe, 10–19
+// Jan, 9 nights" with Twyfelfontein, Etosha, Onguma and Waterberg inside it.
+// A traveller is not in Spitzkoppe for nine nights, and the map, the driving
+// legs and the route line all disagreed with the timeline that said so.
 //
 // A day with no accommodation always starts its own stage, matching
 // stageEndIndex() below (a null identity never groups). Without that, two
 // blank days in a row would merge into one stage and the second one would
 // never offer a way to pick a stay.
+// Where a stop in the route line jumps to. One id per day rather than per
+// stage, because the route line is built from day locations and a stage is a
+// different grouping — keying them the same way is what keeps the two from
+// drifting apart the next time one of them changes.
+function dayAnchorId(variantIndex: number, dayIndex: number): string {
+    return `trip-day-${variantIndex}-${dayIndex}`;
+}
+
+// The first day the traveller is at this stop. Not the last, and not the
+// nearest: somebody clicking "Etosha" wants the arrival.
+function scrollToStop(variantIndex: number, stop: string) {
+    const days = editableVariants.value[variantIndex]?.days ?? [];
+    const dayIndex = days.findIndex((day) => dayCity(day) === stop);
+
+    if (dayIndex < 0) {
+        return;
+    }
+
+    document
+        .getElementById(dayAnchorId(variantIndex, dayIndex))
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // The loop on one line, under the route's name: Windhoek → Mariental →
 // Sesriem → Swakopmund. A traveller reads the shape of a trip before they read
 // any of its days, and until now the only way to see it was to scroll the whole
@@ -862,6 +892,10 @@ function isStageStart(variantIndex: number, dayIndex: number): boolean {
     const days = editableVariants.value[variantIndex].days;
     const identity = stayIdentity(days[dayIndex]);
 
+    if (dayCity(days[dayIndex]) !== dayCity(days[dayIndex - 1])) {
+        return true;
+    }
+
     return identity === null || identity !== stayIdentity(days[dayIndex - 1]);
 }
 
@@ -875,9 +909,18 @@ function stageEndIndex(variantIndex: number, dayIndex: number): number {
         return dayIndex;
     }
 
+    const city = dayCity(days[dayIndex]);
+
     let end = dayIndex;
 
-    while (end + 1 < days.length && stayIdentity(days[end + 1]) === identity) {
+    // Both conditions, and for the same reason isStageStart tests both: a
+    // camper keeps its identity across the whole country, so walking forward
+    // on the stay alone would run this stage to the end of the trip.
+    while (
+        end + 1 < days.length &&
+        stayIdentity(days[end + 1]) === identity &&
+        dayCity(days[end + 1]) === city
+    ) {
         end++;
     }
 
@@ -2178,7 +2221,13 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                     class="variant-route-arrow"
                                     aria-hidden="true"
                                     >→</span
-                                >{{ stop }}
+                                ><button
+                                    type="button"
+                                    class="variant-route-stop"
+                                    @click="scrollToStop(variantIndex, stop)"
+                                >
+                                    {{ stop }}
+                                </button>
                             </template>
                         </p>
                     </div>
@@ -2428,7 +2477,12 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                 <template
                                     #item="{ element: day, index: dayIndex }"
                                 >
-                                    <div class="day-item">
+                                    <div
+                                        :id="
+                                            dayAnchorId(variantIndex, dayIndex)
+                                        "
+                                        class="day-item"
+                                    >
                                         <!-- Only between stages: inside one,
                                              there is nothing to drive and the
                                              days should read as one block. -->
