@@ -833,19 +833,17 @@ function stayIdentity(day: {
 // any of its days, and until now the only way to see it was to scroll the whole
 // timeline or squint at the map.
 //
-// Built from the stages, not from the days — a four-night stay is one stop, not
-// four — and consecutive repeats are collapsed so a stage that splits for a
-// change of lodging inside the same place still reads as one stop. The final
-// Windhoek is deliberately kept: it is what makes it a loop rather than a line.
+// Built from where the traveller *is*, collapsing consecutive repeats, so four
+// nights at Sesriem are one stop and not four. Deliberately not from the stage
+// boundaries: a stage breaks when the accommodation changes, and on a camper
+// trip the accommodation never changes — which silently cut this line off at
+// Spitzkoppe and left Etosha out of a plan built around it. The closing
+// Windhoek stays; it is what makes this a loop rather than a line.
 function routeStops(variantIndex: number): string[] {
     const days = editableVariants.value[variantIndex]?.days ?? [];
     const stops: string[] = [];
 
-    days.forEach((day, dayIndex) => {
-        if (!isStageStart(variantIndex, dayIndex)) {
-            return;
-        }
-
+    days.forEach((day) => {
         const label = dayCity(day);
 
         if (label && label !== stops[stops.length - 1]) {

@@ -4252,8 +4252,17 @@ body:has(.kaia-page) {
 /* The loop on one line under the route's name — the shape of the trip before
    any of its days. Wraps rather than scrolls: a three-week route is a dozen
    stops and cutting it off would hide the half that makes it a loop. */
+/* Takes the role .variant-head--single h3 used to have as the row's flexible
+   child — the h3 is inside this now, so the rule no longer reaches the flex
+   layout and the column would otherwise collapse to its shortest line. */
 .kaia-page .variant-head-titles {
-    min-width: 0;
+    flex: 1;
+    min-width: 200px;
+}
+@media (max-width: 640px) {
+    .kaia-page .variant-head-titles {
+        min-width: 140px;
+    }
 }
 .kaia-page .variant-route {
     margin: 4px 0 0;
