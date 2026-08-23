@@ -345,9 +345,23 @@ A listing now has **two** location fields in both panels: *City (address)* and
 case in one control — postal address in Outjo, traveller in Etosha — and it is
 the only thing a content manager has to understand about the split.
 
-Still open: a listing filed in a village with no place row gets no place, so
-nothing routes it — most likely the place should be created when the first
-listing lands there.
+**The village gap is closed** (`Place::forCity`). Which cities got a place was
+decided once, at migration time, from what the catalog looked like then — and
+that rule cannot know what opens next year, so the first published listing in a
+village nobody had thought about would have had no place at all, which means no
+day location, no driving times and no map pin. The answer is not a smarter rule
+but a **later** one: a place exists when somewhere turns out to be a place, and
+a business opening there is the evidence. A draft mints nothing; publishing it
+later does.
+
+That created a second problem worth knowing about, fixed in the same commit: a
+place minted from a village inherits the village's coordinates, which are
+usually null, and `namibway:backfill-place-driving-hours` refuses to run while
+any place lacks them — so one new listing could have blocked the matrix for
+everything. `namibway:backfill-city-coordinates` now copies what it geocodes
+onto the places those cities are, filling blanks only, so it heals nightly and
+a hand-set value survives (a park's centre is not its nearest town's high
+street).
 
 ### 2026-08-23 — a thing you go and look at has a table
 

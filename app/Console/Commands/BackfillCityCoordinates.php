@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\City;
 use App\Services\Enrichment\OsmLocationFinder;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 /**
  * One-time backfill for City rows with no lat/lng — every one of the 105
@@ -13,6 +14,13 @@ use Illuminate\Console\Command;
  * before KaiaController::regionCoords()/SavedPlanController::pdf() can place
  * a city-precision marker on the trip map instead of falling back to a
  * region/destination centroid.
+ *
+ * Since the 2026-08-23 city/place split it finishes by copying what it found
+ * onto the places those cities are, so a place created for a town that had no
+ * coordinates yet stops being unroutable without anybody having to know the
+ * two tables exist. That copy is why running this command is the documented
+ * fix when namibway:backfill-place-driving-hours refuses over a coordinateless
+ * place.
  *
  * Reuses OsmLocationFinder as-is (same free Nominatim lookup + 1req/s
  * throttle already used for Listing geocoding) — City just has no free-text
@@ -89,11 +97,31 @@ class BackfillCityCoordinates extends Command
 
         $bar->finish();
         $this->newLine(2);
+
+        $synced = $dry ? 0 : self::syncPlaceCoordinates();
+
         $this->table(
-            ['Geocoded', 'Not found'],
-            [[$geocoded, $notFound]],
+            ['Geocoded', 'Not found', 'Places updated'],
+            [[$geocoded, $notFound, $synced]],
         );
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Copies a city's coordinates onto the place it is, for places still
+     * missing them. Only ever fills a blank — a place whose coordinates were
+     * set by hand (a park's centre is not its nearest town) stays as it is.
+     */
+    private static function syncPlaceCoordinates(): int
+    {
+        return DB::update('
+            UPDATE places SET lat = cities.lat, lng = cities.lng, updated_at = NOW()
+            FROM cities
+            WHERE cities.place_id = places.id
+              AND (places.lat IS NULL OR places.lng IS NULL)
+              AND cities.lat IS NOT NULL
+              AND cities.lng IS NOT NULL
+        ');
     }
 }

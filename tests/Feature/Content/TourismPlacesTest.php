@@ -86,4 +86,47 @@ class TourismPlacesTest extends TestCase
 
         $this->assertSame($before, City::count());
     }
+
+    public function test_a_published_listing_makes_its_village_a_place(): void
+    {
+        $dordabis = City::where('slug', 'dordabis')->firstOrFail();
+        $this->assertNull($dordabis->place_id, 'Precondition: nobody had thought about Dordabis.');
+
+        $listing = Listing::factory()->create(['city_id' => $dordabis->id, 'is_published' => true]);
+
+        $place = Place::where('slug', 'dordabis')->first();
+
+        $this->assertNotNull($place, 'A business opening there is what makes it a place.');
+        $this->assertSame($place->id, $listing->fresh()->place_id);
+        $this->assertSame($place->id, $dordabis->fresh()->place_id);
+        $this->assertSame(PlaceType::Town, $place->type);
+        $this->assertSame($dordabis->region_id, $place->region_id);
+    }
+
+    public function test_a_draft_listing_mints_nothing(): void
+    {
+        $dordabis = City::where('slug', 'dordabis')->firstOrFail();
+
+        $draft = Listing::factory()->create(['city_id' => $dordabis->id, 'is_published' => false]);
+
+        $this->assertNull(Place::where('slug', 'dordabis')->first());
+        $this->assertNull($draft->fresh()->place_id);
+
+        // ...and publishing it later still does.
+        $draft->update(['is_published' => true]);
+
+        $this->assertNotNull(Place::where('slug', 'dordabis')->first());
+        $this->assertNotNull($draft->fresh()->place_id);
+    }
+
+    public function test_making_a_place_for_a_city_twice_returns_the_same_row(): void
+    {
+        $dordabis = City::where('slug', 'dordabis')->firstOrFail();
+
+        $first = Place::forCity($dordabis);
+        $second = Place::forCity($dordabis->fresh());
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertSame(1, Place::where('slug', 'dordabis')->count());
+    }
 }

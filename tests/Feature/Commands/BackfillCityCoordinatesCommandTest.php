@@ -3,6 +3,7 @@
 namespace Tests\Feature\Commands;
 
 use App\Models\City;
+use App\Models\Place;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -67,5 +68,39 @@ class BackfillCityCoordinatesCommandTest extends TestCase
         $this->artisan('namibway:backfill-city-coordinates')->assertSuccessful();
 
         Http::assertSentCount(2);
+    }
+
+    public function test_the_place_a_city_is_gets_the_coordinates_too(): void
+    {
+        $this->fakeNominatim();
+
+        // A town nobody had thought about until a business opened there, so
+        // its place was created from a city that had no coordinates yet and is
+        // unroutable until this command runs.
+        $dordabis = City::where('slug', 'dordabis')->firstOrFail();
+        $place = Place::forCity($dordabis);
+
+        $this->assertNull($place->lat, 'Precondition: the place inherited a blank.');
+
+        $this->artisan('namibway:backfill-city-coordinates')->assertSuccessful();
+
+        $this->assertEqualsWithDelta(-22.5597, $place->fresh()->lat, 0.0001);
+        $this->assertEqualsWithDelta(17.0832, $place->fresh()->lng, 0.0001);
+    }
+
+    public function test_a_place_with_its_own_coordinates_is_left_alone(): void
+    {
+        $this->fakeNominatim();
+
+        // A park's centre is not its nearest town's high street, so a value
+        // somebody set by hand must survive the sync.
+        $dordabis = City::where('slug', 'dordabis')->firstOrFail();
+        $place = Place::forCity($dordabis);
+        $place->update(['lat' => -23.0, 'lng' => 18.0]);
+
+        $this->artisan('namibway:backfill-city-coordinates')->assertSuccessful();
+
+        $this->assertEqualsWithDelta(-23.0, $place->fresh()->lat, 0.0001);
+        $this->assertEqualsWithDelta(18.0, $place->fresh()->lng, 0.0001);
     }
 }

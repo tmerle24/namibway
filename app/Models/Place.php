@@ -17,7 +17,6 @@ use Spatie\Translatable\HasTranslations;
  * postcode. A listing can carry both, and they answer different questions —
  * see the create_places_table migration.
  *
- * @property int $id
  * @property int $region_id
  * @property int|null $destination_id
  * @property int|null $city_id
@@ -97,5 +96,53 @@ class Place extends Model
     public function listings(): HasMany
     {
         return $this->hasMany(Listing::class);
+    }
+
+    /**
+     * The place a city is, creating it if the city has none yet.
+     *
+     * Which cities get a place was decided once, at migration time, from what
+     * the catalog looked like then: the larger settlement types, anywhere
+     * already hosting a published listing, and anywhere curated into a tourism
+     * area. A catalog grows, and the rule has no way to notice — so the first
+     * published listing in a village nobody had thought about would leave that
+     * listing with no place at all, and a listing with no place is invisible
+     * to the trip plan: no day location, no driving times, no map pin.
+     *
+     * So the answer is not a smarter rule but a later one: a place exists when
+     * somewhere turns out to be a place, which is exactly the moment a
+     * business opens there.
+     *
+     * Idempotent on the slug, and it links the city back, so calling it twice
+     * for the same city returns the same row. Coordinates are inherited and may
+     * be null — namibway:backfill-city-coordinates fills those in and copies
+     * them across.
+     */
+    public static function forCity(City $city): self
+    {
+        if ($city->place_id !== null) {
+            /** @var self $existing */
+            $existing = $city->place()->firstOrFail();
+
+            return $existing;
+        }
+
+        $place = self::firstOrCreate(
+            ['slug' => $city->slug],
+            [
+                'name' => ['en' => $city->name],
+                'type' => PlaceType::Town,
+                'region_id' => $city->region_id,
+                'destination_id' => $city->destination_id,
+                'city_id' => $city->id,
+                'image' => $city->image,
+                'lat' => $city->lat,
+                'lng' => $city->lng,
+            ],
+        );
+
+        $city->forceFill(['place_id' => $place->id])->saveQuietly();
+
+        return $place;
     }
 }
