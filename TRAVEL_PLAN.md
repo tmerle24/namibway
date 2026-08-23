@@ -143,6 +143,92 @@ This isn't scoped or started — flagging it here so it isn't forgotten, and
 so the planning-view data model (stages, dates, accommodation groupings)
 gets built with this future use in mind rather than needing a rewrite.
 
+## Future concept: places, not just businesses (proposed 2026-08-23, not started)
+
+Raised by the co-founder as positioning — **NamibWay is the ecosystem, Kaia is
+the intelligence layer, and together that is "Travel Intelligence for
+Namibia"**: Kaia should eventually connect travelers to what makes the country
+itself — attractions, history, heritage, geology, wildlife, culture, hidden
+places — and link those to the businesses around them. The two questions it
+should be able to answer: *"I'm in Tsumeb for two days, what gives me a real
+understanding of this part of Namibia?"* and *"I'm driving Windhoek → Etosha,
+what can I see along the way?"*
+
+Framed correctly as **not a Kaia change**. It is a missing entity. Where we
+actually stand:
+
+- **Kaia knows businesses only.** The catalog handed to the model is built
+  exclusively from `Listing` rows (`ItineraryService::toAiCatalog()`, around
+  `app/Services/Kaia/ItineraryService.php:1666`), and `ListingType` has four
+  cases — accommodation, activity, restaurant, vehicle — all of them things
+  with a price and a partner. There is nowhere in the database that "Hoba
+  Meteorite" belongs.
+- **`Destination` looks like the answer and isn't.** It is a display card:
+  name, slug, blurb, image, `region_id`, lat/lng, sort_order
+  (`app/Models/Destination.php`), used only by `HomeController` (homepage
+  cards) and `KaiaController` (map coordinates + region grouping). No link to
+  cities or listings, no body text, and **it never reaches the itinerary
+  prompt at all**.
+
+Shape if we do it:
+
+- A separate **place / point-of-interest** entity, deliberately *not* a
+  `Listing`: coordinates (mandatory — that is what makes it routable), city
+  and region, a category, a visit duration (same shape as
+  `listings.duration_minutes`), and access facts (4x4 only? permit? entry fee?
+  best season and time of day?). No price, no partner, no availability. Same
+  reasoning that keeps `menu_items` out of `bookable_units`: a small table at
+  the edge that the booking core never learns exists. Putting places in
+  `listings` would leak them into Explore filters, the room picker,
+  `/availability` and the inquiry flow.
+- **Coordinates do the linking**, not a curated join table — what is near this
+  place, what lies along this route — so the corpus grows with onboarding
+  rather than with editorial work. `city_driving_hours` + OSRM + lat/lng
+  already carry that. Curated relations only as an override on top.
+- **"Local businesses, communities, guides" are not places.** A business with
+  no listing is already expressible: an `Inquiry` names a listing *or* a
+  partner, and the website builder sells to exactly those trades. That is a
+  `Partner` (+ optionally a `Site`), not a POI. Keeping "a place" and "a
+  business" as separate nouns is what keeps the booking core out of the
+  content question.
+
+Two cautions worth writing down before anyone starts:
+
+- **Cost and latency live in exactly this dimension.** The catalog is capped at
+  `MAX_CANDIDATES_PER_TYPE` on purpose — loading every published listing as a
+  model took `/kaia/message` down with an OOM on 2026-08-09. A place corpus
+  with editorial text grows the prompt the same way. So places must be
+  pre-filtered geographically in SQL before the model sees anything, and
+  **long-form text must never enter the itinerary prompt**: that call needs a
+  name, a coordinate, a category and one line. The deep content is what a
+  detail page renders and what a separate answer-a-question call retrieves.
+- **The content is the expensive part, not the code.** Encyclopedic facts about
+  the Hoba meteorite are free — the model already has them, so they
+  differentiate nothing. What cannot be copied is operational truth (which
+  track, 4x4 or not, permit, entry fee, best time of day), the proximity link
+  to real bookable inventory, and the fact that the answer becomes a day in a
+  plan with one tap. Weight the corpus toward that. Rights apply as everywhere
+  else: text and photos taken from a third-party directory stay
+  `ContentSource::directory` and are not publishable, so this needs its own
+  photography plan.
+
+Also note that **"I'm in Tsumeb for two days" is a second conversational
+mode**, not the itinerary generator. Kaia today only plans a trip from scratch
+(interview → params → full plan); there is no path for answering a question
+about a place. That is real work — and it is the same mode as the on-trip
+tracker in the section above.
+
+Recommended first step, deliberately small: add the entity minimally, fill
+30–50 places on routes we already have `RouteTemplate`s for, and ship **one**
+visible thing — attractions along the route in the existing trip plan (map pin
+plus a line in the day). If travelers engage with it, the corpus is worth
+funding; if not, it cost a week rather than a quarter.
+
+Naming: "Travel Intelligence for Namibia" is positioning, not schema. Keep
+Namibia out of table names — a `points_of_interest` table hanging off
+`City`/`Region` travels to the next country by construction (see CLAUDE.md →
+"Brand & expansion").
+
 ## Backlog
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
@@ -1389,6 +1475,11 @@ the results half as much as the picker.
   keys off the bucket path, and `photos:audit-r2` matches on filename), so it
   is a tidiness item, not a correctness one.
 - ⬜ **On-trip progress tracker** — see the dedicated section above.
+- ⬜ **Places, not just businesses** — a point-of-interest layer so Kaia
+  can answer "what is worth seeing here / along this road?" instead of only
+  "where do I sleep and what can I book?". Proposed 2026-08-23; see the
+  dedicated section above for why it is a data-model step rather than a
+  Kaia change, and for the prompt-size and content-cost cautions.
 - ✅ ~~Removing a single day from inside a collapsed multi-night stay isn't
   possible from the UI anymore~~ — fixed in session 8: every day of a stage
   has its own row and its own menu, so a stay can be shortened a night at a
