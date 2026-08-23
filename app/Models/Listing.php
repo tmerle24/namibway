@@ -22,6 +22,7 @@ use Illuminate\Support\Str;
 use Spatie\Translatable\HasTranslations;
 
 /**
+ * @property Place|null $place
  * @property-read float|null $distance_km Only present when ListingController::search()
  *  added it via a raw SELECT (a reference city was resolvable) — never a real column.
  */
@@ -61,6 +62,7 @@ class Listing extends Model
         'terms_accepted_at',
         'terms_accepted_by',
         'city_id',
+        'place_id',
         'latitude',
         'longitude',
         'price_from',
@@ -246,7 +248,9 @@ class Listing extends Model
      */
     public function getRegionAttribute(): ?string
     {
-        return $this->city?->region?->name;
+        $place = $this->place;
+
+        return $place !== null ? $place->region->name : $this->city?->region?->name;
     }
 
     /**
@@ -259,7 +263,25 @@ class Listing extends Model
      */
     public function getAreaAttribute(): ?string
     {
-        return $this->city?->destination?->name;
+        $place = $this->place;
+
+        return $place !== null ? $place->destination?->name : $this->city?->destination?->name;
+    }
+
+    /**
+     * The tourism location this listing sits in — a park, a reserve, a
+     * landmark. Null for a listing that is simply in a town, which is most of
+     * them: a lodge in Swakopmund needs no place, its address says everything.
+     *
+     * Separate from `city` on purpose, and not a replacement for it. A camp on
+     * Onguma has a postal address in Outjo and sits, for anyone planning a
+     * trip, in Etosha — see the create_places_table migration.
+     *
+     * @return BelongsTo<Place, $this>
+     */
+    public function place(): BelongsTo
+    {
+        return $this->belongsTo(Place::class);
     }
 
     /**

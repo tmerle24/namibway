@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\PlaceType;
+use App\Enums\CityType;
 use App\Models\City;
 use App\Services\Routing\OsrmDrivingTimeService;
 use Illuminate\Console\Command;
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  * larger places — the bigger settlements plus every tourism area (park,
  * reserve, landmark), which is exactly where a lodge stands when it stands
  * nowhere near a town, plus anywhere a published listing actually is. Which
- * types count is PlaceType::inDrivingMatrix(); the ~65 small village/
+ * types count is CityType::inDrivingMatrix(); the ~65 small village/
  * settlement/private_town rows are otherwise excluded, near-zero chance of
  * ever hosting a bookable Listing; see ItineraryService::drivingHours(),
  * which falls back to the existing region-level table for anything outside
@@ -45,7 +45,7 @@ class BackfillCityDrivingHours extends Command
     private static function inScope(): Builder
     {
         return City::query()->where(fn ($query) => $query
-            ->whereIn('type', PlaceType::drivingMatrixValues())
+            ->whereIn('type', CityType::drivingMatrixValues())
             ->orWhereHas('listings', fn ($listings) => $listings->where('is_published', true)));
     }
 

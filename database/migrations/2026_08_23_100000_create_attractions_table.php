@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * `cities` holds places — since 2026-08-18 including the parks, reserves and
  * landmarks a lodge can stand in. The line that table draws is written in
- * PlaceType::inDrivingMatrix(): a park is a row there *precisely because
+ * CityType::inDrivingMatrix(): a park was a row there *precisely because
  * something bookable stands on it*. That leaves the Hoba Meteorite, Lake
  * Otjikoto, the dinosaur footprints at Otjihaenamaparero, a hot spring and a
  * rock-art site with no lodge on them with nowhere to go — nothing is sold
@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * Hence a third noun beside the place and the business. Why not either:
  *
- *  - **Not another PlaceType.** A place is a container: it is a day's
+ *  - **Not another place type.** A place is a container: it is a day's
  *    location, a node in the city-to-city driving matrix, an Explore filter
  *    value and the thing a listing is filed under. A meteorite is none of
  *    those, and adding it as a place would make it all four.

@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\PlaceType;
+use App\Enums\CityType;
 use App\Models\City;
 use App\Models\Region;
 use Database\Factories\Concerns\UniqueAcrossTheRun;
@@ -32,7 +32,7 @@ class CityFactory extends Factory
             'region_id' => Region::factory(),
             'name' => $name,
             'slug' => Str::slug($name),
-            'type' => fake()->randomElement(PlaceType::cases()),
+            'type' => fake()->randomElement(CityType::cases()),
             'population' => fake()->optional()->numberBetween(200, 500000),
             'area_km2' => fake()->optional()->randomFloat(1, 5, 5000),
         ];

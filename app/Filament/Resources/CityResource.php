@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources;
 
-use App\Enums\PlaceType;
+use App\Enums\CityType;
 use App\Filament\Resources\CityResource\Pages;
 use App\Filament\Support\PipelineImageResolver;
 use App\Http\Controllers\Controller;
@@ -93,7 +93,7 @@ class CityResource extends Resource
                     ->searchable(),
                 Forms\Components\Select::make('type')
                     ->label('Place type')
-                    ->options(PlaceType::class)
+                    ->options(CityType::class)
                     ->required()
                     ->helperText('A park, reserve or landmark is a real place to file a lodge in — use it rather than the nearest town when the property is not in that town.'),
                 Forms\Components\TextInput::make('population')
@@ -147,7 +147,7 @@ class CityResource extends Resource
                     ->relationship('region', 'name'),
                 Tables\Filters\SelectFilter::make('type')
                     ->label('Place type')
-                    ->options(PlaceType::class),
+                    ->options(CityType::class),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

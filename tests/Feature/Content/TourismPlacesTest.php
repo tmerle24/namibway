@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Content;
 
-use App\Enums\PlaceType;
+use App\Enums\CityType;
 use App\Models\City;
 use App\Models\Listing;
 use Database\Seeders\CitySeeder;
@@ -28,8 +28,8 @@ class TourismPlacesTest extends TestCase
         $this->assertNotNull($etosha, 'Etosha has to be selectable as a place.');
         $this->assertNotNull($onguma, 'Onguma has to be selectable as a place.');
 
-        $this->assertSame(PlaceType::NationalPark, $etosha->type);
-        $this->assertSame(PlaceType::NatureReserve, $onguma->type);
+        $this->assertSame(CityType::NationalPark, $etosha->type);
+        $this->assertSame(CityType::NatureReserve, $onguma->type);
         $this->assertSame('Kunene', $etosha->region->name);
         $this->assertSame('Oshikoto', $onguma->region->name);
 
@@ -54,18 +54,18 @@ class TourismPlacesTest extends TestCase
         // Whether Kaia's daily-drive check can measure a leg at all depends on
         // the place having a row in the city-to-city matrix. A park is where
         // the beds are, so it is in scope; a 200-soul settlement is not.
-        $this->assertContains(PlaceType::NationalPark->value, PlaceType::drivingMatrixValues());
-        $this->assertContains(PlaceType::NatureReserve->value, PlaceType::drivingMatrixValues());
-        $this->assertContains(PlaceType::Landmark->value, PlaceType::drivingMatrixValues());
-        $this->assertNotContains(PlaceType::Settlement->value, PlaceType::drivingMatrixValues());
+        $this->assertContains(CityType::NationalPark->value, CityType::drivingMatrixValues());
+        $this->assertContains(CityType::NatureReserve->value, CityType::drivingMatrixValues());
+        $this->assertContains(CityType::Landmark->value, CityType::drivingMatrixValues());
+        $this->assertNotContains(CityType::Settlement->value, CityType::drivingMatrixValues());
     }
 
     public function test_a_tourism_area_is_not_a_settlement(): void
     {
-        $this->assertFalse(PlaceType::NationalPark->isSettlement());
-        $this->assertFalse(PlaceType::NatureReserve->isSettlement());
-        $this->assertFalse(PlaceType::Landmark->isSettlement());
-        $this->assertTrue(PlaceType::Town->isSettlement());
+        $this->assertFalse(CityType::NationalPark->isSettlement());
+        $this->assertFalse(CityType::NatureReserve->isSettlement());
+        $this->assertFalse(CityType::Landmark->isSettlement());
+        $this->assertTrue(CityType::Town->isSettlement());
     }
 
     public function test_seeding_the_places_twice_changes_nothing(): void

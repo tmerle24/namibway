@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\PlaceType;
+use App\Enums\CityType;
 use Database\Factories\CityFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,21 +11,25 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
- * A place a listing can stand in — see PlaceType. Namibia's smaller
- * localities (Dörfer/Siedlungen) are modeled here rather than as a separate
- * entity, distinguished only by `type`, and since 2026-08-18 so are the
- * tourism areas that are not settlements at all: Etosha, Onguma, Sossusvlei.
- * A lodge in the middle of a park has no town, and inventing the nearest one
- * puts it ~100 km from where it is — the table name stays `cities` because
- * it is referenced everywhere, but the thing it holds is a place.
+ * A city, town, village or settlement — see CityType. This is an *address*:
+ * where a listing's street address resolves to, and Namibia's administrative
+ * gazetteer with its smaller localities modelled here too, distinguished only
+ * by `type`.
+ *
+ * Between 2026-08-18 and 2026-08-23 it also held parks, reserves and landmarks,
+ * so that a lodge standing in one had somewhere to be filed. Those are a
+ * different noun and now live in `places` — a city is where you get post, a
+ * place is where you go. A listing carries both, and for a camp on Onguma they
+ * are not the same answer.
  *
  * @property int $id
  * @property int $region_id
  * @property int|null $destination_id
+ * @property int|null $place_id
  * @property string $name
  * @property string $slug
  * @property string|null $image
- * @property PlaceType $type
+ * @property CityType $type
  * @property int|null $population
  * @property float|null $area_km2
  * @property float|null $lat
@@ -39,6 +43,7 @@ class City extends Model
     protected $fillable = [
         'region_id',
         'destination_id',
+        'place_id',
         'name',
         'slug',
         'image',
@@ -50,7 +55,7 @@ class City extends Model
     ];
 
     protected $casts = [
-        'type' => PlaceType::class,
+        'type' => CityType::class,
         'population' => 'integer',
         'area_km2' => 'float',
         'lat' => 'float',
@@ -93,5 +98,20 @@ class City extends Model
     public function listings(): HasMany
     {
         return $this->hasMany(Listing::class);
+    }
+
+    /**
+     * The tourism location this city belongs to, where it is one a traveler
+     * plans around. Null for the villages nobody stays in.
+     *
+     * Everything Kaia routes on resolves to a place, which is what keeps the
+     * driving matrix place-to-place instead of a polymorphic city-or-place
+     * pair — see the create_places_table migration.
+     *
+     * @return BelongsTo<Place, $this>
+     */
+    public function place(): BelongsTo
+    {
+        return $this->belongsTo(Place::class);
     }
 }
