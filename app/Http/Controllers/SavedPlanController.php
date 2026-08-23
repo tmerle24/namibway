@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\City;
-use App\Models\Destination;
 use App\Models\ItineraryItem;
 use App\Models\SavedPlan;
 use App\Services\Pdf\RouteMapImageService;
+use App\Services\Trip\PlanWaypoints;
 use App\Support\TripPlanMeta;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -96,11 +95,18 @@ class SavedPlanController extends Controller
             // the root template, not by the page component. A trip link only
             // ever exists to be sent to somebody, so its card has to describe
             // the plan instead of the site. See App\Support\TripPlanMeta.
-            'meta' => TripPlanMeta::for($saved->plan_json, $saved->title),
+            // Always minted from the read-only token, whichever link this
+            // visitor arrived on — the same rule as `shareUrl`: a picture
+            // pasted into a chat must not carry write access with it.
+            'meta' => TripPlanMeta::for(
+                $saved->plan_json,
+                $saved->title,
+                route('trip.card', $saved->share_token),
+            ),
         ]);
     }
 
-    public function pdf(Request $request, string $token, RouteMapImageService $mapImages): HttpResponse
+    public function pdf(Request $request, string $token, RouteMapImageService $mapImages, PlanWaypoints $waypoints): HttpResponse
     {
         // Either token: downloading the PDF is a read operation, so a
         // read-only share link is entitled to it.
@@ -111,36 +117,11 @@ class SavedPlanController extends Controller
         [$saved] = $resolved;
         $plan = $saved->plan_json;
 
-        $regionCoords = Destination::query()
-            ->whereNotNull('lat')
-            ->whereNotNull('lng')
-            ->get(['name', 'lat', 'lng'])
-            ->mapWithKeys(fn (Destination $d) => [
-                mb_strtolower($d->getTranslation('name', 'en')) => [
-                    'lat' => $d->lat,
-                    'lng' => $d->lng,
-                ],
-            ]);
-
-        // A day's "location" is now always a city (see ItineraryService) — this is
-        // what actually resolves most days' map markers/labels today. Never
-        // overrides a destination-name key (checked above). Unlike
-        // KaiaController::regionCoords(), not restricted to published-listing
-        // cities: a saved PDF can be for a plan generated before a listing's city
-        // was unpublished/reassigned, and the map should still place it.
-        City::query()
-            ->whereNotNull('lat')
-            ->whereNotNull('lng')
-            ->get(['name', 'lat', 'lng'])
-            ->each(function (City $city) use ($regionCoords) {
-                $key = mb_strtolower($city->name);
-
-                if (! $regionCoords->has($key)) {
-                    $regionCoords[$key] = ['lat' => $city->lat, 'lng' => $city->lng];
-                }
-            });
-
-        $regionCoords = $regionCoords->toArray();
+        // Shared with the share card, and the reason a place-only stop
+        // (Sesriem, Etosha National Park) is on the printed map at all: this
+        // used to be a destination+city index written out here, from before
+        // a day's location became a place. See PlanWaypoints.
+        $regionCoords = $waypoints->coordinates();
 
         $routeMaps = [];
 

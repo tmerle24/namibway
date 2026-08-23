@@ -303,10 +303,42 @@ when the plan was saved, so a missing date, location or variant only shortens
 the card. Held down by `TripPlanLinkPreviewTest`, which also asserts that every
 other page still gets the site card.
 
-Not done here: the **image** is still the generic one. A card carrying the trip
-map, or the first stay's photograph, is the obvious next step and is a
-different piece of work (an image has to be rendered and cached somewhere the
-unfurler can fetch it without a session).
+**The image is the route** (`App\Services\Trip\TripCardImage`, served by
+`/trip/{token}/card.png`): the plan's stops drawn as a numbered map on the
+right, the plan's name and length on the left, in the same night-sky-over-dunes
+the site card uses so the two read as one family in a chat thread. Drawn with
+GD rather than a headless browser, because an unfurler waits about a second and
+then shows nothing — there is no queue to wait for and no browser to start.
+
+What the drawing had to get right, all of it visible in the first attempts:
+
+- **The route is fitted to itself**, not to a fixed Namibia box, with a
+  three-degree floor so two stops an hour apart don't fill the card at street
+  scale. Longitude is scaled by cos(latitude) before fitting, or the country
+  comes out stretched sideways.
+- **A place is one dot.** A round trip returns to Windhoek, and drawing the
+  return as a second marker put two dots on one pixel with the caption written
+  twice. The dashed line follows every leg; the markers are the distinct
+  places, numbered by first arrival.
+- **A label that would land on another is dropped** — tried below the marker,
+  then above it, then given up on. That is what keeps a fifteen-stop route
+  readable, and what got Otjiwarongo its name back next to Twyfelfontein.
+- **Everything is drawn at 2× and scaled down.** GD antialiases neither thick
+  lines nor ellipses, so the markers were visibly jagged at 1×.
+
+The URL is minted from the **read-only** token whichever link the visitor came
+in on — the same rule as `shareUrl`, because a picture pasted into a group chat
+must not carry write access with it. The route is open and unauthenticated on
+purpose: a crawler has no session, and a card behind `auth` is a broken card.
+Drawing costs ~0.7 s, so it is cached for a day keyed on the plan's `version` —
+an edited plan redraws without anything having to remember to clear it.
+
+One thing fixed in passing: the **PDF's** route map used a destination+city
+index written out in the controller, from before a day's location became a
+place — so a place-only stop (Sesriem, Etosha National Park) was silently
+missing from the printed map. Both renderers now share
+`App\Services\Trip\PlanWaypoints`, which resolves a location the same way the
+interactive map does.
 
 ### 2026-08-23 — a city is an address, a place is where you go
 

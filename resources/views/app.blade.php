@@ -50,6 +50,8 @@
             $meta = $page['props']['meta'] ?? [];
             $metaTitle = $meta['title'] ?? config('app.name') . ' — The smartest way to experience Namibia';
             $metaDescription = $meta['description'] ?? 'AI-assisted travel planning & booking for Namibia. Chat with Kaia, your AI travel companion, and get a bookable, multi-part itinerary.';
+            $metaImage = $meta['image'] ?? asset('images/og-image.png');
+            $metaImageAlt = $meta['alt'] ?? 'NamibWay — the smartest way to experience Namibia';
         @endphp
 
         <meta name="description" content="{{ $metaDescription }}">
@@ -57,14 +59,16 @@
         <meta property="og:site_name" content="{{ config('app.name') }}">
         <meta property="og:title" content="{{ $metaTitle }}">
         <meta property="og:description" content="{{ $metaDescription }}">
-        <meta property="og:image" content="{{ asset('images/og-image.png') }}">
+        <meta property="og:image" content="{{ $metaImage }}">
         <meta property="og:image:width" content="1200">
         <meta property="og:image:height" content="630">
+        <meta property="og:image:alt" content="{{ $metaImageAlt }}">
         <meta property="og:url" content="{{ url()->current() }}">
         <meta name="twitter:card" content="summary_large_image">
         <meta name="twitter:title" content="{{ $metaTitle }}">
         <meta name="twitter:description" content="{{ $metaDescription }}">
-        <meta name="twitter:image" content="{{ asset('images/og-image.png') }}">
+        <meta name="twitter:image" content="{{ $metaImage }}">
+        <meta name="twitter:image:alt" content="{{ $metaImageAlt }}">
 
         @fonts
 

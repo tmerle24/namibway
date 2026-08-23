@@ -26,14 +26,32 @@ class TripPlanMeta
 
     /**
      * @param  array<string, mixed>  $plan
-     * @return array{title: string, description: string}
+     * @return array{title: string, description: string, image: string|null, alt: string}
      */
-    public static function for(array $plan, ?string $title): array
+    public static function for(array $plan, ?string $title, ?string $image = null): array
     {
         return [
             'title' => self::title($title),
             'description' => self::description($plan),
+            // Null falls the root template back to the site card. See
+            // App\Services\Trip\TripCardImage for what this points at.
+            'image' => $image,
+            'alt' => self::alt($plan),
         ];
+    }
+
+    /**
+     * What the picture shows, for a reader who can't see it.
+     *
+     * @param  array<string, mixed>  $plan
+     */
+    private static function alt(array $plan): string
+    {
+        $route = self::route(self::days($plan));
+
+        return $route === null
+            ? 'A map of a trip through Namibia'
+            : "A map of the route {$route}";
     }
 
     private static function title(?string $title): string
@@ -56,7 +74,7 @@ class TripPlanMeta
         // somebody made and sent them, not a marketing page.
         $parts = ['Shared with you on NamibWay'];
 
-        if (($length = self::length($days)) !== null) {
+        if (($length = self::length($plan)) !== null) {
             $parts[] = $length;
         }
 
@@ -82,10 +100,17 @@ class TripPlanMeta
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $days
+     * How long the trip runs — "12 days, 25 Aug \u{2013} 5 Sep 2026". Public
+     * because the share card draws the same line under the plan's name, and
+     * a card and its description disagreeing about the dates would be worse
+     * than either being absent.
+     *
+     * @param  array<string, mixed>  $plan
      */
-    private static function length(array $days): ?string
+    public static function length(array $plan): ?string
     {
+        $days = self::days($plan);
+
         if ($days === []) {
             return null;
         }

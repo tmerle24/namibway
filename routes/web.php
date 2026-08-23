@@ -21,6 +21,7 @@ use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\SavedPlanController;
 use App\Http\Controllers\SiteTermsController;
 use App\Http\Controllers\ThumbnailController;
+use App\Http\Controllers\TripCardImageController;
 use App\Http\Controllers\TripController;
 use App\Http\Controllers\WebsiteTermsController;
 use App\Http\Controllers\WorkbookDownloadController;
@@ -149,6 +150,12 @@ Route::get('trip/{token}', [SavedPlanController::class, 'show'])
 Route::get('trip/{token}/pdf', [SavedPlanController::class, 'pdf'])
     ->middleware('throttle:10,1')
     ->name('trip.pdf');
+
+// The og:image of the page above. Fetched by link unfurlers with no session,
+// so it can't sit behind auth — see TripCardImageController.
+Route::get('trip/{token}/card.png', TripCardImageController::class)
+    ->middleware('throttle:60,1')
+    ->name('trip.card');
 // Sending an inquiry is a booking request, and booking needs an account (see
 // CLAUDE.md's account line) — so both of these sit behind `auth`. Browsing,
 // planning and sharing a plan stay open; only the commitment step doesn't.
