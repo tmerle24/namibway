@@ -74,4 +74,17 @@ class Destination extends Model
     {
         return $this->belongsTo(Region::class);
     }
+
+    /**
+     * The tourism locations grouped under this area — Etosha National Park,
+     * Onguma and Ongava under "Etosha". This is the one a traveler's click on
+     * a destination card resolves to; `cities()` is the same grouping seen
+     * from the address side.
+     *
+     * @return HasMany<Place, $this>
+     */
+    public function places(): HasMany
+    {
+        return $this->hasMany(Place::class);
+    }
 }

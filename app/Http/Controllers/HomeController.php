@@ -22,7 +22,7 @@ class HomeController extends Controller
 
     private const LISTING_COLUMNS = [
         'id', 'type', 'name', 'slug', 'description',
-        'image', 'city_id', 'address', 'latitude', 'longitude',
+        'image', 'city_id', 'place_id', 'address', 'latitude', 'longitude',
         'price_from', 'price_currency', 'price_unit', 'rating', 'rating_count',
     ];
 
@@ -59,7 +59,7 @@ class HomeController extends Controller
                 ->orderByDesc('is_featured')
                 ->orderByRaw('MD5(id::text || ?)', [$daySeed])
                 ->limit(self::PER_CATEGORY_LIMIT)
-                ->with(['city.region', 'city.destination'])
+                ->with(['city.region', 'city.destination', 'place.region', 'place.destination'])
                 ->get(self::LISTING_COLUMNS))
             ->map(fn (Listing $listing) => self::presentListing($listing));
 
@@ -97,7 +97,7 @@ class HomeController extends Controller
             ->where('is_homepage_pick', true)
             ->whereIn('type', self::FEATURED_TYPES)
             ->orderByRaw('MD5(id::text || ?)', [$daySeed])
-            ->with(['city.region', 'city.destination'])
+            ->with(['city.region', 'city.destination', 'place.region', 'place.destination'])
             ->first(self::LISTING_COLUMNS)
             ?? Listing::query()
                 ->where('is_published', true)
@@ -105,7 +105,7 @@ class HomeController extends Controller
                 ->orderByRaw("(image IS NOT NULL OR json_array_length(COALESCE(gallery, '[]')) > 0) DESC")
                 ->orderByDesc('rating')
                 ->orderByRaw('MD5(id::text || ?)', [$daySeed])
-                ->with(['city.region', 'city.destination'])
+                ->with(['city.region', 'city.destination', 'place.region', 'place.destination'])
                 ->first(self::LISTING_COLUMNS);
     }
 

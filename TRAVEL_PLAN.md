@@ -311,15 +311,30 @@ What moved, concretely:
   overwrites one set by hand** — that override is the entire reason the two
   columns exist.
 
-Two things deliberately left for step 3: the tourism rows are still in
-`cities` (copied, not moved, with `legacy_city_id` recording the origin), and
-`CityType` still carries the three tourism cases. Nothing reads them any more;
-deleting them is its own commit so a rollback stays cheap.
+Step 3 finished the same day: the tourism rows are out of `cities`,
+`legacy_city_id` is dropped, and `CityType` is back to six settlement cases
+with no `isSettlement()` — every case is one. `listings.city_id` is
+`nullOnDelete`, so a lodge filed in a park lost an address it never really had
+and kept its place, which is the correct outcome rather than a loss.
 
-Still open after that: a listing filed in a village with no place row gets no
-place, so nothing routes it. That is the case `namibway:backfill-place-driving-hours`
-used to cover with "anywhere a published listing actually is", and it needs a
-home — most likely creating the place when the first listing lands there.
+One hole in step 2a's rule showed up and was closed while doing it: it took the
+old driving-matrix scope (larger settlement types, plus anywhere already
+hosting a published listing), and on a thin catalog that drops Sesriem,
+Solitaire and Ai-Ais — officially settlements, and exactly where a Sossusvlei
+or Fish River traveller sleeps. **Belonging to a tourism area is the stronger
+signal**, because somebody curated that city into Sossusvlei on purpose and it
+does not depend on the catalog; a city with a `destination_id` now gets a place
+too.
+
+Two things the split turned up that were quietly broken by it and are fixed:
+the Explore filter for "Etosha" missed a camp with no city at all
+(`Listing::scopeFilterBy` searched only the address side), and the homepage
+handed the frontend `area = null` because `place_id` was not in its column
+whitelist, so the relation could not load.
+
+Still open: a listing filed in a village with no place row gets no place, so
+nothing routes it — most likely the place should be created when the first
+listing lands there. And there is no Filament screen for places yet.
 
 ### 2026-08-23 — a thing you go and look at has a table
 

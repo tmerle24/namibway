@@ -131,33 +131,15 @@ class CitySeeder extends Seeder
             ['Uukwangula', 'Oshana', 'settlement', 50, null],
             ['Warmbad', 'Karas', 'settlement', 1200, null],
 
-            // Tourism areas: the places a lodge stands in when it stands in no
-            // town at all. Seeded for real in
-            // 2026_08_18_110000_seed_tourism_places.php, which is the canonical
-            // list — keep the two in step. No population or area: nobody lives
-            // in a national park, and a figure of 0 would read as a measurement.
-            ['Etosha National Park', 'Kunene', 'national_park', null, null],
-            ['Onguma Nature Reserve', 'Oshikoto', 'nature_reserve', null, null],
-            ['Ongava Game Reserve', 'Kunene', 'nature_reserve', null, null],
-            ['Sossusvlei', 'Hardap', 'landmark', null, null],
+            // The settlements that exist for tourism rather than for the
+            // people who live in them. The parks, reserves and landmarks that
+            // used to sit here left for `places` on 2026-08-23 — a city is an
+            // address, and Etosha National Park is not one.
             ['Sesriem', 'Hardap', 'settlement', null, null],
             ['Solitaire', 'Khomas', 'settlement', null, null],
-            ['NamibRand Nature Reserve', 'Hardap', 'nature_reserve', null, null],
-            ['Twyfelfontein', 'Kunene', 'landmark', null, null],
             ['Palmwag', 'Kunene', 'settlement', null, null],
-            ['Skeleton Coast National Park', 'Kunene', 'national_park', null, null],
-            ['Spitzkoppe', 'Erongo', 'landmark', null, null],
-            ['Cape Cross', 'Erongo', 'landmark', null, null],
-            ['Sandwich Harbour', 'Erongo', 'landmark', null, null],
-            ['Fish River Canyon', 'Karas', 'landmark', null, null],
             ['Ai-Ais', 'Karas', 'settlement', null, null],
-            ['Kolmanskop', 'Karas', 'landmark', null, null],
             ['Aus', 'Karas', 'village', null, null],
-            ['Waterberg Plateau Park', 'Otjozondjupa', 'national_park', null, null],
-            ['Erindi Private Game Reserve', 'Erongo', 'nature_reserve', null, null],
-            ['Bwabwata National Park', 'Kavango East', 'national_park', null, null],
-            ['Mudumu National Park', 'Zambezi', 'national_park', null, null],
-            ['Nkasa Rupara National Park', 'Zambezi', 'national_park', null, null],
         ];
 
         foreach ($cities as [$name, $region, $type, $population, $area]) {

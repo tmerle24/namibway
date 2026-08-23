@@ -3,9 +3,9 @@
 namespace Tests\Feature\Content;
 
 use App\Enums\ListingType;
-use App\Models\City;
 use App\Models\Destination;
 use App\Models\Listing;
+use App\Models\Place;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -20,9 +20,9 @@ class TourismAreasTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function onguma(): City
+    private function onguma(): Place
     {
-        return City::where('slug', 'onguma-nature-reserve')->firstOrFail();
+        return Place::where('slug', 'onguma-nature-reserve')->firstOrFail();
     }
 
     private function lodgeOnOnguma(): Listing
@@ -30,7 +30,7 @@ class TourismAreasTest extends TestCase
         return Listing::factory()->create([
             'type' => ListingType::Accommodation,
             'name' => 'Onguma Tented Camp',
-            'city_id' => $this->onguma()->id,
+            'place_id' => $this->onguma()->id,
             'is_published' => true,
         ]);
     }
@@ -42,7 +42,7 @@ class TourismAreasTest extends TestCase
         $this->assertSame('Etosha', $this->onguma()->destination?->getTranslation('name', 'en'));
         $this->assertEqualsCanonicalizing(
             ['Etosha National Park', 'Onguma Nature Reserve', 'Ongava Game Reserve'],
-            $etosha->cities->pluck('name')->all(),
+            $etosha->places->pluck('name')->all(),
         );
 
         // The political region is untouched and still says what it always said.
@@ -53,7 +53,7 @@ class TourismAreasTest extends TestCase
     {
         // Most of the gazetteer is exactly this — a town that stands for
         // itself. The traveler is then shown the place alone.
-        $this->assertNull(City::where('slug', 'otjiwarongo')->firstOrFail()->destination);
+        $this->assertNull(Place::where('slug', 'otjiwarongo')->firstOrFail()->destination);
     }
 
     public function test_a_listing_reports_the_area_of_its_place(): void

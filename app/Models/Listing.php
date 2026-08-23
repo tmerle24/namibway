@@ -565,15 +565,21 @@ class Listing extends Model
         $region = $filters['region'] ?? null;
 
         if (is_string($region) && $region !== '') {
-            $query->whereHas('city', fn ($q) => $q->where('name', 'ilike', '%'.$region.'%')
-                ->orWhereHas('region', fn ($q2) => $q2->where('name', 'ilike', '%'.$region.'%'))
-                // cast(...) because a destination's name is a translations
-                // JSON column, which ilike cannot be applied to directly —
-                // same shape as the keyword filter below.
-                ->orWhereHas('destination', fn ($q2) => $q2->whereRaw(
-                    'lower(cast(name as text)) like ?',
-                    ['%'.mb_strtolower($region).'%'],
-                )));
+            // cast(...) throughout because a place's and a destination's name
+            // are translations JSON columns, which ilike cannot be applied to
+            // directly — same shape as the keyword filter below.
+            $like = '%'.mb_strtolower($region).'%';
+
+            $query->where(fn ($q) => $q
+                ->whereHas('city', fn ($c) => $c->where('name', 'ilike', '%'.$region.'%')
+                    ->orWhereHas('region', fn ($r) => $r->where('name', 'ilike', '%'.$region.'%'))
+                    ->orWhereHas('destination', fn ($d) => $d->whereRaw('lower(cast(name as text)) like ?', [$like])))
+                // The place side matters as much as the address: a camp on
+                // Onguma has no city at all, and "Etosha" is what somebody
+                // clicking the destination card means.
+                ->orWhereHas('place', fn ($p) => $p->whereRaw('lower(cast(name as text)) like ?', [$like])
+                    ->orWhereHas('region', fn ($r) => $r->where('name', 'ilike', '%'.$region.'%'))
+                    ->orWhereHas('destination', fn ($d) => $d->whereRaw('lower(cast(name as text)) like ?', [$like]))));
         }
 
         // Separate from $region above (which also matches city names, for the
