@@ -270,6 +270,61 @@ expansion").
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-23 — a thing you go and look at has a table
+
+First step of the section above, and only the first: the schema, nothing that
+reads it yet.
+
+`attractions` (`2026_08_23_100000_create_attractions_table.php`) plus
+`AttractionType` — nine coarse categories (natural feature, geology, wildlife,
+rock art, palaeontology, history, culture, museum, viewpoint), deliberately
+too few to have to think about before filing something.
+
+Why a third table rather than either of the two that already exist, since both
+were argued for and both are wrong:
+
+- **Not another `PlaceType`.** A place is a *container*: a day's location, a
+  node in the driving matrix, an Explore filter value, the thing a listing is
+  filed under. Adding a meteorite there makes it all four.
+- **Not a `Listing`.** The four listing types have a price and a partner, and
+  the booking core reaches into that table. Same reasoning that keeps
+  `menu_items` out of `bookable_units` — a small table at the edge the booking
+  core never learns exists.
+
+It adds no third location concept: `city_id` is the place it sits in or
+nearest to, and region and area derive through it exactly as
+`Listing::getRegionAttribute()`/`getAreaAttribute()` derive theirs. Entries that
+are *both* keep both rows — Twyfelfontein, Sossusvlei and Kolmanskop are
+already places because listings are filed there; the place row stays the
+container, the attraction row carries what it costs, how long you need and how
+you get in.
+
+Three shapes worth not undoing later:
+
+- **Two texts with two jobs.** `summary` is the one line that may go to the
+  model beside a name and a coordinate; `description` is what a detail page
+  renders and must never enter the itinerary prompt. That prompt is capped for
+  a reason (`MAX_CANDIDATES_PER_TYPE`, and the OOM of 2026-08-09).
+- **Null is "not established", not "no".** `requires_4x4 = false` is a claim
+  somebody checked; `null` is a blank. Same care as the content-source ladder,
+  where a null source is untouchable rather than lowest-rank.
+- **The operational columns are the point** — `visit_minutes`, `entry_fee`,
+  `requires_4x4`, `requires_permit`, `access_note`, `best_time_note`. What a
+  model already knows about the Hoba meteorite is free and differentiates
+  nothing; which track and what it costs is what turns an answer into a day in
+  a plan.
+
+Deliberately left out so they get decided rather than defaulted: a curated
+attraction↔listing relation (proximity comes off coordinates first, a hand-made
+link is an override on top), and the `pending_image`/`pending_gallery` review
+queue listings carry — `description_source`/`photos_source` are enough to hold
+the publishing rule until something actually fills this table from a third
+party.
+
+Nothing reads the table yet: no model, no Filament resource, no seed, and Kaia
+is untouched. Verified only that it migrates, rolls back and migrates again on
+Postgres.
+
 ### 2026-08-19 — the traveler is shown the area, not the region
 
 Follow-up to the entry below, and the co-founder's actual point once Onguma was
@@ -1512,14 +1567,16 @@ the results half as much as the picker.
   keys off the bucket path, and `photos:audit-r2` matches on filename), so it
   is a tidiness item, not a correctness one.
 - ⬜ **On-trip progress tracker** — see the dedicated section above.
-- ⬜ **Things to see, not only places to stay** — a point-of-interest layer
+- 🟡 **Things to see, not only places to stay** — a point-of-interest layer
   so Kaia can answer "what is worth seeing here / along this road?", not
   only "where do I sleep and what can I book?". Proposed 2026-08-23. The
   geography under it exists since 2026-08-18/19 (tourism areas are places,
   areas are shown and sent to the model); what is missing is the thing you
   go and look at, which is not a container for a listing. See the dedicated
   section above for why it is a separate table rather than another
-  `PlaceType`, and for the prompt-size and content-cost cautions.
+  `PlaceType`, and for the prompt-size and content-cost cautions. The
+  `attractions` table itself landed 2026-08-23; nothing reads it yet —
+  no model, no admin screen, no content, and Kaia is untouched.
 - ✅ ~~Removing a single day from inside a collapsed multi-night stay isn't
   possible from the UI anymore~~ — fixed in session 8: every day of a stage
   has its own row and its own menu, so a stay can be shortened a night at a
