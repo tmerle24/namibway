@@ -41,24 +41,36 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
         <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
 
+        {{-- A page whose link is made to be sent to somebody describes itself:
+             a controller passes a `meta` prop with its own title/description,
+             and anything that doesn't falls back to the site card. Read here
+             rather than in the page component because an unfurler (WhatsApp,
+             iMessage, Slack) never runs the JavaScript. --}}
+        @php
+            $meta = $page['props']['meta'] ?? [];
+            $metaTitle = $meta['title'] ?? config('app.name') . ' — The smartest way to experience Namibia';
+            $metaDescription = $meta['description'] ?? 'AI-assisted travel planning & booking for Namibia. Chat with Kaia, your AI travel companion, and get a bookable, multi-part itinerary.';
+        @endphp
+
+        <meta name="description" content="{{ $metaDescription }}">
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="{{ config('app.name') }}">
-        <meta property="og:title" content="{{ config('app.name') }} — The smartest way to experience Namibia">
-        <meta property="og:description" content="AI-assisted travel planning &amp; booking for Namibia. Chat with Kaia, your AI travel companion, and get a bookable, multi-part itinerary.">
+        <meta property="og:title" content="{{ $metaTitle }}">
+        <meta property="og:description" content="{{ $metaDescription }}">
         <meta property="og:image" content="{{ asset('images/og-image.png') }}">
         <meta property="og:image:width" content="1200">
         <meta property="og:image:height" content="630">
         <meta property="og:url" content="{{ url()->current() }}">
         <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="{{ config('app.name') }} — The smartest way to experience Namibia">
-        <meta name="twitter:description" content="AI-assisted travel planning &amp; booking for Namibia. Chat with Kaia, your AI travel companion, and get a bookable, multi-part itinerary.">
+        <meta name="twitter:title" content="{{ $metaTitle }}">
+        <meta name="twitter:description" content="{{ $metaDescription }}">
         <meta name="twitter:image" content="{{ asset('images/og-image.png') }}">
 
         @fonts
 
         @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
         <x-inertia::head>
-            <title>{{ config('app.name') }} — The smartest way to experience Namibia</title>
+            <title>{{ $metaTitle }}</title>
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">

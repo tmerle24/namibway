@@ -270,6 +270,44 @@ expansion").
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-24 — a shared trip link says what it is
+
+A `/trip/{token}` link exists for exactly one reason: to be sent to somebody.
+Pasted into WhatsApp it unfurled as the site card — *NamibWay — The smartest
+way to experience Namibia*, the same two lines the homepage produces — so the
+recipient saw an advert for the platform where they should have seen the trip
+they were being shown. The one thing the card could not say was the one thing
+it was for.
+
+The card is now built from the plan (`App\Support\TripPlanMeta`):
+
+- **og:title** — `Trip plan: {the plan's own title}`, falling back to
+  *Namibia trip plan* when a plan has none.
+- **og:description** — `Shared with you on NamibWay · 12 days, 25 Aug – 5 Sep
+  2026 · Windhoek → Sesriem → Swakopmund → …. Open the link for the full
+  day-by-day itinerary.` Consecutive days at one place are one stop (three
+  nights in Etosha is not "Etosha → Etosha → Etosha"), the route is cut to
+  five stops with an ellipsis, and the year is dropped from the first date
+  when both ends carry the same one.
+
+Two things worth not undoing. **The meta is read in the root template, not in
+the page component** — an unfurler runs no JavaScript, so anything a `<Head>`
+in Vue sets is invisible to the only reader that matters. And it is a generic
+`meta` prop (`title`, `description`) with the site card as the fallback, so
+the next page that deserves its own preview — a listing, a destination — needs
+a controller line and nothing else. `resources/views/app.blade.php` also emits
+a plain `<meta name="description">` now, which it never had.
+
+Every field is derived defensively: `plan_json` is whatever the model produced
+when the plan was saved, so a missing date, location or variant only shortens
+the card. Held down by `TripPlanLinkPreviewTest`, which also asserts that every
+other page still gets the site card.
+
+Not done here: the **image** is still the generic one. A card carrying the trip
+map, or the first stay's photograph, is the obvious next step and is a
+different piece of work (an image has to be rendered and cached somewhere the
+unfurler can fetch it without a session).
+
 ### 2026-08-23 — a city is an address, a place is where you go
 
 #198 gave parks, reserves and landmarks rows in `cities` so a lodge standing in

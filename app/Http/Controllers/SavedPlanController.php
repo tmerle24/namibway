@@ -7,6 +7,7 @@ use App\Models\Destination;
 use App\Models\ItineraryItem;
 use App\Models\SavedPlan;
 use App\Services\Pdf\RouteMapImageService;
+use App\Support\TripPlanMeta;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -91,6 +92,11 @@ class SavedPlanController extends Controller
             // Booking state for each item that has triggered a booking request.
             // Keyed lookup is done in ItinerarySection on the listing_id.
             'bookings' => $bookings,
+            // The link preview (og:/twitter:) this page unfurls to — read by
+            // the root template, not by the page component. A trip link only
+            // ever exists to be sent to somebody, so its card has to describe
+            // the plan instead of the site. See App\Support\TripPlanMeta.
+            'meta' => TripPlanMeta::for($saved->plan_json, $saved->title),
         ]);
     }
 
