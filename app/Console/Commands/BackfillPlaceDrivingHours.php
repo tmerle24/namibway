@@ -87,12 +87,12 @@ class BackfillPlaceDrivingHours extends Command
             ->get(['id', 'name', 'lat', 'lng']);
 
         if ($places->count() < 2) {
-            $this->info('Fewer than 2 in-scope places with coordinates — nothing to compute.');
+            $this->info('Fewer than 2 places with coordinates — nothing to compute.');
 
             return self::SUCCESS;
         }
 
-        $this->info("Computing driving hours between {$places->count()} cities via OSRM...");
+        $this->info("Computing driving hours between {$places->count()} places via OSRM...");
 
         $pairs = $osrm->durationMatrix($places);
 
