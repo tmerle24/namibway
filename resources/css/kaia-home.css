@@ -4248,3 +4248,22 @@ body:has(.kaia-page) {
         display: none;
     }
 }
+
+/* The loop on one line under the route's name — the shape of the trip before
+   any of its days. Wraps rather than scrolls: a three-week route is a dozen
+   stops and cutting it off would hide the half that makes it a loop. */
+.kaia-page .variant-head-titles {
+    min-width: 0;
+}
+.kaia-page .variant-route {
+    margin: 4px 0 0;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    color: var(--ink);
+    opacity: 0.7;
+}
+.kaia-page .variant-route-arrow {
+    margin: 0 6px;
+    color: var(--rust);
+    opacity: 0.75;
+}

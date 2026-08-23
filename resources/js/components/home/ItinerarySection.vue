@@ -828,6 +828,34 @@ function stayIdentity(day: {
 // stageEndIndex() below (a null identity never groups). Without that, two
 // blank days in a row would merge into one stage and the second one would
 // never offer a way to pick a stay.
+// The loop on one line, under the route's name: Windhoek → Mariental →
+// Sesriem → Swakopmund. A traveller reads the shape of a trip before they read
+// any of its days, and until now the only way to see it was to scroll the whole
+// timeline or squint at the map.
+//
+// Built from the stages, not from the days — a four-night stay is one stop, not
+// four — and consecutive repeats are collapsed so a stage that splits for a
+// change of lodging inside the same place still reads as one stop. The final
+// Windhoek is deliberately kept: it is what makes it a loop rather than a line.
+function routeStops(variantIndex: number): string[] {
+    const days = editableVariants.value[variantIndex]?.days ?? [];
+    const stops: string[] = [];
+
+    days.forEach((day, dayIndex) => {
+        if (!isStageStart(variantIndex, dayIndex)) {
+            return;
+        }
+
+        const label = dayCity(day);
+
+        if (label && label !== stops[stops.length - 1]) {
+            stops.push(label);
+        }
+    });
+
+    return stops;
+}
+
 function isStageStart(variantIndex: number, dayIndex: number): boolean {
     if (dayIndex === 0) {
         return true;
@@ -2137,7 +2165,25 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                         'variant-head--single': editableVariants.length === 1,
                     }"
                 >
-                    <h3>{{ variant.name }}</h3>
+                    <div class="variant-head-titles">
+                        <h3>{{ variant.name }}</h3>
+                        <p
+                            v-if="routeStops(variantIndex).length > 1"
+                            class="variant-route"
+                        >
+                            <template
+                                v-for="(stop, i) in routeStops(variantIndex)"
+                                :key="`${stop}-${i}`"
+                            >
+                                <span
+                                    v-if="i > 0"
+                                    class="variant-route-arrow"
+                                    aria-hidden="true"
+                                    >→</span
+                                >{{ stop }}
+                            </template>
+                        </p>
+                    </div>
                     <div class="variant-head-actions">
                         <!--
                             Hidden for a read-only visitor: the only token they
