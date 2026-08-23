@@ -18,8 +18,11 @@
     --gold: #e3a857;
     --paper: #fbf8f1;
     /* The one surface that sits *on* the paper rather than being it. A card
-       painted --paper is invisible: the whole page is that colour. */
-    --card: #fff;
+       painted --paper is invisible: the whole page is that colour. Not white
+       either — pure white is the only thing on the page with no warmth in it,
+       and it reads as a hole rather than a card. Two thirds of the way from
+       the paper to white keeps the paper's cast and still lifts off it. */
+    --card: #fefcf8;
     --danger: #a13d2f;
     --danger-light: #f3ddd7;
 
