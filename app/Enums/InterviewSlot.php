@@ -33,8 +33,8 @@ enum InterviewSlot: string
     /** @return list<string> */
     public static function values(): array
     {
-        // array_values, not array_map alone: the annotation promises a list,
-        // and that is the shape the tool schema's `enum` has to be.
-        return array_values(array_map(fn (self $slot) => $slot->value, self::cases()));
+        // No array_values() around this: cases() is a list, and phpstan proves
+        // array_map over a list stays one — wrapping it is a no-op it rejects.
+        return array_map(fn (self $slot) => $slot->value, self::cases());
     }
 }
