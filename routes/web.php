@@ -10,6 +10,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InvoiceDownloadController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\ListingsPartnerHandbookPdfController;
 use App\Http\Controllers\MarketingMaterialDownloadController;
@@ -47,6 +48,11 @@ Route::get('/', HomeController::class)->name('home');
 // is relied on for actual publish consent. See the publish confirmation modal,
 // which links here.
 Route::get('terms', fn () => Inertia::render('Terms'))->name('terms');
+
+// The legal notice / imprint, plus the photo credits. Linked from the footer
+// of every page, because a legal notice nobody can find from the page they
+// are on is not one.
+Route::get('legal', LegalController::class)->name('legal');
 
 Route::get('partner-api-guide.pdf', PartnerApiGuideController::class)->name('partner-api-guide');
 

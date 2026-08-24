@@ -282,7 +282,9 @@
         }
     },
     "footer": {
-        "tagline": "Planification de voyage assistée par IA pour la Namibie. L'entretien et la génération d'itinéraires de Kaia sont déjà en ligne ; les réservations réelles auprès des partenaires et la disponibilité arriveront au fur et à mesure du développement de la plateforme."
+        "tagline": "Planification de voyage assistée par IA pour la Namibie. L'entretien et la génération d'itinéraires de Kaia sont déjà en ligne ; les réservations réelles auprès des partenaires et la disponibilité arriveront au fur et à mesure du développement de la plateforme.",
+        "legal": "Mentions légales",
+        "terms": "Conditions"
     },
     "listing": {
         "backToHome": "← Retour à l'exploration",

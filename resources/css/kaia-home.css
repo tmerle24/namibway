@@ -2562,6 +2562,23 @@ body:has(.kaia-page) {
     width: auto;
     flex-shrink: 0;
 }
+/* Pushed to the trailing edge by the tagline's `flex: 1`, so the links sit
+   opposite the logo instead of crowding the sentence. */
+.kaia-page .footer-links {
+    display: flex;
+    flex-shrink: 0;
+    gap: 16px;
+    white-space: nowrap;
+}
+.kaia-page .footer-links a {
+    color: #6f6553;
+    text-decoration: none;
+    border-bottom: 1px solid var(--sand-dark);
+}
+.kaia-page .footer-links a:hover {
+    color: var(--rust-dark);
+    border-bottom-color: var(--rust);
+}
 @media (max-width: 640px) {
     .kaia-page footer {
         flex-direction: column;

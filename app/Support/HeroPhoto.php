@@ -46,10 +46,7 @@ class HeroPhoto
             return null;
         }
 
-        $photos = array_values(array_filter(
-            (array) config('hero.photos', []),
-            fn (mixed $photo): bool => is_array($photo) && filled($photo['file'] ?? null),
-        ));
+        $photos = self::configured();
 
         if ($photos === []) {
             return null;
@@ -78,6 +75,40 @@ class HeroPhoto
     }
 
     /**
+     * Every configured photograph's provenance, in configured order — who
+     * took it, under what licence, and where it can be checked.
+     *
+     * This is what the credits section of /legal is rendered from
+     * (App\Support\LegalNotice), so the page names exactly the photographs
+     * the site can actually show. A credits list maintained beside the
+     * photographs rather than from them is a credits list that goes stale the
+     * first time somebody swaps a file.
+     *
+     * @return list<array{slug: string, title: string, photographer: string|null, license: string|null, source: string|null}>
+     */
+    public static function credits(): array
+    {
+        return array_map(fn (array $photo): array => [
+            'slug' => (string) ($photo['slug'] ?? ''),
+            'title' => (string) ($photo['title'] ?? ($photo['slug'] ?? '')),
+            'photographer' => filled($photo['photographer'] ?? null) ? (string) $photo['photographer'] : null,
+            'license' => filled($photo['license'] ?? null) ? (string) $photo['license'] : null,
+            'source' => filled($photo['source'] ?? null) ? (string) $photo['source'] : null,
+        ], self::configured());
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private static function configured(): array
+    {
+        return array_values(array_filter(
+            (array) config('hero.photos', []),
+            fn (mixed $photo): bool => is_array($photo) && filled($photo['file'] ?? null),
+        ));
+    }
+
+    /**
      * @param  array<string, mixed>  $photo
      * @return array{slug: string, url: string, credit: string|null, focus: string, scrim: string}
      */
@@ -86,10 +117,34 @@ class HeroPhoto
         return [
             'slug' => (string) ($photo['slug'] ?? ''),
             'url' => self::url((string) $photo['file']),
-            'credit' => filled($photo['credit'] ?? null) ? (string) $photo['credit'] : null,
+            'credit' => self::heroCredit($photo),
             'focus' => filled($photo['focus'] ?? null) ? (string) $photo['focus'] : '50% 50%',
             'scrim' => ($photo['scrim'] ?? null) === 'light' ? 'light' : 'strong',
         ];
+    }
+
+    /**
+     * The line printed over the hero itself, or null for no line at all.
+     *
+     * Composed from the same photographer and licence /legal is built from
+     * rather than typed a second time, so the two can never disagree about
+     * who took a picture. /legal credits every photograph; this is only about
+     * the ones whose licence requires the credit to travel with the image.
+     *
+     * @param  array<string, mixed>  $photo
+     */
+    private static function heroCredit(array $photo): ?string
+    {
+        if (($photo['credit_on_hero'] ?? false) !== true) {
+            return null;
+        }
+
+        $parts = array_values(array_filter([
+            filled($photo['photographer'] ?? null) ? (string) $photo['photographer'] : null,
+            filled($photo['license'] ?? null) ? (string) $photo['license'] : null,
+        ]));
+
+        return $parts === [] ? null : implode(' · ', $parts);
     }
 
     /**

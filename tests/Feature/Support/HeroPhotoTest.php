@@ -26,7 +26,9 @@ class HeroPhotoTest extends TestCase
             'hero.photos' => array_map(fn (int $i): array => [
                 'slug' => "photo-{$i}",
                 'file' => "images/hero/photo-{$i}.jpg",
-                'credit' => "Photographer {$i}",
+                'photographer' => "Photographer {$i}",
+                'license' => 'CC BY 4.0',
+                'credit_on_hero' => true,
                 'focus' => '50% 60%',
             ], range(1, $count)),
         ]);
@@ -150,6 +152,34 @@ class HeroPhotoTest extends TestCase
         $this->assertNull(HeroPhoto::forDay(Carbon::parse('2026-08-24'), 'illustration'));
     }
 
+    public function test_the_hero_credit_is_composed_from_the_recorded_provenance(): void
+    {
+        // Not typed a second time beside the photographer /legal reads, so the
+        // page and the image can never disagree about who took the picture.
+        config(['hero.include_illustration' => false, 'hero.photos' => [
+            [
+                'slug' => 'credited',
+                'file' => 'a.jpg',
+                'photographer' => 'Jane Doe',
+                'license' => 'CC BY 3.0',
+                'credit_on_hero' => true,
+            ],
+            [
+                'slug' => 'uncredited',
+                'file' => 'b.jpg',
+                'photographer' => 'John Roe',
+                'license' => 'CC0 1.0',
+            ],
+        ]]);
+
+        $day = Carbon::parse('2026-08-24');
+
+        $this->assertSame('Jane Doe · CC BY 3.0', HeroPhoto::forDay($day, 'credited')['credit']);
+        // Recorded for /legal, but no line over the image: CC0 asks for none.
+        $this->assertNull(HeroPhoto::forDay($day, 'uncredited')['credit']);
+        $this->assertSame('John Roe', HeroPhoto::credits()[1]['photographer']);
+    }
+
     public function test_the_scrim_defaults_to_strong_and_is_opt_in_per_photo(): void
     {
         config(['hero.include_illustration' => false, 'hero.photos' => [
@@ -169,7 +199,7 @@ class HeroPhotoTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('heroPhoto.slug', 'photo-2')
-                ->where('heroPhoto.credit', 'Photographer 2')
+                ->where('heroPhoto.credit', 'Photographer 2 · CC BY 4.0')
                 ->where('heroPhoto.focus', '50% 60%')
                 ->where('heroPhoto.scrim', 'strong'));
     }

@@ -282,7 +282,9 @@
         }
     },
     "footer": {
-        "tagline": "Planificación de viajes asistida por IA para Namibia. La entrevista y la generación de itinerarios de Kaia ya están activas; las reservas reales con socios y la disponibilidad llegarán a medida que la plataforma se siga desarrollando."
+        "tagline": "Planificación de viajes asistida por IA para Namibia. La entrevista y la generación de itinerarios de Kaia ya están activas; las reservas reales con socios y la disponibilidad llegarán a medida que la plataforma se siga desarrollando.",
+        "legal": "Aviso legal",
+        "terms": "Condiciones"
     },
     "listing": {
         "backToHome": "← Volver a explorar",

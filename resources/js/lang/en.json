@@ -499,7 +499,9 @@
         "networkError": "Network error. Please try again."
     },
     "footer": {
-        "tagline": "AI-assisted travel planning for Namibia. Kaia's interview and itinerary generation are live; real partner booking and availability are coming as the platform develops."
+        "tagline": "AI-assisted travel planning for Namibia. Kaia's interview and itinerary generation are live; real partner booking and availability are coming as the platform develops.",
+        "legal": "Legal notice",
+        "terms": "Terms"
     },
     "vehicle": {
         "category": {

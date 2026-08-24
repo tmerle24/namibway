@@ -276,7 +276,9 @@
         }
     },
     "footer": {
-        "tagline": "AI-ondersteunde reisplanning voor Namibië. Kaia's interview en reisplan-generatie zijn live; echte partnerboekingen en beschikbaarheid volgen naarmate het platform zich verder ontwikkelt."
+        "tagline": "AI-ondersteunde reisplanning voor Namibië. Kaia's interview en reisplan-generatie zijn live; echte partnerboekingen en beschikbaarheid volgen naarmate het platform zich verder ontwikkelt.",
+        "legal": "Colofon",
+        "terms": "Voorwaarden"
     },
     "listing": {
         "backToHome": "← Terug naar overzicht",

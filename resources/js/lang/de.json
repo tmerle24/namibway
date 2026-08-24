@@ -444,7 +444,9 @@
         "networkError": "Netzwerkfehler. Bitte erneut versuchen."
     },
     "footer": {
-        "tagline": "KI-gestützte Reiseplanung für Namibia. Kaias Interview und Reiseplan-Erstellung sind bereits live; echte Partnerbuchungen und Verfügbarkeiten folgen mit der weiteren Entwicklung der Plattform."
+        "tagline": "KI-gestützte Reiseplanung für Namibia. Kaias Interview und Reiseplan-Erstellung sind bereits live; echte Partnerbuchungen und Verfügbarkeiten folgen mit der weiteren Entwicklung der Plattform.",
+        "legal": "Impressum",
+        "terms": "AGB"
     },
     "listing": {
         "backToHome": "← Zurück zur Übersicht",
