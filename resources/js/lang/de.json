@@ -20,7 +20,8 @@
     },
     "hero": {
         "title": "Der klügste Weg, Namibia zu erleben.",
-        "subtitle": "Erzähl deinem Reisebegleiter, wonach du suchst. Er erstellt einen echten, buchbaren Plan — ganz ohne Formulare."
+        "subtitle": "Erzähl deinem Reisebegleiter, wonach du suchst. Er erstellt einen echten, buchbaren Plan — ganz ohne Formulare.",
+        "photoCredit": "Foto: {credit}"
     },
     "chat": {
         "greeting": "Hallo, ich bin Kaia. Erzähl mir ein bisschen von der Reise, die dir vorschwebt — wie viele Tage hast du?",

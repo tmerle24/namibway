@@ -7,6 +7,7 @@ import AfterSalesSection from '@/components/home/AfterSalesSection.vue';
 import BookingSection from '@/components/home/BookingSection.vue';
 import ExploreSection from '@/components/home/ExploreSection.vue';
 import GuestDetailsForm from '@/components/home/GuestDetailsForm.vue';
+import type { HeroPhoto } from '@/components/home/HeroChat.vue';
 import HeroChat from '@/components/home/HeroChat.vue';
 import HowItWorks from '@/components/home/HowItWorks.vue';
 import ItinerarySection from '@/components/home/ItinerarySection.vue';
@@ -55,6 +56,7 @@ defineProps<{
     listings: Listing[];
     destinations: Destination[];
     featuredPick: Listing | null;
+    heroPhoto: HeroPhoto | null;
 }>();
 
 const plan = ref<ItineraryPlan | null>(null);
@@ -276,6 +278,7 @@ async function onGuestSubmit(details: GuestDetails) {
     >
         <AdminBar />
         <HeroChat
+            :photo="heroPhoto"
             @plan-ready="onPlanReady"
             @search-intent="onSearchIntent"
             @chat-active="chatFullscreen = $event"

@@ -62,7 +62,8 @@
     },
     "hero": {
         "title": "The smartest way to experience Namibia.",
-        "subtitle": "Tell your travel companion what you're after. It builds a real, bookable plan — no forms."
+        "subtitle": "Tell your travel companion what you're after. It builds a real, bookable plan — no forms.",
+        "photoCredit": "Photo: {credit}"
     },
     "chat": {
         "greeting": "Hi, I'm Kaia. Tell me a bit about the trip you're dreaming of — how many days do you have?",

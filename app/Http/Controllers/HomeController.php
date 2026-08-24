@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Enums\ListingType;
 use App\Models\Destination;
 use App\Models\Listing;
+use App\Support\HeroPhoto;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -39,7 +41,7 @@ class HomeController extends Controller
         ListingType::Restaurant,
     ];
 
-    public function __invoke(): Response
+    public function __invoke(Request $request): Response
     {
         // Rotate the selection daily so the homepage doesn't always show the
         // same picks, while still always preferring listings that have a
@@ -76,10 +78,15 @@ class HomeController extends Controller
                 'region_name' => $destination->region->name,
             ]);
 
+        $preferHero = $request->query('hero');
+
         return Inertia::render('Welcome', [
             'listings' => $listings,
             'destinations' => $destinations,
             'featuredPick' => $featuredPick ? self::presentListing($featuredPick) : null,
+            // Null whenever no photographs are configured, which is the
+            // hero's illustrated default rather than a missing value.
+            'heroPhoto' => HeroPhoto::forDay(now(), is_string($preferHero) ? $preferHero : null),
         ]);
     }
 

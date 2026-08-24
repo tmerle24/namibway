@@ -20,7 +20,8 @@
     },
     "hero": {
         "title": "La façon la plus intelligente de découvrir la Namibie.",
-        "subtitle": "Dites à votre compagnon de voyage ce que vous recherchez. Il élabore un plan réel et réservable — sans formulaires."
+        "subtitle": "Dites à votre compagnon de voyage ce que vous recherchez. Il élabore un plan réel et réservable — sans formulaires.",
+        "photoCredit": "Photo : {credit}"
     },
     "chat": {
         "greeting": "Bonjour, je suis Kaia. Parlez-moi un peu du voyage dont vous rêvez — combien de jours avez-vous ?",

@@ -57,6 +57,23 @@ function recommendationImage(rec: ListingRecommendation): string {
     return fallbacks[rec.id % fallbacks.length];
 }
 
+/**
+ * The photograph behind the hero, when one is configured (config/hero.php);
+ * null means the illustrated hero, which is the default. `focus` is a CSS
+ * object-position — a hero crops hard and differently per viewport, so which
+ * part of the frame has to survive belongs to the photo, not the layout.
+ */
+export type HeroPhoto = {
+    slug: string;
+    url: string;
+    credit: string | null;
+    focus: string;
+};
+
+defineProps<{
+    photo?: HeroPhoto | null;
+}>();
+
 const emit = defineEmits<{
     (e: 'plan-ready', plan: ItineraryPlan): void;
     (e: 'search-intent', intent: SearchIntent): void;
@@ -576,8 +593,26 @@ async function retryLastMessage() {
 
 <template>
     <SiteHeader />
-    <div id="kaia-hero" class="hero">
+    <div id="kaia-hero" class="hero" :class="{ 'has-photo': photo }">
+        <!-- A real Namibian landscape, when one is configured — see
+             config/hero.php. It replaces the illustration below rather than
+             sitting behind it, so the drawn dunes, tree and sun are not
+             rendered at all while a photo is up. Eager and high priority on
+             purpose: it is the first thing above the fold, and lazy-loading
+             the largest element on the page only makes it arrive late. -->
+        <img
+            v-if="photo"
+            class="hero-photo"
+            :src="photo.url"
+            :style="{ objectPosition: photo.focus }"
+            alt=""
+            aria-hidden="true"
+            fetchpriority="high"
+            decoding="async"
+        />
+        <div v-if="photo" class="hero-photo-scrim" aria-hidden="true"></div>
         <svg
+            v-if="!photo"
             class="hero-bg"
             viewBox="0 0 1040 340"
             preserveAspectRatio="none"
@@ -604,14 +639,14 @@ async function retryLastMessage() {
              silhouette like this whenever the hero gets much taller than its
              340-unit viewBox (e.g. the mobile full-height state). DeadTree
              keeps its own aspect-ratio-preserving viewBox. -->
-        <DeadTree class="hero-tree" />
+        <DeadTree v-if="!photo" class="hero-tree" />
         <div class="hero-content">
             <div class="hero-head">
                 <h1>{{ t('hero.title') }}</h1>
                 <p>{{ t('hero.subtitle') }}</p>
             </div>
 
-            <div class="hero-sun" aria-hidden="true"></div>
+            <div v-if="!photo" class="hero-sun" aria-hidden="true"></div>
 
             <div class="chat-panel" ref="chatPanel" @click="activateChat">
                 <button
@@ -789,5 +824,10 @@ async function retryLastMessage() {
                 </div>
             </div>
         </div>
+        <!-- Attribution, not decoration: most stock licences require it, and
+             a credit that only appears in a config file is not a credit. -->
+        <p v-if="photo?.credit" class="hero-photo-credit">
+            {{ t('hero.photoCredit', { credit: photo.credit }) }}
+        </p>
     </div>
 </template>

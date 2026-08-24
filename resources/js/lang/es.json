@@ -20,7 +20,8 @@
     },
     "hero": {
         "title": "La forma más inteligente de vivir Namibia.",
-        "subtitle": "Cuéntale a tu compañero de viaje qué buscas. Él elabora un plan real y reservable — sin formularios."
+        "subtitle": "Cuéntale a tu compañero de viaje qué buscas. Él elabora un plan real y reservable — sin formularios.",
+        "photoCredit": "Foto: {credit}"
     },
     "chat": {
         "greeting": "Hola, soy Kaia. Cuéntame un poco sobre el viaje que tienes en mente — ¿cuántos días tienes?",

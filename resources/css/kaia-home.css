@@ -336,6 +336,89 @@ body:has(.kaia-page) {
     margin: 4px auto -50px;
 }
 
+/* ---------- HERO PHOTOGRAPH ---------- */
+/* Optional: a real Namibian landscape behind the hero instead of the drawing
+   above, rotating to the next photo every day (config/hero.php, HeroPhoto).
+   With no photos configured none of this applies and the hero is the
+   illustration, unchanged — so everything here is scoped to `.has-photo`.
+
+   The photo replaces the illustration rather than layering over it. Flat
+   vector dunes and a vector tree drawn on top of a photograph of real dunes
+   read as stickers on a postcard, so HeroChat renders neither while a photo
+   is up. */
+.kaia-page .hero.has-photo .hero-photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* object-position is set inline from the photo's own `focus`: the hero
+       is 560px tall on a wide desktop and a full 100dvh in the mobile app,
+       so the same file is cropped to two very different frames and which
+       part has to survive is a property of the photograph. */
+    display: block;
+}
+/* Legibility first, atmosphere second. The headline is white and the sticky
+   nav sits directly above, so the top of any photo needs a dark ceiling; the
+   foot fades to the same rust the illustrated hero ends in, so the chat
+   panel and the seam with the page below look identical either way. Colours
+   are --night-deep and --rust-dark with alpha (a gradient can't take var()
+   inside rgba()).
+   The top stops are set from the worst case, not from a nice photo: over a
+   blown-white sky the composite still clears 4.5:1 against --paper for the
+   headline and against --sand for the subtitle below it, which is why the
+   dark half runs to ~34% (where .hero-head ends) rather than fading out
+   right after the h1. Photos get brighter than you plan for; contrast that
+   depends on the photograph is contrast that breaks on the next one. */
+.kaia-page .hero.has-photo .hero-photo-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(16, 26, 48, 0.82) 0%,
+        rgba(16, 26, 48, 0.6) 34%,
+        rgba(16, 26, 48, 0.16) 54%,
+        rgba(140, 74, 21, 0.32) 78%,
+        rgba(140, 74, 21, 0.88) 100%
+    );
+}
+/* Same reasoning, different geometry. The headline wraps to three or four
+   lines on a phone, so .hero-head reaches halfway down the hero instead of
+   ending a third of the way in — the dark half has to follow it, or the
+   subtitle ends up on the one part of the photo the scrim already let go. */
+@media (max-width: 768px) {
+    .kaia-page .hero.has-photo .hero-photo-scrim {
+        background: linear-gradient(
+            180deg,
+            rgba(16, 26, 48, 0.85) 0%,
+            rgba(16, 26, 48, 0.68) 50%,
+            rgba(16, 26, 48, 0.28) 66%,
+            rgba(140, 74, 21, 0.34) 84%,
+            rgba(140, 74, 21, 0.9) 100%
+        );
+    }
+}
+/* The scrim carries most of the contrast; this is the insurance for the one
+   photo whose sky is brighter than expected right where the headline lands. */
+.kaia-page .hero.has-photo .hero-head h1,
+.kaia-page .hero.has-photo .hero-head p {
+    text-shadow: 0 2px 18px rgba(16, 26, 48, 0.55);
+}
+/* Small, in the corner, out of the way — but present: most stock licences
+   require attribution, and a credit nobody can read is not one. */
+.kaia-page .hero-photo-credit {
+    position: absolute;
+    right: 14px;
+    bottom: 8px;
+    z-index: 3;
+    margin: 0;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: rgba(251, 248, 241, 0.62);
+    text-shadow: 0 1px 3px rgba(16, 26, 48, 0.7);
+    pointer-events: none;
+}
+
 /* ---------- CHAT PANEL ---------- */
 .kaia-page .chat-panel {
     background: var(--paper);
@@ -3901,7 +3984,13 @@ body:has(.kaia-page) {
 
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
         #kaia-hero
-        :is(.hero-head, .hero-sun, svg.hero-bg, svg.hero-tree) {
+        :is(
+            .hero-head,
+            .hero-sun,
+            .hero-photo-credit,
+            svg.hero-bg,
+            svg.hero-tree
+        ) {
         display: none;
     }
 
