@@ -24,6 +24,54 @@
     },
     "chat": {
         "greeting": "Hallo, ich bin Kaia. Erzähl mir ein bisschen von der Reise, die dir vorschwebt — wie viele Tage hast du?",
+        "starters": [
+            "2 Wochen Rundreise, 4x4 mit Dachzelt",
+            "3 Wochen Rundreise, 4x4 mit Dachzelt",
+            "10 Tage, Lodges und Tierwelt",
+            "Zwei Wochen mit den Kindern",
+            "Eine Woche Wüste, Premium-Lodges",
+            "Wann ist die beste Reisezeit für Namibia?"
+        ],
+        "startersHint": "Tipp auf einen Startpunkt — oder sag es mir in deinen Worten.",
+        "suggestionsHint": "Tipp auf eine Antwort — oder schreib deine eigene.",
+        "suggestions": {
+            "nights": [
+                "1 Woche",
+                "10 Tage",
+                "2 Wochen",
+                "3 Wochen",
+                "4 Wochen"
+            ],
+            "interests": [
+                "Tierwelt und Safari",
+                "Wüste und Landschaften",
+                "Abenteuer und Aktivitäten",
+                "Kultur und Menschen",
+                "Entspannt, wenige lange Fahrten",
+                "Fotografie"
+            ],
+            "budget_tier": ["Günstig", "Mittelklasse", "Premium"],
+            "travelers": [
+                "Nur ich",
+                "2 Erwachsene",
+                "2 Erwachsene, 1 Kind unter 13",
+                "2 Erwachsene, 2 Kinder unter 13",
+                "4 Erwachsene"
+            ],
+            "vehicle_type": [
+                "4x4 mit Dachzelt",
+                "4x4, Übernachtung in Lodges",
+                "Normales Auto, nur Teerstraßen",
+                "Wohnmobil",
+                "Kleinbus für eine Gruppe"
+            ],
+            "start_end": [
+                "Rundreise ab Windhoek",
+                "Rundreise ab Swakopmund",
+                "Start Windhoek, Ziel Walvis Bay",
+                "Start Windhoek, Ziel Katima Mulilo"
+            ]
+        },
         "placeholder": "Was möchtest du in Namibia erleben?",
         "send": "Senden",
         "thinkingStatuses": [

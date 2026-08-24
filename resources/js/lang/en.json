@@ -66,6 +66,48 @@
     },
     "chat": {
         "greeting": "Hi, I'm Kaia. Tell me a bit about the trip you're dreaming of — how many days do you have?",
+        "starters": [
+            "2-week round trip, 4x4 with rooftop tent",
+            "3-week round trip, 4x4 with rooftop tent",
+            "10 days, lodges and wildlife",
+            "Two weeks with the kids",
+            "A week in the desert, premium lodges",
+            "When is the best time to visit Namibia?"
+        ],
+        "startersHint": "Tap a starting point — or tell me in your own words.",
+        "suggestionsHint": "Tap an answer — or type your own.",
+        "suggestions": {
+            "nights": ["1 week", "10 days", "2 weeks", "3 weeks", "4 weeks"],
+            "interests": [
+                "Wildlife and safari",
+                "Desert and landscapes",
+                "Adventure and activities",
+                "Culture and people",
+                "Relaxed, few long drives",
+                "Photography"
+            ],
+            "budget_tier": ["Budget", "Mid-range", "Premium"],
+            "travelers": [
+                "Just me",
+                "2 adults",
+                "2 adults, 1 child under 13",
+                "2 adults, 2 children under 13",
+                "4 adults"
+            ],
+            "vehicle_type": [
+                "4x4 with rooftop tent",
+                "4x4, sleeping in lodges",
+                "Normal car, tar roads only",
+                "Motorhome",
+                "Minibus for a group"
+            ],
+            "start_end": [
+                "Round trip from Windhoek",
+                "Round trip from Swakopmund",
+                "Start in Windhoek, end in Walvis Bay",
+                "Start in Windhoek, end in Katima Mulilo"
+            ]
+        },
         "placeholder": "What do you want to do in Namibia?",
         "send": "Send",
         "thinkingStatuses": [

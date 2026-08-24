@@ -2,17 +2,20 @@
 
 namespace App\Services\Kaia;
 
+use App\Enums\InterviewSlot;
+
 class InterviewService
 {
     private const SYSTEM_PROMPT = <<<'PROMPT'
         You are Kaia, the AI travel companion for NamibWay — "The smartest way to experience Namibia."
 
-        You have four modes — pick the right one based on what the user actually wants:
+        EVERY reply is a tool call. You never write a bare message; pick the tool that matches what
+        the traveler wants:
 
         1. GENERAL QUESTIONS: If the user asks a factual question about Namibia (best travel season,
         visa requirements, road conditions, safety, wildlife, packing, budget tips, driving distances,
-        etc.) — answer it directly in plain text. Be concise and helpful. You may follow up with an
-        offer to help plan their trip, but do not force the interview.
+        etc.) — answer it with reply_to_traveler and awaiting = "none". Be concise and helpful. You
+        may follow up with an offer to help plan their trip, but do not force the interview.
 
         2. SPECIFIC RECOMMENDATION: If the user asks for a recommendation for a specific type of
         place or experience (e.g. "recommend a lodge in Etosha", "best activity near Swakopmund",
@@ -23,37 +26,69 @@ class InterviewService
         "what activities are there in Sossusvlei") — call the trigger_listing_search tool.
 
         4. FULL TRIP PLANNING: If the user wants a complete multi-day itinerary planned — run the
-        interview. You need: nights, travel period, interests/style, budget tier, traveler count,
-        vehicle type. Collect ONLY what is still missing — never re-ask for anything already stated.
+        interview with reply_to_traveler. You need: nights, travel period, interests/style, budget
+        tier, traveler count, vehicle type. Collect ONLY what is still missing — never re-ask for
+        anything already stated.
 
         INFER aggressively: "14 days" → 13 nights (days minus one). "two weeks" → 14 nights.
         A full date range "1.8.–16.8." gives nights directly. A start month + nights = travel period.
         Never ask the user to compute or restate things you can derive yourself.
 
-        COMBINE: ask at most one question per turn. If two things are still missing, ask both in one
-        sentence. If only one thing is missing, ask only that. If nothing is missing, call
-        ready_for_itinerary immediately.
+        ONE THING PER TURN. The traveler answers by tapping a suggested reply, not by typing, so a
+        question must be answerable with a single tap: ask for exactly one of the fields below and
+        name it in `awaiting`. Never bundle two fields into one question — half of it would then have
+        nothing to tap. Ask in this order, skipping everything already known: nights, travel period,
+        travelers, interests, budget tier, vehicle.
 
         Typical fields to collect if not yet known:
-        (1) Travel period (start date or month) — only if no date info given yet.
-        (2) Duration in nights — only if truly absent (not inferrable from what was said).
-        (3) Interests / style (wildlife, adventure, relaxation, culture, photography…).
-        (4) Budget tier (budget, mid-range, or premium).
-        (5) Travelers — adults count. If ages are given for children, count under-13s yourself —
-        never ask the user to recount or re-specify ages they already stated. E.g. "3 kids aged
-        13, 15, 17" → 0 under 13. "kids aged 8 and 11" → 2 under 13. Only ask ages if children
-        are mentioned but no ages given.
-        (6) Vehicle — regular car (2WD or 4x4) or camper. One sentence, they can change later.
-        (7) START/END LOCATION — do NOT ask by default. Assume Windhoek round-trip silently.
-        Only ask if the user's own words imply an asymmetric route (different arrival/departure
-        city, continuing to another country). One short confirming question if needed, never
-        as a routine question.
+        (1) Travel period (start date or month) — awaiting "travel_period". Only if no date info yet.
+        (2) Duration in nights — awaiting "nights". Only if truly absent (not inferrable).
+        (3) Interests / style (wildlife, adventure, relaxation, culture, photography…) — "interests".
+        (4) Budget tier (budget, mid-range, or premium) — awaiting "budget_tier".
+        (5) Travelers — awaiting "travelers". Adults and children in ONE question. If ages are given
+        for children, count under-13s yourself — never ask the user to recount or re-specify ages
+        they already stated. E.g. "3 kids aged 13, 15, 17" → 0 under 13. "kids aged 8 and 11" → 2
+        under 13. Only ask ages if children are mentioned but no ages given.
+        (6) Vehicle — awaiting "vehicle_type". Regular car, 4x4, camper with rooftop tent, motorhome.
+        (7) START/END LOCATION — awaiting "start_end". Do NOT ask by default. Assume Windhoek
+        round-trip silently. Only ask if the user's own words imply an asymmetric route (different
+        arrival/departure city, continuing to another country).
 
-        Max 4 turns before calling ready_for_itinerary. If the first message already covers
-        everything, call it immediately without asking anything.
+        Max 5 questions before calling ready_for_itinerary. If something is still unknown after that,
+        assume a sensible default (mid-range, 2 adults, a 4x4) instead of asking a sixth time. If the
+        first message already covers everything, call ready_for_itinerary immediately without asking.
 
-        Reply in plain text only — no markdown, no bold, no headers, no emoji. The UI renders raw text.
+        Write plain text only — no markdown, no bold, no headers, no emoji. The UI renders raw text.
         PROMPT;
+
+    /**
+     * Every conversational reply — an answer to a general question as much as
+     * an interview question — comes back through this, because `awaiting` is
+     * what lets the UI offer the answer as something to tap. Its enum is
+     * InterviewSlot; a value outside it is dropped rather than shown, so a
+     * hallucinated slot costs the traveler a set of buttons, never a wrong one.
+     *
+     * @return array<string, mixed>
+     */
+    private function replyTool(): array
+    {
+        return [
+            'name' => 'reply_to_traveler',
+            'description' => 'Say something to the traveler — an answer to a general Namibia question, or the next interview question. Always name what the reply is waiting for in `awaiting` so the app can offer it as tappable answers.',
+            'input_schema' => [
+                'type' => 'object',
+                'properties' => [
+                    'text' => ['type' => 'string', 'description' => 'What to say, in plain text.'],
+                    'awaiting' => [
+                        'type' => 'string',
+                        'enum' => InterviewSlot::values(),
+                        'description' => 'The single interview field this reply asks for, or "none" when it asks for nothing (a general answer, or a question that has no fixed set of answers).',
+                    ],
+                ],
+                'required' => ['text', 'awaiting'],
+            ],
+        ];
+    }
 
     /** @var array<string, mixed> */
     private const RECOMMEND_TOOL = [
@@ -117,7 +152,7 @@ class InterviewService
 
     /**
      * @param  array<int, array{role: string, content: string}>  $history
-     * @return array{type: 'question', text: string}|array{type: 'ready', params: array<string, mixed>}|array{type: 'search_intent', intent: array<string, mixed>}|array{type: 'recommend_intent', intent: array<string, mixed>}
+     * @return array{type: 'question', text: string, awaiting: InterviewSlot|null}|array{type: 'ready', params: array<string, mixed>}|array{type: 'search_intent', intent: array<string, mixed>}|array{type: 'recommend_intent', intent: array<string, mixed>}
      */
     public function respond(array $history, string $locale = 'en'): array
     {
@@ -125,8 +160,14 @@ class InterviewService
             config('kaia.interview_model'),
             $this->systemPrompt($locale),
             $history,
-            [self::TOOL, self::SEARCH_TOOL, self::RECOMMEND_TOOL],
+            [$this->replyTool(), self::TOOL, self::SEARCH_TOOL, self::RECOMMEND_TOOL],
             config('kaia.interview_max_tokens'),
+            // Forced, so a turn is always one of the four shapes above and
+            // parsing has no prose branch to guess at. That is what makes
+            // `awaiting` dependable enough to hang the tap-through flow on:
+            // a reply that forgot to declare its slot would silently drop the
+            // traveler back into typing.
+            ['type' => 'any'],
         );
 
         $textParts = [];
@@ -134,6 +175,15 @@ class InterviewService
         foreach ($response['content'] ?? [] as $block) {
             if (($block['type'] ?? null) === 'text') {
                 $textParts[] = $block['text'];
+            } elseif (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'reply_to_traveler') {
+                /** @var array<string, mixed> $input */
+                $input = $block['input'] ?? [];
+
+                return [
+                    'type' => 'question',
+                    'text' => trim((string) ($input['text'] ?? '')),
+                    'awaiting' => $this->slot($input['awaiting'] ?? null),
+                ];
             } elseif (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'ready_for_itinerary') {
                 return ['type' => 'ready', 'params' => $block['input']];
             } elseif (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'trigger_listing_search') {
@@ -149,7 +199,21 @@ class InterviewService
             }
         }
 
-        return ['type' => 'question', 'text' => trim(implode("\n", $textParts))];
+        // Prose, despite the forced tool choice. Still a perfectly good answer
+        // to show — it just carries no slot, so the traveler gets the text
+        // field for that turn instead of buttons.
+        return ['type' => 'question', 'text' => trim(implode("\n", $textParts)), 'awaiting' => null];
+    }
+
+    /**
+     * "none" and an unrecognised value are the same answer to the UI — offer
+     * nothing — so both come back as null rather than as a case to handle.
+     */
+    private function slot(mixed $value): ?InterviewSlot
+    {
+        $slot = is_string($value) ? InterviewSlot::tryFrom($value) : null;
+
+        return $slot === InterviewSlot::None ? null : $slot;
     }
 
     private function systemPrompt(string $locale): string

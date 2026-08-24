@@ -24,6 +24,48 @@
     },
     "chat": {
         "greeting": "Hoi, ik ben Kaia. Vertel me iets over de reis waar je van droomt — hoeveel dagen heb je?",
+        "starters": [
+            "2 weken rondreis, 4x4 met daktent",
+            "3 weken rondreis, 4x4 met daktent",
+            "10 dagen, lodges en wildlife",
+            "Twee weken met de kinderen",
+            "Een week woestijn, premium lodges",
+            "Wanneer kun je het beste naar Namibië?"
+        ],
+        "startersHint": "Tik op een startpunt — of vertel het in je eigen woorden.",
+        "suggestionsHint": "Tik op een antwoord — of typ je eigen.",
+        "suggestions": {
+            "nights": ["1 week", "10 dagen", "2 weken", "3 weken", "4 weken"],
+            "interests": [
+                "Wildlife en safari",
+                "Woestijn en landschappen",
+                "Avontuur en activiteiten",
+                "Cultuur en mensen",
+                "Rustig, weinig lange ritten",
+                "Fotografie"
+            ],
+            "budget_tier": ["Budget", "Middenklasse", "Premium"],
+            "travelers": [
+                "Alleen ik",
+                "2 volwassenen",
+                "2 volwassenen, 1 kind onder 13",
+                "2 volwassenen, 2 kinderen onder 13",
+                "4 volwassenen"
+            ],
+            "vehicle_type": [
+                "4x4 met daktent",
+                "4x4, slapen in lodges",
+                "Gewone auto, alleen asfaltwegen",
+                "Camper",
+                "Minibus voor een groep"
+            ],
+            "start_end": [
+                "Rondreis vanaf Windhoek",
+                "Rondreis vanaf Swakopmund",
+                "Start Windhoek, einde Walvis Bay",
+                "Start Windhoek, einde Katima Mulilo"
+            ]
+        },
         "placeholder": "Wat wil je doen in Namibië?",
         "send": "Versturen",
         "thinkingStatuses": [

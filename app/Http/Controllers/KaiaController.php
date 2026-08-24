@@ -383,7 +383,13 @@ class KaiaController extends Controller
             $result = $interview->respond($messages, app()->getLocale());
 
             if ($result['type'] === 'question') {
-                return response()->json(['type' => 'question', 'text' => $result['text']]);
+                // `awaiting` is what the chat offers as tappable answers —
+                // null means "this one needs words", not "no answer expected".
+                return response()->json([
+                    'type' => 'question',
+                    'text' => $result['text'],
+                    'awaiting' => $result['awaiting']?->value,
+                ]);
             }
 
             if ($result['type'] === 'search_intent') {

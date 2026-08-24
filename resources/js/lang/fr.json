@@ -24,6 +24,54 @@
     },
     "chat": {
         "greeting": "Bonjour, je suis Kaia. Parlez-moi un peu du voyage dont vous rêvez — combien de jours avez-vous ?",
+        "starters": [
+            "2 semaines en boucle, 4x4 avec tente de toit",
+            "3 semaines en boucle, 4x4 avec tente de toit",
+            "10 jours, lodges et faune sauvage",
+            "Deux semaines avec les enfants",
+            "Une semaine dans le désert, lodges haut de gamme",
+            "Quelle est la meilleure période pour visiter la Namibie ?"
+        ],
+        "startersHint": "Touchez un point de départ — ou dites-le avec vos mots.",
+        "suggestionsHint": "Touchez une réponse — ou écrivez la vôtre.",
+        "suggestions": {
+            "nights": [
+                "1 semaine",
+                "10 jours",
+                "2 semaines",
+                "3 semaines",
+                "4 semaines"
+            ],
+            "interests": [
+                "Faune et safari",
+                "Désert et paysages",
+                "Aventure et activités",
+                "Culture et rencontres",
+                "Tranquille, peu de longues routes",
+                "Photographie"
+            ],
+            "budget_tier": ["Économique", "Milieu de gamme", "Haut de gamme"],
+            "travelers": [
+                "Seulement moi",
+                "2 adultes",
+                "2 adultes, 1 enfant de moins de 13 ans",
+                "2 adultes, 2 enfants de moins de 13 ans",
+                "4 adultes"
+            ],
+            "vehicle_type": [
+                "4x4 avec tente de toit",
+                "4x4, nuits en lodge",
+                "Voiture normale, routes goudronnées",
+                "Camping-car",
+                "Minibus pour un groupe"
+            ],
+            "start_end": [
+                "Boucle au départ de Windhoek",
+                "Boucle au départ de Swakopmund",
+                "Départ Windhoek, arrivée Walvis Bay",
+                "Départ Windhoek, arrivée Katima Mulilo"
+            ]
+        },
         "placeholder": "Que voulez-vous faire en Namibie ?",
         "send": "Envoyer",
         "thinkingStatuses": [
