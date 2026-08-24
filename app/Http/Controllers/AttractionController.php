@@ -3,14 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attraction;
-use App\Models\City;
-use App\Models\Place;
+use App\Services\Routing\RouteStopFinder;
+use App\Support\Geo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * The two things the trip plan needs from an attraction: a way to find one,
- * and a way to look at one.
+ * The three things the trip plan needs from an attraction: a way to find one
+ * near where the traveller is, a way to find one *between* where they are and
+ * where they are going, and a way to look at one.
  *
  * Kept apart from ListingController rather than folded into its search,
  * because the two answer different questions. A listing search filters on
@@ -24,7 +25,7 @@ class AttractionController extends Controller
     /** How far from the day's location an attraction may be and still be offered. */
     private const DEFAULT_RADIUS_KM = 150.0;
 
-    public function search(Request $request): JsonResponse
+    public function search(Request $request, RouteStopFinder $finder): JsonResponse
     {
         $query = Attraction::query()
             ->where('is_published', true)
@@ -45,7 +46,7 @@ class AttractionController extends Controller
         // "Near" is resolved from a place name — the itinerary day's own
         // location — so the browser never handles raw coordinates, same
         // contract as ListingController::search.
-        $reference = $this->referencePoint($request);
+        $reference = $this->referencePoint($request, $finder);
         $results = $query->get();
 
         if ($reference !== null) {
@@ -57,7 +58,7 @@ class AttractionController extends Controller
 
             $results = $results
                 ->map(function (Attraction $attraction) use ($refLat, $refLng): Attraction {
-                    $attraction->setAttribute('distance_km', self::distanceKm(
+                    $attraction->setAttribute('distance_km', Geo::distanceKm(
                         $refLat, $refLng, (float) $attraction->lat, (float) $attraction->lng,
                     ));
 
@@ -70,6 +71,47 @@ class AttractionController extends Controller
 
         return response()->json([
             'data' => $results->take(12)->map(fn (Attraction $a) => $this->present($a))->values(),
+        ]);
+    }
+
+    /**
+     * What is worth stopping for on each leg of a route.
+     *
+     * One request for the whole plan rather than one per leg: a trip has a
+     * dozen legs, they change together whenever a day is dragged or a stage
+     * added, and twelve round trips to say "nothing here" four times over is
+     * not a thing to do on a page render.
+     *
+     * The geometry lives in RouteStopFinder; this only decides what a browser
+     * is allowed to ask for and what comes back.
+     */
+    public function alongRoute(Request $request, RouteStopFinder $finder): JsonResponse
+    {
+        $validated = $request->validate([
+            'legs' => ['required', 'array', 'min:1', 'max:30'],
+            'legs.*.from' => ['required', 'string', 'max:120'],
+            'legs.*.to' => ['required', 'string', 'max:120'],
+        ]);
+
+        /** @var array<int, array{from: string, to: string}> $legs */
+        $legs = array_map(
+            fn (array $leg): array => ['from' => $leg['from'], 'to' => $leg['to']],
+            array_values($validated['legs']),
+        );
+
+        return response()->json([
+            'legs' => array_map(fn (array $leg): array => [
+                'from' => $leg['from'],
+                'to' => $leg['to'],
+                'stops' => $leg['stops']
+                    ->map(fn (Attraction $a): array => $this->present($a) + [
+                        // Straight-line and stated as approximate wherever it
+                        // is shown — see RouteStopFinder for why it is not a
+                        // road distance.
+                        'detour_km' => round((float) $a->getAttribute('detour_km')),
+                    ])
+                    ->values(),
+            ], $finder->forLegs($legs)),
         ]);
     }
 
@@ -89,9 +131,14 @@ class AttractionController extends Controller
      * name — a day's location is a place, but a plan saved before the split
      * carries a city name and must keep working.
      *
+     * Shared with the route-stop search, which resolves the ends of a leg the
+     * same way: two answers to "where is this stage?" would eventually differ,
+     * and a plan whose two attraction lists disagree about where Etosha is has
+     * no way to explain itself.
+     *
      * @return array{0: float, 1: float}|null
      */
-    private function referencePoint(Request $request): ?array
+    private function referencePoint(Request $request, RouteStopFinder $finder): ?array
     {
         $name = $request->query('reference_city');
 
@@ -99,21 +146,9 @@ class AttractionController extends Controller
             return null;
         }
 
-        $place = Place::query()
-            ->whereRaw('lower(cast(name as text)) like ?', ['%"'.mb_strtolower($name).'"%'])
-            ->whereNotNull('lat')
-            ->first();
+        $point = $finder->resolve($name);
 
-        if ($place !== null) {
-            return [(float) $place->lat, (float) $place->lng];
-        }
-
-        $city = City::query()
-            ->where('name', 'ilike', $name)
-            ->whereNotNull('lat')
-            ->first();
-
-        return $city !== null ? [(float) $city->lat, (float) $city->lng] : null;
+        return $point === null ? null : [$point->lat, $point->lng];
     }
 
     /**
@@ -176,15 +211,5 @@ class AttractionController extends Controller
             'requires_permit' => $attraction->requires_permit,
             'photos_attribution' => $attraction->photos_attribution,
         ];
-    }
-
-    private static function distanceKm(float $lat1, float $lng1, float $lat2, float $lng2): float
-    {
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLng = deg2rad($lng2 - $lng1);
-
-        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
-
-        return 6371.0 * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 }

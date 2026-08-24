@@ -378,6 +378,67 @@ export async function searchAttractions(params: {
     return data.data ?? [];
 }
 
+/**
+ * A thing to stop for on the way, as the drive-time box shows it. Same card
+ * shape as everything else in the plan, plus what it costs to go there.
+ */
+export interface RouteStop extends AttractionSearchResult {
+    /**
+     * Roughly how many extra kilometres this stop adds to the leg — straight
+     * line, not road, so it is rendered with a "≈" wherever it is shown. See
+     * App\Services\Routing\RouteStopFinder for why it is not a routed number.
+     */
+    detour_km: number;
+}
+
+/** The stops on one leg, in the order they come up through the windscreen. */
+export interface RouteLegStops {
+    from: string;
+    to: string;
+    stops: RouteStop[];
+}
+
+/**
+ * What is worth stopping for on each leg of a route.
+ *
+ * One call for the whole plan rather than one per leg: the legs change
+ * together whenever a day is dragged or a stage added, and most of them have
+ * nothing to report.
+ */
+export async function fetchRouteStops(
+    legs: Array<{ from: string; to: string }>,
+): Promise<RouteLegStops[]> {
+    if (legs.length === 0) {
+        return [];
+    }
+
+    const query = new URLSearchParams();
+
+    legs.forEach((leg, i) => {
+        query.set(`legs[${i}][from]`, leg.from);
+        query.set(`legs[${i}][to]`, leg.to);
+    });
+
+    try {
+        const response = await fetch(`/attractions/along-route?${query}`, {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+        });
+
+        if (!response.ok) {
+            return [];
+        }
+
+        const data = await response.json();
+
+        return data.legs ?? [];
+    } catch {
+        // A discreet extra line under a driving time is never worth an error
+        // state — the plan reads exactly the same without it.
+        return [];
+    }
+}
+
 export async function fetchAttractionPreview(
     slug: string,
 ): Promise<AttractionPreview> {
