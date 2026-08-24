@@ -270,6 +270,69 @@ expansion").
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-24 — what you drive past on the way
+
+Windhoek to Waterberg is two hours; Windhoek to Etosha is most of a morning.
+Those hours are the shape of a Namibian trip, and until now the plan said
+nothing whatever about them beyond how long they take. The things beside those
+roads are already in `attractions` — the meteorite outside Grootfontein, the
+sinkhole at Otjikoto, the dinosaur tracks at Kalkfeld — and a traveller drove
+past every one of them without knowing.
+
+So the drive-time box now carries a second line: **On the way**, and up to three
+names, with a `+N` that opens the rest. A name opens the same detail modal the
+activity picker uses, because an attraction has no listing page of its own. On a
+leg with nothing to report the box looks exactly as it did.
+
+**The rule for "on the way" is detour, not distance from a line.** A
+perpendicular distance says a site 20 km to the side is equally worth stopping
+for whether it sits at the midpoint or 5 km short of the destination, which is
+not what a traveller means. `App\Services\Routing\RouteStopFinder` computes
+`d(from → it) + d(it → to) - d(from → to)` — what going there actually costs —
+and offers it when that is under 40 km and under a quarter of the leg. Straight
+lines, not roads: this runs on a live plan render, and paying for a routing call
+per candidate to sharpen a filter whose output is three chips would be absurd.
+The number is shown as `+≈12 km` and never as a driving distance.
+
+Four exclusions, each of them a thing that looked right and was not:
+
+- **Anything at either end.** Heroes' Acre is a Windhoek afternoon, not a stop
+  on the road out of Windhoek. Within 25 km of either stage and it belongs to
+  the stage.
+- **Anything filed under a stage anywhere on the route.** Coordinates are not
+  enough on their own — a park centroid can be 40 km from the waterhole the
+  traveller is spending two nights at, far enough to pass the distance test and
+  still be somewhere they are already going. So `place_id` is checked against
+  every stage of the whole route, which is why the endpoint takes all the legs
+  at once rather than one at a time.
+- **A leg under 50 km.** Nobody is looking for somewhere to stretch their legs
+  on a transfer, and a chip row there reads as clutter rather than as a find.
+- **The same site twice.** On a round trip the two legs run the same road; the
+  stop is offered on the way out, where a whole day is still ahead.
+
+Anything already in the plan drops out client-side, so adding a stop to a day
+removes it from the road above that day rather than showing it in both places.
+
+**Nothing about this is persisted.** The plan document says where the traveller
+sleeps; what happens to stand beside the road between two of those places is
+derived, and derived from data that gets better every time somebody adds a row.
+One request covers the whole route (`GET /attractions/along-route`), the map is
+what triggers it — it is already the thing that knows the route — and a fetch
+that comes back for a route the traveller has since edited is dropped rather
+than rendered.
+
+The catalog is the limit now, not the code: 47 attractions across a country this
+size means many legs have nothing to say, and the user's own example — Windhoek
+to Waterberg — is one of them. That is content work, and it is the cheapest
+content work in the product: one row is one thing a traveller stops for.
+
+**Next, and noted rather than built:** the same line should eventually carry
+*provisioning* stops — fuel and a supermarket — for the leg where the next
+250 km have neither. That is not an attraction and does not belong in that
+table; it is a different noun with opening hours and a fuel type, and the
+interesting question is not where the filling stations are but which leg makes
+one worth naming.
+
 ### 2026-08-24 — a day entry is a night, and the departure day is not one
 
 From a prod screenshot: a trip booked as **1–18 January 2027, 17 nights** ended
@@ -1842,6 +1905,22 @@ the results half as much as the picker.
   themselves, which means deciding whether an edited plan may move its own end
   date or whether growing it is a regeneration. Found while fixing the phantom
   departure night on 2026-08-24.
+
+- ⬜ **Fuel and supplies as stops on a leg.** The drive-time box now names
+  what is worth *seeing* between two stages (2026-08-24). The other half of a
+  long Namibian leg is what you need to have with you on it: the last filling
+  station before 250 km of gravel, the last supermarket before a self-catering
+  camp. Not attractions — a different noun, with opening hours, a fuel type and
+  a "last one before" relation to the leg rather than a position on it — so it
+  wants its own table and its own rule for when a stop is worth naming at all.
+  The line in the box is already there to hang it on. Raised 2026-08-24.
+
+- ⬜ **The road between two stages is mostly empty of content.** 47 attractions
+  is enough to prove the "On the way" line works and not enough for it to fire
+  on the legs travellers actually drive: Windhoek → Waterberg, the example that
+  prompted the feature, turns up nothing. Cheapest content work in the product,
+  and the one place where a single row is directly a thing a traveller stops
+  for. Raised 2026-08-24.
 
 - 🟡 **Price units are recorded but nowhere entered.** The column, the
   editors, the payloads and the arithmetic landed in session 16; no listing

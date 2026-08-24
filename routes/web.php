@@ -125,6 +125,13 @@ Route::get('listings/search', [ListingController::class, 'search'])->name('listi
 // offers both, and an attraction has a detail modal of its own because it has
 // no listing page to open.
 Route::get('attractions/search', [AttractionController::class, 'search'])->name('attractions.search');
+// What is worth stopping for between two stages, for the drive-time box in the
+// trip plan. Declared above the {slug} route because "along-route" would
+// otherwise be read as an attraction slug. Throttled a little tighter than
+// browsing: one call covers a whole plan, so a page render needs exactly one.
+Route::get('attractions/along-route', [AttractionController::class, 'alongRoute'])
+    ->middleware('throttle:60,1')
+    ->name('attractions.along-route');
 Route::get('attractions/{slug}', [AttractionController::class, 'show'])->name('attractions.show');
 Route::get('listings/{listing:slug}/preview', [ListingController::class, 'preview'])->name('listings.preview');
 // Real room types + remaining units for a stay, for the trip plan's room

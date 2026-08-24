@@ -12,12 +12,13 @@ import {
     fetchAllCities,
     fetchCities,
     fetchRegionCoords,
+    fetchRouteStops,
     PlanConflictError,
     regeneratePlan,
     savePlan,
     updatePlan,
 } from '@/lib/kaia-client';
-import type { RegionCoords } from '@/lib/kaia-client';
+import type { RegionCoords, RouteStop } from '@/lib/kaia-client';
 import type {
     DayEntry,
     ItineraryDay,
@@ -30,6 +31,7 @@ import type {
 import { vehicleTypeForClass } from '@/lib/kaia-types';
 import { onImageError, thumbAttrs } from '@/lib/media';
 import { isRecurring, travelerFactor } from '@/lib/price-unit';
+import AttractionPreviewModal from './AttractionPreviewModal.vue';
 import AvailabilityPicker from './AvailabilityPicker.vue';
 import ConfirmModal from './ConfirmModal.vue';
 import ItineraryDayPlanCard from './ItineraryDayPlanCard.vue';
@@ -109,6 +111,27 @@ const dbAllCities = ref<string[]>([]);
 const regionCoords = ref<Record<string, RegionCoords>>({});
 const savedTokens = ref<Record<number, string>>({});
 const drivingLegsPerVariant = ref<Record<number, DrivingLeg[]>>({});
+
+// Things worth stopping for on each leg — the discreet line under a driving
+// time. Keyed variantIndex -> legKey() -> stops, so a reordered day list finds
+// its stops by the pair of places rather than by a position that just moved.
+// Derived, never persisted: the plan document says where the traveler sleeps,
+// not what happens to stand beside the road between two of those places.
+const routeStopsPerVariant = ref<Record<number, Record<string, RouteStop[]>>>(
+    {},
+);
+// Which drive-time boxes have their full stop list open. Keyed the same way,
+// so it survives a re-render but not a change of route.
+const routeStopsExpanded = ref<Record<string, boolean>>({});
+// The stop whose detail modal is open, if any.
+const routeStopPreviewSlug = ref<string | null>(null);
+// The legs each variant was last asked about. A fetch that comes back for a
+// route the traveler has since changed is dropped rather than rendered — the
+// map re-emits its legs on every edit, so this races by design.
+const routeStopsRequestedFor: Record<number, string> = {};
+
+// How many stops a drive-time box shows before "+N more".
+const ROUTE_STOPS_COLLAPSED = 3;
 
 // Explicit, JS-measured height for the sticky map column (desktop two-col
 // layout — see .itinerary-layout in kaia-home.css), keyed by variantIndex.
@@ -342,6 +365,11 @@ async function applyParamsEdit(values: TripParamsFormValues) {
         roomPickerKey.value = null;
         savedTokens.value = {};
         drivingLegsPerVariant.value = {};
+        routeStopsPerVariant.value = {};
+        routeStopsExpanded.value = {};
+        Object.keys(routeStopsRequestedFor).forEach(
+            (key) => delete routeStopsRequestedFor[Number(key)],
+        );
         departureTimes.value = {};
         paramsModalOpen.value = false;
     } catch (e) {
@@ -463,6 +491,146 @@ function arrivalTime(
         `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:` +
         `${String(wrapped % 60).padStart(2, '0')}`
     );
+}
+
+// One leg, identified by the pair of places it runs between rather than by its
+// index — the day list is draggable, and an index means something different a
+// moment after a traveler moves a stage.
+function legKey(
+    from: string | null | undefined,
+    to: string | null | undefined,
+): string {
+    return `${(from ?? '').toLowerCase().trim()}\u2192${(to ?? '').toLowerCase().trim()}`;
+}
+
+// The map is what knows the route (it resolves each day to a coordinate and
+// asks OSRM), so it is also what triggers the look-up of what stands beside
+// it. Both places that render a map go through here.
+async function setDrivingLegs(variantIndex: number, legs: DrivingLeg[]) {
+    drivingLegsPerVariant.value[variantIndex] = legs;
+
+    const pairs = legs
+        .filter((leg) => leg.from && leg.to)
+        .map((leg) => ({ from: leg.from, to: leg.to }));
+
+    const signature = pairs.map((p) => legKey(p.from, p.to)).join('|');
+
+    if (routeStopsRequestedFor[variantIndex] === signature) {
+        return;
+    }
+
+    routeStopsRequestedFor[variantIndex] = signature;
+
+    if (pairs.length === 0) {
+        routeStopsPerVariant.value[variantIndex] = {};
+
+        return;
+    }
+
+    const result = await fetchRouteStops(pairs);
+
+    // The traveler edited the route while this was in flight — what came back
+    // answers a question nobody is asking any more.
+    if (routeStopsRequestedFor[variantIndex] !== signature) {
+        return;
+    }
+
+    const byLeg: Record<string, RouteStop[]> = {};
+
+    result.forEach((leg) => {
+        if (leg.stops.length > 0) {
+            byLeg[legKey(leg.from, leg.to)] = leg.stops;
+        }
+    });
+
+    routeStopsPerVariant.value[variantIndex] = byLeg;
+}
+
+// Everything already in this variant, as identity keys. Slug *and* name,
+// because the two ways an attraction gets into a day disagree: one the
+// traveler picked from the swap modal carries its slug, while one Kaia wrote
+// into the plan deliberately carries none (it has no listing page to open —
+// see TRAVEL_PLAN.md, 2026-08-23). Matching on either is what stops a stop
+// being offered on the road above the day it is already planned for.
+function plannedKeys(variantIndex: number): Set<string> {
+    const keys = new Set<string>();
+    const variant = editableVariants.value[variantIndex];
+
+    if (!variant) {
+        return keys;
+    }
+
+    const add = (item?: ItineraryListingRef | null) => {
+        if (item?.slug) {
+            keys.add(item.slug);
+        }
+
+        if (item?.name) {
+            keys.add(item.name.toLowerCase().trim());
+        }
+    };
+
+    add(variant.vehicle);
+
+    variant.days.forEach((day) => {
+        add(day.accommodation);
+        [
+            day.activities,
+            day.restaurants,
+            day.departure_activities,
+            day.departure_restaurants,
+        ].forEach((list) => list?.forEach(add));
+    });
+
+    return keys;
+}
+
+/**
+ * The stops on the drive that arrives on `dayIndex` — the leg the drive-time
+ * box above that day describes.
+ *
+ * Takes the day rather than the two place names because the template already
+ * reaches four levels deep for the previous day's location, and a fifth
+ * repetition of that expression is how a condition and the thing it guards
+ * drift apart.
+ */
+function routeStopsForDay(variantIndex: number, dayIndex: number): RouteStop[] {
+    const days = editableVariants.value[variantIndex]?.days;
+    const from = days?.[dayIndex - 1]?.location;
+    const to = days?.[dayIndex]?.location;
+
+    const stops = routeStopsPerVariant.value[variantIndex]?.[legKey(from, to)];
+
+    if (!stops || stops.length === 0) {
+        return [];
+    }
+
+    const planned = plannedKeys(variantIndex);
+
+    return stops.filter(
+        (stop) =>
+            !planned.has(stop.slug ?? '') &&
+            !planned.has(stop.name.toLowerCase().trim()),
+    );
+}
+
+// Three names is a hint; the whole list is a directory. The box shows the
+// first few and opens on request.
+function visibleRouteStops(
+    variantIndex: number,
+    dayIndex: number,
+): RouteStop[] {
+    const stops = routeStopsForDay(variantIndex, dayIndex);
+
+    return routeStopsExpanded.value[driveLegKey(variantIndex, dayIndex)]
+        ? stops
+        : stops.slice(0, ROUTE_STOPS_COLLAPSED);
+}
+
+function toggleRouteStops(variantIndex: number, dayIndex: number) {
+    const key = driveLegKey(variantIndex, dayIndex);
+
+    routeStopsExpanded.value[key] = !routeStopsExpanded.value[key];
 }
 
 // Kaia (and older saved plans) still carry a single `activity`/`restaurant`
@@ -1358,6 +1526,17 @@ function dismissVariant(variantIndex: number) {
         drivingLegsPerVariant.value,
         variantIndex,
     );
+    routeStopsPerVariant.value = reindexAfterRemoval(
+        routeStopsPerVariant.value,
+        variantIndex,
+    );
+    // The map for the shifted variant re-emits its legs, but the signature it
+    // matches against would be the removed variant's — clear them so the
+    // look-up runs again rather than being skipped as unchanged.
+    Object.keys(routeStopsRequestedFor).forEach(
+        (key) => delete routeStopsRequestedFor[Number(key)],
+    );
+    routeStopsExpanded.value = {};
     swap.value = null;
     roomPickerKey.value = null;
     departureTimes.value = {};
@@ -2434,10 +2613,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                 :variant="variant"
                                 :region-coords="regionCoords"
                                 @driving-legs="
-                                    (legs) => {
-                                        drivingLegsPerVariant[variantIndex] =
-                                            legs;
-                                    }
+                                    (legs) => setDrivingLegs(variantIndex, legs)
                                 "
                             />
                         </div>
@@ -2618,6 +2794,102 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                             }}
                                                         </span>
                                                     </span>
+                                                    <!-- The long drives are
+                                                         where the finds are —
+                                                         and where they get
+                                                         driven past. A hairline
+                                                         under the driving time,
+                                                         inside the same box, so
+                                                         it reads as part of the
+                                                         drive rather than as
+                                                         another thing to plan.
+                                                    -->
+                                                    <div
+                                                        v-if="
+                                                            routeStopsForDay(
+                                                                variantIndex,
+                                                                dayIndex,
+                                                            ).length
+                                                        "
+                                                        class="route-stops"
+                                                    >
+                                                        <span
+                                                            class="route-stops-label"
+                                                        >
+                                                            {{
+                                                                t(
+                                                                    'itinerary.onTheWay',
+                                                                )
+                                                            }}
+                                                        </span>
+                                                        <button
+                                                            v-for="stop in visibleRouteStops(
+                                                                variantIndex,
+                                                                dayIndex,
+                                                            )"
+                                                            :key="stop.slug"
+                                                            type="button"
+                                                            class="route-stop-chip"
+                                                            :title="
+                                                                stop.short_description ||
+                                                                stop.name
+                                                            "
+                                                            @click="
+                                                                routeStopPreviewSlug =
+                                                                    stop.slug
+                                                            "
+                                                        >
+                                                            {{ stop.name }}
+                                                            <span
+                                                                v-if="
+                                                                    stop.detour_km >
+                                                                    2
+                                                                "
+                                                                class="route-stop-detour"
+                                                            >
+                                                                +≈{{
+                                                                    stop.detour_km
+                                                                }}&nbsp;km
+                                                            </span>
+                                                        </button>
+                                                        <button
+                                                            v-if="
+                                                                routeStopsForDay(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                ).length >
+                                                                ROUTE_STOPS_COLLAPSED
+                                                            "
+                                                            type="button"
+                                                            class="route-stops-more"
+                                                            @click="
+                                                                toggleRouteStops(
+                                                                    variantIndex,
+                                                                    dayIndex,
+                                                                )
+                                                            "
+                                                        >
+                                                            {{
+                                                                routeStopsExpanded[
+                                                                    driveLegKey(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                    )
+                                                                ]
+                                                                    ? t(
+                                                                          'itinerary.showFewer',
+                                                                      )
+                                                                    : `+${
+                                                                          routeStopsForDay(
+                                                                              variantIndex,
+                                                                              dayIndex,
+                                                                          )
+                                                                              .length -
+                                                                          ROUTE_STOPS_COLLAPSED
+                                                                      }`
+                                                            }}
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 <button
                                                     v-if="!readonly"
@@ -3472,11 +3744,15 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
             :region-coords="regionCoords"
             map-id="trip-map-modal-0"
             @close="mapModalOpen = false"
-            @driving-legs="
-                (legs) => {
-                    drivingLegsPerVariant[0] = legs;
-                }
-            "
+            @driving-legs="(legs) => setDrivingLegs(0, legs)"
+        />
+
+        <!-- A roadside stop has no listing page to open, so its detail lives
+             in the same modal the activity picker uses. -->
+        <AttractionPreviewModal
+            v-if="routeStopPreviewSlug"
+            :slug="routeStopPreviewSlug"
+            @close="routeStopPreviewSlug = null"
         />
 
         <ImageLightbox

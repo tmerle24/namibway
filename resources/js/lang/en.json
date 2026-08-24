@@ -188,6 +188,8 @@
         "drivingTime": "Driving",
         "departure": "Departure",
         "arrival": "Arrival",
+        "onTheWay": "On the way",
+        "showFewer": "Show fewer",
         "readMore": "read more…",
         "showLess": "show less",
         "viewPhotos": "View photos",
