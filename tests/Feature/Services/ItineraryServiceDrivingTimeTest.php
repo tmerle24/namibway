@@ -43,7 +43,10 @@ class ItineraryServiceDrivingTimeTest extends TestCase
     private function tripParams(string $end = 'Windhoek'): array
     {
         return [
-            'nights' => 1,
+            // Two day entries is a two-night trip: a `days` entry is a night,
+            // and there is no separate entry for the departure day (see
+            // ItineraryService::foldReturnDay).
+            'nights' => 2,
             'travel_period' => '14 August 2026',
             'interests' => 'wildlife',
             'adults' => 2,
@@ -57,23 +60,31 @@ class ItineraryServiceDrivingTimeTest extends TestCase
 
     private function fakeAnthropicPlan(string $day1City, string $day2City): void
     {
-        $planInput = [
-            'trip_summary' => 'A short test trip.',
-            'variants' => [[
-                'name' => 'Test Variant',
-                'vehicle' => 'Test Vehicle',
-                'days' => [
-                    ['day' => 1, 'date' => '14 Aug 2026', 'location' => $day1City, 'accommodation' => "{$day1City} Lodge"],
-                    ['day' => 2, 'date' => '15 Aug 2026', 'location' => $day2City, 'accommodation' => "{$day2City} Lodge"],
-                ],
-            ]],
-        ];
+        $this->fakeAnthropicDays([
+            ['day' => 1, 'date' => '14 Aug 2026', 'location' => $day1City, 'accommodation' => "{$day1City} Lodge"],
+            ['day' => 2, 'date' => '15 Aug 2026', 'location' => $day2City, 'accommodation' => "{$day2City} Lodge"],
+        ]);
+    }
 
+    /**
+     * @param  array<int, array<string, mixed>>  $days
+     */
+    private function fakeAnthropicDays(array $days): void
+    {
         Http::fake([
             'api.anthropic.com/*' => Http::response([
-                'content' => [
-                    ['type' => 'tool_use', 'name' => 'propose_itinerary', 'input' => $planInput],
-                ],
+                'content' => [[
+                    'type' => 'tool_use',
+                    'name' => 'propose_itinerary',
+                    'input' => [
+                        'trip_summary' => 'A short test trip.',
+                        'variants' => [[
+                            'name' => 'Test Variant',
+                            'vehicle' => 'Test Vehicle',
+                            'days' => $days,
+                        ]],
+                    ],
+                ]],
             ], 200),
         ]);
     }
@@ -169,39 +180,58 @@ class ItineraryServiceDrivingTimeTest extends TestCase
         $this->assertSame('Otjiwarongo', $plan['variants'][0]['days'][0]['location']);
     }
 
-    public function test_plan_with_too_many_days_triggers_a_corrective_retry(): void
+    public function test_a_trailing_departure_day_is_folded_into_the_last_night(): void
     {
-        // The visible symptom of an over-long plan is a stage dated past the
-        // traveler's departure day (2026-08-09: "19–20 Jan" on a trip ending
-        // 18 Jan) — a 1-night trip must have exactly 2 day entries.
+        // The bug this whole shape exists to stop: a `days` entry is a night,
+        // so an entry for the departure day is rendered as a night the
+        // traveler never sleeps — a trip running 14-16 Aug came back as three
+        // nights checking out on the 17th, a day past its own end.
         $windhoek = City::where('slug', 'windhoek')->firstOrFail();
 
         $this->seedLodge($windhoek);
-
-        $planInput = [
-            'trip_summary' => 'A short test trip.',
-            'variants' => [[
-                'name' => 'Test Variant',
-                'vehicle' => 'Test Vehicle',
-                'days' => [
-                    ['day' => 1, 'date' => '14 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge'],
-                    ['day' => 2, 'date' => '15 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge'],
-                    ['day' => 3, 'date' => '16 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge'],
-                ],
-            ]],
-        ];
-
-        Http::fake([
-            'api.anthropic.com/*' => Http::response([
-                'content' => [
-                    ['type' => 'tool_use', 'name' => 'propose_itinerary', 'input' => $planInput],
-                ],
-            ], 200),
+        $this->fakeAnthropicDays([
+            ['day' => 1, 'date' => '14 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge'],
+            ['day' => 2, 'date' => '15 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge'],
+            ['day' => 3, 'date' => '16 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge', 'activity' => 'Windhoek Walk'],
         ]);
 
         $plan = app(ItineraryService::class)->generate($this->tripParams());
 
+        // Folded, not retried and not thrown away: two nights for a two-night
+        // trip, checking out on the departure day itself...
+        Http::assertSentCount(1);
+        $days = $plan['variants'][0]['days'];
+        $this->assertCount(2, $days);
+        $this->assertSame('16 Aug 2026', $days[1]['date_to']);
+
+        // ...and what was planned for that morning survives as the last
+        // night's departure entry, which is where the plan renders it.
+        $this->assertSame('Windhoek Walk', $days[1]['departure_activities'][0]['name']);
+    }
+
+    public function test_a_plan_longer_than_one_stray_departure_day_still_triggers_a_corrective_retry(): void
+    {
+        // Two entries too many is not a departure day the model tacked on, it
+        // is nights misallocated — nothing here can fold that into shape, so
+        // it goes back to the model (2026-08-09: a Windhoek stage dated
+        // "19-20 Jan" on a trip ending 18 Jan).
+        $windhoek = City::where('slug', 'windhoek')->firstOrFail();
+
+        $this->seedLodge($windhoek);
+        $this->fakeAnthropicDays([
+            ['day' => 1, 'date' => '14 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge'],
+            ['day' => 2, 'date' => '15 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge'],
+            ['day' => 3, 'date' => '16 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge'],
+            ['day' => 4, 'date' => '17 Aug 2026', 'location' => 'Windhoek', 'accommodation' => 'Windhoek Lodge'],
+        ]);
+
+        $plan = app(ItineraryService::class)->generate($this->tripParams());
+
+        // The fake answers both calls identically, so the shape is never
+        // actually corrected — and the plan is handed over anyway rather than
+        // failing the request, because a wrong-but-editable plan beats a dead
+        // end (see generate()).
         Http::assertSentCount(2);
-        $this->assertCount(3, $plan['variants'][0]['days']);
+        $this->assertCount(4, $plan['variants'][0]['days']);
     }
 }

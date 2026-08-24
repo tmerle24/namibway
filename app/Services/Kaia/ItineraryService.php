@@ -329,6 +329,7 @@ class ItineraryService
             if (($block['type'] ?? null) === 'tool_use' && $block['name'] === 'propose_itinerary') {
                 $plan = $this->validatePlan($block['input']);
                 $plan = $this->resolveReferences($plan, $listings, $attractions);
+                $plan = $this->foldReturnDay($plan, $tripParams);
 
                 // Echoed from the trip params (already resolved/defaulted by
                 // stringParam) rather than trusted from Claude's tool call —
@@ -550,6 +551,109 @@ class ItineraryService
         unset($day);
 
         return $days;
+    }
+
+    /**
+     * A `days` entry is a NIGHT, everywhere in this codebase: the trip plan
+     * counts a stage's nights by counting its days, and what the traveler does
+     * on the checkout morning rides on the last night as
+     * departure_activities/departure_restaurants (ItinerarySection.vue, and the
+     * trip-plan PDF says so in as many words).
+     *
+     * The model thinks in calendar days, though, and readily returns one entry
+     * per day the traveler is in the country — the departure day included,
+     * which is a morning and not a night. Rendered as a night, that entry
+     * pushes the plan a day past the traveler's own departure date: a trip
+     * running 1-18 January 2027 came back as 18 nights whose last stage read
+     * "17-19 Jan", checking out on a day the traveler was already home.
+     *
+     * routingGuidance() now asks for exactly one entry per night, but a prompt
+     * is a request and not a guarantee. So a single trailing entry is folded
+     * into the night before it rather than trusted — or dropped: its date is
+     * already that night's checkout date (addDateRanges ran first), and
+     * whatever was planned on it becomes that night's departure entries, which
+     * is precisely where the plan renders the checkout morning. Only that one
+     * off-by-one is folded; a plan further out than that is the model
+     * misallocating nights, which validateRouteShape reports and a retry fixes.
+     *
+     * @param  array{trip_summary: string, variants: array<int, array<string, mixed>>}  $plan
+     * @param  array<string, mixed>  $tripParams
+     * @return array{trip_summary: string, variants: array<int, array<string, mixed>>}
+     */
+    private function foldReturnDay(array $plan, array $tripParams): array
+    {
+        $nights = is_numeric($tripParams['nights'] ?? null) ? (int) $tripParams['nights'] : null;
+
+        if ($nights === null || $nights < 1) {
+            return $plan;
+        }
+
+        $plan['variants'] = array_map(function (array $variant) use ($nights): array {
+            $days = $variant['days'] ?? null;
+
+            if (! is_array($days) || count($days) !== $nights + 1) {
+                return $variant;
+            }
+
+            $days = array_values(array_filter($days, 'is_array'));
+            $returnDay = array_pop($days);
+
+            if ($returnDay === null || $days === []) {
+                return $variant;
+            }
+
+            $lastNight = count($days) - 1;
+
+            $days[$lastNight]['departure_activities'] = [
+                ...$this->entryList($days[$lastNight], 'departure_activities'),
+                ...$this->plannedEntries($returnDay, 'activity'),
+            ];
+            $days[$lastNight]['departure_restaurants'] = [
+                ...$this->entryList($days[$lastNight], 'departure_restaurants'),
+                ...$this->plannedEntries($returnDay, 'restaurant'),
+            ];
+
+            $variant['days'] = $days;
+
+            return $variant;
+        }, $plan['variants']);
+
+        return $plan;
+    }
+
+    /**
+     * Kaia fills a day's singular `activity`/`restaurant`; a plan that has been
+     * through the trip-plan UI carries the plural arrays instead. Read both, so
+     * folding a return day can never silently drop what was planned on it.
+     *
+     * @param  array<string, mixed>  $day
+     * @return array<int, array<string, mixed>>
+     */
+    private function plannedEntries(array $day, string $field): array
+    {
+        $plural = $this->entryList($day, $field.'s');
+
+        if ($plural !== []) {
+            return $plural;
+        }
+
+        $single = $day[$field] ?? null;
+
+        return is_array($single) ? [$single] : [];
+    }
+
+    /**
+     * One of a day's entry lists, as a list of entries — anything that isn't
+     * one is dropped rather than carried into a list the plan will iterate.
+     *
+     * @param  array<string, mixed>  $day
+     * @return array<int, array<string, mixed>>
+     */
+    private function entryList(array $day, string $key): array
+    {
+        $value = $day[$key] ?? null;
+
+        return is_array($value) ? array_values(array_filter($value, 'is_array')) : [];
     }
 
     /**
@@ -1096,10 +1200,11 @@ class ItineraryService
             pick the ONE template that best matches the traveler's interests (compare against each
             template's trip_type/notes/stop highlights) and build the route by visiting its stops in the
             given order — do not reorder or skip a stop. Allocate nights to each stop within that stop's
-            min_nights/max_nights range so the stops' nights sum to the trip's total night count (the
-            Windhoek start/end days from the ROUTE guidance above are separate from and in addition to the
-            stops). This takes priority over freely inventing your own route. If the list is empty, ignore
-            this paragraph and follow the ROUTE guidance above instead. A stop's "place" IS the day's
+            min_nights/max_nights range so that those nights, plus the nights spent in the start/end
+            location from the ROUTE guidance above (which is not one of the stops), add up to EXACTLY the
+            trip's night count — one day entry per night, and none left over. This takes priority over
+            freely inventing your own route. If the list is empty, ignore this paragraph and follow the
+            ROUTE guidance above instead. A stop's "place" IS the day's
             "location" — copy it character for character and pick the stay from listings carrying that
             place. Only where a stop has no place does its "region" apply, and then pick a place inside
             that region.
@@ -1232,30 +1337,38 @@ class ItineraryService
             .'be the exact city of that day\'s accommodation (e.g. "Windhoek", not "Khomas"; '
             .'"Otjiwarongo", not "Otjozondjupa").';
 
-        if (mb_strtolower($start) === mb_strtolower($end)) {
-            $dayCount = $nights !== null
-                ? "DAY COUNT: this is a {$nights}-night round trip, so produce EXACTLY ".($nights + 1)
-                    .' day entries, numbered 1 to '.($nights + 1).'. Day 1 and the FINAL day (day '
-                    .($nights + 1).') must both be in or next to "'.$start.'" — the final day '
-                    .'is the return/drop-off day, so it is fine (and often correct) for it to reuse the '
-                    ."previous day's accommodation rather than needing a new one. Do not pad the ending "
-                    .'with a redundant extra night in one place just to fill the count — use the nights '
-                    .'productively for touring and let the final day be the short return leg.'
-                : '';
+        // One day entry is one NIGHT — the whole plan is built on that (the
+        // trip plan counts a stage's nights by counting its days, and the
+        // departure morning rides on the last night as departure_activities).
+        // Asking for nights + 1 entries, as this used to, made the last entry
+        // a night the traveler never sleeps: a trip running 1-18 January came
+        // back as 18 nights checking out on the 19th, a day past the
+        // traveler's own departure date. foldReturnDay() catches a stray
+        // extra entry after the fact; this is what stops it being asked for.
+        $dayCount = $nights !== null
+            ? "DAY COUNT: one day entry is one NIGHT, so this {$nights}-night trip has EXACTLY "
+                ."{$nights} day entries, numbered 1 to {$nights}. There is NO entry for the departure "
+                .'day: the traveler checks out on the morning after night '.$nights.' and leaves from '
+                ."\"{$end}\" that same morning, which is why night {$nights} must be spent in "
+                ."\"{$end}\" itself or close enough to reach the departure point comfortably. Never "
+                .'add a final entry for the drive back or the drop-off, and never pad the ending with a '
+                .'redundant extra night just to fill the count — use the nights productively for touring.'
+            : '';
 
+        if (mb_strtolower($start) === mb_strtolower($end)) {
             return "ROUTE: the trip starts and ends in the same place (\"{$start}\") — day 1's location "
-                ."and the last day's location must both be \"{$start}\" itself, or a city close enough "
+                ."and the last night's location must both be \"{$start}\" itself, or a city close enough "
                 ."to it to reach the departure point comfortably. {$loopGuidance} Never jump back and "
                 .'forth between distant regions; visit each region once, in one continuous pass.'
                 ."\n\n{$dayCount}\n\n{$granularity}\n\n{$safety}";
         }
 
         return "ROUTE: this is a ONE-WAY trip. Day 1's location must be \"{$start}\" itself, or a city "
-            ."close to it. The LAST day's location must be \"{$end}\" itself, or a city close to it — do "
+            ."close to it. The LAST night's location must be \"{$end}\" itself, or a city close to it — do "
             ."NOT loop back to \"{$start}\". Use this as a guide for the middle of the trip: "
             ."{$loopGuidance} — but drop the \"back to Khomas\" leg and finish in whichever region "
             ."contains \"{$end}\" instead. Never jump back and forth between distant regions."
-            ."\n\n{$granularity}\n\n{$safety}";
+            ."\n\n{$dayCount}\n\n{$granularity}\n\n{$safety}";
     }
 
     /**
@@ -1409,9 +1522,15 @@ class ItineraryService
 
             $label = 'Variant '.($index + 1);
 
-            if ($nights !== null && count($days) !== $nights + 1) {
+            // One entry per night, not per calendar day the traveler is in
+            // the country — see routingGuidance()'s DAY COUNT and
+            // foldReturnDay(), which has already absorbed a single stray
+            // departure-day entry by the time this runs. Anything still off
+            // is the model misallocating nights, which a retry can fix.
+            if ($nights !== null && count($days) !== $nights) {
                 $violations[] = "{$label}: has ".count($days)." day entries for a {$nights}-night trip"
-                    .' — produce EXACTLY '.($nights + 1).' day entries, numbered 1 to '.($nights + 1);
+                    ." — one day entry is one night, so produce EXACTLY {$nights} day entries, numbered "
+                    ."1 to {$nights}, with no entry for the departure day";
             }
 
             $first = $this->canonicalPlace((string) ($days[0]['location'] ?? ''));
@@ -1423,8 +1542,8 @@ class ItineraryService
             }
 
             if ($end !== null && $last !== null && $last->region_id !== $end->region_id) {
-                $violations[] = "{$label}: the final day is in {$last->name} but the trip ends in "
-                    ."{$endName} — the last day's location must be in the region containing {$endName}";
+                $violations[] = "{$label}: the last night is in {$last->name} but the trip ends in "
+                    ."{$endName} — the last night's location must be in the region containing {$endName}";
             }
         }
 
@@ -1440,9 +1559,9 @@ class ItineraryService
             .implode('; ', $violations).'. For driving-time violations, keep the traveler an extra '
             .'night in the city they are departing from before continuing (splitting the drive across '
             .'two days) — do not attempt the whole distance in a single day. For start/end or day-count '
-            .'violations, re-anchor the route: day 1 in the start location, the final day in the end '
-            .'location, and exactly the required number of day entries. Re-plan the full itinerary with '
-            .'these corrections.';
+            .'violations, re-anchor the route: day 1 in the start location, the last NIGHT in the end '
+            .'location, and exactly one day entry per night, with no entry for the departure day. '
+            .'Re-plan the full itinerary with these corrections.';
     }
 
     /**
