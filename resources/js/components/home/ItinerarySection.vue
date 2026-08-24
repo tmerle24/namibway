@@ -13,12 +13,18 @@ import {
     fetchCities,
     fetchRegionCoords,
     fetchRouteStops,
+    fetchSupplyStops,
     PlanConflictError,
     regeneratePlan,
     savePlan,
     updatePlan,
 } from '@/lib/kaia-client';
-import type { RegionCoords, RouteStop } from '@/lib/kaia-client';
+import type {
+    RegionCoords,
+    RouteStop,
+    SupplyReason,
+    SupplyStop,
+} from '@/lib/kaia-client';
 import type {
     DayEntry,
     ItineraryDay,
@@ -93,7 +99,7 @@ const emit = defineEmits<{
     (e: 'back-to-chat'): void;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const page = usePage();
 const isLoggedIn = computed(() => !!page.props.auth?.user);
 
@@ -140,6 +146,22 @@ const routeStopsRequestedFor: Record<number, string> = {};
 
 // How many stops a drive-time box shows before "+N more".
 const ROUTE_STOPS_COLLAPSED = 3;
+
+// Where to fill up and where to buy food on each leg — the other half of a long
+// Namibian drive, and a different question from what is worth seeing on it (see
+// App\Services\Routing\SupplyStopFinder). Keyed and fetched exactly like the
+// route stops above, and just as derived: what a plan needs to say about fuel
+// depends on the road ahead, which changes the moment a stage moves.
+const supplyStopsPerVariant = ref<Record<number, Record<string, SupplyStop[]>>>(
+    {},
+);
+// The legs each variant was last asked about, including which stay each one
+// arrives at — swapping a lodge for a self-catering camp changes the answer, so
+// it has to change the signature too.
+const supplyStopsRequestedFor: Record<number, string> = {};
+// The one supply chip whose detail is open, as `variant-day-slug`. One at a
+// time: this is a footnote to a driving time, not a panel.
+const openSupplyStop = ref<string | null>(null);
 
 // Explicit, JS-measured height for the sticky map column (desktop two-col
 // layout — see .itinerary-layout in kaia-home.css), keyed by variantIndex.
@@ -378,6 +400,11 @@ async function applyParamsEdit(values: TripParamsFormValues) {
         Object.keys(routeStopsRequestedFor).forEach(
             (key) => delete routeStopsRequestedFor[Number(key)],
         );
+        supplyStopsPerVariant.value = {};
+        openSupplyStop.value = null;
+        Object.keys(supplyStopsRequestedFor).forEach(
+            (key) => delete supplyStopsRequestedFor[Number(key)],
+        );
         departureTimes.value = {};
         paramsModalOpen.value = false;
     } catch (e) {
@@ -512,11 +539,20 @@ function legKey(
 }
 
 // The map is what knows the route (it resolves each day to a coordinate and
-// asks OSRM), so it is also what triggers the look-up of what stands beside
-// it. Both places that render a map go through here.
+// asks OSRM), so it is also what triggers both look-ups of what is on it.
+// Both places that render a map go through here.
 async function setDrivingLegs(variantIndex: number, legs: DrivingLeg[]) {
     drivingLegsPerVariant.value[variantIndex] = legs;
 
+    // Two independent questions about the same road, so two requests: an empty
+    // attraction catalogue must not take the fuel line down with it.
+    await Promise.all([
+        loadRouteStops(variantIndex, legs),
+        loadSupplyStops(variantIndex),
+    ]);
+}
+
+async function loadRouteStops(variantIndex: number, legs: DrivingLeg[]) {
     const pairs = legs
         .filter((leg) => leg.from && leg.to)
         .map((leg) => ({ from: leg.from, to: leg.to }));
@@ -552,6 +588,79 @@ async function setDrivingLegs(variantIndex: number, legs: DrivingLeg[]) {
     });
 
     routeStopsPerVariant.value[variantIndex] = byLeg;
+}
+
+/**
+ * The legs as the fuel question needs them: the pair of places, plus the stay
+ * the traveler arrives at.
+ *
+ * Read off the day list rather than off the map's legs, which carry no
+ * accommodation — and whether that stay is self-catering is what turns "there
+ * is a supermarket in Solitaire" into "this is your last shop before three
+ * nights of cooking". Same pairs either way: the map draws a leg exactly where
+ * two consecutive days sit in different places, which is also where the
+ * drive-time box that shows this appears.
+ */
+function supplyLegsFor(
+    variantIndex: number,
+): Array<{ from: string; to: string; staySlug: string | null }> {
+    const days = editableVariants.value[variantIndex]?.days ?? [];
+    const legs: Array<{ from: string; to: string; staySlug: string | null }> =
+        [];
+
+    days.forEach((day, index) => {
+        const from = days[index - 1]?.location?.trim();
+        const to = day.location?.trim();
+
+        if (!from || !to || from.toLowerCase() === to.toLowerCase()) {
+            return;
+        }
+
+        legs.push({
+            from,
+            to,
+            staySlug: day.accommodation?.slug ?? null,
+        });
+    });
+
+    return legs;
+}
+
+async function loadSupplyStops(variantIndex: number) {
+    const legs = supplyLegsFor(variantIndex);
+
+    const signature = legs
+        .map((leg) => `${legKey(leg.from, leg.to)}@${leg.staySlug ?? ''}`)
+        .join('|');
+
+    if (supplyStopsRequestedFor[variantIndex] === signature) {
+        return;
+    }
+
+    supplyStopsRequestedFor[variantIndex] = signature;
+
+    if (legs.length === 0) {
+        supplyStopsPerVariant.value[variantIndex] = {};
+
+        return;
+    }
+
+    const result = await fetchSupplyStops(legs);
+
+    // Answers a route the traveler has since edited away.
+    if (supplyStopsRequestedFor[variantIndex] !== signature) {
+        return;
+    }
+
+    const byLeg: Record<string, SupplyStop[]> = {};
+
+    result.forEach((leg) => {
+        if (leg.stops.length > 0) {
+            byLeg[legKey(leg.from, leg.to)] = leg.stops;
+        }
+    });
+
+    supplyStopsPerVariant.value[variantIndex] = byLeg;
 }
 
 // Everything already in this variant, as identity keys. Slug *and* name,
@@ -639,6 +748,131 @@ function toggleRouteStops(variantIndex: number, dayIndex: number) {
     const key = driveLegKey(variantIndex, dayIndex);
 
     routeStopsExpanded.value[key] = !routeStopsExpanded.value[key];
+}
+
+/**
+ * Where to fill up and where to buy food on the drive that arrives on
+ * `dayIndex`.
+ *
+ * Nothing is filtered out here, unlike the attraction stops above: a filling
+ * station already "in the plan" is not a thing, and the town the traveler is
+ * sleeping in is exactly where they should be filling up.
+ */
+function supplyStopsForDay(
+    variantIndex: number,
+    dayIndex: number,
+): SupplyStop[] {
+    const days = editableVariants.value[variantIndex]?.days;
+    const from = days?.[dayIndex - 1]?.location;
+    const to = days?.[dayIndex]?.location;
+
+    return supplyStopsPerVariant.value[variantIndex]?.[legKey(from, to)] ?? [];
+}
+
+function supplyStopKey(
+    variantIndex: number,
+    dayIndex: number,
+    stop: SupplyStop,
+): string {
+    return `${driveLegKey(variantIndex, dayIndex)}-${stop.slug}`;
+}
+
+function toggleSupplyStop(
+    variantIndex: number,
+    dayIndex: number,
+    stop: SupplyStop,
+) {
+    const key = supplyStopKey(variantIndex, dayIndex, stop);
+
+    openSupplyStop.value = openSupplyStop.value === key ? null : key;
+}
+
+// What the chip says, and the reason the stop is there at all: not "there is
+// fuel here" but "this is the last of it for a while".
+function supplyReasonText(reason: SupplyReason): string {
+    if (reason.before_self_catering) {
+        return t('itinerary.supply.beforeSelfCatering');
+    }
+
+    return reason.service === 'fuel'
+        ? t('itinerary.supply.lastFuel', { km: reason.gap_km })
+        : t('itinerary.supply.lastShop', { km: reason.gap_km });
+}
+
+function supplyServiceLabel(service: string): string {
+    return t(`itinerary.supply.services.${service}`);
+}
+
+function supplyFuelLabel(fuel: string): string {
+    return t(`itinerary.supply.fuelTypes.${fuel}`);
+}
+
+const WEEK = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'];
+
+// The server sends days as keys precisely so the traveler is not shown "Mo-Fr"
+// because an English-speaking content manager typed it. 1 January 2024 was a
+// Monday, which is all a weekday name needs.
+function weekdayName(day: string): string {
+    const index = WEEK.indexOf(day);
+
+    if (index < 0) {
+        return day;
+    }
+
+    return new Date(Date.UTC(2024, 0, 1 + index)).toLocaleDateString(
+        locale.value,
+        { weekday: 'short', timeZone: 'UTC' },
+    );
+}
+
+// "Mo–Fr, Su", not "Mo, Tu, We, Th, Fr, Su" — a run of days is how a sign on
+// a door reads.
+function weekdayRange(days: string[]): string {
+    const indexes = days
+        .map((day) => WEEK.indexOf(day))
+        .filter((index) => index >= 0)
+        .sort((a, b) => a - b);
+
+    const runs: number[][] = [];
+
+    indexes.forEach((index) => {
+        const run = runs[runs.length - 1];
+
+        if (run && index === run[run.length - 1] + 1) {
+            run.push(index);
+        } else {
+            runs.push([index]);
+        }
+    });
+
+    return runs
+        .map((run) =>
+            run.length > 1
+                ? `${weekdayName(WEEK[run[0]])}–${weekdayName(WEEK[run[run.length - 1]])}`
+                : weekdayName(WEEK[run[0]]),
+        )
+        .join(', ');
+}
+
+function openingHoursLines(stop: SupplyStop): string[] {
+    const hours = stop.opening_hours;
+
+    if (!hours) {
+        return [t('itinerary.supply.hoursUnknown')];
+    }
+
+    if (hours.always_open) {
+        return [t('itinerary.supply.open24')];
+    }
+
+    return hours.rules.map((rule) => {
+        const times =
+            rule.ranges.length > 0
+                ? rule.ranges.map(([from, to]) => `${from}–${to}`).join(', ')
+                : t('itinerary.supply.closed');
+
+        return `${weekdayRange(rule.days)} ${times}`;
+    });
 }
 
 // Kaia (and older saved plans) still carry a single `activity`/`restaurant`
@@ -1545,6 +1779,14 @@ function dismissVariant(variantIndex: number) {
         (key) => delete routeStopsRequestedFor[Number(key)],
     );
     routeStopsExpanded.value = {};
+    supplyStopsPerVariant.value = reindexAfterRemoval(
+        supplyStopsPerVariant.value,
+        variantIndex,
+    );
+    Object.keys(supplyStopsRequestedFor).forEach(
+        (key) => delete supplyStopsRequestedFor[Number(key)],
+    );
+    openSupplyStop.value = null;
     swap.value = null;
     roomPickerKey.value = null;
     departureTimes.value = {};
@@ -2922,6 +3164,200 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                       }`
                                                             }}
                                                         </button>
+                                                    </div>
+                                                    <!-- The other half of a
+                                                         long Namibian leg:
+                                                         not what is worth
+                                                         seeing on it, but
+                                                         what has to be in the
+                                                         car before it starts.
+                                                         Only ever the last
+                                                         chance before a long
+                                                         stretch without one —
+                                                         see SupplyStopFinder,
+                                                         which is why most
+                                                         drives show nothing
+                                                         here.
+                                                    -->
+                                                    <div
+                                                        v-if="
+                                                            supplyStopsForDay(
+                                                                variantIndex,
+                                                                dayIndex,
+                                                            ).length
+                                                        "
+                                                        class="route-stops supply-stops"
+                                                    >
+                                                        <span
+                                                            class="route-stops-label"
+                                                        >
+                                                            {{
+                                                                t(
+                                                                    'itinerary.supply.label',
+                                                                )
+                                                            }}
+                                                        </span>
+                                                        <template
+                                                            v-for="stop in supplyStopsForDay(
+                                                                variantIndex,
+                                                                dayIndex,
+                                                            )"
+                                                            :key="stop.slug"
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                class="route-stop-chip supply-stop-chip"
+                                                                :aria-expanded="
+                                                                    openSupplyStop ===
+                                                                    supplyStopKey(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                        stop,
+                                                                    )
+                                                                "
+                                                                @click="
+                                                                    toggleSupplyStop(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                        stop,
+                                                                    )
+                                                                "
+                                                            >
+                                                                {{ stop.name }}
+                                                                <span
+                                                                    v-if="
+                                                                        stop
+                                                                            .reasons[0]
+                                                                    "
+                                                                    class="supply-stop-reason"
+                                                                >
+                                                                    {{
+                                                                        supplyReasonText(
+                                                                            stop
+                                                                                .reasons[0],
+                                                                        )
+                                                                    }}
+                                                                </span>
+                                                            </button>
+                                                            <!-- Everything
+                                                                 that decides
+                                                                 whether the
+                                                                 stop is any
+                                                                 use, one tap
+                                                                 away and on
+                                                                 its own line.
+                                                            -->
+                                                            <div
+                                                                v-if="
+                                                                    openSupplyStop ===
+                                                                    supplyStopKey(
+                                                                        variantIndex,
+                                                                        dayIndex,
+                                                                        stop,
+                                                                    )
+                                                                "
+                                                                class="supply-stop-detail"
+                                                            >
+                                                                <p
+                                                                    v-for="reason in stop.reasons.slice(
+                                                                        1,
+                                                                    )"
+                                                                    :key="
+                                                                        reason.service
+                                                                    "
+                                                                    class="supply-stop-line"
+                                                                >
+                                                                    {{
+                                                                        supplyReasonText(
+                                                                            reason,
+                                                                        )
+                                                                    }}
+                                                                </p>
+                                                                <p
+                                                                    class="supply-stop-line"
+                                                                >
+                                                                    {{
+                                                                        stop.services
+                                                                            .map(
+                                                                                supplyServiceLabel,
+                                                                            )
+                                                                            .join(
+                                                                                ' · ',
+                                                                            )
+                                                                    }}
+                                                                </p>
+                                                                <p
+                                                                    v-if="
+                                                                        stop
+                                                                            .fuel_types
+                                                                            .length
+                                                                    "
+                                                                    class="supply-stop-line"
+                                                                >
+                                                                    {{
+                                                                        t(
+                                                                            'itinerary.supply.pumps',
+                                                                        )
+                                                                    }}:
+                                                                    {{
+                                                                        stop.fuel_types
+                                                                            .map(
+                                                                                supplyFuelLabel,
+                                                                            )
+                                                                            .join(
+                                                                                ', ',
+                                                                            )
+                                                                    }}
+                                                                </p>
+                                                                <p
+                                                                    v-for="line in openingHoursLines(
+                                                                        stop,
+                                                                    )"
+                                                                    :key="line"
+                                                                    class="supply-stop-line"
+                                                                >
+                                                                    {{ line }}
+                                                                </p>
+                                                                <p
+                                                                    v-if="
+                                                                        stop.note
+                                                                    "
+                                                                    class="supply-stop-line"
+                                                                >
+                                                                    {{
+                                                                        stop.note
+                                                                    }}
+                                                                </p>
+                                                                <p
+                                                                    v-if="
+                                                                        stop.detour_km >
+                                                                        2
+                                                                    "
+                                                                    class="supply-stop-line"
+                                                                >
+                                                                    {{
+                                                                        t(
+                                                                            'itinerary.supply.detour',
+                                                                            {
+                                                                                km: stop.detour_km,
+                                                                            },
+                                                                        )
+                                                                    }}
+                                                                </p>
+                                                                <p
+                                                                    v-if="
+                                                                        !stop.verified
+                                                                    "
+                                                                    class="supply-stop-line supply-stop-caveat"
+                                                                >
+                                                                    {{
+                                                                        t(
+                                                                            'itinerary.supply.unverified',
+                                                                        )
+                                                                    }}
+                                                                </p>
+                                                            </div>
+                                                        </template>
                                                     </div>
                                                 </div>
                                                 <button

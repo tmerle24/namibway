@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attraction;
+use App\Services\Routing\RoutePointResolver;
 use App\Services\Routing\RouteStopFinder;
 use App\Support\Geo;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +26,7 @@ class AttractionController extends Controller
     /** How far from the day's location an attraction may be and still be offered. */
     private const DEFAULT_RADIUS_KM = 150.0;
 
-    public function search(Request $request, RouteStopFinder $finder): JsonResponse
+    public function search(Request $request, RoutePointResolver $points): JsonResponse
     {
         $query = Attraction::query()
             ->where('is_published', true)
@@ -46,7 +47,7 @@ class AttractionController extends Controller
         // "Near" is resolved from a place name — the itinerary day's own
         // location — so the browser never handles raw coordinates, same
         // contract as ListingController::search.
-        $reference = $this->referencePoint($request, $finder);
+        $reference = $this->referencePoint($request, $points);
         $results = $query->get();
 
         if ($reference !== null) {
@@ -131,14 +132,14 @@ class AttractionController extends Controller
      * name — a day's location is a place, but a plan saved before the split
      * carries a city name and must keep working.
      *
-     * Shared with the route-stop search, which resolves the ends of a leg the
-     * same way: two answers to "where is this stage?" would eventually differ,
-     * and a plan whose two attraction lists disagree about where Etosha is has
-     * no way to explain itself.
+     * Shared with the route-stop search, which resolves the ends of a leg
+     * through the same RoutePointResolver: two answers to "where is this
+     * stage?" would eventually differ, and a plan whose two attraction lists
+     * disagree about where Etosha is has no way to explain itself.
      *
      * @return array{0: float, 1: float}|null
      */
-    private function referencePoint(Request $request, RouteStopFinder $finder): ?array
+    private function referencePoint(Request $request, RoutePointResolver $points): ?array
     {
         $name = $request->query('reference_city');
 
@@ -146,7 +147,7 @@ class AttractionController extends Controller
             return null;
         }
 
-        $point = $finder->resolve($name);
+        $point = $points->resolve($name);
 
         return $point === null ? null : [$point->lat, $point->lng];
     }

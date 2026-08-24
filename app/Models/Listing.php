@@ -450,6 +450,57 @@ class Listing extends Model
     }
 
     /**
+     * Whether the traveller cooks for themselves here.
+     *
+     * Asked by App\Services\Routing\SupplyStopFinder, and by nothing else so
+     * far: it is what turns "there is a supermarket in Solitaire" into "this is
+     * the last supermarket before three nights of cooking your own dinner".
+     *
+     * Two sources on purpose, the same shape as matchingVehicles(): a property
+     * that has chosen its amenities has *answered* the question, so the
+     * catalogue is read and believed in both directions — a lodge that listed
+     * its amenities and did not list a kitchen does not have one. Everything
+     * else, which today is almost everything, falls back to reading the free
+     * text somebody typed, and errs towards true: a chip suggesting a shop the
+     * traveller did not need costs a glance, and the miss costs them dinner.
+     *
+     * Bare "kitchen" is deliberately not a match — a lodge's kitchen is where
+     * *their* chef works, which is the opposite claim. Same trap HighlightIcon
+     * navigates when it files "catering" under restaurant and "self-catering"
+     * under a kind of stay.
+     */
+    public function isSelfCatering(): bool
+    {
+        if ($this->hasChosenAmenities()) {
+            return $this->amenities
+                ->pluck('code')
+                ->intersect(['self_catering_kitchen', 'kitchenette'])
+                ->isNotEmpty();
+        }
+
+        $words = $this->amenityList();
+
+        // Through getTranslation rather than the property, which is how the
+        // rest of the codebase reads a translatable list.
+        $highlights = $this->getTranslation('highlights', app()->getLocale(), useFallbackLocale: true);
+
+        if (is_array($highlights)) {
+            foreach ($highlights as $highlight) {
+                if (is_string($highlight)) {
+                    $words[] = $highlight;
+                }
+            }
+        }
+
+        $text = mb_strtolower(implode(' ', $words));
+
+        return preg_match(
+            '/self[ -]?catering|kitchenette|(own|guest|equipped|private) kitchen|camp ?sites?|camping/',
+            $text,
+        ) === 1;
+    }
+
+    /**
      * Who this property charges differently — adults, children, infants, with
      * the age bands it publishes. Empty until a property prices by guests, and
      * empty is the right state for one that never does.

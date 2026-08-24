@@ -270,6 +270,132 @@ expansion").
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-24 — what has to be in the car before the drive starts
+
+The line under a driving time learned this morning to say what is worth
+*seeing* between two stages. The other half of a long Namibian leg is what you
+need to have with you on it, and it is the half with consequences: the last
+pump before 250 km of gravel, the last supermarket before three self-catering
+nights at a camp with no shop. That line now carries both — **Stock up**,
+under **On the way**, in the same box.
+
+**It is a different noun and it has its own table** (`supply_points`,
+`App\Models\SupplyPoint`). Filing it under `attractions` was considered and
+rejected in three sentences: nobody *goes* to a filling station, so the
+measure of one is not whether it is worth a detour but whether it is the last
+one; the columns that decide whether it is any use — opening hours, which pump
+— are meaningless on a meteorite, and `visit_minutes`, `entry_fee`,
+`requires_permit` and a gallery are meaningless here; and an attraction stays
+true for a decade while a filling station closes, changes hands or runs dry,
+which is what `verified_at` exists to admit. Same reasoning that keeps
+`menu_items` out of `bookable_units`.
+
+**The rule is a relation to the road ahead, not a position on the leg** —
+which is why `App\Services\Routing\SupplyStopFinder` takes the whole route
+and could not answer this a leg at a time. Every supply point near the route
+gets a position along it; per service, the gap after each one is the distance
+to the next place with that service, or to the end of the plan. A stop is
+named when that gap is at least 160 km for fuel or 225 km for food.
+
+That is what makes it self-limiting, and it is why the interesting question
+was never "where are the filling stations". Windhoek has thirty forecourts;
+twenty-nine of them have another one a kilometre later, so not one is named.
+What gets named is the last one before the empty stretch — and on the classic
+loop that is exactly one chip per long leg: Rehoboth as the last supermarket
+for 393 km on the way to Sossusvlei, Solitaire as the last fuel for 170 km on
+the way to the coast, Opuwo as the last of both before the Kaokoveld.
+
+**Groceries carry a second trigger, because distance is not what makes a
+supermarket matter.** A self-catering stay is. If one lies between a grocery
+stop and the next, that stop is named however short the drive — this is "the
+last supermarket before a self-catering camp", and it is why the endpoint
+takes the stay each leg arrives at. The browser sends a slug and nothing else;
+whether that stay is self-catering is `Listing::isSelfCatering()`'s answer to
+give, from the chosen amenities where a property has entered them and from its
+own free text where it has not — the same two-source shape as
+`matchingVehicles()`, erring towards true, because a chip suggesting a shop
+nobody needed costs a glance and the miss costs them dinner. A camp with a
+shop of its own never triggers it.
+
+Where it deliberately differs from the attraction finder, each for its own
+reason:
+
+- **Nothing is excluded for being at a stage.** The pumps in the town you are
+  sleeping in are not "already part of that stage" — they are the reason the
+  gap there is zero. A supply point beside a shared stage matches *both* the
+  leg that arrives and the leg that leaves, which is load-bearing rather than
+  a duplicate: the arrival closes the previous gap, the departure is what gets
+  named when a long empty leg follows. So "fill up in Otjiwarongo" appears
+  above the drive that needs it, not above the drive that ended there.
+- **No minimum leg length.** A stop worth naming is worth naming on a 30 km
+  transfer; the road after it does not care how short this leg was.
+- **A stop may be named twice on a round trip.** You need fuel in both
+  directions. Seeing something twice is pointless; filling up twice is the
+  idea.
+- **The same corridor, not a tighter one.** The first instinct was to narrow
+  it — nobody detours 40 km for diesel — and that is the wrong way round: a
+  stop is only ever named when it is the last chance, and 40 km is exactly
+  what somebody would drive for the last chance.
+
+**The thresholds are straight-line kilometres and deliberately below the road
+distances they stand for** (~200 km of driving for fuel, ~250 for food). A
+road is longer than the line it follows, and in the Namib a good deal longer —
+the C14 from Sesriem to the coast runs some 350 km over a 240 km line. That
+crossing is the case the fuel number was settled on: at 180 km the plan said
+nothing about Solitaire, which is the one place on that road everybody stops
+for fuel. Nothing here is ever quoted as a driving distance; it is shown as
+`≈` and it is a lower bound, which is the safe direction for a number somebody
+plans a tank around.
+
+**Opening hours are OpenStreetMap `opening_hours` syntax**, verbatim, in one
+column — the standard every source these rows will be filled from already
+speaks, so an import stays a copy rather than a translation.
+`App\Support\OpeningHours` parses a documented *subset* (weekday selectors and
+clock ranges, `24/7`, `off`) and **refuses everything else rather than
+half-reading it**, because a traveller drives on what this says; the admin
+field validates against exactly that parser, so what cannot be read cannot be
+saved. Days come out as keys and the browser names them from its own locale,
+so a German reader is not shown "Mo-Fr" because an English-speaking content
+manager typed it.
+
+**Content shipped with it**: 57 towns and settlements down the roads people
+actually drive, seeded in a migration and named after the place rather than
+the forecourt — "there is fuel in Kamanjab" is the fact the rule needs, and
+which of the two pumps it is at is not. Each takes its coordinates from the
+town or place it is filed under, so nothing here is a coordinate typed from
+memory (the two Etosha camps excepted, being in a park rather than a town);
+`namibway:backfill-supply-point-coordinates` is the second half of that, for
+rows whose town had not been geocoded when the migration ran. Coverage matters
+more than detail here and in a specific direction: **a missing row does not
+make the plan quieter, it makes a gap look longer than it is** — which errs
+the safe way, and is why the copy never claims there is nothing ahead, only
+how far it is to the next one we know of.
+
+- `GET /supply-stops/along-route`, `App\Http\Controllers\SupplyStopController` —
+  its own endpoint rather than another key on the attraction one: the two fail
+  independently, and only this one needs the stay each leg arrives at.
+- `App\Services\Routing\RoutePointResolver` — the stage-name lookup pulled out
+  of `RouteStopFinder` now that a second finder needs it. Two answers to "where
+  is Etosha?" would eventually differ.
+- The chip opens *in place* rather than in a modal: four facts and no
+  photograph, so a panel would be a worse answer than a line under the chip
+  that was tapped. `verified_at` shows there as a quiet caveat and nowhere
+  else — a warning on every chip is one nobody reads on the day it matters.
+- `/admin` → Content → **Supply points**, and `SupplyService` is the only
+  classification the table has: a `type` column beside a service list asks the
+  same question twice and lets the two answers disagree.
+- Tests: `tests/Feature/Content/SupplyStopsTest.php` for the rule one part at a
+  time, plus the seed being filed against real towns; `tests/Unit/Support/OpeningHoursTest.php`
+  for what the parser reads and what it refuses.
+
+**Not done, deliberately:** the trip PDF does not carry the line (neither does
+"On the way"); `atm`, `water`, `gas` and `tyre_repair` are recorded but drive
+no rule, and are shown only in a stop's detail; nothing is checked against the
+clock, so a stop is never suppressed for being closed when the traveller would
+pass it — the hours are shown and the reading is theirs. And every seeded row
+is unverified, which the admin table says in as many words: that is content
+work now, and the cheapest kind, since one phone call is one row.
+
 ### 2026-08-24 — the phone gets one screen at a time
 
 From a phone screenshot of production: the landing screen showed the headline
@@ -395,7 +521,7 @@ content work in the product: one row is one thing a traveller stops for.
 250 km have neither. That is not an attraction and does not belong in that
 table; it is a different noun with opening hours and a fuel type, and the
 interesting question is not where the filling stations are but which leg makes
-one worth naming.
+one worth naming. *Built later the same day — see the entry above.*
 
 ### 2026-08-24 — a day entry is a night, and the departure day is not one
 
@@ -1970,14 +2096,11 @@ the results half as much as the picker.
   date or whether growing it is a regeneration. Found while fixing the phantom
   departure night on 2026-08-24.
 
-- ⬜ **Fuel and supplies as stops on a leg.** The drive-time box now names
-  what is worth *seeing* between two stages (2026-08-24). The other half of a
-  long Namibian leg is what you need to have with you on it: the last filling
-  station before 250 km of gravel, the last supermarket before a self-catering
-  camp. Not attractions — a different noun, with opening hours, a fuel type and
-  a "last one before" relation to the leg rather than a position on it — so it
-  wants its own table and its own rule for when a stop is worth naming at all.
-  The line in the box is already there to hang it on. Raised 2026-08-24.
+- ✅ **Fuel and supplies as stops on a leg.** Built the same day it was
+  raised: `supply_points`, `SupplyStopFinder`, the **Stock up** line under
+  **On the way**, and 57 seeded towns. See the entry above. What is left of it
+  is content, not code — every seeded row is unverified and none has opening
+  hours, and the corpus is what decides whether a gap is reported honestly.
 
 - ⬜ **The road between two stages is mostly empty of content.** 47 attractions
   is enough to prove the "On the way" line works and not enough for it to fire
