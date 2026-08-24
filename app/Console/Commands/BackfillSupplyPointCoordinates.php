@@ -53,8 +53,15 @@ class BackfillSupplyPointCoordinates extends Command
         foreach ($points as $point) {
             // Places first, then cities — the same precedence
             // App\Services\Routing\RoutePointResolver uses.
-            $anchor = collect([$point->place, $point->city])
-                ->first(fn (?object $row): bool => $row?->lat !== null && $row?->lng !== null);
+            $anchor = null;
+
+            foreach ([$point->place, $point->city] as $candidate) {
+                if ($candidate !== null && $candidate->lat !== null && $candidate->lng !== null) {
+                    $anchor = $candidate;
+
+                    break;
+                }
+            }
 
             if ($anchor === null) {
                 $stranded[] = $point->name;

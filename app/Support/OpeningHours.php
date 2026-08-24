@@ -72,7 +72,7 @@ final readonly class OpeningHours
             $rules[] = $rule;
         }
 
-        return $rules === [] ? null : new self($raw, false, $rules);
+        return new self($raw, false, $rules);
     }
 
     public static function isValid(string $value): bool
@@ -212,7 +212,7 @@ final readonly class OpeningHours
             ];
         }
 
-        return $ranges === [] ? null : $ranges;
+        return $ranges;
     }
 
     /** 24:00 is a legal end of day in this syntax; 24:30 is not a time. */

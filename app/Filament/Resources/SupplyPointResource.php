@@ -9,6 +9,7 @@ use App\Models\City;
 use App\Models\Place;
 use App\Models\SupplyPoint;
 use App\Support\OpeningHours;
+use BackedEnum;
 use Closure;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -61,13 +62,7 @@ class SupplyPointResource extends Resource
                             ->helperText('Left empty it is made from the name.'),
                         Forms\Components\CheckboxList::make('services')
                             ->options(SupplyService::class)
-                            // The cast hands back enum instances and the
-                            // options are keyed by their stored values, so
-                            // without this an existing row opens with nothing
-                            // ticked and saving it empties the column.
-                            ->formatStateUsing(fn (mixed $state): array => collect($state)
-                                ->map(fn (mixed $value): string => $value instanceof SupplyService ? $value->value : (string) $value)
-                                ->all())
+                            ->formatStateUsing(fn (mixed $state): array => self::tickedValues($state))
                             ->required()
                             ->columns(3)
                             ->columnSpanFull()
@@ -75,9 +70,7 @@ class SupplyPointResource extends Resource
                         Forms\Components\CheckboxList::make('fuel_types')
                             ->label('Pumps')
                             ->options(FuelType::class)
-                            ->formatStateUsing(fn (mixed $state): array => collect($state)
-                                ->map(fn (mixed $value): string => $value instanceof FuelType ? $value->value : (string) $value)
-                                ->all())
+                            ->formatStateUsing(fn (mixed $state): array => self::tickedValues($state))
                             ->columns(2)
                             ->columnSpanFull()
                             ->visible(fn (Forms\Get $get): bool => in_array(SupplyService::Fuel->value, (array) $get('services'), true))
@@ -229,6 +222,31 @@ class SupplyPointResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * The stored values behind whatever the cast handed the form.
+     *
+     * A CheckboxList's options are keyed by the enum's stored value while the
+     * AsEnumCollection cast gives back enum instances — so without this an
+     * existing row opens with nothing ticked, and saving it then empties the
+     * column it was only meant to display.
+     *
+     * @return array<int, string>
+     */
+    private static function tickedValues(mixed $state): array
+    {
+        $values = [];
+
+        foreach (is_iterable($state) ? $state : [] as $value) {
+            if ($value instanceof BackedEnum) {
+                $values[] = (string) $value->value;
+            } elseif (is_string($value)) {
+                $values[] = $value;
+            }
+        }
+
+        return $values;
     }
 
     public static function getPages(): array

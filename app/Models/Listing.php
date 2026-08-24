@@ -478,12 +478,21 @@ class Listing extends Model
                 ->isNotEmpty();
         }
 
-        $highlights = $this->highlights;
+        $words = $this->amenityList();
 
-        $text = mb_strtolower(implode(' ', array_merge(
-            is_array($highlights) ? array_filter($highlights, is_string(...)) : [],
-            $this->amenityList(),
-        )));
+        // Through getTranslation rather than the property, which is how the
+        // rest of the codebase reads a translatable list.
+        $highlights = $this->getTranslation('highlights', app()->getLocale(), useFallbackLocale: true);
+
+        if (is_array($highlights)) {
+            foreach ($highlights as $highlight) {
+                if (is_string($highlight)) {
+                    $words[] = $highlight;
+                }
+            }
+        }
+
+        $text = mb_strtolower(implode(' ', $words));
 
         return preg_match(
             '/self[ -]?catering|kitchenette|(own|guest|equipped|private) kitchen|camp ?sites?|camping/',

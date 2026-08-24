@@ -294,6 +294,13 @@ class SupplyStopFinder
             }
         }
 
+        // forLegs() only calls this with resolved legs, so this cannot happen
+        // — but a box has to be built from something, and a guard is cheaper
+        // than a caller having to stay careful.
+        if ($lats === [] || $lngs === []) {
+            return collect();
+        }
+
         $padLat = Geo::latDegreesForKm(self::MAX_CORRIDOR_KM);
         $padLng = Geo::lngDegreesForKm(self::MAX_CORRIDOR_KM, max(abs(min($lats)), abs(max($lats))));
 
