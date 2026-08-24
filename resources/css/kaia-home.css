@@ -373,6 +373,8 @@ body:has(.kaia-page) {
 .kaia-page .hero.has-photo .hero-photo-scrim {
     position: absolute;
     inset: 0;
+}
+.kaia-page .hero.has-photo .hero-photo-scrim-strong {
     background: linear-gradient(
         180deg,
         rgba(16, 26, 48, 0.82) 0%,
@@ -382,12 +384,27 @@ body:has(.kaia-page) {
         rgba(140, 74, 21, 0.88) 100%
     );
 }
+/* For a photograph that is already dark — a night sky, a silhouette. The
+   strong scrim above would flatten it to black and take its stars with it.
+   This one only shapes the light that is there, which means the contrast
+   now depends on the photograph rather than on the scrim: it is opt-in per
+   photo (config/hero.php), and worth looking at before shipping. */
+.kaia-page .hero.has-photo .hero-photo-scrim-light {
+    background: linear-gradient(
+        180deg,
+        rgba(16, 26, 48, 0.5) 0%,
+        rgba(16, 26, 48, 0.34) 34%,
+        rgba(16, 26, 48, 0.1) 54%,
+        rgba(140, 74, 21, 0.24) 80%,
+        rgba(140, 74, 21, 0.82) 100%
+    );
+}
 /* Same reasoning, different geometry. The headline wraps to three or four
    lines on a phone, so .hero-head reaches halfway down the hero instead of
    ending a third of the way in — the dark half has to follow it, or the
    subtitle ends up on the one part of the photo the scrim already let go. */
 @media (max-width: 768px) {
-    .kaia-page .hero.has-photo .hero-photo-scrim {
+    .kaia-page .hero.has-photo .hero-photo-scrim-strong {
         background: linear-gradient(
             180deg,
             rgba(16, 26, 48, 0.85) 0%,
@@ -395,6 +412,16 @@ body:has(.kaia-page) {
             rgba(16, 26, 48, 0.28) 66%,
             rgba(140, 74, 21, 0.34) 84%,
             rgba(140, 74, 21, 0.9) 100%
+        );
+    }
+    .kaia-page .hero.has-photo .hero-photo-scrim-light {
+        background: linear-gradient(
+            180deg,
+            rgba(16, 26, 48, 0.55) 0%,
+            rgba(16, 26, 48, 0.42) 50%,
+            rgba(16, 26, 48, 0.18) 66%,
+            rgba(140, 74, 21, 0.26) 84%,
+            rgba(140, 74, 21, 0.85) 100%
         );
     }
 }

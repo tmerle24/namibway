@@ -19,26 +19,29 @@ class HeroPhotoTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function configure(int $count): void
+    private function configure(int $count, bool $illustration = false): void
     {
-        config(['hero.photos' => array_map(fn (int $i): array => [
-            'slug' => "photo-{$i}",
-            'file' => "images/hero/photo-{$i}.jpg",
-            'credit' => "Photographer {$i}",
-            'focus' => '50% 60%',
-        ], range(1, $count))]);
+        config([
+            'hero.include_illustration' => $illustration,
+            'hero.photos' => array_map(fn (int $i): array => [
+                'slug' => "photo-{$i}",
+                'file' => "images/hero/photo-{$i}.jpg",
+                'credit' => "Photographer {$i}",
+                'focus' => '50% 60%',
+            ], range(1, $count)),
+        ]);
     }
 
     public function test_no_configured_photos_leaves_the_hero_illustrated(): void
     {
-        config(['hero.photos' => []]);
+        config(['hero.photos' => [], 'hero.include_illustration' => true]);
 
         $this->assertNull(HeroPhoto::forDay(Carbon::parse('2026-08-24')));
     }
 
     public function test_an_entry_without_a_file_is_skipped_rather_than_rendered_broken(): void
     {
-        config(['hero.photos' => [
+        config(['hero.include_illustration' => false, 'hero.photos' => [
             ['slug' => 'placeholder', 'file' => null],
             ['slug' => 'real', 'file' => 'images/hero/real.jpg'],
         ]]);
@@ -94,6 +97,8 @@ class HeroPhotoTest extends TestCase
 
     public function test_a_public_path_becomes_a_url_and_a_url_is_left_alone(): void
     {
+        config(['hero.include_illustration' => false]);
+
         config(['hero.photos' => [
             ['slug' => 'local', 'file' => 'images/hero/dune.jpg'],
         ]]);
@@ -111,6 +116,51 @@ class HeroPhotoTest extends TestCase
         );
     }
 
+    public function test_the_illustration_takes_a_turn_in_the_rotation(): void
+    {
+        $this->configure(3, illustration: true);
+
+        $slots = [];
+
+        for ($day = 0; $day < 4; $day++) {
+            $photo = HeroPhoto::forDay(Carbon::parse('2026-08-24')->addDays($day));
+            $slots[] = $photo === null ? 'illustration' : $photo['slug'];
+        }
+
+        // Four days over a three-photo set plus the drawing: every slot once.
+        $this->assertSame(
+            ['photo-1', 'photo-2', 'photo-3', 'illustration'],
+            array_values(array_unique($slots)),
+        );
+    }
+
+    public function test_the_illustration_stays_out_when_it_is_not_wanted(): void
+    {
+        $this->configure(3, illustration: false);
+
+        for ($day = 0; $day < 6; $day++) {
+            $this->assertNotNull(HeroPhoto::forDay(Carbon::parse('2026-08-24')->addDays($day)));
+        }
+    }
+
+    public function test_the_illustration_can_be_previewed_like_any_other_slot(): void
+    {
+        $this->configure(3, illustration: false);
+
+        $this->assertNull(HeroPhoto::forDay(Carbon::parse('2026-08-24'), 'illustration'));
+    }
+
+    public function test_the_scrim_defaults_to_strong_and_is_opt_in_per_photo(): void
+    {
+        config(['hero.include_illustration' => false, 'hero.photos' => [
+            ['slug' => 'bright', 'file' => 'a.jpg'],
+            ['slug' => 'dark', 'file' => 'b.jpg', 'scrim' => 'light'],
+        ]]);
+
+        $this->assertSame('strong', HeroPhoto::forDay(Carbon::parse('2026-08-24'), 'bright')['scrim']);
+        $this->assertSame('light', HeroPhoto::forDay(Carbon::parse('2026-08-24'), 'dark')['scrim']);
+    }
+
     public function test_the_homepage_hands_the_photo_to_the_hero(): void
     {
         $this->configure(2);
@@ -120,6 +170,7 @@ class HeroPhotoTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('heroPhoto.slug', 'photo-2')
                 ->where('heroPhoto.credit', 'Photographer 2')
-                ->where('heroPhoto.focus', '50% 60%'));
+                ->where('heroPhoto.focus', '50% 60%')
+                ->where('heroPhoto.scrim', 'strong'));
     }
 }

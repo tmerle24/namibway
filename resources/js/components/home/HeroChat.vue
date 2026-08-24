@@ -58,16 +58,18 @@ function recommendationImage(rec: ListingRecommendation): string {
 }
 
 /**
- * The photograph behind the hero, when one is configured (config/hero.php);
- * null means the illustrated hero, which is the default. `focus` is a CSS
- * object-position — a hero crops hard and differently per viewport, so which
- * part of the frame has to survive belongs to the photo, not the layout.
+ * Today's hero photograph (config/hero.php). null is the drawn hero — both
+ * the state of a site with no photos and one of the rotation's own slots.
+ * `focus` is a CSS object-position: a hero crops hard and differently per
+ * viewport, so which part of the frame has to survive belongs to the photo,
+ * not the layout. `scrim` picks how hard the overlay works — see the CSS.
  */
 export type HeroPhoto = {
     slug: string;
     url: string;
     credit: string | null;
     focus: string;
+    scrim: 'strong' | 'light';
 };
 
 defineProps<{
@@ -610,7 +612,12 @@ async function retryLastMessage() {
             fetchpriority="high"
             decoding="async"
         />
-        <div v-if="photo" class="hero-photo-scrim" aria-hidden="true"></div>
+        <div
+            v-if="photo"
+            class="hero-photo-scrim"
+            :class="`hero-photo-scrim-${photo.scrim}`"
+            aria-hidden="true"
+        ></div>
         <svg
             v-if="!photo"
             class="hero-bg"
