@@ -594,8 +594,15 @@ async function retryLastMessage() {
 </script>
 
 <template>
-    <SiteHeader />
-    <div id="kaia-hero" class="hero" :class="{ 'has-photo': photo }">
+    <!-- The header floats on the hero rather than sitting above it, so the
+         photograph runs all the way to the top of the screen. It turns back
+         into a solid bar on the first scroll. -->
+    <SiteHeader overlay />
+    <div
+        id="kaia-hero"
+        class="hero has-overlay-nav"
+        :class="{ 'has-photo': photo }"
+    >
         <!-- A real Namibian landscape, when one is configured — see
              config/hero.php. It replaces the illustration below rather than
              sitting behind it, so the drawn dunes, tree and sun are not

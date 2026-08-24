@@ -26,6 +26,19 @@
     --danger: #a13d2f;
     --danger-light: #f3ddd7;
 
+    /* The header is exactly as tall as its logo plus its own padding, and in
+       overlay mode the hero has to clear precisely that. Declared as tokens
+       so the two cannot drift apart: change the padding or the logo and the
+       clearance follows. Deliberately CSS rather than the JS-measured
+       --site-header-height — a layout offset has to be right on the first
+       paint, before the logo <img> has loaded and before any observer has
+       run, and a measured one is 58px until it is 64px. */
+    --hero-nav-pad-y: 12px;
+    --hero-nav-logo-height: 40px;
+    --hero-nav-height: calc(
+        var(--hero-nav-logo-height) + 2 * var(--hero-nav-pad-y)
+    );
+
     background: var(--paper);
     color: var(--ink);
     font-family: 'Inter', sans-serif;
@@ -76,7 +89,10 @@ body:has(.kaia-page) {
 /* ---------- HERO ---------- */
 .kaia-page .hero {
     position: relative;
-    min-height: 560px;
+    /* Named because overlay mode has to add the header's height back on top
+       of it — see .hero.has-overlay-nav. */
+    --hero-min-height: 560px;
+    min-height: var(--hero-min-height);
     overflow: hidden;
     background: linear-gradient(
         180deg,
@@ -159,6 +175,68 @@ body:has(.kaia-page) {
        it instead of below it. No-op in a regular browser. */
     padding-top: env(safe-area-inset-top, 0px);
 }
+/* Overlay mode (SiteHeader's `overlay` prop, used by the homepage): the
+   header floats on the hero instead of sitting above it, so the photograph
+   runs to the very top of the screen. Out of flow rather than sticky —
+   nothing below it reserves its height, which is exactly what lets the hero
+   start at y=0; `.hero.has-overlay-nav` below pays the clearance back as
+   padding, so the hero's *content* still starts where it always did and only
+   its background gains the strip behind the header.
+
+   Nothing is painted here at rest on purpose — that is the whole request.
+   What keeps the white logo and the outlined buttons legible in that state
+   is the hero's own scrim, whose top stop is set from a blown-white sky
+   (see .hero-photo-scrim-strong); the illustrated hero starts on --night,
+   which is this bar's own colour anyway. So the scrim's top is now load
+   bearing for two things, not one. */
+.kaia-page .hero-nav--overlay {
+    position: fixed;
+    left: 0;
+    right: 0;
+    background: transparent;
+    transition:
+        background-color 220ms ease,
+        box-shadow 220ms ease;
+    /* The same compositing hint the mobile fixed-header rule further down
+       carries, and for the same reason: iOS Safari can stop compositing a
+       fixed layer independently and let it be dragged around by whatever
+       scrolls underneath. */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+}
+/* The first scroll and it is a bar again. Deliberately not "once the hero has
+   scrolled past": the transparent state is the arrival view, and a header
+   that stays see-through while a photograph slides underneath it is a header
+   whose contrast changes with whatever pixel happens to be behind the logo. */
+.kaia-page .hero-nav--scrolled {
+    background: var(--night);
+    box-shadow: 0 8px 24px rgba(16, 26, 48, 0.28);
+}
+@media (prefers-reduced-motion: reduce) {
+    .kaia-page .hero-nav--overlay {
+        transition: none;
+    }
+}
+/* Pays back the height the overlay header no longer takes in flow. The hero's
+   photo and gradient are absolutely positioned to its edges, so they keep
+   filling the strip behind the header; only the headline moves down, landing
+   exactly where it did when the header was in flow. The fallback matches the
+   header's real height (12px + 40px logo + 12px), so the first paint before
+   SiteHeader's ResizeObserver has published the live value is not a jump. */
+.kaia-page .hero.has-overlay-nav {
+    /* The safe-area term is the header's own `padding-top: env(...)`, which
+       sits on top of --hero-nav-height rather than inside it. */
+    padding-top: calc(var(--hero-nav-height) + env(safe-area-inset-top, 0px));
+    /* And the hero grows by the same amount, so it keeps as much height below
+       the header as it had when the header sat above it — otherwise moving
+       the header into the hero would quietly cost the photo 64px. */
+    min-height: calc(
+        var(--hero-min-height) + var(--hero-nav-height) +
+            env(safe-area-inset-top, 0px)
+    );
+}
 .kaia-page .hero-nav-inner {
     display: flex;
     flex-wrap: wrap;
@@ -167,13 +245,16 @@ body:has(.kaia-page) {
     gap: 12px;
     max-width: 1040px;
     margin: 0 auto;
-    padding: 12px 24px;
+    padding: var(--hero-nav-pad-y) 24px;
+    /* Holds the header at its full height before the logo image arrives, so
+       it does not grow by 6px under the reader's eyes on a cold load. */
+    min-height: var(--hero-nav-height);
 }
 .kaia-page .hero-nav .brand {
     margin-bottom: 0;
 }
 .kaia-page .hero-nav .brand-logo {
-    max-height: 40px;
+    max-height: var(--hero-nav-logo-height);
     margin-left: 0;
 }
 .kaia-page .hero-nav-actions {
@@ -300,8 +381,11 @@ body:has(.kaia-page) {
     cursor: pointer;
 }
 @media (max-width: 640px) {
+    .kaia-page {
+        --hero-nav-pad-y: 10px;
+    }
     .kaia-page .hero-nav-inner {
-        padding: 10px 16px;
+        padding: var(--hero-nav-pad-y) 16px;
     }
 }
 .kaia-page .hero-head {
