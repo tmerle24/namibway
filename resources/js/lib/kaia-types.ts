@@ -182,10 +182,29 @@ export interface ItineraryPlan {
     trip_params?: TripParams | null;
 }
 
+/**
+ * What Kaia's last message is waiting for — mirrors App\Enums\InterviewSlot,
+ * minus its 'none' case, which the backend already flattens to null. Drives
+ * the tappable answers under the message (lib/kaia-suggestions.ts).
+ */
+export type InterviewSlot =
+    | 'nights'
+    | 'travel_period'
+    | 'interests'
+    | 'budget_tier'
+    | 'travelers'
+    | 'vehicle_type'
+    | 'start_end';
+
 export interface ChatMessage {
     role: 'ai' | 'user';
     text: string;
     recommendation?: ListingRecommendation | null;
+    // Set on Kaia's turns only, and only where the question has a known set of
+    // answers. Kept on the message rather than in a single "current slot" ref
+    // so the chips belong to the turn that asked — an older question's buttons
+    // disappear on their own once it is no longer the last thing said.
+    awaiting?: InterviewSlot | null;
     // Marks a placeholder bubble shown after Kaia failed to respond (all
     // silent retries exhausted) — rendered with a retry action instead of
     // being treated as a real turn, and excluded from the history sent back

@@ -426,6 +426,58 @@ body:has(.kaia-page) {
 .kaia-page .chat-retry-btn:hover {
     color: var(--rust-dark);
 }
+/* The tap-through path: answers offered as chips under Kaia's last message,
+   so a traveler who would rather not type never has to. Lives inside
+   .chat-log so it scrolls with the conversation and the newest set is always
+   the one at the bottom. */
+.kaia-page .chat-suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    align-self: stretch;
+    /* Pulls up against the .chat-log gap: the chips belong to the message
+       above them, not to the space between turns. */
+    margin-top: -4px;
+}
+.kaia-page .chat-suggestions-hint {
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+    /* No muted-ink token in this palette — the page's convention for
+       secondary text is the ink at reduced opacity (see .day-note et al). */
+    color: var(--ink);
+    opacity: 0.6;
+}
+.kaia-page .chat-suggestion-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+.kaia-page .chat-suggestion {
+    background: var(--paper);
+    color: var(--ink);
+    border: 1px solid var(--sand-dark);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 13.5px;
+    line-height: 1.3;
+    font-weight: 500;
+    /* Left, not centred: a wrapped two-line chip reads as a sentence. */
+    text-align: left;
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+.kaia-page .chat-suggestion:hover:not(:disabled) {
+    background: var(--rust);
+    border-color: var(--rust);
+    color: var(--paper);
+}
+.kaia-page .chat-suggestion:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
 .kaia-page .chat-input-row {
     display: flex;
     gap: 8px;

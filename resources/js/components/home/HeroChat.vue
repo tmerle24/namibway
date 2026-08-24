@@ -4,9 +4,11 @@ import { SpeechRecognition as NativeSpeechRecognition } from '@capgo/capacitor-s
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import DeadTree from '@/components/DeadTree.vue';
+import ChatSuggestions from '@/components/home/ChatSuggestions.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import { formatPrice } from '@/lib/currency';
 import { sendKaiaMessage } from '@/lib/kaia-client';
+import { starterSuggestions, suggestionsFor } from '@/lib/kaia-suggestions';
 import type {
     ChatMessage,
     ItineraryPlan,
@@ -85,6 +87,40 @@ const chatLog = ref<HTMLDivElement | null>(null);
 const chatPanel = ref<HTMLDivElement | null>(null);
 const chatInput = ref<HTMLInputElement | null>(null);
 let thinkingTimer: ReturnType<typeof setInterval> | null = null;
+
+// What the traveler can answer by tapping right now. Two sources, and only
+// ever one of them at a time: the curated openers while the greeting is still
+// the whole conversation, and afterwards whatever slot Kaia's own last message
+// declared. Anchored to the *last* message on purpose — an answered question's
+// buttons go away by themselves, and a plan being ready (a message with no
+// slot) clears them without anyone having to remember to.
+const lastMessage = computed(
+    () => messages.value[messages.value.length - 1] ?? null,
+);
+
+const isGreetingOnly = computed(() => messages.value.length === 1);
+
+const suggestions = computed<string[]>(() => {
+    if (isTyping.value) {
+        return [];
+    }
+
+    if (isGreetingOnly.value) {
+        return starterSuggestions(tm);
+    }
+
+    const last = lastMessage.value;
+
+    if (!last || last.role !== 'ai' || last.failed) {
+        return [];
+    }
+
+    return suggestionsFor(last.awaiting, locale.value, tm);
+});
+
+const suggestionsHint = computed(() =>
+    isGreetingOnly.value ? t('chat.startersHint') : t('chat.suggestionsHint'),
+);
 
 // Wrapped-app voice input uses the native STT plugin (@capacitor-community/
 // speech-recognition, backed by Apple's Speech framework / Android's
@@ -418,7 +454,11 @@ function applyResult(
     result: Awaited<ReturnType<typeof sendKaiaMessage>>,
 ): boolean {
     if (result.type === 'question') {
-        messages.value.push({ role: 'ai', text: result.text });
+        messages.value.push({
+            role: 'ai',
+            text: result.text,
+            awaiting: result.awaiting ?? null,
+        });
     } else if (result.type === 'itinerary') {
         messages.value.push({ role: 'ai', text: t('chat.itineraryReady') });
         emit('plan-ready', result.plan);
@@ -462,7 +502,12 @@ async function requestKaiaReply() {
     messages.value.push({ role: 'ai', text: t('chat.error'), failed: true });
 }
 
-async function runKaiaRequest() {
+// `refocus` is false for a tapped answer, and that is the whole point of the
+// tap-through flow on a phone: focusing the input opens the on-screen
+// keyboard, which then covers the next set of buttons. Someone who is typing
+// still gets focus back — the input is disabled while Kaia is "typing", so it
+// would otherwise be lost after every turn.
+async function runKaiaRequest(refocus = true) {
     isTyping.value = true;
     startThinking();
     await scrollToBottom();
@@ -474,8 +519,10 @@ async function runKaiaRequest() {
 
     await scrollToBottom();
 
-    // The input is disabled while Kaia is "typing", which drops focus —
-    // bring it back so the user can keep typing without reaching for the mouse.
+    if (!refocus) {
+        return;
+    }
+
     await nextTick();
     chatInput.value?.focus();
 }
@@ -491,6 +538,25 @@ async function sendMessage() {
     inputText.value = '';
 
     await runKaiaRequest();
+}
+
+// A tapped answer is an ordinary user turn — same text, same history, same
+// request. Nothing about the conversation knows it was a button, which is what
+// keeps typing and tapping mixable in one session.
+async function pickSuggestion(text: string) {
+    if (isTyping.value) {
+        return;
+    }
+
+    // Mobile enters full-screen chat on input focus; a traveler who never
+    // touches the input would otherwise plan a whole trip in the small
+    // hero-sized panel.
+    await activateChat();
+
+    messages.value.push({ role: 'user', text });
+    inputText.value = '';
+
+    await runKaiaRequest(false);
 }
 
 async function retryLastMessage() {
@@ -657,6 +723,12 @@ async function retryLastMessage() {
                     <div v-if="isTyping" class="msg typing">
                         {{ thinkingStatuses[thinkingIndex] }}
                     </div>
+                    <ChatSuggestions
+                        :suggestions="suggestions"
+                        :hint="suggestionsHint"
+                        :disabled="isTyping"
+                        @pick="pickSuggestion"
+                    />
                 </div>
                 <div class="chat-input-row">
                     <input

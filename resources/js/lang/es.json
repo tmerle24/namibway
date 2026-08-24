@@ -24,6 +24,54 @@
     },
     "chat": {
         "greeting": "Hola, soy Kaia. Cuéntame un poco sobre el viaje que tienes en mente — ¿cuántos días tienes?",
+        "starters": [
+            "2 semanas de ruta circular, 4x4 con tienda de techo",
+            "3 semanas de ruta circular, 4x4 con tienda de techo",
+            "10 días, lodges y fauna salvaje",
+            "Dos semanas con los niños",
+            "Una semana en el desierto, lodges premium",
+            "¿Cuál es la mejor época para viajar a Namibia?"
+        ],
+        "startersHint": "Toca un punto de partida — o cuéntamelo con tus palabras.",
+        "suggestionsHint": "Toca una respuesta — o escribe la tuya.",
+        "suggestions": {
+            "nights": [
+                "1 semana",
+                "10 días",
+                "2 semanas",
+                "3 semanas",
+                "4 semanas"
+            ],
+            "interests": [
+                "Fauna y safari",
+                "Desierto y paisajes",
+                "Aventura y actividades",
+                "Cultura y gente",
+                "Tranquilo, pocos trayectos largos",
+                "Fotografía"
+            ],
+            "budget_tier": ["Económico", "Gama media", "Premium"],
+            "travelers": [
+                "Solo yo",
+                "2 adultos",
+                "2 adultos, 1 niño menor de 13",
+                "2 adultos, 2 niños menores de 13",
+                "4 adultos"
+            ],
+            "vehicle_type": [
+                "4x4 con tienda de techo",
+                "4x4, durmiendo en lodges",
+                "Coche normal, solo carreteras asfaltadas",
+                "Autocaravana",
+                "Microbús para un grupo"
+            ],
+            "start_end": [
+                "Ruta circular desde Windhoek",
+                "Ruta circular desde Swakopmund",
+                "Salida Windhoek, final Walvis Bay",
+                "Salida Windhoek, final Katima Mulilo"
+            ]
+        },
         "placeholder": "¿Qué quieres hacer en Namibia?",
         "send": "Enviar",
         "thinkingStatuses": [

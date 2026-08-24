@@ -1,6 +1,7 @@
 import type {
     ChatMessage,
     GuestDetails,
+    InterviewSlot,
     ItineraryDay,
     ItineraryPlan,
     ListingRecommendation,
@@ -10,7 +11,7 @@ import type {
 import type { PriceUnit } from '@/lib/price-unit';
 
 export type KaiaResponse =
-    | { type: 'question'; text: string }
+    | { type: 'question'; text: string; awaiting?: InterviewSlot | null }
     | { type: 'itinerary'; plan: ItineraryPlan }
     | { type: 'search_intent'; intent: SearchIntent }
     | {

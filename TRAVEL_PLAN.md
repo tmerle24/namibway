@@ -270,6 +270,70 @@ expansion").
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-24 — planning a trip without typing a word
+
+Kaia asked good questions and offered exactly one way to answer them: a text
+field. That is the wrong ergonomics for the first thing a traveler meets — on
+a phone especially, where "how many nights?" costs a keyboard, a sentence and
+a send. The interview is a slot-filling conversation with a handful of closed
+answers per slot, so those answers are now buttons.
+
+Two sources, deliberately different:
+
+- **Openers under the greeting** (`chat.starters`) — six curated ways in,
+  including the two Till named: *2-week round trip, 4x4 with rooftop tent* and
+  its 3-week twin. One of them answers nights *and* vehicle in a single tap,
+  which is why they are worded as whole trips rather than as a first question.
+  One is a plain Namibia question, so the chips also say "Kaia answers things,
+  not only plans them".
+- **Answers under each question** — Kaia's reply now declares *what it just
+  asked for* (`App\Enums\InterviewSlot`: nights, travel_period, interests,
+  budget_tier, travelers, vehicle_type, start_end), and the frontend renders
+  the chips for that slot.
+
+The mechanism is `reply_to_traveler`, a new tool the interview must call for
+every conversational turn — the general-Namibia answer as much as the next
+interview question — with `tool_choice: any` forcing it. Every turn is now one
+of four structured shapes with no prose branch to guess at, which is what
+makes `awaiting` dependable enough to hang the flow on. A reply that names a
+slot outside the enum, or names none, comes back as `null` and the traveler
+gets the text field for that turn: the failure mode is a keyboard, never
+vehicle types offered under a question about children.
+
+Four decisions worth not undoing:
+
+- **The chips live in the frontend, not in the model** (`lib/kaia-suggestions.ts`
+  + `chat.suggestions.*` in all five `lang/*.json`). Generating them per turn
+  would pay tokens and latency for wording that drifts between turns and can't
+  be translated. The backend only names the slot.
+- **A chip's label is the message it sends.** The transcript reads as if the
+  traveler said it, and Kaia's own inference rules ("two weeks" → 14 nights)
+  keep doing the work, rather than a second, silent encoding the model never
+  sees.
+- **Travel period is generated, not translated** — the current month and the
+  five after it, via `Intl.DateTimeFormat` in the traveler's locale. It is the
+  one slot whose answers move with the calendar, and a month is exactly the
+  shape `ready_for_itinerary` wants.
+- **One question per turn.** The prompt used to combine two missing fields
+  into one sentence to save a turn; half of such a question has nothing to tap.
+  The cap went from 4 questions to 5, and after that Kaia assumes a sensible
+  default rather than asking a sixth time. A tap is cheaper than a sentence, so
+  five taps beat three typed answers.
+
+Also: a tapped answer does **not** refocus the input (`runKaiaRequest(false)`),
+because focusing it opens the phone keyboard over the next set of buttons —
+the one thing a tap-through traveler never asked for.
+
+Tests: `tests/Feature/Kaia/InterviewSuggestionsTest.php` — a declared slot
+reaches the chat, "none"/unknown/missing all come back as no slot, prose still
+answers, and the interview call really does force a tool call and ship the
+enum the chip sets are keyed on.
+
+Not done here: multi-select chips (interests is the one slot where picking two
+would be natural), and the chips stop at the plan — editing an existing plan is
+already click-driven through the trip-params popup, but "add a night here" is
+not offered as a suggestion.
+
 ### 2026-08-24 — a shared trip link says what it is
 
 A `/trip/{token}` link exists for exactly one reason: to be sent to somebody.
