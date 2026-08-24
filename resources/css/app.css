@@ -8,9 +8,16 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+    /* 'Instrument Sans fallback' is generated at build time by fontaine (see
+       vite.config.ts): Arial with ascent, descent and size-adjust overridden
+       to Instrument Sans's own metrics, so the text does not reflow when the
+       real face finishes loading. It has to be named here — the build emits
+       the face and a --font-instrument-sans variable, but this stack is what
+       the page actually reads. An unknown family name is skipped by the
+       browser, so this stays correct if the face is ever not generated. */
     --font-sans:
-        Instrument Sans, ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        Instrument Sans, 'Instrument Sans fallback', ui-sans-serif, system-ui,
+        sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
 
     --radius-lg: var(--radius);
@@ -83,9 +90,9 @@
     body,
     html {
         --font-sans:
-            'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
-            'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-            'Noto Color Emoji';
+            'Instrument Sans', 'Instrument Sans fallback', ui-sans-serif,
+            system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+            'Segoe UI Symbol', 'Noto Color Emoji';
     }
 }
 
