@@ -21,6 +21,28 @@ family, weight, style and unicode-range resolve to the _last_ one — the
 first surface is a phone. Naming the files explicitly is what stops the
 build making that choice for us.
 
+## Metric-matched fallbacks
+
+`vite.config.ts` leaves the plugin's `optimizedFallbacks` default on, and the
+optional `fontaine` package is installed, so the build emits one more face per
+family: `"<family> fallback"`, which is Arial with `ascent-override`,
+`descent-override` and `size-adjust` set to the real face's own metrics. Text
+rendered in it occupies the same space as the webfont, so nothing moves on the
+page when the webfont arrives.
+
+The half that is easy to miss: **generating the face does nothing on its own.**
+The plugin also publishes `--font-instrument-sans` / `--font-fraunces` /
+`--font-inter` with the fallback appended — and nothing in this codebase reads
+those variables. The stacks the pages actually use are in
+`resources/css/app.css` (`--font-sans`) and `resources/css/kaia-home.css`
+(`--font-body`, `--font-display`), and each names its fallback family
+explicitly. Add a family here and the name has to be added there too, or the
+overrides are computed and thrown away.
+
+An unknown family name is skipped by the browser, and `local("Arial")` simply
+fails to match on a machine without Arial, so both halves degrade to the next
+entry in the stack rather than to nothing.
+
 ## What is here
 
 | File                                     | Family          | Weight |

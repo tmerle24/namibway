@@ -26,6 +26,30 @@
     --danger: #a13d2f;
     --danger-light: #f3ddd7;
 
+    /* The two stacks, written once. Both name a "… fallback" family that the
+       build generates with fontaine (see vite.config.ts): Arial with ascent,
+       descent and size-adjust overridden to the real face's own metrics, so
+       the page does not reflow when the webfont finishes loading. That name
+       has to appear in the stack the page reads — the build emits the face
+       and a --font-inter/--font-fraunces variable, but nothing here consumed
+       those, so until now the overrides were generated and never used.
+       Naming them in one place per family is what keeps the two halves from
+       drifting; an unknown family is skipped by the browser, so this stays
+       correct if a face is ever not generated.
+
+       Fraunces' fallback resolves to Arial rather than a serif — that is
+       fontaine reading the font's own category metadata, and it is only ever
+       visible for the moment before the real face swaps in. The metrics are
+       what matter there, not the letterforms.
+
+       Scoped to .kaia-page like every other token in this file. A customer
+       website declares its own --font-body/--font-display from the owner's
+       chosen faces (views/sites/partials/styles.blade.php); same idea, and
+       deliberately not the same variables — those pages never load this
+       stylesheet. */
+    --font-body: 'Inter', 'Inter fallback', sans-serif;
+    --font-display: 'Fraunces', 'Fraunces fallback', serif;
+
     /* The header is exactly as tall as its logo plus its own padding, and in
        overlay mode the hero has to clear precisely that. Declared as tokens
        so the two cannot drift apart: change the padding or the logo and the
@@ -41,7 +65,7 @@
 
     background: var(--paper);
     color: var(--ink);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     min-height: 100vh;
 }
 .kaia-page * {
@@ -65,7 +89,7 @@ body:has(.kaia-page) {
 .kaia-page h1,
 .kaia-page h2,
 .kaia-page h3 {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-display);
     font-weight: 500;
     margin: 0;
 }
@@ -74,7 +98,7 @@ body:has(.kaia-page) {
     line-height: 1.6;
 }
 .kaia-page button {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     cursor: pointer;
     border: none;
 }
@@ -140,7 +164,7 @@ body:has(.kaia-page) {
     align-items: center;
     gap: 10px;
     color: var(--paper);
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-display);
     font-size: 19px;
     letter-spacing: 0.02em;
     margin-bottom: 20px;
@@ -341,7 +365,7 @@ body:has(.kaia-page) {
     color: var(--sand);
     font-size: 13px;
     font-weight: 600;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     text-decoration: none;
     background: transparent;
     border: none;
@@ -374,7 +398,7 @@ body:has(.kaia-page) {
     background: var(--paper);
     font-size: 13px;
     font-weight: 600;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     border: 1px solid var(--sand-dark);
     border-radius: 8px;
     padding: 7px 10px;
@@ -685,7 +709,7 @@ body:has(.kaia-page) {
     border-radius: 10px;
     padding: 12px 14px;
     font-size: 14.5px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     background: var(--paper);
     color: var(--ink);
 }
@@ -1297,7 +1321,7 @@ body:has(.kaia-page) {
     z-index: 1;
 }
 .kaia-page .day-num-badge {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     cursor: default;
 }
 .kaia-page .day-num-badge:hover {
@@ -1326,7 +1350,7 @@ body:has(.kaia-page) {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 10.5px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -1463,11 +1487,11 @@ body:has(.kaia-page) {
     align-items: baseline;
     gap: 6px;
     flex-wrap: wrap;
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-display);
     font-size: 16px;
 }
 .kaia-page .day-card-region {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 12px;
     font-weight: 400;
     color: #8a7f68;
@@ -1599,7 +1623,7 @@ body:has(.kaia-page) {
 .kaia-page .entry-row-time {
     flex-shrink: 0;
     width: 46px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 12.5px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -1704,7 +1728,7 @@ body:has(.kaia-page) {
     margin: 2px 0 6px;
 }
 .kaia-page .day-plans-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 10px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -1749,7 +1773,7 @@ body:has(.kaia-page) {
 /* The date is each day's primary heading — the visual anchor of the day,
    the strongest line in the Tagesplan after the stage heading itself. */
 .kaia-page .day-plan-date {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 14px;
     font-weight: 700;
     color: var(--ink);
@@ -2157,7 +2181,7 @@ body:has(.kaia-page) {
     border: 1px solid var(--sand-dark);
     border-radius: 8px;
     padding: 9px 10px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 13px;
     resize: vertical;
     min-height: 64px;
@@ -2215,7 +2239,7 @@ body:has(.kaia-page) {
     border: 1px solid var(--sand-dark);
     border-radius: 8px;
     padding: 9px 12px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 13.5px;
     background: var(--paper);
     color: var(--ink);
@@ -2503,7 +2527,7 @@ body:has(.kaia-page) {
     padding: 14px 16px 16px;
 }
 .kaia-page .idea-body h4 {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-display);
     font-weight: 500;
     font-size: 15.5px;
     margin-bottom: 4px;
@@ -2885,7 +2909,7 @@ body:has(.kaia-page) {
     font-weight: 600;
 }
 .kaia-page .contact-partner-name {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-display);
     font-size: 16px;
     margin-bottom: 8px;
 }
@@ -2921,7 +2945,7 @@ body:has(.kaia-page) {
     margin-bottom: 6px;
 }
 .kaia-page .inquiry-contact-person {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-display);
     font-size: 14px;
     font-weight: 600;
     color: var(--rust-dark);
@@ -2950,7 +2974,7 @@ body:has(.kaia-page) {
     border: 1px solid var(--sand-dark);
     border-radius: 8px;
     padding: 10px 12px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 13.5px;
     font-weight: 400;
     background: var(--paper);
@@ -3116,7 +3140,7 @@ body:has(.kaia-page) {
     border-radius: 6px;
     padding: 7px 10px;
     font-size: 13px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     color: var(--ink);
     cursor: pointer;
 }
@@ -4239,7 +4263,7 @@ body:has(.kaia-page) {
     color: rgba(237, 230, 214, 0.65);
     font-size: 10px;
     font-weight: 600;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     text-decoration: none;
 }
 .kaia-page .mobile-footer-nav-item.active {
@@ -4392,7 +4416,7 @@ body:has(.kaia-page) {
     color: var(--rust);
     font-weight: 600;
     font-size: inherit;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     cursor: pointer;
 }
 .kaia-page .dashboard-action-link:hover:not(:disabled) {

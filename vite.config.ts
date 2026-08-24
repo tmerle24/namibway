@@ -26,11 +26,17 @@ export default defineConfig({
             //
             // Same families and weights as before, and every plugin default
             // is left alone (display: swap, preload on), so this changes where
-            // the bytes come from and nothing else. The build's one remaining
-            // font warning — optimized fallbacks needing the optional
-            // `fontaine` package — predates this and is unrelated to the
-            // provider: that step reads the file off disk whichever provider
-            // put it there.
+            // the bytes come from and nothing else.
+            //
+            // `optimizedFallbacks` is one of those defaults and is now doing
+            // something: the optional `fontaine` package is installed, so the
+            // build also emits an "<family> fallback" face — Arial with
+            // ascent, descent and size-adjust overridden to the real face's
+            // metrics — which is what stops the page reflowing when a webfont
+            // finishes loading. Generating it is only half of it: the name has
+            // to appear in the stack the page reads, which is resources/css/
+            // app.css and kaia-home.css, not the --font-* variables the plugin
+            // publishes and nothing here consumes.
             fonts: [
                 local('Instrument Sans', {
                     variants: [
