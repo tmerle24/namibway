@@ -72,8 +72,19 @@ export type HeroPhoto = {
     scrim: 'strong' | 'light';
 };
 
-defineProps<{
+const props = defineProps<{
     photo?: HeroPhoto | null;
+    // Whether a plan already exists on the page. Changes what leaving the
+    // chat means on a phone: back to the hero when there is nothing else to
+    // show, back to the finished plan when there is.
+    hasPlan?: boolean;
+    // The parent's copy of `chat-active` handed back. The parent turns
+    // full-screen chat off for reasons this component cannot see — a plan
+    // arriving, a tab being tapped, the traveler leaving the Kaia tab — and
+    // without hearing about it the guard in activateChat() below would stay
+    // latched on, so tapping back into the panel would never re-enter the
+    // mode it thinks is already active.
+    chatActive?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -293,6 +304,16 @@ function updateKeyboardInset() {
         '--keyboard-inset',
         `${inset}px`,
     );
+    // The bottom tab bar is pinned to the layout viewport, which the keyboard
+    // now covers — so while it is up the bar is invisible whatever we do, and
+    // the room it reserves belongs to the conversation instead. The class
+    // (rather than reading the var in CSS) is what lets the stylesheet both
+    // hide the bar and zero --mobile-nav-space in one place.
+    //
+    // A threshold, not `> 0`: the gap is a couple of pixels off zero on some
+    // Android browsers with no keyboard at all, and collapsing the tab bar
+    // for that would make it flicker on every scroll.
+    document.documentElement.classList.toggle('keyboard-open', inset > 80);
 }
 
 onMounted(() => {
@@ -308,6 +329,7 @@ onUnmounted(() => {
     window.visualViewport?.removeEventListener('resize', updateKeyboardInset);
     window.visualViewport?.removeEventListener('scroll', updateKeyboardInset);
     document.documentElement.style.removeProperty('--keyboard-inset');
+    document.documentElement.classList.remove('keyboard-open');
 
     if (isNativePlatform) {
         void NativeSpeechRecognition.removeAllListeners();
@@ -325,18 +347,29 @@ onUnmounted(() => {
 let savedBodyScrollY = 0;
 
 // Tells Welcome.vue to switch the mobile Kaia tab into full-screen chat
-// mode (hero title/illustrations and the bottom tab bar hidden, chat panel
-// stretched to fill the screen below the header) — see the `chat-fullscreen`
+// mode (hero title and illustrations hidden, chat panel stretched to fill
+// the screen between the header and the tab bar) — see the `chat-fullscreen`
 // rules in kaia-home.css. Sticky on purpose: once the conversation has
 // started, tapping the log or briefly blurring the input to hit "send"
-// shouldn't collapse it back to the hero view. Welcome.vue resets it when
-// the user switches away from the Kaia tab.
+// shouldn't collapse it back to the hero view. Welcome.vue turns it off
+// again — leaving the Kaia tab, a plan arriving, the Kaia tab tapped while
+// the chat is up — and the watch below hears about that through
+// `chatActive`, which is what keeps this flag from latching.
 //
 // Guarded by `activated` so repeat calls (every subsequent focus) don't
 // keep re-running the scroll reset below — only the first activation needs
 // it, and running it again while the user is mid-conversation would yank
 // their scroll position for no reason.
 let chatActivated = false;
+
+watch(
+    () => props.chatActive,
+    (active) => {
+        if (!active) {
+            chatActivated = false;
+        }
+    },
+);
 
 async function activateChat() {
     if (chatActivated) {
@@ -666,7 +699,9 @@ async function retryLastMessage() {
                 <button
                     type="button"
                     class="chat-fullscreen-back"
-                    :aria-label="t('chat.back')"
+                    :aria-label="
+                        hasPlan ? t('chat.backToPlan') : t('chat.back')
+                    "
                     @click.stop="collapseChat"
                 >
                     <svg
@@ -684,7 +719,7 @@ async function retryLastMessage() {
                             d="M15 18l-6-6 6-6"
                         />
                     </svg>
-                    {{ t('chat.back') }}
+                    {{ hasPlan ? t('chat.backToPlan') : t('chat.back') }}
                 </button>
                 <div class="chat-log" ref="chatLog">
                     <div

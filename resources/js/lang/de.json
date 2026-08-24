@@ -92,13 +92,15 @@
         "voiceInput": "Kaia etwas sagen",
         "stopListening": "Aufnahme stoppen",
         "listening": "Ich höre zu…",
-        "back": "Zurück"
+        "back": "Zurück",
+        "backToPlan": "Zurück zum Reiseplan"
     },
     "itinerary": {
         "eyebrow": "Dein Plan",
         "title": "Deine Reise, geplant",
         "subtitle": "Erstellt aus dem Gespräch oben — Unterkunft, Aktivitäten und Restaurants gemeinsam gedacht, nicht getrennt. Ändere unten beliebige Angaben, Kaia plant die Reise dann neu.",
         "route": "Route",
+        "backToChat": "Zurück zu Kaia",
         "roundTrip": "Rundreise",
         "reverseRoute": "Route umkehren",
         "editPlan": "Plan bearbeiten",
