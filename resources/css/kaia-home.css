@@ -57,15 +57,19 @@
        --site-header-height — a layout offset has to be right on the first
        paint, before the logo <img> has loaded and before any observer has
        run, and a measured one is 58px until it is 64px. */
-    /* The room the fixed mobile tab bar takes at the foot of the page: 64px
-       of nav content, 8px of breathing room, plus whatever safe-area inset
-       the device has. Declared once because several rules have to agree on
-       it — the page's own bottom padding, the hero's clearance in the Kaia
-       tab, and the height the full-screen chat column is sized to.
-       Set to 0 while the on-screen keyboard is up (see `html.keyboard-open`
-       below), because the tab bar is hidden then and the space it was
-       holding open belongs to the chat. */
-    --mobile-nav-space: calc(72px + env(safe-area-inset-bottom, 0px));
+    /* Two different questions about the fixed mobile tab bar, and answering
+       both with one number left a pale 8px seam above the bar in full-screen
+       chat. --mobile-nav-height is *where the bar starts*: 64px of nav
+       content plus its 1px top border plus the device's safe-area inset —
+       so anything sized to end flush against it (the full-screen chat
+       column) subtracts exactly this. --mobile-nav-space is *how much room
+       to leave above it*: the same, plus 8px so scrolling page content does
+       not run right into the bar.
+       Both are 0 while the on-screen keyboard is up (see `html.keyboard-open`
+       below), because the bar is hidden then and the space it was holding
+       open belongs to the chat. */
+    --mobile-nav-height: calc(65px + env(safe-area-inset-bottom, 0px));
+    --mobile-nav-space: calc(var(--mobile-nav-height) + 8px);
 
     --hero-nav-pad-y: 12px;
     --hero-nav-logo-height: 40px;
@@ -4376,14 +4380,16 @@ body:has(.kaia-page) {
            is subtracted too: without it, opening the keyboard leaves this
            column sized for the pre-keyboard screen, so .chat-input-row
            (the last flex child at its bottom) ends up positioned behind
-           the keyboard instead of riding up above it. --mobile-nav-space is
-           the tab bar, which stays visible in this mode and collapses to 0
-           on its own while the keyboard is up (see `html.keyboard-open`). */
+           the keyboard instead of riding up above it. --mobile-nav-height —
+           where the bar starts, not the roomier --mobile-nav-space — is what
+           makes this column end flush against it rather than a few pale
+           pixels short; it collapses to 0 on its own while the keyboard is
+           up (see `html.keyboard-open`). */
         padding-top: var(--site-header-height, 0px);
         padding-bottom: 0;
         height: calc(
             100dvh - var(--admin-bar-height, 0px) - var(--keyboard-inset, 0px) -
-                var(--mobile-nav-space)
+                var(--mobile-nav-height)
         );
     }
 
@@ -4399,11 +4405,14 @@ body:has(.kaia-page) {
         display: none;
     }
 
+    /* In this mode the chat *is* the screen, so it is edge to edge: no hero
+       padding around it, no card. See the .chat-panel rule below — this is
+       the half that removes the strip of hero the card used to float on. */
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen .hero-content {
         flex: 1;
         display: flex;
         flex-direction: column;
-        padding: 10px 12px;
+        padding: 0;
         /* .hero-content's sitewide rule sets `margin: 0 auto` to center it
            under its own `max-width: 1040px`. A non-auto cross-axis margin
            on a flex item disables `align-items: stretch`, so inside this
@@ -4425,12 +4434,23 @@ body:has(.kaia-page) {
         min-height: 0;
     }
 
+    /* A card is the right shape for the arrival screen — it floats on the
+       photograph, which is the brand, and it says "this is one thing on a
+       page". It is the wrong shape for a conversation filling the screen:
+       rounded corners and a drop shadow there are a card with nothing left
+       to sit on, and they cost the chat the width and height they occupy.
+       So in full-screen mode the panel drops its corners and its shadow and
+       becomes the surface itself. The hero behind it is not hidden — it is
+       simply completely covered, which is also what removes the seam of
+       hero background that used to show under the panel. */
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen .chat-panel {
         flex: 1;
         min-height: 0;
         display: flex;
         flex-direction: column;
         max-width: none;
+        border-radius: 0;
+        box-shadow: none;
     }
 
     /* min-height: 0 is what actually makes this scroll internally (via the
@@ -4456,6 +4476,10 @@ body:has(.kaia-page) {
     .kaia-page[data-mobile-section='kaia'].chat-fullscreen
         .chat-fullscreen-back {
         display: flex;
+        /* Edge to edge, the panel's own 10px inset would put this 12px to the
+           left of every message in the log. Line it up with them instead:
+           16px of margin plus the button's 6px of padding is the log's 22px. */
+        margin: 12px 0 0 16px;
     }
 }
 
@@ -4490,6 +4514,7 @@ body:has(.kaia-page) {
    this class from window.visualViewport (see updateKeyboardInset), the only
    thing that actually tracks a soft keyboard. */
 html.keyboard-open .kaia-page {
+    --mobile-nav-height: 0px;
     --mobile-nav-space: 0px;
 }
 @media (hover: none), (pointer: coarse) {
