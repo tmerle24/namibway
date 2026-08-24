@@ -316,6 +316,24 @@ and in a palette nothing else on the page uses.
 Desktop is untouched: every rule above is inside the touch/`data-mobile-section`
 block, and the only sitewide change is the type scale under 640px.
 
+**Same day, from the next screenshot: the chat mode is the screen, not a card
+on it.** Two things were wrong at the foot of the full-screen chat. A pale seam
+sat between the panel and the tab bar, because one number was answering two
+questions — `--mobile-nav-space` carries 8px of breathing room so scrolling
+page content does not run into the bar, and the chat column was subtracting
+that same number from its height, so it stopped 8px short. It is two tokens
+now: `--mobile-nav-height` is *where the bar starts* (65px + safe-area, the
+64px bar plus its top border) and is what anything sized flush against it
+subtracts; `--mobile-nav-space` is that plus the 8px.
+
+And the panel keeps its rounded corners and its drop shadow only on the
+arrival screen, where they are right: it is a card floating on the
+photograph, and the photograph is the brand. In full-screen chat it now goes
+edge to edge with neither — a card with nothing left to sit on is just a
+border, and the corners cost the conversation width it can use. The hero does
+not disappear so much as get completely covered, which is the same thing to
+look at and one less state to reason about.
+
 ### 2026-08-24 — what you drive past on the way
 
 Windhoek to Waterberg is two hours; Windhoek to Etosha is most of a morning.
