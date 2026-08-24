@@ -3,8 +3,6 @@
 namespace App\Services\Routing;
 
 use App\Models\Attraction;
-use App\Models\City;
-use App\Models\Place;
 use App\Support\Geo;
 use Illuminate\Support\Collection;
 
@@ -91,8 +89,7 @@ class RouteStopFinder
      */
     private const MAX_PER_LEG = 5;
 
-    /** @var array<string, RoutePoint|null> */
-    private array $resolved = [];
+    public function __construct(private readonly RoutePointResolver $points) {}
 
     /**
      * @param  array<int, array{from: string, to: string}>  $legs  in travel order
@@ -103,8 +100,8 @@ class RouteStopFinder
         $points = [];
 
         foreach ($legs as $leg) {
-            $points[] = $this->resolve($leg['from']);
-            $points[] = $this->resolve($leg['to']);
+            $points[] = $this->points->resolve($leg['from']);
+            $points[] = $this->points->resolve($leg['to']);
         }
 
         $points = array_values(array_filter($points));
@@ -146,8 +143,8 @@ class RouteStopFinder
      */
     private function forLeg(string $from, string $to, Collection $candidates): Collection
     {
-        $origin = $this->resolve($from);
-        $destination = $this->resolve($to);
+        $origin = $this->points->resolve($from);
+        $destination = $this->points->resolve($to);
 
         if ($origin === null || $destination === null) {
             return collect();
@@ -248,51 +245,5 @@ class RouteStopFinder
         }
 
         return $query->get();
-    }
-
-    /**
-     * A stage name to a point on the map.
-     *
-     * A day's location is a place; a plan saved before places were split out
-     * of cities carries a city name, and those have to keep working, so the
-     * city is a fallback rather than an error. Memoised because a route names
-     * every stage twice — once as an arrival, once as a departure.
-     */
-    public function resolve(string $name): ?RoutePoint
-    {
-        $key = mb_strtolower(trim($name));
-
-        if ($key === '') {
-            return null;
-        }
-
-        return $this->resolved[$key] ??= $this->lookUp($key);
-    }
-
-    private function lookUp(string $key): ?RoutePoint
-    {
-        $place = Place::query()
-            ->whereRaw('lower(cast(name as text)) like ?', ['%"'.$key.'"%'])
-            ->whereNotNull('lat')
-            ->whereNotNull('lng')
-            ->first();
-
-        if ($place !== null) {
-            return new RoutePoint((float) $place->lat, (float) $place->lng, $place->id);
-        }
-
-        $city = City::query()
-            ->where('name', 'ilike', $key)
-            ->whereNotNull('lat')
-            ->whereNotNull('lng')
-            ->first();
-
-        return $city === null
-            ? null
-            : new RoutePoint(
-                (float) $city->lat,
-                (float) $city->lng,
-                $city->place_id === null ? null : (int) $city->place_id,
-            );
     }
 }

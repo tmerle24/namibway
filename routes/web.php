@@ -21,6 +21,7 @@ use App\Http\Controllers\PaymentFormBridgeController;
 use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\SavedPlanController;
 use App\Http\Controllers\SiteTermsController;
+use App\Http\Controllers\SupplyStopController;
 use App\Http\Controllers\ThumbnailController;
 use App\Http\Controllers\TripCardImageController;
 use App\Http\Controllers\TripController;
@@ -133,6 +134,13 @@ Route::get('attractions/along-route', [AttractionController::class, 'alongRoute'
     ->middleware('throttle:60,1')
     ->name('attractions.along-route');
 Route::get('attractions/{slug}', [AttractionController::class, 'show'])->name('attractions.show');
+// Where to fill up and where to buy food before the road stops offering
+// either. Its own endpoint rather than another key on the attraction one: the
+// two fail independently, and only this one cares which stay each leg arrives
+// at. Same throttle — one call covers a whole plan.
+Route::get('supply-stops/along-route', [SupplyStopController::class, 'alongRoute'])
+    ->middleware('throttle:60,1')
+    ->name('supply-stops.along-route');
 Route::get('listings/{listing:slug}/preview', [ListingController::class, 'preview'])->name('listings.preview');
 // Real room types + remaining units for a stay, for the trip plan's room
 // picker. Open like the rest of browsing — booking one is what needs an

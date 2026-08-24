@@ -439,6 +439,97 @@ export async function fetchRouteStops(
     }
 }
 
+/**
+ * Why a supply stop is worth naming, which is the only thing that makes it
+ * different from a filling station the traveller drives past. See
+ * App\Services\Routing\SupplyStopFinder.
+ */
+export interface SupplyReason {
+    service: 'fuel' | 'groceries';
+    /** How far the road ahead goes without it — straight line, so a lower bound. */
+    gap_km: number;
+    /** Set where a self-catering stay, rather than the distance, is what makes it matter. */
+    before_self_catering: boolean;
+}
+
+/** Opening hours, days as keys the browser names in the traveller's own language. */
+export interface SupplyOpeningHours {
+    raw: string;
+    always_open: boolean;
+    rules: Array<{ days: string[]; ranges: Array<[string, string]> }>;
+}
+
+/** Somewhere to fill up or buy food, as the drive-time box shows it. */
+export interface SupplyStop {
+    id: number;
+    slug: string;
+    name: string;
+    services: string[];
+    fuel_types: string[];
+    opening_hours: SupplyOpeningHours | null;
+    note: string | null;
+    city: string | null;
+    region: string | null;
+    detour_km: number;
+    /** Whether a human has confirmed it still exists and still sells what it says. */
+    verified: boolean;
+    reasons: SupplyReason[];
+}
+
+export interface SupplyLegStops {
+    from: string;
+    to: string;
+    stops: SupplyStop[];
+}
+
+/**
+ * Where to fill up and where to buy food on each leg of a route.
+ *
+ * Its own request rather than a second key on the attraction one: the two fail
+ * independently — an empty attraction catalogue must not take the fuel line
+ * down with it — and only this one needs the stay each leg arrives at, which
+ * is what answers "is anybody cooking their own dinner tonight?". The slug is
+ * all the browser sends; whether that stay is self-catering is the server's
+ * answer to give.
+ */
+export async function fetchSupplyStops(
+    legs: Array<{ from: string; to: string; staySlug?: string | null }>,
+): Promise<SupplyLegStops[]> {
+    if (legs.length === 0) {
+        return [];
+    }
+
+    const query = new URLSearchParams();
+
+    legs.forEach((leg, i) => {
+        query.set(`legs[${i}][from]`, leg.from);
+        query.set(`legs[${i}][to]`, leg.to);
+
+        if (leg.staySlug) {
+            query.set(`legs[${i}][stay_slug]`, leg.staySlug);
+        }
+    });
+
+    try {
+        const response = await fetch(`/supply-stops/along-route?${query}`, {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+        });
+
+        if (!response.ok) {
+            return [];
+        }
+
+        const data = await response.json();
+
+        return data.legs ?? [];
+    } catch {
+        // Same as the route stops: a discreet extra line under a driving time
+        // is never worth an error state.
+        return [];
+    }
+}
+
 export async function fetchAttractionPreview(
     slug: string,
 ): Promise<AttractionPreview> {

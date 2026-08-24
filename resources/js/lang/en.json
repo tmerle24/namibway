@@ -190,6 +190,31 @@
         "arrival": "Arrival",
         "onTheWay": "On the way",
         "showFewer": "Show fewer",
+        "supply": {
+            "label": "Stock up",
+            "lastFuel": "last fuel for ≈{km} km",
+            "lastShop": "last shop for ≈{km} km",
+            "beforeSelfCatering": "last shop before you cook for yourself",
+            "alsoHere": "Also here",
+            "open24": "Open around the clock",
+            "hoursUnknown": "Opening hours not recorded",
+            "unverified": "Nobody has checked this one recently — if it is your only option, carry enough to reach the next.",
+            "detour": "≈{km} km off the route",
+            "closed": "closed",
+            "pumps": "Pumps",
+            "services": {
+                "fuel": "Fuel",
+                "groceries": "Groceries",
+                "atm": "ATM",
+                "water": "Drinking water",
+                "gas": "Camping gas",
+                "tyre_repair": "Tyre repair"
+            },
+            "fuelTypes": {
+                "petrol": "Petrol",
+                "diesel": "Diesel"
+            }
+        },
         "readMore": "read more…",
         "showLess": "show less",
         "viewPhotos": "View photos",

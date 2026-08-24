@@ -1270,6 +1270,51 @@ body:has(.kaia-page) {
 .kaia-page .route-stops-more:hover {
     color: var(--rust);
 }
+/* The provisioning line, under the same hairline and in the same chip shape as
+   "On the way" — one drive, two things to say about it, and a second box would
+   make the fuel look like a separate decision from the drive it belongs to.
+   What it does not share is the interaction: an attraction opens its own modal
+   because there is something to look at, while a filling station has four facts
+   and they belong under the chip that was tapped. */
+.kaia-page .supply-stops {
+    margin-top: 0;
+}
+.kaia-page .supply-stop-chip {
+    align-items: baseline;
+}
+/* The reason, which is the whole point of the chip — a name on its own would
+   only say "there is fuel here", which nobody needed telling. */
+.kaia-page .supply-stop-reason {
+    font-size: 9.5px;
+    opacity: 0.75;
+}
+.kaia-page .supply-stop-chip[aria-expanded='true'] {
+    border-color: var(--rust);
+    background: var(--rust-light);
+}
+/* Full width, so it drops onto its own line directly under the chip row
+   whatever the box's width and however the chips have wrapped. */
+.kaia-page .supply-stop-detail {
+    width: 100%;
+    margin-top: 2px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(140, 74, 21, 0.06);
+    color: var(--rust-dark);
+}
+.kaia-page .supply-stop-line {
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.55;
+}
+/* Nobody has checked this one on the ground. Said quietly, and only to
+   somebody who tapped for the detail — a warning on every chip is a warning
+   nobody reads on the day it matters. */
+.kaia-page .supply-stop-caveat {
+    margin-top: 3px;
+    opacity: 0.7;
+    font-style: italic;
+}
 /* Timeline: .day-connector and .day-content are each their own 2-column
    grid (rail | content) using the SAME template, so the drive-time chip
    above a card and the marker/card below it always share the same rail

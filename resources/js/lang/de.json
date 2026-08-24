@@ -154,6 +154,31 @@
         "arrival": "Ankunft",
         "onTheWay": "Unterwegs",
         "showFewer": "Weniger anzeigen",
+        "supply": {
+            "label": "Versorgung",
+            "lastFuel": "letzte Tankstelle für ≈{km} km",
+            "lastShop": "letzter Einkauf für ≈{km} km",
+            "beforeSelfCatering": "letzter Einkauf vor der Selbstverpflegung",
+            "alsoHere": "Außerdem hier",
+            "open24": "Rund um die Uhr geöffnet",
+            "hoursUnknown": "Öffnungszeiten nicht erfasst",
+            "unverified": "Länger nicht geprüft — wenn es die einzige Möglichkeit ist, mit Reserve bis zur nächsten fahren.",
+            "detour": "≈{km} km abseits der Route",
+            "closed": "geschlossen",
+            "pumps": "Zapfsäulen",
+            "services": {
+                "fuel": "Tanken",
+                "groceries": "Einkaufen",
+                "atm": "Geldautomat",
+                "water": "Trinkwasser",
+                "gas": "Campinggas",
+                "tyre_repair": "Reifenreparatur"
+            },
+            "fuelTypes": {
+                "petrol": "Benzin",
+                "diesel": "Diesel"
+            }
+        },
         "readMore": "weiterlesen…",
         "showLess": "weniger anzeigen",
         "viewPhotos": "Fotos ansehen",
