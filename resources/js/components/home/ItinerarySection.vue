@@ -84,11 +84,19 @@ const props = defineProps<{
         date_to: string | null;
         inquiry_status: string | null;
     }>;
+    // True only where the plan and the conversation that produced it are on
+    // the same page (the homepage). A shared /trip/{token} link has no chat
+    // behind it, so it gets no way back to one.
+    hasChat?: boolean;
 }>();
 
 const emit = defineEmits<{
     (e: 'book', variant: ItineraryVariant): void;
     (e: 'update:token', token: string): void;
+    // The traveler wants to talk to Kaia again. Only the parent knows what
+    // that means for the layout around this section — on a phone it swaps
+    // this section out for the chat (see Welcome.vue).
+    (e: 'back-to-chat'): void;
 }>();
 
 const { t, locale } = useI18n();
@@ -2573,6 +2581,31 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
 
 <template>
     <section id="itinerary-section">
+        <!-- On a phone the plan replaces the chat rather than sitting below
+             it (see the Kaia-tab rules in kaia-home.css), so this is the way
+             back to the conversation — and it is the first thing in the
+             section for the same reason a browser's back button is top left:
+             it is about leaving, not about the plan. Hidden on desktop,
+             where the chat is simply still up the page. -->
+        <button
+            v-if="hasChat"
+            type="button"
+            class="back-to-chat"
+            @click="emit('back-to-chat')"
+        >
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M15 18l-6-6 6-6"
+                />
+            </svg>
+            {{ t('itinerary.backToChat') }}
+        </button>
+
         <!-- The stored plan moved on under us (same link open elsewhere, or
              another tab). Autosaving has stopped rather than overwrite the
              other side — say so plainly instead of letting edits pile up
@@ -4171,7 +4204,26 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
             :title="t('itinerary.showMap')"
             @click="mapModalOpen = true"
         >
-            🗺️
+            <!-- A folded map, drawn rather than an emoji: the OS decides what
+                 an emoji looks like, so this button was a different picture
+                 in a different palette on every phone. -->
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linejoin="round"
+                    stroke-linecap="round"
+                    d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"
+                />
+                <path
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    d="M9 4v14M15 6v14"
+                />
+            </svg>
         </button>
 
         <MapViewModal

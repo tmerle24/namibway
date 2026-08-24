@@ -396,6 +396,52 @@ pass it — the hours are shown and the reading is theirs. And every seeded row
 is unverified, which the admin table says in as many words: that is content
 work now, and the cheapest kind, since one phone call is one row.
 
+### 2026-08-24 — the phone gets one screen at a time
+
+From a phone screenshot of production: the landing screen showed the headline
+and the top half of the chat panel, and the first thing a traveller had to do
+was scroll — before they could type a word into the thing the whole product is
+built around. Below that, once a plan existed, the chat stayed on the page
+above it, so coming back to look at the trip meant scrolling past the whole
+conversation every time.
+
+The rule the mobile Kaia tab now follows is **one screen, one thing**:
+
+- **Arrival is the hero and the chat, and it fits.** The teaser is smaller on a
+  phone (30px, 25px on a screen under 700px tall), and — the part that actually
+  makes it a guarantee rather than a lucky font size — `#kaia-hero` is now a
+  flex column capped at the space between the fixed header and the fixed tab
+  bar, with `min-height: 0` all the way down to `.chat-log`. Whatever the
+  headline does not use goes to the panel, so on a short phone the *log*
+  scrolls and the page does not. Verified at 375×667, 390×806, 430×932 and an
+  820×1180 tablet: no page scroll in any of them, input row above the tab bar
+  in all of them.
+- **Tapping into the chat fills the screen** — that was already true, and it
+  now keeps the tab bar instead of hiding it, which is what the request asked
+  for ("zwischen Header und Footer"). The bar is hidden again only while the
+  keyboard is up, where it is behind the keyboard anyway: `HeroChat` sets
+  `html.keyboard-open` from `visualViewport`, and that zeroes
+  `--mobile-nav-space`, the single declaration of how much room that bar takes.
+- **Once a plan exists, the plan is the tab.** The hero/chat is hidden, and the
+  plan carries a "Back to Kaia" pill at its very top. The open question in the
+  request — how do you get back to the plan from the chat? — has two answers:
+  the chat's own back button, which now reads "Back to your plan" when there is
+  one, and tapping the Kaia tab again, which lands on the tab's main view the
+  way a tab bar is expected to.
+
+Two things fell out of hiding the hero and are worth knowing: the plan needed
+its own clearance under the fixed header, and the header had to stop being
+transparent — the overlay state is see-through *over a photograph*, and over
+the plan's paper it is a white logo on cream.
+
+**The map button is drawn now**, not the 🗺️ emoji: a tan folded map on the
+night-blue circle, the same tan-on-blue as the compass in the tab bar. An emoji
+is rendered by the OS, so that control was a different picture on every phone
+and in a palette nothing else on the page uses.
+
+Desktop is untouched: every rule above is inside the touch/`data-mobile-section`
+block, and the only sitewide change is the type scale under 640px.
+
 ### 2026-08-24 — what you drive past on the way
 
 Windhoek to Waterberg is two hours; Windhoek to Etosha is most of a morning.

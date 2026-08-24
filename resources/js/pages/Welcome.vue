@@ -91,6 +91,16 @@ watch(mobileSection, (section) => {
     }
 });
 
+// A tab tapped in the bottom bar always lands on that tab's main view — the
+// standard tab-bar idiom, and the reason it matters here: tapping Kaia while
+// the full-screen chat is up is the second way back to a finished plan (the
+// first being the chat's own back button). The watch above cannot do this
+// one, since the section it is being set to is the one it is already on.
+function onMobileSection(section: MobileSection) {
+    mobileSection.value = section;
+    chatFullscreen.value = false;
+}
+
 async function scrollTo(id: string) {
     await nextTick();
     document
@@ -206,6 +216,16 @@ onMounted(async () => {
     );
 });
 
+// Coming back to the conversation from a finished plan (the plan's own
+// "Back to Kaia" button). On a phone this is a swap, not a scroll: the plan
+// is what the Kaia tab shows once one exists, and this puts the chat in its
+// place until the traveler leaves it again. On desktop nothing changes —
+// both are on the page — so this only scrolls the chat back into view.
+async function onBackToChat() {
+    chatFullscreen.value = true;
+    await scrollTo('kaia-hero');
+}
+
 async function onPlanReady(newPlan: ItineraryPlan) {
     tripToken.value = null;
     tripVersion.value = null;
@@ -215,6 +235,10 @@ async function onPlanReady(newPlan: ItineraryPlan) {
     plan.value = newPlan;
     bookingVariant.value = null;
     bookingActive.value = false;
+    // The plan is the answer the conversation was for: leave full-screen chat
+    // so it is the thing on screen (on a phone the two swap places — see the
+    // Kaia-tab rules in kaia-home.css).
+    chatFullscreen.value = false;
     await scrollTo('itinerary-section');
 }
 
@@ -279,6 +303,8 @@ async function onGuestSubmit(details: GuestDetails) {
         <AdminBar />
         <HeroChat
             :photo="heroPhoto"
+            :has-plan="!!plan"
+            :chat-active="chatFullscreen"
             @plan-ready="onPlanReady"
             @search-intent="onSearchIntent"
             @chat-active="chatFullscreen = $event"
@@ -291,8 +317,10 @@ async function onGuestSubmit(details: GuestDetails) {
             :share-token="tripShareToken"
             :can-edit="tripCanEdit"
             :owned="tripOwned"
+            has-chat
             @book="onBook"
             @update:token="tripToken = $event"
+            @back-to-chat="onBackToChat"
         />
         <TopDestinations
             :destinations="destinations"
@@ -325,6 +353,10 @@ async function onGuestSubmit(details: GuestDetails) {
 
         <SiteFooter />
 
-        <MobileFooterNav local v-model:active="mobileSection" />
+        <MobileFooterNav
+            local
+            :active="mobileSection"
+            @update:active="onMobileSection"
+        />
     </div>
 </template>

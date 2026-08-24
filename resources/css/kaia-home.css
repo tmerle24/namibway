@@ -26,6 +26,30 @@
     --danger: #a13d2f;
     --danger-light: #f3ddd7;
 
+    /* The two stacks, written once. Both name a "… fallback" family that the
+       build generates with fontaine (see vite.config.ts): Arial with ascent,
+       descent and size-adjust overridden to the real face's own metrics, so
+       the page does not reflow when the webfont finishes loading. That name
+       has to appear in the stack the page reads — the build emits the face
+       and a --font-inter/--font-fraunces variable, but nothing here consumed
+       those, so until now the overrides were generated and never used.
+       Naming them in one place per family is what keeps the two halves from
+       drifting; an unknown family is skipped by the browser, so this stays
+       correct if a face is ever not generated.
+
+       Fraunces' fallback resolves to Arial rather than a serif — that is
+       fontaine reading the font's own category metadata, and it is only ever
+       visible for the moment before the real face swaps in. The metrics are
+       what matter there, not the letterforms.
+
+       Scoped to .kaia-page like every other token in this file. A customer
+       website declares its own --font-body/--font-display from the owner's
+       chosen faces (views/sites/partials/styles.blade.php); same idea, and
+       deliberately not the same variables — those pages never load this
+       stylesheet. */
+    --font-body: 'Inter', 'Inter fallback', sans-serif;
+    --font-display: 'Fraunces', 'Fraunces fallback', serif;
+
     /* The header is exactly as tall as its logo plus its own padding, and in
        overlay mode the hero has to clear precisely that. Declared as tokens
        so the two cannot drift apart: change the padding or the logo and the
@@ -33,6 +57,16 @@
        --site-header-height — a layout offset has to be right on the first
        paint, before the logo <img> has loaded and before any observer has
        run, and a measured one is 58px until it is 64px. */
+    /* The room the fixed mobile tab bar takes at the foot of the page: 64px
+       of nav content, 8px of breathing room, plus whatever safe-area inset
+       the device has. Declared once because several rules have to agree on
+       it — the page's own bottom padding, the hero's clearance in the Kaia
+       tab, and the height the full-screen chat column is sized to.
+       Set to 0 while the on-screen keyboard is up (see `html.keyboard-open`
+       below), because the tab bar is hidden then and the space it was
+       holding open belongs to the chat. */
+    --mobile-nav-space: calc(72px + env(safe-area-inset-bottom, 0px));
+
     --hero-nav-pad-y: 12px;
     --hero-nav-logo-height: 40px;
     --hero-nav-height: calc(
@@ -41,7 +75,7 @@
 
     background: var(--paper);
     color: var(--ink);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     min-height: 100vh;
 }
 .kaia-page * {
@@ -65,7 +99,7 @@ body:has(.kaia-page) {
 .kaia-page h1,
 .kaia-page h2,
 .kaia-page h3 {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-display);
     font-weight: 500;
     margin: 0;
 }
@@ -74,7 +108,7 @@ body:has(.kaia-page) {
     line-height: 1.6;
 }
 .kaia-page button {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     cursor: pointer;
     border: none;
 }
@@ -140,7 +174,7 @@ body:has(.kaia-page) {
     align-items: center;
     gap: 10px;
     color: var(--paper);
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-display);
     font-size: 19px;
     letter-spacing: 0.02em;
     margin-bottom: 20px;
@@ -341,7 +375,7 @@ body:has(.kaia-page) {
     color: var(--sand);
     font-size: 13px;
     font-weight: 600;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     text-decoration: none;
     background: transparent;
     border: none;
@@ -374,7 +408,7 @@ body:has(.kaia-page) {
     background: var(--paper);
     font-size: 13px;
     font-weight: 600;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     border: 1px solid var(--sand-dark);
     border-radius: 8px;
     padding: 7px 10px;
@@ -402,6 +436,31 @@ body:has(.kaia-page) {
     color: var(--sand);
     font-size: 17px;
     max-width: 480px;
+}
+/* The phone gets a smaller teaser, and it is not only taste. On a phone the
+   headline wraps to three lines and the hero has to hold the whole chat panel
+   — greeting, starter chips and the input — between a fixed header and a
+   fixed tab bar. At the desktop scale that overflowed, so the traveller's
+   first move on the landing screen was to scroll before they could type,
+   which is exactly the friction the conversation is supposed to replace.
+   Paired with the flex sizing further down (see the `[data-mobile-section]`
+   Kaia rules), which hands whatever is left after this block to the panel. */
+@media (max-width: 640px) {
+    .kaia-page .hero-head {
+        margin-bottom: 18px;
+    }
+    .kaia-page .hero-head h1 {
+        font-size: 30px;
+        line-height: 1.12;
+        margin-bottom: 8px;
+    }
+    .kaia-page .hero-head p {
+        font-size: 15px;
+        line-height: 1.45;
+    }
+    .kaia-page .hero-content {
+        padding: 26px 16px 20px;
+    }
 }
 /* A sun peeking over the chat panel. Positioned in normal flow (with a
    negative bottom margin to pull it under the panel) rather than living
@@ -685,7 +744,7 @@ body:has(.kaia-page) {
     border-radius: 10px;
     padding: 12px 14px;
     font-size: 14.5px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     background: var(--paper);
     color: var(--ink);
 }
@@ -824,6 +883,33 @@ body:has(.kaia-page) {
 .kaia-page #itinerary-section .section-head {
     max-width: 100%;
 }
+/* The way back to the conversation, shown only where there is one to go back
+   to and only on a touch device — on desktop the chat is still up the page,
+   so a "back" that scrolls would be lying about what it does. */
+.kaia-page .back-to-chat {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 14px;
+    padding: 7px 12px 7px 8px;
+    border: 1px solid var(--sand-dark);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.kaia-page .back-to-chat:hover {
+    background: var(--sand);
+}
+@media (hover: none), (pointer: coarse) {
+    .kaia-page .back-to-chat {
+        display: inline-flex;
+    }
+}
+
 /* Shown when the server rejected an autosave because the plan changed
    elsewhere (see planConflict in ItinerarySection.vue). Deliberately at the
    very top of the section and in the warning rust tone — from here on the
@@ -1406,7 +1492,7 @@ body:has(.kaia-page) {
     z-index: 1;
 }
 .kaia-page .day-num-badge {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     cursor: default;
 }
 .kaia-page .day-num-badge:hover {
@@ -1435,7 +1521,7 @@ body:has(.kaia-page) {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 10.5px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -1572,11 +1658,11 @@ body:has(.kaia-page) {
     align-items: baseline;
     gap: 6px;
     flex-wrap: wrap;
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-display);
     font-size: 16px;
 }
 .kaia-page .day-card-region {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 12px;
     font-weight: 400;
     color: #8a7f68;
@@ -1708,7 +1794,7 @@ body:has(.kaia-page) {
 .kaia-page .entry-row-time {
     flex-shrink: 0;
     width: 46px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 12.5px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -1813,7 +1899,7 @@ body:has(.kaia-page) {
     margin: 2px 0 6px;
 }
 .kaia-page .day-plans-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 10px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -1858,7 +1944,7 @@ body:has(.kaia-page) {
 /* The date is each day's primary heading — the visual anchor of the day,
    the strongest line in the Tagesplan after the stage heading itself. */
 .kaia-page .day-plan-date {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 14px;
     font-weight: 700;
     color: var(--ink);
@@ -2057,6 +2143,13 @@ body:has(.kaia-page) {
     display: none;
 }
 @media (max-width: 1023px) {
+    /* A drawn map in the brand's tan on the brand's night blue, not the
+       system map emoji this used to be. An emoji is rendered by the OS, so
+       it was a different picture on every phone, at a weight and palette
+       nothing else on the page shares — at 42px on a photo-heavy plan it
+       read as a smudge rather than as a button. The mark below is the same
+       tan-on-blue the compass in the tab bar uses, which is what makes the
+       two read as the same family of control. */
     .kaia-page .mobile-map-fab {
         display: flex;
         align-items: center;
@@ -2069,21 +2162,27 @@ body:has(.kaia-page) {
         height: 52px;
         border-radius: 50%;
         background: var(--night);
-        color: var(--paper);
-        border: 3px solid var(--paper);
-        font-size: 22px;
+        color: var(--gold);
+        border: 2px solid var(--gold);
         box-shadow: 0 6px 16px rgba(16, 26, 48, 0.35);
         z-index: 90;
         cursor: pointer;
+    }
+    .kaia-page .mobile-map-fab svg {
+        width: 26px;
+        height: 26px;
+        display: block;
     }
 }
 @media (max-width: 640px) {
     .kaia-page .mobile-map-fab {
         right: 10px;
-        width: 42px;
-        height: 42px;
-        border-width: 0;
-        font-size: 18px;
+        width: 44px;
+        height: 44px;
+    }
+    .kaia-page .mobile-map-fab svg {
+        width: 22px;
+        height: 22px;
     }
 }
 .kaia-page .variant-card .cta {
@@ -2266,7 +2365,7 @@ body:has(.kaia-page) {
     border: 1px solid var(--sand-dark);
     border-radius: 8px;
     padding: 9px 10px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 13px;
     resize: vertical;
     min-height: 64px;
@@ -2324,7 +2423,7 @@ body:has(.kaia-page) {
     border: 1px solid var(--sand-dark);
     border-radius: 8px;
     padding: 9px 12px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 13.5px;
     background: var(--paper);
     color: var(--ink);
@@ -2612,7 +2711,7 @@ body:has(.kaia-page) {
     padding: 14px 16px 16px;
 }
 .kaia-page .idea-body h4 {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-display);
     font-weight: 500;
     font-size: 15.5px;
     margin-bottom: 4px;
@@ -2994,7 +3093,7 @@ body:has(.kaia-page) {
     font-weight: 600;
 }
 .kaia-page .contact-partner-name {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-display);
     font-size: 16px;
     margin-bottom: 8px;
 }
@@ -3030,7 +3129,7 @@ body:has(.kaia-page) {
     margin-bottom: 6px;
 }
 .kaia-page .inquiry-contact-person {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-display);
     font-size: 14px;
     font-weight: 600;
     color: var(--rust-dark);
@@ -3059,7 +3158,7 @@ body:has(.kaia-page) {
     border: 1px solid var(--sand-dark);
     border-radius: 8px;
     padding: 10px 12px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 13.5px;
     font-weight: 400;
     background: var(--paper);
@@ -3225,7 +3324,7 @@ body:has(.kaia-page) {
     border-radius: 6px;
     padding: 7px 10px;
     font-size: 13px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     color: var(--ink);
     cursor: pointer;
 }
@@ -4047,7 +4146,7 @@ body:has(.kaia-page) {
    working as a single scrolling magazine layout; nothing here applies. */
 @media (hover: none), (pointer: coarse) {
     .kaia-page {
-        padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+        padding-bottom: var(--mobile-nav-space);
     }
 
     /* Takes up too much vertical space on a phone screen under the Kaia tab —
@@ -4114,7 +4213,17 @@ body:has(.kaia-page) {
        header/footer is the standard mobile-web pattern for exactly this
        reason: the browser's own keyboard-avoidance logic is built for it
        and handles it correctly without any of this. */
-    .kaia-page[data-mobile-section='kaia']:not(.has-plan) {
+    /* .kaia-page carries a sitewide `min-height: 100vh` plus the tab bar's
+       own padding-bottom, which together are one bar-height taller than the
+       screen. That is right for a scrolling page and wrong for both of the
+       states below, where the one element in flow is already sized to the
+       exact space between the two fixed bars — there it is the difference
+       between a page that does not scroll and one that scrolls by 72px of
+       nothing. Each state pays the clearance itself: the hero as
+       padding-bottom, the full-screen chat column by subtracting
+       --mobile-nav-space from its height. */
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan),
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen {
         padding-bottom: 0;
     }
 
@@ -4148,12 +4257,75 @@ body:has(.kaia-page) {
            comment) — it tracks the header's real rendered height, which
            varies with the safe-area inset, instead of a guessed constant. */
         padding-top: var(--site-header-height, 0px);
-        /* Clears the now-fixed footer nav below: 64px of nav content + 8px
-           breathing room + whatever safe-area inset applies — the same math
-           the site-wide `.kaia-page` padding-bottom above uses, just moved
-           onto this element now that the page itself no longer sets that
-           padding in this particular state. */
-        padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+        /* Clears the now-fixed footer nav below — see --mobile-nav-space,
+           the one declaration of how much room that bar takes. */
+        padding-bottom: var(--mobile-nav-space);
+        /* The arrival screen must not need a scroll before the traveller can
+           say anything: the whole point of a conversation instead of a search
+           form is that the first thing they see is somewhere to type. So this
+           is a hard cap at the space between the two fixed bars, and the
+           column below hands whatever the headline does not use to the chat
+           panel — the panel gets shorter on a short phone rather than the
+           page getting longer. The `min-height: 0` chain through
+           .hero-content / .chat-panel / .chat-log is what makes that true: a
+           flex item defaults to min-height: auto (its content's height) and
+           would otherwise refuse to shrink, pushing the input row back off
+           the bottom of the screen — the exact thing being fixed here.
+
+           `dvh`, not `vh`: the mobile browser's own collapsing toolbars are
+           part of this measurement, and `vh` freezes at the taller of the
+           two states. The keyboard is not — nothing here subtracts
+           --keyboard-inset, because focusing the input switches to the
+           full-screen state below before a keyboard is up. */
+        display: flex;
+        flex-direction: column;
+        height: calc(100dvh - var(--admin-bar-height, 0px));
+        box-sizing: border-box;
+    }
+
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) .hero-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        /* .hero-content's sitewide `margin: 0 auto` centres it under its own
+           max-width; a non-auto cross-axis margin on a flex item disables
+           `align-items: stretch`, so it would shrink to its content's width
+           inside this column instead of filling it. Same reasoning as the
+           full-screen rule further down. */
+        margin: 0;
+        max-width: none;
+    }
+
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) .chat-panel {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        max-width: none;
+        /* Grow to fill the screen, but only as far as a panel should ever be:
+           this block also applies to a tablet (it keys off touch, not width —
+           an iPad's viewport is desktop-sized), and 1300px of screen is not a
+           reason for a 1000px-tall chat panel with four chips floating in it.
+           On a phone the available space is always under this, so the cap
+           never binds there. */
+        max-height: 720px;
+    }
+
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) .chat-log {
+        flex: 1;
+        min-height: 0;
+        /* The sitewide 340px cap is a *floor* on a tall phone and a ceiling
+           on a short one; here the flex line above is the only thing that
+           should decide this height. */
+        max-height: none;
+    }
+
+    /* The sun is decoration that costs 24px of vertical space and pushes the
+       chat panel down; on a phone that space is the difference between the
+       input row being on screen and not. */
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) .hero-sun {
+        display: none;
     }
 
     /* No .mobile-footer-nav override needed here anymore — it falls through
@@ -4161,30 +4333,66 @@ body:has(.kaia-page) {
        force `position: static` instead; see the comment above for why that
        traded one bug for a worse one. */
 
-    .kaia-page[data-mobile-section='kaia']:not(.has-plan) footer {
+    /* Both states below are exactly one screen with nothing under it: the
+       arrival hero, and the full-screen chat. A site footer in the flow
+       under either is 400px of small print that turns a screen that should
+       not scroll into one that does. */
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) footer,
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen footer {
         display: none;
     }
 
-    /* Full-screen chat mode: entered once the user taps into the Kaia panel
-       (HeroChat.vue emits `chat-active`, Welcome.vue toggles this class).
-       Deliberately does NOT resurrect the reverted --app-vh/overflow:hidden
-       approach documented above — it stays inside the same "fixed header,
-       normal document flow" pattern and just removes everything from that
-       flow except the chat panel, so the panel (and its input) end up
-       filling essentially the whole screen without any JS-driven height
+    /* Once a plan exists, the plan *is* the Kaia tab. The chat that produced
+       it is one tap away (ItinerarySection's "Back to Kaia" button sets
+       .chat-fullscreen from outside), but it is not something to scroll past
+       every time the traveller comes back to look at their trip. */
+    .kaia-page.has-plan[data-mobile-section='kaia']:not(.chat-fullscreen)
+        #kaia-hero {
+        display: none;
+    }
+
+    /* With the hero gone there is nothing left to clear the fixed overlay
+       header, so the plan would start underneath it. */
+    .kaia-page.has-plan[data-mobile-section='kaia']:not(.chat-fullscreen)
+        #itinerary-section {
+        padding-top: calc(var(--site-header-height, 64px) + 12px);
+    }
+
+    /* And nothing left for it to be transparent *over*: the overlay header
+       is see-through until the first scroll, which is right above a
+       photograph and invisible above the plan's paper — a white logo on
+       cream. What earns that state is the hero, so when the hero is not
+       there the header is a bar from the start. */
+    .kaia-page.has-plan[data-mobile-section='kaia']:not(.chat-fullscreen)
+        .hero-nav--overlay {
+        background: var(--night);
+        box-shadow: 0 8px 24px rgba(16, 26, 48, 0.28);
+    }
+
+    /* Full-screen chat mode: entered by tapping into the Kaia panel
+       (HeroChat.vue emits `chat-active`, Welcome.vue toggles this class), or
+       by coming back to the chat from a finished plan. Deliberately does NOT
+       resurrect the reverted --app-vh/overflow:hidden approach documented
+       above — it stays inside the same "fixed header, normal document flow"
+       pattern and just removes everything from that flow except the chat
+       panel, so the panel (and its input) end up filling the whole screen
+       between the header and the tab bar without any JS-driven height
        animation or extra scroll locking beyond what already exists for the
        input itself. */
-    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
-        .mobile-footer-nav {
+    .kaia-page.has-plan[data-mobile-section='kaia'].chat-fullscreen
+        :is(#itinerary-section, #guest-form-section, #booking-section) {
         display: none;
     }
 
-    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
-        #kaia-hero {
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen #kaia-hero {
         display: flex;
         flex-direction: column;
-        /* The footer nav this was clearing is hidden in this state. */
-        padding-bottom: 0;
+        /* Cancels .hero's sitewide `min-height: 560px`. A min-height beats a
+           height, so leaving it in place would silently ignore the `height`
+           below whenever the space is smaller than 560px — which is exactly
+           what happens the moment the keyboard opens on a phone, putting the
+           input row back behind it. */
+        min-height: 0;
         /* #kaia-hero is the only in-flow content on the page here (hero-nav
            is `position: fixed`, out of flow entirely — its clearance comes
            from padding-top below, not from subtracting it here too). With
@@ -4213,13 +4421,18 @@ body:has(.kaia-page) {
            is subtracted too: without it, opening the keyboard leaves this
            column sized for the pre-keyboard screen, so .chat-input-row
            (the last flex child at its bottom) ends up positioned behind
-           the keyboard instead of riding up above it. */
+           the keyboard instead of riding up above it. --mobile-nav-space is
+           the tab bar, which stays visible in this mode and collapses to 0
+           on its own while the keyboard is up (see `html.keyboard-open`). */
+        padding-top: var(--site-header-height, 0px);
+        padding-bottom: 0;
         height: calc(
-            100dvh - var(--admin-bar-height, 0px) - var(--keyboard-inset, 0px)
+            100dvh - var(--admin-bar-height, 0px) - var(--keyboard-inset, 0px) -
+                var(--mobile-nav-space)
         );
     }
 
-    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen
         #kaia-hero
         :is(
             .hero-head,
@@ -4231,8 +4444,7 @@ body:has(.kaia-page) {
         display: none;
     }
 
-    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
-        .hero-content {
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen .hero-content {
         flex: 1;
         display: flex;
         flex-direction: column;
@@ -4258,8 +4470,7 @@ body:has(.kaia-page) {
         min-height: 0;
     }
 
-    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
-        .chat-panel {
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen .chat-panel {
         flex: 1;
         min-height: 0;
         display: flex;
@@ -4276,22 +4487,63 @@ body:has(.kaia-page) {
        .chat-panel/#kaia-hero/the whole page taller than the viewport,
        which is exactly what full-screen mode exists to prevent: the input
        row ends up scrolled out of reach instead of pinned at the bottom. */
-    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
-        .chat-log {
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen .chat-log {
         flex: 1;
         min-height: 0;
         max-height: none;
     }
 
-    /* The mobile tab bar is hidden for the whole time this mode is active,
-       so this is the only way back to the hero view / other tabs before an
-       itinerary exists — see collapseChat() in HeroChat.vue. */
-    .kaia-page[data-mobile-section='kaia'].chat-fullscreen:not(.has-plan)
+    /* The way out of this mode: back to the hero view when there is no plan
+       yet, back to the finished plan when there is (the label follows — see
+       collapseChat() in HeroChat.vue). The tab bar stays visible throughout,
+       so this is a shortcut rather than the only exit — except while the
+       keyboard is up, which is exactly when it is covered. */
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen
         .chat-fullscreen-back {
         display: flex;
     }
 }
 
+/* A short phone (an iPhone SE is 667px tall, and the browser's own chrome
+   takes a slice of that) still fits the panel — the flex sizing in the Kaia
+   tab rules guarantees that — but it fits it by scrolling the greeting and
+   the starter chips inside the log. Buying the panel another ~40px here is
+   the difference between two starter chips being visible and four, and
+   tapping one of those is the whole point of them. Keyed on height, not
+   width: it is vertical room that is scarce, and a wide phone held in
+   landscape is short too. */
+@media (hover: none) and (max-height: 700px),
+    (pointer: coarse) and (max-height: 700px) {
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) .hero-head {
+        margin-bottom: 12px;
+    }
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) .hero-head h1 {
+        font-size: 25px;
+    }
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) .hero-head p {
+        font-size: 14px;
+    }
+    .kaia-page[data-mobile-section='kaia']:not(.has-plan) .hero-content {
+        padding: 16px 16px 12px;
+    }
+}
+
+/* While the on-screen keyboard is up, the tab bar is pinned to the bottom of
+   the *layout* viewport, which the keyboard now covers — so it is not visible
+   whatever we do, and the space it reserves is space the chat could be using
+   for the conversation the traveller is in the middle of. HeroChat.vue sets
+   this class from window.visualViewport (see updateKeyboardInset), the only
+   thing that actually tracks a soft keyboard. */
+html.keyboard-open .kaia-page {
+    --mobile-nav-space: 0px;
+}
+@media (hover: none), (pointer: coarse) {
+    html.keyboard-open
+        .kaia-page[data-mobile-section='kaia'].chat-fullscreen
+        .mobile-footer-nav {
+        display: none;
+    }
+}
 .kaia-page .mobile-footer-nav {
     display: none;
 }
@@ -4348,7 +4600,7 @@ body:has(.kaia-page) {
     color: rgba(237, 230, 214, 0.65);
     font-size: 10px;
     font-weight: 600;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     text-decoration: none;
 }
 .kaia-page .mobile-footer-nav-item.active {
@@ -4501,7 +4753,7 @@ body:has(.kaia-page) {
     color: var(--rust);
     font-weight: 600;
     font-size: inherit;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     cursor: pointer;
 }
 .kaia-page .dashboard-action-link:hover:not(:disabled) {

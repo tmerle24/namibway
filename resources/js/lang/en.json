@@ -128,13 +128,15 @@
         "voiceInput": "Speak to Kaia",
         "stopListening": "Stop recording",
         "listening": "Listening…",
-        "back": "Back"
+        "back": "Back",
+        "backToPlan": "Back to your plan"
     },
     "itinerary": {
         "eyebrow": "Your plan",
         "title": "Your trip, planned",
         "subtitle": "Generated from the conversation above — accommodation, activities and dining together, not separate silos. Change anything below and Kaia will re-plan around it.",
         "route": "Route",
+        "backToChat": "Back to Kaia",
         "roundTrip": "round trip",
         "reverseRoute": "Reverse route",
         "editPlan": "Edit plan",
