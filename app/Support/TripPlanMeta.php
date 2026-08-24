@@ -100,10 +100,16 @@ class TripPlanMeta
     }
 
     /**
-     * How long the trip runs — "12 days, 25 Aug \u{2013} 5 Sep 2026". Public
+     * How long the trip runs — "12 nights, 25 Aug \u{2013} 6 Sep 2026". Public
      * because the share card draws the same line under the plan's name, and
      * a card and its description disagreeing about the dates would be worse
      * than either being absent.
+     *
+     * Nights, not days: a `days` entry is a night (see
+     * ItineraryService::foldReturnDay), so counting them and calling the answer
+     * days made the card contradict its own date range — twelve nights run
+     * across thirteen dates, and the plan itself has always said "12 nights"
+     * beside the same period.
      *
      * @param  array<string, mixed>  $plan
      */
@@ -116,7 +122,7 @@ class TripPlanMeta
         }
 
         $count = count($days);
-        $length = $count.' '.Str::plural('day', $count);
+        $length = $count.' '.Str::plural('night', $count);
 
         $from = self::string($days[0]['date'] ?? null);
         $last = $days[$count - 1];

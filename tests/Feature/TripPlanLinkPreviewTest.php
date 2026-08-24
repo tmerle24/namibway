@@ -56,7 +56,7 @@ class TripPlanLinkPreviewTest extends TestCase
         $meta = TripPlanMeta::for($this->makePlan()->plan_json, 'Dunes, desert and wildlife in twelve days');
 
         $this->assertSame(
-            'Shared with you on NamibWay · 4 days, 25 Aug – 29 Aug 2026 · '
+            'Shared with you on NamibWay · 4 nights, 25 Aug – 29 Aug 2026 · '
             .'Windhoek → Sesriem → Etosha National Park. '
             .'Open the link for the full day-by-day itinerary.',
             $meta['description'],
