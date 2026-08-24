@@ -284,32 +284,36 @@ class SupplyStopFinder
      */
     private function candidates(array $legs): Collection
     {
-        $lats = [];
-        $lngs = [];
+        // The bounds are kept as running numbers rather than as lists to take
+        // min() of afterwards, so the empty case is a value this can test
+        // (INF) rather than an empty array somebody has to remember not to
+        // pass to min(). forLegs() only ever calls this with resolved legs, so
+        // it is the impossible branch either way.
+        $minLat = $minLng = INF;
+        $maxLat = $maxLng = -INF;
 
         foreach ($legs as $leg) {
             foreach ([$leg['origin'], $leg['destination']] as $point) {
-                $lats[] = $point->lat;
-                $lngs[] = $point->lng;
+                $minLat = min($minLat, $point->lat);
+                $maxLat = max($maxLat, $point->lat);
+                $minLng = min($minLng, $point->lng);
+                $maxLng = max($maxLng, $point->lng);
             }
         }
 
-        // forLegs() only calls this with resolved legs, so this cannot happen
-        // — but a box has to be built from something, and a guard is cheaper
-        // than a caller having to stay careful.
-        if ($lats === [] || $lngs === []) {
+        if (! is_finite($minLat) || ! is_finite($minLng)) {
             return collect();
         }
 
         $padLat = Geo::latDegreesForKm(self::MAX_CORRIDOR_KM);
-        $padLng = Geo::lngDegreesForKm(self::MAX_CORRIDOR_KM, max(abs(min($lats)), abs(max($lats))));
+        $padLng = Geo::lngDegreesForKm(self::MAX_CORRIDOR_KM, max(abs($minLat), abs($maxLat)));
 
         return SupplyPoint::query()
             ->where('is_published', true)
             ->whereNotNull('lat')
             ->whereNotNull('lng')
-            ->whereBetween('lat', [min($lats) - $padLat, max($lats) + $padLat])
-            ->whereBetween('lng', [min($lngs) - $padLng, max($lngs) + $padLng])
+            ->whereBetween('lat', [$minLat - $padLat, $maxLat + $padLat])
+            ->whereBetween('lng', [$minLng - $padLng, $maxLng + $padLng])
             ->with(['place.region', 'city.region'])
             ->get();
     }
