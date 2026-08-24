@@ -86,13 +86,15 @@
         "voiceInput": "Spreek met Kaia",
         "stopListening": "Opname stoppen",
         "listening": "Ik luister…",
-        "back": "Terug"
+        "back": "Terug",
+        "backToPlan": "Terug naar je reisplan"
     },
     "itinerary": {
         "eyebrow": "Jouw plan",
         "title": "Een paar manieren om deze reis te maken",
         "subtitle": "Samengesteld op basis van het gesprek hierboven — accommodatie, activiteiten en eten samen bekeken, niet los van elkaar.",
         "route": "Route",
+        "backToChat": "Terug naar Kaia",
         "roundTrip": "retourreis",
         "reverseRoute": "Route omkeren",
         "estimated": "~{price} geschat",

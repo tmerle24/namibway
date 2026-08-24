@@ -92,13 +92,15 @@
         "voiceInput": "Parler à Kaia",
         "stopListening": "Arrêter l'enregistrement",
         "listening": "J'écoute…",
-        "back": "Retour"
+        "back": "Retour",
+        "backToPlan": "Retour à votre plan"
     },
     "itinerary": {
         "eyebrow": "Votre plan",
         "title": "Quelques façons d'organiser ce voyage",
         "subtitle": "Généré à partir de la conversation ci-dessus — hébergement, activités et restauration pensés ensemble, pas séparément.",
         "route": "Itinéraire",
+        "backToChat": "Retour à Kaia",
         "roundTrip": "aller-retour",
         "reverseRoute": "Inverser l'itinéraire",
         "estimated": "~{price} estimé",
