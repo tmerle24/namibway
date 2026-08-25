@@ -1033,6 +1033,26 @@ export async function regeneratePlan(
     return data.plan as ItineraryPlan;
 }
 
+/**
+ * A request Kaia refused rather than one that failed on the way there.
+ *
+ * `retryable` is the whole point: a 5xx or a dropped connection usually comes
+ * good on the second attempt, and the chat retries those silently. A rejected
+ * session or a spent rate limit will answer identically however many times we
+ * ask, so re-sending only delays telling the traveler something they have to
+ * act on. `reload` says which action actually fixes it.
+ */
+export class KaiaRequestError extends Error {
+    constructor(
+        readonly status: number,
+        readonly retryable: boolean,
+        readonly reload = false,
+    ) {
+        super(`Kaia request failed with ${status}`);
+        this.name = 'KaiaRequestError';
+    }
+}
+
 export async function sendKaiaMessage(
     history: ChatMessage[],
 ): Promise<KaiaResponse> {
@@ -1046,6 +1066,32 @@ export async function sendKaiaMessage(
         },
         body: JSON.stringify({ history }),
     });
+
+    // Every other endpoint in this file checks this; this one — the most used
+    // in the product — did not, and the way it failed was the worst available.
+    // Laravel answers an `Accept: application/json` request with JSON at every
+    // status, so a 419, 422, 429 or 500 parsed cleanly into an object with no
+    // `type` field, matched none of the branches in HeroChat's applyResult,
+    // and was counted as a turn that had been handled. The traveler's own
+    // message stayed on screen, the thinking indicator stopped, and nothing
+    // else ever happened — no error, nothing to retry, nothing to report.
+    if (!response.ok) {
+        // 419 is a session whose CSRF token no longer matches — long-lived
+        // wrapped-app webviews reach it just by being left open. Only a fresh
+        // page mints a new token, so retrying with this one is a loop.
+        if (response.status === 419) {
+            throw new KaiaRequestError(419, false, true);
+        }
+
+        // Everything else: a 5xx (or a proxy timeout) is the kind of failure
+        // that comes good on its own, so the chat may retry it quietly. Any
+        // other 4xx — our own throttle at 20 requests a minute, a payload the
+        // validator rejected — will be rejected identically however often it
+        // is re-sent, so it is said once instead.
+        const retryable = response.status >= 500 || response.status === 408;
+
+        throw new KaiaRequestError(response.status, retryable);
+    }
 
     return response.json();
 }

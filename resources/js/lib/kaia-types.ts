@@ -210,6 +210,10 @@ export interface ChatMessage {
     // being treated as a real turn, and excluded from the history sent back
     // to the API so it never pollutes the conversation Claude sees.
     failed?: boolean;
+    // Which way out the failure actually has. Retrying an expired session
+    // sends the same rejected token again; only a fresh page mints a new one,
+    // so that bubble offers a reload instead. Defaults to retry.
+    failedAction?: 'retry' | 'reload';
 }
 
 export interface ListingRecommendation {

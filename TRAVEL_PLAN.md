@@ -270,6 +270,47 @@ expansion").
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-25 — a rejected request is not an answered one
+
+Reported from the wrapped app: tap a starter chip, the message appears, the
+thinking indicator stops, and then nothing — no reply, no error, nothing to
+retry. The conversation simply ends.
+
+`sendKaiaMessage` was the one request in `kaia-client.ts` that never checked
+`response.ok`; every other endpoint in that file does. Laravel answers an
+`Accept: application/json` request with JSON at *every* status, so a 419, 422,
+429 or 500 parsed perfectly into an object with no `type` field — and
+`applyResult` in HeroChat, having no branch for it, fell off the end of its
+if-chain and returned `true`. True means handled. So the turn was recorded as
+successful, the retry loop never ran, no error bubble was written, and the most
+used call in the product failed in the one way that leaves nothing at all to
+look at, on screen or in a bug report.
+
+Both halves are closed, because either alone leaves the hole open:
+
+- **The client checks the status.** A non-OK response throws
+  `KaiaRequestError` carrying the status and whether re-sending could possibly
+  help. 5xx and 408 are retryable — they come good on their own, which is what
+  the silent-retry loop is for. Every other 4xx is not: our own throttle
+  (`throttle:20,1`) and a rejected payload answer identically however many
+  times they are asked, so they are said once instead of three times.
+- **An unrecognised payload is a failure.** `applyResult` returns `false` in
+  its else branch now, so a shape nobody planned for goes down the error path
+  rather than being counted as a turn.
+
+Two failures get their own words because the generic "Kaia is having trouble"
+is wrong for them. **419** is a session whose CSRF token no longer matches —
+which a long-lived webview reaches just by being left open, and which is the
+most likely cause of the report above. Retrying re-sends the same rejected
+token, so that bubble offers **reload** instead: only a fresh page mints a new
+one. **429** says it was a lot of messages in a short time, with the ordinary
+retry.
+
+What this does *not* do is fix whatever the server said. Production is not
+reachable from the build environment, so the actual status behind the report is
+still unknown — the point of the change is that the next occurrence says which
+one it was, in the chat, instead of vanishing.
+
 ### 2026-08-25 — the opening hours come from a source, not from memory
 
 `supply_points` shipped with the column and almost nothing in it: `24/7` on
