@@ -140,6 +140,7 @@ class SavedPlanController extends Controller
             // one even when the PDF was downloaded from the edit link.
             'shareUrl' => route('trip.show', $saved->share_token),
             'logoDataUri' => $this->logoDataUri(),
+            'kaiaMarkDataUri' => $this->kaiaMarkDataUri(),
             'dateRange' => $this->tripDateRange($plan),
         ]);
 
@@ -178,6 +179,18 @@ class SavedPlanController extends Controller
         // The built asset filename is content-hashed by Vite, so read the
         // source image directly instead — stable regardless of build output.
         $contents = file_get_contents(resource_path('images/logo-dark.png'));
+
+        return 'data:image/png;base64,'.base64_encode((string) $contents);
+    }
+
+    /**
+     * Kaia's wordmark for the footer. A raster copy of the outlined SVG in
+     * public/images/kaia/ — dompdf cannot render the flipped transform that
+     * one is built on. Regenerate both from resources/brand/build_marks.py.
+     */
+    private function kaiaMarkDataUri(): string
+    {
+        $contents = file_get_contents(resource_path('images/kaia-wordmark.png'));
 
         return 'data:image/png;base64,'.base64_encode((string) $contents);
     }

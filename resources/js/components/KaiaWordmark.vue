@@ -1,0 +1,45 @@
+<script setup lang="ts">
+import type { HTMLAttributes } from 'vue';
+
+/**
+ * Kaia's wordmark: her name in outlined Outfit SemiBold, with NamibWay's
+ * compass diamond drawn in as the dot on the i. The letters are outlines,
+ * not text, so nothing here depends on a font being loaded — see BRAND.md.
+ *
+ * The letters take `currentColor`; the diamond keeps the tan accent unless
+ * `mono` is set, which is the one-ink version for print and for surfaces
+ * where the accent has nothing to sit on.
+ */
+defineOptions({
+    inheritAttrs: false,
+});
+
+type Props = {
+    className?: HTMLAttributes['class'];
+    mono?: boolean;
+};
+
+withDefaults(defineProps<Props>(), { mono: false });
+</script>
+
+<template>
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 1776 733"
+        role="img"
+        aria-label="Kaia"
+        :class="className"
+        v-bind="$attrs"
+    >
+        <g transform="translate(-58 723) scale(1 -1)">
+            <path
+                fill="currentColor"
+                d="M366 0 179 249 365 483H516L298 219L303 283L526 0ZM58 0V723H189V0Z M768 -10Q702 -10 649.0 23.0Q596 56 566.0 113.0Q536 170 536 241Q536 313 566.0 370.0Q596 427 649.0 460.0Q702 493 768 493Q820 493 861.0 472.0Q902 451 926.5 413.5Q951 376 953 329V155Q951 107 926.5 70.0Q902 33 861.0 11.5Q820 -10 768 -10ZM792 111Q847 111 881.0 147.5Q915 184 915 242Q915 280 899.5 309.5Q884 339 856.5 355.5Q829 372 792 372Q756 372 728.5 355.5Q701 339 685.5 309.5Q670 280 670 242Q670 203 685.5 173.5Q701 144 728.5 127.5Q756 111 792 111ZM908 0V130L929 248L908 364V483H1038V0Z M1134 0V483H1266V0Z M1564 -10Q1498 -10 1445.0 23.0Q1392 56 1362.0 113.0Q1332 170 1332 241Q1332 313 1362.0 370.0Q1392 427 1445.0 460.0Q1498 493 1564 493Q1616 493 1657.0 472.0Q1698 451 1722.5 413.5Q1747 376 1749 329V155Q1747 107 1722.5 70.0Q1698 33 1657.0 11.5Q1616 -10 1564 -10ZM1588 111Q1643 111 1677.0 147.5Q1711 184 1711 242Q1711 280 1695.5 309.5Q1680 339 1652.5 355.5Q1625 372 1588 372Q1552 372 1524.5 355.5Q1497 339 1481.5 309.5Q1466 280 1466 242Q1466 203 1481.5 173.5Q1497 144 1524.5 127.5Q1552 111 1588 111ZM1704 0V130L1725 248L1704 364V483H1834V0Z"
+            />
+            <path
+                :fill="mono ? 'currentColor' : '#E2AB6C'"
+                d="M1200 703 L1295 608 L1200 513 L1105 608 Z"
+            />
+        </g>
+    </svg>
+</template>

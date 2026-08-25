@@ -25,6 +25,7 @@
     },
     "chat": {
         "greeting": "Bonjour, je suis Kaia. Parlez-moi un peu du voyage dont vous rêvez — combien de jours avez-vous ?",
+        "headRole": "votre compagne de voyage en Namibie",
         "starters": [
             "2 semaines en boucle, 4x4 avec tente de toit",
             "3 semaines en boucle, 4x4 avec tente de toit",
@@ -102,6 +103,7 @@
         "eyebrow": "Votre plan",
         "title": "Quelques façons d'organiser ce voyage",
         "subtitle": "Généré à partir de la conversation ci-dessus — hébergement, activités et restauration pensés ensemble, pas séparément.",
+        "plannedWith": "planifié avec",
         "route": "Itinéraire",
         "backToChat": "Retour à Kaia",
         "roundTrip": "aller-retour",

@@ -25,6 +25,7 @@
     },
     "chat": {
         "greeting": "Hola, soy Kaia. Cuéntame un poco sobre el viaje que tienes en mente — ¿cuántos días tienes?",
+        "headRole": "tu compañera de viaje en Namibia",
         "starters": [
             "2 semanas de ruta circular, 4x4 con tienda de techo",
             "3 semanas de ruta circular, 4x4 con tienda de techo",
@@ -102,6 +103,7 @@
         "eyebrow": "Tu plan",
         "title": "Algunas formas de hacer este viaje",
         "subtitle": "Generado a partir de la conversación anterior — alojamiento, actividades y restaurantes pensados juntos, no por separado.",
+        "plannedWith": "planificado con",
         "route": "Ruta",
         "backToChat": "Volver a Kaia",
         "roundTrip": "viaje de ida y vuelta",

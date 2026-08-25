@@ -67,6 +67,7 @@
     },
     "chat": {
         "greeting": "Hi, I'm Kaia. Tell me a bit about the trip you're dreaming of — how many days do you have?",
+        "headRole": "your Namibia travel companion",
         "starters": [
             "2-week round trip, 4x4 with rooftop tent",
             "3-week round trip, 4x4 with rooftop tent",
@@ -138,6 +139,7 @@
         "eyebrow": "Your plan",
         "title": "Your trip, planned",
         "subtitle": "Generated from the conversation above — accommodation, activities and dining together, not separate silos. Change anything below and Kaia will re-plan around it.",
+        "plannedWith": "planned with",
         "route": "Route",
         "backToChat": "Back to Kaia",
         "roundTrip": "round trip",

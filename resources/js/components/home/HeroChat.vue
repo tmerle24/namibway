@@ -5,6 +5,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import DeadTree from '@/components/DeadTree.vue';
 import ChatSuggestions from '@/components/home/ChatSuggestions.vue';
+import KaiaAvatar from '@/components/KaiaAvatar.vue';
+import KaiaWordmark from '@/components/KaiaWordmark.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import { formatPrice } from '@/lib/currency';
 import { KaiaRequestError, sendKaiaMessage } from '@/lib/kaia-client';
@@ -769,6 +771,21 @@ async function retryLastMessage() {
                     </svg>
                     {{ hasPlan ? t('chat.backToPlan') : t('chat.back') }}
                 </button>
+                <!-- Who the traveller is talking to. Kaia is a name in
+                     running text everywhere else in the product; this is the
+                     one place she is actually introduced, so it sits above
+                     the conversation rather than beside every message —
+                     an avatar per bubble would eat the width the text needs
+                     on a phone. See BRAND.md. -->
+                <div class="chat-head">
+                    <KaiaAvatar class="chat-head-avatar" />
+                    <div class="chat-head-names">
+                        <KaiaWordmark class="chat-head-wordmark" />
+                        <span class="chat-head-role">{{
+                            t('chat.headRole')
+                        }}</span>
+                    </div>
+                </div>
                 <div class="chat-log" ref="chatLog">
                     <div
                         v-for="(msg, i) in messages"

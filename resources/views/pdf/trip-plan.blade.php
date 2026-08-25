@@ -21,6 +21,7 @@
     .pdf-header .meta { font-size: 10px; color: #7a6a5e; }
 
     .pdf-footer { position: fixed; bottom: -2.05cm; left: 0; right: 0; height: 1.5cm; border-top: 1px solid #e8e0d4; padding-top: 8px; font-size: 9px; color: #a09080; text-align: center; }
+    .pdf-footer .planned-with img { height: 10px; vertical-align: -1.5px; margin-left: 2px; }
 
     .summary { background: #faf8f5; border-left: 3px solid #c0533a; padding: 10px 14px; margin-bottom: 20px; font-size: 11px; color: #5b5346; }
 
@@ -56,7 +57,11 @@
 </div>
 
 <div class="pdf-footer">
-    NamibWay &middot; The smartest way to experience Namibia<br>
+    {{-- Kaia signs the plan she wrote; NamibWay signs the product. Raster, not
+         SVG: dompdf's SVG support does not carry the flipped transform the
+         outlined wordmark is built on. --}}
+    <span class="planned-with">planned with <img src="{{ $kaiaMarkDataUri }}" alt="Kaia"></span>
+    &middot; NamibWay &middot; The smartest way to experience Namibia<br>
     View online: <strong>{{ $shareUrl }}</strong>
 </div>
 

@@ -622,6 +622,41 @@ body:has(.kaia-page) {
 .kaia-page .chat-fullscreen-back:hover {
     background: var(--sand);
 }
+/* Who the traveller is talking to (BRAND.md). Deliberately one compact line:
+   this introduces Kaia once, at the top, instead of putting an avatar beside
+   every message — on a phone that gutter comes straight out of the width the
+   conversation has to read in. The avatar carries its own brand colours, so
+   it does not follow the page's --ink/--sand palette. */
+.kaia-page .chat-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 22px 11px;
+    border-bottom: 1px solid var(--sand);
+}
+.kaia-page .chat-head-avatar {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+}
+.kaia-page .chat-head-names {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    min-width: 0;
+}
+.kaia-page .chat-head-wordmark {
+    height: 15px;
+    width: auto;
+    color: var(--ink);
+}
+.kaia-page .chat-head-role {
+    font-size: 12px;
+    color: #8a7f68;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .kaia-page .chat-log {
     max-height: 340px;
     overflow-y: auto;
@@ -955,6 +990,21 @@ body:has(.kaia-page) {
 .kaia-page .section-head p {
     color: #5b5346;
     font-size: 15px;
+}
+/* Kaia's signature on the plan she wrote. Sits between the heading and the
+   subtitle so it reads as a byline rather than as another sentence. */
+.kaia-page .planned-with {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #8a7f68;
+}
+.kaia-page .planned-with-mark {
+    height: 14px;
+    width: auto;
+    color: var(--ink);
 }
 .kaia-page .trip-summary-text {
     color: #5b5346;
@@ -4511,6 +4561,14 @@ body:has(.kaia-page) {
         flex: 1;
         min-height: 0;
         max-height: none;
+    }
+
+    /* In full-screen mode the back button already occupies a row above this,
+       so Kaia's line tightens up rather than pushing the conversation down a
+       second time. It stays — this is the screen that is most obviously hers. */
+    .kaia-page[data-mobile-section='kaia'].chat-fullscreen .chat-head {
+        padding-top: 4px;
+        padding-bottom: 9px;
     }
 
     /* The way out of this mode: back to the hero view when there is no plan

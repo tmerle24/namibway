@@ -25,6 +25,7 @@
     },
     "chat": {
         "greeting": "Hallo, ich bin Kaia. Erzähl mir ein bisschen von der Reise, die dir vorschwebt — wie viele Tage hast du?",
+        "headRole": "deine Reisebegleiterin für Namibia",
         "starters": [
             "2 Wochen Rundreise, 4x4 mit Dachzelt",
             "3 Wochen Rundreise, 4x4 mit Dachzelt",
@@ -102,6 +103,7 @@
         "eyebrow": "Dein Plan",
         "title": "Deine Reise, geplant",
         "subtitle": "Erstellt aus dem Gespräch oben — Unterkunft, Aktivitäten und Restaurants gemeinsam gedacht, nicht getrennt. Ändere unten beliebige Angaben, Kaia plant die Reise dann neu.",
+        "plannedWith": "geplant mit",
         "route": "Route",
         "backToChat": "Zurück zu Kaia",
         "roundTrip": "Rundreise",

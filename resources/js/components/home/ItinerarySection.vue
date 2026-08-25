@@ -6,6 +6,7 @@ import type { ComponentPublicInstance } from 'vue';
 import { useI18n } from 'vue-i18n';
 import draggable from 'vuedraggable';
 import ImageLightbox from '@/components/ImageLightbox.vue';
+import KaiaWordmark from '@/components/KaiaWordmark.vue';
 import { formatPrice } from '@/lib/currency';
 import {
     claimPlan,
@@ -2624,6 +2625,13 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
         <div class="section-head">
             <div class="eyebrow">{{ t('itinerary.eyebrow') }}</div>
             <h2>{{ t('itinerary.title') }}</h2>
+            <!-- The plan is Kaia's work, and this is where it is signed —
+                 a shared or exported plan is often the first thing a second
+                 traveller sees of her. See BRAND.md. -->
+            <p class="planned-with">
+                <span>{{ t('itinerary.plannedWith') }}</span>
+                <KaiaWordmark class="planned-with-mark" />
+            </p>
             <p>{{ t('itinerary.subtitle') }}</p>
             <p
                 v-if="currentTripSummary"
