@@ -270,6 +270,78 @@ expansion").
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-25 — Kaia stopped answering, and a map had spent her budget
+
+The entry below ends by saying the next occurrence would at least name its
+status. It did, from a phone: **429**, on the second message of a brand-new
+conversation, with a Retry link that could only produce the same refusal
+again — and then on every message after that. Kaia had stopped replying at
+all. Two messages is not a lot of messages, so the number in `throttle:20,1`
+was never the problem.
+
+**The counter was not Kaia's.** Laravel builds the key for an un-prefixed
+numeric throttle out of the domain and the caller —
+`sha1($route->getDomain().'|'.$request->ip())` — and nothing about the route.
+So `throttle:20,1` does not mean twenty requests a minute to this route. It
+means: this route is refused once *any* twenty numerically throttled requests
+have arrived from that caller in a minute. Every such route in the application
+shares one counter, and the strictest cap among them governs the lot.
+
+Opening a trip plan asks for region coordinates, two city lists, route stops
+and supply stops per leg, and autosaves on every edit — twenty in a few
+seconds, easily. Every one of them was spending the chat's budget, so by the
+time the traveler typed anything, Kaia's twenty were gone. The same arithmetic
+quietly broke the strictest limits worst: support and feedback are
+`throttle:5,1`, so five requests of any kind at all — a listing preview, a
+saved plan loading — were enough to refuse them.
+
+**The route goes back into the key.** `App\Http\Middleware\ThrottleRequests`
+overrides `resolveRequestSignature()` to sign the caller *and* the route
+(method plus name, or the URI pattern where a route has no name), bound over
+the framework's in `AppServiceProvider`. The framework does offer a per-route
+prefix as a third argument — `throttle:20,1,kaia-message` — and it was not used
+because it has to be remembered on every route anybody ever adds, and
+forgetting it is silent. Same reasoning as the alphabetical navigation
+manager: an invariant that has to be remembered is one that eventually is not.
+Named limiters (`throttle:api`, and now `throttle:kaia-chat`) were never
+affected — they namespace their keys by the limiter's name.
+
+**And the second half: an address is not a traveler.** With the counter now
+Kaia's own, what it counts still mattered. Keyed on the IP, a phone here is
+behind a mobile carrier's NAT, a lodge is one line for every guest and an
+operator's office is one line for the whole team — so the budget was shared
+between strangers, and the person who paid for it was whoever opened the chat
+second. So there are two limits now (`config/kaia.php` → `rate_limit`,
+resolved in `AppServiceProvider`'s `kaia-chat` limiter):
+
+- **per conversation**, keyed on the session, 20 a minute. The one a traveler
+  can reach, and a session is what a conversation actually is.
+- **per address**, keyed on the IP, 100 a minute. Purely a backstop: a session
+  cookie is free to mint, so the first limit alone would stop nobody who did
+  not want to be stopped.
+
+`kaia/message` and `kaia/regenerate` share that one budget, because what is
+rationed is a minute of Kaia's work and the two cost the same money. Both
+numbers are in env, so an incident can be handled without a deploy.
+
+**A refusal now has an end date.** Laravel sends `Retry-After` on every
+throttle rejection and the client was throwing it away. `KaiaRequestError`
+carries it, and the chat *waits the window out*: the bubble counts down and the
+turn resumes by itself, once. A second refusal on the far side of the wait
+means the wait was not the whole story, so that one hands the Retry button
+back rather than counting down forever. Sending is disabled while the clock
+runs — a message sent into a closed window is refused, spends an attempt and
+pushes the window further out, which is exactly what tapping Retry used to do.
+The plan editor's own regenerate reported a 429 as *"Could not update the
+plan"*, telling a traveler their plan is broken when the truth is that it will
+work again in half a minute; it says which it is now, with the seconds.
+
+Still not solved: a budget, as opposed to a brake. Nothing caps what Kaia may
+spend in a day — the per-minute limits bound a burst, not a bill, and the shape
+for the real thing already exists in `EnrichmentBudgetGuard`. A daily cap keyed
+on the IP was considered here and rejected: locking a lodge's whole WiFi out of
+the product until midnight is a worse failure than the one being fixed.
+
 ### 2026-08-25 — a rejected request is not an answered one
 
 Reported from the wrapped app: tap a starter chip, the message appears, the

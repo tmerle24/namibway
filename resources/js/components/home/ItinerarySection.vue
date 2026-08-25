@@ -15,6 +15,7 @@ import {
     fetchRegionCoords,
     fetchRouteStops,
     fetchSupplyStops,
+    KaiaRequestError,
     PlanConflictError,
     regeneratePlan,
     savePlan,
@@ -409,8 +410,18 @@ async function applyParamsEdit(values: TripParamsFormValues) {
         departureTimes.value = {};
         paramsModalOpen.value = false;
     } catch (e) {
-        regenerateError.value =
-            e instanceof Error ? e.message : 'Could not update the plan.';
+        // Regenerating shares the chat's per-minute budget, and being refused
+        // by it says nothing about the plan — so it must not be reported as
+        // the plan having failed to update.
+        if (e instanceof KaiaRequestError && e.status === 429) {
+            regenerateError.value = [
+                t('chat.errorBusy'),
+                t('chat.errorBusyRetryIn', { seconds: e.retryAfter ?? 0 }),
+            ].join(' ');
+        } else {
+            regenerateError.value =
+                e instanceof Error ? e.message : 'Could not update the plan.';
+        }
     } finally {
         regenerating.value = false;
     }

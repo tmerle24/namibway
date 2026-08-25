@@ -1021,6 +1021,19 @@ export async function regeneratePlan(
     });
 
     if (!response.ok) {
+        // Regenerating shares the chat's per-minute budget, so it can be
+        // refused for the same reason — and answering that with "could not
+        // update the plan" tells the traveler their plan is broken when the
+        // truth is that it will work again in half a minute.
+        if (response.status === 429) {
+            throw new KaiaRequestError(
+                429,
+                false,
+                false,
+                retryAfterSeconds(response),
+            );
+        }
+
         const data = await response.json().catch(() => ({}));
 
         throw new Error(
@@ -1047,10 +1060,41 @@ export class KaiaRequestError extends Error {
         readonly status: number,
         readonly retryable: boolean,
         readonly reload = false,
+        // Seconds until the refusal stops being a refusal. Only a rate limit
+        // knows this, and it is the difference between "try again sometime"
+        // and a chat that picks itself back up.
+        readonly retryAfter: number | null = null,
     ) {
         super(`Kaia request failed with ${status}`);
         this.name = 'KaiaRequestError';
     }
+}
+
+/**
+ * How long a 429 says to wait, in seconds.
+ *
+ * Laravel's throttle middleware sends `Retry-After` on every rejection, so
+ * this is normally the exact moment the window reopens rather than a guess.
+ * The fallback covers a 429 that came from something else in front of the app
+ * (a proxy, a WAF), and the clamp covers a header that is absurd or unparsable
+ * — a chat that says it will resume in two hours has told the traveler
+ * nothing, and one that says one second just fails again.
+ */
+const RETRY_AFTER_FALLBACK_SECONDS = 30;
+const RETRY_AFTER_MIN_SECONDS = 3;
+const RETRY_AFTER_MAX_SECONDS = 120;
+
+function retryAfterSeconds(response: Response): number {
+    const header = Number(response.headers.get('Retry-After'));
+
+    if (!Number.isFinite(header) || header <= 0) {
+        return RETRY_AFTER_FALLBACK_SECONDS;
+    }
+
+    return Math.min(
+        RETRY_AFTER_MAX_SECONDS,
+        Math.max(RETRY_AFTER_MIN_SECONDS, Math.ceil(header)),
+    );
 }
 
 export async function sendKaiaMessage(
@@ -1083,11 +1127,23 @@ export async function sendKaiaMessage(
             throw new KaiaRequestError(419, false, true);
         }
 
+        // A spent rate limit is the one refusal that comes with an expiry
+        // date, and the chat waits it out rather than dead-ending on it. Not
+        // `retryable`: that flag means "retry now, quietly", which is exactly
+        // what a throttle refuses — this one is retried once the clock says so.
+        if (response.status === 429) {
+            throw new KaiaRequestError(
+                429,
+                false,
+                false,
+                retryAfterSeconds(response),
+            );
+        }
+
         // Everything else: a 5xx (or a proxy timeout) is the kind of failure
         // that comes good on its own, so the chat may retry it quietly. Any
-        // other 4xx — our own throttle at 20 requests a minute, a payload the
-        // validator rejected — will be rejected identically however often it
-        // is re-sent, so it is said once instead.
+        // other 4xx — a payload the validator rejected — will be rejected
+        // identically however often it is re-sent, so it is said once instead.
         const retryable = response.status >= 500 || response.status === 408;
 
         throw new KaiaRequestError(response.status, retryable);

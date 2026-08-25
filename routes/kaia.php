@@ -3,12 +3,17 @@
 use App\Http\Controllers\KaiaController;
 use Illuminate\Support\Facades\Route;
 
+// One budget for the two endpoints that call Claude, keyed on the conversation
+// rather than the address (App\Providers\AppServiceProvider, config/kaia.php).
+// Sharing one counter between them is deliberate: what is being rationed is a
+// minute of Kaia's work, and asking her a question and asking her to redo the
+// plan cost the same money.
 Route::post('kaia/message', [KaiaController::class, 'message'])
-    ->middleware('throttle:20,1')
+    ->middleware('throttle:kaia-chat')
     ->name('kaia.message');
 
 Route::post('kaia/regenerate', [KaiaController::class, 'regenerate'])
-    ->middleware('throttle:10,1')
+    ->middleware('throttle:kaia-chat')
     ->name('kaia.regenerate');
 
 Route::get('kaia/regions', [KaiaController::class, 'regions'])

@@ -114,6 +114,17 @@ watch(locale, () => {
 });
 const inputText = ref('');
 const isTyping = ref(false);
+
+// Seconds left on a spent rate limit, or null when nothing is being waited
+// out. A refusal with a clock on it is not a dead end: the bubble counts down
+// and the turn resumes by itself, so the traveler is not left tapping Retry
+// into the same wall — which is all the old bubble could offer.
+const resumeIn = ref<number | null>(null);
+
+// Sending is off while Kaia is answering and while the window is closed. The
+// second half matters: a message sent during the wait would be refused, spend
+// an attempt and push the window out again.
+const chatBusy = computed(() => isTyping.value || resumeIn.value !== null);
 const thinkingIndex = ref(0);
 const chatLog = ref<HTMLDivElement | null>(null);
 const chatPanel = ref<HTMLDivElement | null>(null);
@@ -224,7 +235,7 @@ async function startNativeListening() {
 }
 
 function toggleVoiceInput() {
-    if (!isVoiceSupported.value || isTyping.value) {
+    if (!isVoiceSupported.value || chatBusy.value) {
         return;
     }
 
@@ -326,6 +337,7 @@ onMounted(() => {
 
 onUnmounted(() => {
     stopThinking();
+    stopCountdown();
     stopListening();
     unlockBodyScroll();
     window.visualViewport?.removeEventListener('resize', updateKeyboardInset);
@@ -554,7 +566,65 @@ function applyResult(
     return true;
 }
 
-async function requestKaiaReply() {
+// A rate limit is the only refusal that comes with an expiry, so the chat
+// waits it out instead of asking the traveler to. Once per turn: if the window
+// reopens and the very next request is refused again, the wait was not the
+// whole story, and counting down a second time would just be a slower dead
+// end — so that one hands the button back.
+let countdown: ReturnType<typeof setInterval> | null = null;
+
+function stopCountdown() {
+    if (countdown !== null) {
+        clearInterval(countdown);
+        countdown = null;
+    }
+
+    resumeIn.value = null;
+}
+
+// Drops a countdown bubble the traveler has overtaken — by typing, tapping a
+// suggestion or hitting Retry — so the log never shows a wait that nothing is
+// waiting for any more.
+function cancelWait() {
+    stopCountdown();
+
+    if (lastMessage.value?.failedAction === 'wait') {
+        messages.value.pop();
+    }
+}
+
+function waitOutRateLimit(seconds: number) {
+    stopCountdown();
+
+    resumeIn.value = seconds;
+    messages.value.push({
+        role: 'ai',
+        text: t('chat.errorBusy'),
+        failed: true,
+        failedAction: 'wait',
+    });
+
+    void scrollToBottom();
+
+    countdown = setInterval(() => {
+        const left = (resumeIn.value ?? 0) - 1;
+
+        if (left > 0) {
+            resumeIn.value = left;
+
+            return;
+        }
+
+        cancelWait();
+        void runKaiaRequest(false, false);
+    }, 1000);
+}
+
+/**
+ * `mayWait` is false on the attempt that a countdown itself started — see
+ * waitOutRateLimit above.
+ */
+async function requestKaiaReply(mayWait = true) {
     // History Kaia should actually see — a previous failed-attempt bubble
     // never happened as far as the conversation is concerned.
     const history = messages.value.filter((m) => !m.failed);
@@ -571,6 +641,12 @@ async function requestKaiaReply() {
             // rate limit — is worth saying now rather than three attempts
             // from now, and it needs the action that actually fixes it.
             if (e instanceof KaiaRequestError && !e.retryable) {
+                if (e.status === 429 && mayWait && e.retryAfter) {
+                    waitOutRateLimit(e.retryAfter);
+
+                    return;
+                }
+
                 messages.value.push({
                     role: 'ai',
                     text: e.reload
@@ -602,12 +678,12 @@ async function requestKaiaReply() {
 // keyboard, which then covers the next set of buttons. Someone who is typing
 // still gets focus back — the input is disabled while Kaia is "typing", so it
 // would otherwise be lost after every turn.
-async function runKaiaRequest(refocus = true) {
+async function runKaiaRequest(refocus = true, mayWait = true) {
     isTyping.value = true;
     startThinking();
     await scrollToBottom();
 
-    await requestKaiaReply();
+    await requestKaiaReply(mayWait);
 
     stopThinking();
     isTyping.value = false;
@@ -625,7 +701,7 @@ async function runKaiaRequest(refocus = true) {
 async function sendMessage() {
     const text = inputText.value.trim();
 
-    if (!text || isTyping.value) {
+    if (!text || chatBusy.value) {
         return;
     }
 
@@ -639,7 +715,7 @@ async function sendMessage() {
 // request. Nothing about the conversation knows it was a button, which is what
 // keeps typing and tapping mixable in one session.
 async function pickSuggestion(text: string) {
-    if (isTyping.value) {
+    if (chatBusy.value) {
         return;
     }
 
@@ -666,13 +742,19 @@ async function retryLastMessage() {
         return;
     }
 
+    // A traveler who taps Retry has overtaken any countdown that is running,
+    // and re-sends at their own risk — so this attempt does not start another.
+    const wasWaiting = resumeIn.value !== null;
+
+    cancelWait();
+
     const last = messages.value[messages.value.length - 1];
 
     if (last?.failed) {
         messages.value.pop();
     }
 
-    await runKaiaRequest();
+    await runKaiaRequest(true, !wasWaiting);
 }
 </script>
 
@@ -795,8 +877,23 @@ async function retryLastMessage() {
                         {{ msg.text }}
                         <template v-if="msg.failed">
                             <br />
+                            <!-- A window that reopens on its own gets a
+                                 countdown instead of a button: there is
+                                 nothing for the traveler to do, and the one
+                                 thing they would do — tap Retry — is what
+                                 keeps the window shut. -->
+                            <span
+                                v-if="msg.failedAction === 'wait'"
+                                class="chat-resume-in"
+                            >
+                                {{
+                                    t('chat.errorBusyResume', {
+                                        seconds: resumeIn ?? 0,
+                                    })
+                                }}
+                            </span>
                             <button
-                                v-if="msg.failedAction === 'reload'"
+                                v-else-if="msg.failedAction === 'reload'"
                                 type="button"
                                 class="chat-retry-btn"
                                 @click="reloadPage"
@@ -884,7 +981,7 @@ async function retryLastMessage() {
                     <ChatSuggestions
                         :suggestions="suggestions"
                         :hint="suggestionsHint"
-                        :disabled="isTyping"
+                        :disabled="chatBusy"
                         @pick="pickSuggestion"
                     />
                 </div>
@@ -909,7 +1006,7 @@ async function retryLastMessage() {
                         type="button"
                         class="chat-mic-btn"
                         :class="{ listening: isListening }"
-                        :disabled="isTyping"
+                        :disabled="chatBusy"
                         :aria-label="
                             isListening
                                 ? t('chat.stopListening')
@@ -939,7 +1036,7 @@ async function retryLastMessage() {
                         </svg>
                     </button>
                     <button
-                        :disabled="isTyping || !inputText.trim()"
+                        :disabled="chatBusy || !inputText.trim()"
                         @click="sendMessage"
                     >
                         {{ t('chat.send') }}
