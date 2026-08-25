@@ -53,14 +53,16 @@ class SupplyHoursImportTest extends TestCase
      */
     private function element(string $osm, float $lng, string $hours, string $kind = 'fuel', array $attributes = []): array
     {
-        return [
+        // The caller's keys first: PHP's + keeps the left-hand value, so
+        // defaults on the left silently swallow every override.
+        return $attributes + [
             'osm' => $osm,
             'kind' => $kind,
             'name' => $osm,
             'lat' => self::LAT,
             'lng' => $lng,
             'opening_hours' => $hours,
-        ] + $attributes;
+        ];
     }
 
     /**
@@ -68,13 +70,13 @@ class SupplyHoursImportTest extends TestCase
      */
     private function point(array $attributes = []): SupplyPoint
     {
-        return SupplyPoint::factory()->create([
+        return SupplyPoint::factory()->create($attributes + [
             'name' => 'Testkop',
             'slug' => 'testkop',
             'services' => [SupplyService::Fuel],
             'lat' => self::LAT,
             'lng' => 20.0,
-        ] + $attributes);
+        ]);
     }
 
     /**

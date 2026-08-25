@@ -48,13 +48,13 @@ class SupplyStopsTest extends TestCase
      */
     private function supply(string $name, float $lng, array $services = [SupplyService::Fuel], float $lat = self::LAT, array $attributes = []): SupplyPoint
     {
-        return SupplyPoint::factory()->create([
+        return SupplyPoint::factory()->create($attributes + [
             'name' => $name,
             'slug' => str($name)->slug()->value(),
             'services' => $services,
             'lat' => $lat,
             'lng' => $lng,
-        ] + $attributes);
+        ]);
     }
 
     /**
