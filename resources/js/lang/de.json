@@ -164,6 +164,7 @@
             "alsoHere": "Außerdem hier",
             "open24": "Rund um die Uhr geöffnet",
             "hoursUnknown": "Öffnungszeiten nicht erfasst",
+            "osmCredit": "Öffnungszeiten © OpenStreetMap-Mitwirkende",
             "unverified": "Länger nicht geprüft — wenn es die einzige Möglichkeit ist, mit Reserve bis zur nächsten fahren.",
             "detour": "≈{km} km abseits der Route",
             "closed": "geschlossen",

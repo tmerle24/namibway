@@ -30,6 +30,10 @@ use Spatie\Translatable\HasTranslations;
  * correct, and is why the interesting question was never "where are the
  * filling stations".
  *
+ * @property string $name
+ * @property string $slug
+ * @property string|null $opening_hours
+ * @property string|null $opening_hours_source
  * @property Collection<int, SupplyService>|null $services
  * @property Collection<int, FuelType>|null $fuel_types
  * @property float|null $lat
@@ -57,6 +61,7 @@ class SupplyPoint extends Model
         'services',
         'fuel_types',
         'opening_hours',
+        'opening_hours_source',
         'city_id',
         'place_id',
         'lat',

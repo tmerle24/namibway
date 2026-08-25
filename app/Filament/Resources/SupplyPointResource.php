@@ -94,6 +94,17 @@ class SupplyPointResource extends Resource
                             })
                             ->helperText('24/7 · Mo-Fr 07:00-18:00; Sa 08:00-13:00; Su off · Mo-Su 06:00-22:00. Month ranges, holidays and sunrise/sunset are not read, and are refused rather than half-understood — a traveller drives on what this says. Leave empty where nobody has checked.')
                             ->columnSpanFull(),
+                        // Set by namibway:import-supply-hours, never by hand —
+                        // it says which OpenStreetMap element an imported time
+                        // was read from, which is both the provenance and the
+                        // way to look at the source again.
+                        Forms\Components\TextInput::make('opening_hours_source')
+                            ->label('Read from')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->placeholder('entered by hand')
+                            ->helperText('Empty means somebody typed these hours. An osm: id means they were imported from OpenStreetMap (© OpenStreetMap contributors, ODbL) and nobody has checked them on the ground — that is what Last verified below is for.')
+                            ->columnSpanFull(),
                     ]),
 
                 Forms\Components\Section::make('Where it is')
@@ -170,6 +181,7 @@ class SupplyPointResource extends Resource
                 Tables\Columns\TextColumn::make('opening_hours')
                     ->label('Open')
                     ->placeholder('not recorded')
+                    ->description(fn (SupplyPoint $record): ?string => $record->opening_hours_source)
                     ->toggleable(),
                 Tables\Columns\IconColumn::make('lat')
                     ->label('Findable')

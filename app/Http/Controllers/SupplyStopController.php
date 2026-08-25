@@ -75,6 +75,9 @@ class SupplyStopController extends Controller
             'services' => $point->serviceList()->map(fn ($service): string => $service->value)->values(),
             'fuel_types' => $point->fuelTypeList()->map(fn ($fuel): string => $fuel->value)->values(),
             'opening_hours' => $point->openingHours()?->toArray(),
+            // OpenStreetMap data is ODbL: where an imported time is shown, the
+            // credit goes with it. Null for hours somebody typed.
+            'opening_hours_from_osm' => str_starts_with((string) $point->opening_hours_source, 'osm:'),
             'note' => $point->getTranslation('note', app()->getLocale(), useFallbackLocale: true) ?: null,
             'city' => $anchor?->name,
             'region' => $anchor?->region?->name,

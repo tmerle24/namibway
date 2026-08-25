@@ -48,13 +48,13 @@ class SupplyStopsTest extends TestCase
      */
     private function supply(string $name, float $lng, array $services = [SupplyService::Fuel], float $lat = self::LAT, array $attributes = []): SupplyPoint
     {
-        return SupplyPoint::factory()->create([
+        return SupplyPoint::factory()->create($attributes + [
             'name' => $name,
             'slug' => str($name)->slug()->value(),
             'services' => $services,
             'lat' => $lat,
             'lng' => $lng,
-        ] + $attributes);
+        ]);
     }
 
     /**
@@ -279,6 +279,8 @@ class SupplyStopsTest extends TestCase
         $this->assertSame(['fuel', 'groceries'], $stop['services']);
         $this->assertSame(['petrol', 'diesel'], $stop['fuel_types']);
         $this->assertTrue($stop['opening_hours']['always_open']);
+        // Typed by a person, so no credit line — see the OSM case below.
+        $this->assertFalse($stop['opening_hours_from_osm']);
         $this->assertSame('Cash only after dark.', $stop['note']);
         $this->assertTrue($stop['verified']);
         $this->assertSame(0, $stop['detour_km']);
@@ -294,6 +296,25 @@ class SupplyStopsTest extends TestCase
 
         $this->assertNull($stop['opening_hours']);
         $this->assertFalse($stop['verified']);
+    }
+
+    /**
+     * OpenStreetMap data is ODbL, so wherever imported hours are shown the
+     * credit is shown with them. The flag is what the chip's detail renders it
+     * from — see App\Console\Commands\ImportSupplyHours.
+     */
+    public function test_hours_read_off_openstreetmap_carry_their_credit(): void
+    {
+        $this->aLongLeg();
+        $this->supply('Gamma Pumps', 20.5, [SupplyService::Fuel], self::LAT, [
+            'opening_hours' => 'Mo-Sa 07:00-19:00',
+            'opening_hours_source' => 'osm:node/1234567',
+        ]);
+        $this->supply('Omega Pumps', 23.0);
+
+        $stop = $this->response([['Testfontein', 'Testkop']])['legs'][0]['stops'][0];
+
+        $this->assertTrue($stop['opening_hours_from_osm']);
     }
 
     public function test_it_refuses_a_request_that_names_no_leg(): void

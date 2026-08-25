@@ -3320,6 +3320,18 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                                                 </p>
                                                                 <p
                                                                     v-if="
+                                                                        stop.opening_hours_from_osm
+                                                                    "
+                                                                    class="supply-stop-line supply-stop-caveat"
+                                                                >
+                                                                    {{
+                                                                        t(
+                                                                            'itinerary.supply.osmCredit',
+                                                                        )
+                                                                    }}
+                                                                </p>
+                                                                <p
+                                                                    v-if="
                                                                         stop.note
                                                                     "
                                                                     class="supply-stop-line"

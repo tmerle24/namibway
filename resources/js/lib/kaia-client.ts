@@ -467,6 +467,8 @@ export interface SupplyStop {
     services: string[];
     fuel_types: string[];
     opening_hours: SupplyOpeningHours | null;
+    /** Whether those hours were imported from OpenStreetMap, whose licence asks for the credit. */
+    opening_hours_from_osm: boolean;
     note: string | null;
     city: string | null;
     region: string | null;

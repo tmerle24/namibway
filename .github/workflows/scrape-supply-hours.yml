@@ -1,0 +1,84 @@
+name: Scrape supply-point opening hours (OSM)
+
+# When the pumps and the shops are open, from the one source that already
+# speaks the syntax we store. One Overpass query for the whole country; the
+# matching against our own rows happens later in namibway:import-supply-hours,
+# which is where the coordinates are.
+#
+# Run "windhoek" first. It is one town, it proves the query and the extraction,
+# and it costs somebody else's server almost nothing — see CLAUDE.md's scraper
+# discipline, which exists because this has gone wrong twice.
+#
+# The JSON is committed through commit-artifact.yml, the same way every other
+# scraper here lands its data.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bbox:
+        description: "Area to query — run a small one first"
+        required: false
+        default: "windhoek"
+        type: choice
+        options:
+          - windhoek
+          - coast
+          - namib
+          - namibia
+      endpoint:
+        description: "Overpass endpoint (leave as is unless it is refusing)"
+        required: false
+        default: "https://overpass-api.de/api/interpreter"
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run scraper
+        run: |
+          python scripts/scrape_osm_supply_hours.py \
+            --bbox "${{ github.event.inputs.bbox || 'windhoek' }}" \
+            --endpoint "${{ github.event.inputs.endpoint || 'https://overpass-api.de/api/interpreter' }}"
+
+      # What a reviewer needs to see before this is imported anywhere: how many
+      # of the elements actually carry hours, and what those hours look like.
+      # A query that returns three hundred forecourts and no opening_hours is a
+      # query that changes nothing.
+      - name: Summarise what came back
+        run: |
+          python3 -c "
+          import json
+          data = json.load(open('data/scraped/osm_supply_hours.json'))
+          print('=== counts ===')
+          for key, value in data['counts'].items():
+              print(f'  {key:12}: {value}')
+          print()
+          print('=== the ones with hours (first 40) ===')
+          shown = 0
+          for entry in data['elements']:
+              if not entry['opening_hours']:
+                  continue
+              print(f\"  {entry['kind']:12} {entry['name'] or '—':38} {entry['opening_hours']}  [{entry['osm']}]\")
+              shown += 1
+              if shown >= 40:
+                  break
+          "
+
+      - name: Upload data
+        uses: actions/upload-artifact@v7
+        with:
+          name: osm-supply-hours-${{ github.run_number }}
+          path: data/scraped/osm_supply_hours.json
+          retention-days: 30

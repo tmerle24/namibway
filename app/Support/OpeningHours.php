@@ -91,6 +91,44 @@ final readonly class OpeningHours
     }
 
     /**
+     * How many minutes a week this is open — the number that answers "which of
+     * these two is the more useful place to stop?".
+     *
+     * Needed because a town row carries one string and a town has several
+     * forecourts: the importer picks the most generous one rather than
+     * inventing a merged string no sign anywhere says. `24/7` comes out at
+     * 10 080 and wins every comparison, which is the right answer.
+     *
+     * Rules are applied in order and a later one *replaces* an earlier one for
+     * the days it names, which is what the standard means: in
+     * `Mo-Fr 08:00-17:00; We off` Wednesday is closed, not open for nine hours
+     * and closed at the same time.
+     */
+    public function weeklyMinutes(): int
+    {
+        /** @var array<string, int> $minutes */
+        $minutes = [];
+
+        foreach ($this->rules as $rule) {
+            foreach ($rule['days'] as $day) {
+                $minutes[$day] = 0;
+
+                foreach ($rule['ranges'] as [$from, $to]) {
+                    $minutes[$day] += max(0, self::minuteOfDay($to) - self::minuteOfDay($from));
+                }
+            }
+        }
+
+        return array_sum($minutes);
+    }
+
+    /** Always `HH:MM` here — parseTimes writes it, nothing else reaches this. */
+    private static function minuteOfDay(string $time): int
+    {
+        return ((int) substr($time, 0, 2) * 60) + (int) substr($time, 3, 2);
+    }
+
+    /**
      * The shape the browser renders: one entry per rule, days as keys it can
      * turn into localised names, and an empty `ranges` for a day that is
      * explicitly closed.

@@ -107,6 +107,31 @@ class OpeningHoursTest extends TestCase
         $this->assertNull(OpeningHours::parse('Mo-Fr 07:00-18:00; Su sunrise-sunset'));
     }
 
+    /**
+     * The number the importer ranks a town's forecourts by — see
+     * App\Console\Commands\ImportSupplyHours, which picks the most generous
+     * real element rather than merging several into a string no sign says.
+     */
+    public function test_it_counts_how_many_minutes_a_week_this_is_open(): void
+    {
+        $this->assertSame(10080, OpeningHours::parse('24/7')?->weeklyMinutes());
+        $this->assertSame(2700, OpeningHours::parse('Mo-Fr 08:00-17:00')?->weeklyMinutes());
+        $this->assertSame(6720, OpeningHours::parse('Mo-Su 06:00-22:00')?->weeklyMinutes());
+        $this->assertSame(480, OpeningHours::parse('Mo 08:00-13:00,14:00-17:00')?->weeklyMinutes());
+        $this->assertSame(4620, OpeningHours::parse('Mo-Sa 07:00-19:00; Su 08:00-13:00')?->weeklyMinutes());
+    }
+
+    /**
+     * A later rule replaces an earlier one for the days it names, which is
+     * what the standard means: Wednesday here is closed, not open for nine
+     * hours and closed at the same time.
+     */
+    public function test_a_later_rule_replaces_an_earlier_one_rather_than_adding_to_it(): void
+    {
+        $this->assertSame(2160, OpeningHours::parse('Mo-Fr 08:00-17:00; We off')?->weeklyMinutes());
+        $this->assertSame(2340, OpeningHours::parse('Mo-Fr 08:00-17:00; We 09:00-12:00')?->weeklyMinutes());
+    }
+
     public function test_validity_is_the_same_question_the_admin_field_asks(): void
     {
         $this->assertTrue(OpeningHours::isValid('Mo-Sa 07:00-19:00'));
