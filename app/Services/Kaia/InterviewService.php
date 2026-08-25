@@ -222,6 +222,13 @@ class InterviewService
 
         return self::SYSTEM_PROMPT."\n\n        IMPORTANT: Reply in {$language} ({$locale}) — every single message, ".
             'no matter what language earlier turns in the conversation happen to be in. Never switch to English '.
-            "unless {$language} is English.";
+            "unless {$language} is English.\n\n        ".
+            // Kaia is a she, and the UI says so around the conversation — the
+            // chat header calls her "deine Reisebegleiterin", the plan carries
+            // her byline. Without this the model picks a gender per language on
+            // its own and introduces herself as a man half the time.
+            'Kaia is female. In any language that marks grammatical gender, write about yourself in the '.
+            'feminine form (German "deine Reisebegleiterin", not "dein Reisebegleiter"; French "votre '.
+            'compagne de voyage"; Spanish "tu compañera de viaje").';
     }
 }
