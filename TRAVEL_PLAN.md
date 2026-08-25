@@ -270,6 +270,29 @@ expansion").
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-25 — the thinking line rotates, and the log has to follow
+
+From a phone screenshot: Kaia's "thinking" bubble had rotated to *Vergleicht
+Unterkünfte und Aktivitäten…*, which wraps onto a second line — and that second
+line sat under the input row, unreadable. Nothing had scrolled.
+
+The scroll was pinned once, when the indicator appeared (`scrollToBottom()` in
+`runKaiaRequest`), and never again. But the status text cycles every 2.5
+seconds, and the longer ones are two lines where the shorter ones are one — so
+the log grows by a line while its `scrollTop` stays where a one-line bubble put
+it. Measured on a mobile viewport with a full log: the bubble goes 42 → 62 px
+and 16 px of it drops below the log's bottom edge.
+
+- ✅ **The log re-pins on every rotation** (`HeroChat.vue`): a `watch` on
+  `thinkingIndex` runs `pinLogToBottom()` after `nextTick`, so the line the
+  indicator exists to show is the line you can read. Verified in the browser —
+  at the moment of the swap the log is 20 px short of the bottom, and 50 ms
+  later it is at 0.
+- ✅ **Log only, not the page.** `syncScroll()` also nudges the outer page when
+  the panel hangs below the fold; that is right for a new message and wrong
+  every 2.5 seconds while waiting, so the rotation path uses the extracted
+  `pinLogToBottom()` half and leaves the page alone.
+
 ### 2026-08-24 — what has to be in the car before the drive starts
 
 The line under a driving time learned this morning to say what is worth

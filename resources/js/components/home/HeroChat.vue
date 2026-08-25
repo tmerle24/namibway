@@ -459,10 +459,14 @@ function unlockBodyScroll() {
     window.scrollTo(0, savedBodyScrollY);
 }
 
-function syncScroll() {
+function pinLogToBottom() {
     if (chatLog.value) {
         chatLog.value.scrollTop = chatLog.value.scrollHeight;
     }
+}
+
+function syncScroll() {
+    pinLogToBottom();
 
     // Also bring the panel's bottom edge into view on the page itself, so the
     // user never has to manually scroll the outer page to see a new message —
@@ -491,6 +495,18 @@ async function scrollToBottom() {
     // short of the true bottom — settle it again once layout has caught up.
     requestAnimationFrame(() => requestAnimationFrame(syncScroll));
 }
+
+// The thinking status rotates every couple of seconds and the longer ones
+// wrap onto a second line — which grows the log below the scroll position
+// nobody touched since the indicator appeared, so the line the traveler is
+// meant to read is the one hidden under the input row. Re-pin on every
+// rotation. Log only, deliberately: the panel itself hasn't moved, and
+// nudging the whole page every 2.5 seconds while waiting would be worse
+// than the clipped line.
+watch(thinkingIndex, async () => {
+    await nextTick();
+    pinLogToBottom();
+});
 
 // Silent retries: most failures (timeouts, a dropped connection, a 5xx that
 // slips past the backend's own retry) resolve themselves within a couple of
