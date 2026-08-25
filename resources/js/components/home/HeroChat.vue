@@ -7,7 +7,7 @@ import DeadTree from '@/components/DeadTree.vue';
 import ChatSuggestions from '@/components/home/ChatSuggestions.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import { formatPrice } from '@/lib/currency';
-import { sendKaiaMessage } from '@/lib/kaia-client';
+import { KaiaRequestError, sendKaiaMessage } from '@/lib/kaia-client';
 import { starterSuggestions, suggestionsFor } from '@/lib/kaia-suggestions';
 import type {
     ChatMessage,
@@ -541,6 +541,12 @@ function applyResult(
         });
     } else if (result.type === 'error') {
         return false;
+    } else {
+        // Anything else is a payload we do not understand, and the one thing
+        // it must never be is "handled". Returning true here is what let a
+        // rejected request end the turn in silence — see the comment in
+        // sendKaiaMessage.
+        return false;
     }
 
     return true;
@@ -558,8 +564,27 @@ async function requestKaiaReply() {
             if (applyResult(result)) {
                 return;
             }
-        } catch {
-            // network error — fall through to retry/backoff below
+        } catch (e) {
+            // A refusal that will refuse again — an expired session, a spent
+            // rate limit — is worth saying now rather than three attempts
+            // from now, and it needs the action that actually fixes it.
+            if (e instanceof KaiaRequestError && !e.retryable) {
+                messages.value.push({
+                    role: 'ai',
+                    text: e.reload
+                        ? t('chat.errorSession')
+                        : e.status === 429
+                          ? t('chat.errorBusy')
+                          : t('chat.error'),
+                    failed: true,
+                    failedAction: e.reload ? 'reload' : 'retry',
+                });
+
+                return;
+            }
+
+            // Anything else — a network error, a 5xx — falls through to the
+            // retry/backoff below.
         }
 
         if (attempt < MAX_SILENT_RETRIES) {
@@ -625,6 +650,13 @@ async function pickSuggestion(text: string) {
     inputText.value = '';
 
     await runKaiaRequest(false);
+}
+
+// The only thing that fixes an expired session: a fresh page mints a fresh
+// CSRF token. The conversation so far is lost, which is the honest trade —
+// the alternative on offer was a chat that answered nothing at all.
+function reloadPage() {
+    window.location.reload();
 }
 
 async function retryLastMessage() {
@@ -747,6 +779,15 @@ async function retryLastMessage() {
                         <template v-if="msg.failed">
                             <br />
                             <button
+                                v-if="msg.failedAction === 'reload'"
+                                type="button"
+                                class="chat-retry-btn"
+                                @click="reloadPage"
+                            >
+                                {{ t('chat.reload') }}
+                            </button>
+                            <button
+                                v-else
                                 type="button"
                                 class="chat-retry-btn"
                                 @click="retryLastMessage"
