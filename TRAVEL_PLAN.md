@@ -270,6 +270,71 @@ expansion").
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started
 
+### 2026-08-25 — the opening hours come from a source, not from memory
+
+`supply_points` shipped with the column and almost nothing in it: `24/7` on
+three coastal towns and null everywhere else. Filling it in by hand from what a
+language model believes about Namibian forecourts was never an option — this is
+the one field on that table a traveller acts on by *driving to it*, and the
+whole design already refuses a half-known opening time. So the question was
+which source, not which memory.
+
+**OpenStreetMap, because it already speaks the syntax the column stores.** The
+import is a copy rather than a translation, every value is traceable to the
+element it came from, and it gets better every time somebody edits the map.
+
+The chain, three pieces, each where it belongs:
+
+- `scripts/scrape_osm_supply_hours.py` asks Overpass **once for the whole
+  country** rather than once per town — the object count is small, the matching
+  needs coordinates we have and it does not, and one query is one thing to be
+  polite about. It needs no database, so it runs on a CI runner
+  (`.github/workflows/scrape-supply-hours.yml`, `workflow_dispatch`, default
+  area `windhoek`: bounded run first, always). Every tag comes back whole, used
+  or not, so a later decision never means asking again.
+- The JSON lands in `data/scraped/osm_supply_hours.json` through the same
+  `commit-artifact.yml` every other scraper here uses.
+- `namibway:import-supply-hours` does the matching, on the server, where the
+  coordinates are.
+
+**What the importer will not do** is most of what it is:
+
+- **Only blanks.** A typed value is a decision; a machine reading somebody
+  else's map does not overrule it. `--overwrite` exists and has to be asked for.
+- **Only hours it can read in full.** Every candidate goes through
+  `OpeningHours`, which understands a documented subset. Real OSM carries
+  `sunrise-sunset`, month ranges and `|| by appointment`; those are counted out
+  loud and dropped, never half-read into the column.
+- **It does not touch `verified_at`.** Reading a map is not confirming the
+  pumps work. The row still says nobody has checked, because nobody has.
+
+**A town has several forecourts, so which one answers?** Not a merged string no
+sign anywhere says: it stores **one real element's hours verbatim** and picks
+the most generous of them, because the traveller drives to whichever is still
+open — that is what `OpeningHours::weeklyMinutes()` is for, and it is why `24/7`
+(10 080) wins every comparison. Nearest breaks a tie. A fuel row takes its hours
+from a filling station; a groceries-only row from a supermarket or a rural
+general dealer, never from a convenience kiosk, which is not somewhere you stock
+up for three nights.
+
+**Provenance is a column now** (`opening_hours_source`), holding the element id
+— `osm:node/1234567` — because that is both where the value came from and how
+the next person checks it. Null still means somebody typed it. ODbL asks for
+the credit where the data is shown, so the chip's detail renders one line under
+imported hours and none under typed ones; the admin says the same thing at
+greater length beside the field.
+
+**What this will and will not cover** is worth saying before anybody runs it.
+OSM is good on the coast and in the big towns and thin in exactly the places
+this feature exists for — Solitaire, Palmwag, Sesfontein are unlikely to have
+hours mapped at all. That is why the command ends by printing **the rows still
+without hours**: that list is the call sheet, and it is the half a person has
+to do.
+
+Not done: nothing re-runs this on a schedule, and nothing watches OSM for
+changes to hours we already imported. Both are a decision for when the first
+run says how much is actually there.
+
 ### 2026-08-25 — the thinking line rotates, and the log has to follow
 
 From a phone screenshot: Kaia's "thinking" bubble had rotated to *Vergleicht
@@ -2122,8 +2187,16 @@ the results half as much as the picker.
 - ✅ **Fuel and supplies as stops on a leg.** Built the same day it was
   raised: `supply_points`, `SupplyStopFinder`, the **Stock up** line under
   **On the way**, and 57 seeded towns. See the entry above. What is left of it
-  is content, not code — every seeded row is unverified and none has opening
-  hours, and the corpus is what decides whether a gap is reported honestly.
+  is content, not code — the corpus is what decides whether a gap is reported
+  honestly.
+
+- 🟡 **The opening hours have a source now, and it does not know the remote
+  ones.** `namibway:import-supply-hours` fills what OpenStreetMap knows
+  (2026-08-25). The rows it cannot fill are printed at the end of the run and
+  are the call sheet: Solitaire, Sesriem, Palmwag, Sesfontein, Uis, Kamanjab —
+  the stops on the roads where being wrong about a closing time costs the most,
+  and the ones no map has. A phone call each, and `verified_at` becomes real
+  where a person made it.
 
 - ⬜ **The road between two stages is mostly empty of content.** 47 attractions
   is enough to prove the "On the way" line works and not enough for it to fire

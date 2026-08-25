@@ -200,6 +200,7 @@
             "alsoHere": "Also here",
             "open24": "Open around the clock",
             "hoursUnknown": "Opening hours not recorded",
+            "osmCredit": "Opening hours © OpenStreetMap contributors",
             "unverified": "Nobody has checked this one recently — if it is your only option, carry enough to reach the next.",
             "detour": "≈{km} km off the route",
             "closed": "closed",
