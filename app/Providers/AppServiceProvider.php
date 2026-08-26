@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Filament\Navigation\AlphabeticalNavigationManager;
 use App\Filament\Partner\Support\SelectedProperty;
+use App\Http\Middleware\ThrottleRequests;
 use App\Models\ApiClient;
 use App\Models\Inquiry;
 use App\Models\Listing;
@@ -21,6 +22,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\ThrottleRequests as FrameworkThrottleRequests;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +50,13 @@ class AppServiceProvider extends ServiceProvider
         // inside every navigation group alphabetically instead of by hand-kept
         // sort numbers. See AlphabeticalNavigationManager.
         $this->app->scoped(NavigationManager::class, fn (): NavigationManager => new AlphabeticalNavigationManager);
+
+        // `throttle:20,1` is meant to be twenty requests a minute to that
+        // route. The framework's key says nothing about the route, so every
+        // numerically throttled route shares one counter and the strictest cap
+        // among them governs the lot — which is how loading a trip plan came
+        // to spend Kaia's chat budget. See App\Http\Middleware\ThrottleRequests.
+        $this->app->bind(FrameworkThrottleRequests::class, ThrottleRequests::class);
     }
 
     /**
@@ -91,6 +100,27 @@ class AppServiceProvider extends ServiceProvider
             $tokenId = $user instanceof ApiClient ? $user->currentAccessToken()->id : null;
 
             return Limit::perMinute(60)->by($tokenId ?: $request->ip());
+        });
+
+        // The two Kaia endpoints that call Claude, and so cost money per
+        // request. Rationed per conversation first and per address only as a
+        // backstop — see config/kaia.php for why that order matters, and what
+        // it looked like to a traveler when it was the other way round.
+        RateLimiter::for('kaia-chat', function (Request $request) {
+            // Every route carrying this limiter is in the `web` group, so a
+            // session is always there; the fallback is for the day one is not,
+            // and it errs toward the stricter key rather than toward a shared
+            // one that would let a whole carrier NAT count as one traveler.
+            $conversation = $request->hasSession()
+                ? $request->session()->getId()
+                : (string) $request->ip();
+
+            return [
+                Limit::perMinute((int) config('kaia.rate_limit.per_conversation'))
+                    ->by('kaia-chat:conversation:'.$conversation),
+                Limit::perMinute((int) config('kaia.rate_limit.per_address'))
+                    ->by('kaia-chat:address:'.$request->ip()),
+            ];
         });
     }
 

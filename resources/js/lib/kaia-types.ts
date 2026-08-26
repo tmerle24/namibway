@@ -212,8 +212,11 @@ export interface ChatMessage {
     failed?: boolean;
     // Which way out the failure actually has. Retrying an expired session
     // sends the same rejected token again; only a fresh page mints a new one,
-    // so that bubble offers a reload instead. Defaults to retry.
-    failedAction?: 'retry' | 'reload';
+    // so that bubble offers a reload instead. `wait` is a spent rate limit,
+    // which is the one failure that fixes itself: the bubble counts the window
+    // down and the turn resumes on its own, so it offers no button at all.
+    // Defaults to retry.
+    failedAction?: 'retry' | 'reload' | 'wait';
 }
 
 export interface ListingRecommendation {

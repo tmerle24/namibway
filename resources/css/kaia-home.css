@@ -718,6 +718,17 @@ body:has(.kaia-page) {
 .kaia-page .chat-retry-btn:hover {
     color: var(--rust-dark);
 }
+/* The countdown under a spent rate limit. Deliberately not styled like the
+   retry link next to it: there is nothing to tap here, and something that
+   looks tappable during a wait invites exactly the tap that prolongs it. */
+.kaia-page .chat-resume-in {
+    display: inline-block;
+    margin-top: 2px;
+    color: var(--rust-dark);
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    opacity: 0.85;
+}
 /* The tap-through path: answers offered as chips under Kaia's last message,
    so a traveler who would rather not type never has to. Lives inside
    .chat-log so it scrolls with the conversation and the newest set is always
