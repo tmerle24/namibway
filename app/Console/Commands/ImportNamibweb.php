@@ -46,10 +46,12 @@ class ImportNamibweb extends Command
     protected $signature = 'listings:import-namibweb
         {--file=              : Path to namibweb_listings.json}
         {--photos-dir=        : Directory the scraper downloaded photos into}
+        {--country=Namibia    : Only import records from this country ("all" to import every country)}
         {--limit=0            : Max records to process (0 = all)}
         {--only=              : Comma-separated scrape_ids to process}
         {--changed-only       : Skip records the scraper marked unchanged}
         {--with-descriptions  : Also write upstream text into the description column}
+        {--publish-locatable  : Publish newly created listings that carry coordinates or an address}
         {--no-photos          : Skip staging photos}
         {--dry-run            : Report what would change without writing}';
 
@@ -81,6 +83,10 @@ class ImportNamibweb extends Command
 
     private int $photosStaged = 0;
 
+    private bool $publishLocatable = false;
+
+    private int $published = 0;
+
     /** @var array<int, array{listing: string, field: string, ours: string, theirs: string}> */
     private array $conflicts = [];
 
@@ -111,6 +117,42 @@ class ImportNamibweb extends Command
             return self::FAILURE;
         }
 
+        // namibweb is not a Namibia-only source: a crawl brings back several
+        // hundred Botswana establishments plus South Africa, Mozambique, Zambia
+        // and Zimbabwe. They are scraped deliberately — the concept expands to
+        // other African countries later, and re-scraping then would be waste —
+        // but only the current market is imported. The filter belongs here, not
+        // in the scraper, so nothing has to be collected twice.
+        $country = (string) $this->option('country');
+        if ($country !== '' && strtolower($country) !== 'all') {
+            // Only a *known* other country is grounds for skipping. A record
+            // without one is not evidence of anything — records scraped before
+            // the field existed have none, and so do pages whose title omits
+            // it — and silently dropping those would lose listings to a
+            // missing attribute rather than to a decision.
+            $matched = $unknown = $foreign = 0;
+            $records = array_filter($records, function ($r) use ($country, &$matched, &$unknown, &$foreign) {
+                $value = trim((string) ($r['country'] ?? ''));
+                if ($value === '') {
+                    $unknown++;
+
+                    return true;
+                }
+                if (strcasecmp($value, $country) === 0) {
+                    $matched++;
+
+                    return true;
+                }
+                $foreign++;
+
+                return false;
+            });
+            $this->line(sprintf(
+                'Country filter %s: %d matched, %d without a country kept, %d from other countries skipped',
+                $country, $matched, $unknown, $foreign
+            ));
+        }
+
         if ($only = $this->option('only')) {
             $wanted = array_filter(array_map('trim', explode(',', $only)));
             $records = array_filter($records, fn ($r) => in_array($r['scrape_id'] ?? null, $wanted, true));
@@ -122,6 +164,18 @@ class ImportNamibweb extends Command
 
         if ($limit = (int) $this->option('limit')) {
             $records = array_slice(array_values($records), 0, $limit);
+        }
+
+        $this->publishLocatable = (bool) $this->option('publish-locatable');
+
+        if ($this->publishLocatable && $this->option('with-descriptions')) {
+            $this->error('--publish-locatable cannot be combined with --with-descriptions: that would put namibweb\'s prose on a public page.');
+
+            return self::FAILURE;
+        }
+
+        if ($this->publishLocatable) {
+            $this->line('Publishing newly created listings that carry coordinates or an address');
         }
 
         if ($this->dry) {
@@ -148,8 +202,8 @@ class ImportNamibweb extends Command
         $this->newLine(2);
 
         $this->table(
-            ['Created', 'Updated', 'Unchanged', 'Skipped', 'Photos staged'],
-            [[$this->created, $this->updated, $this->unchanged, $this->skipped, $this->photosStaged]]
+            ['Created', 'Published', 'Updated', 'Unchanged', 'Skipped', 'Photos staged'],
+            [[$this->created, $this->published, $this->updated, $this->unchanged, $this->skipped, $this->photosStaged]]
         );
 
         $this->reportConflicts();
@@ -204,6 +258,25 @@ class ImportNamibweb extends Command
      * for listings no other source already owns, so an NTB or namibiayp record
      * gets enriched rather than duplicated — and never hijacked.
      */
+    /**
+     * Whether a listing can actually be found by a traveller — and placed by
+     * Kaia, which needs a position to put anything in a route.
+     *
+     * Only 196 of 1165 Namibian records clear this; the rest are a name, a type
+     * and a region. Publishing those would put a row in Explore that nobody can
+     * visit, reach or route to, which is worse than no row at all.
+     *
+     * @param  array<string, mixed>  $incoming
+     */
+    private function isLocatable(array $incoming): bool
+    {
+        if ($incoming['latitude'] !== null && $incoming['longitude'] !== null) {
+            return true;
+        }
+
+        return trim((string) ($incoming['address'] ?? '')) !== '';
+    }
+
     private function findListing(string $scrapeId, string $name): ?Listing
     {
         $byId = Listing::query()
@@ -345,8 +418,13 @@ class ImportNamibweb extends Command
      */
     private function createListing(array $record, array $incoming): void
     {
+        $publish = $this->publishLocatable && $this->isLocatable($incoming);
+
         if ($this->dry) {
             $this->created++;
+            if ($publish) {
+                $this->published++;
+            }
 
             return;
         }
@@ -370,12 +448,19 @@ class ImportNamibweb extends Command
             'scrape_id' => $record['scrape_id'],
             'scraped_at' => CarbonImmutable::now(),
             'claim_status' => 'unclaimed',
-            // Nothing from this source goes live unreviewed: the text is
-            // namibweb's, the photography is namibweb's, and neither is ours to
-            // publish until it has been rewritten and cleared.
-            'is_published' => false,
+            // Nothing of namibweb's authorship goes live: the text is theirs
+            // and the photography is theirs. Facts are a different matter — a
+            // name, a position, an address and a category are data, not
+            // authorship, and --publish-locatable publishes exactly those. It
+            // is refused alongside --with-descriptions, which is the one switch
+            // that would put their prose on a public page.
+            'is_published' => $publish,
             'accepts_inquiries' => true,
         ]);
+
+        if ($publish) {
+            $this->published++;
+        }
 
         $listing->setTranslation('name', 'en', $incoming['name']);
 

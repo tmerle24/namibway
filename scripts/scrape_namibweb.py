@@ -1314,6 +1314,7 @@ def compute_hashes(record: dict) -> dict:
     # until a videos column exists to receive it.
     videos = "|".join(sorted(v.lower() for v in (record.get("videos") or [])))
     facts = "|".join([
+        record.get("country") or "",
         str(record.get("latitude") or ""),
         str(record.get("longitude") or ""),
         str(record.get("price_from") or ""),
@@ -1373,6 +1374,7 @@ def parse_detail(page: "Page", chrome: set[str], chrome_social: set[str]) -> dic
         "source_url": page.url,
         "index_url": page.parent_url,
         "name": name,
+        "country": extract_country(page_title(html)),
         "region": page.section or extract_region(blocks),
         "listing_type": listing_type,
         # Category describes the shape of a place to stay; on a tour page it
@@ -1642,6 +1644,80 @@ def has_own_content(html: str) -> bool:
                for block in text_blocks(html))
 
 
+
+# ---------------------------------------------------------------------------
+# What counts as a listing page
+# ---------------------------------------------------------------------------
+
+# The site titles a listing "<Name> | <Place> | <Country>" and a directory page
+# "Travel Directory: …" or "Accommodation by town/area | …". The country in the
+# last segment is also how a listing says where it is — namibweb covers the
+# neighbours too, and 324 of the archived pages are Botswana.
+COUNTRY_NAMES = {
+    "namibia", "botswana", "south africa", "zimbabwe", "zambia", "lesotho",
+    "swaziland", "eswatini", "mozambique", "angola", "malawi",
+}
+
+# Families that carry a listing-shaped title but are not establishments.
+_NON_LISTING_FILENAME_RE = re.compile(
+    r"(?i)(pictures|pics|gallery\d*|photo|forsale|rusarticle|^map[a-z]+\.|^index|"
+    r"^main[a-z]+\.|^acc(summary|north|cent|south|west|\d)|alphabetical|^listmin|"
+    r"^camping[a-z]+\.|^shuttle|^self-catering[a-z]|^conf|^alltours)"
+)
+_NON_LISTING_TITLE_RE = re.compile(
+    r"(?i)(travel directory|accommodation guide|accommodation by town|full list|"
+    r"alphabetical list|list of hotels|photo gallery|photos$|map of|national anthem|"
+    r"public holidays|distances between|dialing code|currency converter|crooks|"
+    r"for sale|copyright|reservations of|small advertisements|^namibia accommodation|"
+    r"scheduled tours|special offers|shuttle|conference facilities)"
+)
+
+# Below this a page has no text of its own worth calling a description.
+MIN_OWN_PROSE_CHARS = 100
+# A page linking this many establishments is a directory, whatever its title.
+DIRECTORY_LINK_CEILING = 100
+
+
+def page_title(html: str) -> str:
+    soup = BeautifulSoup(html, "lxml")
+    return clean_text(soup.title.get_text()) if soup.title else ""
+
+
+def extract_country(title: str) -> str | None:
+    """The country a listing's title ends with, if it names one."""
+    for part in reversed([p.strip() for p in title.split("|")]):
+        if part.lower() in COUNTRY_NAMES:
+            return part.title()
+    return None
+
+
+def is_listing_page(html: str, url: str) -> bool:
+    """Whether a page describes one establishment.
+
+    Measured against the 2065 archived pages rather than guessed. Prose length
+    alone does not separate the two: a small guest house runs to 113 characters
+    while a regional index runs to 446, so the 200-character rule dropped Aces
+    Guest House, Khowarib Rest Camp, Purros Camp Site and about twenty more real
+    establishments. The title is what actually distinguishes them, guarded
+    against the families that share its shape — galleries, maps, classifieds and
+    the travel directory.
+    """
+    filename = urlparse(url).path.rsplit("/", 1)[-1]
+    title = page_title(html)
+    if _NON_LISTING_FILENAME_RE.search(filename) or _NON_LISTING_TITLE_RE.search(title):
+        return False
+
+    blocks = [b for b in text_blocks(html) if not looks_like_boilerplate(b)]
+    if sum(len(b) for b in blocks) < MIN_OWN_PROSE_CHARS:
+        return False
+
+    listing_links = [t for t in page_links(html, url) if is_listing_link(t[0], t[1])]
+    if len(listing_links) >= DIRECTORY_LINK_CEILING:
+        return False
+
+    return has_own_content(html) or extract_country(title) is not None
+
+
 def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[str, dict],
           *, max_depth: int, max_pages: int, limit: int, use_conditional: bool,
           workers: int) -> tuple[dict[str, Page], list[str], set[str], dict[str, Page]]:
@@ -1722,7 +1798,7 @@ def crawl(seeds: list[tuple[str, str | None]], fetcher: Fetcher, baseline: dict[
                         parent_url=page.url,
                         depth=page.depth + 1,
                     ))
-                if page.depth == 0 or not has_own_content(page.html):
+                if page.depth == 0 or not is_listing_page(page.html, page.url):
                     continue
 
             elif page.depth == 0:
@@ -2039,8 +2115,12 @@ def pages_from_archive(path: Path) -> dict[str, "Page"]:
     fetching them a second time — which is the whole reason the archive keeps
     every page rather than only the ones a run happened to call listings.
     """
+    print(f"Reading the archive at {path}")
+    entries = load_archive(path)
+    print(f"  {len(entries)} pages of stored HTML")
+
     pages: dict[str, Page] = {}
-    for scrape_id, entry in load_archive(path).items():
+    for scrape_id, entry in entries.items():
         html = entry.get("html")
         if not html:
             continue
@@ -2055,11 +2135,14 @@ def classify_archived(pages: dict[str, "Page"]) -> tuple[dict[str, "Page"], set[
     """Applies the current index-vs-listing rule to already-fetched pages."""
     listings: dict[str, Page] = {}
     indexes: set[str] = set()
-    for scrape_id, page in pages.items():
+    print(f"Classifying {len(pages)} pages")
+    for done, (scrape_id, page) in enumerate(pages.items(), start=1):
+        if done % 200 == 0:
+            print(f"  classified {done}/{len(pages)} — {len(listings)} listings")
         html = page.html or ""
         if is_index_page(html, page.url):
             indexes.add(page.url)
-        if has_own_content(html):
+        if is_listing_page(html, page.url):
             listings[scrape_id] = page
     return listings, indexes
 
@@ -2094,6 +2177,8 @@ def main() -> int:
     parser.add_argument("--photos-dir", default=str(OUTPUT_DIR / "namibweb_photos"),
                         help="Where downloaded photos go")
     parser.add_argument("--no-photos", action="store_true", help="Skip photo downloads (URLs are still recorded)")
+    parser.add_argument("--photos-country", default="",
+                        help="Only download photos for listings in this country (\"all\" or empty = every country)")
     parser.add_argument("--archive", default=str(ARCHIVE_FILE), help="Gzipped JSONL of the raw HTML")
     parser.add_argument("--no-archive", action="store_true", help="Skip the raw HTML archive")
     parser.add_argument("--no-reverse-geocode", action="store_true",
@@ -2196,7 +2281,18 @@ def main() -> int:
             fresh[scrape_id] = {k: v for k, v in previous.items() if k not in ("status", "changed_fields")}
 
     if not args.no_photos:
-        downloaded, reused = download_photos(fresh, baseline, Path(args.photos_dir), fetcher, args.workers)
+        # Photos are by far the heaviest part of a run — several thousand image
+        # requests — and a country we do not import yet needs none of them. The
+        # URLs stay in the JSON either way, so a later market costs image
+        # fetches only, never another crawl.
+        targets = fresh
+        wanted = (args.photos_country or "").strip()
+        if wanted and wanted.lower() != "all":
+            targets = {k: v for k, v in fresh.items()
+                       if (v.get("country") or "").lower() == wanted.lower()}
+            urls = sum(len(v.get("photos") or []) for v in targets.values())
+            print(f"Photos limited to {wanted}: {len(targets)} of {len(fresh)} listings, {urls} images")
+        downloaded, reused = download_photos(targets, baseline, Path(args.photos_dir), fetcher, args.workers)
         print(f"Photos: {downloaded} downloaded, {reused} already held → {args.photos_dir}")
 
     if not args.no_reverse_geocode:
