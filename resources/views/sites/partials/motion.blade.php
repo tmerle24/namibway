@@ -61,6 +61,29 @@
             });
         }
 
+        // Gallery "Show all": the button only exists once this runs.
+        document.querySelectorAll('[data-gallery-more]').forEach(function (wrap) {
+            var grid = document.getElementById(wrap.getAttribute('data-gallery-more'));
+            if (!grid) return;
+            wrap.hidden = false;
+            wrap.querySelector('button').addEventListener('click', function () {
+                grid.classList.add('is-all');
+                wrap.hidden = true;
+            });
+        });
+
+        // An offer card's "Enquire": the link still scrolls to the form, this
+        // only puts the card's title into the message so nobody retypes it.
+        document.querySelectorAll('[data-enquire]').forEach(function (link) {
+            link.addEventListener('click', function () {
+                var message = document.getElementById('eq-message');
+                var line = 'I am interested in: ' + link.getAttribute('data-enquire');
+                if (message && message.value.indexOf(line) === -1) {
+                    message.value = message.value ? line + '\n\n' + message.value : line;
+                }
+            });
+        });
+
         var targets = document.querySelectorAll('.reveal');
 
         if (!('IntersectionObserver' in window)) {

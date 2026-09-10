@@ -191,9 +191,10 @@ class EditSiteImagesAction
     /**
      * Take deleted pictures out of the blocks that referenced them.
      *
-     * `image_id` and `image_ids` are the two shapes in the library (see
-     * HeroBlock, AboutBlock, GalleryBlock). A block is saved through the model,
-     * so it is validated on the way like any other write.
+     * `image_id` and `image_ids` at the top (HeroBlock, AboutBlock,
+     * GalleryBlock), and `image_id` / `poster_image_id` per item (OffersBlock,
+     * TeamBlock, VideoBlock). A block is saved through the model, so it is
+     * validated on the way like any other write.
      *
      * @param  array<int, int>  $ids
      */
@@ -218,6 +219,18 @@ class EditSiteImagesAction
                     if ($remaining !== $data['image_ids']) {
                         $data['image_ids'] = $remaining;
                         $changed = true;
+                    }
+                }
+
+                // One picture per item: offers, team, video posters.
+                if (isset($data['items']) && is_array($data['items'])) {
+                    foreach ($data['items'] as $i => $item) {
+                        foreach (['image_id', 'poster_image_id'] as $key) {
+                            if (is_array($item) && isset($item[$key]) && in_array((int) $item[$key], $ids, true)) {
+                                $data['items'][$i][$key] = null;
+                                $changed = true;
+                            }
+                        }
                     }
                 }
 

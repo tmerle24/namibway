@@ -16,6 +16,7 @@ use App\Models\SitePage;
 use App\Sites\BlockRegistry;
 use App\Sites\Blocks\EnquiryBlock;
 use App\Sites\Blocks\EnquiryFormType;
+use App\Sites\Blocks\GalleryBlock;
 use App\Sites\HeroLines;
 use App\Sites\LegalText;
 use Illuminate\Support\Facades\DB;
@@ -227,7 +228,7 @@ class SiteGenerator
         $bio = $partner->getTranslation('bio', 'en', false) ?: null;
         $short = filled($partner->short_description) ? $partner->short_description : null;
         $hero = $images[0] ?? null;
-        $gallery = array_slice($images, 1, 12);
+        $gallery = array_slice($images, 1, GalleryBlock::MAX_IMAGES);
 
         return [
             'hero' => [
@@ -360,7 +361,7 @@ class SiteGenerator
     private function payloadsFrom(Site $site, Listing $listing, ListingImport $import, array $images): array
     {
         $hero = $images[0] ?? null;
-        $gallery = array_slice($images, 1, 12);
+        $gallery = array_slice($images, 1, GalleryBlock::MAX_IMAGES);
         $short = $import->shortDescription($listing);
         $description = $import->description($listing);
         $highlights = $import->highlights($listing);

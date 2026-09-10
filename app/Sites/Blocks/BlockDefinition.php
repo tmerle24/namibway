@@ -93,6 +93,23 @@ abstract class BlockDefinition
     }
 
     /**
+     * Whether this band is a numbered section of the page: it carries the
+     * signature rule with its number, gets an `s{n}` anchor, and can be a menu
+     * item or a button target.
+     *
+     * The hero announces itself, the footer is not a section, and a full-bleed
+     * photograph is a pause between sections rather than one of them — a "04"
+     * over a picture with no heading would be a number for nothing, and
+     * counting it anyway would leave a gap in the numbers that reads as a
+     * missing band. One answer here, read by the page, the menu and the
+     * buttons, so the three cannot disagree about which anchor is which.
+     */
+    public function isSection(): bool
+    {
+        return true;
+    }
+
+    /**
      * Whether this block type appears in the site navigation by default.
      *
      * Blocks that override this to true show up automatically when placed on a

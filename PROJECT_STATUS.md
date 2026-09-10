@@ -1663,6 +1663,52 @@ The same reconstruction runs on the full story page and on the block with the sl
 off, because a wall of text is a wall of text there too. No migration and no regeneration: it
 happens at render, so every site already generated is fixed by the deploy.
 
+### Built 2026-09-10 — six bands for the first real customer, and a lighter page
+
+The first paying prospect, **Epima Tours & Safaris** (a tour operator in Otjiwarongo), sent
+forty photographs, three phone clips and a contact line. The generated site had a hero, a
+gallery cut off at twelve with no way to see the rest, a form and a footer — accurate, and
+not something to show a customer. The kit could not express what a tour operator sells.
+
+**Six block types added**, each written for every business rather than for this one:
+`offers` (cards: picture, duration, price, text — every card's button leads to the one
+contact form with the card's title put into the message), `photo_band` (one photograph across
+the full width with a line over it — the pause that makes a column of bands read as a
+magazine), `video`, `team` (one person renders as a portrait beside their story, several as a
+row), `testimonials` and `faq` (`<details>`, no JavaScript). Layouts now include them where
+they fit; an empty band renders nothing, as before, so listing one costs nothing.
+
+Decisions worth keeping:
+
+- **Video is click-to-play, never a background.** `WEBSITE_BUILDER.md` rules out video
+  backgrounds and this stays inside that: with a poster the clip is `preload="none"`, without
+  one only its metadata and first frame load, never autoplay. The payload holds an R2 key, not
+  a URL, so no typed string can point a video tag elsewhere. Uploads are capped at Livewire's
+  12 MB; a phone clip is 1–5 MB. On a phone two or more clips become a swipeable row, because
+  phone clips are portrait and three stacked are three screens of scrolling.
+- **The gallery shows nine and keeps the rest behind "Show all"** (cap raised 12 → 48). The
+  hidden ones are `display:none` and lazy, so the first view costs the same at 48 as at nine;
+  with five or more, the first picture is a 2×2 feature tile.
+- **Not every band is a section.** `BlockDefinition::isSection()` is now the one answer for
+  numbering, anchors, menu items and button targets — hero, footer and the photo band say no.
+  Three places used to hardcode `['hero', 'footer']` and would have disagreed about anchors
+  the moment a third non-section existed.
+- **Testimonials are only what a guest really wrote**, and the editor says so. An invented
+  quote on a page we host is a false statement under our certificate.
+
+**The page got lighter while it grew.** The inlined stylesheet shipped every CSS comment in
+`styles.blade.php` to every visitor, and nested Blade views indented every line — together
+about 35 KB of a 94 KB page. `InlineCss` strips the comments (the source keeps them) and
+`HtmlWhitespace` drops the indentation outside `<pre>`/`<textarea>`. The every-block page went
+from 94 KB with 16 types to 71 KB with 22, and the budget in `config/sites.php` was lowered
+from 96 KB to 80 KB so the room is kept rather than spent.
+
+What this did **not** do: write Epima's content. Their tours, prices, guide and guest quotes
+have to come from them — the site is waiting on that, not on code. Still open from the same
+conversation: a hero picker that is not "image 0" (the logo became Epima's hero), a
+partner → listing copy on creation, and an admin import that builds partner, listing and site
+from one upload.
+
 ### Next up, in the order it was asked for
 
 - **Collecting the money.** A provider that onboards a Namibian entity and settles in NAD,

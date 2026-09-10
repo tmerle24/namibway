@@ -104,6 +104,11 @@ class SitePerformanceBudgetTest extends TestCase
             'contact' => ['heading' => 'Get in touch', 'intro' => $lorem],
             'cta' => ['heading' => 'Come and see', 'text' => $lorem, 'label' => 'Send a message', 'href' => '#contact'],
             'footer' => ['legal_name' => 'Every Block Lodge (Pty) Ltd', 'registration' => 'Reg 2019/1234', 'links' => array_fill(0, 3, ['label' => 'Privacy', 'href' => '/privacy'])],
+            'offers' => ['heading' => 'Tours & safaris', 'intro' => $lorem, 'items' => array_fill(0, 6, ['title' => 'Etosha full-day game drive', 'text' => $lorem.' '.$lorem, 'duration' => 'Full day', 'price' => 'from N$ 1 450 pp'])],
+            'team' => ['heading' => 'Meet your guides', 'items' => array_fill(0, 3, ['name' => 'Markus Hamutenya', 'role' => 'Guide · English, German', 'text' => $lorem])],
+            'testimonials' => ['heading' => 'What guests say', 'items' => array_fill(0, 3, ['quote' => $lorem, 'name' => 'Anna K.', 'origin' => 'Germany · Etosha day trip'])],
+            'faq' => ['heading' => 'Good to know', 'items' => array_fill(0, 8, ['question' => 'Do you pick up from Otjiwarongo?', 'answer' => $lorem])],
+            'video' => ['heading' => 'On the road', 'items' => array_fill(0, 3, ['key' => 'sites/every-block/videos/clip.mp4', 'caption' => 'Lions at Okaukuejo'])],
             default => [],
         };
     }

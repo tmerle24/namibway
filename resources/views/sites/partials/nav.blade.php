@@ -29,12 +29,13 @@
         ->get();
 
     foreach ($blocks as $navBlock) {
-        if (in_array($navBlock->type, ['hero', 'footer'], true)) {
+        $definition = $navBlock->definition();
+
+        if (! ($definition?->isSection() ?? true)) {
             continue;
         }
 
         $n++;
-        $definition = $navBlock->definition();
 
         // nav_visible in block data is the explicit setting; fall back to the
         // block type's own navDefault() for blocks that were placed before this

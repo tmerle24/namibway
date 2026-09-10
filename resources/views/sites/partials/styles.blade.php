@@ -32,8 +32,11 @@
   width and carries a short accent tick at its left end. It is the same
   numbering the printed flyers use, so print and web read as one house, and it
   costs nothing but a border.
+
+  The CSS comments below are for whoever edits this file and never reach a
+  visitor: the buffer is minified on the way out (App\Sites\Rendering\InlineCss).
 --}}
-<style>
+@php ob_start(); @endphp
     :root {
         --ink: #16181C;
         --slate: #4A5058;
@@ -457,6 +460,139 @@
     .grid-photos figure { margin: 0; overflow: hidden; cursor: zoom-in; }
     .grid-photos figure:hover img { transform: scale(1.04); }
     .figure--lb { cursor: zoom-in; }
+    /* First picture as a 2×2 tile: one feature + eight fills 3×4 (and 2×6). */
+    .grid-photos--feature > figure:first-child { grid-column: span 2; grid-row: span 2; }
+    /* Past GalleryBlock::VISIBLE, until "Show all". Only under .js — without
+       the script there is no button, so everything shows. */
+    .js .grid-photos:not(.is-all) .is-more { display: none; }
+    .gallery-more { text-align: center; margin-top: var(--s5); }
+
+    .lead { max-width: 60ch; color: var(--slate); font-size: 18px; margin: 0 0 var(--s5); }
+
+    /* ---- Offers ------------------------------------------------------- */
+
+    .offers { display: grid; gap: var(--s5); }
+    @media (min-width: 640px) { .offers { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 980px) { .offers--3 { grid-template-columns: repeat(3, 1fr); } }
+    .offers > * { min-width: 0; }
+    .offer-card {
+        display: flex; flex-direction: column;
+        background: #fff; border: 1px solid var(--bone); overflow: hidden;
+        transition: box-shadow .3s ease, transform .3s ease;
+    }
+    .offer-card:hover { box-shadow: 0 14px 40px rgba(22,24,28,.10); }
+    .offer-card__media { overflow: hidden; }
+    .offer-card__media img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: transform .6s ease; }
+    .offer-card:hover .offer-card__media img { transform: scale(1.04); }
+    .offer-card__body { flex: 1; display: flex; flex-direction: column; padding: var(--s4) var(--s4) var(--s5); }
+    .offer-card__meta {
+        display: flex; flex-wrap: wrap; gap: 4px var(--s3); margin: 0 0 var(--s2);
+        font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent);
+    }
+    .offer-card__meta span + span::before { content: '·'; margin-right: var(--s3); color: var(--bone); }
+    .offer-card h3 { font-family: var(--font-display); font-weight: 400; font-size: 24px; line-height: 1.2; }
+    .offer-card__text { margin: 0 0 var(--s4); color: var(--slate); font-size: 16px; }
+    .offer-card__btn { margin-top: auto; align-self: flex-start; }
+
+    /* ---- Photo band: breaks out of the column, full width ------------- */
+
+    .band {
+        position: relative; overflow: hidden; background: var(--ink); color: #fff;
+        min-height: min(72vh, 640px); display: flex; align-items: flex-end;
+    }
+    .band__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .band::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(180deg, rgba(10,11,13,0) 40%, rgba(10,11,13,.7) 100%);
+    }
+    .band__body { position: relative; z-index: 1; padding-top: var(--s7); padding-bottom: var(--s7); }
+    .band__statement {
+        font-family: var(--font-display); font-size: clamp(28px, 4.6vw, 54px);
+        line-height: 1.06; letter-spacing: -.015em; max-width: 20ch; margin: 0; text-wrap: balance;
+    }
+    .band__caption {
+        margin: var(--s3) 0 0; font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
+        color: rgba(255,255,255,.75);
+    }
+    /* A slow settle rather than the usual lift: the picture is the whole band. */
+    .js .band__img.reveal { transform: scale(1.08); }
+    .js .band__img.reveal.in { transform: none; transition: opacity 1s ease, transform 2.4s cubic-bezier(.2,.6,.2,1); }
+
+    /* ---- Dark section (video) ----------------------------------------- */
+
+    .section--ink { background: var(--ink); color: #fff; }
+    .section--ink .rule { border-top-color: rgba(255,255,255,.16); }
+    .section--ink .rule__label, .section--ink .lead { color: rgba(255,255,255,.7); }
+    .videos { display: grid; gap: var(--s4); align-items: start; }
+    .videos--1 { max-width: 920px; }
+    @media (min-width: 640px) { .videos--2, .videos--3 { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 980px) { .videos--3 { grid-template-columns: repeat(3, 1fr); } }
+    .videos > * { min-width: 0; }
+    /* Phone clips are mostly portrait: stacked on a phone, three are three
+       screens of scrolling. A swipeable row instead. */
+    @media (max-width: 639.98px) {
+        .videos--2, .videos--3 {
+            grid-auto-flow: column; grid-auto-columns: 72%;
+            overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: var(--s2);
+        }
+        .videos--2 > *, .videos--3 > * { scroll-snap-align: start; }
+    }
+    .video { margin: 0; }
+    .video video { display: block; width: 100%; max-height: 78vh; background: #000; border-radius: 2px; }
+    .video figcaption { margin-top: var(--s2); font-size: 14px; color: rgba(255,255,255,.7); }
+
+    /* ---- Team --------------------------------------------------------- */
+
+    .team { display: grid; gap: var(--s5); }
+    @media (min-width: 640px) { .team { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 980px) { .team { grid-template-columns: repeat(3, 1fr); } }
+    .team > * { min-width: 0; }
+    .team.team--solo { grid-template-columns: 1fr; }
+    .person__photo { margin: 0 0 var(--s3); overflow: hidden; }
+    .person__photo img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+    .person__role {
+        margin: 0 0 4px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent);
+    }
+    .person__name { font-family: var(--font-display); font-weight: 400; font-size: 24px; margin: 0 0 var(--s2); }
+    .person__text { margin: 0; color: var(--slate); font-size: 16px; }
+    .team--solo .person { display: grid; gap: var(--s5); align-items: center; }
+    @media (min-width: 860px) { .team--solo .person { grid-template-columns: 5fr 7fr; gap: var(--s7); } }
+    .team--solo .person__photo { margin: 0; }
+    .team--solo .person__name { font-size: clamp(28px, 3.4vw, 40px); }
+    .team--solo .person__text { font-size: 17px; max-width: var(--measure); }
+
+    /* ---- Testimonials ------------------------------------------------- */
+
+    .section--quotes { background: color-mix(in srgb, var(--accent) 7%, var(--salt)); }
+    .quotes { display: grid; gap: var(--s5); }
+    @media (min-width: 860px) { .quotes { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--s6); } }
+    .quotes > * { min-width: 0; }
+    .quote { margin: 0; padding-top: var(--s4); border-top: 2px solid var(--accent); }
+    .quote blockquote {
+        margin: 0 0 var(--s4); font-family: var(--font-display);
+        font-size: clamp(19px, 2vw, 23px); line-height: 1.42; color: var(--ink);
+    }
+    .quotes--one .quote blockquote { font-size: clamp(24px, 3.2vw, 34px); line-height: 1.3; max-width: 32ch; }
+    .quote figcaption { font-size: 14px; color: var(--slate); }
+    .quote figcaption strong { display: block; color: var(--ink); font-weight: 600; }
+
+    /* ---- FAQ ---------------------------------------------------------- */
+
+    .faq { max-width: 820px; border-top: 1px solid var(--bone); }
+    .faq__item { border-bottom: 1px solid var(--bone); }
+    .faq__item summary {
+        list-style: none; cursor: pointer;
+        display: flex; justify-content: space-between; align-items: baseline; gap: var(--s4);
+        padding: var(--s4) 0; font-size: 18px; font-weight: 500;
+    }
+    .faq__item summary::-webkit-details-marker { display: none; }
+    .faq__item summary::after {
+        content: '+'; flex: none; color: var(--accent); font-size: 26px; line-height: 1;
+        transition: transform .25s ease;
+    }
+    .faq__item[open] summary::after { transform: rotate(45deg); }
+    .faq__item summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    .faq__a { margin: 0; padding: 0 0 var(--s4); color: var(--slate); max-width: var(--measure); }
 
     /* ---- Shop ---------------------------------------------------------- */
 
@@ -991,5 +1127,8 @@
         .btn:hover { transform: none; }
         .grid-photos figure:hover img { transform: none; }
         .product-card:hover .product-card__img img { transform: none; }
+        .offer-card:hover .offer-card__media img { transform: none; }
+        .js .band__img.reveal, .js .band__img.reveal.in { transform: none; }
     }
-</style>
+@php $inlineCss = ob_get_clean(); @endphp
+<style>{!! \App\Sites\Rendering\InlineCss::minify((string) $inlineCss) !!}</style>

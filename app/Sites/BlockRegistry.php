@@ -9,26 +9,36 @@ use App\Sites\Blocks\BookingBlock;
 use App\Sites\Blocks\ContactBlock;
 use App\Sites\Blocks\CtaBlock;
 use App\Sites\Blocks\EnquiryBlock;
+use App\Sites\Blocks\FaqBlock;
 use App\Sites\Blocks\FooterBlock;
 use App\Sites\Blocks\GalleryBlock;
 use App\Sites\Blocks\HeroBlock;
 use App\Sites\Blocks\HighlightsBlock;
 use App\Sites\Blocks\LocationBlock;
 use App\Sites\Blocks\MissionBlock;
+use App\Sites\Blocks\OffersBlock;
 use App\Sites\Blocks\OpeningHoursBlock;
+use App\Sites\Blocks\PhotoBandBlock;
 use App\Sites\Blocks\PriceListBlock;
 use App\Sites\Blocks\RichTextBlock;
 use App\Sites\Blocks\ShopBlock;
+use App\Sites\Blocks\TeamBlock;
+use App\Sites\Blocks\TestimonialsBlock;
+use App\Sites\Blocks\VideoBlock;
 use App\Sites\Blocks\WhyChooseUsBlock;
 
 /**
  * The whole block library, and the order each kind of business starts in.
  *
- * Fifteen types. That number is a commitment, not a stage: the offer works
- * because one kit serves every customer, and the first per-customer block is
- * the moment the margin starts leaking. A new type has to earn its place across
- * several customers, and when it does it costs a class and a line here — never
- * a migration.
+ * Small on purpose: the offer works because one kit serves every customer, and
+ * the first per-customer block is the moment the margin starts leaking. A new
+ * type has to earn its place across several customers, and when it does it
+ * costs a class and a line here — never a migration.
+ *
+ * 2026-09-10: offers, team, testimonials, FAQ, video and the photo band
+ * joined, after the first real customer (a tour operator) could not be shown
+ * a site worth paying for with the sixteen before them. None is specific to
+ * that customer — each serves a lodge, an activity or a workshop as well.
  */
 class BlockRegistry
 {
@@ -37,10 +47,16 @@ class BlockRegistry
         HeroBlock::class,
         HighlightsBlock::class,
         AboutBlock::class,
+        OffersBlock::class,
+        PhotoBandBlock::class,
         GalleryBlock::class,
+        VideoBlock::class,
+        TeamBlock::class,
         OpeningHoursBlock::class,
         PriceListBlock::class,
         BookingBlock::class,
+        TestimonialsBlock::class,
+        FaqBlock::class,
         EnquiryBlock::class,
         RichTextBlock::class,
         MissionBlock::class,
@@ -69,13 +85,13 @@ class BlockRegistry
      * @var array<string, array<int, string>>
      */
     private const LAYOUTS = [
-        'accommodation' => ['hero', 'highlights', 'about', 'gallery', 'booking', 'enquiry', 'location', 'contact', 'footer'],
-        'restaurant' => ['hero', 'about', 'opening_hours', 'price_list', 'gallery', 'enquiry', 'location', 'contact', 'footer'],
-        'activity' => ['hero', 'highlights', 'about', 'gallery', 'price_list', 'booking', 'enquiry', 'location', 'contact', 'footer'],
-        'car_rental' => ['hero', 'highlights', 'price_list', 'about', 'booking', 'enquiry', 'location', 'contact', 'footer'],
-        'tour_operator' => ['hero', 'highlights', 'about', 'gallery', 'price_list', 'booking', 'enquiry', 'contact', 'footer'],
-        'retail' => ['hero', 'about', 'mission', 'why_choose_us', 'shop', 'opening_hours', 'gallery', 'price_list', 'enquiry', 'location', 'contact', 'footer'],
-        'service' => ['hero', 'highlights', 'about', 'mission', 'why_choose_us', 'opening_hours', 'price_list', 'enquiry', 'location', 'contact', 'footer'],
+        'accommodation' => ['hero', 'highlights', 'about', 'photo_band', 'gallery', 'video', 'booking', 'testimonials', 'faq', 'enquiry', 'location', 'contact', 'footer'],
+        'restaurant' => ['hero', 'about', 'opening_hours', 'price_list', 'photo_band', 'gallery', 'testimonials', 'enquiry', 'location', 'contact', 'footer'],
+        'activity' => ['hero', 'highlights', 'about', 'offers', 'photo_band', 'gallery', 'video', 'team', 'price_list', 'booking', 'testimonials', 'faq', 'enquiry', 'location', 'contact', 'footer'],
+        'car_rental' => ['hero', 'highlights', 'price_list', 'about', 'booking', 'testimonials', 'faq', 'enquiry', 'location', 'contact', 'footer'],
+        'tour_operator' => ['hero', 'highlights', 'about', 'offers', 'photo_band', 'gallery', 'video', 'team', 'price_list', 'booking', 'testimonials', 'faq', 'enquiry', 'contact', 'footer'],
+        'retail' => ['hero', 'about', 'mission', 'why_choose_us', 'shop', 'opening_hours', 'gallery', 'price_list', 'testimonials', 'enquiry', 'location', 'contact', 'footer'],
+        'service' => ['hero', 'highlights', 'about', 'offers', 'mission', 'why_choose_us', 'team', 'opening_hours', 'price_list', 'testimonials', 'faq', 'enquiry', 'location', 'contact', 'footer'],
     ];
 
     /** @var array<string, BlockDefinition>|null */

@@ -5,14 +5,17 @@ namespace App\Sites\Blocks;
 /**
  * The pictures, below the fold and lazy every one of them.
  *
- * Capped at twelve. Not an arbitrary number: past that the block stops being a
- * gallery and becomes a download, and on the connection the flyer promises to
- * work on, an unbounded gallery is the single easiest way to make a fast site
- * slow.
+ * The first VISIBLE are shown; the rest wait behind "Show all" and load only
+ * when opened, so the first view costs the same at 48 pictures as at nine.
+ * Was a hard cap of twelve, which cut a real customer's gallery off without
+ * saying so (2026-09-10).
  */
 class GalleryBlock extends BlockDefinition
 {
-    public const MAX_IMAGES = 12;
+    public const MAX_IMAGES = 48;
+
+    /** Shown before "Show all": one feature tile plus eight, a full 3×4 grid. */
+    public const VISIBLE = 9;
 
     public function type(): string
     {

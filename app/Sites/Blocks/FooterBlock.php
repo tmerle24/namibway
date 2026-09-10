@@ -52,6 +52,11 @@ class FooterBlock extends BlockDefinition
         return true;
     }
 
+    public function isSection(): bool
+    {
+        return false;
+    }
+
     /**
      * @return array<string, mixed>
      */

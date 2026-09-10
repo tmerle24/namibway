@@ -60,7 +60,7 @@
         @foreach ($blocks as $block)
             @php
                 $definition = $block->definition();
-                $numbered = ! in_array($block->type, ['hero', 'footer'], true);
+                $numbered = $definition?->isSection() ?? true;
 
                 if ($numbered) {
                     $counter++;

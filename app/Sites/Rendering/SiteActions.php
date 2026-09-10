@@ -186,6 +186,12 @@ final class SiteActions
         return $out;
     }
 
+    /** Where "enquire" goes on this page — the form's anchor — or null without a form. */
+    public function enquiryHref(): ?string
+    {
+        return ($this->buttons['enquiry'] ?? null)?->href;
+    }
+
     /**
      * The enquiry button the bar shows once the page has scrolled.
      *
@@ -248,7 +254,7 @@ final class SiteActions
         $n = 0;
 
         foreach ($blocks as $block) {
-            if (in_array($block->type, ['hero', 'footer'], true)) {
+            if (! ($block->definition()?->isSection() ?? true)) {
                 continue;
             }
 

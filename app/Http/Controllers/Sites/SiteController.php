@@ -15,6 +15,7 @@ use App\Sites\LegalText;
 use App\Sites\Rendering\BookingPanel;
 use App\Sites\Rendering\BookingPanelData;
 use App\Sites\Rendering\EnquiryItems;
+use App\Sites\Rendering\HtmlWhitespace;
 use App\Sites\Rendering\StoryText;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -153,7 +154,7 @@ class SiteController
 
         $images = $this->images($site, $blocks->pluck('data')->all());
 
-        $response = response()->view('sites.page', [
+        $response = response(HtmlWhitespace::strip(view('sites.page', [
             'site' => $site,
             'page' => $page,
             'blocks' => $blocks,
@@ -168,7 +169,7 @@ class SiteController
             'enquiryAction' => route('sites.enquiry', $site->slug),
             'enquiryType' => $enquiryType,
             'enquiryItems' => $enquiryItems,
-        ]);
+        ])->render()));
 
         if (! $site->isPublished()) {
             // A draft is research about somebody's business, not publication
@@ -312,10 +313,16 @@ class SiteController
         foreach ($payloads as $payload) {
             $data = $payload ?? [];
 
-            foreach (['image_id', 'image_ids'] as $key) {
-                foreach ((array) ($data[$key] ?? []) as $id) {
-                    if (is_int($id) || (is_string($id) && ctype_digit($id))) {
-                        $ids[] = (int) $id;
+            // Top level, plus one picture per item in the list blocks (offers,
+            // team, the video posters).
+            $holders = [$data, ...array_filter((array) ($data['items'] ?? []), 'is_array')];
+
+            foreach ($holders as $holder) {
+                foreach (['image_id', 'image_ids', 'poster_image_id'] as $key) {
+                    foreach ((array) ($holder[$key] ?? []) as $id) {
+                        if (is_int($id) || (is_string($id) && ctype_digit($id))) {
+                            $ids[] = (int) $id;
+                        }
                     }
                 }
             }

@@ -96,7 +96,11 @@ return [
         // centred modal on desktop) replaced bare number spinners in the enquiry
         // block — the CSS and IIFE JS for the drawer, stepper, animation and focus
         // trap add ~11 KB. Still well under the 100 KB fast/acceptable threshold.
-        'document_bytes' => 96 * 1024,
+        // Lowered to 80 KB 2026-09-10: CSS comments and Blade indentation are no
+        // longer shipped (InlineCss, HtmlWhitespace), so the every-block page
+        // went from 94 KB with 16 types to 71 KB with 22. The room is kept, not
+        // spent.
+        'document_bytes' => 80 * 1024,
     ],
 
     /*

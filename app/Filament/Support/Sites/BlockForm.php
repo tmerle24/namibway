@@ -8,9 +8,16 @@ use App\Sites\BlockRegistry;
 use App\Sites\Blocks\BlockDefinition;
 use App\Sites\Blocks\EnquiryBlock;
 use App\Sites\Blocks\EnquiryFormType;
+use App\Sites\Blocks\FaqBlock;
+use App\Sites\Blocks\GalleryBlock;
+use App\Sites\Blocks\OffersBlock;
+use App\Sites\Blocks\TeamBlock;
+use App\Sites\Blocks\TestimonialsBlock;
+use App\Sites\Blocks\VideoBlock;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Component;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -69,7 +76,7 @@ class BlockForm
 
                     ...self::for($type, $site),
 
-                    ...(! in_array($type, ['hero', 'footer'], true) ? self::navControls($definition) : []),
+                    ...($definition->isSection() ? self::navControls($definition) : []),
                 ]);
         }
 
@@ -121,9 +128,115 @@ class BlockForm
                     ->default(true),
             ],
 
+            'offers' => [
+                TextInput::make('heading')->label('Heading')->maxLength(120)
+                    ->placeholder('Tours & safaris, Our services, Packages…'),
+                Textarea::make('intro')->label('A line above the cards')->rows(2)->maxLength(400),
+                TextInput::make('button_label')->label('Button on each card')->maxLength(24)
+                    ->placeholder('Enquire')
+                    ->helperText('Every card leads to the contact form, with the card’s title already in the message.'),
+                Repeater::make('items')
+                    ->label('Cards')
+                    ->maxItems(OffersBlock::MAX_ITEMS)
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => $state['title'] ?? null)
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('title')->label('Title')->required()->maxLength(100)->columnSpanFull(),
+                        TextInput::make('duration')->label('How long')->maxLength(40)->placeholder('Full day, 3 days…'),
+                        TextInput::make('price')->label('Price')->maxLength(40)->placeholder('from N$ 1 450 pp'),
+                        Textarea::make('text')->label('What it is')->rows(3)->maxLength(700)->columnSpanFull(),
+                        self::image('image_id', $site, 'Photograph')->columnSpanFull(),
+                    ]),
+            ],
+
+            'photo_band' => [
+                self::image('image_id', $site, 'Photograph')
+                    ->helperText('Shown across the whole screen — pick a wide picture with space in it.'),
+                TextInput::make('statement')->label('The line over it')->maxLength(140),
+                TextInput::make('caption')->label('Small line under it')->maxLength(80),
+            ],
+
             'gallery' => [
                 TextInput::make('heading')->label('Heading')->maxLength(120),
-                self::images('image_ids', $site),
+                self::images('image_ids', $site)
+                    ->helperText('The first '.GalleryBlock::VISIBLE.' are shown, the rest behind “Show all”. Up to '
+                        .GalleryBlock::MAX_IMAGES.'.'),
+            ],
+
+            'video' => [
+                TextInput::make('heading')->label('Heading')->maxLength(120),
+                Textarea::make('intro')->label('A line above it')->rows(2)->maxLength(400),
+                Repeater::make('items')
+                    ->label('Videos')
+                    ->maxItems(VideoBlock::MAX_ITEMS)
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => $state['caption'] ?? null)
+                    ->schema([
+                        FileUpload::make('key')
+                            ->label('Video')
+                            ->disk('r2')
+                            ->directory(fn (): string => $site->mediaPrefix().'/videos')
+                            ->acceptedFileTypes(['video/mp4', 'video/webm', 'video/quicktime'])
+                            // Livewire's own upload limit; a phone clip of
+                            // a minute is well under it.
+                            ->maxSize(12 * 1024)
+                            ->fetchFileInformation(false)
+                            ->helperText('MP4 from a phone is fine. Up to 12 MB — keep clips short.')
+                            ->required(),
+                        self::image('poster_image_id', $site, 'Picture shown before it plays')
+                            ->helperText('Optional. With one, nothing of the video loads until somebody taps play.'),
+                        TextInput::make('caption')->label('Caption')->maxLength(140),
+                    ]),
+            ],
+
+            'team' => [
+                TextInput::make('heading')->label('Heading')->maxLength(120)
+                    ->placeholder('Meet your guide, The team…'),
+                Textarea::make('intro')->label('A line above it')->rows(2)->maxLength(400),
+                Repeater::make('items')
+                    ->label('People')
+                    ->maxItems(TeamBlock::MAX_ITEMS)
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('name')->label('Name')->required()->maxLength(80),
+                        TextInput::make('role')->label('Role')->maxLength(80)->placeholder('Guide · English, German, Oshiwambo'),
+                        Textarea::make('text')->label('About them')->rows(3)->maxLength(900)->columnSpanFull(),
+                        self::image('image_id', $site, 'Portrait')->columnSpanFull(),
+                    ]),
+            ],
+
+            'testimonials' => [
+                TextInput::make('heading')->label('Heading')->maxLength(120)
+                    ->placeholder('What guests say'),
+                Repeater::make('items')
+                    ->label('Quotes')
+                    ->helperText('Only words a guest really wrote — a review, a guest book, an email. Never written for them.')
+                    ->maxItems(TestimonialsBlock::MAX_ITEMS)
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
+                    ->columns(2)
+                    ->schema([
+                        Textarea::make('quote')->label('What they said')->required()->rows(3)->maxLength(600)->columnSpanFull(),
+                        TextInput::make('name')->label('Name')->required()->maxLength(80),
+                        TextInput::make('origin')->label('From / what they did')->maxLength(80)
+                            ->placeholder('Germany · Etosha day trip'),
+                    ]),
+            ],
+
+            'faq' => [
+                TextInput::make('heading')->label('Heading')->maxLength(120),
+                Repeater::make('items')
+                    ->label('Questions')
+                    ->maxItems(FaqBlock::MAX_ITEMS)
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => $state['question'] ?? null)
+                    ->schema([
+                        TextInput::make('question')->label('Question')->required()->maxLength(160),
+                        Textarea::make('answer')->label('Answer')->required()->rows(3)->maxLength(1200),
+                    ]),
             ],
 
             'opening_hours' => [
