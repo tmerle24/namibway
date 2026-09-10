@@ -1703,11 +1703,19 @@ about 35 KB of a 94 KB page. `InlineCss` strips the comments (the source keeps t
 from 94 KB with 16 types to 71 KB with 22, and the budget in `config/sites.php` was lowered
 from 96 KB to 80 KB so the room is kept rather than spent.
 
-What this did **not** do: write Epima's content. Their tours, prices, guide and guest quotes
-have to come from them — the site is waiting on that, not on code. Still open from the same
-conversation: a hero picker that is not "image 0" (the logo became Epima's hero), a
-partner → listing copy on creation, and an admin import that builds partner, listing and site
-from one upload.
+**Same day: the website package.** Building a site band by band in the panel is too slow to be
+the way sites get made, so a site can now arrive as one ZIP — `site.json` plus the pictures and
+clips it names — through `/admin` → Content → **Import website**. Check first, then import, like
+the Excel import; it creates or updates partner, listing and website, a new listing starts from
+the partner's facts (the "copy the partner into the listing" wish), and it never deletes. The
+intended flow is Claude Code building the package locally from the customer's raw material.
+Format and matching rules: `SITE_PACKAGE.md`.
+
+Epima's draft went in this way with **draft copy written from what we know** (Otjiwarongo,
+Etosha, the guide Epimakus Hamutenya, the photos), so Adriano has something to show. Tours are
+priced "on request", and there are no guest quotes or FAQ answers until Epima supplies them.
+Still open: a hero picker that is not "image 0" for generated sites (the logo became Epima's
+hero), and a partner → listing copy in the panel's own create form.
 
 ### Next up, in the order it was asked for
 
