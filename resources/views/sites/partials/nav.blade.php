@@ -116,6 +116,11 @@
     // pages the sections don't exist, so prefix with the home URL so the link
     // still lands correctly.
     $anchorBase = ($isHome ?? true) ? '' : $site->pageUrl();
+
+    // The enquiry placed as a button in the bar on a wide screen: its menu
+    // link would say the same words twice, so the link steps aside there.
+    $enquiryButtonOnDesktop = collect($actions->buttons('menu'))
+        ->contains(fn ($button) => $button->key === 'enquiry' && $button->visibility !== 'phone');
 @endphp
 <header class="nav {{ $hasHero ? '' : 'nav--solid' }}" id="nav">
     <div class="nav__inner">
@@ -125,7 +130,7 @@
             <nav class="nav__links">
                 @foreach ($items as $item)
                     <a href="{{ $item['href'] ?? $anchorBase.'#'.$item['anchor'] }}"
-                       @if ($item['action'] ?? false) class="nav__link--action" @endif
+                       @if ($item['action'] ?? false) class="{{ $enquiryButtonOnDesktop ? 'nav__link--action nav__link--dup' : 'nav__link--action' }}" @endif
                        @if ($item['current'] ?? false) aria-current="page" @endif>{{ $item['label'] }}</a>
                 @endforeach
             </nav>

@@ -82,7 +82,8 @@ class SitePackageImportTest extends TestCase
     public function test_a_package_brings_the_logo_and_how_it_sits(): void
     {
         $manifest = $this->manifest();
-        $manifest['site'] += ['logo' => 'lion.jpg', 'logo_hero_height' => 120, 'logo_compact_height' => 52, 'logo_shadow' => 'shadow'];
+        $manifest['site'] += ['logo' => 'lion.jpg', 'logo_hero_height' => 120, 'logo_compact_height' => 52, 'logo_shadow' => 'shadow',
+            'action_buttons' => ['enquiry' => ['places' => ['menu.desktop', 'nowhere.at-all']]]];
 
         $plan = $this->importer()->apply($this->package($manifest));
         $site = Site::findOrFail($plan->siteId);
@@ -90,6 +91,9 @@ class SitePackageImportTest extends TestCase
         $this->assertSame($site->mediaPrefix().'/lion.jpg', $site->logo_key);
         $this->assertSame(120, $site->logo_hero_height);
         $this->assertSame('shadow', $site->logo_shadow);
+        // Normalised: an unknown place is dropped, the other buttons keep their defaults.
+        $this->assertSame(['menu.desktop'], $site->action_buttons['enquiry']['places']);
+        $this->assertArrayHasKey('whatsapp', $site->action_buttons);
 
         $manifest['site']['logo_hero_height'] = 900;
         $this->assertNotEmpty($this->importer()->plan($this->package($manifest))->errors);

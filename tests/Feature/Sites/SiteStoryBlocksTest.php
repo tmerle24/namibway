@@ -226,7 +226,22 @@ class SiteStoryBlocksTest extends TestCase
         $this->assertStringContainsString('class="nav__logo"', $html);
         $this->assertMatchesRegularExpression('/\.nav__name--logo \{[^}]*align-self: flex-start/', $html);
         $this->assertStringContainsString('filter: drop-shadow(0 6px 18px rgba(0,0,0,.5));', $html);
-        $this->assertStringContainsString('height: min(120px, 96px);', $html);
+        $this->assertStringContainsString('height: min(120px, 112px);', $html);
+    }
+
+    public function test_the_enquiry_button_can_sit_in_the_bar_without_a_twin_link(): void
+    {
+        $site = $this->site();
+        $site->update(['action_buttons' => ['enquiry' => ['places' => ['menu.desktop', 'footer.phone']]]]);
+        $this->block($site, 'hero', ['headline' => 'Hello'], 0);
+        $this->block($site, 'about', ['heading' => 'About', 'body' => '<p>Words.</p>'], 1);
+        $this->block($site, 'enquiry', ['heading' => 'Plan your safari', 'form_type' => 'contact', 'button_label' => 'Plan your safari'], 2);
+
+        $html = $this->page($site);
+        preg_match('#<header.*?</header>#s', $html, $header);
+
+        $this->assertMatchesRegularExpression('/class="btn nav__cta[^"]*"\s+href="#s2"\s*>Plan your safari/', $header[0]);
+        $this->assertStringContainsString('class="nav__link--action nav__link--dup"', $header[0]);
     }
 
     public function test_a_deleted_picture_leaves_the_items_that_used_it(): void

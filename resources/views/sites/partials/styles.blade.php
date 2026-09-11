@@ -169,7 +169,7 @@
     @if ($site->logo_hero_height && ($site->nav_hero_style ?? 'transparent') === 'transparent')
     /* A phone's opening screen has no room for a 300px mark. */
     @media (max-width: 639.98px) {
-        .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { height: min({{ $site->logo_hero_height }}px, 96px); }
+        .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { height: min({{ $site->logo_hero_height }}px, 112px); }
     }
     @endif
     /* nowrap: a menu item breaking across two lines was the other half of what
@@ -181,6 +181,9 @@
         white-space: nowrap; transition: color .2s ease;
     }
     .nav__links a:hover { color: #fff; }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__links a { text-shadow: 0 1px 10px rgba(0,0,0,.6); }
+    /* The same words as the enquiry button beside it (see partials/nav). */
+    .nav__links .nav__link--dup { display: none; }
     /* An open menu panel is a cream sheet directly under the bar, so the bar
        has to leave its over-a-photograph colours at the same moment — white on
        cream is not a state anybody should be able to reach. */
@@ -400,6 +403,15 @@
         content: ''; display: block; width: 64px; height: 2px;
         background: var(--accent); margin-top: var(--s5);
     }
+
+    @if ($site->logo_hero_height && ($site->nav_hero_style ?? 'transparent') === 'transparent')
+    /* A large logo hangs into the hero: on a short screen the text must start
+       below it — the hero grows rather than the two overlapping. */
+    .hero__body, .hero--plain .hero__body { padding-top: max(calc(var(--nav-height) + var(--s7)), {{ $site->logo_hero_height + 40 }}px); }
+    @media (max-width: 639.98px) {
+        .hero__body, .hero--plain .hero__body { padding-top: max(calc(var(--nav-height) + var(--s7)), {{ min($site->logo_hero_height, 112) + 40 }}px); }
+    }
+    @endif
 
     @keyframes heroZoom { from { transform: scale(1); } to { transform: scale(1.07); } }
 

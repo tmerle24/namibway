@@ -12,6 +12,7 @@ use App\Models\Partner;
 use App\Models\Site;
 use App\Models\SiteImage;
 use App\Models\SitePage;
+use App\Sites\ActionButtons;
 use App\Sites\BlockRegistry;
 use App\Sites\Generation\SiteGenerator;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +39,7 @@ class SitePackageImporter
 
     private const LISTING_FIELDS = ['name', 'contact_email', 'phone', 'address', 'latitude', 'longitude', 'website', 'social_links', 'short_description', 'description'];
 
-    private const SITE_FIELDS = ['name', 'accent', 'contact_email', 'contact_phone', 'whatsapp', 'address', 'latitude', 'longitude', 'social_links', 'logo_hero_height', 'logo_compact_height', 'logo_shadow'];
+    private const SITE_FIELDS = ['name', 'accent', 'contact_email', 'contact_phone', 'whatsapp', 'address', 'latitude', 'longitude', 'social_links', 'logo_hero_height', 'logo_compact_height', 'logo_shadow', 'action_buttons'];
 
     /** Same bounds as EditSiteLogoAction. */
     private const LOGO_HEIGHTS = ['logo_hero_height' => [32, 300], 'logo_compact_height' => [24, 120]];
@@ -193,6 +194,11 @@ class SitePackageImporter
 
             if ($logo !== '') {
                 $fields['logo_key'] = $keys[strtolower($logo)];
+            }
+
+            // Only the places and labels ActionButtons knows survive.
+            if (isset($fields['action_buttons'])) {
+                $fields['action_buttons'] = ActionButtons::normalise($fields['action_buttons']);
             }
 
             // "glow" is the default, stored as null (see EditSiteLogoAction).

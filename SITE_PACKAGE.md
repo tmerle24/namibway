@@ -59,9 +59,11 @@ epima.zip
 
 `logo` is a file in the ZIP — a transparent PNG cut to the mark's own shape sits best over the
 hero photograph. It hangs from the top of the bar at `logo_hero_height` (32–300 px, capped at
-96 px on a phone) and shrinks to `logo_compact_height` (24–120 px) once the page scrolls.
+112 px on a phone) and shrinks to `logo_compact_height` (24–120 px) once the page scrolls.
 `logo_shadow`: `glow` (white, the default — for a dark logo), `shadow` (dark, for a colourful
-mark or a badge) or `none`.
+mark or a badge) or `none`. `action_buttons` says where the enquiry, WhatsApp, call, map and
+custom buttons sit (`App\Sites\ActionButtons`) — e.g. the enquiry button in the bar from the
+first screen: `{ "enquiry": { "places": ["menu.desktop", "hero.desktop", "footer.phone"] } }`.
 
 Every key is optional except `version`. The keys inside `partner`, `listing` and `site` are the
 model's own column names; anything not listed above is ignored.
@@ -91,5 +93,6 @@ a band off. Payloads are validated in the check, so a bad one is reported, not h
 - **Publish.** A new listing is created unpublished and a website keeps its status; publishing
   stays the explicit step it is in the Website tab.
 - **Invent content.** A package carries what the business supplied. Draft copy written to show a
-  prospect is fine on a draft site, but guest quotes, prices and facts must be theirs — see
-  `TestimonialsBlock`.
+  prospect is fine on a draft site, but prices and facts must be theirs. A placeholder guest
+  quote goes in with `"sample": true` — it shows a "Sample" tag and blocks publishing until it is
+  replaced (`TestimonialsBlock`, `PublishGate`).
