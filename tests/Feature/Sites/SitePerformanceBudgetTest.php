@@ -108,6 +108,7 @@ class SitePerformanceBudgetTest extends TestCase
             'team' => ['heading' => 'Meet your guides', 'items' => array_fill(0, 3, ['name' => 'Markus Hamutenya', 'role' => 'Guide · English, German', 'text' => $lorem])],
             'testimonials' => ['heading' => 'What guests say', 'items' => array_fill(0, 3, ['quote' => $lorem, 'name' => 'Anna K.', 'origin' => 'Germany · Etosha day trip'])],
             'faq' => ['heading' => 'Good to know', 'items' => array_fill(0, 8, ['question' => 'Do you pick up from Otjiwarongo?', 'answer' => $lorem])],
+            'itinerary' => ['heading' => 'The route', 'items' => array_fill(0, 10, ['day' => 'Days 3–4', 'title' => 'Sossusvlei', 'drive' => '350 km · 5–6 hours', 'text' => $lorem, 'stay' => 'Classic: Desert Lodge · Luxury: Desert Lodge'])],
             'video' => ['heading' => 'On the road', 'items' => array_fill(0, 3, ['key' => 'sites/every-block/videos/clip.mp4', 'caption' => 'Lions at Okaukuejo'])],
             default => [],
         };

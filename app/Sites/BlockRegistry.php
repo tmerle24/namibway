@@ -14,6 +14,7 @@ use App\Sites\Blocks\FooterBlock;
 use App\Sites\Blocks\GalleryBlock;
 use App\Sites\Blocks\HeroBlock;
 use App\Sites\Blocks\HighlightsBlock;
+use App\Sites\Blocks\ItineraryBlock;
 use App\Sites\Blocks\LocationBlock;
 use App\Sites\Blocks\MissionBlock;
 use App\Sites\Blocks\OffersBlock;
@@ -35,10 +36,11 @@ use App\Sites\Blocks\WhyChooseUsBlock;
  * type has to earn its place across several customers, and when it does it
  * costs a class and a line here — never a migration.
  *
- * 2026-09-10: offers, team, testimonials, FAQ, video and the photo band
- * joined, after the first real customer (a tour operator) could not be shown
- * a site worth paying for with the sixteen before them. None is specific to
- * that customer — each serves a lodge, an activity or a workshop as well.
+ * 2026-09-10: offers, itinerary, team, testimonials, FAQ, video and the
+ * photo band joined, after the first real customer (a tour operator) could
+ * not be shown a site worth paying for with the sixteen before them. None is
+ * specific to that customer — each serves a lodge, an activity or a workshop
+ * as well.
  */
 class BlockRegistry
 {
@@ -48,6 +50,7 @@ class BlockRegistry
         HighlightsBlock::class,
         AboutBlock::class,
         OffersBlock::class,
+        ItineraryBlock::class,
         PhotoBandBlock::class,
         GalleryBlock::class,
         VideoBlock::class,
@@ -87,9 +90,9 @@ class BlockRegistry
     private const LAYOUTS = [
         'accommodation' => ['hero', 'highlights', 'about', 'photo_band', 'gallery', 'video', 'booking', 'testimonials', 'faq', 'enquiry', 'location', 'contact', 'footer'],
         'restaurant' => ['hero', 'about', 'opening_hours', 'price_list', 'photo_band', 'gallery', 'testimonials', 'enquiry', 'location', 'contact', 'footer'],
-        'activity' => ['hero', 'highlights', 'about', 'offers', 'photo_band', 'gallery', 'video', 'team', 'price_list', 'booking', 'testimonials', 'faq', 'enquiry', 'location', 'contact', 'footer'],
+        'activity' => ['hero', 'highlights', 'about', 'offers', 'itinerary', 'photo_band', 'gallery', 'video', 'team', 'price_list', 'booking', 'testimonials', 'faq', 'enquiry', 'location', 'contact', 'footer'],
         'car_rental' => ['hero', 'highlights', 'price_list', 'about', 'booking', 'testimonials', 'faq', 'enquiry', 'location', 'contact', 'footer'],
-        'tour_operator' => ['hero', 'highlights', 'about', 'offers', 'photo_band', 'gallery', 'video', 'team', 'price_list', 'booking', 'testimonials', 'faq', 'enquiry', 'contact', 'footer'],
+        'tour_operator' => ['hero', 'highlights', 'about', 'offers', 'itinerary', 'photo_band', 'gallery', 'video', 'team', 'price_list', 'booking', 'testimonials', 'faq', 'enquiry', 'contact', 'footer'],
         'retail' => ['hero', 'about', 'mission', 'why_choose_us', 'shop', 'opening_hours', 'gallery', 'price_list', 'testimonials', 'enquiry', 'location', 'contact', 'footer'],
         'service' => ['hero', 'highlights', 'about', 'offers', 'mission', 'why_choose_us', 'team', 'opening_hours', 'price_list', 'testimonials', 'faq', 'enquiry', 'location', 'contact', 'footer'],
     ];

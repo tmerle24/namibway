@@ -1711,6 +1711,13 @@ the partner's facts (the "copy the partner into the listing" wish), and it never
 intended flow is Claude Code building the package locally from the customer's raw material.
 Format and matching rules: `SITE_PACKAGE.md`.
 
+**2026-09-11: `itinerary`**, a day-by-day timeline (day, place, the drive, where you sleep),
+added when Epima's operations file showed their product is a 14-day circuit rather than day
+trips. That file was an internal costing sheet — costs, margins, cash flow — and only what a
+traveller is meant to see went onto the page: route, stops, lodges per package, inclusions,
+exclusions and the per-person selling prices. Raw customer material lives in `incoming/`, which
+is now in `.gitignore`.
+
 Epima's draft went in this way with **draft copy written from what we know** (Otjiwarongo,
 Etosha, the guide Epimakus Hamutenya, the photos), so Adriano has something to show. Tours are
 priced "on request", and there are no guest quotes or FAQ answers until Epima supplies them.

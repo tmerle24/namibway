@@ -30,11 +30,8 @@
                     @endif
 
                     <div class="offer-card__body">
-                        @if (filled($item['duration'] ?? null) || filled($item['price'] ?? null))
-                            <p class="offer-card__meta">
-                                @if (filled($item['duration'] ?? null))<span>{{ $item['duration'] }}</span>@endif
-                                @if (filled($item['price'] ?? null))<span>{{ $item['price'] }}</span>@endif
-                            </p>
+                        @if (filled($item['duration'] ?? null))
+                            <p class="offer-card__meta">{{ $item['duration'] }}</p>
                         @endif
 
                         <h3>{{ $item['title'] }}</h3>
@@ -43,10 +40,16 @@
                             <p class="offer-card__text">{!! nl2br(e($item['text'])) !!}</p>
                         @endif
 
-                        {{-- data-enquire: the title goes into the form's message (partials/motion). --}}
-                        @if ($enquire)
-                            <a class="btn btn--ghost offer-card__btn" href="{{ $enquire }}" data-enquire="{{ $item['title'] }}">{{ $button }}</a>
-                        @endif
+                        <div class="offer-card__foot">
+                            @if (filled($item['price'] ?? null))
+                                <p class="offer-card__price">{{ $item['price'] }}</p>
+                            @endif
+
+                            {{-- data-enquire: the title goes into the form's message (partials/motion). --}}
+                            @if ($enquire)
+                                <a class="btn btn--ghost" href="{{ $enquire }}" data-enquire="{{ $item['title'] }}">{{ $button }}</a>
+                            @endif
+                        </div>
                     </div>
                 </article>
             @endforeach

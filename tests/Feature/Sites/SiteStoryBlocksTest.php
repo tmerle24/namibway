@@ -172,6 +172,24 @@ class SiteStoryBlocksTest extends TestCase
         $this->assertStringContainsString('<summary>Do you pick up?</summary>', $html);
     }
 
+    public function test_an_itinerary_renders_each_stop_as_text(): void
+    {
+        $site = $this->site();
+
+        $this->block($site, 'itinerary', ['heading' => 'The route', 'items' => [
+            ['day' => 'Day 1', 'title' => 'Windhoek', 'stay' => 'Classic: Elegant Guesthouse'],
+            ['day' => 'Days 3–4', 'title' => 'Sossusvlei', 'drive' => '350 km · 5–6 hours', 'text' => "Dunes <b>at dawn</b>.\nDeadvlei."],
+        ]]);
+
+        $html = $this->page($site);
+
+        $this->assertSame(2, substr_count($html, '<li class="trip__stop reveal">'));
+        $this->assertStringContainsString('<span class="trip__day">Days 3–4</span>', $html);
+        $this->assertStringContainsString('350 km · 5–6 hours', $html);
+        $this->assertStringContainsString('Dunes &lt;b&gt;at dawn&lt;/b&gt;.<br />', $html);
+        $this->assertStringContainsString('Classic: Elegant Guesthouse', $html);
+    }
+
     public function test_a_deleted_picture_leaves_the_items_that_used_it(): void
     {
         $site = $this->site();

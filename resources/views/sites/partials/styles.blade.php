@@ -486,13 +486,38 @@
     .offer-card:hover .offer-card__media img { transform: scale(1.04); }
     .offer-card__body { flex: 1; display: flex; flex-direction: column; padding: var(--s4) var(--s4) var(--s5); }
     .offer-card__meta {
-        display: flex; flex-wrap: wrap; gap: 4px var(--s3); margin: 0 0 var(--s2);
+        margin: 0 0 var(--s2);
         font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent);
     }
-    .offer-card__meta span + span::before { content: '·'; margin-right: var(--s3); color: var(--bone); }
     .offer-card h3 { font-family: var(--font-display); font-weight: 400; font-size: 24px; line-height: 1.2; }
     .offer-card__text { margin: 0 0 var(--s4); color: var(--slate); font-size: 16px; }
-    .offer-card__btn { margin-top: auto; align-self: flex-start; }
+    /* Price and button share the foot of the card, so a row of cards lines up. */
+    .offer-card__foot { margin-top: auto; }
+    .offer-card__price { margin: 0 0 var(--s3); font-size: 17px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+    /* ---- Itinerary: a timeline, day label | line with a dot | stop ----- */
+
+    .trip { list-style: none; margin: 0; padding: 0; max-width: 860px; }
+    .trip__stop { display: grid; grid-template-columns: 84px 1fr; gap: var(--s4); }
+    .trip__day {
+        padding-top: 6px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+        color: var(--accent); font-variant-numeric: tabular-nums;
+    }
+    .trip__body { position: relative; min-width: 0; border-left: 1px solid var(--bone); padding: 0 0 var(--s5) var(--s5); }
+    .trip__body::before {
+        content: ''; position: absolute; left: -7px; top: 6px; width: 13px; height: 13px;
+        border-radius: 50%; background: #fff; border: 2px solid var(--accent); box-sizing: border-box;
+    }
+    .trip__stop:last-child .trip__body { border-left-color: transparent; padding-bottom: 0; }
+    .trip__body h3 { font-family: var(--font-display); font-weight: 400; font-size: 22px; line-height: 1.25; margin: 0 0 4px; }
+    .trip__drive { margin: 0 0 var(--s2); font-size: 14px; color: var(--slate); }
+    .trip__text { margin: 0 0 var(--s2); font-size: 16px; color: var(--slate); max-width: var(--measure); }
+    .trip__stay { margin: 0; font-size: 14px; color: var(--ink); }
+    /* One column on a phone: the day sits on the line, above its stop. */
+    @media (max-width: 639.98px) {
+        .trip__stop { grid-template-columns: 1fr; gap: 0; }
+        .trip__day { border-left: 1px solid var(--bone); padding: 0 0 4px var(--s5); }
+    }
 
     /* ---- Photo band: breaks out of the column, full width ------------- */
 

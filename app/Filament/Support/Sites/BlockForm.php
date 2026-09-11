@@ -10,6 +10,7 @@ use App\Sites\Blocks\EnquiryBlock;
 use App\Sites\Blocks\EnquiryFormType;
 use App\Sites\Blocks\FaqBlock;
 use App\Sites\Blocks\GalleryBlock;
+use App\Sites\Blocks\ItineraryBlock;
 use App\Sites\Blocks\OffersBlock;
 use App\Sites\Blocks\TeamBlock;
 use App\Sites\Blocks\TestimonialsBlock;
@@ -148,6 +149,26 @@ class BlockForm
                         Textarea::make('text')->label('What it is')->rows(3)->maxLength(700)->columnSpanFull(),
                         self::image('image_id', $site, 'Photograph')->columnSpanFull(),
                     ]),
+            ],
+
+            'itinerary' => [
+                TextInput::make('heading')->label('Heading')->maxLength(120)
+                    ->placeholder('The route, Your 14 days…'),
+                Textarea::make('intro')->label('A line above it')->rows(2)->maxLength(400),
+                Repeater::make('items')
+                    ->label('Stops')
+                    ->maxItems(ItineraryBlock::MAX_ITEMS)
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => trim(($state['day'] ?? '').' '.($state['title'] ?? '')) ?: null)
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('day')->label('Day')->maxLength(24)->placeholder('Day 1, Days 3–4'),
+                        TextInput::make('title')->label('Where')->required()->maxLength(100),
+                        TextInput::make('drive')->label('The drive')->maxLength(60)->placeholder('300 km · 3½–4 hours')->columnSpanFull(),
+                        Textarea::make('text')->label('What happens')->rows(3)->maxLength(600)->columnSpanFull(),
+                        TextInput::make('stay')->label('Where you sleep')->maxLength(200)->columnSpanFull(),
+                    ]),
+                Textarea::make('note')->label('Anything to add')->rows(2)->maxLength(300),
             ],
 
             'photo_band' => [

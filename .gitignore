@@ -36,3 +36,6 @@ yarn-error.log
 # Byte-compiled output from running the scrapers in scripts/ locally.
 __pycache__/
 *.py[cod]
+
+# Raw customer material (photos, briefs, financial files) — never committed
+/incoming/
