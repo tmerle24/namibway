@@ -8,6 +8,7 @@ use App\Models\SiteBlock;
 use App\Models\SiteImage;
 use App\Models\SitePage;
 use App\Sites\Blocks\GalleryBlock;
+use App\Sites\Publishing\PublishGate;
 use App\Sites\Rendering\HtmlWhitespace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
@@ -188,6 +189,26 @@ class SiteStoryBlocksTest extends TestCase
         $this->assertStringContainsString('350 km · 5–6 hours', $html);
         $this->assertStringContainsString('Dunes &lt;b&gt;at dawn&lt;/b&gt;.<br />', $html);
         $this->assertStringContainsString('Classic: Elegant Guesthouse', $html);
+    }
+
+    /**
+     * A placeholder quote may win a meeting, never go live.
+     */
+    public function test_sample_quotes_are_tagged_and_block_publishing(): void
+    {
+        $site = $this->site();
+        $block = $this->block($site, 'testimonials', ['items' => [
+            ['quote' => 'Not one day rushed.', 'name' => 'Anna', 'sample' => true],
+        ]]);
+
+        $this->assertStringContainsString('<em class="quote__sample">Sample</em>', $this->page($site));
+
+        $gate = app(PublishGate::class);
+        $this->assertNotEmpty(array_filter($gate->blockers($site), fn ($b) => str_contains($b, 'sample quotes')));
+
+        $block->update(['data' => ['items' => [['quote' => 'Not one day rushed.', 'name' => 'Anna']]]]);
+
+        $this->assertSame([], array_filter($gate->blockers($site), fn ($b) => str_contains($b, 'sample quotes')));
     }
 
     public function test_a_deleted_picture_leaves_the_items_that_used_it(): void

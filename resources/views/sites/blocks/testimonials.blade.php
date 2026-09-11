@@ -18,6 +18,10 @@
                         @if (filled($quote['origin'] ?? null))
                             <span>{{ $quote['origin'] }}</span>
                         @endif
+                        {{-- A placeholder says so on the page; PublishGate keeps it off a live site. --}}
+                        @if (! empty($quote['sample']))
+                            <em class="quote__sample">Sample</em>
+                        @endif
                     </figcaption>
                 </figure>
             @endforeach

@@ -244,6 +244,9 @@ class BlockForm
                         TextInput::make('name')->label('Name')->required()->maxLength(80),
                         TextInput::make('origin')->label('From / what they did')->maxLength(80)
                             ->placeholder('Germany · Etosha day trip'),
+                        Toggle::make('sample')->label('Sample quote (placeholder)')
+                            ->helperText('Shown with a “Sample” tag, and the site cannot be published while one is here.')
+                            ->columnSpanFull(),
                     ]),
             ],
 

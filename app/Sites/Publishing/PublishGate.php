@@ -6,6 +6,7 @@ use App\Enums\SiteStatus;
 use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Models\SiteImage;
+use App\Sites\Blocks\TestimonialsBlock;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -38,17 +39,27 @@ class PublishGate
     {
         $blockers = [];
 
+        // Placeholder guest quotes win a meeting and must never go live: a
+        // made-up review under the business's name is a false statement.
+        $samples = SiteBlock::whereIn('site_page_id', $site->pages()->select('id'))
+            ->where('type', 'testimonials')
+            ->where('is_enabled', true)
+            ->get()
+            ->contains(fn (SiteBlock $block): bool => TestimonialsBlock::hasSamples($block->data ?? []));
+
+        if ($samples) {
+            $blockers[] = 'the guest reviews still hold sample quotes — replace them with real ones or remove them';
+        }
+
         // See config/sites.php: a commercial judgement, deliberately not the
         // code's to make. Switched on, prospecting photographs stop being a
         // reason to refuse — they still stay marked, so the question can be
         // asked again later.
-        if (config('sites.allow_google_photos_when_published') === true) {
-            return $site->pages()->count() === 0 ? ['the site has no pages'] : [];
-        }
-
-        foreach ($this->referencedProspectImages($site) as $image) {
-            $blockers[] = "the photograph {$image->key} came from Google Places — "
-                .'it may be shown while prospecting but not published on a site the customer keeps';
+        if (config('sites.allow_google_photos_when_published') !== true) {
+            foreach ($this->referencedProspectImages($site) as $image) {
+                $blockers[] = "the photograph {$image->key} came from Google Places — "
+                    .'it may be shown while prospecting but not published on a site the customer keeps';
+            }
         }
 
         if ($site->pages()->count() === 0) {

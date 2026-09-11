@@ -600,6 +600,10 @@
     .quotes--one .quote blockquote { font-size: clamp(24px, 3.2vw, 34px); line-height: 1.3; max-width: 32ch; }
     .quote figcaption { font-size: 14px; color: var(--slate); }
     .quote figcaption strong { display: block; color: var(--ink); font-weight: 600; }
+    .quote__sample {
+        display: inline-block; margin-top: 6px; padding: 1px 6px; border: 1px solid var(--bone); border-radius: 2px;
+        font-style: normal; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--slate);
+    }
 
     /* ---- FAQ ---------------------------------------------------------- */
 
