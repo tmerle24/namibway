@@ -25,6 +25,13 @@ use Filament\Notifications\Notification;
 class EditSiteLogoAction
 {
     /** @var array<string, string> */
+    /** How the logo stands off the photograph in the opening screen. */
+    public const LOGO_SHADOWS = [
+        'glow' => 'White glow — for a dark logo over a dark photograph',
+        'shadow' => 'Soft shadow — for a colourful or light logo, or a badge',
+        'none' => 'None',
+    ];
+
     public const NAV_HERO_STYLES = [
         'transparent' => 'Transparent — logo floats over the photograph',
         'frosted' => 'Frosted glass — white tint with blur',
@@ -66,6 +73,7 @@ class EditSiteLogoAction
                     'brand_name' => $site->brand_name,
                     'logo_hero_height' => $site->logo_hero_height,
                     'logo_compact_height' => $site->logo_compact_height,
+                    'logo_shadow' => $site->logo_shadow ?? 'glow',
                     'nav_height' => $site->nav_height,
                     'nav_hero_style' => $site->nav_hero_style ?? 'transparent',
                 ];
@@ -111,6 +119,13 @@ class EditSiteLogoAction
                                 ->suffix('px')
                                 ->placeholder('auto')
                                 ->helperText('Once the bar turns solid. Default: 60 % of bar height (always smaller than the opening size).'),
+
+                            Forms\Components\Select::make('logo_shadow')
+                                ->label('Over the photograph')
+                                ->options(self::LOGO_SHADOWS)
+                                ->default('glow')
+                                ->native(false)
+                                ->columnSpanFull(),
                         ])->hidden(fn (Forms\Get $get): bool => blank($get('logo_key'))),
                     ]),
 
@@ -151,6 +166,9 @@ class EditSiteLogoAction
 
                 $compactHeight = is_numeric($data['logo_compact_height'] ?? null) ? (int) $data['logo_compact_height'] : null;
                 $site->logo_compact_height = ($compactHeight !== null && $compactHeight >= 24 && $compactHeight <= 120) ? $compactHeight : null;
+
+                $shadow = (string) ($data['logo_shadow'] ?? 'glow');
+                $site->logo_shadow = array_key_exists($shadow, self::LOGO_SHADOWS) && $shadow !== 'glow' ? $shadow : null;
 
                 $navHeight = is_numeric($data['nav_height'] ?? null) ? (int) $data['nav_height'] : null;
                 $site->nav_height = ($navHeight !== null && $navHeight >= 48 && $navHeight <= 160) ? $navHeight : null;

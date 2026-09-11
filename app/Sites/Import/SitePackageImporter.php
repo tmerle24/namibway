@@ -38,7 +38,10 @@ class SitePackageImporter
 
     private const LISTING_FIELDS = ['name', 'contact_email', 'phone', 'address', 'latitude', 'longitude', 'website', 'social_links', 'short_description', 'description'];
 
-    private const SITE_FIELDS = ['name', 'accent', 'contact_email', 'contact_phone', 'whatsapp', 'address', 'latitude', 'longitude', 'social_links'];
+    private const SITE_FIELDS = ['name', 'accent', 'contact_email', 'contact_phone', 'whatsapp', 'address', 'latitude', 'longitude', 'social_links', 'logo_hero_height', 'logo_compact_height', 'logo_shadow'];
+
+    /** Same bounds as EditSiteLogoAction. */
+    private const LOGO_HEIGHTS = ['logo_hero_height' => [32, 300], 'logo_compact_height' => [24, 120]];
 
     private const PAGE_FIELDS = ['title', 'meta_description'];
 
@@ -76,6 +79,28 @@ class SitePackageImporter
         foreach ($this->section($m, 'site', self::PAGE_FIELDS) as $field => $value) {
             if ($this->differs($page?->{$field}, $value)) {
                 $siteChanges[] = ['field' => 'page '.$field, 'old' => $this->show($page?->{$field}), 'new' => $this->show($value)];
+            }
+        }
+
+        $logo = trim((string) ($m['site']['logo'] ?? ''));
+
+        if ($logo !== '') {
+            if (! $package->has($logo) || ! $package->isImage($logo)) {
+                $plan->errors[] = "The logo [{$logo}] is named in site.json but is not an image in the ZIP.";
+            } elseif ($site === null || $site->logo_key !== $this->imageKey($site, $logo)) {
+                $siteChanges[] = ['field' => 'logo', 'old' => $this->show($site?->logo_key), 'new' => $logo];
+            }
+        }
+
+        if (isset($m['site']['logo_shadow']) && ! in_array($m['site']['logo_shadow'], ['glow', 'shadow', 'none'], true)) {
+            $plan->errors[] = '"site.logo_shadow" must be glow, shadow or none.';
+        }
+
+        foreach (self::LOGO_HEIGHTS as $field => [$min, $max]) {
+            $value = $m['site'][$field] ?? null;
+
+            if ($value !== null && (! is_int($value) || $value < $min || $value > $max)) {
+                $plan->errors[] = "\"site.{$field}\" must be a whole number of pixels between {$min} and {$max}.";
             }
         }
 
@@ -162,6 +187,17 @@ class SitePackageImporter
 
             if (BusinessType::tryFrom((string) ($m['site']['business_type'] ?? '')) !== null) {
                 $fields['business_type'] = BusinessType::from((string) $m['site']['business_type']);
+            }
+
+            $logo = trim((string) ($m['site']['logo'] ?? ''));
+
+            if ($logo !== '') {
+                $fields['logo_key'] = $keys[strtolower($logo)];
+            }
+
+            // "glow" is the default, stored as null (see EditSiteLogoAction).
+            if (($fields['logo_shadow'] ?? null) === 'glow') {
+                $fields['logo_shadow'] = null;
             }
 
             $this->write($site, $fields, []);
@@ -278,7 +314,7 @@ class SitePackageImporter
             $plan->videos++;
         }
 
-        $named = array_map('strtolower', [...array_keys($this->imageFiles($m)), ...$this->videoFiles($m)]);
+        $named = array_map('strtolower', [...array_keys($this->imageFiles($m)), ...$this->videoFiles($m), (string) ($m['site']['logo'] ?? '')]);
         $unused = array_diff(array_map('strtolower', $package->mediaFiles()), $named);
 
         if ($unused !== []) {
@@ -447,6 +483,14 @@ class SitePackageImporter
             $key = $this->imageKey($site, $file);
             $disk->put($key, $package->contents($file));
             $keys[strtolower($file)] = $key;
+        }
+
+        $logo = trim((string) ($m['site']['logo'] ?? ''));
+
+        if ($logo !== '') {
+            $key = $this->imageKey($site, $logo);
+            $disk->put($key, $package->contents($logo));
+            $keys[strtolower($logo)] = $key;
         }
 
         foreach ($this->videoFiles($m) as $file) {

@@ -42,7 +42,9 @@ epima.zip
   "site":    { "slug": "…", "name": "…", "business_type": "tour_operator", "accent": "copper",
                "contact_email": "…", "contact_phone": "…", "whatsapp": "…", "address": "…",
                "latitude": -20.46, "longitude": 16.65, "social_links": { … },
-               "title": "…", "meta_description": "…" },
+               "title": "…", "meta_description": "…",
+               "logo": "logo.png", "logo_hero_height": 120, "logo_compact_height": 52,
+               "logo_shadow": "shadow" },
   "images":  [ { "file": "lion-reflection.jpg", "alt": "A lion drinking at an Etosha waterhole" } ],
   "blocks":  [
     { "type": "hero",    "data": { "image": "lion-reflection.jpg", "headline": "…" } },
@@ -54,6 +56,12 @@ epima.zip
   ]
 }
 ```
+
+`logo` is a file in the ZIP — a transparent PNG cut to the mark's own shape sits best over the
+hero photograph. It hangs from the top of the bar at `logo_hero_height` (32–300 px, capped at
+96 px on a phone) and shrinks to `logo_compact_height` (24–120 px) once the page scrolls.
+`logo_shadow`: `glow` (white, the default — for a dark logo), `shadow` (dark, for a colourful
+mark or a badge) or `none`.
 
 Every key is optional except `version`. The keys inside `partner`, `listing` and `site` are the
 model's own column names; anything not listed above is ignored.

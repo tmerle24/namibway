@@ -211,6 +211,24 @@ class SiteStoryBlocksTest extends TestCase
         $this->assertSame([], array_filter($gate->blockers($site), fn ($b) => str_contains($b, 'sample quotes')));
     }
 
+    /**
+     * A logo taller than the bar hangs from its top instead of being centred
+     * off the top of the screen, and its shadow is the site's choice.
+     */
+    public function test_a_large_logo_hangs_into_the_hero_with_its_own_shadow(): void
+    {
+        $site = $this->site();
+        $site->update(['logo_key' => $site->mediaPrefix().'/logo.png', 'logo_hero_height' => 120, 'logo_shadow' => 'shadow']);
+        $this->block($site, 'hero', ['headline' => 'Hello']);
+
+        $html = $this->page($site);
+
+        $this->assertStringContainsString('class="nav__logo"', $html);
+        $this->assertMatchesRegularExpression('/\.nav__name--logo \{[^}]*align-self: flex-start/', $html);
+        $this->assertStringContainsString('filter: drop-shadow(0 6px 18px rgba(0,0,0,.5));', $html);
+        $this->assertStringContainsString('height: min(120px, 96px);', $html);
+    }
+
     public function test_a_deleted_picture_leaves_the_items_that_used_it(): void
     {
         $site = $this->site();

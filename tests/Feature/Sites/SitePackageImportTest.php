@@ -79,6 +79,22 @@ class SitePackageImportTest extends TestCase
         Storage::disk('r2')->assertExists($site->mediaPrefix().'/videos/drive.mp4');
     }
 
+    public function test_a_package_brings_the_logo_and_how_it_sits(): void
+    {
+        $manifest = $this->manifest();
+        $manifest['site'] += ['logo' => 'lion.jpg', 'logo_hero_height' => 120, 'logo_compact_height' => 52, 'logo_shadow' => 'shadow'];
+
+        $plan = $this->importer()->apply($this->package($manifest));
+        $site = Site::findOrFail($plan->siteId);
+
+        $this->assertSame($site->mediaPrefix().'/lion.jpg', $site->logo_key);
+        $this->assertSame(120, $site->logo_hero_height);
+        $this->assertSame('shadow', $site->logo_shadow);
+
+        $manifest['site']['logo_hero_height'] = 900;
+        $this->assertNotEmpty($this->importer()->plan($this->package($manifest))->errors);
+    }
+
     public function test_checking_writes_nothing(): void
     {
         $plan = $this->importer()->plan($this->package($this->manifest()));

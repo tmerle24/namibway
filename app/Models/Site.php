@@ -48,6 +48,7 @@ use Illuminate\Support\Str;
  * @property int|null $logo_compact_height
  * @property int|null $nav_height
  * @property string|null $nav_hero_style
+ * @property string|null $logo_shadow
  * @property string $default_locale
  * @property string|null $contact_email
  * @property string|null $contact_phone
@@ -98,6 +99,7 @@ class Site extends Model
         'logo_compact_height',
         'nav_height',
         'nav_hero_style',
+        'logo_shadow',
         'default_locale',
         'contact_email',
         'contact_phone',

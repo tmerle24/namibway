@@ -128,8 +128,15 @@
         min-width: 0; white-space: normal; overflow: hidden;
         display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
     }
-    /* A logo is one object and wants centring, not line boxes. */
-    .nav__name--logo { display: flex; align-items: center; }
+    /* A logo is one object, not line boxes. It hangs from the top of the bar:
+       centred, a logo taller than the bar (logo_hero_height goes to 300px)
+       overflowed upwards and was cut off at the top of the screen. Where the
+       bar is solid it is centred again by --logo-offset, which transitions,
+       so the shrink on scroll does not jump. */
+    .nav__name--logo {
+        display: flex; align-items: flex-start; align-self: flex-start; overflow: visible;
+        margin-top: var(--logo-offset, 0px); transition: margin-top .3s ease;
+    }
     /* Wide enough for the bar to be three times the width it is on a phone. */
     @media (min-width: 640px) { :root { --brand-size: {{ \App\Sites\Typography::brandSize($site) }}px; } }
     /* A name over a photograph needs its own shadow to stay readable — the
@@ -145,12 +152,26 @@
     }
     /* nav__inner is overflow:visible (see above), so the logo can extend
        beyond the bar in the hero state without any separate override. */
+    /* How the logo stands off the photograph, per site (EditSiteLogoAction):
+       the white glow lifts a dark logo off a dark photo, a soft shadow suits a
+       colourful mark or a badge. Either follows the logo's own shape. */
+    @php
+        $logoFilter = match ($site->logo_shadow) {
+            'shadow' => 'drop-shadow(0 6px 18px rgba(0,0,0,.5))',
+            'none' => 'none',
+            default => 'drop-shadow(0 2px 12px rgba(255,255,255,1))',
+        };
+    @endphp
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo {
         height: {{ $site->logo_hero_height ? $site->logo_hero_height.'px' : 'calc(var(--nav-height) - 8px)' }};
-        /* White drop-shadow: makes the logo glow against any dark hero photo
-           while respecting the logo's actual shape (transparency included). */
-        filter: drop-shadow(0 2px 12px rgba(255,255,255,1));
+        filter: {{ $logoFilter }};
     }
+    @if ($site->logo_hero_height && ($site->nav_hero_style ?? 'transparent') === 'transparent')
+    /* A phone's opening screen has no room for a 300px mark. */
+    @media (max-width: 639.98px) {
+        .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { height: min({{ $site->logo_hero_height }}px, 96px); }
+    }
+    @endif
     /* nowrap: a menu item breaking across two lines was the other half of what
        made the bar taller than the hero's negative margin. */
     .nav__links { display: none; gap: var(--s4); align-items: center; flex-wrap: nowrap; }
@@ -177,6 +198,8 @@
     .nav--solid .nav__links a { color: var(--slate); }
 
     @php $logoCompact = $site->logo_compact_height ? $site->logo_compact_height.'px' : 'calc(var(--nav-height) * 0.6)'; @endphp
+    /* Solid bar: the compact logo centred in the bar's 16px-padded inside. */
+    .nav.is-scrolled, .nav.is-open, .nav--solid { --logo-offset: calc((var(--nav-height) - 16px - {{ $logoCompact }}) / 2); }
     @if (($site->nav_hero_style ?? 'transparent') === 'frosted')
     /* Frosted: the bar is a white-tinted pane — dark text and links, no logo zoom. */
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) { background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 1px 0 var(--bone); }
@@ -185,6 +208,7 @@
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__links a:hover { color: var(--ink); }
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__burger span { background: var(--ink); }
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { filter: none; height: {{ $logoCompact }}; }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) { --logo-offset: calc((var(--nav-height) - 16px - {{ $logoCompact }}) / 2); }
     @elseif (($site->nav_hero_style ?? 'transparent') === 'white')
     /* Solid white: bar is always opaque — dark text and links, no logo zoom. */
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) { background: var(--salt); box-shadow: 0 1px 0 var(--bone); }
@@ -193,6 +217,7 @@
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__links a:hover { color: var(--ink); }
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__burger span { background: var(--ink); }
     .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) .nav__logo { filter: none; height: {{ $logoCompact }}; }
+    .nav:not(.is-scrolled):not(.is-open):not(.nav--solid) { --logo-offset: calc((var(--nav-height) - 16px - {{ $logoCompact }}) / 2); }
     @endif
 
     /* The burger and its panel. Both are unhidden by the script, so a page
