@@ -16,7 +16,7 @@ epima.zip
 ├── site.json
 ├── listings.csv               (optional — the listings for the platform)
 ├── listings/                  (optional — one folder per listing, named in photo_folder)
-│   └── Namibia Top 3/
+│   └── Namibia Top 3/          (matched to the row's photo_folder)
 │       ├── cover-dunes.jpg
 │       └── zebras.jpg
 └── media/                     (any folder layout — files are found by name)
@@ -89,8 +89,16 @@ in `App\Services\ImportExport\ListingSheet`: `id`, `name`, `type`, `vehicle_cate
 `published`, `accepts_inquiries`, `slug`), and it is handed to that importer unchanged — one sheet
 definition, one set of rules, one write path into `listings`.
 
-So its rules apply here too: **`id` is the only automatic update key**, an **empty cell leaves the
-field alone**, and naming a `photo_folder` **replaces** that listing's photographs. The folders it
+Its rules apply here too: an **empty cell leaves the field alone**, and naming a `photo_folder`
+**replaces** that listing's photographs.
+
+**Give every row a `slug`.** In a sheet a person types, `id` is the only automatic update key —
+a name matching an existing listing is reported with the id to type in, so nothing is silently
+overwritten. A package is not typed: it is written by machine and describes one customer, so it
+resolves the `id` itself from the slug before the sheet reaches the importer, and re-importing
+updates the same listings instead of stopping. Only the package's **own partner's** listings are
+resolved; a slug belonging to another business stays a reported collision. Listings the package
+creates are attached to that partner, which the sheet itself has no column for. The folders it
 names live under `listings/` in the same ZIP (`cover*` becomes the main image, the rest the
 gallery); those files are not part of the website's own picture list and are not reported as
 unused.

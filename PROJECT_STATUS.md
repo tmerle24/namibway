@@ -1751,6 +1751,15 @@ reimplemented: same columns, same `id`-is-the-update-key rule, same photo-folder
 write path. The package only adds that the rows are checked in the same dry run and that a bad
 row stops the website import too. Format: `SITE_PACKAGE.md`.
 
+**Same day, after the first run against a real customer:** a package resolves its listing ids
+from the `slug` column itself, and attaches what it creates to its own partner. Both come from
+the same requirement — the import has to do the whole customer on its own. Without the first, a
+second import of the same package stopped at "put the id in the id column", which is the right
+answer for a sheet somebody typed and the wrong one for a machine-written package; without the
+second, listings from the sheet had no partner at all (it has no column for one), so they sat in
+nobody's panel. Resolution is scoped to the package's partner, so a slug owned by another
+business is still reported as the collision it is rather than written across.
+
 ### Next up, in the order it was asked for
 
 - **Collecting the money.** A provider that onboards a Namibian entity and settles in NAD,

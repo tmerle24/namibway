@@ -121,7 +121,7 @@ class SitePackageImporter
 
         $this->planMedia($package, $m, $site, $plan);
         $this->planBlocks($m, $page, $plan);
-        $this->planListings($package, $plan);
+        $this->planListings($package, $partner, $plan);
 
         return $plan;
     }
@@ -229,8 +229,9 @@ class SitePackageImporter
             $this->writeBlocks($m, $page, $ids, $keys);
         });
 
-        $this->withListings($package, function (ImportPlan $listings) use ($package, $plan): void {
+        $this->withListings($package, $partner, function (ImportPlan $listings) use ($package, $partner, $plan): void {
             $plan->listingsWritten = app(ListingImporter::class)->apply($listings, $package->path);
+            $this->attachToPartner($package, $partner);
         });
 
         $plan->written = true;
@@ -244,9 +245,9 @@ class SitePackageImporter
      * problems are this package's problems: a ZIP is imported as one thing, so
      * a bad row stops the website too rather than half-writing the customer.
      */
-    private function planListings(SitePackage $package, SitePackagePlan $plan): void
+    private function planListings(SitePackage $package, ?Partner $partner, SitePackagePlan $plan): void
     {
-        $this->withListings($package, function (ImportPlan $listings) use ($plan): void {
+        $this->withListings($package, $partner, function (ImportPlan $listings) use ($plan): void {
             $plan->listingsNew = $listings->newCount();
             $plan->listingsUpdated = $listings->updateCount();
 
@@ -269,7 +270,7 @@ class SitePackageImporter
      *
      * @param  callable(ImportPlan): void  $then
      */
-    private function withListings(SitePackage $package, callable $then): void
+    private function withListings(SitePackage $package, ?Partner $partner, callable $then): void
     {
         $csv = $package->listingsCsv();
 
@@ -278,13 +279,171 @@ class SitePackageImporter
         }
 
         $path = tempnam(sys_get_temp_dir(), 'listings').'.csv';
-        file_put_contents($path, $csv);
+        file_put_contents($path, $this->withResolvedIds($csv, $partner));
 
         try {
             $then(app(ListingImporter::class)->plan($path, $package->path));
         } finally {
             @unlink($path);
         }
+    }
+
+    /**
+     * The listings sheet has no partner column — it was written for bulk
+     * capture, where somebody assigns the partner afterwards. In a package
+     * there is nothing to assign: the listings belong to the business the
+     * package is about, and without that they would sit in nobody's panel and
+     * be found by no second import. Only listings that have no partner yet are
+     * claimed, so a package can never take one off another business.
+     */
+    private function attachToPartner(SitePackage $package, Partner $partner): void
+    {
+        $slugs = $this->sheetSlugs((string) $package->listingsCsv());
+
+        if ($slugs === []) {
+            return;
+        }
+
+        Listing::whereIn('slug', $slugs)->whereNull('partner_id')->update(['partner_id' => $partner->id]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function sheetSlugs(string $csv): array
+    {
+        $rows = $this->readCsv($csv);
+
+        if ($rows === []) {
+            return [];
+        }
+
+        $headers = array_map(fn ($h): string => Str::lower(trim((string) $h)), $rows[0]);
+        $slugAt = array_search('slug', $headers, true);
+        $nameAt = array_search('name', $headers, true);
+        $slugs = [];
+
+        foreach (array_slice($rows, 1) as $row) {
+            $slug = Str::slug((string) ($slugAt !== false ? ($row[$slugAt] ?? '') : ''))
+                ?: Str::slug((string) ($nameAt !== false ? ($row[$nameAt] ?? '') : ''));
+
+            if ($slug !== '') {
+                $slugs[] = $slug;
+            }
+        }
+
+        return $slugs;
+    }
+
+    /**
+     * Fills the sheet's `id` column from the slug each row names.
+     *
+     * The listings importer takes `id` as its only update key on purpose: a
+     * sheet typed by a person must never silently overwrite a listing that
+     * happens to share a name. A package is not that sheet — it is written by
+     * machine and describes one customer completely, so re-importing it has to
+     * update the same listings rather than stop and ask for numbers nobody has.
+     * Resolving the slug here keeps both true: the rule stands, and the package
+     * arrives with the ids already in it.
+     *
+     * Only the matched partner's own listings are resolved. A slug belonging to
+     * somebody else stays unresolved, and the importer then reports it as the
+     * collision it is instead of writing across two businesses.
+     */
+    private function withResolvedIds(string $csv, ?Partner $partner): string
+    {
+        if ($partner === null || ! $partner->exists) {
+            return $csv;
+        }
+
+        $rows = $this->readCsv($csv);
+
+        if ($rows === []) {
+            return $csv;
+        }
+
+        $headers = array_map(fn ($h): string => Str::lower(trim((string) $h)), $rows[0]);
+        $slugAt = array_search('slug', $headers, true);
+        $nameAt = array_search('name', $headers, true);
+        $idAt = array_search('id', $headers, true);
+
+        if ($slugAt === false && $nameAt === false) {
+            return $csv;
+        }
+
+        if ($idAt === false) {
+            $headers[] = 'id';
+            $rows[0][] = 'id';
+            $idAt = count($rows[0]) - 1;
+        }
+
+        $known = Listing::where('partner_id', $partner->id)->pluck('id', 'slug');
+        $width = count($rows[0]);
+        $out = [$rows[0]];
+
+        foreach (array_slice($rows, 1) as $row) {
+            $row = array_pad($row, $width, '');
+
+            if (trim($row[$idAt] ?? '') === '') {
+                $slug = Str::slug($slugAt !== false ? ($row[$slugAt] ?? '') : '')
+                    ?: Str::slug($nameAt !== false ? ($row[$nameAt] ?? '') : '');
+
+                $row[$idAt] = $slug !== '' && $known->has($slug) ? (string) $known[$slug] : '';
+            }
+
+            $out[] = array_values($row);
+        }
+
+        return $this->writeCsv($out);
+    }
+
+    /**
+     * @return list<list<string>>
+     */
+    private function readCsv(string $csv): array
+    {
+        $handle = fopen('php://temp', 'r+');
+
+        if ($handle === false) {
+            return [];
+        }
+
+        fwrite($handle, $csv);
+        rewind($handle);
+        $rows = [];
+
+        // fgetcsv rather than splitting on lines: a description holds newlines.
+        while (($row = fgetcsv($handle)) !== false) {
+            if ($row !== [null]) {
+                $rows[] = array_map(fn ($cell): string => (string) $cell, $row);
+            }
+        }
+
+        fclose($handle);
+
+        return $rows;
+    }
+
+    /**
+     * @param  list<list<string>>  $rows
+     */
+    private function writeCsv(array $rows): string
+    {
+        $handle = fopen('php://temp', 'r+');
+
+        if ($handle === false) {
+            return '';
+        }
+
+        foreach ($rows as $row) {
+            fputcsv($handle, $row);
+        }
+
+        rewind($handle);
+        $csv = (string) stream_get_contents($handle);
+        fclose($handle);
+
+        return $csv;
     }
 
     /**

@@ -131,6 +131,50 @@ class SitePackageImportTest extends TestCase
         $this->assertSame(2, $site->images()->count());
     }
 
+    /**
+     * The package is machine-written and describes one customer, so importing
+     * it again has to update the same listings — not stop and ask for ids.
+     */
+    public function test_a_second_import_updates_the_listings(): void
+    {
+        $sheet = fn (string $published, string $short): string => "slug,name,type,vehicle_category,short_description,accepts_inquiries,published\n"
+            ."namibia-top-3,Namibia Top 3,vehicle,guided_tour,{$short},yes,{$published}\n";
+
+        $this->importer()->apply($this->package($this->manifest(), $sheet('no', 'Eight days')));
+
+        $tour = Listing::where('slug', 'namibia-top-3')->sole();
+        $this->assertFalse((bool) $tour->is_published);
+
+        $again = $this->importer()->apply($this->package($this->manifest(), $sheet('yes', 'Eight guided days')));
+
+        $this->assertSame(1, Listing::where('slug', 'namibia-top-3')->count());
+        $this->assertSame(1, $again->listingsUpdated);
+        $this->assertSame(0, $again->listingsNew);
+        $this->assertTrue((bool) $tour->refresh()->is_published);
+        $this->assertSame('Eight guided days', $tour->short_description);
+        // And it belongs to the business the package is about.
+        $this->assertSame(Partner::where('name', 'Epima Tours & Safaris')->sole()->id, $tour->partner_id);
+    }
+
+    /**
+     * A slug is only resolved inside the package's own partner. Somebody
+     * else's listing with that slug is a collision to report, never a write.
+     */
+    public function test_a_slug_belonging_to_another_partner_is_not_touched(): void
+    {
+        $other = Partner::create(['name' => 'Another operator']);
+        $theirs = Listing::factory()->create(['partner_id' => $other->id, 'slug' => 'namibia-top-3', 'name' => 'Namibia Top 3']);
+
+        $csv = "slug,name,type,vehicle_category,published\nnamibia-top-3,Namibia Top 3,vehicle,guided_tour,yes\n";
+        $plan = $this->importer()->apply($this->package($this->manifest(), $csv));
+
+        $this->assertFalse($plan->written);
+        $this->assertNotEmpty(array_filter($plan->errors, fn ($e) => str_contains($e, 'already exists')));
+        // Untouched, and nothing of ours was written either.
+        $this->assertSame($other->id, $theirs->refresh()->partner_id);
+        $this->assertSame(0, Partner::where('name', 'Epima Tours & Safaris')->count());
+    }
+
     public function test_a_bad_listing_row_stops_the_whole_package(): void
     {
         $csv = "name,type\nA tour without a type,\n";
