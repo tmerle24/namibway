@@ -29,6 +29,9 @@ class SitePackage
     /** @var array<string, int> lowercased basename => zip index */
     private array $files = [];
 
+    /** @var array<string, string> lowercased basename => path in the archive, for the error */
+    private array $paths = [];
+
     /** @var array<string, mixed> */
     private array $manifest = [];
 
@@ -156,12 +159,16 @@ class SitePackage
             }
 
             if (isset($this->files[$base])) {
-                $this->errors[] = "Two files are called [{$base}] — names must be unique across the whole ZIP.";
+                // Named with both paths: the usual cause is the same picture in
+                // two folders, and the message has to say which two.
+                $this->errors[] = "Two files are called [{$base}] — [{$this->paths[$base]}] and [{$name}]. "
+                    .'Folders are ignored, so a name must be unique across the whole ZIP.';
 
                 continue;
             }
 
             $this->files[$base] = $i;
+            $this->paths[$base] = $name;
         }
 
         if (count($this->files) > self::MAX_FILES) {
