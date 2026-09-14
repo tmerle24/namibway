@@ -295,6 +295,14 @@ class ListingImporter
             return;
         }
 
+        // The keys are content-addressed, so the same photographs in the same
+        // order produce exactly the keys the listing already holds. That is
+        // not a change: re-importing a file must not re-upload every picture
+        // and report every listing as updated.
+        if ($listing !== null && $archive !== null && $this->plannedPhotoKeys($archive, $raw, (string) $listing->slug) === $this->currentPhotoKeys($listing)) {
+            return;
+        }
+
         $row->photoFolder = $raw;
         $row->changes[] = new FieldChange(
             'photo_folder',
@@ -752,6 +760,47 @@ class ListingImporter
      *
      * @return list<string> the stored keys
      */
+    /** Where a photograph is stored: its name and a hash of its bytes. */
+    private function photoKey(string $prefix, string $fileName, string $contents): string
+    {
+        $name = Str::slug(pathinfo($fileName, PATHINFO_FILENAME));
+        $extension = mb_strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+        return "{$prefix}/{$name}-".substr(md5($contents), 0, 8).".{$extension}";
+    }
+
+    /**
+     * The keys a folder would be stored under, main image first — without
+     * uploading anything.
+     *
+     * @return list<string>
+     */
+    private function plannedPhotoKeys(PhotoArchive $archive, string $folder, string $slug): array
+    {
+        $keys = [];
+
+        foreach ($archive->photos($folder) as $photo) {
+            $contents = $archive->contents($photo['index']);
+
+            if ($contents !== null) {
+                $keys[] = $this->photoKey("listings/{$slug}", $photo['name'], $contents);
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function currentPhotoKeys(Listing $listing): array
+    {
+        return array_values(array_filter([
+            is_string($listing->image) ? $listing->image : null,
+            ...array_map(fn ($key): ?string => is_string($key) ? $key : null, (array) ($listing->gallery ?? [])),
+        ]));
+    }
+
     private function uploadPhotos(PhotoArchive $archive, string $folder, string $prefix): array
     {
         $disk = Storage::disk('r2');
@@ -764,9 +813,7 @@ class ListingImporter
                 continue;
             }
 
-            $name = Str::slug(pathinfo($photo['name'], PATHINFO_FILENAME));
-            $extension = mb_strtolower(pathinfo($photo['name'], PATHINFO_EXTENSION));
-            $key = "{$prefix}/{$name}-".substr(md5($contents), 0, 8).".{$extension}";
+            $key = $this->photoKey($prefix, $photo['name'], $contents);
 
             $disk->put($key, $contents);
             $keys[] = $key;

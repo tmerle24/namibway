@@ -175,6 +175,27 @@ class SitePackageImportTest extends TestCase
         $this->assertSame(0, Partner::where('name', 'Epima Tours & Safaris')->count());
     }
 
+    /**
+     * The same package twice is no change: the button placement is compared
+     * as it is stored, and the listing's photographs as the keys they produce.
+     */
+    public function test_the_same_package_again_reports_nothing_to_change(): void
+    {
+        $manifest = $this->manifest();
+        $manifest['site']['action_buttons'] = ['enquiry' => ['places' => ['menu.desktop', 'footer.phone']]];
+        $csv = "slug,name,type,vehicle_category,photo_folder,published\n"
+            ."namibia-top-3,Namibia Top 3,vehicle,guided_tour,Namibia Top 3,yes\n";
+
+        $this->importer()->apply($this->package($manifest, $csv));
+
+        $again = $this->importer()->plan($this->package($manifest, $csv));
+
+        $this->assertSame([], $again->errors);
+        $this->assertSame('unchanged', $again->site['action']);
+        $this->assertSame(0, $again->listingsUpdated);
+        $this->assertSame(0, $again->listingsNew);
+    }
+
     public function test_a_bad_listing_row_stops_the_whole_package(): void
     {
         $csv = "name,type\nA tour without a type,\n";

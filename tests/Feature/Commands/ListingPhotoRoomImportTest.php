@@ -154,6 +154,39 @@ class ListingPhotoRoomImportTest extends TestCase
         }
     }
 
+    /**
+     * Photo keys carry a hash of the bytes, so the same folder again produces
+     * the keys the listing already holds. That is no change: nothing is
+     * uploaded twice, and the listing is not reported as updated.
+     */
+    public function test_the_same_photos_again_are_not_a_change(): void
+    {
+        $listing = $this->listing();
+        $files = [
+            'Photos/Okonjima Bush Camp/cover.jpg' => 'cover-bytes',
+            'Photos/Okonjima Bush Camp/pool.jpg' => 'pool-bytes',
+        ];
+        $workbook = $this->makeWorkbook(['Listings' => [
+            ['id', 'photo_folder'],
+            [$listing->id, 'Okonjima Bush Camp'],
+        ]]);
+
+        $zip = $this->makeZip($files);
+        $this->importer()->apply($this->importer()->plan($workbook, $zip), $zip);
+
+        $again = $this->importer()->plan($workbook, $this->makeZip($files));
+        $this->assertSame(0, $again->updateCount());
+        $this->assertSame(0, $again->photoCount());
+
+        // A photograph that really changed is still a change.
+        $changed = $this->importer()->plan($workbook, $this->makeZip([
+            'Photos/Okonjima Bush Camp/cover.jpg' => 'a-new-cover',
+            'Photos/Okonjima Bush Camp/pool.jpg' => 'pool-bytes',
+        ]));
+        $this->assertSame(1, $changed->updateCount());
+        $this->assertSame(1, $changed->photoCount());
+    }
+
     public function test_an_empty_photo_folder_cell_leaves_existing_photos_alone(): void
     {
         $listing = $this->listing(['image' => 'listings/old.jpg', 'gallery' => ['listings/old-2.jpg']]);

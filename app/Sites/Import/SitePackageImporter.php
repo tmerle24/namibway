@@ -840,6 +840,14 @@ class SitePackageImporter
         foreach ($values as $field => $value) {
             $old = $model === null ? null : $this->current($model, $field);
 
+            // Stored normalised — every button with its places — while a
+            // package names only the buttons it moves. Compared as what would
+            // be stored, so an unchanged placement is not reported as a change.
+            if ($field === 'action_buttons') {
+                $old = ActionButtons::normalise($old);
+                $value = ActionButtons::normalise($value);
+            }
+
             if ($model === null || $this->differs($old, $value)) {
                 $changes[] = ['field' => $field, 'old' => $this->show($old), 'new' => $this->show($value)];
             }
