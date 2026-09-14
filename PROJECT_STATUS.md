@@ -1760,6 +1760,28 @@ second, listings from the sheet had no partner at all (it has no column for one)
 nobody's panel. Resolution is scoped to the package's partner, so a slug owned by another
 business is still reported as the collision it is rather than written across.
 
+### Built 2026-09-14 — asking for a tour by its name and its start
+
+The first tour operator's site asked visitors for arrival and departure, which is a lodge's
+question: somebody booking an 8-day tour does not choose when it ends. `EnquiryFormType::
+TourRequest` asks which tour, a start date and the party instead. The choices are read live
+from the partner (`App\Sites\Rendering\EnquiryTours`): published listings that take
+requests and have a fixed `duration_minutes`, restaurants excepted — so a tour added on the
+platform is in the form without anybody editing the website, and a lodge selling day trips gets
+the same form for free. The end date is computed server-side (start is day one, so an 8-day
+tour starting on the 12th ends on the 19th) and whatever the browser sent for it is replaced.
+The request lands on **the chosen listing**, not the site's — which is what lets the business
+see which tour was asked for. "Private / tailor-made" is the one choice with no length, and the
+only one that asks for an end date.
+
+Two details worth keeping: an offer card points at its tour by **slug** (`listing_slug`), not
+id, so a package moved between environments still points right; and the end-date field is in
+the page from the first byte and only hidden by the script, so a browser without JavaScript can
+still send either kind. Found in passing and fixed at the cause rather than by raising the
+budget: the business card's styles were inlined into every page of every site, and comments
+inside inline scripts reached every visitor — together enough to push the every-block page
+over its 80 KB.
+
 ### Next up, in the order it was asked for
 
 - **Collecting the money.** A provider that onboards a Namibian entity and settles in NAD,

@@ -73,6 +73,13 @@ first screen: `{ "enquiry": { "places": ["menu.desktop", "hero.desktop", "footer
 Every key is optional except `version`. The keys inside `partner`, `listing` and `site` are the
 model's own column names; anything not listed above is ignored.
 
+A **tour request** form (`"form_type": "tour_request"` on the enquiry block) lists the
+partner's own published listings with a fixed length (`duration_minutes`) — so the tours from
+`listings.csv` appear in it on their own. The visitor picks one and a start date; the end date
+is the tour's, and the request is recorded against that listing. Give each offer card the
+tour's slug (`"listing_slug": "namibia-top-3"`) and its button opens the form with that tour
+chosen; a card without one chooses "private / tailor-made", which asks for an end date.
+
 **Blocks** take the same payload the editor writes (`App\Sites\Blocks\*::rules()`), with file
 names where the block stores ids: `image` → `image_id`, `images` → `image_ids`, and per item
 `image` → `image_id`, `poster` → `poster_image_id`, `video` → `key`. A block with only a `type`

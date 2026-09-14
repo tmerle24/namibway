@@ -15,6 +15,32 @@
     <meta name="robots" content="noindex, follow">
 
     @include('sites.partials.styles')
+    {{-- Only this page uses these, so only this page ships them: the shared
+         stylesheet is inlined into every page of every site. --}}
+@php ob_start(); @endphp
+    /* ---- Digital business card ------------------------------------------
+       One screen, thumb-height buttons: this page is opened by scanning a QR
+       on a paper card, so it is a phone page first and a desktop page second. */
+
+    .vcard { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: var(--s6) var(--s4); }
+    .vcard__inner { width: 100%; max-width: 420px; margin: 0 auto; text-align: center; }
+    .vcard__logo { max-width: 180px; max-height: 180px; width: auto; height: auto; margin: 0 auto var(--s4); object-fit: contain; }
+    .vcard__name { font-family: var(--font-display); font-weight: 400; font-size: clamp(28px, 7vw, 36px); line-height: 1.15; margin: 0; }
+    .vcard__org { margin: var(--s2) 0 0; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+    .vcard__where { margin: var(--s3) 0 0; color: var(--slate); font-size: 15px; }
+    .vcard__actions { display: grid; gap: var(--s3); margin-top: var(--s5); }
+    .vcard__actions .btn {
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+        padding: 16px 20px; font-size: 13px;
+    }
+    .vcard__icon { width: 18px; height: 18px; flex: none; }
+    .vcard__foot { width: 100%; max-width: 420px; margin: var(--s6) auto 0; color: var(--slate); }
+    .vcard__foot .foot__legal { border-top-color: var(--bone); color: var(--slate); }
+    .vcard__foot .foot__row--copy { color: var(--slate); }
+    .vcard__foot a { color: var(--slate); }
+
+@php $cardCss = ob_get_clean(); @endphp
+    <style>{!! \App\Sites\Rendering\InlineCss::minify((string) $cardCss) !!}</style>
 </head>
 <body>
 <main class="vcard">

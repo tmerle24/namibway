@@ -1,6 +1,7 @@
 @php
     use App\Sites\Blocks\EnquiryBlock;
     use App\Sites\Blocks\EnquiryFormType;
+    use App\Sites\Rendering\EnquiryTours;
     use App\Sites\Rendering\SafeLink;
 
     // Resolved by the controller and passed in — one answer per request, shared
@@ -18,6 +19,7 @@
     $viaWhatsApp = $channel === EnquiryBlock::CHANNEL_WHATSAPP && $waPhone !== null;
 
     $items = $enquiryItems ?? null;
+    $tours = $enquiryTours ?? collect();
     $showItems = $type->hasItems() && $items !== null && ! $items->isEmpty();
 
     $pickerTitle = match ($type) {
@@ -95,6 +97,50 @@
                                     <input type="date" id="eq-out" name="check_out" min="{{ $today }}" required aria-label="Departure">
                                 </div>
                             </div>
+
+                            <div class="enquiry__row">
+                                <div class="field">
+                                    <label for="eq-adults">Adults</label>
+                                    <input type="number" id="eq-adults" name="adults" min="1" max="20" value="2">
+                                </div>
+                                <div class="field">
+                                    <label for="eq-children">Children (under 12)</label>
+                                    <input type="number" id="eq-children" name="children" min="0" max="20" value="0">
+                                </div>
+                            </div>
+                        @elseif ($type === EnquiryFormType::TourRequest)
+                            {{-- Pick a tour and the end follows from its length;
+                                 only the tailor-made choice asks for one. The end
+                                 field is in the page from the first byte and the
+                                 script hides it for a fixed tour, so a browser
+                                 without JavaScript can still send either kind. --}}
+                            @if ($tours->isNotEmpty())
+                                <div class="field">
+                                    <label for="eq-tour">Tour</label>
+                                    <select id="eq-tour" name="listing_id">
+                                        @foreach ($tours as $tour)
+                                            <option value="{{ $tour->id }}"
+                                                    data-days="{{ EnquiryTours::days($tour) }}"
+                                                    data-slug="{{ $tour->slug }}"
+                                                    data-name="{{ $tour->name }}">{{ $tour->name }} — {{ EnquiryTours::days($tour) === 1 ? '1 day' : EnquiryTours::days($tour).' days' }}</option>
+                                        @endforeach
+                                        <option value="" data-days="">Private / tailor-made tour</option>
+                                    </select>
+                                </div>
+                            @endif
+
+                            <div class="enquiry__row">
+                                <div class="field">
+                                    <label for="eq-in">Start date</label>
+                                    <input type="date" id="eq-in" name="check_in" min="{{ $today }}" required>
+                                </div>
+                                <div class="field" id="eq-out-field">
+                                    <label for="eq-out">End date</label>
+                                    <input type="date" id="eq-out" name="check_out" min="{{ $today }}"
+                                           @if ($tours->isEmpty()) required @endif>
+                                </div>
+                            </div>
+                            <p class="note enquiry__tour-end" id="eq-tour-end" hidden></p>
 
                             <div class="enquiry__row">
                                 <div class="field">
@@ -468,6 +514,47 @@
                         </script>
                     @endif
 
+                    @if ($type === EnquiryFormType::TourRequest && $tours->isNotEmpty())
+                        <script>
+                        (function () {
+                            var select = document.getElementById('eq-tour');
+                            var start = document.getElementById('eq-in');
+                            var endField = document.getElementById('eq-out-field');
+                            var end = document.getElementById('eq-out');
+                            var note = document.getElementById('eq-tour-end');
+                            if (!select || !start || !endField || !end || !note) return;
+
+                            function update() {
+                                var option = select.options[select.selectedIndex];
+                                var days = parseInt(option.getAttribute('data-days') || '', 10);
+                                var fixed = days > 0;
+
+                                {{-- A fixed tour ends when it ends: the field goes,
+                                     and so does anything typed into it earlier. --}}
+                                endField.hidden = fixed;
+                                end.required = !fixed;
+                                if (fixed) end.value = '';
+
+                                if (!fixed || !start.value) {
+                                    note.hidden = true;
+                                    return;
+                                }
+
+                                var date = new Date(start.value + 'T12:00:00');
+                                date.setDate(date.getDate() + Math.max(days - 1, 0));
+                                note.textContent = days > 1
+                                    ? 'Ends on ' + date.toLocaleDateString(document.documentElement.lang || undefined, { day: 'numeric', month: 'long', year: 'numeric' }) + ' (' + days + ' days)'
+                                    : 'A one-day tour';
+                                note.hidden = false;
+                            }
+
+                            select.addEventListener('change', update);
+                            start.addEventListener('change', update);
+                            update();
+                        }());
+                        </script>
+                    @endif
+
                     @if ($viaWhatsApp)
                         <script>
                         (function () {
@@ -490,6 +577,8 @@
                                 // and then left out of the message, which on a
                                 // food order is the one thing the shop needs.
                                 if (value('eq-phone')) msg += '\nPhone: ' + value('eq-phone');
+                                var tour = document.getElementById('eq-tour');
+                                if (tour && tour.selectedIndex >= 0) msg += '\nTour: ' + tour.options[tour.selectedIndex].text;
                                 if (value('eq-in')) msg += '\nDate: ' + value('eq-in');
                                 if (value('eq-out')) msg += '\nUntil: ' + value('eq-out');
                                 if (value('eq-time')) msg += '\nTime: ' + value('eq-time');

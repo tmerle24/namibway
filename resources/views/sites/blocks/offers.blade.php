@@ -45,9 +45,10 @@
                                 <p class="offer-card__price">{{ $item['price'] }}</p>
                             @endif
 
-                            {{-- data-enquire: the title goes into the form's message (partials/motion). --}}
+                            {{-- data-enquire: the title goes into the form's message; data-enquire-listing
+                                 chooses the tour where the form lists them (partials/motion). --}}
                             @if ($enquire)
-                                <a class="btn btn--ghost" href="{{ $enquire }}" data-enquire="{{ $item['title'] }}">{{ $button }}</a>
+                                <a class="btn btn--ghost" href="{{ $enquire }}" data-enquire="{{ $item['title'] }}" data-enquire-listing="{{ $item['listing_slug'] ?? '' }}">{{ $button }}</a>
                             @endif
                         </div>
                     </div>

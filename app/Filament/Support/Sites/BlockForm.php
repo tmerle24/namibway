@@ -2,6 +2,7 @@
 
 namespace App\Filament\Support\Sites;
 
+use App\Models\Listing;
 use App\Models\Site;
 use App\Models\SiteImage;
 use App\Sites\BlockRegistry;
@@ -148,6 +149,14 @@ class BlockForm
                         TextInput::make('price')->label('Price')->maxLength(40)->placeholder('from N$ 1 450 pp'),
                         Textarea::make('text')->label('What it is')->rows(3)->maxLength(700)->columnSpanFull(),
                         self::image('image_id', $site, 'Photograph')->columnSpanFull(),
+                        Select::make('listing_slug')
+                            ->label('Listing on NamibWay')
+                            ->options(fn (): array => self::partnerListingOptions($site))
+                            ->searchable()
+                            ->native(false)
+                            ->placeholder('None')
+                            ->helperText('With a tour request form, this card opens the form with this tour chosen.')
+                            ->columnSpanFull(),
                     ]),
             ],
 
@@ -504,6 +513,24 @@ class BlockForm
 
                 return [$image->id => $label];
             })
+            ->all();
+    }
+
+    /**
+     * The business's own listings, by slug — what an offer card can point at.
+     *
+     * @return array<string, string>
+     */
+    private static function partnerListingOptions(Site $site): array
+    {
+        if ($site->partner_id === null) {
+            return [];
+        }
+
+        return Listing::where('partner_id', $site->partner_id)
+            ->orderBy('slug')
+            ->get(['slug', 'name'])
+            ->mapWithKeys(fn (Listing $listing): array => [(string) $listing->slug => (string) $listing->name])
             ->all();
     }
 

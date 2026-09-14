@@ -52,6 +52,10 @@ class OffersBlock extends BlockDefinition
             'items.*.duration' => ['nullable', 'string', 'max:40'],
             'items.*.price' => ['nullable', 'string', 'max:40'],
             'items.*.image_id' => ['nullable', 'integer'],
+            // The platform listing this card sells, by slug — a tour request
+            // form then opens with it chosen. A slug rather than an id, so a
+            // package re-imported into another environment still points right.
+            'items.*.listing_slug' => ['nullable', 'string', 'max:255'],
         ], $this->navRules());
     }
 

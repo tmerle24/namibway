@@ -76,6 +76,28 @@
         // only puts the card's title into the message so nobody retypes it.
         document.querySelectorAll('[data-enquire]').forEach(function (link) {
             link.addEventListener('click', function () {
+                {{-- A form that lists the tours chooses the one on the card —
+                     by its listing, else by name — and a card for something
+                     that is not one of them chooses the tailor-made request.
+                     Nothing goes into the message then: the choice is it. --}}
+                var tour = document.getElementById('eq-tour');
+                if (tour) {
+                    var slug = link.getAttribute('data-enquire-listing') || '';
+                    var title = (link.getAttribute('data-enquire') || '').toLowerCase();
+                    var picked = '';
+                    for (var i = 0; i < tour.options.length; i++) {
+                        var opt = tour.options[i];
+                        if ((slug && opt.getAttribute('data-slug') === slug)
+                            || (!slug && (opt.getAttribute('data-name') || '').toLowerCase() === title)) {
+                            picked = opt.value;
+                            break;
+                        }
+                    }
+                    tour.value = picked;
+                    tour.dispatchEvent(new Event('change'));
+                    return;
+                }
+
                 var message = document.getElementById('eq-message');
                 var line = 'I am interested in: ' + link.getAttribute('data-enquire');
                 if (message && message.value.indexOf(line) === -1) {

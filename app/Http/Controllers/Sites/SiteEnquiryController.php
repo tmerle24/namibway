@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Sites;
 
 use App\Mail\EnquiryCopy;
 use App\Models\Inquiry;
+use App\Models\Listing;
 use App\Models\ShopProduct;
 use App\Models\Site;
 use App\Models\SiteBlock;
 use App\Services\Booking\SiteOrder;
 use App\Sites\Blocks\EnquiryBlock;
 use App\Sites\Blocks\EnquiryFormType;
+use App\Sites\Rendering\EnquiryTours;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -94,6 +97,24 @@ class SiteEnquiryController
             }
         }
 
+        // A tour request names one of the business's own fixed-length
+        // listings, and the request is recorded against that listing rather
+        // than the site's — so the business sees which tour was asked for, and
+        // the end date is the tour's to decide, not the visitor's to guess.
+        // A request naming no tour is the tailor-made one, and gives its dates.
+        $tour = null;
+
+        if ($type === EnquiryFormType::TourRequest && filled($validated['listing_id'] ?? null)) {
+            $tour = EnquiryTours::find($site, (int) $validated['listing_id']);
+
+            if ($tour === null) {
+                return $this->back($request, false);
+            }
+
+            $end = EnquiryTours::endDate($tour, CarbonImmutable::parse((string) $validated['check_in']));
+            $validated['check_out'] = $end?->toDateString();
+        }
+
         // Priced before anything is written, so an order naming something that
         // is no longer for sale fails as a rejected form rather than as a
         // request the business cannot fill.
@@ -106,7 +127,7 @@ class SiteEnquiryController
         }
 
         $inquiry = Inquiry::create([
-            'listing_id' => $listing?->id,
+            'listing_id' => $tour->id ?? $listing?->id,
             // Filled on every row, so "which business is this for?" is one
             // column rather than a join through a listing that may be absent.
             'partner_id' => $site->partner_id,
@@ -129,7 +150,7 @@ class SiteEnquiryController
             // The delivery address rides in the message rather than in a column
             // of its own: it is one line of prose the business reads, not a
             // field anything queries or ships against yet.
-            'message' => $this->message($validated, $product),
+            'message' => $this->message($validated, $product, $tour, $type),
         ]);
 
         $order?->attachTo($inquiry, $type);
@@ -236,6 +257,17 @@ class SiteEnquiryController
                 'children' => ['nullable', 'integer', 'min:0', 'max:20'],
             ],
 
+            EnquiryFormType::TourRequest => [
+                ...$contact,
+                'listing_id' => ['nullable', 'integer'],
+                'check_in' => ['required', 'date', 'after_or_equal:today'],
+                // Only asked of a tailor-made request; a chosen tour ends when
+                // it ends, and whatever the browser sent for it is replaced.
+                'check_out' => ['required_without:listing_id', 'nullable', 'date', 'after_or_equal:check_in'],
+                'adults' => ['nullable', 'integer', 'min:1', 'max:20'],
+                'children' => ['nullable', 'integer', 'min:0', 'max:20'],
+            ],
+
             EnquiryFormType::TableReservation => [
                 ...$contact,
                 'check_in' => ['required', 'date', 'after_or_equal:today'],
@@ -289,12 +321,20 @@ class SiteEnquiryController
      *
      * @param  array<string, mixed>  $validated
      */
-    private function message(array $validated, ?ShopProduct $product = null): ?string
+    private function message(array $validated, ?ShopProduct $product = null, ?Listing $tour = null, ?EnquiryFormType $type = null): ?string
     {
         $message = $validated['message'] ?? null;
         $address = $validated['address'] ?? null;
 
         $prefix = $product !== null ? 'Enquiry about: '.$product->title : null;
+
+        // The listing carries the tour already; the line is for the mail and
+        // for somebody reading the request without opening the listing.
+        if ($type === EnquiryFormType::TourRequest) {
+            $prefix = $tour !== null
+                ? 'Tour: '.$tour->name.' ('.EnquiryTours::days($tour).' days)'
+                : 'Tour: private / tailor-made';
+        }
 
         if (filled($address)) {
             $prefix = ($prefix !== null ? $prefix."\n" : '')."Delivery address:\n".$address;

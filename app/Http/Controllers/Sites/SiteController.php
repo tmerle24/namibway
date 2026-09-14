@@ -15,6 +15,7 @@ use App\Sites\LegalText;
 use App\Sites\Rendering\BookingPanel;
 use App\Sites\Rendering\BookingPanelData;
 use App\Sites\Rendering\EnquiryItems;
+use App\Sites\Rendering\EnquiryTours;
 use App\Sites\Rendering\HtmlWhitespace;
 use App\Sites\Rendering\StoryText;
 use Illuminate\Http\Request;
@@ -165,6 +166,8 @@ class SiteController
             ? EnquiryFormType::StayRequest
             : EnquiryBlock::formTypeFor($site, $enquiryBlock->data);
         $enquiryItems = EnquiryItems::for($site, $enquiryType);
+        // Only queried for the form that lists them.
+        $enquiryTours = $enquiryType === EnquiryFormType::TourRequest ? EnquiryTours::for($site) : collect();
 
         $images = $this->images($site, $blocks->pluck('data')->all());
 
@@ -183,6 +186,7 @@ class SiteController
             'enquiryAction' => route('sites.enquiry', $site->slug),
             'enquiryType' => $enquiryType,
             'enquiryItems' => $enquiryItems,
+            'enquiryTours' => $enquiryTours,
         ])->render()));
 
         if (! $site->isPublished()) {

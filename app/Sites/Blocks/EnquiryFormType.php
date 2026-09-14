@@ -32,6 +32,13 @@ enum EnquiryFormType: string
     /** A stay: arrival and departure, adults and children. */
     case StayRequest = 'stay_request';
 
+    /**
+     * One of the business's own fixed-length offers — a tour, an excursion —
+     * with a start date and a party. The end follows from the offer's length,
+     * so the visitor is not asked for it; only a tailor-made request is.
+     */
+    case TourRequest = 'tour_request';
+
     /** A table: one date, one time, a number of people. */
     case TableReservation = 'table_reservation';
 
@@ -49,6 +56,7 @@ enum EnquiryFormType: string
         return match ($this) {
             self::Contact => 'Contact — name, email, message',
             self::StayRequest => 'Reservation request — dates and guests',
+            self::TourRequest => 'Tour request — pick a tour, a start date and guests',
             self::TableReservation => 'Table reservation — date, time and party',
             self::RestaurantOrder => 'Restaurant order — from the menu',
             self::ProductOrder => 'Product order — from the shop',
@@ -64,6 +72,7 @@ enum EnquiryFormType: string
         return match ($this) {
             self::Contact => 'Get in touch',
             self::StayRequest => 'Request availability',
+            self::TourRequest => 'Request a tour',
             self::TableReservation => 'Book a table',
             self::RestaurantOrder => 'Order online',
             self::ProductOrder => 'Buy online',
@@ -85,6 +94,7 @@ enum EnquiryFormType: string
         return match ($this) {
             self::Contact => 'Contact',
             self::StayRequest => 'Enquire',
+            self::TourRequest => 'Enquire',
             self::TableReservation => 'Book a table',
             self::RestaurantOrder => 'Order',
             self::ProductOrder => 'Buy online',
@@ -102,7 +112,7 @@ enum EnquiryFormType: string
     public function inquiryKind(): InquiryKind
     {
         return match ($this) {
-            self::Contact, self::StayRequest => InquiryKind::Booking,
+            self::Contact, self::StayRequest, self::TourRequest => InquiryKind::Booking,
             self::TableReservation => InquiryKind::TableReservation,
             self::RestaurantOrder, self::ProductOrder, self::ProductEnquiry => InquiryKind::Order,
         };
