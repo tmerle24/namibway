@@ -752,14 +752,6 @@ class ListingImporter
         ])->save();
     }
 
-    /**
-     * Copies a folder's images to R2 under the given prefix, cover first.
-     *
-     * The storage key is built from the prefix and the file's own name, never from
-     * the path inside the archive — see PhotoArchive.
-     *
-     * @return list<string> the stored keys
-     */
     /** Where a photograph is stored: its name and a hash of its bytes. */
     private function photoKey(string $prefix, string $fileName, string $contents): string
     {
@@ -801,6 +793,14 @@ class ListingImporter
         ]));
     }
 
+    /**
+     * Copies a folder's images to R2 under the given prefix, cover first.
+     *
+     * The storage key is built from the prefix and the file's own name, never from
+     * the path inside the archive — see PhotoArchive.
+     *
+     * @return list<string> the stored keys
+     */
     private function uploadPhotos(PhotoArchive $archive, string $folder, string $prefix): array
     {
         $disk = Storage::disk('r2');
