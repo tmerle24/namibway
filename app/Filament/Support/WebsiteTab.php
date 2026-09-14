@@ -187,6 +187,8 @@ class WebsiteTab
 
                             EditSiteImagesAction::make(),
 
+                            SiteCardAction::make(),
+
                             EditLegalTextAction::make(),
 
                             ManageShopProductsAction::make(),

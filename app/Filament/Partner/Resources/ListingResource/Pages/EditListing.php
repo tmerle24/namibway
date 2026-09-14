@@ -17,6 +17,7 @@ use App\Filament\Support\EditSiteLogoAction;
 use App\Filament\Support\EditTypographyAction;
 use App\Filament\Support\ManageShopProductsAction;
 use App\Filament\Support\OrderWebsiteAction;
+use App\Filament\Support\SiteCardAction;
 use App\Filament\Support\ViewListingAction;
 use App\Models\Listing;
 use App\Services\Enrichment\OsmLocationFinder;
@@ -63,6 +64,7 @@ class EditListing extends EditRecord
             EditBlocksAction::header(),
             EditPagesAction::header(),
             EditSiteImagesAction::header(),
+            SiteCardAction::header(),
             ManageShopProductsAction::header(),
             EditHeroAction::header(),
             EditSiteLogoAction::header(),

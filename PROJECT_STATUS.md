@@ -1724,6 +1724,23 @@ priced "on request", and there are no guest quotes or FAQ answers until Epima su
 Still open: a hero picker that is not "image 0" for generated sites (the logo became Epima's
 hero), and a partner → listing copy in the panel's own create form.
 
+### Built 2026-09-14 — the digital business card
+
+Asked for by the first customer and worth having for every one of them: a card
+a trader hands over as a QR code on paper. `/card` on the customer's own site,
+with the buttons somebody actually presses after scanning — call, WhatsApp,
+email, save contact, website, and the enquiry form — plus `/card/vcf` (the
+contact file a phone saves) and `/card/qr` (the PNG for the printer, `?download=1`
+to save it). `App\Sites\Rendering\BusinessCard`, `SiteCardController`, and
+`SiteCardAction` in both panels, so the owner gets the code without asking us.
+
+Two decisions worth keeping. **The card holds no content of its own**: every
+line on it is the site's contact detail or the site's own enquiry band, so a new
+number is changed once and the printed card keeps working — that is the whole
+point of a QR pointing at a page rather than at a `tel:` link. And **a draft's
+code carries the preview token**, because a card printed before the site is live
+would otherwise scan into a 404; the panel says so where the code is downloaded.
+
 ### Next up, in the order it was asked for
 
 - **Collecting the money.** A provider that onboards a Namibian entity and settles in NAD,

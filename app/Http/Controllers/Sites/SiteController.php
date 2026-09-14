@@ -91,6 +91,20 @@ class SiteController
             return $this->about($request, $site);
         }
 
+        // The digital business card, the contact file it saves and the QR
+        // code that goes on the printed one. See SiteCardController.
+        if ($page === null && $pageSlug === 'card') {
+            return app(SiteCardController::class)->page($site, $this->accent($site));
+        }
+
+        if ($page === null && $pageSlug === 'card/vcf') {
+            return app(SiteCardController::class)->vcard($site);
+        }
+
+        if ($page === null && $pageSlug === 'card/qr') {
+            return app(SiteCardController::class)->qr($request, $site);
+        }
+
         if ($page === null && $pageSlug === 'shop') {
             return $this->shopIndex($request, $site);
         }
