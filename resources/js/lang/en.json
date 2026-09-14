@@ -358,6 +358,7 @@
         },
         "guided": {
             "included": "In the tour price",
+            "metaMode": "Guided, with driver",
             "note": "The route and the lodges are a proposal — the operator confirms them with the quote.",
             "onRequest": "Price on request from the operator",
             "total": "{price} for the whole tour",

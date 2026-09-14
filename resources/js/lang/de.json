@@ -309,6 +309,7 @@
         },
         "guided": {
             "included": "Im Tourpreis enthalten",
+            "metaMode": "Geführt, mit Fahrer",
             "note": "Route und Unterkünfte sind ein Vorschlag — der Veranstalter bestätigt sie mit seinem Angebot.",
             "onRequest": "Preis auf Anfrage beim Veranstalter",
             "total": "{price} für die gesamte Tour",

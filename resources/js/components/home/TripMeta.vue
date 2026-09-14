@@ -55,6 +55,12 @@ const travelersLabel = computed(() => {
 const vehicleLabel = computed(() => {
     const p = props.tripParams;
 
+    // Guided: the operator brings the vehicle, so neither a class nor a daily
+    // budget was ever asked for. What the row should say is how they travel.
+    if (p?.vehicle_type === 'guided') {
+        return t('itinerary.guided.metaMode');
+    }
+
     if (!p?.vehicle_class) {
         return null;
     }

@@ -80,8 +80,11 @@
     @endif
 
     @if(!empty($variant['vehicle']))
+    {{-- Guided: the one line is the tour itself, with the guide and the vehicle
+         inside it — calling it "Vehicle" would name the smallest part of it. --}}
+    @php $guided = ($plan['trip_params']['vehicle_type'] ?? null) === 'guided'; @endphp
     <div class="vehicle-row">
-        <strong>Vehicle:</strong> {{ $variant['vehicle']['name'] ?? $variant['vehicle'] }}
+        <strong>{{ $guided ? 'Tour:' : 'Vehicle:' }}</strong> {{ $variant['vehicle']['name'] ?? $variant['vehicle'] }}
     </div>
     @endif
 
