@@ -16,6 +16,8 @@ defineProps<{
     // Collapsing folds the day's entries away but keeps this header line, so
     // a folded day still says which day it is.
     collapsed?: boolean;
+    // Guided trip: the rows say "in the tour price" instead of their own.
+    priceIncluded?: boolean;
     // Opened through a read-only share link: the day is still shown in full,
     // it just offers nothing that would try to write.
     readonly?: boolean;
@@ -116,6 +118,7 @@ const { t } = useI18n();
                 :key="`${entry.type}-${entry.itemIndex}-${entry.item.id ?? entry.item.name}`"
                 :type="entry.type"
                 :item="entry.item"
+                :price-included="priceIncluded"
                 :readonly="readonly"
                 :time="entry.item.time"
                 @update:time="(value) => emit('update-time', entry, value)"

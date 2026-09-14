@@ -19,6 +19,9 @@ const props = defineProps<{
     // The inquiry_status value from the ItineraryItem row created on booking,
     // null when no booking request has been sent for this accommodation yet.
     bookingStatus?: string | null;
+    // Guided trip: the operator quotes the nights inside one tour price, so
+    // this card states that instead of a rate the traveller would pay twice.
+    priceIncluded?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -46,14 +49,15 @@ const previewSlug = ref<string | null>(null);
 // a claim. Where the listing does record a unit it wins — including
 // "per person, per night", which is what a good half of this market quotes and
 // what the card silently mislabelled before.
-const priceLabel = computed(
-    () =>
-        formatPriceWithUnit(
-            props.stay?.price_from,
-            props.stay?.price_unit,
-            t,
-            'per_night',
-        ) ?? t('itinerary.priceOnRequest'),
+const priceLabel = computed(() =>
+    props.priceIncluded
+        ? t('itinerary.guided.included')
+        : (formatPriceWithUnit(
+              props.stay?.price_from,
+              props.stay?.price_unit,
+              t,
+              'per_night',
+          ) ?? t('itinerary.priceOnRequest')),
 );
 
 // "Doppelzimmer · 1 – 4 Jan 2027 (3 Nächte)" — the room drops out until one is

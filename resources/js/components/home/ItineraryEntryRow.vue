@@ -17,6 +17,8 @@ const props = defineProps<{
     item: ItineraryListingRef;
     time?: string | null;
     readonly?: boolean;
+    // See ItineraryStayCard: on a guided trip one tour price covers this.
+    priceIncluded?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -79,10 +81,14 @@ const isAttraction = computed(() => props.item.type === 'attraction');
 // traveler can budget against and one they can't. No fallback unit — an
 // activity is as plausibly priced per group as per head, and the whole point of
 // the column is to stop the UI picking one on the listing's behalf.
-const priceLabel = computed(
-    () =>
-        formatPriceWithUnit(props.item.price_from, props.item.price_unit, t) ??
-        t('itinerary.priceOnRequest'),
+const priceLabel = computed(() =>
+    props.priceIncluded
+        ? t('itinerary.guided.included')
+        : (formatPriceWithUnit(
+              props.item.price_from,
+              props.item.price_unit,
+              t,
+          ) ?? t('itinerary.priceOnRequest')),
 );
 
 // The second line: what the traveler is actually booking, in the order it

@@ -286,10 +286,15 @@ What follows from that, in the order it should be built:
    category: guided mode sees only guided tours, self-drive sees only the rest, and a vehicle
    with no category is a hire car, which is what everything predating tours is. Without this a
    published tour could be picked as somebody's rental car, and nothing would have thrown.
-3. **Prices leave the plan in guided mode** (next). Everything is inside the one tour, so each
+3. **Prices leave the plan in guided mode** (built 2026-09-14). Everything is inside the one tour, so each
    night and each activity reads "included" and the price is the operator's — or "on request",
    which is what an operator quoting per party will usually say. `listings.price_unit` is
-   display only (BOOKING_BEYOND_ROOMS § 7.3), so nothing is computed from it.
+   display only (BOOKING_BEYOND_ROOMS § 7.3), so nothing is computed from it. In the plan each
+   night and each entry now reads "in the tour price", the stage estimates are gone, the trip
+   price is the tour's own (party multiplier included) or "on request", and the line that used
+   to say "Vehicle:" says "Tour:". The note about the lodges being a proposal sits under the
+   price, because a plan that shows one price and a list of lodges is otherwise read as a
+   booking of exactly those lodges.
 4. **One request instead of many** (next). A plan today produces one inquiry per property. A
    guided trip is one inquiry to the operator for the whole journey — which is the flooding
    problem solving itself, and it sits exactly right with the one-active-request gate.

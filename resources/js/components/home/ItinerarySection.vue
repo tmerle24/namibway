@@ -1185,7 +1185,7 @@ function stagePriceLabel(
     variantIndex: number,
     dayIndex: number,
 ): string | null {
-    const total = stageTotal(variantIndex, dayIndex);
+    const total = guidedTrip.value ? null : stageTotal(variantIndex, dayIndex);
 
     return total === null
         ? null
@@ -1203,7 +1203,7 @@ function stagePriceSubLabel(
     variantIndex: number,
     dayIndex: number,
 ): string | null {
-    const total = stageTotal(variantIndex, dayIndex);
+    const total = guidedTrip.value ? null : stageTotal(variantIndex, dayIndex);
 
     if (total === null) {
         return null;
@@ -2526,6 +2526,13 @@ function estimatedTotal(variant: ItineraryVariant): number | null {
     return hasAnyPrice ? amount : null;
 }
 
+// Everything above, except that a guided trip has exactly one price and it is
+// the tour's. Adding lodges to it would charge the traveller twice for nights
+// the operator already quoted.
+function tripTotal(variant: ItineraryVariant): number | null {
+    return guidedTrip.value ? vehicleTotal(variant) : estimatedTotal(variant);
+}
+
 // The vehicle is the one line the plan multiplies by the trip length itself
 // (it appears once, not once per day), so it's the one place the difference
 // between a daily rate and a flat package price actually changes the sum. An
@@ -2543,7 +2550,27 @@ function vehicleTotal(variant: ItineraryVariant): number | null {
         : perCharge;
 }
 
+// Guided: the operator drives, and one price covers the vehicle, the guide,
+// the lodges and what the programme includes. So the plan stops adding items
+// up — the tour's own price is the trip's price, and where the operator quotes
+// per party there is no figure at all, only "on request".
+const guidedTrip = computed(
+    () => (currentTripParams.value?.vehicle_type ?? null) === 'guided',
+);
+
+function guidedPriceLabel(variant: ItineraryVariant): string {
+    const amount = vehicleTotal(variant);
+
+    return amount === null
+        ? t('itinerary.guided.onRequest')
+        : t('itinerary.guided.total', { price: formatPrice(amount) });
+}
+
 function estimatedLabel(variant: ItineraryVariant): string | null {
+    if (guidedTrip.value) {
+        return guidedPriceLabel(variant);
+    }
+
     const amount = estimatedTotal(variant);
 
     return amount === null
@@ -2554,9 +2581,9 @@ function estimatedLabel(variant: ItineraryVariant): string | null {
 // Total ÷ trip length — a pure display derivation of estimatedTotal() above,
 // not a separately tracked figure, so it can't drift out of sync with it.
 function estimatedPerDayLabel(variant: ItineraryVariant): string | null {
-    const amount = estimatedTotal(variant);
+    const amount = tripTotal(variant);
 
-    if (amount === null || variant.days.length === 0) {
+    if (guidedTrip.value || amount === null || variant.days.length === 0) {
         return null;
     }
 
@@ -2566,6 +2593,10 @@ function estimatedPerDayLabel(variant: ItineraryVariant): string | null {
 }
 
 function vehicleEstimatedLabel(variant: ItineraryVariant): string | null {
+    if (guidedTrip.value) {
+        return guidedPriceLabel(variant);
+    }
+
     const amount = vehicleTotal(variant);
 
     return amount === null
@@ -2581,7 +2612,7 @@ function vehicleEstimatedLabel(variant: ItineraryVariant): string | null {
 function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
     const amount = vehicleTotal(variant);
 
-    if (amount === null || variant.days.length === 0) {
+    if (guidedTrip.value || amount === null || variant.days.length === 0) {
         return null;
     }
 
@@ -2782,6 +2813,11 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                         >({{ estimatedPerDayLabel(variant) }})</span
                     >
                 </div>
+                <!-- What the one price does not promise: the operator quotes on
+                     this route, and confirms or substitutes the lodges. -->
+                <p v-if="guidedTrip" class="variant-price-note">
+                    {{ t('itinerary.guided.note') }}
+                </p>
 
                 <TripMeta
                     :trip-params="currentTripParams"
@@ -2809,7 +2845,11 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                         />
                         <div class="vehicle-card-body">
                             <ItineraryLineItem
-                                keypath="itinerary.vehicle"
+                                :keypath="
+                                    guidedTrip
+                                        ? 'itinerary.guided.tour'
+                                        : 'itinerary.vehicle'
+                                "
                                 :item-ref="variant.vehicle"
                                 :readonly="readonly"
                                 class="variant-vehicle"
@@ -3633,6 +3673,9 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
 
                                                     <div class="day-card-grid">
                                                         <ItineraryStayCard
+                                                            :price-included="
+                                                                guidedTrip
+                                                            "
                                                             :readonly="readonly"
                                                             :stay="
                                                                 day.accommodation
@@ -3817,6 +3860,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                             </div>
 
                                             <ItineraryDayPlanCard
+                                                :price-included="guidedTrip"
                                                 :readonly="readonly"
                                                 :date-label="
                                                     dayCardDateLabel(day)
@@ -3992,6 +4036,7 @@ function vehicleEstimatedPerDayLabel(variant: ItineraryVariant): string | null {
                                             </div>
 
                                             <ItineraryDayPlanCard
+                                                :price-included="guidedTrip"
                                                 :readonly="readonly"
                                                 :date-label="
                                                     departureRailDate(day)

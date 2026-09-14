@@ -1247,6 +1247,14 @@ body:has(.kaia-page) {
     font-size: 12.5px;
     margin-left: 2px;
 }
+/* Guided trips: what the one price does and does not promise. */
+.kaia-page .variant-price-note {
+    color: #8a7f68;
+    font-size: 12.5px;
+    line-height: 1.45;
+    margin: 0 0 10px;
+    max-width: 52ch;
+}
 .kaia-page .variant-card .trip-meta-wrap {
     margin-top: 0;
     margin-bottom: 16px;
