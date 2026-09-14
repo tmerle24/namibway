@@ -266,6 +266,55 @@ Namibia out of table names — a POI table hanging off `City`/`Destination`
 travels to the next country by construction (see CLAUDE.md → "Brand &
 expansion").
 
+## Future concept: travelling guided (step one built 2026-09-14)
+
+Where it came from: the first tour operator on the platform (Epima, Otjiwarongo) sells guided
+multi-day trips, and nothing in the plan could express one. The question that settled it was
+whether a tour is a listing, a bookable unit, or something else.
+
+**It is the vehicle.** Kaia's plan already has exactly one slot for "one thing for the whole
+trip, not per day" — the vehicle of a variant. A guided trip is that thing, with a driver and
+everything else included. So a guided tour is a `Listing` of type `vehicle` with
+`vehicle_category = guided_tour`, and no new type is needed.
+
+What follows from that, in the order it should be built:
+
+1. **A third way to travel** (built). `vehicle_type` was `car` or `camper`; it is now
+   `car`, `camper` or `guided`. In guided mode the class question (sedan, SUV, camper) is not
+   asked and is ignored if present — the operator brings the car.
+2. **The two kinds never mix** (built). The candidate query splits the vehicle pool on the
+   category: guided mode sees only guided tours, self-drive sees only the rest, and a vehicle
+   with no category is a hire car, which is what everything predating tours is. Without this a
+   published tour could be picked as somebody's rental car, and nothing would have thrown.
+3. **Prices leave the plan in guided mode** (next). Everything is inside the one tour, so each
+   night and each activity reads "included" and the price is the operator's — or "on request",
+   which is what an operator quoting per party will usually say. `listings.price_unit` is
+   display only (BOOKING_BEYOND_ROOMS § 7.3), so nothing is computed from it.
+4. **One request instead of many** (next). A plan today produces one inquiry per property. A
+   guided trip is one inquiry to the operator for the whole journey — which is the flooding
+   problem solving itself, and it sits exactly right with the one-active-request gate.
+5. **The resource, when it can be double-booked** (later). Not the tour is the bookable: the
+   guide with his vehicle is. One `BookableUnit` with `total_units = 1` whose calendar days are
+   taken for the length of the trip. Seats only become units if the operator ever sells fixed
+   departures to mixed guests — that is when `BookingSlot` earns its place here.
+
+Two things the plan must say out loud once step 3 lands: the lodges are **a proposal the
+operator quotes on**, not a booking, and the budget tier is what tells the operator which
+category to price. Otherwise a traveller expects exactly those lodges, and that is a promise we
+did not make.
+
+**Open, and worth deciding before the second operator arrives:** by what rule Kaia picks one
+operator over another — region, languages, party size, rating. With one operator it never
+shows; with two it is arbitrary, which is worse than a rule nobody likes. And what an operator
+has to maintain to be pickable at all: areas served, maximum party size, languages, optionally a
+day rate.
+
+The three fixed programmes Epima also sells (8, 11 and 14 days, fixed route and lodges) are
+deliberately **not** part of this. They live on the operator's own website and in Explore as
+listings. Making Kaia offer a fixed package instead of a plan is a separate concept and a
+separate result type in the itinerary; the guided mode above covers the tailor-made case, which
+is what Kaia is good at anyway.
+
 ## Backlog
 
 Legend: ✅ done · 🟡 partially done (see note) · ⬜ not started

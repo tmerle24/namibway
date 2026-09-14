@@ -4,6 +4,7 @@ namespace Tests\Feature\Services;
 
 use App\Enums\ListingType;
 use App\Enums\PriceUnit;
+use App\Enums\VehicleCategory;
 use App\Enums\VehicleClass;
 use App\Models\City;
 use App\Models\Listing;
@@ -281,5 +282,55 @@ class ItineraryServiceCandidateListingsTest extends TestCase
         ]);
 
         $this->assertEmpty($this->candidates([])->all());
+    }
+
+    /**
+     * A guided tour and a hire car sit in the same table. Offering one for the
+     * other is the kind of mistake nothing would throw on: the plan would
+     * simply hand a self-drive traveller an operator's fourteen-day programme
+     * as "their vehicle".
+     */
+    public function test_a_self_drive_traveller_is_never_offered_a_guided_tour(): void
+    {
+        $this->makeListing(ListingType::Vehicle, 'Plain Hire Car', ['vehicle_category' => VehicleCategory::SelfDrive]);
+        $this->makeListing(ListingType::Vehicle, 'Grand Guided Safari', ['vehicle_category' => VehicleCategory::GuidedTour]);
+
+        $names = $this->candidates(['vehicle_type' => 'car'])->pluck('name');
+
+        $this->assertContains('Plain Hire Car', $names);
+        $this->assertNotContains('Grand Guided Safari', $names);
+    }
+
+    public function test_a_guided_traveller_gets_only_guided_tours(): void
+    {
+        $this->makeListing(ListingType::Vehicle, 'Plain Hire Car', ['vehicle_category' => VehicleCategory::SelfDrive]);
+        $this->makeListing(ListingType::Vehicle, 'Camper With Tent', ['vehicle_class' => VehicleClass::Camper4x4]);
+        $this->makeListing(ListingType::Vehicle, 'Grand Guided Safari', ['vehicle_category' => VehicleCategory::GuidedTour]);
+
+        $names = $this->candidates(['vehicle_type' => ItineraryService::GUIDED])->pluck('name');
+
+        $this->assertSame(['Grand Guided Safari'], $names->all());
+    }
+
+    /**
+     * A vehicle listing from before guided tours existed has no category, and
+     * it is a hire car — never a guide.
+     */
+    public function test_a_vehicle_without_a_category_counts_as_self_drive(): void
+    {
+        $this->makeListing(ListingType::Vehicle, 'Old Rental', ['vehicle_category' => null]);
+
+        $this->assertContains('Old Rental', $this->candidates(['vehicle_type' => 'car'])->pluck('name'));
+        $this->assertEmpty($this->candidates(['vehicle_type' => ItineraryService::GUIDED]));
+    }
+
+    /** Sedan or SUV is not the guest's decision when the operator drives. */
+    public function test_a_vehicle_class_is_ignored_in_guided_mode(): void
+    {
+        $this->makeListing(ListingType::Vehicle, 'Grand Guided Safari', ['vehicle_category' => VehicleCategory::GuidedTour]);
+
+        $names = $this->candidates(['vehicle_type' => ItineraryService::GUIDED, 'vehicle_class' => VehicleClass::Sedan->value])->pluck('name');
+
+        $this->assertSame(['Grand Guided Safari'], $names->all());
     }
 }

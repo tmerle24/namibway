@@ -5,6 +5,7 @@ namespace App\Services\Kaia;
 use App\Connectors\ConnectorFactory;
 use App\Connectors\ResConnect\DTOs\AvailabilityRequest;
 use App\Enums\PriceUnit;
+use App\Enums\VehicleCategory;
 use App\Enums\VehicleClass;
 use App\Http\Controllers\Controller;
 use App\Models\Attraction;
@@ -31,6 +32,9 @@ class ItineraryService
      * multi-minute wait. Once the cap is hit, remaining stays are left
      * unchecked (assumed available) rather than blocking the response.
      */
+    /** The third way to travel: an operator's vehicle, with a guide driving it. */
+    public const GUIDED = 'guided';
+
     private const MAX_AVAILABILITY_CHECKS_PER_GENERATE = 6;
 
     private int $availabilityChecksUsed = 0;
@@ -1242,7 +1246,13 @@ class ItineraryService
             start time (e.g. "06:00", "19:00"). Omit these fields when no specific time applies — don't
             invent a time just to fill the field.
 
-            The traveler's vehicle_type trip parameter is either "car" or "camper". Pick ONE vehicle listing
+            When the traveler's vehicle_type trip parameter is "guided", they are travelling with an operator
+            who drives: pick ONE guided tour listing per variant as the "vehicle" field, and plan the days
+            as usual — the route, the lodges and the activities are the proposal the operator will quote on.
+            Everything in the plan is part of that one tour, so never present the lodges or activities as
+            separately bookable, and never pick a self-drive vehicle in this mode.
+
+            Otherwise the traveler's vehicle_type trip parameter is either "car" or "camper". Pick ONE vehicle listing
             per variant that matches — one whose highlights include "Camper" for vehicle_type "camper", or a
             plain self-drive vehicle otherwise. If vehicle_type is "camper", prefer accommodations whose
             highlights include "Camping" for as many nights as reasonable, since the traveler has their own
@@ -1754,6 +1764,11 @@ class ItineraryService
      */
     private function vehicleClass(array $tripParams): ?VehicleClass
     {
+        // Sedan or SUV is not the guest's decision when the operator drives.
+        if (($tripParams['vehicle_type'] ?? null) === self::GUIDED) {
+            return null;
+        }
+
         $value = $tripParams['vehicle_class'] ?? null;
 
         return is_string($value) ? VehicleClass::tryFrom($value) : null;
@@ -1861,16 +1876,29 @@ class ItineraryService
         $shortlisted = Listing::query()
             ->where('is_published', true)
             ->toBase()
-            ->get(['id', 'type', 'price_from', 'price_unit', 'highlights', 'vehicle_class'])
+            ->get(['id', 'type', 'price_from', 'price_unit', 'highlights', 'vehicle_class', 'vehicle_category'])
             ->groupBy(fn (object $row) => (string) $row->type)
             ->flatMap(function (Collection $rows, string $type) use ($requestedTier, $vehicleType, $vehicleClass, $vehicleDailyBudget, $party, $nights) {
-                if ($type === 'vehicle' && ($vehicleClass !== null || $vehicleType !== null)) {
-                    $rows = $this->matchingVehicles($rows, $vehicleClass, $vehicleType);
+                if ($type === 'vehicle') {
+                    // A guided tour and a hire car live in the same table and
+                    // must never be offered for each other: somebody who asked
+                    // to drive themselves cannot be given an operator's
+                    // fourteen-day programme as "their vehicle", and somebody
+                    // who asked for a guide cannot be handed a bare car. The
+                    // split is the category; a vehicle without one is a hire
+                    // car, which is what every listing predating guided tours
+                    // is.
+                    $guided = $vehicleType === self::GUIDED;
+                    $rows = $rows->filter(fn (object $row): bool => (($row->vehicle_category ?? null) === VehicleCategory::GuidedTour->value) === $guided);
 
-                    if ($vehicleDailyBudget !== null) {
-                        $rows = $this->sortByDailyBudgetFit($rows, $vehicleDailyBudget, $party, $nights);
+                    if (! $guided && ($vehicleClass !== null || $vehicleType !== null)) {
+                        $rows = $this->matchingVehicles($rows, $vehicleClass, $vehicleType);
+
+                        if ($vehicleDailyBudget !== null) {
+                            $rows = $this->sortByDailyBudgetFit($rows, $vehicleDailyBudget, $party, $nights);
+                        }
                     }
-                } elseif ($type !== 'vehicle' && $requestedTier !== null) {
+                } elseif ($requestedTier !== null) {
                     $rows = $rows->filter(
                         fn (object $row) => $this->budgetTierDistance(
                             $row->price_from === null ? null : (string) $row->price_from,

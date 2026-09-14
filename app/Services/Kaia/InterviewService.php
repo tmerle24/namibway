@@ -49,7 +49,9 @@ class InterviewService
         for children, count under-13s yourself — never ask the user to recount or re-specify ages
         they already stated. E.g. "3 kids aged 13, 15, 17" → 0 under 13. "kids aged 8 and 11" → 2
         under 13. Only ask ages if children are mentioned but no ages given.
-        (6) Vehicle — awaiting "vehicle_type". Regular car, 4x4, camper with rooftop tent, motorhome.
+        (6) Vehicle — awaiting "vehicle_type". Regular car, 4x4, camper with rooftop tent, motorhome —
+        or "guided", when they would rather be driven: an operator's vehicle with a guide, everything
+        arranged. Never ask for a vehicle class once they have said guided; the operator brings the car.
         (7) START/END LOCATION — awaiting "start_end". Do NOT ask by default. Assume Windhoek
         round-trip silently. Only ask if the user's own words imply an asymmetric route (different
         arrival/departure city, continuing to another country).
@@ -134,7 +136,7 @@ class InterviewService
                 'budget_tier' => ['type' => 'string', 'enum' => ['budget', 'mid-range', 'premium']],
                 'adults' => ['type' => 'integer', 'description' => 'Number of adults travelling'],
                 'children_under_13' => ['type' => 'integer', 'description' => 'Number of children under 13 in the group; 0 if none or not travelling with children'],
-                'vehicle_type' => ['type' => 'string', 'enum' => ['car', 'camper'], 'description' => 'car = regular 2WD or 4x4; camper = rooftop tent or motorhome'],
+                'vehicle_type' => ['type' => 'string', 'enum' => ['car', 'camper', 'guided'], 'description' => 'car = regular 2WD or 4x4; camper = rooftop tent or motorhome; guided = an operator drives, with guide, vehicle and everything arranged'],
                 // Optional on purpose: the interview is capped at a handful of
                 // questions, so this must never cost one. Set it only when the
                 // traveler volunteers the detail; otherwise the trip plan's
