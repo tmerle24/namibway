@@ -9,7 +9,10 @@ use ZipArchive;
  * A website package: one ZIP holding `site.json` and the media it names.
  *
  * Format: SITE_PACKAGE.md. Folders inside the archive are ignored — a file is
- * found by its basename, so zipping a folder on any OS works. Entries are read
+ * found by its basename, so zipping a folder on any OS works. The one exception
+ * is `listings/`, which belongs to the platform listings rather than to the
+ * website: those photographs are handed to the listings importer whole, folder
+ * names and all, and never appear in the site's own picture list. Entries are read
  * by index and only the basename is ever used, so a crafted archive cannot
  * write anywhere (same rule as PhotoArchive).
  */
@@ -29,10 +32,12 @@ class SitePackage
     /** @var array<string, mixed> */
     private array $manifest = [];
 
+    private ?string $listingsCsv = null;
+
     /** @var list<string> */
     private array $errors = [];
 
-    private function __construct(private readonly ZipArchive $zip) {}
+    private function __construct(private readonly ZipArchive $zip, public readonly string $path) {}
 
     public static function open(string $path): self
     {
@@ -42,7 +47,7 @@ class SitePackage
             throw new RuntimeException('The ZIP file could not be opened.');
         }
 
-        $package = new self($zip);
+        $package = new self($zip, $path);
         $package->index();
 
         return $package;
@@ -63,6 +68,12 @@ class SitePackage
     public function errors(): array
     {
         return $this->errors;
+    }
+
+    /** The listings sheet, where the package carries one. */
+    public function listingsCsv(): ?string
+    {
+        return $this->listingsCsv;
     }
 
     public function has(string $file): bool
@@ -119,6 +130,18 @@ class SitePackage
             if ($base === 'site.json') {
                 $manifestIndex = $i;
 
+                continue;
+            }
+
+            if ($base === 'listings.csv') {
+                $this->listingsCsv = (string) $this->zip->getFromIndex($i);
+
+                continue;
+            }
+
+            // Listing photographs: read by the listings importer straight from
+            // the archive, so they are neither indexed nor reported as unused.
+            if (str_starts_with(strtolower($name), 'listings/') || str_contains(strtolower($name), '/listings/')) {
                 continue;
             }
 

@@ -29,6 +29,12 @@ class SitePackagePlan
 
     public int $videos = 0;
 
+    public int $listingsNew = 0;
+
+    public int $listingsUpdated = 0;
+
+    public int $listingsWritten = 0;
+
     /** @var list<array{type: string, label: string, action: string}> */
     public array $blocks = [];
 
@@ -51,6 +57,8 @@ class SitePackagePlan
             'images_new' => $this->imagesNew,
             'images_updated' => $this->imagesUpdated,
             'videos' => $this->videos,
+            'listings_new' => $this->listingsNew,
+            'listings_updated' => $this->listingsUpdated,
             'blocks' => $this->blocks,
             'written' => $this->written,
         ];

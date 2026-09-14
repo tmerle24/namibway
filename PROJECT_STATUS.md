@@ -1741,6 +1741,16 @@ point of a QR pointing at a page rather than at a `tel:` link. And **a draft's
 code carries the preview token**, because a card printed before the site is live
 would otherwise scan into a 404; the panel says so where the code is downloaded.
 
+### Built 2026-09-14 — the platform listings ride in the website package
+
+Asked for while setting the first customer up: one upload for the whole customer, not a website
+package here and a spreadsheet there. A package may now carry `listings.csv` (the listings sheet
+as it already exists) plus the photo folders under `listings/`, and hands them to
+`ListingImporter` — the importer that already owns that table. Nothing about listings is
+reimplemented: same columns, same `id`-is-the-update-key rule, same photo-folder semantics, same
+write path. The package only adds that the rows are checked in the same dry run and that a bad
+row stops the website import too. Format: `SITE_PACKAGE.md`.
+
 ### Next up, in the order it was asked for
 
 - **Collecting the money.** A provider that onboards a Namibian entity and settles in NAD,

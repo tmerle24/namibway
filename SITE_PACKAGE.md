@@ -14,7 +14,12 @@ again and writes it. Code: `App\Sites\Import\SitePackage` (reads the ZIP),
 ```
 epima.zip
 ├── site.json
-└── media/            (any folder layout — files are found by name)
+├── listings.csv               (optional — the listings for the platform)
+├── listings/                  (optional — one folder per listing, named in photo_folder)
+│   └── Namibia Top 3/
+│       ├── cover-dunes.jpg
+│       └── zebras.jpg
+└── media/                     (any folder layout — files are found by name)
     ├── lion-reflection.jpg
     └── lion-on-the-road.mp4
 ```
@@ -73,6 +78,27 @@ names where the block stores ids: `image` → `image_id`, `images` → `image_id
 `image` → `image_id`, `poster` → `poster_image_id`, `video` → `key`. A block with only a `type`
 keeps whatever it already has and is just placed at that position. `"enabled": false` switches
 a band off. Payloads are validated in the check, so a bad one is reported, not half-written.
+
+## listings.csv — the platform listings in the same ZIP
+
+A package may carry the business's listings for namibway.com beside its website.
+`listings.csv` is **the listings sheet**, exactly as Content → Import listings takes it (columns
+in `App\Services\ImportExport\ListingSheet`: `id`, `name`, `type`, `vehicle_category`, `city`,
+`address`, `coordinates`, `short_description`, `description`, `price_from`, `currency`,
+`duration_minutes`, `website`, `email`, `contact_person`, `phone`, `photo_folder`, `photo_credit`,
+`published`, `accepts_inquiries`, `slug`), and it is handed to that importer unchanged — one sheet
+definition, one set of rules, one write path into `listings`.
+
+So its rules apply here too: **`id` is the only automatic update key**, an **empty cell leaves the
+field alone**, and naming a `photo_folder` **replaces** that listing's photographs. The folders it
+names live under `listings/` in the same ZIP (`cover*` becomes the main image, the rest the
+gallery); those files are not part of the website's own picture list and are not reported as
+unused.
+
+Two things the package adds on top: the listing rows are checked in the same dry run as the
+website, and **a bad row stops the whole import** — a ZIP is imported as one thing, so a broken
+sheet must not leave half a customer written. Leave `published` at `no` unless the listing is
+ready to be live; publishing is a decision, not an import step.
 
 ## Matching — what is created, what is updated
 

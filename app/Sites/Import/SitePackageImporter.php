@@ -12,6 +12,8 @@ use App\Models\Partner;
 use App\Models\Site;
 use App\Models\SiteImage;
 use App\Models\SitePage;
+use App\Services\ImportExport\ImportPlan;
+use App\Services\ImportExport\ListingImporter;
 use App\Sites\ActionButtons;
 use App\Sites\BlockRegistry;
 use App\Sites\Generation\SiteGenerator;
@@ -27,6 +29,11 @@ use Illuminate\Support\Str;
  * Always in two steps, like the Excel import: plan() reads the package and
  * says what would change without writing anything; apply() re-plans the same
  * package and writes it. Format and matching rules: SITE_PACKAGE.md.
+ *
+ * Platform listings ride along in the same ZIP as `listings.csv` (plus their
+ * photographs under `listings/`), and are handed to the Excel importer that
+ * already owns that table — one sheet definition, one set of rules, one write
+ * path. See SITE_PACKAGE.md.
  *
  * What it never does: delete. A field the package leaves out is left alone,
  * a picture already on the site stays, and a band the package does not name
@@ -114,6 +121,7 @@ class SitePackageImporter
 
         $this->planMedia($package, $m, $site, $plan);
         $this->planBlocks($m, $page, $plan);
+        $this->planListings($package, $plan);
 
         return $plan;
     }
@@ -221,10 +229,62 @@ class SitePackageImporter
             $this->writeBlocks($m, $page, $ids, $keys);
         });
 
+        $this->withListings($package, function (ImportPlan $listings) use ($package, $plan): void {
+            $plan->listingsWritten = app(ListingImporter::class)->apply($listings, $package->path);
+        });
+
         $plan->written = true;
         $plan->siteId = $site->id;
 
         return $plan;
+    }
+
+    /**
+     * The listings sheet, planned by the importer that owns listings. Its
+     * problems are this package's problems: a ZIP is imported as one thing, so
+     * a bad row stops the website too rather than half-writing the customer.
+     */
+    private function planListings(SitePackage $package, SitePackagePlan $plan): void
+    {
+        $this->withListings($package, function (ImportPlan $listings) use ($plan): void {
+            $plan->listingsNew = $listings->newCount();
+            $plan->listingsUpdated = $listings->updateCount();
+
+            foreach ($listings->fileErrors as $error) {
+                $plan->errors[] = 'listings.csv: '.$error;
+            }
+
+            foreach ($listings->invalidRows() as $row) {
+                foreach ($row->errors as $message) {
+                    $plan->errors[] = 'listings.csv row '.$row->line.' ('.$row->name.'): '.$message;
+                }
+            }
+        });
+    }
+
+    /**
+     * Runs $then against a freshly planned listings sheet, if the package has
+     * one. The sheet is written to a temporary file because the importer reads
+     * from disk; the photographs it needs are read straight out of the ZIP.
+     *
+     * @param  callable(ImportPlan): void  $then
+     */
+    private function withListings(SitePackage $package, callable $then): void
+    {
+        $csv = $package->listingsCsv();
+
+        if ($csv === null) {
+            return;
+        }
+
+        $path = tempnam(sys_get_temp_dir(), 'listings').'.csv';
+        file_put_contents($path, $csv);
+
+        try {
+            $then(app(ListingImporter::class)->plan($path, $package->path));
+        } finally {
+            @unlink($path);
+        }
     }
 
     /**

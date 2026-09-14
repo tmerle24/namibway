@@ -99,6 +99,49 @@ class SitePackageImportTest extends TestCase
         $this->assertNotEmpty($this->importer()->plan($this->package($manifest))->errors);
     }
 
+    /**
+     * Platform listings ride along in the same ZIP and are written by the
+     * importer that owns that table — sheet rules, photo folders and all.
+     */
+    public function test_a_package_can_carry_the_platform_listings(): void
+    {
+        $csv = "name,type,vehicle_category,short_description,photo_folder,accepts_inquiries,published\n"
+            ."Namibia Top 3,vehicle,guided_tour,Eight days on the classic route,Namibia Top 3,yes,no\n"
+            ."Grand Namibia Safari,vehicle,guided_tour,Fourteen days across Namibia,,yes,no\n";
+
+        $plan = $this->importer()->plan($this->package($this->manifest(), $csv));
+        $this->assertSame([], $plan->errors);
+        $this->assertSame(2, $plan->listingsNew);
+        $this->assertSame(0, Listing::count());
+
+        $done = $this->importer()->apply($this->package($this->manifest(), $csv));
+        $this->assertTrue($done->written, implode(' ', $done->errors));
+        $this->assertSame(2, $done->listingsWritten);
+
+        $tour = Listing::where('slug', 'namibia-top-3')->sole();
+        $this->assertSame(ListingType::Vehicle, $tour->type);
+        $this->assertFalse((bool) $tour->is_published);
+        $this->assertTrue((bool) $tour->accepts_inquiries);
+        // Its photograph came out of the listings/ folder of the same ZIP.
+        $this->assertStringContainsString('listings/namibia-top-3/', (string) $tour->image);
+        Storage::disk('r2')->assertExists((string) $tour->image);
+
+        // And those files are not mistaken for the website's own pictures.
+        $site = Site::findOrFail($done->siteId);
+        $this->assertSame(2, $site->images()->count());
+    }
+
+    public function test_a_bad_listing_row_stops_the_whole_package(): void
+    {
+        $csv = "name,type\nA tour without a type,\n";
+
+        $plan = $this->importer()->apply($this->package($this->manifest(), $csv));
+
+        $this->assertFalse($plan->written);
+        $this->assertNotEmpty(array_filter($plan->errors, fn ($e) => str_contains($e, 'listings.csv')));
+        $this->assertSame(0, Site::count());
+    }
+
     public function test_checking_writes_nothing(): void
     {
         $plan = $this->importer()->plan($this->package($this->manifest()));
@@ -223,7 +266,7 @@ class SitePackageImportTest extends TestCase
     /**
      * @param  array<string, mixed>|null  $manifest
      */
-    private function package(?array $manifest): SitePackage
+    private function package(?array $manifest, ?string $listingsCsv = null): SitePackage
     {
         if (isset($this->zip) && is_file($this->zip)) {
             unlink($this->zip);
@@ -235,6 +278,11 @@ class SitePackageImportTest extends TestCase
 
         if ($manifest !== null) {
             $zip->addFromString('epima/site.json', (string) json_encode($manifest));
+        }
+
+        if ($listingsCsv !== null) {
+            $zip->addFromString('epima/listings.csv', $listingsCsv);
+            $zip->addFromString('epima/listings/Namibia Top 3/cover.jpg', 'jpg-bytes');
         }
 
         $zip->addFromString('epima/media/lion.jpg', 'jpg-bytes');

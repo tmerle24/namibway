@@ -53,7 +53,8 @@ class SitePackageImport extends Page implements HasForms
             ->schema([
                 Forms\Components\FileUpload::make('package')
                     ->label('Website package (.zip)')
-                    ->helperText('site.json and the pictures and videos it names. Up to 12 MB — shrink photos to about 1600 px first.')
+                    ->helperText('site.json and the pictures and videos it names, plus an optional listings.csv '
+                        .'with the listings for the platform. Up to 12 MB — shrink photos to about 1600 px first.')
                     ->disk('local')
                     ->directory('site-packages')
                     ->acceptedFileTypes(['application/zip', 'application/x-zip-compressed', 'multipart/x-zip'])
@@ -92,6 +93,13 @@ class SitePackageImport extends Page implements HasForms
         }
 
         $this->siteUrl = Site::find($plan->siteId)?->publicUrl();
+
+        if ($plan->listingsWritten > 0) {
+            Notification::make()
+                ->title($plan->listingsWritten === 1 ? '1 listing saved' : $plan->listingsWritten.' listings saved')
+                ->success()
+                ->send();
+        }
 
         Notification::make()->title('Website imported')->success()->send();
     }

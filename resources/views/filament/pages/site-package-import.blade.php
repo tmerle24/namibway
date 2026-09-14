@@ -49,6 +49,16 @@
                         <div class="text-sm text-gray-500 dark:text-gray-400">{{ $entity['label'] }}</div>
                     </div>
                 @endforeach
+                @if ($preview['listings_new'] || $preview['listings_updated'])
+                    <div class="rounded-xl bg-gray-50 p-4 dark:bg-white/5">
+                        <div class="text-sm text-gray-500 dark:text-gray-400">Listings</div>
+                        <div class="font-semibold {{ $preview['listings_new'] ? 'text-success-600 dark:text-success-400' : 'text-gray-950 dark:text-white' }}">
+                            {{ $preview['listings_new'] }} new · {{ $preview['listings_updated'] }} updated
+                        </div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">from listings.csv</div>
+                    </div>
+                @endif
+
                 <div class="rounded-xl bg-gray-50 p-4 dark:bg-white/5">
                     <div class="text-sm text-gray-500 dark:text-gray-400">Media</div>
                     <div class="font-semibold text-gray-950 dark:text-white">
