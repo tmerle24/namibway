@@ -295,9 +295,15 @@ What follows from that, in the order it should be built:
    to say "Vehicle:" says "Tour:". The note about the lodges being a proposal sits under the
    price, because a plan that shows one price and a list of lodges is otherwise read as a
    booking of exactly those lodges.
-4. **One request instead of many** (next). A plan today produces one inquiry per property. A
+4. **One request instead of many** (built 2026-09-14). A plan today produces one inquiry per property. A
    guided trip is one inquiry to the operator for the whole journey — which is the flooding
-   problem solving itself, and it sits exactly right with the one-active-request gate.
+   problem solving itself, and it sits exactly right with the one-active-request gate. The
+   route rides along as the inquiry's message, day by day with the lodges and activities, so
+   the operator can quote without asking for it; the message says in plain words that it is
+   the traveller's plan and not a booking. `TripController::store` decides this, and it takes
+   **both** halves to agree — the plan says guided *and* the variant's vehicle really is a
+   guided tour. A plan carrying one without the other is one somebody edited, and its lodges
+   are then booked the ordinary way rather than an operator being asked who was never chosen.
 5. **The resource, when it can be double-booked** (later). Not the tour is the bookable: the
    guide with his vehicle is. One `BookableUnit` with `total_units = 1` whose calendar days are
    taken for the length of the trip. Seats only become units if the operator ever sells fixed

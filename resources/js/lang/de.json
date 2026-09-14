@@ -343,7 +343,9 @@
             "confirmed": "Bestätigt & gebucht",
             "cancelled": "Storniert",
             "failed": "Nicht mehr verfügbar"
-        }
+        },
+        "guidedSubtitle": "Eine Anfrage, an den Veranstalter, der die ganze Reise durchführt.",
+        "guidedNote": "Der Veranstalter kalkuliert die Route oben als eine Reise — die Unterkünfte gehören zu seinem Angebot, deshalb wird sonst niemand angefragt."
     },
     "afterSales": {
         "eyebrow": "Nach deiner Reise",

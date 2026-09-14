@@ -74,6 +74,12 @@ const bookingLoading = ref(false);
 const bookingError = ref<string | null>(null);
 const bookingTripId = ref<number | null>(null);
 
+// Guided: the whole trip went to one operator as one request — see
+// TripController::store and TRAVEL_PLAN.md, "travelling guided".
+const guidedTrip = computed(
+    () => (props.plan?.trip_params?.vehicle_type ?? null) === 'guided',
+);
+
 function scrollTo(id: string) {
     document
         .getElementById(id)
@@ -195,6 +201,7 @@ async function onGuestSubmit(details: GuestDetails) {
                 v-if="bookingActive && bookingVariant && bookingTripId"
                 :variant="bookingVariant"
                 :trip-id="bookingTripId"
+                :guided="guidedTrip"
             />
 
             <footer>

@@ -392,7 +392,9 @@
             "confirmed": "Confirmed & booked",
             "cancelled": "Cancelled",
             "failed": "No longer available"
-        }
+        },
+        "guidedSubtitle": "One request, to the operator who will run the whole trip.",
+        "guidedNote": "The operator quotes the route above as one trip — the lodges are part of what he prices, so nobody else is asked."
     },
     "afterSales": {
         "eyebrow": "After your trip",

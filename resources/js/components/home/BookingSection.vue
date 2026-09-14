@@ -8,6 +8,9 @@ import type { ItineraryVariant } from '@/lib/kaia-types';
 const props = defineProps<{
     variant: ItineraryVariant;
     tripId: number;
+    // Guided: one request went to the operator rather than one per lodge, so
+    // the two lines about queueing requests would describe the wrong thing.
+    guided?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -102,7 +105,11 @@ onUnmounted(() => {
         <div class="section-head">
             <div class="eyebrow">{{ t('booking.eyebrow') }}</div>
             <h2>{{ t('booking.title') }}</h2>
-            <p>{{ t('booking.subtitle') }}</p>
+            <p>
+                {{
+                    guided ? t('booking.guidedSubtitle') : t('booking.subtitle')
+                }}
+            </p>
         </div>
         <div class="queue">
             <div
@@ -126,7 +133,7 @@ onUnmounted(() => {
             </div>
         </div>
         <div class="governance-note">
-            {{ t('booking.note') }}
+            {{ guided ? t('booking.guidedNote') : t('booking.note') }}
         </div>
     </section>
 </template>

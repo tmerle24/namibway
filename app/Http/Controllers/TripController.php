@@ -4,13 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Enums\InquiryStatus;
 use App\Enums\ListingType;
+use App\Enums\VehicleCategory;
 use App\Models\BookableUnit;
 use App\Models\Inquiry;
 use App\Models\ItineraryItem;
+use App\Models\Listing;
 use App\Models\SavedPlan;
 use App\Models\Trip;
 use App\Services\Booking\ActiveRequestGate;
 use App\Services\Booking\RoomCapacity;
+use App\Services\Kaia\ItineraryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -85,6 +88,13 @@ class TripController extends Controller
 
         /** @var list<array<string, mixed>> $variantDays */
         $variantDays = $validated['variant_days'];
+
+        // A guided trip is one product: the operator drives it, and the nights
+        // and activities in the plan are what he quotes on. So it is one
+        // request to him rather than one to every lodge — which is the
+        // flooding problem this whole mechanic exists to prevent, solving
+        // itself. See TRAVEL_PLAN.md, "travelling guided".
+        $tour = $this->guidedTour($validated['plan'], $variantDays);
 
         // One inquiry per accommodation, carrying the room the traveler picked
         // for it. Without `bookable_unit_code` the choice was decorative — the
@@ -190,6 +200,41 @@ class TripController extends Controller
 
         $sort = 0;
 
+        if ($tour !== null) {
+            $item = ItineraryItem::create([
+                'saved_plan_id' => $plan->id,
+                'listing_id' => $tour->id,
+                'kind' => $tour->type,
+                'date' => $validated['check_in'],
+                'date_to' => $validated['check_out'],
+                'sort' => 0,
+            ]);
+
+            $inquiry = Inquiry::create([
+                'listing_id' => $tour->id,
+                'trip_id' => $trip->id,
+                'user_id' => $user->id,
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'] ?? null,
+                'check_in' => $validated['check_in'],
+                'check_out' => $validated['check_out'],
+                'adults' => $validated['adults'],
+                'children' => $validated['children'] ?? 0,
+                // The plan is the brief: the operator prices this route, and
+                // without it in the request he would have to ask for it.
+                'message' => $this->guidedBrief($validated['variant_name'], $variantDays),
+                'status' => InquiryStatus::Pending,
+            ]);
+
+            $item->update(['inquiry_id' => $inquiry->id]);
+
+            return response()->json([
+                'trip_id' => $trip->id,
+                'inquiry_count' => 1,
+            ]);
+        }
+
         foreach ($roomByListing as $listingId => $bookableUnitCode) {
             $checkIn = $datesByListing[$listingId]['first'] ?? null;
             // check-out is the morning after the last night — the day the guest
@@ -229,6 +274,104 @@ class TripController extends Controller
             'trip_id' => $trip->id,
             'inquiry_count' => count($roomByListing),
         ]);
+    }
+
+    /**
+     * The guided tour this plan is built around, or null when the traveller is
+     * driving themselves.
+     *
+     * Both halves have to agree: the plan says the traveller chose to be
+     * driven, and the variant names a listing that really is a guided tour. A
+     * plan carrying one without the other is not a guided trip — it is a plan
+     * somebody edited, and the lodges are then booked the ordinary way rather
+     * than quietly sent to an operator who was never chosen.
+     *
+     * @param  array<string, mixed>  $plan
+     * @param  list<array<string, mixed>>  $variantDays
+     */
+    private function guidedTour(array $plan, array $variantDays): ?Listing
+    {
+        if (($plan['trip_params']['vehicle_type'] ?? null) !== ItineraryService::GUIDED) {
+            return null;
+        }
+
+        $id = $this->guidedVehicleId($plan, $variantDays);
+
+        if ($id === null) {
+            return null;
+        }
+
+        $listing = Listing::find($id);
+
+        return $listing?->vehicle_category === VehicleCategory::GuidedTour ? $listing : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     * @param  list<array<string, mixed>>  $variantDays
+     */
+    private function guidedVehicleId(array $plan, array $variantDays): ?int
+    {
+        foreach ((array) ($plan['variants'] ?? []) as $variant) {
+            $id = $variant['vehicle']['id'] ?? null;
+
+            if (is_numeric($id)) {
+                return (int) $id;
+            }
+        }
+
+        // A variant sent on its own, without the plan around it.
+        foreach ($variantDays as $day) {
+            $id = $day['vehicle']['id'] ?? null;
+
+            if (is_numeric($id)) {
+                return (int) $id;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The route as the operator needs to read it: one line per day, with where
+     * the traveller sleeps and what they wanted to do there.
+     *
+     * @param  list<array<string, mixed>>  $variantDays
+     */
+    private function guidedBrief(string $variantName, array $variantDays): string
+    {
+        $lines = ['Guided trip requested from the NamibWay plan "'.$variantName.'".', ''];
+
+        foreach ($variantDays as $day) {
+            $parts = array_filter([
+                'Day '.($day['day'] ?? '?'),
+                is_string($day['date'] ?? null) ? $day['date'] : null,
+                is_string($day['location'] ?? null) ? $day['location'] : null,
+            ]);
+
+            $stay = $day['accommodation']['name'] ?? null;
+            $activities = array_filter(array_map(
+                fn ($entry) => is_array($entry) ? ($entry['name'] ?? null) : null,
+                (array) ($day['activities'] ?? []),
+            ));
+
+            $line = implode(' · ', $parts);
+
+            if (is_string($stay) && $stay !== '') {
+                $line .= ' — stay: '.$stay;
+            }
+
+            if ($activities !== []) {
+                $line .= ' — '.implode(', ', $activities);
+            }
+
+            $lines[] = $line;
+        }
+
+        $lines[] = '';
+        $lines[] = 'The lodges and activities above are the traveller\'s plan, not a booking — quote what you would do.';
+
+        return implode("\n", $lines);
     }
 
     /**
