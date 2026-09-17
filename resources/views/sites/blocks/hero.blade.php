@@ -40,8 +40,14 @@
     @endif
 
     @if ($video && $card)
-        {{-- Outside the media layer, so on a wide screen it can sit above the shade. --}}
-        <video class="hero__video" data-src="{{ $video }}" muted loop playsinline preload="none" aria-hidden="true"></video>
+        {{-- Outside the media layer, so on a wide screen it can sit above the
+             shade. The wrapper is the phone the clip was filmed on: a video
+             element cannot carry a bezel of its own (no pseudo-elements on a
+             replaced element), and on a phone screen the wrapper is simply the
+             full-screen layer it always was. --}}
+        <div class="hero__phone">
+            <video class="hero__video" data-src="{{ $video }}" muted loop playsinline preload="none" aria-hidden="true"></video>
+        </div>
 
         @if (filled($data['video_caption'] ?? null))
             <p class="hero__videonote">{{ $data['video_caption'] }}</p>

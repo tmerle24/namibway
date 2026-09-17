@@ -74,20 +74,44 @@
     }
     /* Portrait clip: the whole screen on a phone, a card on a wide one. */
     @media (min-width: 900px) {
-        .sc .hero--card .hero__video {
+        /* The handset the clip was filmed on: a dark bezel, a speaker slit and
+           the glass edge. It is drawn, not an image - nothing to load, and no
+           particular make of phone to date the page. */
+        .sc .hero--card .hero__phone {
             inset: auto; top: 50%; right: max(5vw, calc((100vw - var(--container)) / 2));
-            width: clamp(240px, 22vw, 330px); height: auto; aspect-ratio: 9 / 16; z-index: 3;
-            border-radius: 26px; box-shadow: 0 30px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.18);
-            transform: translateY(-46%) rotate(2.5deg) scale(.96);
-            transition: opacity 1.2s ease, transform 1.4s var(--ease-out);
+            width: clamp(250px, 23vw, 340px); aspect-ratio: 9 / 19; z-index: 3;
+            padding: 11px 9px; border-radius: 44px;
+            background: linear-gradient(150deg, #3a3f46 0%, #14171b 38%, #0b0d10 100%);
+            box-shadow:
+                0 40px 90px rgba(0,0,0,.55),
+                inset 0 0 0 1.5px rgba(255,255,255,.22),
+                inset 0 0 0 7px #0b0d10;
+            transform: translateY(-50%) rotate(2.5deg);
         }
-        .sc .hero--card .hero__video.is-playing { transform: translateY(-50%) rotate(2.5deg); }
+        /* The earpiece slit, and the glass the screen sits under. */
+        .sc .hero--card .hero__phone::before {
+            content: ''; position: absolute; z-index: 2; left: 50%; top: 5px;
+            width: 58px; height: 5px; margin-left: -29px; border-radius: 3px; background: #23272c;
+        }
+        .sc .hero--card .hero__phone::after {
+            content: ''; position: absolute; inset: 11px 9px; border-radius: 34px; pointer-events: none;
+            background: linear-gradient(115deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,0) 32%);
+        }
+        .sc .hero--card .hero__video {
+            position: relative; inset: auto; width: 100%; height: 100%;
+            border-radius: 34px; object-fit: cover;
+            transform: scale(.98); transition: opacity 1.2s ease, transform 1.4s var(--ease-out);
+        }
+        .sc .hero--card .hero__video.is-playing { transform: none; }
         .sc .hero--card .hero__body { padding-right: clamp(280px, 30vw, 420px); }
         .sc .hero--card .hero__videonote {
             display: block; position: absolute; z-index: 3; margin: 0; text-align: center;
             right: max(5vw, calc((100vw - var(--container)) / 2));
-            width: clamp(240px, 22vw, 330px);
-            top: calc(50% + min(28vw, 300px)); transform: translateY(6px) rotate(2.5deg);
+            width: clamp(250px, 23vw, 340px);
+            /* Half the handset's own height below its middle: 9/19 aspect, so
+               half is the width times 19/18. */
+            top: calc(50% + (clamp(250px, 23vw, 340px) * 19 / 18) + 16px);
+            transform: rotate(2.5deg);
             font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.75);
         }
     }

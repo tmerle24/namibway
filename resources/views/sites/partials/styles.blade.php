@@ -363,6 +363,8 @@
     .hero__video.is-playing { opacity: 1; }
     /* Belongs to the card layout, which only the enterprise edition draws. */
     .hero__videonote { display: none; }
+    /* Until a wide screen dresses it as a handset, the wrapper is the layer. */
+    .hero__phone { position: absolute; inset: 0; }
     .hero::after {
         content: ''; position: absolute; inset: 0;
         background: linear-gradient(180deg, rgba(10,11,13,.45) 0%, rgba(10,11,13,.15) 38%, rgba(10,11,13,.78) 100%);
