@@ -14,6 +14,7 @@
          would compete with the site's own home page if it were. --}}
     <meta name="robots" content="noindex, follow">
 
+    @include('sites.partials.icons')
     @include('sites.partials.styles')
     {{-- Only this page uses these, so only this page ships them: the shared
          stylesheet is inlined into every page of every site. --}}

@@ -49,6 +49,7 @@
         <link rel="preload" as="image" href="{{ $heroImage->thumb(1600) }}" fetchpriority="high">
     @endif
 
+    @include('sites.partials.icons')
     @include('sites.partials.styles')
 
     @if ($site->isEnterprise())

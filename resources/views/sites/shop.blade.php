@@ -27,6 +27,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Shop — {{ $site->name }}</title>
+    @include('sites.partials.icons')
     @include('sites.partials.styles')
     <style>:root { --accent: {{ $accent }}; }</style>
 </head>

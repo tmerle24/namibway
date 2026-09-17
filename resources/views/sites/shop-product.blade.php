@@ -21,6 +21,7 @@
     @if ($productImages->isNotEmpty())
         <meta property="og:image" content="{{ $productImages->first()->thumb(800) }}">
     @endif
+    @include('sites.partials.icons')
     @include('sites.partials.styles')
     <style>:root { --accent: {{ $accent }}; }</style>
 </head>

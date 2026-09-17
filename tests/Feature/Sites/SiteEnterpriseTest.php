@@ -135,6 +135,18 @@ class SiteEnterpriseTest extends TestCase
         $this->assertStringContainsString('href="#s1"', $tourHtml);
     }
 
+    public function test_a_site_with_a_logo_carries_its_own_tab_icon(): void
+    {
+        $site = $this->siteWithHero(SiteEdition::Standard, ['headline' => 'Home']);
+        $site->update(['logo_key' => 'sites/'.$site->slug.'/logo.png']);
+
+        $html = $this->get('/_sites/'.$site->slug)->assertOk()->getContent();
+
+        // Without this the browser asks the host for NamibWay's own favicon.
+        $this->assertMatchesRegularExpression('#<link rel="icon" href="[^"]*logo[^"]*"#', $html);
+        $this->assertStringContainsString('apple-touch-icon', $html);
+    }
+
     public function test_the_numbers_band_shows_the_real_numbers_before_any_script(): void
     {
         $site = $this->siteWithHero(SiteEdition::Standard, ['headline' => 'Home']);

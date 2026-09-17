@@ -10,6 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ $title }} — {{ $site->name }}</title>
     <meta name="robots" content="noindex, follow">
+    @include('sites.partials.icons')
     @include('sites.partials.styles')
 </head>
 <body>

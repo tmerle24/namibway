@@ -9,6 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Order received — {{ $site->name }}</title>
     <meta name="robots" content="noindex, nofollow">
+    @include('sites.partials.icons')
     @include('sites.partials.styles')
     <style>
         .thanks-wrap {

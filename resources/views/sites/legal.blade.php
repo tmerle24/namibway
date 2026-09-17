@@ -14,6 +14,7 @@
          competing with the site itself in a search result. --}}
     <meta name="robots" content="noindex, follow">
 
+    @include('sites.partials.icons')
     @include('sites.partials.styles')
 </head>
 <body>

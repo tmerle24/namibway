@@ -11,6 +11,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Payment — {{ $site->name }}</title>
     <meta name="robots" content="noindex, nofollow">
+    @include('sites.partials.icons')
     @include('sites.partials.styles')
     <style>
         .pay-wrap { max-width: 480px; margin: 0 auto; padding: var(--s5) var(--s4) var(--s7); }
