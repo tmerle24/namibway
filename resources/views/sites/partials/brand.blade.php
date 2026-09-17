@@ -16,6 +16,9 @@
 <a class="nav__name {{ $logo ? 'nav__name--logo' : '' }}" href="{{ $href }}">
     @if ($logo)
         <img src="{{ $logo }}" alt="{{ $site->name }}" class="nav__logo">
+        {{-- Beside the mark once the bar is solid: a badge alone does not say
+             who this is, and the opening screen is where the name was read. --}}
+        <span class="nav__brandtext">{{ $site->brandName() }}</span>
     @else
         {{-- Site::brandName(), not the name: the registered name belongs in the
              page title and the legal notice, and in a 64px bar it wrapped

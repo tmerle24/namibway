@@ -36,6 +36,8 @@ class HeroBlock extends BlockDefinition
             // full screen on a phone and as a card beside the headline on a
             // wide screen, where stretching it would blur it (enterprise).
             'video_layout' => ['nullable', 'string', 'in:cover,card'],
+            // Small line under the card, e.g. "Filmed on a game drive".
+            'video_caption' => ['nullable', 'string', 'max:60'],
             'eyebrow' => ['nullable', 'string', 'max:60'],
             'headline' => ['nullable', 'string', 'max:120'],
             'subline' => ['nullable', 'string', 'max:240'],

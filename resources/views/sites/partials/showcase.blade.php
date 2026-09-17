@@ -15,11 +15,21 @@
 @php ob_start(); @endphp
     .sc { --ease-out: cubic-bezier(.16, 1, .3, 1); }
 
-    /* ---- Bar: glass once the page scrolls ---------------------------- */
-    .sc .nav.is-scrolled {
-        background: color-mix(in srgb, var(--salt) 78%, transparent);
+    /* ---- Bar: dark glass once the page scrolls ------------------------
+       Dark rather than the standard cream: it carries the photographs behind
+       it, and a colourful badge sits quieter on it. The open menu panel stays
+       cream, so that state keeps the light bar it belongs to. */
+    .sc .nav.is-scrolled:not(.is-open) {
+        background: color-mix(in srgb, var(--ink) 86%, transparent);
+        box-shadow: none;
         -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
     }
+    .sc .nav.is-scrolled:not(.is-open) .nav__name,
+    .sc .nav.is-scrolled:not(.is-open) .nav__brandtext { color: #fff; }
+    .sc .nav.is-scrolled:not(.is-open) .nav__links a { color: rgba(255,255,255,.82); }
+    .sc .nav.is-scrolled:not(.is-open) .nav__links a:hover { color: #fff; }
+    .sc .nav.is-scrolled:not(.is-open) .nav__burger span { background: #fff; }
+    .sc .nav__brandtext { font-weight: 600; }
 
     /* ---- Opening screen ---------------------------------------------- */
     .sc .hero__body { min-height: 100vh; min-height: 100svh; padding-bottom: var(--s8); }
@@ -73,6 +83,16 @@
         }
         .sc .hero--card .hero__video.is-playing { transform: translateY(-50%) rotate(2.5deg); }
         .sc .hero--card .hero__body { padding-right: clamp(280px, 30vw, 420px); }
+        .sc .hero--card .hero__videonote {
+            display: block; position: absolute; z-index: 3; margin: 0; text-align: center;
+            right: max(5vw, calc((100vw - var(--container)) / 2));
+            width: clamp(240px, 22vw, 330px);
+            top: calc(50% + min(28vw, 300px)); transform: translateY(6px) rotate(2.5deg);
+            font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.75);
+        }
+    }
+    @media (max-width: 899.98px) {
+        .sc .hero--card .hero__videonote { display: none; }
     }
     .hero__scroll { display: none; }
     .sc .hero__scroll { display: block; }

@@ -42,6 +42,10 @@
     @if ($video && $card)
         {{-- Outside the media layer, so on a wide screen it can sit above the shade. --}}
         <video class="hero__video" data-src="{{ $video }}" muted loop playsinline preload="none" aria-hidden="true"></video>
+
+        @if (filled($data['video_caption'] ?? null))
+            <p class="hero__videonote">{{ $data['video_caption'] }}</p>
+        @endif
     @endif
 
     <div class="hero__body">

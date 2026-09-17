@@ -135,7 +135,14 @@
        so the shrink on scroll does not jump. */
     .nav__name--logo {
         display: flex; align-items: flex-start; align-self: flex-start; overflow: visible;
+        gap: var(--s3);
         margin-top: var(--logo-offset, 0px); transition: margin-top .3s ease;
+    }
+    /* Only on a solid bar, and only where there is room for it: over the
+       opening photograph the mark stands alone, and a phone has the burger. */
+    .nav__brandtext { display: none; align-self: center; font-size: 15px; line-height: 1.2; letter-spacing: -.01em; }
+    @media (min-width: 640px) {
+        .nav.is-scrolled .nav__brandtext, .nav.is-open .nav__brandtext, .nav--solid .nav__brandtext { display: block; }
     }
     /* Wide enough for the bar to be three times the width it is on a phone. */
     @media (min-width: 640px) { :root { --brand-size: {{ \App\Sites\Typography::brandSize($site) }}px; } }
@@ -354,6 +361,8 @@
         opacity: 0; transition: opacity 1.2s ease;
     }
     .hero__video.is-playing { opacity: 1; }
+    /* Belongs to the card layout, which only the enterprise edition draws. */
+    .hero__videonote { display: none; }
     .hero::after {
         content: ''; position: absolute; inset: 0;
         background: linear-gradient(180deg, rgba(10,11,13,.45) 0%, rgba(10,11,13,.15) 38%, rgba(10,11,13,.78) 100%);

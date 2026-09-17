@@ -104,6 +104,8 @@ class BlockForm
                     ->fetchFileInformation(false)
                     ->helperText('A short silent loop, 10-20 seconds, 720p. The photograph is shown until it plays, '
                         .'and instead of it on a phone that saves data.'),
+                TextInput::make('video_caption')->label('Line under the video')->maxLength(60)
+                    ->placeholder('Filmed on a game drive'),
                 Select::make('video_layout')
                     ->label('Video shape')
                     ->options(['cover' => 'Landscape - fills the opening', 'card' => 'Portrait (phone clip) - full screen on a phone, a card beside the headline on a computer'])
