@@ -107,7 +107,7 @@ tour's slug (`"listing_slug": "namibia-top-3"`) and its button opens the form wi
 chosen; a card without one chooses "private / tailor-made", which asks for an end date.
 
 **Blocks** take the same payload the editor writes (`App\Sites\Blocks\*::rules()`), with file
-names where the block stores ids: `image` → `image_id`, `images` → `image_ids`, and per item
+names where the block stores ids: `image` → `image_id`, `images` → `image_ids`, `video` → `video_key` (the hero loop), `background` → `background_image_id` (one of the site's own photographs, shown very faintly behind the contact form, the FAQ, the contact band or a call to action), and per item
 `image` → `image_id`, `poster` → `poster_image_id`, `video` → `key`. A block with only a `type`
 keeps whatever it already has and is just placed at that position. `"enabled": false` switches
 a band off. Payloads are validated in the check, so a bad one is reported, not half-written.
