@@ -138,12 +138,21 @@
         gap: var(--s3);
         margin-top: var(--logo-offset, 0px); transition: margin-top .3s ease;
     }
-    /* Only on a solid bar, and only where there is room for it: over the
-       opening photograph the mark stands alone, and a phone has the burger. */
+    /* Only on a solid bar: over the opening photograph the mark stands alone.
+       On a phone it joins in too, but only for a name that fits beside the
+       logo and the burger - roughly 24 characters at this size. A longer one
+       would wrap the bar taller than the hero's negative margin. */
     .nav__brandtext { display: none; align-self: center; font-size: 15px; line-height: 1.2; letter-spacing: -.01em; }
     @media (min-width: 640px) {
         .nav.is-scrolled .nav__brandtext, .nav.is-open .nav__brandtext, .nav--solid .nav__brandtext { display: block; }
     }
+@if (mb_strlen($site->brandName()) <= 24)
+    @media (max-width: 639.98px) {
+        .nav.is-scrolled .nav__brandtext, .nav.is-open .nav__brandtext, .nav--solid .nav__brandtext {
+            display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+    }
+@endif
     /* Wide enough for the bar to be three times the width it is on a phone. */
     @media (min-width: 640px) { :root { --brand-size: {{ \App\Sites\Typography::brandSize($site) }}px; } }
     /* A name over a photograph needs its own shadow to stay readable — the
