@@ -29,6 +29,13 @@ class HeroBlock extends BlockDefinition
     {
         return [
             'image_id' => ['nullable', 'integer'],
+            // A muted loop behind the headline; image_id is its poster and what
+            // a phone on saved data or reduced motion keeps seeing.
+            'video_key' => ['nullable', 'string', 'max:1024'],
+            // cover: behind the headline. card: a portrait phone clip, shown
+            // full screen on a phone and as a card beside the headline on a
+            // wide screen, where stretching it would blur it (enterprise).
+            'video_layout' => ['nullable', 'string', 'in:cover,card'],
             'eyebrow' => ['nullable', 'string', 'max:60'],
             'headline' => ['nullable', 'string', 'max:120'],
             'subline' => ['nullable', 'string', 'max:240'],

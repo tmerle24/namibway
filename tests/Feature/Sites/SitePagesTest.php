@@ -188,6 +188,25 @@ class SitePagesTest extends TestCase
         return Site::factory()->create(['source_listing_id' => $listing->id, 'slug' => 'dune-edge']);
     }
 
+    public function test_a_page_under_a_path_keeps_its_path_and_its_menu_settings(): void
+    {
+        $site = Site::factory()->create();
+        $home = $this->home($site);
+        $tour = SitePage::create(['site_id' => $site->id, 'locale' => $site->default_locale, 'title' => 'Etosha tour',
+            'slug' => 'tours/etosha', 'nav_label' => 'Etosha', 'show_in_nav' => false, 'is_home' => false, 'sort' => 1]);
+
+        // Saved again from the panel, as a package wrote it.
+        $this->write($site, [
+            ['id' => $home->id, 'title' => 'Home', 'slug' => ''],
+            ['id' => $tour->id, 'title' => 'Etosha tour', 'slug' => 'tours/etosha', 'nav_label' => 'Etosha', 'show_in_nav' => false],
+        ]);
+
+        $tour->refresh();
+        $this->assertSame('tours/etosha', $tour->slug);
+        $this->assertSame('Etosha', $tour->nav_label);
+        $this->assertFalse($tour->show_in_nav);
+    }
+
     private function home(Site $site): SitePage
     {
         return SitePage::factory()->create([

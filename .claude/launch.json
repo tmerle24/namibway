@@ -4,23 +4,42 @@
     {
       "name": "namibway-dev",
       "runtimeExecutable": "composer",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 8085,
       "autoPort": false
     },
     {
       "name": "namibway-dev-verify",
       "runtimeExecutable": "composer",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 8095,
       "autoPort": false
     },
     {
       "name": "namibway-dev-verify2",
       "runtimeExecutable": "composer",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 8096,
       "autoPort": true
+    },
+    {
+      "name": "sites-local",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "export APP_URL=http://127.0.0.1:8097 CLOUDFLARE_R2_LOCAL_ROOT=$PWD/storage/app/r2-local MEDIA_TRANSFORMS_ENABLED=false PHP_CLI_SERVER_WORKERS=6; cd public && php -S 127.0.0.1:8097 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php"
+      ],
+      "port": 8097,
+      "autoPort": false
     }
   ]
 }

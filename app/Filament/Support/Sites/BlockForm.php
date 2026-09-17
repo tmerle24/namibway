@@ -13,6 +13,7 @@ use App\Sites\Blocks\FaqBlock;
 use App\Sites\Blocks\GalleryBlock;
 use App\Sites\Blocks\ItineraryBlock;
 use App\Sites\Blocks\OffersBlock;
+use App\Sites\Blocks\StatsBlock;
 use App\Sites\Blocks\TeamBlock;
 use App\Sites\Blocks\TestimonialsBlock;
 use App\Sites\Blocks\VideoBlock;
@@ -23,6 +24,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -93,6 +95,20 @@ class BlockForm
         return match ($type) {
             'hero' => [
                 self::image('image_id', $site, 'Photograph'),
+                FileUpload::make('video_key')
+                    ->label('Video behind it (optional)')
+                    ->disk('r2')
+                    ->directory(fn (): string => $site->mediaPrefix().'/videos')
+                    ->acceptedFileTypes(['video/mp4', 'video/webm'])
+                    ->maxSize(12 * 1024)
+                    ->fetchFileInformation(false)
+                    ->helperText('A short silent loop, 10-20 seconds, 720p. The photograph is shown until it plays, '
+                        .'and instead of it on a phone that saves data.'),
+                Select::make('video_layout')
+                    ->label('Video shape')
+                    ->options(['cover' => 'Landscape - fills the opening', 'card' => 'Portrait (phone clip) - full screen on a phone, a card beside the headline on a computer'])
+                    ->placeholder('Landscape')
+                    ->native(false),
                 TextInput::make('eyebrow')->label('Small line above')->maxLength(60),
                 // A textarea rather than one line, because this is the only
                 // text on the site set at 76px: where it breaks is a decision,
@@ -157,7 +173,14 @@ class BlockForm
                             ->placeholder('None')
                             ->helperText('With a tour request form, this card opens the form with this tour chosen.')
                             ->columnSpanFull(),
+                        TextInput::make('page_slug')
+                            ->label('Page with the details')
+                            ->maxLength(120)
+                            ->placeholder('tours/namibia-safari')
+                            ->helperText('The address of a page of this site. The card then links to it.')
+                            ->columnSpanFull(),
                     ]),
+                TextInput::make('page_button_label')->label('Button to the page')->maxLength(24)->placeholder('Details'),
             ],
 
             'itinerary' => [
@@ -178,6 +201,21 @@ class BlockForm
                         TextInput::make('stay')->label('Where you sleep')->maxLength(200)->columnSpanFull(),
                     ]),
                 Textarea::make('note')->label('Anything to add')->rows(2)->maxLength(300),
+            ],
+
+            'stats' => [
+                Repeater::make('items')
+                    ->label('Numbers')
+                    ->maxItems(StatsBlock::MAX_ITEMS)
+                    ->columns(3)
+                    ->schema([
+                        TextInput::make('value')->label('Number')->required()->integer()->minValue(0)->maxValue(999999),
+                        TextInput::make('unit')->label('After it')->maxLength(12)->placeholder('days, +, %'),
+                        TextInput::make('label')->label('What it counts')->required()->maxLength(60),
+                    ]),
+                TagsInput::make('ticker')
+                    ->label('Running line')
+                    ->helperText('Place names or words that scroll past under the numbers. Up to '.StatsBlock::MAX_TICKER.'.'),
             ],
 
             'photo_band' => [

@@ -23,6 +23,7 @@ use App\Sites\Blocks\PhotoBandBlock;
 use App\Sites\Blocks\PriceListBlock;
 use App\Sites\Blocks\RichTextBlock;
 use App\Sites\Blocks\ShopBlock;
+use App\Sites\Blocks\StatsBlock;
 use App\Sites\Blocks\TeamBlock;
 use App\Sites\Blocks\TestimonialsBlock;
 use App\Sites\Blocks\VideoBlock;
@@ -52,6 +53,7 @@ class BlockRegistry
         OffersBlock::class,
         ItineraryBlock::class,
         PhotoBandBlock::class,
+        StatsBlock::class,
         GalleryBlock::class,
         VideoBlock::class,
         TeamBlock::class,

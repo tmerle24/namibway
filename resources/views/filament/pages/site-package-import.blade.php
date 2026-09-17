@@ -116,6 +116,21 @@
             </x-filament::section>
         @endif
 
+        @foreach ($preview['pages'] ?? [] as $subpage)
+            <x-filament::section collapsible collapsed>
+                <x-slot name="heading">Page /{{ $subpage['slug'] }} - {{ $subpage['title'] }} ({{ $subpage['action'] }})</x-slot>
+
+                <ol class="list-decimal space-y-1 ps-5 text-sm">
+                    @foreach ($subpage['blocks'] as $block)
+                        <li>
+                            <span class="font-medium">{{ $block['label'] }}</span>
+                            <span class="text-gray-500 dark:text-gray-400">- {{ $block['action'] }}</span>
+                        </li>
+                    @endforeach
+                </ol>
+            </x-filament::section>
+        @endforeach
+
         @if ($preview['warnings'])
             <x-filament::section collapsible>
                 <x-slot name="heading">Notes ({{ count($preview['warnings']) }})</x-slot>

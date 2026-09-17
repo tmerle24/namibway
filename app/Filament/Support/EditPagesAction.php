@@ -92,7 +92,7 @@ class EditPagesAction
                             ->label('Title')
                             ->required()
                             ->maxLength(120)
-                            ->helperText('What the menu calls it.'),
+                            ->helperText('The page title, shown in the browser tab and in search results.'),
 
                         Forms\Components\TextInput::make('slug')
                             ->label('Address')
@@ -104,6 +104,18 @@ class EditPagesAction
                             ->placeholder(fn (Forms\Get $get): string => $get('is_home') === true
                                 ? 'the front page'
                                 : 'made from the title if left empty'),
+
+                        Forms\Components\TextInput::make('nav_label')
+                            ->label('In the menu')
+                            ->maxLength(40)
+                            ->placeholder('the title')
+                            ->helperText('A short name for the menu, when the title is long.'),
+
+                        Forms\Components\Toggle::make('show_in_nav')
+                            ->label('Show in the menu')
+                            ->default(true)
+                            ->helperText('Off for a page reached from a card, such as a tour page.')
+                            ->disabled(fn (Forms\Get $get): bool => $get('is_home') === true),
                     ]),
             ])
             ->action(function (Listing|Partner|null $record, array $data): void {
@@ -138,6 +150,8 @@ class EditPagesAction
                 'is_home' => $page->is_home,
                 'title' => $page->title ?? '',
                 'slug' => $page->slug,
+                'nav_label' => $page->nav_label,
+                'show_in_nav' => $page->show_in_nav,
             ])
             ->all();
     }
@@ -174,8 +188,13 @@ class EditPagesAction
                 $slugs[] = $slug;
             }
 
+            $nav = [
+                'nav_label' => filled($entry['nav_label'] ?? null) ? trim((string) $entry['nav_label']) : null,
+                'show_in_nav' => $isHome || (bool) ($entry['show_in_nav'] ?? true),
+            ];
+
             if ($existing instanceof SitePage) {
-                $existing->update(['title' => $title, 'slug' => $slug, 'sort' => $sort]);
+                $existing->update(['title' => $title, 'slug' => $slug, 'sort' => $sort] + $nav);
                 $kept[] = $existing->id;
             } else {
                 $kept[] = SitePage::create([
@@ -185,7 +204,7 @@ class EditPagesAction
                     'slug' => $slug,
                     'is_home' => false,
                     'sort' => $sort,
-                ])->id;
+                ] + $nav)->id;
             }
 
             $sort++;
@@ -210,9 +229,15 @@ class EditPagesAction
             ->send();
     }
 
+    /**
+     * Each segment slugged on its own, so `tours/etosha` stays a path rather
+     * than becoming `toursetosha` - a package writes pages like that.
+     */
     private static function slug(mixed $given, string $title): string
     {
-        $slug = is_string($given) ? Str::slug(trim($given)) : '';
+        $slug = is_string($given)
+            ? implode('/', array_filter(array_map(fn (string $part): string => Str::slug($part), explode('/', trim($given, ' /')))))
+            : '';
 
         return $slug !== '' ? $slug : Str::slug($title);
     }

@@ -17,6 +17,8 @@ use App\Services\ImportExport\ListingImporter;
 use App\Sites\ActionButtons;
 use App\Sites\BlockRegistry;
 use App\Sites\Generation\SiteGenerator;
+use App\Sites\LegalText;
+use App\Sites\SiteEdition;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -46,12 +48,18 @@ class SitePackageImporter
 
     private const LISTING_FIELDS = ['name', 'contact_email', 'phone', 'address', 'latitude', 'longitude', 'website', 'social_links', 'short_description', 'description'];
 
-    private const SITE_FIELDS = ['name', 'accent', 'contact_email', 'contact_phone', 'whatsapp', 'address', 'latitude', 'longitude', 'social_links', 'logo_hero_height', 'logo_compact_height', 'logo_shadow', 'action_buttons'];
+    private const SITE_FIELDS = ['name', 'accent', 'contact_email', 'contact_phone', 'whatsapp', 'address', 'latitude', 'longitude', 'social_links', 'logo_hero_height', 'logo_compact_height', 'logo_shadow', 'action_buttons', 'edition'];
 
     /** Same bounds as EditSiteLogoAction. */
     private const LOGO_HEIGHTS = ['logo_hero_height' => [32, 300], 'logo_compact_height' => [24, 120]];
 
     private const PAGE_FIELDS = ['title', 'meta_description'];
+
+    /** What a subpage entry in `pages` may set besides its slug and blocks. */
+    private const SUBPAGE_FIELDS = ['title', 'meta_description', 'nav_label', 'show_in_nav'];
+
+    /** Paths the renderer answers itself; a page there would never be reached. */
+    private const RESERVED_SLUGS = ['about', 'card', 'shop', 'order', 'robots.txt', 'sitemap.xml'];
 
     public function plan(SitePackage $package): SitePackagePlan
     {
@@ -100,6 +108,10 @@ class SitePackageImporter
             }
         }
 
+        if (isset($m['site']['edition']) && SiteEdition::tryFrom((string) $m['site']['edition']) === null) {
+            $plan->errors[] = '"site.edition" must be standard or enterprise.';
+        }
+
         if (isset($m['site']['logo_shadow']) && ! in_array($m['site']['logo_shadow'], ['glow', 'shadow', 'none'], true)) {
             $plan->errors[] = '"site.logo_shadow" must be glow, shadow or none.';
         }
@@ -120,7 +132,8 @@ class SitePackageImporter
         }
 
         $this->planMedia($package, $m, $site, $plan);
-        $this->planBlocks($m, $page, $plan);
+        $plan->blocks = $this->planBlocks((array) ($m['blocks'] ?? []), $page, $plan, '');
+        $this->planPages($m, $site, $plan);
         $this->planListings($package, $partner, $plan);
 
         return $plan;
@@ -194,6 +207,10 @@ class SitePackageImporter
         DB::transaction(function () use ($m, $site, $keys): void {
             $fields = $this->section($m, 'site', self::SITE_FIELDS);
 
+            if (isset($fields['edition'])) {
+                $fields['edition'] = SiteEdition::from((string) $fields['edition']);
+            }
+
             if (BusinessType::tryFrom((string) ($m['site']['business_type'] ?? '')) !== null) {
                 $fields['business_type'] = BusinessType::from((string) $m['site']['business_type']);
             }
@@ -226,7 +243,8 @@ class SitePackageImporter
             }
 
             $ids = $this->writeImages($m, $site, $keys);
-            $this->writeBlocks($m, $page, $ids, $keys);
+            $this->writeBlocks((array) ($m['blocks'] ?? []), $page, $ids, $keys);
+            $this->writePages($m, $site, $ids, $keys);
         });
 
         $this->withListings($package, $partner, function (ImportPlan $listings) use ($package, $partner, $plan): void {
@@ -548,24 +566,118 @@ class SitePackageImporter
     }
 
     /**
+     * The subpages a package names. Created or updated by slug; a page the
+     * package does not name is left as it is.
+     *
      * @param  array<string, mixed>  $m
      */
-    private function planBlocks(array $m, ?SitePage $page, SitePackagePlan $plan): void
+    private function planPages(array $m, ?Site $site, SitePackagePlan $plan): void
     {
         $seen = [];
 
-        foreach ((array) ($m['blocks'] ?? []) as $i => $entry) {
+        foreach ($this->pageEntries($m) as $i => $entry) {
+            $slug = trim((string) ($entry['slug'] ?? ''), '/');
+            $where = 'Page '.($i + 1).($slug !== '' ? " [{$slug}]" : '');
+
+            if (! preg_match('#^[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*)*$#', $slug)) {
+                $plan->errors[] = "{$where}: \"slug\" must be lowercase letters, digits and dashes, e.g. \"tours/namibia-safari\".";
+
+                continue;
+            }
+
+            $root = explode('/', $slug)[0];
+
+            if (in_array($root, self::RESERVED_SLUGS, true) || LegalText::isLegalPage($slug)) {
+                $plan->errors[] = "{$where}: the address /{$slug} is taken by the site itself - choose another slug.";
+
+                continue;
+            }
+
+            if (in_array($slug, $seen, true)) {
+                $plan->errors[] = "{$where}: the slug appears twice.";
+
+                continue;
+            }
+
+            $seen[] = $slug;
+
+            if (blank($entry['title'] ?? null)) {
+                $plan->errors[] = "{$where}: \"title\" is missing.";
+            }
+
+            $existing = $site?->pages()->where('slug', $slug)->where('is_home', false)->first();
+
+            $plan->pages[] = [
+                'slug' => $slug,
+                'title' => (string) ($entry['title'] ?? ''),
+                'action' => $existing ? 'update' : 'create',
+                'blocks' => $this->planBlocks((array) ($entry['blocks'] ?? []), $existing, $plan, $where.': '),
+            ];
+        }
+
+        // One contact form type per site, however many pages carry the form.
+        $types = [];
+
+        foreach ($this->blockLists($m) as $blocks) {
+            foreach ($blocks as $entry) {
+                if (is_array($entry) && ($entry['type'] ?? null) === 'enquiry' && filled($entry['data']['form_type'] ?? null)) {
+                    $types[] = (string) $entry['data']['form_type'];
+                }
+            }
+        }
+
+        if (count(array_unique($types)) > 1) {
+            $plan->errors[] = 'The contact forms ask for different things ('.implode(', ', array_unique($types)).') - a site offers one kind of form on every page.';
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $m
+     * @return list<array<string, mixed>>
+     */
+    private function pageEntries(array $m): array
+    {
+        return array_values(array_filter((array) ($m['pages'] ?? []), 'is_array'));
+    }
+
+    /**
+     * The home page's blocks and every subpage's, for the file scans.
+     *
+     * @param  array<string, mixed>  $m
+     * @return list<array<int, mixed>>
+     */
+    private function blockLists(array $m): array
+    {
+        $lists = [(array) ($m['blocks'] ?? [])];
+
+        foreach ($this->pageEntries($m) as $entry) {
+            $lists[] = (array) ($entry['blocks'] ?? []);
+        }
+
+        return $lists;
+    }
+
+    /**
+     * @param  array<int, mixed>  $entries
+     * @return list<array{type: string, label: string, action: string}>
+     */
+    private function planBlocks(array $entries, ?SitePage $page, SitePackagePlan $plan, string $where): array
+    {
+        $seen = [];
+        $rows = [];
+
+        foreach ($entries as $i => $entry) {
             $type = is_array($entry) ? (string) ($entry['type'] ?? '') : '';
             $definition = BlockRegistry::find($type);
 
             if ($definition === null) {
-                $plan->errors[] = 'Block '.($i + 1).": [{$type}] is not a block type.";
+                $plan->errors[] = $where.'Block '.($i + 1).": [{$type}] is not a block type.";
 
                 continue;
             }
 
             if (in_array($type, $seen, true)) {
-                $plan->errors[] = "The [{$type}] band appears twice — a page carries one of each.";
+                $plan->errors[] = $where."The [{$type}] band appears twice - a page carries one of each.";
 
                 continue;
             }
@@ -574,7 +686,7 @@ class SitePackageImporter
             $existing = $page?->blocks()->where('type', $type)->first();
 
             if (! array_key_exists('data', $entry)) {
-                $plan->blocks[] = ['type' => $type, 'label' => $definition->label(), 'action' => $existing ? 'kept, placed here' : 'created empty'];
+                $rows[] = ['type' => $type, 'label' => $definition->label(), 'action' => $existing ? 'kept, placed here' : 'created empty'];
 
                 continue;
             }
@@ -584,19 +696,21 @@ class SitePackageImporter
             $validator = Validator::make($data, $definition->rules());
 
             foreach ($validator->errors()->all() as $message) {
-                $plan->errors[] = "The [{$type}] band: {$message}";
+                $plan->errors[] = $where."The [{$type}] band: {$message}";
             }
 
-            $plan->blocks[] = ['type' => $type, 'label' => $definition->label(), 'action' => $existing ? 'replaced' : 'created'];
+            $rows[] = ['type' => $type, 'label' => $definition->label(), 'action' => $existing ? 'replaced' : 'created'];
         }
 
         if ($page !== null) {
             foreach ($page->blocks()->orderBy('sort')->get() as $block) {
                 if (! in_array($block->type, $seen, true)) {
-                    $plan->blocks[] = ['type' => $block->type, 'label' => $block->definition()?->label() ?? $block->type, 'action' => 'untouched, moved below'];
+                    $rows[] = ['type' => $block->type, 'label' => $block->definition()?->label() ?? $block->type, 'action' => 'untouched, moved below'];
                 }
             }
         }
+
+        return $rows;
     }
 
     /**
@@ -618,12 +732,14 @@ class SitePackageImporter
             }
         }
 
-        foreach ((array) ($m['blocks'] ?? []) as $entry) {
-            $this->resolveRefs((array) ($entry['data'] ?? []), function (string $file) use (&$files): int {
-                $files[$file] ??= null;
+        foreach ($this->blockLists($m) as $blocks) {
+            foreach ($blocks as $entry) {
+                $this->resolveRefs((array) ($entry['data'] ?? []), function (string $file) use (&$files): int {
+                    $files[$file] ??= null;
 
-                return 0;
-            }, fn (string $f): string => $f);
+                    return 0;
+                }, fn (string $f): string => $f);
+            }
         }
 
         return $files;
@@ -637,12 +753,14 @@ class SitePackageImporter
     {
         $files = [];
 
-        foreach ((array) ($m['blocks'] ?? []) as $entry) {
-            $this->resolveRefs((array) ($entry['data'] ?? []), fn (): int => 0, function (string $file) use (&$files): string {
-                $files[] = $file;
+        foreach ($this->blockLists($m) as $blocks) {
+            foreach ($blocks as $entry) {
+                $this->resolveRefs((array) ($entry['data'] ?? []), fn (): int => 0, function (string $file) use (&$files): string {
+                    $files[] = $file;
 
-                return $file;
-            });
+                    return $file;
+                });
+            }
         }
 
         return array_values(array_unique($files));
@@ -650,8 +768,8 @@ class SitePackageImporter
 
     /**
      * File names in a block's data become what the block stores: `image` →
-     * `image_id`, `images` → `image_ids`, and per item `image` → `image_id`,
-     * `poster` → `poster_image_id`, `video` → `key`.
+     * `image_id`, `images` → `image_ids`, `video` → `video_key`, and per item
+     * `image` → `image_id`, `poster` → `poster_image_id`, `video` → `key`.
      *
      * @param  array<string, mixed>  $data
      * @param  callable(string): int  $image
@@ -663,6 +781,11 @@ class SitePackageImporter
         if (array_key_exists('image', $data)) {
             $data['image_id'] = filled($data['image']) ? $image((string) $data['image']) : null;
             unset($data['image']);
+        }
+
+        if (array_key_exists('video', $data)) {
+            $data['video_key'] = filled($data['video']) ? $video((string) $data['video']) : null;
+            unset($data['video']);
         }
 
         if (array_key_exists('images', $data)) {
@@ -766,12 +889,31 @@ class SitePackageImporter
      * @param  array<string, int>  $ids
      * @param  array<string, string>  $keys
      */
-    private function writeBlocks(array $m, SitePage $page, array $ids, array $keys): void
+    private function writePages(array $m, Site $site, array $ids, array $keys): void
+    {
+        $sort = (int) $site->pages()->max('sort');
+
+        foreach ($this->pageEntries($m) as $entry) {
+            $slug = trim((string) $entry['slug'], '/');
+            $page = $site->pages()->where('slug', $slug)->where('is_home', false)->first()
+                ?? new SitePage(['site_id' => $site->id, 'slug' => $slug, 'locale' => $site->default_locale, 'is_home' => false, 'sort' => ++$sort]);
+
+            $page->fill(array_intersect_key($entry, array_flip(self::SUBPAGE_FIELDS)))->save();
+            $this->writeBlocks((array) ($entry['blocks'] ?? []), $page, $ids, $keys);
+        }
+    }
+
+    /**
+     * @param  array<int, mixed>  $entries
+     * @param  array<string, int>  $ids
+     * @param  array<string, string>  $keys
+     */
+    private function writeBlocks(array $entries, SitePage $page, array $ids, array $keys): void
     {
         $seen = [];
         $sort = 0;
 
-        foreach ((array) ($m['blocks'] ?? []) as $entry) {
+        foreach ($entries as $entry) {
             $type = (string) $entry['type'];
             $block = $page->blocks()->firstOrNew(['type' => $type]);
             $fill = ['sort' => $sort++, 'is_enabled' => (bool) ($entry['enabled'] ?? true)];

@@ -14,6 +14,7 @@ use App\Models\Site;
 use App\Sites\LegalText;
 use App\Sites\Publishing\CannotPublish;
 use App\Sites\Publishing\PublishGate;
+use App\Sites\SiteEdition;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Notifications\Notification;
@@ -230,6 +231,32 @@ class WebsiteTab
                     ->schema([
                         Forms\Components\Actions::make([
                             SendTermsConfirmationAction::make(),
+
+                            // Team only: the edition is what the customer pays for.
+                            Action::make('edit_edition')
+                                ->label(fn (Listing|Partner|null $record): string => 'Edition: '
+                                    .(($record !== null ? SiteResolver::for($record) : null)?->edition->label() ?? 'Standard'))
+                                ->icon('heroicon-o-sparkles')
+                                ->color('gray')
+                                ->visible(fn (Listing|Partner|null $record): bool => $record !== null && SiteResolver::for($record) !== null)
+                                ->modalHeading('Which package this website is')
+                                ->modalDescription('Enterprise adds the showcase design: a full-screen opening with video, '
+                                    .'larger type, motion and subpages. Content and bands stay the same.')
+                                ->fillForm(fn (Listing|Partner|null $record): array => [
+                                    'edition' => ($record !== null ? SiteResolver::for($record) : null)?->edition->value ?? SiteEdition::Standard->value,
+                                ])
+                                ->form([
+                                    Forms\Components\Select::make('edition')
+                                        ->label('Edition')
+                                        ->options(SiteEdition::options())
+                                        ->required(),
+                                ])
+                                ->action(function (Listing|Partner|null $record, array $data): void {
+                                    $site = $record === null ? null : SiteResolver::for($record);
+                                    $site?->update(['edition' => SiteEdition::from((string) $data['edition'])]);
+
+                                    Notification::make()->title('Saved')->success()->send();
+                                }),
 
                             Action::make('build_website')
                                 ->label(fn (Listing|Partner|null $record): string => $record !== null && SiteResolver::for($record) !== null

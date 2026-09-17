@@ -28,7 +28,18 @@ class SitePerformanceBudgetTest extends TestCase
 
     public function test_a_page_carrying_every_block_stays_inside_the_budget(): void
     {
+        $this->assertEveryBlockPageFits('standard', 'sites.budget.document_bytes');
+    }
+
+    public function test_an_enterprise_page_carrying_every_block_stays_inside_its_budget(): void
+    {
+        $this->assertEveryBlockPageFits('enterprise', 'sites.budget.enterprise_document_bytes');
+    }
+
+    private function assertEveryBlockPageFits(string $edition, string $budgetKey): void
+    {
         $site = Site::factory()->published()->create([
+            'edition' => $edition,
             'name' => 'Every Block Lodge',
             'address' => "Erf 42\nSwakopmund",
             'contact_phone' => '+264 64 400 000',
@@ -50,7 +61,7 @@ class SitePerformanceBudgetTest extends TestCase
         }
 
         $html = $this->get('/_sites/'.$site->slug)->assertOk()->getContent();
-        $budget = (int) config('sites.budget.document_bytes');
+        $budget = (int) config($budgetKey);
 
         $this->assertLessThan(
             $budget,
@@ -91,7 +102,8 @@ class SitePerformanceBudgetTest extends TestCase
             .'We have been doing this since 1994 and we still get up early for it.';
 
         return match ($type) {
-            'hero' => ['eyebrow' => 'Swakopmund', 'headline' => 'The quiet edge of the desert', 'subline' => $lorem],
+            'hero' => ['eyebrow' => 'Swakopmund', 'headline' => 'The quiet edge of the desert', 'subline' => $lorem, 'video_key' => 'sites/every-block/videos/hero.mp4', 'video_layout' => 'card'],
+            'stats' => ['items' => array_fill(0, 4, ['value' => 2335, 'unit' => 'km', 'label' => 'The full circuit, roughly']), 'ticker' => array_fill(0, 12, 'Twyfelfontein')],
             'about' => ['heading' => 'About us', 'body' => '<p>'.$lorem.'</p><p>'.$lorem.'</p>'],
             'highlights' => ['heading' => 'What we offer', 'items' => array_fill(0, 6, ['title' => 'Guided dune walks', 'text' => $lorem])],
             'rich_text' => ['heading' => 'Before you come', 'body' => '<p>'.$lorem.'</p>'],

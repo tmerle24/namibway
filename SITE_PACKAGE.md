@@ -49,15 +49,25 @@ epima.zip
                "latitude": -20.46, "longitude": 16.65, "social_links": { … },
                "title": "…", "meta_description": "…",
                "logo": "logo.png", "logo_hero_height": 120, "logo_compact_height": 52,
-               "logo_shadow": "shadow" },
+               "logo_shadow": "shadow", "edition": "enterprise" },
   "images":  [ { "file": "lion-reflection.jpg", "alt": "A lion drinking at an Etosha waterhole" } ],
   "blocks":  [
-    { "type": "hero",    "data": { "image": "lion-reflection.jpg", "headline": "…" } },
+    { "type": "hero",    "data": { "image": "lion-reflection.jpg", "video": "hero-loop.mp4",
+                                   "video_layout": "card", "headline": "…" } },
+    { "type": "stats",   "data": { "items": [ { "value": 14, "unit": "days", "label": "…" } ],
+                                   "ticker": ["Etosha", "Sossusvlei"] } },
     { "type": "offers",  "data": { "items": [ { "title": "…", "image": "cheetah.jpg" } ] } },
     { "type": "gallery", "data": { "images": ["a.jpg", "b.jpg"] } },
     { "type": "video",   "data": { "items": [ { "video": "clip.mp4", "poster": "clip.jpg" } ] } },
     { "type": "location" },
     { "type": "footer" }
+  ],
+  "pages":   [
+    { "slug": "tours/namibia-top-3", "title": "…", "meta_description": "…",
+      "nav_label": "Namibia Top 3", "show_in_nav": false,
+      "blocks": [ { "type": "hero", "data": { "image": "dunes.jpg", "headline": "Namibia Top 3" } },
+                  { "type": "itinerary", "data": { "items": [ … ] } },
+                  { "type": "enquiry", "data": { "form_type": "tour_request", "listing_slug": "namibia-top-3" } } ] }
   ]
 }
 ```
@@ -72,6 +82,22 @@ first screen: `{ "enquiry": { "places": ["menu.desktop", "hero.desktop", "footer
 
 Every key is optional except `version`. The keys inside `partner`, `listing` and `site` are the
 model's own column names; anything not listed above is ignored.
+
+`edition`: `standard` (the default) or `enterprise` - the showcase design with a full-screen
+opening, larger type and motion, same bands (PROJECT_STATUS.md § 4, 2026-09-17). A hero `video`
+is a muted loop behind the headline, with `image` as its poster; `video_layout: "card"` is for a
+portrait phone clip (full screen on a phone, a card beside the headline on a wide screen). Keep
+it to 10-20 seconds and about 2 MB (`ffmpeg ... -an -crf 30 -movflags +faststart`).
+
+**Subpages** (`pages`): created or updated by `slug`, never deleted. A slug may be a path
+(`tours/namibia-top-3`) but not an address the site answers itself (`card`, `shop`, `order`,
+`about`, the legal pages). `show_in_nav: false` keeps a page out of the menu; an offer card
+reaches it with `"page_slug": "tours/namibia-top-3"` (button text: `page_button_label` on the
+block). A subpage may carry the contact form with its tour chosen (`listing_slug` on the enquiry
+block); every form on the site must ask for the same `form_type`. From the shell, for a ZIP over
+the upload limit: `php artisan sites:import-package package.zip` (check) and `--apply`
+(import). To preview locally without touching the bucket, run with
+`CLOUDFLARE_R2_LOCAL_ROOT=storage/app/r2-local` (launch config `sites-local`).
 
 A **tour request** form (`"form_type": "tour_request"` on the enquiry block) lists the
 partner's own published listings with a fixed length (`duration_minutes`) — so the tours from

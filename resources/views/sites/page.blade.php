@@ -50,8 +50,12 @@
     @endif
 
     @include('sites.partials.styles')
+
+    @if ($site->isEnterprise())
+        @include('sites.partials.showcase')
+    @endif
 </head>
-<body id="top">
+<body id="top"@if ($site->isEnterprise()) class="sc"@endif>
     <script>document.documentElement.classList.add('js');</script>
 
     @include('sites.partials.nav', ['hasHero' => $hero !== null, 'isHome' => $page->is_home])

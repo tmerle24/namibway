@@ -100,7 +100,13 @@ return [
         // longer shipped (InlineCss, HtmlWhitespace), so the every-block page
         // went from 94 KB with 16 types to 71 KB with 22. The room is kept, not
         // spent.
-        'document_bytes' => 80 * 1024,
+        // Raised to 86 KB 2026-09-17: the numbers band (count-up, running
+        // line) and the hero video loader are on every page now, ~4 KB.
+        'document_bytes' => 86 * 1024,
+        // The enterprise edition adds its showcase stylesheet and script on
+        // top (sites.partials.showcase). Its own number, so the standard page
+        // keeps being held to the one it was sold with.
+        'enterprise_document_bytes' => 96 * 1024,
     ],
 
     /*

@@ -61,6 +61,18 @@
             });
         }
 
+        {{-- Hero video: only where motion is welcome and data is not being
+             saved. Everybody else keeps the poster, which is a finished opening. --}}
+        var heroVideo = document.querySelector('.hero__video[data-src]');
+        var saveData = navigator.connection && navigator.connection.saveData;
+        if (heroVideo && !saveData && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            heroVideo.addEventListener('playing', function () { heroVideo.classList.add('is-playing'); });
+            heroVideo.muted = true;
+            heroVideo.src = heroVideo.getAttribute('data-src');
+            var played = heroVideo.play();
+            if (played && played.catch) played.catch(function () {});
+        }
+
         // Gallery "Show all": the button only exists once this runs.
         document.querySelectorAll('[data-gallery-more]').forEach(function (wrap) {
             var grid = document.getElementById(wrap.getAttribute('data-gallery-more'));
@@ -105,6 +117,27 @@
                 }
             });
         });
+
+        {{-- Numbers count up once, as they come into view. --}}
+        var counters = document.querySelectorAll('[data-count]');
+        if (counters.length && 'IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            var countObserver = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (!entry.isIntersecting) return;
+                    countObserver.unobserve(entry.target);
+                    var el = entry.target, end = +el.getAttribute('data-count'), start = null;
+                    var step = function (now) {
+                        if (start === null) start = now;
+                        var t = Math.min((now - start) / 1400, 1);
+                        el.textContent = Math.round(end * (1 - Math.pow(1 - t, 3))).toLocaleString('en-US');
+                        if (t < 1) requestAnimationFrame(step);
+                    };
+                    el.textContent = '0';
+                    requestAnimationFrame(step);
+                });
+            });
+            counters.forEach(function (el) { countObserver.observe(el); });
+        }
 
         var targets = document.querySelectorAll('.reveal');
 

@@ -122,6 +122,7 @@
                                             <option value="{{ $tour->id }}"
                                                     data-days="{{ EnquiryTours::days($tour) }}"
                                                     data-slug="{{ $tour->slug }}"
+                                                    @selected(($data['listing_slug'] ?? null) === $tour->slug)
                                                     data-name="{{ $tour->name }}">{{ $tour->name }} — {{ EnquiryTours::days($tour) === 1 ? '1 day' : EnquiryTours::days($tour).' days' }}</option>
                                         @endforeach
                                         <option value="" data-days="">Private / tailor-made tour</option>

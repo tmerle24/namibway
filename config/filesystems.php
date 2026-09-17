@@ -60,7 +60,15 @@ return [
             'report' => false,
         ],
 
-        'r2' => [
+        // CLOUDFLARE_R2_LOCAL_ROOT swaps the bucket for a folder - local
+        // previews of an imported site without writing to the real bucket.
+        'r2' => env('CLOUDFLARE_R2_LOCAL_ROOT') ? [
+            'driver' => 'local',
+            'root' => env('CLOUDFLARE_R2_LOCAL_ROOT'),
+            'url' => rtrim((string) env('APP_URL'), '/').'/r2-local',
+            'visibility' => 'public',
+            'throw' => false,
+        ] : [
             'driver' => 's3',
             'key' => env('CLOUDFLARE_R2_ACCESS_KEY_ID'),
             'secret' => env('CLOUDFLARE_R2_SECRET_ACCESS_KEY'),

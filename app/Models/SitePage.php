@@ -9,13 +9,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * One page of a customer website. Slice 1 generates exactly one.
+ * One page of a customer website. A generated site has one; a package
+ * (SITE_PACKAGE.md) can add more, such as one page per tour.
  *
  * @property int $id
  * @property int $site_id
  * @property string $slug
  * @property string $locale
  * @property string|null $title
+ * @property string|null $nav_label
+ * @property bool $show_in_nav
  * @property string|null $meta_description
  * @property bool $is_home
  * @property int $sort
@@ -30,6 +33,8 @@ class SitePage extends Model
         'slug',
         'locale',
         'title',
+        'nav_label',
+        'show_in_nav',
         'meta_description',
         'is_home',
         'sort',
@@ -37,6 +42,7 @@ class SitePage extends Model
 
     protected $casts = [
         'is_home' => 'boolean',
+        'show_in_nav' => 'boolean',
         'sort' => 'integer',
     ];
 

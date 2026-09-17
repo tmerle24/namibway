@@ -66,6 +66,8 @@ class EnquiryBlock extends BlockDefinition
             'form_type' => ['nullable', 'string', 'in:'.implode(',', array_column(EnquiryFormType::cases(), 'value'))],
             'channel' => ['nullable', 'string', 'in:'.self::CHANNEL_EMAIL.','.self::CHANNEL_WHATSAPP],
             'button_label' => ['nullable', 'string', 'max:24'],
+            // A tour page's form opens with its own tour chosen.
+            'listing_slug' => ['nullable', 'string', 'max:255'],
         ], $this->navRules());
     }
 

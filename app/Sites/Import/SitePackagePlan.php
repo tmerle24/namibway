@@ -38,6 +38,9 @@ class SitePackagePlan
     /** @var list<array{type: string, label: string, action: string}> */
     public array $blocks = [];
 
+    /** @var list<array{slug: string, title: string, action: string, blocks: list<array{type: string, label: string, action: string}>}> */
+    public array $pages = [];
+
     public bool $written = false;
 
     public ?int $siteId = null;
@@ -60,6 +63,7 @@ class SitePackagePlan
             'listings_new' => $this->listingsNew,
             'listings_updated' => $this->listingsUpdated,
             'blocks' => $this->blocks,
+            'pages' => $this->pages,
             'written' => $this->written,
         ];
     }

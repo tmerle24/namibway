@@ -2,6 +2,7 @@
     $items = $data['items'] ?? [];
     $enquire = $actions->enquiryHref();
     $button = filled($data['button_label'] ?? null) ? $data['button_label'] : 'Enquire';
+    $pageButton = filled($data['page_button_label'] ?? null) ? $data['page_button_label'] : 'Details';
 @endphp
 <section class="section" id="{{ $anchor }}">
     <div class="wrap">
@@ -15,18 +16,21 @@
             <p class="lead reveal">{{ $data['intro'] }}</p>
         @endif
 
-        <div class="offers {{ count($items) >= 3 ? 'offers--3' : '' }}">
+        <div class="offers {{ count($items) >= 3 ? 'offers--3' : '' }} {{ count($items) === 4 ? 'offers--4' : '' }}">
             @foreach ($items as $item)
-                @php $image = $images->get($item['image_id'] ?? null); @endphp
-                <article class="offer-card reveal">
+                @php
+                    $image = $images->get($item['image_id'] ?? null);
+                    $pageHref = filled($item['page_slug'] ?? null) ? $site->pageUrl($item['page_slug']) : null;
+                @endphp
+                <article class="offer-card reveal {{ $pageHref ? 'offer-card--linked' : '' }}">
                     @if ($image)
-                        <div class="offer-card__media">
+                        <{{ $pageHref ? 'a' : 'div' }} class="offer-card__media" @if ($pageHref) href="{{ $pageHref }}" tabindex="-1" aria-hidden="true" @endif>
                             <img src="{{ $image->thumb(600) }}"
                                  @if ($srcset = $image->srcset(600)) srcset="{{ $srcset }}" @endif
                                  sizes="(min-width: 980px) 33vw, (min-width: 640px) 50vw, 100vw"
                                  alt="{{ $image->alt ?? $item['title'] }}"
                                  loading="lazy" decoding="async">
-                        </div>
+                        </{{ $pageHref ? 'a' : 'div' }}>
                     @endif
 
                     <div class="offer-card__body">
@@ -34,7 +38,7 @@
                             <p class="offer-card__meta">{{ $item['duration'] }}</p>
                         @endif
 
-                        <h3>{{ $item['title'] }}</h3>
+                        <h3>@if ($pageHref)<a href="{{ $pageHref }}">{{ $item['title'] }}</a>@else{{ $item['title'] }}@endif</h3>
 
                         @if (filled($item['text'] ?? null))
                             <p class="offer-card__text">{!! nl2br(e($item['text'])) !!}</p>
@@ -47,6 +51,9 @@
 
                             {{-- data-enquire: the title goes into the form's message; data-enquire-listing
                                  chooses the tour where the form lists them (partials/motion). --}}
+                            @if ($pageHref)
+                                <a class="btn" href="{{ $pageHref }}">{{ $pageButton }}</a>
+                            @endif
                             @if ($enquire)
                                 <a class="btn btn--ghost" href="{{ $enquire }}" data-enquire="{{ $item['title'] }}" data-enquire-listing="{{ $item['listing_slug'] ?? '' }}">{{ $button }}</a>
                             @endif

@@ -22,11 +22,18 @@
     // The site's other pages. pageUrl() rather than a bare slug, because a
     // draft is read at ?preview=<token> and a link that dropped the token would
     // land on a 404 in front of whoever is reviewing it.
+    // A page can stay out of the menu (show_in_nav) - a tour page is reached
+    // from its card. The home page is always in.
     $pages = $site->pages()
         ->where('locale', $site->default_locale)
+        ->where(fn ($query) => $query->where('is_home', true)->orWhere('show_in_nav', true))
         ->orderByDesc('is_home')
         ->orderBy('sort')
         ->get();
+
+    // The page being shown is a block page other than home: its own anchors
+    // are local, and "Home" has to lead back rather than to the top.
+    $isSubpage = isset($page) && ! $page->is_home && ! ($isHome ?? true);
 
     foreach ($blocks as $navBlock) {
         $definition = $navBlock->definition();
@@ -83,7 +90,7 @@
         foreach ($pages as $navPage) {
             $links[] = [
                 'href' => $site->pageUrl($navPage->is_home ? null : $navPage->slug),
-                'label' => $navPage->title ?: ($navPage->is_home ? 'Home' : $navPage->slug),
+                'label' => $navPage->is_home ? 'Home' : ($navPage->nav_label ?: ($navPage->title ?: $navPage->slug)),
                 'current' => $navPage->id === $page->id,
             ];
         }
@@ -96,7 +103,9 @@
     } elseif ($items !== []) {
         // Home first, and only once there is somewhere else to go: a single-item
         // menu reading "Home" on the page you are already on is furniture.
-        array_unshift($items, ['anchor' => 'top', 'label' => 'Home']);
+        array_unshift($items, $isSubpage
+            ? ['href' => $site->pageUrl(), 'label' => 'Home']
+            : ['anchor' => 'top', 'label' => 'Home']);
         $items = array_slice($items, 0, $cap);
     }
 
@@ -115,7 +124,7 @@
     // On the home page bare anchors scroll within the page. On shop or product
     // pages the sections don't exist, so prefix with the home URL so the link
     // still lands correctly.
-    $anchorBase = ($isHome ?? true) ? '' : $site->pageUrl();
+    $anchorBase = ($isHome ?? true) || $isSubpage ? '' : $site->pageUrl();
 
     // The enquiry placed as a button in the bar on a wide screen: its menu
     // link would say the same words twice, so the link steps aside there.
@@ -124,7 +133,7 @@
 @endphp
 <header class="nav {{ $hasHero ? '' : 'nav--solid' }}" id="nav">
     <div class="nav__inner">
-        @include('sites.partials.brand', ['href' => $pages->count() > 1 ? $site->pageUrl() : '#top'])
+        @include('sites.partials.brand', ['href' => $pages->count() > 1 || $isSubpage ? $site->pageUrl() : '#top'])
 
         @if ($items !== [])
             <nav class="nav__links">

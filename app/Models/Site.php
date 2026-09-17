@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\BusinessType;
 use App\Enums\DomainStatus;
 use App\Enums\SiteStatus;
+use App\Sites\SiteEdition;
 use App\Support\MediaUrl;
 use Database\Factories\SiteFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,6 +28,7 @@ use Illuminate\Support\Str;
  * @property int|null $partner_id
  * @property int|null $source_listing_id
  * @property BusinessType $business_type
+ * @property SiteEdition $edition
  * @property string $name
  * @property string $slug
  * @property string|null $host
@@ -78,6 +80,7 @@ class Site extends Model
         'partner_id',
         'source_listing_id',
         'business_type',
+        'edition',
         'name',
         'slug',
         'host',
@@ -134,10 +137,12 @@ class Site extends Model
         'status' => 'draft',
         'default_locale' => 'en',
         'accent' => 'copper',
+        'edition' => 'standard',
     ];
 
     protected $casts = [
         'business_type' => BusinessType::class,
+        'edition' => SiteEdition::class,
         'status' => SiteStatus::class,
         'published_at' => 'datetime',
         'domain_status' => DomainStatus::class,
@@ -224,6 +229,11 @@ class Site extends Model
     public function shopProducts(): HasMany
     {
         return $this->hasMany(ShopProduct::class, 'partner_id', 'partner_id');
+    }
+
+    public function isEnterprise(): bool
+    {
+        return $this->edition === SiteEdition::Enterprise;
     }
 
     public function isPublished(): bool

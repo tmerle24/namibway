@@ -348,6 +348,12 @@
         width: 100%; height: 100%; object-fit: cover;
         animation: heroZoom 24s ease-out forwards;
     }
+    /* Fades in over the poster once it is actually playing (motion.blade). */
+    .hero__video {
+        position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+        opacity: 0; transition: opacity 1.2s ease;
+    }
+    .hero__video.is-playing { opacity: 1; }
     .hero::after {
         content: ''; position: absolute; inset: 0;
         background: linear-gradient(180deg, rgba(10,11,13,.45) 0%, rgba(10,11,13,.15) 38%, rgba(10,11,13,.78) 100%);
@@ -518,7 +524,9 @@
         transition: box-shadow .3s ease, transform .3s ease;
     }
     .offer-card:hover { box-shadow: 0 14px 40px rgba(22,24,28,.10); }
-    .offer-card__media { overflow: hidden; }
+    .offer-card__media { overflow: hidden; display: block; }
+    .offer-card h3 a { text-decoration: none; }
+    .offer-card__foot .btn + .btn { margin-left: var(--s2); }
     .offer-card__media img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: transform .6s ease; }
     .offer-card:hover .offer-card__media img { transform: scale(1.04); }
     .offer-card__body { flex: 1; display: flex; flex-direction: column; padding: var(--s4) var(--s4) var(--s5); }
@@ -1181,6 +1189,29 @@
     .lb__nav:disabled { opacity: .3; cursor: default; }
     .lb__nav:disabled:hover { background: rgba(255,255,255,.12); }
 
+    /* ---- Numbers and running line (stats) ------------------------------ */
+
+    .stats { background: var(--ink); color: #fff; padding: var(--s6) 0; overflow: hidden; }
+    .stats__grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s5) var(--s4); margin: 0 auto; }
+    @media (min-width: 900px) {
+        .stats__grid--3 { grid-template-columns: repeat(3, 1fr); }
+        .stats__grid--4 { grid-template-columns: repeat(4, 1fr); }
+    }
+    .stats__item { display: flex; flex-direction: column-reverse; padding-left: var(--s4); border-left: 1px solid rgba(255,255,255,.18); }
+    .stats dd { margin: 0; font-family: var(--font-display); font-size: clamp(44px, 6vw, 72px); line-height: 1; font-variant-numeric: tabular-nums; }
+    .stats dd small { font-size: .38em; margin-left: 6px; color: var(--accent); }
+    .stats dt { margin-top: var(--s2); font-size: 14px; color: rgba(255,255,255,.65); }
+    .stats__grid + .ticker { margin-top: var(--s6); padding-top: var(--s4); border-top: 1px solid rgba(255,255,255,.12); }
+    .ticker { overflow: hidden; white-space: nowrap; }
+    .ticker__track { display: inline-flex; animation: ticker 45s linear infinite; }
+    .ticker p { margin: 0; display: inline-flex; }
+    .ticker span { font-family: var(--font-display); font-size: clamp(22px, 3vw, 34px); color: rgba(255,255,255,.82); }
+    .ticker span::after {
+        content: ''; display: inline-block; width: 7px; height: 7px; margin: 0 var(--s5);
+        background: var(--accent); transform: rotate(45deg); vertical-align: middle;
+    }
+    @keyframes ticker { to { transform: translateX(-50%); } }
+
     /* ---- Motion -------------------------------------------------------
        Enhancement only: every element below is fully visible without the
        script, and the script only ever adds the "in" class. A page that
@@ -1192,6 +1223,7 @@
     @media (prefers-reduced-motion: reduce) {
         html { scroll-behavior: auto; }
         .hero__media img { animation: none; }
+        .ticker__track { animation: none; }
         .js .reveal, .js .reveal.in { opacity: 1; transform: none; transition: none; }
         .btn:hover { transform: none; }
         .grid-photos figure:hover img { transform: none; }

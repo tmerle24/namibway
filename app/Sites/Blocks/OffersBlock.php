@@ -56,6 +56,10 @@ class OffersBlock extends BlockDefinition
             // form then opens with it chosen. A slug rather than an id, so a
             // package re-imported into another environment still points right.
             'items.*.listing_slug' => ['nullable', 'string', 'max:255'],
+            // A page of this site with the whole story (a tour page); the card
+            // then links to it.
+            'items.*.page_slug' => ['nullable', 'string', 'max:120'],
+            'page_button_label' => ['nullable', 'string', 'max:24'],
         ], $this->navRules());
     }
 

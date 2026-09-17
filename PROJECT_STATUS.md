@@ -1782,6 +1782,45 @@ budget: the business card's styles were inlined into every page of every site, a
 inside inline scripts reached every visitor — together enough to push the every-block page
 over its 80 KB.
 
+### Built 2026-09-17 - the enterprise edition
+
+A second package on top of the one-page site, for customers who want a showcase (the model
+is what we built by hand for In The Open, Allendorf and tmsystems) while staying on the
+builder, so booking, listings and Kaia stay connected. `sites.edition` is `standard` or
+`enterprise` (`App\Sites\SiteEdition`), set by the team only (Website tab -> Operations),
+never by the partner, because it is what the customer pays for.
+
+The edition changes no content and no block: an enterprise page includes
+`sites.partials.showcase`, a stylesheet and script scoped under `.sc` on the body - an
+opening screen that fills the phone, the headline arriving word by word, parallax on the
+hero and photo bands, tour cards that are photographs first, a route that draws itself, a
+glass bar. All of it is an enhancement and `prefers-reduced-motion` switches it off. It has
+its own byte budget (`sites.budget.enterprise_document_bytes`, 96 KB for the every-block
+page); the standard page moved to 86 KB for the two things both editions gained:
+
+- **A hero video** (`hero.video_key`, `video_layout` cover or card). The markup carries no
+  src; the script loads it only where motion is welcome and data is not being saved, so the
+  poster photograph is the whole opening for everybody else. `card` is for portrait phone
+  clips, which is what small operators actually film: full screen on a phone, a tilted card
+  beside the headline on a wide screen, where stretching it would blur it.
+- **A numbers band** (`stats`): up to four of the business's own figures, counted up once
+  in view, and an optional running line of place names. The real numbers are in the HTML.
+
+**Subpages from a package.** `site.json` takes `pages[]` (slug, title, meta_description,
+nav_label, show_in_nav, blocks), created or updated by slug and never deleted, each with
+its own bands - one page per tour is the use. Slugs may be paths (`tours/etosha`); the
+Pages editor in the panel now keeps them (it used to slug `tours/etosha` into
+`toursetosha`, which would have broken every card link on the first save). A page can stay
+out of the menu (`show_in_nav`) and be reached from its card: an offer card's `page_slug`
+links title, photo and a button to it. On a subpage the menu's anchors are its own and
+"Home" leads back. A tour page may carry the contact form too, with its tour chosen
+(`enquiry.listing_slug`); the check refuses two pages asking for different form types,
+which keeps the one-kind-of-form rule true across pages.
+
+`php artisan sites:import-package <zip> [--apply]` is the same check-then-import from the
+shell, for packages over the 12 MB upload limit. `CLOUDFLARE_R2_LOCAL_ROOT` swaps the
+bucket for a folder so a package can be previewed locally without writing to R2.
+
 ### Next up, in the order it was asked for
 
 - **Collecting the money.** A provider that onboards a Namibian entity and settles in NAD,
