@@ -300,6 +300,8 @@ class BlockForm
             ],
 
             'faq' => [
+                self::image('background_image_id', $site, 'Photograph behind it (optional)')
+                    ->helperText('Shown very faintly behind this band, so a page does not end on a flat colour.'),
                 TextInput::make('heading')->label('Heading')->maxLength(120),
                 Repeater::make('items')
                     ->label('Questions')
@@ -349,6 +351,8 @@ class BlockForm
             ],
 
             'enquiry' => [
+                self::image('background_image_id', $site, 'Photograph behind it (optional)')
+                    ->helperText('Shown very faintly behind this band, so a page does not end on a flat colour.'),
                 // One type, not a set of toggles. A page offering a table
                 // booking and a product order and a general contact form has
                 // not decided what it sells.
@@ -436,6 +440,8 @@ class BlockForm
             ],
 
             'contact' => [
+                self::image('background_image_id', $site, 'Photograph behind it (optional)')
+                    ->helperText('Shown very faintly behind this band, so a page does not end on a flat colour.'),
                 TextInput::make('heading')->label('Heading')->maxLength(120),
                 Textarea::make('intro')->label('A line above it')->rows(2)->maxLength(300),
                 Textarea::make('opening_hours')->label('Opening hours')->rows(3)->maxLength(600)
@@ -444,6 +450,8 @@ class BlockForm
             ],
 
             'cta' => [
+                self::image('background_image_id', $site, 'Photograph behind it (optional)')
+                    ->helperText('Shown very faintly behind this band, so a page does not end on a flat colour.'),
                 TextInput::make('heading')->label('Heading')->maxLength(120),
                 Textarea::make('text')->label('The text')->rows(2)->maxLength(300),
                 TextInput::make('label')->label('Button')->maxLength(40),

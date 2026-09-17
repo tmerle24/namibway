@@ -31,6 +31,8 @@ class CtaBlock extends BlockDefinition
             'text' => ['nullable', 'string', 'max:300'],
             'label' => ['nullable', 'string', 'max:40'],
             'href' => ['nullable', 'string', 'max:2048'],
+            // One of the site's own photographs, faint, behind the band.
+            'background_image_id' => ['nullable', 'integer'],
         ], $this->navRules());
     }
 

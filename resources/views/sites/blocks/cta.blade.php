@@ -1,4 +1,5 @@
-<section class="section" id="{{ $anchor }}">
+<section class="section {{ filled($data['background_image_id'] ?? null) ? 'section--photo' : '' }}" id="{{ $anchor }}">
+    @include('sites.partials.section-photo')
     <div class="wrap">
         @include('sites.partials.rule', ['label' => $definition->label()])
 

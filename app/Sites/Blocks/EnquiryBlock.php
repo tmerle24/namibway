@@ -68,6 +68,8 @@ class EnquiryBlock extends BlockDefinition
             'button_label' => ['nullable', 'string', 'max:24'],
             // A tour page's form opens with its own tour chosen.
             'listing_slug' => ['nullable', 'string', 'max:255'],
+            // One of the site's own photographs, faint, behind the band.
+            'background_image_id' => ['nullable', 'integer'],
         ], $this->navRules());
     }
 

@@ -39,6 +39,8 @@ class ContactBlock extends BlockDefinition
             'intro' => ['nullable', 'string', 'max:300'],
             'opening_hours' => ['nullable', 'string', 'max:600'],
             'show_form' => ['boolean'],
+            // One of the site's own photographs, faint, behind the band.
+            'background_image_id' => ['nullable', 'integer'],
         ], $this->navRules());
     }
 

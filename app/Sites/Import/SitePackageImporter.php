@@ -768,7 +768,8 @@ class SitePackageImporter
 
     /**
      * File names in a block's data become what the block stores: `image` →
-     * `image_id`, `images` → `image_ids`, `video` → `video_key`, and per item
+     * `image_id`, `images` → `image_ids`, `video` → `video_key`, `background` →
+     * `background_image_id`, and per item
      * `image` → `image_id`, `poster` → `poster_image_id`, `video` → `key`.
      *
      * @param  array<string, mixed>  $data
@@ -781,6 +782,11 @@ class SitePackageImporter
         if (array_key_exists('image', $data)) {
             $data['image_id'] = filled($data['image']) ? $image((string) $data['image']) : null;
             unset($data['image']);
+        }
+
+        if (array_key_exists('background', $data)) {
+            $data['background_image_id'] = filled($data['background']) ? $image((string) $data['background']) : null;
+            unset($data['background']);
         }
 
         if (array_key_exists('video', $data)) {

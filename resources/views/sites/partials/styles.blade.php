@@ -601,6 +601,20 @@
 
     /* ---- Dark section (video) ----------------------------------------- */
 
+    /* A photograph behind a band, faint. Light bands take less of it than
+       dark ones: the same opacity that reads as texture on ink reads as a
+       smudge behind body text on salt. */
+    .section--photo { position: relative; isolation: isolate; overflow: hidden; }
+    .section__photo { position: absolute; inset: 0; z-index: -1; }
+    .section__photo img { width: 100%; height: 100%; object-fit: cover; opacity: .1; }
+    .section--photo::after {
+        content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+        background: linear-gradient(180deg, var(--salt) 0%, rgba(247,246,243,.55) 45%, var(--salt) 100%);
+    }
+    .section--tint.section--photo::after { background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,.55) 45%, #fff 100%); }
+    .section--ink.section--photo .section__photo img { opacity: .26; }
+    .section--ink.section--photo::after { background: linear-gradient(180deg, var(--ink) 0%, rgba(22,24,28,.55) 45%, var(--ink) 100%); }
+
     .section--ink { background: var(--ink); color: #fff; }
     .section--ink .rule { border-top-color: rgba(255,255,255,.16); }
     .section--ink .rule__label, .section--ink .lead { color: rgba(255,255,255,.7); }

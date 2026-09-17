@@ -39,6 +39,8 @@ class FaqBlock extends BlockDefinition
             'items' => ['array', 'max:'.self::MAX_ITEMS],
             'items.*.question' => ['required', 'string', 'max:160'],
             'items.*.answer' => ['required', 'string', 'max:1200'],
+            // One of the site's own photographs, faint, behind the band.
+            'background_image_id' => ['nullable', 'integer'],
         ], $this->navRules());
     }
 
