@@ -185,6 +185,9 @@ class PartnerNoticesTest extends TestCase
             'partner_id' => $partner->id,
             'type' => ListingType::Accommodation,
             'name' => 'Camp',
+            // The factory slug comes from a random company name, which is
+            // sometimes longer than the 40 characters the mailbox tag keeps.
+            'slug' => 'camp-'.fake()->unique()->numberBetween(1000, 9999),
         ]);
 
         return [$user, $listing->fresh() ?? $listing];
