@@ -201,7 +201,7 @@ class SiteStoryBlocksTest extends TestCase
             ['quote' => 'Not one day rushed.', 'name' => 'Anna', 'sample' => true],
         ]]);
 
-        $this->assertStringContainsString('<em class="quote__sample">Sample</em>', $this->page($site));
+        $this->assertStringContainsString('<span class="quote__sample">Demo</span>', $this->page($site));
 
         $gate = app(PublishGate::class);
         $this->assertNotEmpty(array_filter($gate->blockers($site), fn ($b) => str_contains($b, 'sample quotes')));
