@@ -240,7 +240,8 @@
        Contour lines on dark ground, notes pinned with tape, stamps. The same
        blocks as every site, dressed as a field journal. */
     .sc .section--highlights, .sc .section--about, .sc .section--itinerary, .sc .section--offers {
-        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520'%3E%3Cg fill='none' stroke='%23C99A5B' stroke-opacity='.16' stroke-width='1.3'%3E%3Cpath d='M-20 60C80 20 140 110 260 70S420 10 540 60'/%3E%3Cpath d='M-20 100C90 60 150 150 270 110S430 50 540 100'/%3E%3Cpath d='M-20 140C100 100 160 190 280 150S440 90 540 140'/%3E%3Cpath d='M-20 300C70 250 170 350 260 300S420 240 540 290'/%3E%3Cpath d='M-20 340C80 290 180 390 270 340S430 280 540 330'/%3E%3Cpath d='M-20 380C90 330 190 430 280 380S440 320 540 370'/%3E%3Cellipse cx='380' cy='210' rx='60' ry='26'/%3E%3Cellipse cx='380' cy='210' rx='34' ry='13'/%3E%3Cellipse cx='120' cy='460' rx='70' ry='24'/%3E%3C/g%3E%3C/svg%3E"), #1E1610; color: #F1E4C6;
+        background: radial-gradient(90% 70% at 20% 10%, rgba(120,78,38,.22), transparent 60%), radial-gradient(80% 60% at 85% 90%, rgba(90,55,25,.25), transparent 60%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .78  0 0 0 0 .6  0 0 0 0 .36  0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url%28%23g%29'/%3E%3C/svg%3E"), #1E1610;
+        background-attachment: fixed; color: #F1E4C6;
     }
     .sc .section--highlights h2, .sc .section--about h2, .sc .section--itinerary h2, .sc .section--offers h2 { color: #F6E7C4; }
     .sc .section--highlights .rule, .sc .section--about .rule, .sc .section--itinerary .rule, .sc .section--offers .rule { border-color: rgba(226,171,108,.3); }
@@ -290,7 +291,7 @@
     .sc .section--itinerary .trip__body::before { background: #1E1610; }
 
     /* The numbers: brass on leather. */
-    .sc .stats { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520'%3E%3Cg fill='none' stroke='%23C99A5B' stroke-opacity='.16' stroke-width='1.3'%3E%3Cpath d='M-20 60C80 20 140 110 260 70S420 10 540 60'/%3E%3Cpath d='M-20 100C90 60 150 150 270 110S430 50 540 100'/%3E%3Cpath d='M-20 140C100 100 160 190 280 150S440 90 540 140'/%3E%3Cpath d='M-20 300C70 250 170 350 260 300S420 240 540 290'/%3E%3Cpath d='M-20 340C80 290 180 390 270 340S430 280 540 330'/%3E%3Cpath d='M-20 380C90 330 190 430 280 380S440 320 540 370'/%3E%3Cellipse cx='380' cy='210' rx='60' ry='26'/%3E%3Cellipse cx='380' cy='210' rx='34' ry='13'/%3E%3Cellipse cx='120' cy='460' rx='70' ry='24'/%3E%3C/g%3E%3C/svg%3E"), #140E09; }
+    .sc .stats { background: radial-gradient(90% 70% at 20% 10%, rgba(120,78,38,.22), transparent 60%), radial-gradient(80% 60% at 85% 90%, rgba(90,55,25,.25), transparent 60%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .78  0 0 0 0 .6  0 0 0 0 .36  0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url%28%23g%29'/%3E%3C/svg%3E"), #140E09; }
     .sc .stats dd { color: #EFCB8B; text-shadow: 0 2px 0 rgba(0,0,0,.5); }
     .sc .stats__item { border-left-color: rgba(226,171,108,.35); }
 
@@ -314,7 +315,7 @@
         /* The parked vehicle covers where the caption sat. */
         .sc .scene ~ .hero__videonote { display: none; }
         .sc .scene__front { width: 175%; left: -48%; bottom: -18%; animation: scPark 1.8s var(--ease-out) 1s both; }
-        .sc .scene__side { height: 42%; left: -62%; bottom: -13%; animation: scUp 1.4s var(--ease-out) 1.4s both; }
+        .sc .scene__side { height: 40%; left: -80%; bottom: -14%; animation: scUp 1.4s var(--ease-out) 1.4s both; }
     }
     @keyframes scPark { from { opacity: 0; transform: translateX(-60px); } to { opacity: 1; transform: none; } }
     .hero__scroll { display: none; }
