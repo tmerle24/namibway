@@ -126,8 +126,10 @@
        on light. */
     .sc .section--photo { background: var(--ink); color: #fff; }
     .sc .section--photo .section__photo img { opacity: .55; }
+    /* Every photographed band starts and ends on the same solid ink, so two
+       of them meet on one colour instead of at a picture's hard edge. */
     .sc .section--photo::after, .sc .section--tint.section--photo::after {
-        background: linear-gradient(180deg, rgba(22,24,28,.9) 0%, rgba(22,24,28,.5) 45%, rgba(22,24,28,.88) 100%);
+        background: linear-gradient(180deg, var(--ink) 0%, rgba(22,24,28,.55) 22%, rgba(22,24,28,.5) 78%, var(--ink) 100%);
     }
     .sc .section--photo h2, .sc .section--photo .faq__item summary, .sc .section--photo .channel a { color: #fff; }
     .sc .section--photo .lead, .sc .section--photo .prose, .sc .section--photo .note,
@@ -205,7 +207,7 @@
     .sc .section--map.section--photo .section__photo img,
     .sc .section--leader.section--photo .section__photo img { opacity: .85; filter: sepia(.35) saturate(1.15); }
     .sc .section--map.section--photo::after, .sc .section--leader.section--photo::after {
-        background: linear-gradient(180deg, rgba(24,14,6,.78) 0%, rgba(24,14,6,.38) 45%, rgba(24,14,6,.82) 100%);
+        background: linear-gradient(180deg, var(--ink) 0%, rgba(22,24,28,.4) 22%, rgba(22,24,28,.4) 78%, var(--ink) 100%);
     }
 
     /* ---- Expedition leader: a dossier, not a staff photo --------------- */
@@ -329,6 +331,8 @@
     .sc .btn { border-radius: 999px; }
     .js .sc .reveal { transform: translateY(36px); }
     .js .sc .reveal.in { transition: opacity 1s var(--ease-out), transform 1.2s var(--ease-out); }
+
+    .sc .gallery-more { margin-top: var(--s6); position: relative; z-index: 1; }
 
     /* ---- Tour cards: the photograph is the card ----------------------- */
     .sc .offers { gap: var(--s4); }
