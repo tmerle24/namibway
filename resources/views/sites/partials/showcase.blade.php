@@ -315,7 +315,7 @@
         /* The parked vehicle covers where the caption sat. */
         .sc .scene ~ .hero__videonote { display: none; }
         .sc .scene__front { width: 175%; left: -48%; bottom: -18%; animation: scPark 1.8s var(--ease-out) 1s both; }
-        .sc .scene__side { height: 40%; left: -80%; bottom: -14%; animation: scUp 1.4s var(--ease-out) 1.4s both; }
+        .sc .scene__side { height: 46%; left: -80%; bottom: -17%; animation: scUp 1.4s var(--ease-out) 1.4s both; }
     }
     @keyframes scPark { from { opacity: 0; transform: translateX(-60px); } to { opacity: 1; transform: none; } }
     .hero__scroll { display: none; }
@@ -419,12 +419,21 @@
 
         {{-- Parallax: the hero and every photo band move slower than the page. --}}
         var hero = document.querySelector('.hero__media');
+        {{-- The people beside the handset drift a little faster than the page,
+             the vehicle a little slower, so the scene has depth. `translate`
+             rather than `transform`, which their entrance animation owns. --}}
+        var sceneSide = document.querySelector('.scene__side');
+        var sceneFront = document.querySelector('.scene__front');
         var bands = document.querySelectorAll('.band__img');
         var ticking = false;
         var move = function () {
             ticking = false;
             var y = window.scrollY, vh = window.innerHeight;
             if (hero && y < vh * 1.2) hero.style.transform = 'translate3d(0,' + (y * 0.32) + 'px,0)';
+            if (y < vh * 1.2) {
+                if (sceneSide) sceneSide.style.translate = '0 ' + (y * -0.14) + 'px';
+                if (sceneFront) sceneFront.style.translate = '0 ' + (y * 0.05) + 'px';
+            }
             bands.forEach(function (img) {
                 var r = img.parentNode.getBoundingClientRect();
                 if (r.bottom < 0 || r.top > vh) return;
