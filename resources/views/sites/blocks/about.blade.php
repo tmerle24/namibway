@@ -11,7 +11,7 @@
     $useSlideshow = ($data['slideshow'] ?? true) && count($slides) >= 2;
     $storyUrl = $useSlideshow ? $site->pageUrl('about') : null;
 @endphp
-<section class="section section--tint" id="{{ $anchor }}">
+<section class="section section--tint section--about" id="{{ $anchor }}">
     <div class="wrap">
         @include('sites.partials.rule', ['label' => $data['eyebrow'] ?? $definition->label()])
 

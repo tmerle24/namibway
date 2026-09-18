@@ -38,8 +38,11 @@ class HeroBlock extends BlockDefinition
             'video_layout' => ['nullable', 'string', 'in:cover,card'],
             // Small line under the card, e.g. "Filmed on a game drive".
             'video_caption' => ['nullable', 'string', 'max:60'],
-            // Hand-drawn safari sketches around the video card (enterprise).
-            'doodles' => ['nullable', 'boolean'],
+            // Cut-out photographs standing around the video card on a wide
+            // screen (enterprise): people beside it, a vehicle parked in front.
+            // Transparent PNGs, e.g. from the business's own photos.
+            'scene_side_id' => ['nullable', 'integer'],
+            'scene_front_id' => ['nullable', 'integer'],
             'eyebrow' => ['nullable', 'string', 'max:60'],
             'headline' => ['nullable', 'string', 'max:120'],
             'subline' => ['nullable', 'string', 'max:240'],

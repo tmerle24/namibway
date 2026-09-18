@@ -1,13 +1,15 @@
 name: Remote SSH Deployment
 
+# Deploys on every push to main without waiting for the tests (2026-09-18,
+# on request, to see site changes live straight away). The tests workflow still
+# runs, it just no longer gates. To restore the gate, put back the
+# workflow_run trigger (workflows: tests, types: completed, branches: main) and
+# the `if: github.event.workflow_run.conclusion == 'success'` below.
 on:
-  workflow_run:
-    workflows:
-      - tests # Nur deployen, wenn die Tests auf main gelaufen sind
-    types:
-      - completed
+  push:
     branches:
       - main
+  workflow_dispatch:
 
 concurrency:
   group: production-deploy
@@ -15,14 +17,13 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event.workflow_run.conclusion == 'success' # ...und erfolgreich waren
     runs-on: ubuntu-latest
 
     steps:
       - name: Code auschecken
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
 
       - name: Skript über SSH ausführen
         uses: appleboy/ssh-action@v1.2.5

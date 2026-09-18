@@ -336,7 +336,7 @@ class SiteController
             $holders = [$data, ...array_filter((array) ($data['items'] ?? []), 'is_array')];
 
             foreach ($holders as $holder) {
-                foreach (['image_id', 'image_ids', 'poster_image_id'] as $key) {
+                foreach (['image_id', 'image_ids', 'poster_image_id', 'background_image_id', 'scene_side_id', 'scene_front_id', 'paper_image_id'] as $key) {
                     foreach ((array) ($holder[$key] ?? []) as $id) {
                         if (is_int($id) || (is_string($id) && ctype_digit($id))) {
                             $ids[] = (int) $id;

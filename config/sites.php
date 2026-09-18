@@ -105,11 +105,15 @@ return [
         // Raised to 96 KB 2026-09-18 for the drawn route map, which the
         // every-block page carries with ten stops. A real page only ships the
         // map's styles when it has the map (partials/styles).
-        'document_bytes' => 96 * 1024,
+        // Raised to 104 KB 2026-09-18: the map's landmarks (rivers, pans, sand,
+        // peaks, scale, cartouche) in the every-block page.
+        'document_bytes' => 104 * 1024,
         // The enterprise edition adds its showcase stylesheet and script on
         // top (sites.partials.showcase). Its own number, so the standard page
         // keeps being held to the one it was sold with.
-        'enterprise_document_bytes' => 112 * 1024,
+        // 140 KB since 2026-09-18: the torn-paper mask, its scorch layer and the
+        // field-journal styles are inlined SVG, about 20 KB of it.
+        'enterprise_document_bytes' => 140 * 1024,
     ],
 
     /*

@@ -4,7 +4,7 @@
     $button = filled($data['button_label'] ?? null) ? $data['button_label'] : 'Enquire';
     $pageButton = filled($data['page_button_label'] ?? null) ? $data['page_button_label'] : 'Details';
 @endphp
-<section class="section" id="{{ $anchor }}">
+<section class="section section--offers" id="{{ $anchor }}">
     <div class="wrap">
         @include('sites.partials.rule', ['label' => $definition->label()])
 

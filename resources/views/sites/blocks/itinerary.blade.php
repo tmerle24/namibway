@@ -1,4 +1,4 @@
-<section class="section section--tint" id="{{ $anchor }}">
+<section class="section section--tint section--itinerary" id="{{ $anchor }}">
     <div class="wrap">
         @include('sites.partials.rule', ['label' => $definition->label()])
 

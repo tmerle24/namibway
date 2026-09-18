@@ -105,7 +105,10 @@ class BlockForm
                     ->fetchFileInformation(false)
                     ->helperText('A short silent loop, 10-20 seconds, 720p. The photograph is shown until it plays, '
                         .'and instead of it on a phone that saves data.'),
-                Toggle::make('doodles')->label('Safari sketches around the video (enterprise)'),
+                self::image('scene_side_id', $site, 'Cut-out beside the video (enterprise)')
+                    ->helperText('A transparent PNG of people, standing to the left of the video card on a computer.'),
+                self::image('scene_front_id', $site, 'Cut-out in front of the video (enterprise)')
+                    ->helperText('A transparent PNG of a vehicle, parked in front of the video card.'),
                 TextInput::make('video_caption')->label('Line under the video')->maxLength(60)
                     ->placeholder('Filmed on a game drive'),
                 Select::make('video_layout')

@@ -784,6 +784,13 @@ class SitePackageImporter
             unset($data['image']);
         }
 
+        foreach (['scene_side' => 'scene_side_id', 'scene_front' => 'scene_front_id', 'paper' => 'paper_image_id'] as $from => $to) {
+            if (array_key_exists($from, $data)) {
+                $data[$to] = filled($data[$from]) ? $image((string) $data[$from]) : null;
+                unset($data[$from]);
+            }
+        }
+
         if (array_key_exists('background', $data)) {
             $data['background_image_id'] = filled($data['background']) ? $image((string) $data['background']) : null;
             unset($data['background']);

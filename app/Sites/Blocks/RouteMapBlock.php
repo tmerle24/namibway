@@ -45,6 +45,9 @@ class RouteMapBlock extends BlockDefinition
             'items.*.lat' => ['required', 'numeric', 'between:-90,90'],
             'items.*.lng' => ['required', 'numeric', 'between:-180,180'],
             'note' => ['nullable', 'string', 'max:200'],
+            'background_image_id' => ['nullable', 'integer'],
+            // A photograph of old paper the chart is printed on.
+            'paper_image_id' => ['nullable', 'integer'],
         ], $this->navRules());
     }
 

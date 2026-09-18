@@ -662,6 +662,11 @@
     .team--solo .person { display: grid; gap: var(--s5); align-items: center; }
     @media (min-width: 860px) { .team--solo .person { grid-template-columns: 5fr 7fr; gap: var(--s7); } }
     .team--solo .person__photo { margin: 0; }
+    .person__caption { display: none; }
+    .person__facts { margin: var(--s4) 0 0; display: grid; gap: 6px; }
+    .person__facts div { display: flex; gap: var(--s3); font-size: 15px; }
+    .person__facts dt { min-width: 110px; color: var(--slate); }
+    .person__facts dd { margin: 0; }
     .team--solo .person__name { font-size: clamp(28px, 3.4vw, 40px); }
     .team--solo .person__text { font-size: 17px; max-width: var(--measure); }
 
@@ -1243,12 +1248,28 @@
     .map__draw { fill: none; stroke: #fff; stroke-width: 10; }
     .map__route { fill: none; stroke: #A8321F; stroke-width: 3.2; stroke-linecap: round; stroke-dasharray: 9 7; }
     .map__pin circle { fill: #A8321F; stroke: #F7EDD6; stroke-width: 2.5; }
+    .routemap__paper[style] { background: var(--paper) center / cover; }
     .map__pin .map__start { fill: #5B3B22; }
     .map__pin text, .map__compass text, .map__cartouche text {
         font-family: var(--font-display); font-style: italic; font-size: 17px; fill: #3A2616;
         paint-order: stroke; stroke: #F7EDD6; stroke-width: 4px; stroke-linejoin: round;
     }
     .map__traveller { fill: #FFF3D6; stroke: #A8321F; stroke-width: 2.5; }
+    .map__coast { fill: none; stroke: rgba(70,120,150,.22); stroke-width: 7; stroke-linejoin: round; }
+    .map__sand { stroke: none; opacity: .75; }
+    .map__dune { fill: none; stroke: #9A6A30; stroke-width: 1.1; stroke-linecap: round; }
+    .map__river { fill: none; stroke: #3F6F8A; stroke-width: 2.4; stroke-linecap: round; opacity: .8; }
+    .map__pan { fill: rgba(246,238,220,.9); stroke: #8A7A5A; stroke-width: 1.2; stroke-dasharray: 3 3; }
+    .map__peak { fill: none; stroke: #5B3B22; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+    .map__country, .map__small { font-family: var(--font-display); fill: rgba(58,38,22,.55); letter-spacing: .35em; text-transform: uppercase; font-size: 13px; }
+    .map__small { letter-spacing: .12em; font-size: 11px; font-style: italic; }
+    .map__pin .map__num { font-family: var(--font-body); font-style: normal; font-weight: 700; font-size: 11px; fill: #FFF3D6; stroke: none; }
+    .map__scale rect { fill: #3A2616; }
+    .map__scale .map__scale-alt { fill: none; stroke: #3A2616; stroke-width: 1.2; }
+    .map__scale text { font-family: var(--font-display); font-size: 12px; fill: #3A2616; }
+    .map__claw { display: none; }
+    .map__cartouche rect { fill: rgba(247,237,214,.85); stroke: #5B3B22; stroke-width: 1.5; }
+    .map__cartouche .map__cartouche-inner { fill: none; stroke: #A8321F; stroke-width: 1; }
     .map__compass circle { fill: none; stroke: rgba(91,59,34,.5); stroke-dasharray: 3 4; }
     .map__compass path { fill: rgba(91,59,34,.35); }
     .map__compass .map__compass-n { fill: #A8321F; }

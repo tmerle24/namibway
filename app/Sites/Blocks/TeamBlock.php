@@ -41,6 +41,11 @@ class TeamBlock extends BlockDefinition
             'items.*.name' => ['required', 'string', 'max:80'],
             'items.*.role' => ['nullable', 'string', 'max:80'],
             'items.*.text' => ['nullable', 'string', 'max:900'],
+            'background_image_id' => ['nullable', 'integer'],
+            // A few short facts beside the story ("Base: Otjiwarongo").
+            'items.*.facts' => ['nullable', 'array', 'max:6'],
+            'items.*.facts.*.label' => ['required', 'string', 'max:24'],
+            'items.*.facts.*.value' => ['required', 'string', 'max:60'],
             'items.*.image_id' => ['nullable', 'integer'],
         ], $this->navRules());
     }

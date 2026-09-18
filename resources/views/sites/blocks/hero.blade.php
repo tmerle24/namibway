@@ -6,6 +6,8 @@
         ? \Illuminate\Support\Facades\Storage::disk('r2')->url($data['video_key'])
         : null;
     $card = $video !== null && ($data['video_layout'] ?? null) === 'card';
+    $sceneSide = $site->isEnterprise() ? $images->get($data['scene_side_id'] ?? null) : null;
+    $sceneFront = $site->isEnterprise() ? $images->get($data['scene_front_id'] ?? null) : null;
 
     /**
      * The buttons under the headline come from the site's own placement — by
@@ -49,8 +51,17 @@
             <video class="hero__video" data-src="{{ $video }}" muted loop playsinline preload="none" aria-hidden="true"></video>
         </div>
 
-        @if (! empty($data['doodles']) && $site->isEnterprise())
-            @include('sites.partials.doodles')
+        @if ($sceneSide || $sceneFront)
+            {{-- The scene around the handset: real people beside it, the real
+                 vehicle parked in front. Wide screens only. --}}
+            <div class="scene" aria-hidden="true">
+                @if ($sceneSide)
+                    <img class="scene__side" src="{{ $sceneSide->thumb(800) }}" alt="" loading="lazy" decoding="async">
+                @endif
+                @if ($sceneFront)
+                    <img class="scene__front" src="{{ $sceneFront->thumb(1200) }}" alt="" loading="lazy" decoding="async">
+                @endif
+            </div>
         @endif
 
         @if (filled($data['video_caption'] ?? null))

@@ -4,6 +4,7 @@ namespace Tests\Feature\Sites;
 
 use App\Models\Site;
 use App\Models\SiteBlock;
+use App\Models\SiteImage;
 use App\Models\SitePage;
 use App\Sites\Import\SitePackage;
 use App\Sites\Import\SitePackageImporter;
@@ -156,6 +157,23 @@ class SiteEnterpriseTest extends TestCase
         // A stop the road returns to is labelled and listed once.
         $this->assertSame(1, substr_count($html, '>Windhoek</text>'));
         $this->assertStringContainsString('<span>Days 2-3</span>', $html);
+    }
+
+    public function test_a_photograph_used_only_as_a_background_is_still_loaded(): void
+    {
+        $site = $this->siteWithHero(SiteEdition::Enterprise, ['headline' => 'Home']);
+        $home = $site->pages()->where('is_home', true)->sole();
+        $canyon = SiteImage::create(['site_id' => $site->id, 'key' => 'sites/'.$site->slug.'/canyon.jpg', 'sort' => 0]);
+
+        SiteBlock::create(['site_page_id' => $home->id, 'type' => 'faq', 'sort' => 1, 'data' => [
+            'heading' => 'Good to know', 'background_image_id' => $canyon->id,
+            'items' => [['question' => 'Q?', 'answer' => 'A.']],
+        ]]);
+
+        $html = $this->get('/_sites/'.$site->slug)->assertOk()->getContent();
+
+        $this->assertStringContainsString('section--photo', $html);
+        $this->assertMatchesRegularExpression('#class="section__photo"[^>]*>\s*<img src="[^"]*canyon#', $html);
     }
 
     public function test_a_site_with_a_logo_carries_its_own_tab_icon(): void

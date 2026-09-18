@@ -3,7 +3,8 @@
     // One person is a portrait beside their story; several are a row.
     $solo = count($people) === 1;
 @endphp
-<section class="section section--tint" id="{{ $anchor }}">
+<section class="section section--tint {{ $solo ? 'section--leader' : '' }} {{ filled($data['background_image_id'] ?? null) ? 'section--photo' : '' }}" id="{{ $anchor }}">
+    @include('sites.partials.section-photo')
     <div class="wrap">
         @include('sites.partials.rule', ['label' => $definition->label()])
 
@@ -27,6 +28,7 @@
                                  sizes="{{ $solo ? '(min-width: 860px) 40vw, 100vw' : '(min-width: 980px) 33vw, (min-width: 640px) 50vw, 100vw' }}"
                                  alt="{{ $image->alt ?? $person['name'] }}"
                                  loading="lazy" decoding="async">
+                            <figcaption class="person__caption">{{ $person['name'] }}</figcaption>
                         </figure>
                     @endif
 
@@ -37,6 +39,13 @@
                         <h3 class="person__name">{{ $person['name'] }}</h3>
                         @if (filled($person['text'] ?? null))
                             <p class="person__text">{!! nl2br(e($person['text'])) !!}</p>
+                        @endif
+                        @if (! empty($person['facts']))
+                            <dl class="person__facts">
+                                @foreach ($person['facts'] as $fact)
+                                    <div><dt>{{ $fact['label'] }}</dt><dd>{{ $fact['value'] }}</dd></div>
+                                @endforeach
+                            </dl>
                         @endif
                     </div>
                 </article>

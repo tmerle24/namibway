@@ -9,7 +9,7 @@
     $titles = array_map(fn (array $item): string => (string) ($item['title'] ?? ''), $items);
     $drawIcons = HighlightIcon::worthDrawing($titles);
 @endphp
-<section class="section" id="{{ $anchor }}">
+<section class="section section--highlights" id="{{ $anchor }}">
     <div class="wrap">
         @include('sites.partials.rule', ['label' => $definition->label()])
 
