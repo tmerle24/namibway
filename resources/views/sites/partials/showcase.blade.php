@@ -118,6 +118,49 @@
     @media (max-width: 899.98px) {
         .sc .hero--card .hero__videonote { display: none; }
     }
+
+    /* ---- The foot of the page: dark, with a photograph in it ----------
+       A faint picture on a light band read as a rendering fault. On ink, at
+       half strength, it reads as the closing credits it is meant to be. The
+       enquiry form keeps its own white card, so everything typed stays dark
+       on light. */
+    .sc .section--photo { background: var(--ink); color: #fff; }
+    .sc .section--photo .section__photo img { opacity: .55; }
+    .sc .section--photo::after, .sc .section--tint.section--photo::after {
+        background: linear-gradient(180deg, rgba(22,24,28,.9) 0%, rgba(22,24,28,.5) 45%, rgba(22,24,28,.88) 100%);
+    }
+    .sc .section--photo h2, .sc .section--photo .faq__item summary, .sc .section--photo .channel a { color: #fff; }
+    .sc .section--photo .lead, .sc .section--photo .prose, .sc .section--photo .note,
+    .sc .section--photo .rule__label, .sc .section--photo .channel__label, .sc .section--photo .faq__a { color: rgba(255,255,255,.75); }
+    .sc .section--photo .rule, .sc .section--photo .faq, .sc .section--photo .faq__item { border-color: rgba(255,255,255,.18); }
+    .sc .section--photo .enquiry { border: 0; border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+
+    /* ---- Field-notebook sketches around the video card ---------------- */
+    .doodles { display: none; }
+    @media (min-width: 900px) {
+        .sc .doodles {
+            display: block; position: absolute; z-index: 2; pointer-events: none;
+            top: 50%; right: max(5vw, calc((100vw - var(--container)) / 2));
+            width: clamp(250px, 23vw, 340px); aspect-ratio: 9 / 19; transform: translateY(-50%);
+        }
+        .sc .doodle { position: absolute; fill: none; stroke: rgba(255,255,255,.82); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; overflow: visible; filter: drop-shadow(0 2px 6px rgba(0,0,0,.45)); }
+        .sc .doodle--binoculars { width: 34%; left: -44%; top: 4%; transform: rotate(-12deg); }
+        .sc .doodle--compass { width: 26%; right: -30%; top: -2%; }
+        .sc .doodle--acacia { width: 40%; right: -36%; top: 50%; }
+        .sc .doodle--jeep { width: 70%; left: -76%; bottom: 6%; }
+        .sc .doodle--trail { width: 44%; left: -50%; top: 30%; opacity: .7; }
+        .sc .doodle path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: scDraw 1.6s var(--ease-out) forwards; }
+        .sc .doodle--binoculars path { animation-delay: 1.2s; }
+        .sc .doodle--compass path { animation-delay: 1.5s; }
+        .sc .doodle--trail path { animation-delay: 1.9s; }
+        .sc .doodle--jeep path { animation-delay: 2.1s; }
+        .sc .doodle--acacia path { animation-delay: 2.5s; }
+        .sc .doodle--compass { animation: scSpin 60s linear infinite; }
+        .sc .doodle--jeep { animation: scBump 2.8s ease-in-out infinite 3.5s; }
+    }
+    @keyframes scDraw { to { stroke-dashoffset: 0; } }
+    @keyframes scSpin { to { transform: rotate(360deg); } }
+    @keyframes scBump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px) rotate(-.6deg); } }
     .hero__scroll { display: none; }
     .sc .hero__scroll { display: block; }
     @media (max-width: 639.98px) { .sc .hero__scroll { display: none; } }
@@ -188,6 +231,7 @@
         .sc .hero__media, .sc .band__img { transform: none !important; }
         .sc .trip__body::after { transform: none; transition: none; }
         .sc .offer-card:hover .offer-card__media img { transform: none; }
+        .sc .doodle, .sc .doodle path { animation: none; stroke-dashoffset: 0; }
     }
 @php $showcaseCss = ob_get_clean(); @endphp
 <style>{!! \App\Sites\Rendering\InlineCss::minify((string) $showcaseCss) !!}</style>

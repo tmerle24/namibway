@@ -22,6 +22,7 @@ use App\Sites\Blocks\OpeningHoursBlock;
 use App\Sites\Blocks\PhotoBandBlock;
 use App\Sites\Blocks\PriceListBlock;
 use App\Sites\Blocks\RichTextBlock;
+use App\Sites\Blocks\RouteMapBlock;
 use App\Sites\Blocks\ShopBlock;
 use App\Sites\Blocks\StatsBlock;
 use App\Sites\Blocks\TeamBlock;
@@ -52,6 +53,7 @@ class BlockRegistry
         AboutBlock::class,
         OffersBlock::class,
         ItineraryBlock::class,
+        RouteMapBlock::class,
         PhotoBandBlock::class,
         StatsBlock::class,
         GalleryBlock::class,

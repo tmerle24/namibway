@@ -103,6 +103,7 @@ class SitePerformanceBudgetTest extends TestCase
 
         return match ($type) {
             'hero' => ['eyebrow' => 'Swakopmund', 'headline' => 'The quiet edge of the desert', 'subline' => $lorem, 'video_key' => 'sites/every-block/videos/hero.mp4', 'video_layout' => 'card'],
+            'route_map' => ['heading' => 'Where the road goes', 'title' => 'The Grand Namibia Safari', 'items' => array_fill(0, 10, ['name' => 'Sossusvlei', 'label' => 'Days 2-3', 'lat' => -24.7, 'lng' => 15.3])],
             'stats' => ['items' => array_fill(0, 4, ['value' => 2335, 'unit' => 'km', 'label' => 'The full circuit, roughly']), 'ticker' => array_fill(0, 12, 'Twyfelfontein')],
             'about' => ['heading' => 'About us', 'body' => '<p>'.$lorem.'</p><p>'.$lorem.'</p>'],
             'highlights' => ['heading' => 'What we offer', 'items' => array_fill(0, 6, ['title' => 'Guided dune walks', 'text' => $lorem])],

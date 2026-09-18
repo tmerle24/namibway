@@ -13,6 +13,7 @@ use App\Sites\Blocks\FaqBlock;
 use App\Sites\Blocks\GalleryBlock;
 use App\Sites\Blocks\ItineraryBlock;
 use App\Sites\Blocks\OffersBlock;
+use App\Sites\Blocks\RouteMapBlock;
 use App\Sites\Blocks\StatsBlock;
 use App\Sites\Blocks\TeamBlock;
 use App\Sites\Blocks\TestimonialsBlock;
@@ -104,6 +105,7 @@ class BlockForm
                     ->fetchFileInformation(false)
                     ->helperText('A short silent loop, 10-20 seconds, 720p. The photograph is shown until it plays, '
                         .'and instead of it on a phone that saves data.'),
+                Toggle::make('doodles')->label('Safari sketches around the video (enterprise)'),
                 TextInput::make('video_caption')->label('Line under the video')->maxLength(60)
                     ->placeholder('Filmed on a game drive'),
                 Select::make('video_layout')
@@ -218,6 +220,26 @@ class BlockForm
                 TagsInput::make('ticker')
                     ->label('Running line')
                     ->helperText('Place names or words that scroll past under the numbers. Up to '.StatsBlock::MAX_TICKER.'.'),
+            ],
+
+            'route_map' => [
+                TextInput::make('heading')->label('Heading')->maxLength(120)->placeholder('Where the road goes'),
+                Textarea::make('intro')->label('A line above it')->rows(2)->maxLength(400),
+                TextInput::make('title')->label('Title on the map')->maxLength(60)->placeholder('The Grand Namibia Safari'),
+                TextInput::make('country')->label('Country (ISO code)')->maxLength(2)->default('NA'),
+                Repeater::make('items')
+                    ->label('Stops, in order')
+                    ->maxItems(RouteMapBlock::MAX_ITEMS)
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
+                    ->columns(4)
+                    ->schema([
+                        TextInput::make('name')->label('Place')->required()->maxLength(40),
+                        TextInput::make('label')->label('Day')->maxLength(24)->placeholder('Days 2-3'),
+                        TextInput::make('lat')->label('Latitude')->required()->numeric(),
+                        TextInput::make('lng')->label('Longitude')->required()->numeric(),
+                    ]),
+                TextInput::make('note')->label('Small print')->maxLength(200),
             ],
 
             'photo_band' => [

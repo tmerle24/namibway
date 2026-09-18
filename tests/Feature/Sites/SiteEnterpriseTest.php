@@ -135,6 +135,29 @@ class SiteEnterpriseTest extends TestCase
         $this->assertStringContainsString('href="#s1"', $tourHtml);
     }
 
+    public function test_the_route_map_draws_the_country_and_the_road(): void
+    {
+        $site = $this->siteWithHero(SiteEdition::Enterprise, ['headline' => 'Home']);
+        $home = $site->pages()->where('is_home', true)->sole();
+
+        SiteBlock::create(['site_page_id' => $home->id, 'type' => 'route_map', 'sort' => 1, 'data' => [
+            'heading' => 'Where the road goes',
+            'items' => [
+                ['name' => 'Windhoek', 'lat' => -22.56, 'lng' => 17.08],
+                ['name' => 'Sossusvlei', 'label' => 'Days 2-3', 'lat' => -24.73, 'lng' => 15.3],
+                ['name' => 'Windhoek', 'lat' => -22.56, 'lng' => 17.08],
+            ],
+        ]]);
+
+        $html = $this->get('/_sites/'.$site->slug)->assertOk()->getContent();
+
+        $this->assertStringContainsString('class="map__land"', $html);
+        $this->assertMatchesRegularExpression('#<path id="rm-road" d="M[0-9.]+ [0-9.]+Q#', $html);
+        // A stop the road returns to is labelled and listed once.
+        $this->assertSame(1, substr_count($html, '>Windhoek</text>'));
+        $this->assertStringContainsString('<span>Days 2-3</span>', $html);
+    }
+
     public function test_a_site_with_a_logo_carries_its_own_tab_icon(): void
     {
         $site = $this->siteWithHero(SiteEdition::Standard, ['headline' => 'Home']);

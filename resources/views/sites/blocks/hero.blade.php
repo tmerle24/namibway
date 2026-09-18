@@ -49,6 +49,10 @@
             <video class="hero__video" data-src="{{ $video }}" muted loop playsinline preload="none" aria-hidden="true"></video>
         </div>
 
+        @if (! empty($data['doodles']) && $site->isEnterprise())
+            @include('sites.partials.doodles')
+        @endif
+
         @if (filled($data['video_caption'] ?? null))
             <p class="hero__videonote">{{ $data['video_caption'] }}</p>
         @endif

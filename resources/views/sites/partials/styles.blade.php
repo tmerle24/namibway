@@ -1223,6 +1223,49 @@
     .lb__nav:disabled { opacity: .3; cursor: default; }
     .lb__nav:disabled:hover { background: rgba(255,255,255,.12); }
 
+    /* ---- The drawn expedition map (route_map) ------------------------- */
+    @if (isset($blocks) && collect($blocks)->contains(fn ($b) => $b->type === 'route_map'))
+
+    .section--map { background: #EFE4CC; }
+    .routemap { display: grid; gap: var(--s6); align-items: center; }
+    @media (min-width: 900px) { .routemap { grid-template-columns: 1fr 1.35fr; } }
+    .routemap__legend { list-style: none; counter-reset: stop; margin: 0 0 var(--s4); padding: 0; }
+    .routemap__legend li { counter-increment: stop; padding: 6px 0; border-bottom: 1px dashed rgba(91,59,34,.25); font-size: 17px; }
+    .routemap__legend li::before { content: counter(stop, decimal-leading-zero); margin-right: var(--s3); color: #A8321F; font-variant-numeric: tabular-nums; font-size: 13px; }
+    .routemap__legend span { float: right; font-size: 13px; color: var(--slate); }
+    .routemap__paper {
+        margin: 0; padding: var(--s3); border-radius: 4px; transform: rotate(-1.2deg);
+        background: #F7EDD6; box-shadow: 0 30px 70px rgba(70,45,20,.28), inset 0 0 70px rgba(140,95,40,.28);
+    }
+    .map { display: block; width: 100%; height: auto; overflow: visible; }
+    .map__grid { stroke: rgba(91,59,34,.14); stroke-dasharray: 2 7; }
+    .map__land { fill: #E9D3A6; stroke: #5B3B22; stroke-width: 2.2; stroke-linejoin: round; }
+    .map__draw { fill: none; stroke: #fff; stroke-width: 10; }
+    .map__route { fill: none; stroke: #A8321F; stroke-width: 3.2; stroke-linecap: round; stroke-dasharray: 9 7; }
+    .map__pin circle { fill: #A8321F; stroke: #F7EDD6; stroke-width: 2.5; }
+    .map__pin .map__start { fill: #5B3B22; }
+    .map__pin text, .map__compass text, .map__cartouche text {
+        font-family: var(--font-display); font-style: italic; font-size: 17px; fill: #3A2616;
+        paint-order: stroke; stroke: #F7EDD6; stroke-width: 4px; stroke-linejoin: round;
+    }
+    .map__traveller { fill: #FFF3D6; stroke: #A8321F; stroke-width: 2.5; }
+    .map__compass circle { fill: none; stroke: rgba(91,59,34,.5); stroke-dasharray: 3 4; }
+    .map__compass path { fill: rgba(91,59,34,.35); }
+    .map__compass .map__compass-n { fill: #A8321F; }
+    .map__cartouche text { font-size: 22px; }
+    .map__cartouche path { stroke: #A8321F; stroke-width: 1.5; }
+    /* Drawn as it arrives: the border, then the road, then each stop. Without
+       the script (no .js) all of it is simply there. */
+    .js .reveal .map__land { stroke-dasharray: 1; stroke-dashoffset: 1; fill-opacity: 0; }
+    .js .reveal .map__draw { stroke-dasharray: 1; stroke-dashoffset: 1; }
+    .js .reveal .map__pin { opacity: 0; }
+    .js .reveal .map__traveller { opacity: 0; }
+    .js .reveal.in .map__land { stroke-dashoffset: 0; fill-opacity: 1; transition: stroke-dashoffset 2s ease, fill-opacity 1s ease 1.4s; }
+    .js .reveal.in .map__draw { stroke-dashoffset: 0; transition: stroke-dashoffset 3.2s ease-in-out 1.2s; }
+    .js .reveal.in .map__pin { opacity: 1; transition: opacity .5s ease; transition-delay: calc(1.3s + var(--i) * .33s); }
+    .js .reveal.in .map__traveller { opacity: 1; transition: opacity .6s ease 4.5s; }
+    @endif
+
     /* ---- Numbers and running line (stats) ------------------------------ */
 
     .stats { background: var(--ink); color: #fff; padding: var(--s6) 0; overflow: hidden; }
@@ -1258,6 +1301,9 @@
         html { scroll-behavior: auto; }
         .hero__media img { animation: none; }
         .ticker__track { animation: none; }
+        .js .reveal .map__land, .js .reveal .map__draw { stroke-dashoffset: 0; fill-opacity: 1; transition: none; }
+        .js .reveal .map__pin { opacity: 1; transition: none; }
+        .map__traveller { display: none; }
         .js .reveal, .js .reveal.in { opacity: 1; transform: none; transition: none; }
         .btn:hover { transform: none; }
         .grid-photos figure:hover img { transform: none; }
